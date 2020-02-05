@@ -34,19 +34,21 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      * all of which are implemented as the {@link org.broadinstitute.hellbender.engine.AssemblyRegion} class.
      *
      * An active region is a genomic interval in which we call variants.  In order to output phased calls we try to put nearby variants
-     * in the same active region.  The size of active regions are bounded by the {@code minAssemblyRegionSize} and {@code maxAssemblyRegionSize}
-     * parameters, and within those bounds are determined by the variants present and the {@code activeProbThreshold} and {@code maxProbPropagationDistance}.
-     * Importantly active regions are excusively a matter of delegating responsibility for calling and have nothing to do with the size
-     * of the span over which we perform local assembly and pair-HMM.
+     * in the same active region.  The size of active regions are determined by the variants present, {@link AssemblyRegionArgumentCollection.activeProbThreshold},
+     * and {@link AssemblyRegionArgumentCollection.maxProbPropagationDistance}, and are bounded by the parameters {@link AssemblyRegionArgumentCollection.minAssemblyRegionSize}
+     * and {@link AssemblyRegionArgumentCollection.maxAssemblyRegionSize}.  Importantly, active regions define responsibility for variant calling
+     * and have nothing to do with the size of the span over which we perform local assembly and pair-HMM.  That is, a variant may belong to two
+     * overlapping assembly or genotyping regions but it only belongs to a single active region.
      *
      * An assembly region is the padded interval surrounding an active region over which we perform local assembly.  Padding is useful to phase with
      * any variation that may be just outside the active region, to avoid dangling ends in the assembly region, and to resolve indels.  The
-     * {@code assemblyRegionPadding} parameter determines the number of extra bases as assembly region contains on either side of the active region
+     * {@code assemblyRegionPadding} parameter determines the number of extra bases an assembly region contains on either side of the active region
      * it surrounds.
      *
      * A genotyping region is an interval surrounding an active region in which we perform pair-HMM and Smith-Waterman alignment.  Even though
      * we ultimately only genotype and call variants within the active region, we call entire haplotypes as an intermediate step, hence the
-     * needed for an expanded genotyping region.  The parameters {@code snpPaddingForGenotyping} and {@code indelPaddingForGenotyping} determine
+     * needed for an expanded genotyping region.  The parameters {@link AssemblyRegionArgumentCollection.snpPaddingForGenotyping},
+     * {@link AssemblyRegionArgumentCollection.snpPaddingForGenotyping} and {@link AssemblyRegionArgumentCollection.indelPaddingForGenotyping} determine
      * the size of genotyping regions.
      *
      * The overall flow is as follows:
