@@ -24,6 +24,6 @@
   "Cram2FilteredVcf.inference_batch_size": 8,
   "Cram2FilteredVcf.transfer_batch_size": 32,
   "Cram2FilteredVcf.mem_gb": 7,
-  "Cram2FilteredVcf.extra_args": "--dont-trim-active-regions -stand-call-conf 0 -A Coverage -A ChromosomeCounts -A BaseQuality -A FragmentLength -A MappingQuality -A ReadPosition ",
+  "Cram2FilteredVcf.extra_args": "-stand-call-conf 0 -A Coverage -A ChromosomeCounts -A BaseQuality -A FragmentLength -A MappingQuality -A ReadPosition ",
   "Cram2FilteredVcf.scatter_count": 4
 }
