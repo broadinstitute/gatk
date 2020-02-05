@@ -44,13 +44,6 @@ public abstract class LocusWalker extends WalkerBase {
     protected int maxDepthPerSample = defaultMaxDepthPerSample();
 
     /**
-     * Should the LIBS keep unique reads? Tools that do should override to return {@code true}.
-     */
-    protected boolean keepUniqueReadListInLibs() {
-        return false;
-    }
-
-    /**
      * LocusWalkers requires read sources
      */
     @Override
@@ -167,7 +160,6 @@ public abstract class LocusWalker extends WalkerBase {
         alignmentContextIteratorBuilder.setDownsamplingInfo(getDownsamplingInfo());
         alignmentContextIteratorBuilder.setEmitEmptyLoci(emitEmptyLoci());
         alignmentContextIteratorBuilder.setIncludeDeletions(includeDeletions());
-        alignmentContextIteratorBuilder.setKeepUniqueReadListInLibs(keepUniqueReadListInLibs());
         alignmentContextIteratorBuilder.setIncludeNs(includeNs());
 
         final Iterator<AlignmentContext> iterator = alignmentContextIteratorBuilder.build(

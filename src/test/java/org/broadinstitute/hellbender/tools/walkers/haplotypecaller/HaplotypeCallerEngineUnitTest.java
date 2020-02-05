@@ -61,7 +61,7 @@ public class HaplotypeCallerEngineUnitTest extends GATKBaseTest {
             }
             final Iterator<GATKRead> readIter = new ReadFilteringIterator(reads.query(paddedShardInterval), hcCombinedFilter);
 
-            final LocusIteratorByState libs = new LocusIteratorByState(readIter, DownsamplingMethod.NONE, false, ReadUtils.getSamplesFromHeader(reads.getHeader()), reads.getHeader(), false);
+            final LocusIteratorByState libs = new LocusIteratorByState(readIter, DownsamplingMethod.NONE, ReadUtils.getSamplesFromHeader(reads.getHeader()), reads.getHeader(), false);
 
             libs.forEachRemaining(pileup -> {
                 final SimpleInterval pileupInterval = new SimpleInterval(pileup.getLocation());
