@@ -31,7 +31,7 @@ public final class ShardBoundaryShard<T> implements Shard<T>, Serializable {
 
     @Override
     public SimpleInterval getPaddedInterval() {
-        return shardBoundary.getPaddedInterval();
+        return shardBoundary.getPaddedSpan();
     }
 
     @Override

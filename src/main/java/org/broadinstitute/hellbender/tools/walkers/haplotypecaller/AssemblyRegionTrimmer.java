@@ -7,13 +7,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.annotator.TandemRepeat;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.SortedSet;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Helper component to manage active region trimming
@@ -25,23 +26,7 @@ import java.util.SortedSet;
  */
 public final class AssemblyRegionTrimmer {
 
-    /**
-     * Holds the debug flag. If {@code true} the trimmer will output debugging messages into the log.
-     */
-    private boolean debug;
-
-    /**
-     * Holds the extension to be used
-     */
-    private int usableExtension;
-
-    /**
-     * Records whether the trimming intervals are going to be used to emit reference confidence, {@code true},
-     * or regular HC output {@code false}.
-     */
-    private boolean emitReferenceConfidence;
-
-    private ReadThreadingAssemblerArgumentCollection assemblyArgs;
+    private AssemblyRegionArgumentCollection assemblyRegionArgs;
 
     private SAMSequenceDictionary sequenceDictionary;
 
@@ -56,53 +41,22 @@ public final class AssemblyRegionTrimmer {
      * <p/>
      * This method should be called once and only once before any trimming is performed.
      *
-     * @param assemblyArgs user arguments for the trimmer
+     * @param assemblyRegionArgs user arguments for the trimmer
      * @param sequenceDictionary dictionary to determine the bounds of contigs
-     * @param emitReferenceConfidence indicates whether we plan to use this trimmer to generate trimmed regions
-     *                                to be used for emitting reference confidence.
-     *
      * @throws IllegalStateException if this trim calculator has already been initialized.
      * @throws IllegalArgumentException if the input location parser is {@code null}.
      * @throws CommandLineException.BadArgumentValue if any of the user argument values is invalid.
      */
-    public void initialize(final ReadThreadingAssemblerArgumentCollection assemblyArgs, final SAMSequenceDictionary sequenceDictionary, final boolean emitReferenceConfidence) {
-        Utils.validate(this.assemblyArgs == null, () -> getClass().getSimpleName() + " instance initialized twice");
-
-        this.assemblyArgs = Utils.nonNull(assemblyArgs);;
+    public AssemblyRegionTrimmer(final AssemblyRegionArgumentCollection assemblyRegionArgs, final SAMSequenceDictionary sequenceDictionary) {
+        this.assemblyRegionArgs = Utils.nonNull(assemblyRegionArgs);;
         this.sequenceDictionary = sequenceDictionary;
-
-        checkUserArguments();
-        this.debug = assemblyArgs.debugAssembly;
-        usableExtension = this.assemblyArgs.extension;
-        this.emitReferenceConfidence = emitReferenceConfidence;
-    }
-
-    /**
-     * Checks user trimming argument values
-     *
-     * @throws CommandLineException.BadArgumentValue if there is some problem with any of the arguments values.
-     */
-    private void checkUserArguments() {
-        if ( assemblyArgs.snpPadding < 0 ) {
-            throw new CommandLineException.BadArgumentValue("paddingAroundSNPs", "" + assemblyArgs.snpPadding + "< 0");
-        }
-        if ( assemblyArgs.indelPadding < 0 ) {
-            throw new CommandLineException.BadArgumentValue("paddingAroundIndels", "" + assemblyArgs.indelPadding + "< 0");
-        }
-        if ( assemblyArgs.extension < 0) {
-            throw new CommandLineException.BadArgumentValue("maxDiscARExtension", "" + assemblyArgs.extension + "< 0");
-        }
+        assemblyRegionArgs.validate();
     }
 
     /**
      * Holds the result of trimming.
      */
-    public static final class Result {
-
-        /**
-         * Indicates whether trimming is required per data and user request.
-         */
-        protected final boolean needsTrimming;
+    public final class Result {
 
         /**
          * Holds the input active region.
@@ -112,172 +66,27 @@ public final class AssemblyRegionTrimmer {
         /**
          * Holds the smaller range that contain all relevant callable variants in the
          * input active region (not considering the extension).
-         *
          */
-        protected final SimpleInterval callableSpan;
-
-        /**
-         * Maximum available range for the trimmed variant region.
-         */
-        protected final SimpleInterval maximumSpan;
+        protected final SimpleInterval variantSpan;
 
         /**
          * The trimmed variant region span including the extension.
          */
-        protected final SimpleInterval extendedSpan;
-
-
-        /**
-         * The ideal trimmer variant region span including the extension.
-         */
-        protected final SimpleInterval idealSpan;
-
-        /**
-         * Returns the ideal trimming span.
-         *
-         * <p/>
-         * The ideal span is the one containing all callable variation overlapping the original active region span
-         * (without extension) and the applicable padding {@link #getPadding()} in both sides.
-         *
-         *
-         * @return never {@code null}.
-         */
-        @SuppressWarnings("unused")
-        public SimpleInterval getIdealSpan() {
-            return idealSpan;
-        }
-
-        /**
-         * Holds the flanking spans that do not contain the callable variants.
-         * <p/>
-         * The first element of the pair is the left (up-stream) non-variant flank, whereas the second element is
-         * the right (down-stream) non-variant flank.
-         */
-        protected final Pair<SimpleInterval, SimpleInterval> nonVariantFlanks;
-
-        /**
-         * Holds the collection of callable events within the variant trimming region.
-         */
-        protected final List<VariantContext> callableEvents;
-
-        /**
-         * Required padding around the variant trimming region.
-         */
-        protected final int padding;
-
-
-        /**
-         * Returns the required padding around callable variation.
-         *
-         * <p/>
-         * Notice that due to the limiting span of the original active region (including its extension) it
-         * is possible that the resulting final trimmed variant region span does not satisfies the padding. However
-         * that should be rare.
-         *
-         * @return 0 or greater.
-         */
-        @SuppressWarnings("unused")
-        public int getPadding() {
-            return padding;
-        }
-
-        /**
-         * Holds the maximum extension around the original active region span considered for the trimmed
-         * variation region.
-         */
-        protected final int usableExtension;
-
-        /**
-         * Returns the maximum extension around the original active region span considered for the trimmed
-         * variation region.
-         *
-         * <p/>
-         * From time to time, the trimmed region may require a span beyond the input original active region's.
-         * For example when there is a callable event close ot one of its ends and the required padding makes it
-         * round beyond that limit.
-         *
-         * <p/>
-         * Notice that due to the limiting span of the original active region (including its extended region) it
-         * is possible that the resulting final trimmed variant region span goes beyond this extension including more of
-         * the original active region own extension.
-         *
-         * @return 0 or greater.
-         */
-        @SuppressWarnings("unused")
-        public int getUsableExtension() {
-            return usableExtension;
-        }
-
-        /**
-         * Holds variant-containing callable region.
-         * <p/>
-         * This is lazy-initialized using {@link #callableSpan}.
-         */
-        protected AssemblyRegion callableRegion;
-
-
-        /**
-         * Non-variant left flank region.
-         * <p/>
-         * This is lazy-initialized using
-         * {@link #nonVariantFlanks}.{@link Pair#getLeft()} () getFirst()}.
-         */
-        private AssemblyRegion leftFlankRegion;
-
-        /**
-         * Non-variant right flank region.
-         * <p/>
-         * This is lazy-initialized using
-         * {@link #nonVariantFlanks}.{@link Pair#getLeft()} () getSecond()}.
-         */
-        private AssemblyRegion rightFlankRegion;
-
-        /**
-         * Whether the variant trimmed region is going to be used for emitting reference confidence records.
-         */
-        private final boolean emitReferenceConfidence;
+        protected final SimpleInterval paddedSpan;
 
         /**
          * Creates a trimming result given all its properties.
-         *
-         * @param emitReferenceConfidence whether reference confidence output modes are on.
-         * @param needsTrimming whether there is any trimming needed at all.
          * @param originalRegion the original active region.
-         * @param padding padding around contained callable variation events.
-         * @param extension the extension applied to the trimmed variant span.
-         * @param overlappingEvents contained callable variation events.
-         * @param nonVariantFlanks pair of non-variant flank spans around the variant containing span.
-         * @param extendedSpan final trimmed variant span including the extension.
-         * @param idealSpan the ideal span, that contains.
-         * @param maximumSpan maximum possible trimmed span based on the input original active region extended span.
-         * @param callableSpan variant containing span without padding.
+         * @param variantSpan variant containing span without padding.
+         * @param paddedSpan final trimmed variant span including the extension.
          */
-        protected Result(final boolean emitReferenceConfidence,
-                         final boolean needsTrimming,
-                         final AssemblyRegion originalRegion,
-                         final int padding,
-                         final int extension,
-                         final List<VariantContext> overlappingEvents,
-                         final Pair<SimpleInterval, SimpleInterval> nonVariantFlanks,
-                         final SimpleInterval extendedSpan,
-                         final SimpleInterval idealSpan,
-                         final SimpleInterval maximumSpan,
-                         final SimpleInterval callableSpan) {
-            this.emitReferenceConfidence = emitReferenceConfidence;
-            this.needsTrimming = needsTrimming;
+        protected Result(final AssemblyRegion originalRegion, final SimpleInterval variantSpan, final SimpleInterval paddedSpan) {
             this.originalRegion = originalRegion;
-            this.nonVariantFlanks = nonVariantFlanks;
-            this.padding = padding;
-            usableExtension = extension;
-            callableEvents = overlappingEvents;
-            this.callableSpan = callableSpan;
-            this.idealSpan = idealSpan;
-            this.maximumSpan = maximumSpan;
-            this.extendedSpan = extendedSpan;
+            this.variantSpan = variantSpan;
+            this.paddedSpan = paddedSpan;
 
-            Utils.validateArg(extendedSpan == null || callableSpan == null || extendedSpan.contains(callableSpan), "the extended callable span must include the callable span");
+            Utils.validateArg(paddedSpan == null || variantSpan == null || paddedSpan.contains(variantSpan), "the padded span must include the variant span");
         }
-
 
         /**
          * Checks whether there is any variation present in the target region.
@@ -285,14 +94,7 @@ public final class AssemblyRegionTrimmer {
          * @return {@code true} if there is any variant, {@code false} otherwise.
          */
         public boolean isVariationPresent() {
-            return ! callableEvents.isEmpty();
-        }
-
-        /**
-         * Checks whether the active region needs trimming.
-         */
-        public boolean needsTrimming() {
-            return needsTrimming;
+            return variantSpan != null;
         }
 
         /**
@@ -302,32 +104,9 @@ public final class AssemblyRegionTrimmer {
          *
          * @return never {@code null}.
          */
-        public AssemblyRegion getCallableRegion() {
-            if (callableRegion == null && extendedSpan != null) {
-                //TODO this conditional is a patch to retain the current standard HC run behaviour
-                //TODO we should simply remove this difference between trimming with or without GVCF
-                //TODO embracing slight changes in the standard HC output
-                callableRegion = emitReferenceConfidence ? originalRegion.trim(callableSpan, extendedSpan) : originalRegion.trim(extendedSpan);
-            } else if (extendedSpan == null) {
-                throw new IllegalStateException("there is no variation thus no variant region");
-            }
-            return callableRegion;
-        }
-
-        /**
-         * Checks whether there is a non-empty left flanking non-variant trimmed out region.
-         * @return {@code true} if there is a non-trivial left flank region, {@code false} otherwise.
-         */
-        public boolean hasLeftFlankingRegion() {
-            return nonVariantFlanks.getLeft() != null;
-        }
-
-        /**
-         * Checks whether there is a non-empty right flanking non-variant trimmed out region.
-         * @return {@code true} if there is a non-trivial right flank region, {@code false} otherwise.
-         */
-        public boolean hasRightFlankingRegion() {
-            return nonVariantFlanks.getRight() != null;
+        public AssemblyRegion getVariantRegion() {
+            Utils.validate(isVariationPresent(), "There is no variation present.");
+            return originalRegion.trim(variantSpan, paddedSpan);
         }
 
         /**
@@ -337,142 +116,78 @@ public final class AssemblyRegionTrimmer {
          *
          *  @throws IllegalStateException if there is not such as left flanking region.
          */
-        public AssemblyRegion nonVariantLeftFlankRegion() {
-            if (leftFlankRegion == null && nonVariantFlanks.getLeft() != null) {
-                leftFlankRegion = originalRegion.trim(nonVariantFlanks.getLeft(), originalRegion.getExtension());
-            } else if (nonVariantFlanks.getLeft() == null) {
-                throw new IllegalStateException("there is no left flank non-variant trimmed out region");
+        public Optional<AssemblyRegion> nonVariantLeftFlankRegion() {
+            if (!isVariationPresent()) {
+                return Optional.of(originalRegion);
+            } else if (originalRegion.getStart() < variantSpan.getStart()) {
+                final SimpleInterval leftFlank = new SimpleInterval(originalRegion.getContig(), originalRegion.getStart(), variantSpan.getStart() - 1);
+                return Optional.of(originalRegion.trim(leftFlank, assemblyRegionArgs.assemblyRegionPadding));
+            } else {
+                return Optional.empty();
             }
-            return leftFlankRegion;
         }
 
         /**
          *  Returns the trimmed out right non-variant region.
          */
-        public AssemblyRegion nonVariantRightFlankRegion() {
-            if (rightFlankRegion == null && nonVariantFlanks.getRight() != null) {
-                rightFlankRegion = originalRegion.trim(nonVariantFlanks.getRight(), originalRegion.getExtension());
-            } else if (nonVariantFlanks.getRight() == null) {
-                throw new IllegalStateException("there is no right flank non-variant trimmed out region");
+        public Optional<AssemblyRegion> nonVariantRightFlankRegion() {
+            if (variantSpan.getEnd() < originalRegion.getEnd()) {
+                final SimpleInterval rightFlank = new SimpleInterval(originalRegion.getContig(), variantSpan.getEnd() + 1, originalRegion.getEnd());
+                return Optional.of(originalRegion.trim(rightFlank, assemblyRegionArgs.assemblyRegionPadding));
+            } else {
+                return Optional.empty();
             }
-            return rightFlankRegion;
         }
+    }
 
-        /**
-         * Creates a result indicating that there was no trimming to be done.
-         */
-        protected static Result noTrimming(final boolean emitReferenceConfidence,
-                                           final AssemblyRegion targetRegion, final int padding,
-                                           final int usableExtension,final List<VariantContext> events) {
-            final SimpleInterval targetRegionLoc = targetRegion.getSpan();
-            final Result result = new Result(emitReferenceConfidence,false,targetRegion,padding,usableExtension,events,Pair.of(null, null),
-                    targetRegionLoc,targetRegionLoc,targetRegionLoc,targetRegionLoc);
-            result.callableRegion = targetRegion;
-            return result;
-        }
-
-        /**
-         * Creates a result indicating that no variation was found.
-         */
-        protected static Result noVariation(final boolean emitReferenceConfidence, final AssemblyRegion targetRegion,
-                                            final int padding, final int usableExtension) {
-            final Result result = new Result(emitReferenceConfidence,false,targetRegion,padding,usableExtension,
-                    Collections.emptyList(), Pair.of(targetRegion.getSpan(), null),
-                    null, null, null, null);
-            result.leftFlankRegion = targetRegion;
-            return result;
-        }
+    /**
+     * Creates a result indicating that no variation was found.
+     */
+    protected Result noVariation(final AssemblyRegion targetRegion) {
+        return new Result(targetRegion, null, null);
     }
 
     /**
      * Returns a trimming result object from which the variant trimmed region and flanking non-variant sections
      * can be recovered latter.
      *
-     * @param originalRegion the genome location range to trim.
-     * @param allVariantsWithinExtendedRegion list of variants contained in the trimming location. Variants therein
-     *                                        not overlapping with {@code originalRegion} are simply ignored.
+     * @param region the genome location range to trim.
+     * @param variants list of variants contained in the trimming location. Variants therein
+     *                                        not overlapping with {@code region} are simply ignored.
+     * @param referenceContext
      * @return never {@code null}.
      */
-    public Result trim(final AssemblyRegion originalRegion,
-                       final SortedSet<VariantContext> allVariantsWithinExtendedRegion) {
+    public Result trim(final AssemblyRegion region, final SortedSet<VariantContext> variants, ReferenceContext referenceContext) {
+        final List<VariantContext> variantsInRegion = variants.stream().filter(region::overlaps).collect(Collectors.toList());
 
-
-        if ( allVariantsWithinExtendedRegion.isEmpty() ) // no variants,
-        {
-            return Result.noVariation(emitReferenceConfidence, originalRegion, assemblyArgs.snpPadding, usableExtension);
+        if ( variantsInRegion.isEmpty() ) {
+            return noVariation(region);
         }
 
-        final List<VariantContext> withinActiveRegion = new LinkedList<>();
-        final SimpleInterval originalRegionRange = originalRegion.getSpan();
-        boolean foundNonSnp = false;
-        SimpleInterval variantSpan = null;
-        for ( final VariantContext vc : allVariantsWithinExtendedRegion ) {
-            final SimpleInterval vcLoc = new SimpleInterval(vc);
-            if ( originalRegionRange.overlaps(vcLoc) ) {
-                foundNonSnp = foundNonSnp || ! vc.isSNP();
-                variantSpan = variantSpan == null ? vcLoc : variantSpan.spanWith(vcLoc);
-                withinActiveRegion.add(vc);
+        int minStart = variantsInRegion.stream().mapToInt(VariantContext::getStart).min().getAsInt();
+        int maxEnd = variantsInRegion.stream().mapToInt(VariantContext::getEnd).max().getAsInt();
+        final SimpleInterval variantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region);
+
+        for (final VariantContext vc : variantsInRegion) {
+            int padding = assemblyRegionArgs.snpPaddingForGenotyping;
+            if (vc.isIndel()) {
+                padding = assemblyRegionArgs.indelPaddingForGenotyping;
+                final Pair<List<Integer>, byte[]> numRepeatsAndUnit = TandemRepeat.getNumTandemRepeatUnits(referenceContext, vc);
+                if (numRepeatsAndUnit != null && numRepeatsAndUnit.getRight() != null) {
+                    final int repeatLength = numRepeatsAndUnit.getRight() == null ? 0 : numRepeatsAndUnit.getRight().length;
+                    final int mostRepeats = numRepeatsAndUnit.getLeft().stream().max(Integer::compareTo).orElse(0);
+                    final int longestSTR = mostRepeats * repeatLength;
+                    padding = assemblyRegionArgs.strPaddingForGenotyping + longestSTR;
+                }
             }
-        }
-        final int padding = foundNonSnp ? assemblyArgs.indelPadding : assemblyArgs.snpPadding;
 
-        // we don't actually have anything in the region after skipping out variants that don't overlap
-        // the region's full location
-        if ( variantSpan == null ) {
-            return Result.noVariation(emitReferenceConfidence, originalRegion, padding, usableExtension);
+            minStart = Math.min(minStart, Math.max(vc.getStart() - padding,1));
+            maxEnd = Math.max(maxEnd, vc.getEnd() + padding);
         }
 
-        if ( assemblyArgs.dontTrimActiveRegions) {
-            return Result.noTrimming(emitReferenceConfidence, originalRegion, padding, usableExtension, withinActiveRegion);
-        }
+        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region);
 
-        final SimpleInterval maximumSpan = originalRegionRange.expandWithinContig(usableExtension, sequenceDictionary);
-        final SimpleInterval idealSpan = variantSpan.expandWithinContig(padding, sequenceDictionary);
-        final SimpleInterval finalSpan = maximumSpan.intersect(idealSpan).mergeWithContiguous(variantSpan);
-
-        // Make double sure that, if we are emitting GVCF we won't call non-variable positions beyond the target active region span.
-        // In regular call we don't do so so we don't care and we want to maintain behavior, so the conditional.
-        final SimpleInterval callableSpan = emitReferenceConfidence ? variantSpan.intersect(originalRegionRange) : variantSpan;
-
-        final Pair<SimpleInterval, SimpleInterval> nonVariantRegions = nonVariantTargetRegions(originalRegion, callableSpan);
-
-        if ( debug ) {
-            logger.info("events       : " + withinActiveRegion);
-            logger.info("region       : " + originalRegion);
-            logger.info("callableSpan : " + callableSpan);
-            logger.info("padding      : " + padding);
-            logger.info("idealSpan    : " + idealSpan);
-            logger.info("maximumSpan  : " + maximumSpan);
-            logger.info("finalSpan    : " + finalSpan);
-        }
-
-        return new Result(emitReferenceConfidence,true,originalRegion,padding, usableExtension,withinActiveRegion,nonVariantRegions,finalSpan,idealSpan,maximumSpan,variantSpan);
+        return new Result(region, variantSpan, paddedVariantSpan);
     }
 
-    /**
-     * Calculates the list of region to trim away.
-     * @param targetRegion region for which to generate the flanking regions.
-     * @param variantSpan the span of the core region containing relevant variation and required padding.
-     * @return never {@code null}; 0, 1 or 2 element list.
-     */
-    private Pair<SimpleInterval, SimpleInterval> nonVariantTargetRegions(final AssemblyRegion targetRegion, final SimpleInterval variantSpan) {
-        final SimpleInterval targetRegionRange = targetRegion.getSpan();
-        final int finalStart = variantSpan.getStart();
-        final int finalStop = variantSpan.getEnd();
-
-        final int targetStart = targetRegionRange.getStart();
-        final int targetStop = targetRegionRange.getEnd();
-
-        final boolean preTrimmingRequired = targetStart < finalStart;
-        final boolean postTrimmingRequired = targetStop > finalStop;
-        if (preTrimmingRequired) {
-            final String contig = targetRegionRange.getContig();
-            return postTrimmingRequired ? Pair.of(new SimpleInterval(contig, targetStart, finalStart - 1), new SimpleInterval(contig, finalStop + 1, targetStop)) :
-                                          Pair.of(new SimpleInterval(contig, targetStart, finalStart - 1), null);
-        } else if (postTrimmingRequired) {
-            return Pair.of(null, new SimpleInterval(targetRegionRange.getContig(), finalStop + 1, targetStop));
-        } else {
-            return Pair.of(null, null);
-        }
-    }
 }

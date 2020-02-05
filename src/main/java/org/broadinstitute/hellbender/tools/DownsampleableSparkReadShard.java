@@ -38,7 +38,7 @@ public final class DownsampleableSparkReadShard implements Shard<GATKRead>, Seri
 
     @Override
     public SimpleInterval getPaddedInterval() {
-        return boundaries.getPaddedInterval();
+        return boundaries.getPaddedSpan();
     }
 
     @Override

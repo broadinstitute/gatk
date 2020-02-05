@@ -14,12 +14,12 @@ public class ReadlessAssemblyRegion extends ShardBoundary {
     private final boolean isActive;
 
     public ReadlessAssemblyRegion(final AssemblyRegion assemblyRegion) {
-        super(assemblyRegion.getSpan(), assemblyRegion.getExtendedSpan());
+        super(assemblyRegion.getSpan(), assemblyRegion.getPaddedSpan());
         this.isActive = assemblyRegion.isActive();
     }
 
-    private ReadlessAssemblyRegion(final SimpleInterval activeRegionLoc, SimpleInterval extendedLoc, final boolean isActive, final boolean padded) {
-        super(activeRegionLoc, extendedLoc, padded);
+    private ReadlessAssemblyRegion(final SimpleInterval activeRegionLoc, SimpleInterval paddedSpan, final boolean isActive, final boolean padded) {
+        super(activeRegionLoc, paddedSpan, padded);
         this.isActive = isActive;
     }
 
@@ -29,7 +29,7 @@ public class ReadlessAssemblyRegion extends ShardBoundary {
 
     @Override
     public ShardBoundary paddedShardBoundary() {
-        return padded ? this : new ReadlessAssemblyRegion(interval, paddedInterval, isActive, true);
+        return padded ? this : new ReadlessAssemblyRegion(interval, paddedSpan, isActive, true);
     }
 
     @Override
@@ -51,7 +51,7 @@ public class ReadlessAssemblyRegion extends ShardBoundary {
         return "ReadlessAssemblyRegion{" +
                 "isActive=" + isActive +
                 ", interval=" + interval +
-                ", paddedInterval=" + paddedInterval +
+                ", paddedSpan=" + paddedSpan +
                 ", padded=" + padded +
                 '}';
     }

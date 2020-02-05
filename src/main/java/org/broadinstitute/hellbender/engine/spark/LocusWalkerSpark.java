@@ -116,7 +116,6 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
             final AlignmentContextIteratorBuilder alignmentContextIteratorBuilder = new AlignmentContextIteratorBuilder();
             alignmentContextIteratorBuilder.setDownsamplingInfo(downsamplingInfo);
             alignmentContextIteratorBuilder.setEmitEmptyLoci(isEmitEmptyLoci);
-            alignmentContextIteratorBuilder.setIncludeDeletions(true);
             alignmentContextIteratorBuilder.setKeepUniqueReadListInLibs(false);
             alignmentContextIteratorBuilder.setIncludeNs(false);
 

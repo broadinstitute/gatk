@@ -112,7 +112,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      * If set, certain "early exit" optimizations in HaplotypeCaller, which aim to save compute and time by skipping
      * calculations if an ActiveRegion is determined to contain no variants, will be disabled. This is most likely to be useful if
      * you're using the -bamout argument to examine the placement of reads following reassembly and are interested in seeing the mapping of
-     * reads in regions with no variations. Setting the --force-active and --dont-trim-active-regions flags may also be necessary.
+     * reads in regions with no variations. Setting the --force-active flag may also be necessary.
      */
     @Advanced
     @Argument(fullName = "disable-optimizations", doc="Don't skip calculations in ActiveRegions with no variants",

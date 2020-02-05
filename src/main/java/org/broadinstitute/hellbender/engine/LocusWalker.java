@@ -62,15 +62,6 @@ public abstract class LocusWalker extends WalkerBase {
     public String getProgressMeterRecordLabel() { return "loci"; }
 
     /**
-     * Does this tool require deletions in the AlignmentContext? Tools that don't should override to return {@code false}.
-     *
-     * @return {@code true} if this tool requires deletions, {@code false} otherwise
-     */
-    public boolean includeDeletions() {
-        return true;
-    }
-
-    /**
      * Does this tool require Ns in the AlignmentContext? Tools that do should override to return {@code true}.
      *
      * @return {@code true} if this tool requires Ns, {@code false} otherwise
@@ -145,8 +136,7 @@ public abstract class LocusWalker extends WalkerBase {
      * Implementation of locus-based traversal.
      *
      * The default implementation iterates over all positions in the reference covered by reads (filtered and transformed)
-     * for all samples in the read groups, using the downsampling method provided by {@link #getDownsamplingInfo()}
-     * and including deletions only if {@link #includeDeletions()} returns {@code true}.
+     * for all samples in the read groups, using the downsampling method provided by {@link #getDownsamplingInfo()}.
      *
      * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
      * engine package that extends this class. It is not meant to be overridden by tools outside of the engine
@@ -166,7 +156,6 @@ public abstract class LocusWalker extends WalkerBase {
         final AlignmentContextIteratorBuilder alignmentContextIteratorBuilder = new AlignmentContextIteratorBuilder();
         alignmentContextIteratorBuilder.setDownsamplingInfo(getDownsamplingInfo());
         alignmentContextIteratorBuilder.setEmitEmptyLoci(emitEmptyLoci());
-        alignmentContextIteratorBuilder.setIncludeDeletions(includeDeletions());
         alignmentContextIteratorBuilder.setKeepUniqueReadListInLibs(keepUniqueReadListInLibs());
         alignmentContextIteratorBuilder.setIncludeNs(includeNs());
 

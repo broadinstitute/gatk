@@ -113,7 +113,7 @@ public final class ReadThreadingAssembler {
                                               final SAMFileHeader header,
                                               final SmithWatermanAligner aligner) {
         Utils.nonNull(assemblyRegion, "Assembly engine cannot be used with a null AssemblyRegion.");
-        Utils.nonNull(assemblyRegion.getExtendedSpan(), "Active region must have an extended location.");
+        Utils.nonNull(assemblyRegion.getPaddedSpan(), "Active region must have an extended location.");
         Utils.nonNull(refHaplotype, "Reference haplotype cannot be null.");
         Utils.nonNull(fullReferenceWithPadding, "fullReferenceWithPadding");
         Utils.nonNull(refLoc, "refLoc");
@@ -139,7 +139,7 @@ public final class ReadThreadingAssembler {
         resultSet.setRegionForGenotyping(assemblyRegion);
         resultSet.setFullReferenceWithPadding(fullReferenceWithPadding);
         resultSet.setPaddedReferenceLoc(refLoc);
-        final SimpleInterval activeRegionExtendedLocation = assemblyRegion.getExtendedSpan();
+        final SimpleInterval activeRegionExtendedLocation = assemblyRegion.getPaddedSpan();
         refHaplotype.setGenomeLocation(activeRegionExtendedLocation);
         resultSet.add(refHaplotype);
         final Map<AbstractReadThreadingGraph,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();

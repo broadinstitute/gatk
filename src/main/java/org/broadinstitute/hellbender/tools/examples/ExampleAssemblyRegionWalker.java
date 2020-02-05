@@ -37,27 +37,6 @@ public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
     private PrintStream outputStream = null;
 
     @Override
-    protected int defaultMinAssemblyRegionSize() { return 50; }
-
-    @Override
-    protected int defaultMaxAssemblyRegionSize() { return 300; }
-
-    @Override
-    protected int defaultAssemblyRegionPadding() { return 100; }
-
-    @Override
-    protected int defaultMaxReadsPerAlignmentStart() { return 50; }
-
-    @Override
-    protected double defaultActiveProbThreshold() { return 0.002; }
-
-    @Override
-    protected int defaultMaxProbPropagationDistance() { return 50; }
-
-    @Override
-    protected boolean includeReadsWithDeletionsInIsActivePileups() { return true; }
-
-    @Override
     public AssemblyRegionEvaluator assemblyRegionEvaluator() {
         // This example AssemblyRegionEvaluator considers all loci to be active
         // (ie., it assigns an isActive probability of 1.0 to all loci):
@@ -77,7 +56,7 @@ public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
     @Override
     public void apply( AssemblyRegion region, ReferenceContext referenceContext, FeatureContext featureContext ) {
         outputStream.printf("%s assembly region at %s (%s with padding), containing %d reads.\n\n",
-                region.isActive() ? "ACTIVE" : "INACTIVE", region.getSpan(), region.getExtendedSpan(), region.getReads().size());
+                region.isActive() ? "ACTIVE" : "INACTIVE", region.getSpan(), region.getPaddedSpan(), region.getReads().size());
 
         printReferenceBases(referenceContext);
 

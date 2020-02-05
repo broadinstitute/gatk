@@ -23,7 +23,7 @@ public interface Shard<T> extends Iterable<T>, Locatable {
 
     /**
      * @return the interval this shard spans, potentially with additional padding on each side
-     * it must be the case that for a given Shard getPaddedInterval().contains(getInterval())
+     * it must be the case that for a given Shard getPaddedSpan().contains(getInterval())
      */
     SimpleInterval getPaddedInterval();
 

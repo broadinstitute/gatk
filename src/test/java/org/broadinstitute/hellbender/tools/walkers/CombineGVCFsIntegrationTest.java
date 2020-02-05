@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
-public class    CombineGVCFsIntegrationTest extends CommandLineProgramTest {
+public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     // If true, update the expected outputs in tests that assert an exact match vs. prior output,
     // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=HaplotypeCallerIntegrationTest"
     // to update all of the exact-match tests at once. After you do this, you should look at the

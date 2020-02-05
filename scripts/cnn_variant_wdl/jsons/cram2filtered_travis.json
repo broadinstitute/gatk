@@ -18,6 +18,6 @@
   "Cram2FilteredVcf.intra_op_threads": 0,
   "Cram2FilteredVcf.inter_op_threads": 0,
   "Cram2FilteredVcf.mem_gb": 7,
-  "Cram2FilteredVcf.extra_args": "--dont-trim-active-regions -stand-call-conf 0 -A Coverage -A ChromosomeCounts -A BaseQuality -A FragmentLength -A MappingQuality -A ReadPosition ",
+  "Cram2FilteredVcf.extra_args": "-stand-call-conf 0 -A Coverage -A ChromosomeCounts -A BaseQuality -A FragmentLength -A MappingQuality -A ReadPosition ",
   "Cram2FilteredVcf.scatter_count": 3
 }

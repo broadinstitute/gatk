@@ -67,7 +67,6 @@ public abstract class LocusIteratorByStateBaseTest extends GATKBaseTest {
                 keepUniqueReadList,
                 sampleListForSAMWithoutReadGroups(),
                 header,
-                true,
                 includeNs
         );
     }
