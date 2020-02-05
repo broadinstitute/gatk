@@ -61,12 +61,9 @@ RUN cd $JUPYTER_HOME/custom \
 # context of a notebook.
 ENV PIP_USER=true
 
+# Install custom private python package from Puneet Batra's team.
 USER $USER
-
-# Install custom private python package from Puneet Batra's team. Due to the
-# preceeding USER command, this is done as the notebook user so that the file
-# permissions allow for editing of the code.
 RUN mkdir -p $HOME/ml4cvd/ecg_demo
-COPY ecg_demo $HOME/ml4cvd/ecg_demo
+COPY --chown=jupyter-user:users ecg_demo $HOME/ml4cvd/ecg_demo
 ENV PYTHONPATH $PYTHONPATH:$HOME/ml4cvd
 
