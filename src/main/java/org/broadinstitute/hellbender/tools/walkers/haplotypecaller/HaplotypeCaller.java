@@ -135,7 +135,8 @@ import java.util.List;
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
-public final class HaplotypeCaller extends AssemblyRegionWalker {
+public final class
+HaplotypeCaller extends AssemblyRegionWalker {
 
     @ArgumentCollection
     private HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();

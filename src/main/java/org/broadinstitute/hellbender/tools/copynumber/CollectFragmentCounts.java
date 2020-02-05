@@ -1,12 +1,20 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
 
+import com.google.common.collect.ImmutableMap;
+import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.Cigar;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
 import htsjdk.tribble.annotation.Strand;
+import htsjdk.tribble.gff.Gff3BaseData;
 import htsjdk.tribble.gff.Gff3Feature;
+import htsjdk.tribble.gff.Gff3FeatureImpl;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -32,12 +40,15 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
+import scala.Immutable;
+import scala.Int;
 
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 /**
@@ -119,6 +130,13 @@ public final class CollectFragmentCounts extends ReadWalker {
     @Argument(doc="gene_id key")
     private String gene_id_key = "gene_id";
 
+    @Argument(doc = "which read corresponds to the transcription strand")
+    private TrancriptionRead trancriptionRead = TrancriptionRead.R1;
+
+    @Argument(doc = "Whether the rna is spliced.  If spliced, alignments must be from a splice aware aligner (such as star), if unspliced, alignments must be from " +
+            "a non-splicing aligner (such as bwa). ")
+    private boolean spliced = true;
+
     final private Map<Gff3Feature, MutablePair<Double, Double>> featureCountsMap = new LinkedHashMap<>();
 
     @Override
@@ -149,8 +167,10 @@ public final class CollectFragmentCounts extends ReadWalker {
         }
 
         final Set<String> geneIDSet = new HashSet<>();
+        logger.info("collecting list of features");
         for (final SAMSequenceRecord contig : dict.getSequences()) {
             final List<Gff3Feature> contigFeatures = features.getFeatures(gffFile, new SimpleInterval(contig.getSequenceName(), 1, contig.getSequenceLength()));
+            logger.info("collecting features in " + contig.getSequenceName());
             for (final Gff3Feature feature : contigFeatures) {
                 if(!type.contains(feature.getType())) {
                     continue;
@@ -162,7 +182,7 @@ public final class CollectFragmentCounts extends ReadWalker {
                 if (geneIDSet.contains(geneID)) {
                     logger.warn("geneid " + geneID + " is not unique, consists of multiple disjoint regions ");
                 }
-                featureCountsMap.put(feature, MutablePair.of(0.0,0.0));
+                featureCountsMap.put(getBareBonesFeature(feature), MutablePair.of(0.0,0.0));
                 geneIDSet.add(geneID);
             }
         }
@@ -199,81 +219,75 @@ public final class CollectFragmentCounts extends ReadWalker {
         );
     }
 
+    private List<SimpleInterval> getAlignmentIntervals(final GATKRead read) {
+
+        if (spliced) {
+            final IntervalList alignmentIntervals = new IntervalList(getMasterSequenceDictionary());
+            final SAMRecord rec = read.convertToSAMRecord(getHeaderForReads());
+            if(SAMUtils.getMateCigar(rec) == null) {
+                throw new GATKException("Mate cigar must be present if using spliced reads");
+            }
+            final List<AlignmentBlock> readAlignmentBlocks = rec.getAlignmentBlocks();
+
+            for( final AlignmentBlock block : readAlignmentBlocks) {
+                alignmentIntervals.add(new Interval(read.getContig(), block.getReferenceStart(), block.getReferenceStart()+block.getLength()));
+            }
+
+            boolean overlapsMate = false;
+            if (inGoodPair(read)) {
+                final List<AlignmentBlock> mateAlignmentBlocks = SAMUtils.getMateAlignmentBlocks(rec);
+                for( final AlignmentBlock block : mateAlignmentBlocks) {
+                    final Interval alignmentBlockInterval = new Interval(read.getMateContig(), block.getReferenceStart(), block.getReferenceStart()+block.getLength());
+                    alignmentIntervals.add(alignmentBlockInterval);
+
+                    if (!overlapsMate && read.overlaps(alignmentBlockInterval)) {
+                        overlapsMate = true;
+                    }
+                }
+            }
+            if (overlapsMate) {
+                alignmentIntervals.unique();
+            }
+            return alignmentIntervals.getIntervals().stream().map(i -> new SimpleInterval(i.getContig(), i.getStart(), i.getEnd())).collect(Collectors.toList());
+        } else {
+            return Arrays.asList(getReadInterval(read));
+        }
+
+
+    }
+
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
 
         if ((!read.isReverseStrand() || !inGoodPair(read))) {
-            final SimpleInterval fragment_interval = getReadInterval(read);
+            if (read.getStart()> 14382 && read.getEnd()<14836) {
+                System.out.println();
+            }
+            final List<SimpleInterval> alignmentIntervals = getAlignmentIntervals(read);
 
             List<Gff3Feature> features = featureContext.getValues(gffFile);
-            //final Strand readStrand = read.isFirstOfPair() ? (read.isReverseStrand() ? Strand.NEGATIVE : Strand.POSITIVE) : (read.isReverseStrand() ? Strand.POSITIVE : Strand.NEGATIVE);
-            Strand readStrand = read.isFirstOfPair() ? (read.isReverseStrand() ? Strand.NEGATIVE : Strand.POSITIVE) : (read.isReverseStrand() ? Strand.POSITIVE : Strand.NEGATIVE);
-            //reverse stand for some reason...
-            readStrand = readStrand == Strand.POSITIVE? Strand.NEGATIVE : Strand.POSITIVE;
-            /*
-            let's figure out the strand backwards (and possibly inconsistenly) yay!!!
-             */
-//            Strand readStrand = Strand.POSITIVE;
-//            if (read.isFirstOfPair()) {
-//                if (!read.isReverseStrand() || read.mateIsReverseStrand()) {
-//                    readStrand = Strand.NEGATIVE;
-//                }
-//                if (read.isReverseStrand() || !read.mateIsReverseStrand()) {
-//                    readStrand = Strand.POSITIVE;
-//                }
-//            }
-//
-//            if (read.isSecondOfPair()) {
-//                if (read.isReverseStrand() || !read.mateIsReverseStrand()) {
-//                    readStrand = Strand.NEGATIVE;
-//                }
-//                if (!read.isReverseStrand() || read.mateIsReverseStrand()) {
-//                    readStrand = Strand.POSITIVE;
-//                }
-//            }
 
-            LinkedList<SimpleInterval> codingIntervals = new LinkedList<>();
-            int overlappingBases = 0;
+            final Strand fragmentStrand = getFragmentStrand(read);
+
+            final int basesOnReference = alignmentIntervals.stream().map(SimpleInterval::getLengthOnReference).reduce(0, Integer::sum);
             for (final Gff3Feature feature : features) {
                 if(!type.contains(feature.getType())) {
                     continue;
                 }
-                overlappingBases += fragment_interval.intersect(feature).size();
+                if (feature.getStart() == 10643) {
+                    System.out.println();
+                }
+                final boolean isSense = feature.getStrand() == Strand.NONE || feature.getStrand() == fragmentStrand;
+                final MutablePair<Double, Double> currentCount = featureCountsMap.get(getBareBonesFeature(feature));
 
-                final List<SimpleInterval> overlappingCodingIntervals = codingIntervals.stream().filter(i -> i.overlaps(fragment_interval.intersect(feature))).collect(Collectors.toList());
-                if (overlappingCodingIntervals.size() == 0) {
-                    codingIntervals.add(fragment_interval.intersect(feature));
-                } else {
-                    SimpleInterval overlappingCodingInterval = fragment_interval.intersect(feature);
-                    for (final SimpleInterval overlappingInterval : overlappingCodingIntervals) {
-                        codingIntervals.remove(overlappingInterval);
-                        overlappingCodingInterval = overlappingCodingInterval.mergeWithContiguous(overlappingInterval);
+                for (final SimpleInterval interval : alignmentIntervals) {
+                    if(interval.overlaps(feature)) {
+                        if (isSense) {
+                            currentCount.left += (float) interval.intersect(feature).size() / (float) basesOnReference;
+                        } else {
+                            currentCount.right += (float) interval.intersect(feature).size() / (float) basesOnReference;
+                        }
                     }
-                    codingIntervals.add(overlappingCodingInterval);
-                }
-            }
-            final int codingBases = codingIntervals.stream().map(SimpleInterval::size).reduce(0, Integer::sum);
-            final int utrBases = fragment_interval.size() - codingBases;
-            overlappingBases += utrBases;
-
-            for (final Gff3Feature feature : features) {
-                if(!type.contains(feature.getType())) {
-                    continue;
-                }
-
-                // for each assign fraction of fragment feature overlaps
-                final SimpleInterval intersection = fragment_interval.intersect(feature);
-
-                final boolean isSense = feature.getStrand() == Strand.NONE || feature.getStrand() == readStrand;
-                final MutablePair<Double, Double> currentCount = featureCountsMap.get(feature);
-
-                if (isSense) {
-
-                    //currentCount.left = currentCount.left + (float) intersection.getLengthOnReference() / (float) fragment_interval.getLengthOnReference();
-                    currentCount.left += (float) intersection.getLengthOnReference() / (float) overlappingBases;
-                } else {
-                    //currentCount.right = currentCount.right + (float) intersection.getLengthOnReference() / (float) fragment_interval.getLengthOnReference();
-                    currentCount.right += (float) intersection.getLengthOnReference() / (float) overlappingBases;
                 }
             }
         }
@@ -290,10 +304,10 @@ public final class CollectFragmentCounts extends ReadWalker {
             }
             writer.writeMetadata("annotation_file", gffFile.toString());
             for (final Map.Entry<Gff3Feature, MutablePair<Double, Double>> entry : featureCountsMap.entrySet()) {
-                //writer.writeRecord(new FragmentCount(entry.getKey(),entry.getValue().left, true));
                 writer.writeRecord(new FragmentCount(entry.getKey(),(int) Math.round(entry.getValue().left), true));
-                //writer.writeRecord(new FragmentCount(entry.getKey(),entry.getValue().right, false));
-                writer.writeRecord(new FragmentCount(entry.getKey(),(int) Math.round(entry.getValue().right), false));
+                if (entry.getKey().getStrand()!= Strand.NONE) {
+                    writer.writeRecord(new FragmentCount(entry.getKey(), (int) Math.round(entry.getValue().right), false));
+                }
             }
         } catch (IOException ex) {
             throw new UserException(ex.getMessage());
@@ -311,18 +325,22 @@ public final class CollectFragmentCounts extends ReadWalker {
         }
 
         protected void composeLine(final FragmentCount fragmentCount, final DataLine dataLine) {
-            dataLine.set("contig", fragmentCount.gtfFeature.getContig())
-                    .set("start", fragmentCount.gtfFeature.getStart())
-                    .set("stop", fragmentCount.gtfFeature.getEnd())
-                    .set("strand", fragmentCount.gtfFeature.getStrand().encode())
+            dataLine.set("contig", fragmentCount.gff3BaseData.getContig())
+                    .set("start", fragmentCount.gff3BaseData.getStart())
+                    .set("stop", fragmentCount.gff3BaseData.getEnd())
+                    .set("strand", fragmentCount.gff3BaseData.getStrand().encode())
                     .set("sense_antisense", fragmentCount.sense? "sense" : "antisense")
                     .set(name+"_counts", fragmentCount.count)
-                    .set("gene_id", fragmentCount.gtfFeature.getAttribute(gene_id_key));
+                    .set("gene_id", fragmentCount.gff3BaseData.getAttribute(gene_id_key));
         }
     }
 
+    private Gff3Feature getBareBonesFeature(final Gff3Feature feature) {
+        return new Gff3FeatureImpl(feature.getContig(), "", "", feature.getStart(), feature.getEnd(), feature.getStrand(), 0, ImmutableMap.of(gene_id_key, feature.getAttribute(gene_id_key)));
+    }
+
     public class FragmentCount {
-        public final Gff3Feature gtfFeature;
+        public final Gff3Feature gff3BaseData;
         //public final double count;
         public final int count;
         public final boolean sense;
@@ -334,7 +352,7 @@ public final class CollectFragmentCounts extends ReadWalker {
 //        }
 
         FragmentCount(final Gff3Feature gtfFeature, final int count, final boolean sense) {
-            this.gtfFeature = gtfFeature;
+            this.gff3BaseData = gtfFeature;
             this.count = count;
             this.sense = sense;
         }
@@ -358,6 +376,16 @@ public final class CollectFragmentCounts extends ReadWalker {
             return mateDifferentStrandFilterResult && ((read.isReverseStrand() && read.getEnd() >= read.getMateStart()) ||
                     (!read.isReverseStrand() && read.getStart() <= read.getMateStart() + TextCigarCodec.decode(read.getAttributeAsString("MC")).getReferenceLength()));
         }
+    }
+
+    private Strand getFragmentStrand(final GATKRead read) {
+        return (read.isFirstOfPair() == (trancriptionRead==TrancriptionRead.R1))? (read.isReverseStrand() ? Strand.NEGATIVE : Strand.POSITIVE) :
+                                                                                    (read.isReverseStrand() ? Strand.POSITIVE : Strand.NEGATIVE);
+    }
+
+    private enum TrancriptionRead {
+        R1,
+        R2
     }
 }
 
