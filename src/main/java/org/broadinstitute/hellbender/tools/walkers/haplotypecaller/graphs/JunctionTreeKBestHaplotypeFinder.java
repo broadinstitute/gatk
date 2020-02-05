@@ -174,7 +174,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
                         pathToExtend :  new JTBestHaplotype<>(pathToExtend, chain, 0));
                 // check that we were able to recover the missing path
                 if (newPath != null) {
-                    //TODO this might be removed, this is where we evaluate
+                    //TODO this code corresponds to where we check how well the path matches with the reference path, its not currently enabled but left in as we will do further evaluations
                     //annotatePathBasedOnGraph(newPath, junctionTreeLinkedDeBruinGraph);
                     result.add(newPath);
                 }

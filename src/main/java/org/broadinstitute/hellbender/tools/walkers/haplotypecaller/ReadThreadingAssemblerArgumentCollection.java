@@ -24,7 +24,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public static final String CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME = "capture-assembly-failure-bam";
     public static final String KMER_SIZE_LONG_NAME = "kmer-size";
     public static final String DONT_INCREASE_KMER_SIZE_LONG_NAME = "dont-increase-kmer-sizes-for-cycles";
-    public static final String LINKED_DE_BRUIJN_GRAPH_ARGUMENT = "linked-de-bruijn-graph";
+    public static final String LINKED_DE_BRUIJN_GRAPH_LONG_NAME = "linked-de-bruijn-graph";
 
     // -----------------------------------------------------------------------------------------------
     // arguments to control internal behavior of the read threading assembler
@@ -132,7 +132,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      *        sites. Use this mode at your own risk.
      */
     @Hidden
-    @Argument(fullName= LINKED_DE_BRUIJN_GRAPH_ARGUMENT, doc = "If enabled, the Assembly Engine will construct a Linked De Brujin graph to recover better haplotypes", optional = true)
+    @Argument(fullName= LINKED_DE_BRUIJN_GRAPH_LONG_NAME, doc = "If enabled, the Assembly Engine will construct a Linked De Brujin graph to recover better haplotypes", optional = true)
     public boolean useLinkedDeBrujinGraph = false;
 
     /**

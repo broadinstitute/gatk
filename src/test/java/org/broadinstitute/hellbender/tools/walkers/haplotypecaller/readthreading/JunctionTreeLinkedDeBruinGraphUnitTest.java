@@ -586,7 +586,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
 
     @Test
     // test asserting that we don't make spurious edges when we are trying to recover error bases
-    public void testJuncitonTreeErrorCorrectionNotAddingTreesWhenOverTentativeBases() {
+    public void testJunctionTreeErrorCorrectionNotAddingTreesWhenOverTentativeBases() {
         final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(11);
         final String ref             = "AAAAAAAAAAACCCCCC"+"G"+"CCCCCCTTTTTT"+"A"+"TTGG"+"A"+"GGG"+"C"+"GTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
         final String supportedAlt   = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCCTTTTTT"+"A"+"TTGG"+"C"+"GGG"+"C"+"GTGTGTGTGTGCCCGTGTGT"+"A"+"ATATATATAATAT";
