@@ -9,10 +9,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 
 
@@ -167,4 +164,5 @@ public class GenotypeGVCFsUnitTest extends GATKBaseTest {
     public void testIsSpanningDeletion(Allele allele, boolean expected){
         Assert.assertEquals(GATKVCFConstants.isSpanningDeletion(allele), expected);
     }
+
 }

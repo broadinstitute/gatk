@@ -524,7 +524,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final File input = getTestFile( "combine.single.sample.pipeline.1.vcf");
         final File output1 = createTempFile("output", ".vcf");
 
-        final ArgumentsBuilder argsWithAllSites = new ArgumentsBuilder()
+        final ArgumentsBuilder argsWithoutForceCalling = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
                 .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20")
@@ -533,7 +533,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output1);
 
         Utils.resetRandomGenerator();
-        runCommandLine(argsWithAllSites);
+        runCommandLine(argsWithoutForceCalling);
 
         final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output1);
 
@@ -542,7 +542,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final File output2 = createTempFile("output", ".vcf");
 
-        final ArgumentsBuilder argsWithSpecificSites = new ArgumentsBuilder()
+        final ArgumentsBuilder argsWithForceCalling = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
                 .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10000100")
@@ -551,7 +551,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output2);
 
         Utils.resetRandomGenerator();
-        runCommandLine(argsWithSpecificSites);
+        runCommandLine(argsWithForceCalling);
 
         final List<VariantContext> actualVC2 = VariantContextTestUtils.getVariantContexts(output2);
 
@@ -560,6 +560,70 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(actualVC2.get(0).getStart(), 10000100);
         Assert.assertTrue(actualVC2.get(0).isMonomorphicInSamples());
         Assert.assertTrue(actualVC2.get(1).isPolymorphicInSamples());
+    }
+
+    /**
+     * This tests whether NON_REF alleles are properly removed, including multi-allelic sites
+     */
+    @Test
+    public void testForceOutputNonRef() {
+        final File input = new File(getToolTestDataDir() + "../CombineGVCFs/NA12878.AS.chr20snippet.g.vcf");
+
+        // No sites should be output
+        final File output1 = createTempFile("output", ".vcf");
+        final ArgumentsBuilder argsWithoutForceSpecificSites = new ArgumentsBuilder()
+                .addReference(b37Reference)
+                .addVCF(input)
+                .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
+                .addOutput(output1);
+
+        Utils.resetRandomGenerator();
+        runCommandLine(argsWithoutForceSpecificSites);
+
+        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output1);
+
+        Assert.assertEquals(actualVC.size(), 24);
+
+        // No sites should output
+        final File output2 = createTempFile("output2", ".vcf");
+        final ArgumentsBuilder argsWithSpecificSites = new ArgumentsBuilder()
+                .addReference(b37Reference)
+                .addVCF(input)
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10433049")
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10433197")
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10433312")
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10684106")
+                .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
+                .addOutput(output2);
+
+        Utils.resetRandomGenerator();
+        runCommandLine(argsWithSpecificSites);
+
+        final List<VariantContext> actualVC2 = VariantContextTestUtils.getVariantContexts(output2);
+
+        Assert.assertEquals(actualVC2.size(), 28);
+        actualVC2.forEach(vc -> {
+            Assert.assertTrue(!vc.getAlleles().contains(Allele.NON_REF_ALLELE));
+        });
+
+        for (VariantContext vc : actualVC2) {
+            //If non-used alleles are pruned, this will be true
+            Assert.assertEquals(!vc.isPolymorphicInSamples(), vc.getAlleles().size() == 1);
+            Assert.assertEquals(vc.getAlleles(), vc.subContextFromSamples(vc.getSampleNames(), true).getAlleles());
+
+            if (vc.getStart() == 10433049) {
+                Assert.assertEquals(vc.getAlleles(), Arrays.asList(Allele.REF_C));
+            }
+            else if (vc.getStart() == 10433197) {
+                Assert.assertEquals(vc.getAlleles(), Arrays.asList(Allele.REF_C));
+            }
+            else if (vc.getStart() == 10433312) {
+                Assert.assertEquals(vc.getAlleles(), Arrays.asList(Allele.create("CAAAAAAA", true)));
+            }
+            else if (vc.getStart() == 10684106) {
+                Assert.assertEquals(vc.getAlleles(), Arrays.asList(Allele.create("CCTTTCTTTCTTT", true)));
+            }
+        }
     }
 
     @Test
