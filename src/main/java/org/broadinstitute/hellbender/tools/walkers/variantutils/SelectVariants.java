@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.VariantContextComparator;
 import htsjdk.variant.variantcontext.VariantContextUtils;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
@@ -451,6 +452,8 @@ public final class SelectVariants extends VariantWalker {
 
     private final Map<Integer, Integer> ploidyToNumberOfAlleles = new LinkedHashMap<Integer, Integer>();
 
+    private PriorityQueue<VariantContext> pendingVariants;
+
     /**
      * Set up the VCF writer, the sample expressions and regexs, filters inputs, and the JEXL matcher
      *
@@ -525,6 +528,8 @@ public final class SelectVariants extends VariantWalker {
             }
         }
 
+        pendingVariants = new PriorityQueue<>(Comparator.comparingInt(VariantContext::getStart));
+
         final Path outPath = vcfOutput.toPath();
         vcfWriter = createVCFWriter(outPath);
         vcfWriter.writeHeader(new VCFHeader(actualLines, samples));
@@ -532,6 +537,13 @@ public final class SelectVariants extends VariantWalker {
 
     @Override
     public void apply(VariantContext vc, ReadsContext readsContext, ReferenceContext ref, FeatureContext featureContext) {
+
+        /*check for pending variants to write out
+        since variant starts will only be moved further right, we can write out a pending variant if the current variant start is after the pending variant start
+         */
+        while (!pendingVariants.isEmpty() && (pendingVariants.peek().getStart()<=vc.getStart() || !(pendingVariants.peek().getContig().equals(vc.getContig())))) {
+            vcfWriter.add(pendingVariants.poll());
+        }
 
         if (fullyDecode) {
             vc = vc.fullyDecode(getHeaderForVariants(), lenientVCFProcessing);
@@ -617,9 +629,26 @@ public final class SelectVariants extends VariantWalker {
                     (!selectRandomFraction || Utils.getRandomGenerator().nextDouble() < fractionRandom)) {
                 //remove annotations being dropped and write variantcontext
                 final VariantContext variantContextToWrite = buildVariantContextWithDroppedAnnotationsRemoved(filteredGenotypeToNocall);
-                vcfWriter.add(variantContextToWrite);
+                if (variantContextToWrite.getStart() != vc.getStart()) {
+                    //if variant has shifted, need to add to priority queue in case later variant get moved ahead of it
+                    pendingVariants.add(variantContextToWrite);
+                } else {
+                    vcfWriter.add(variantContextToWrite);
+                }
             }
         }
+    }
+
+    /**
+     * write out all remaining pending variants
+     * @return
+     */
+    @Override
+    public Object onTraversalSuccess() {
+        while(!pendingVariants.isEmpty()) {
+            vcfWriter.add(pendingVariants.poll());
+        }
+        return null;
     }
 
     private VariantContext buildVariantContextWithDroppedAnnotationsRemoved(final VariantContext vc) {
