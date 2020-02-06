@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableSet;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -712,6 +713,24 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static String keyForVariant(final VariantContext variant) {
         return String.format("%s:%d-%d %s, %s", variant.getContig(), variant.getStart(), variant.getEnd(), variant.getReference(),
                 variant.getAlternateAlleles().stream().map(Allele::getDisplayString).sorted().collect(Collectors.toList()));
+    }
+
+    @Test
+    public void testFilteringHeaders() {
+        Utils.resetRandomGenerator();
+        final File tumor = new File(NA12878_20_21_WGS_bam);
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        runMutect2(tumor, unfilteredVcf, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD));
+        runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference);
+
+        final VCFHeader filteredHeader = VariantContextTestUtils.getVCFHeader(filteredVcf.getAbsolutePath());
+        //explicit check for PASS header
+        Assert.assertTrue(filteredHeader.hasFilterLine(VCFConstants.PASSES_FILTERS_v4));
+        for (final String header : GATKVCFConstants.MUTECT_FILTER_NAMES){
+            Assert.assertTrue(filteredHeader.hasFilterLine(header));
+        }
     }
 
     @SafeVarargs

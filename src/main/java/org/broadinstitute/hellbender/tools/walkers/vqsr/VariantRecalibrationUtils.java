@@ -23,6 +23,7 @@ class VariantRecalibrationUtils {
         hInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.CULPRIT_KEY));
         hInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.POSITIVE_LABEL_KEY));
         hInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.NEGATIVE_LABEL_KEY));
+        hInfo.add(GATKVCFHeaderLines.getFilterLine(VCFConstants.PASSES_FILTERS_v4));
     }
 
     /**

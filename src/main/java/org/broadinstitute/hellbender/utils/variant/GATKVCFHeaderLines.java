@@ -76,6 +76,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(GATKVCFConstants.AC_ADJUSTED_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Allele count for each ALT, adjusted to represent high quality genotypes only"));
 
         addFilterLine(new VCFFilterHeaderLine(LOW_QUAL_FILTER_NAME, "Low quality"));
+        addFilterLine(new VCFFilterHeaderLine(VCFConstants.PASSES_FILTERS_v4, "Site contains at least one allele that passes filters"));
 
         // M2-related filters
         addFilterLine(new VCFFilterHeaderLine(ALIGNMENT_ARTIFACT_FILTER_NAME, "Alignment artifact"));

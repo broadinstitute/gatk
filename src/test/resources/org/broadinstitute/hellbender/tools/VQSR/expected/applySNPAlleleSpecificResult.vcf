@@ -1,6 +1,7 @@
 ##fileformat=VCFv4.2
 ##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
 ##FILTER=<ID=LowQual,Description="Low quality">
+##FILTER=<ID=PASS,Description="Site contains at least one allele that passes filters">
 ##FILTER=<ID=VQSRTrancheSNP99.70to99.80,Description="Truth sensitivity tranche level for SNP model at VQS Lod: -5.5085 <= x < -3.3932">
 ##FILTER=<ID=VQSRTrancheSNP99.80to99.90,Description="Truth sensitivity tranche level for SNP model at VQS Lod: -11.5497 <= x < -5.5085">
 ##FILTER=<ID=VQSRTrancheSNP99.90to100.00+,Description="Truth sensitivity tranche level for SNP model at VQS Lod < -1432.1784">
