@@ -5,8 +5,6 @@ import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import java.io.Serializable;
 import java.nio.file.Path;
 
-//TODO: get rid of getReferenceFileName
-
 /**
  * An abstract ArgumentCollection for specifying a reference sequence file
  */
@@ -18,13 +16,15 @@ public abstract class ReferenceInputArgumentCollection implements Serializable {
      */
     public abstract GATKPathSpecifier getReferenceInputPath();
 
-    // TODO: get rid of this
+    //TODO: this implementation mimics what the previous implementation did (return the string
+    // entered by the user). We should either get rid of it entirely, or rename, but either
+    // way we should minimize usage of it for anything other than error reporting.
     /**
      * Get the name of the reference file specified at the command line.
      */
     public String getReferenceFileName() {
         final GATKPathSpecifier inputPath = getReferenceInputPath();
-        return inputPath == null ? null : getReferenceInputPath().toString();
+        return inputPath == null ? null : inputPath.getRawInputString();
     }
 
     /**
