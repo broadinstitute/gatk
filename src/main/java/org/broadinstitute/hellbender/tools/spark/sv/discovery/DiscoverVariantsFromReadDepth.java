@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -299,11 +299,11 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
      */
     private static List<SVCopyNumberInterval> getCalledCopyNumberIntervals(final String path, final SAMSequenceDictionary dictionary) {
         final File file = new File(path);
-        if (path.toLowerCase().endsWith(IOUtil.VCF_FILE_EXTENSION.toLowerCase()) || path.toLowerCase().endsWith(IOUtil.COMPRESSED_VCF_FILE_EXTENSION.toLowerCase())) {
+        if (path.toLowerCase().endsWith(FileExtensions.VCF.toLowerCase()) || path.toLowerCase().endsWith(FileExtensions.COMPRESSED_VCF.toLowerCase())) {
             final VCFFileReader reader = new VCFFileReader(file, false);
             return Utils.stream(reader.iterator()).map(variantContext -> new SVCopyNumberInterval(variantContext, dictionary)).collect(Collectors.toList());
         }
-        throw new UserException.BadInput("CNV intervals file must be " + IOUtil.VCF_FILE_EXTENSION + " or " + IOUtil.COMPRESSED_VCF_FILE_EXTENSION);
+        throw new UserException.BadInput("CNV intervals file must be " + FileExtensions.VCF + " or " + FileExtensions.COMPRESSED_VCF);
     }
 
     /**

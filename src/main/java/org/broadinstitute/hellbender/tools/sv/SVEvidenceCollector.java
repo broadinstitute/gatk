@@ -79,8 +79,8 @@ public class SVEvidenceCollector {
     }
 
     private List<SVCallRecordWithEvidence> processStartPositions(final List<SVCallRecordWithEvidence> calls) {
-        final OverlapDetector splitReadStartIntervalOverlapDetector = getEvidenceOverlapDetector(calls, this::getStartSplitReadInterval);
-        final OverlapDetector discordantPairIntervalOverlapDetector = getEvidenceOverlapDetector(calls, this::getDiscordantPairStartInterval);
+        final OverlapDetector<SimpleInterval> splitReadStartIntervalOverlapDetector = getEvidenceOverlapDetector(calls, this::getStartSplitReadInterval);
+        final OverlapDetector<SimpleInterval> discordantPairIntervalOverlapDetector = getEvidenceOverlapDetector(calls, this::getDiscordantPairStartInterval);
         return calls.stream()
                 .map(c -> processDiscordantPairs(c, discordantPairIntervalOverlapDetector))
                 .collect(Collectors.toList())
@@ -90,13 +90,13 @@ public class SVEvidenceCollector {
     }
 
     private List<SVCallRecordWithEvidence> processEndPositions(final List<SVCallRecordWithEvidence> calls) {
-        final OverlapDetector splitReadEndIntervalOverlapDetector = getEvidenceOverlapDetector(calls, this::getEndSplitReadInterval);
+        final OverlapDetector<SimpleInterval> splitReadEndIntervalOverlapDetector = getEvidenceOverlapDetector(calls, this::getEndSplitReadInterval);
         return calls.stream().sorted(Comparator.comparing(c -> c.getEndAsInterval(), IntervalUtils.getDictionaryOrderComparator(dictionary)))
                 .map(c -> processEndSplitReads(c, splitReadEndIntervalOverlapDetector))
                 .collect(Collectors.toList());
     }
 
-    private <T extends SVCallRecord> OverlapDetector getEvidenceOverlapDetector(final List<T> calls,
+    private <T extends SVCallRecord> OverlapDetector<SimpleInterval> getEvidenceOverlapDetector(final List<T> calls,
                                                                                 final Function<T, SimpleInterval> evidenceFunction) {
         final List<SimpleInterval> rawIntervals = calls.stream()
                 .map(c -> evidenceFunction.apply(c))
@@ -110,7 +110,7 @@ public class SVEvidenceCollector {
     }
 
     private SVCallRecordWithEvidence processDiscordantPairs(final SVCallRecordWithEvidence call,
-                                                            final OverlapDetector discordantPairIntervalOverlapDetector) {
+                                                            final OverlapDetector<SimpleInterval> discordantPairIntervalOverlapDetector) {
         Utils.nonNull(call);
         final SVCallRecordWithEvidence callWithEvidence;
         if (SVClusterEngine.isDepthOnlyCall(call)) {
@@ -128,7 +128,7 @@ public class SVEvidenceCollector {
     }
 
     private SVCallRecordWithEvidence processStartSplitReads(final SVCallRecordWithEvidence call,
-                                                             final OverlapDetector splitReadStartIntervalOverlapDetector) {
+                                                             final OverlapDetector<SimpleInterval> splitReadStartIntervalOverlapDetector) {
         Utils.nonNull(call);
         final SVCallRecordWithEvidence callWithEvidence;
         if (SVClusterEngine.isDepthOnlyCall(call)) {
@@ -147,7 +147,7 @@ public class SVEvidenceCollector {
     }
 
     private SVCallRecordWithEvidence processEndSplitReads(final SVCallRecordWithEvidence call,
-                                                           final OverlapDetector splitReadEndIntervalOverlapDetector) {
+                                                           final OverlapDetector<SimpleInterval> splitReadEndIntervalOverlapDetector) {
         Utils.nonNull(call);
         final SVCallRecordWithEvidence refinedCall;
         if (SVClusterEngine.isDepthOnlyCall(call)) {
@@ -167,7 +167,7 @@ public class SVEvidenceCollector {
 
     private List<SplitReadEvidence> getSplitReads(final SimpleInterval interval,
                                                   final boolean strand,
-                                                  final OverlapDetector splitReadOverlapDetector) {
+                                                  final OverlapDetector<SimpleInterval> splitReadOverlapDetector) {
         if (invalidCacheInterval(splitReadCacheInterval, interval)) {
             Utils.nonNull(splitReadOverlapDetector, "Split read cache missed but overlap detector is null");
             final Set<SimpleInterval> queryIntervalSet = splitReadOverlapDetector.getOverlaps(interval);
@@ -183,12 +183,12 @@ public class SVEvidenceCollector {
     }
 
     private List<SplitReadEvidence> getStartSplitReads(final SVCallRecordWithEvidence call,
-                                                       final OverlapDetector splitReadStartOverlapDetector) {
+                                                       final OverlapDetector<SimpleInterval> splitReadStartOverlapDetector) {
         return getSplitReads(getStartSplitReadInterval(call), call.getStartStrand(), splitReadStartOverlapDetector);
     }
 
     private List<SplitReadEvidence> getEndSplitReads(final SVCallRecordWithEvidence call,
-                                                     final OverlapDetector splitReadEndOverlapDetector) {
+                                                     final OverlapDetector<SimpleInterval> splitReadEndOverlapDetector) {
         return getSplitReads(getEndSplitReadInterval(call), call.getEndStrand(), splitReadEndOverlapDetector);
     }
 
@@ -207,7 +207,7 @@ public class SVEvidenceCollector {
     }
 
     private List<DiscordantPairEvidence> getDiscordantPairs(final SVCallRecord call,
-                                                            final OverlapDetector discordantPairStartOverlapDetector) {
+                                                            final OverlapDetector<SimpleInterval> discordantPairStartOverlapDetector) {
         final SimpleInterval startInterval = getDiscordantPairStartInterval(call);
         if (invalidCacheInterval(discordantPairCacheInterval, startInterval)) {
             final Set<SimpleInterval> queryIntervalSet = discordantPairStartOverlapDetector.getOverlaps(startInterval);

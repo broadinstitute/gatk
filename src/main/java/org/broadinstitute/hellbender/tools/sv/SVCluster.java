@@ -119,7 +119,7 @@ public final class SVCluster extends GATKTool {
 
     private SAMSequenceDictionary dictionary;
 
-    private final Map<String,IntervalTree> whitelistedIntervalTreeMap = new HashMap<>();
+    private final Map<String,IntervalTree<Object>> whitelistedIntervalTreeMap = new HashMap<>();
     private FeatureDataSource<SVCallRecord> reader;
     private VariantContextWriter writer;
     private int variantsWritten;
@@ -230,7 +230,7 @@ public final class SVCluster extends GATKTool {
 
     private void loadIntervalTree() {
         for (final SimpleInterval interval : getTraversalIntervals()) {
-            whitelistedIntervalTreeMap.putIfAbsent(interval.getContig(), new IntervalTree());
+            whitelistedIntervalTreeMap.putIfAbsent(interval.getContig(), new IntervalTree<>());
             whitelistedIntervalTreeMap.get(interval.getContig()).put(interval.getStart(), interval.getEnd(), null);
         }
     }
@@ -377,12 +377,12 @@ public final class SVCluster extends GATKTool {
         return call.getType().equals(StructuralVariantType.BND) || call.getLength() >= minEventSize;
     }
 
-    public static boolean isWhitelisted(final SVCallRecord call, final Map<String,IntervalTree> whitelistedIntervalTreeMap) {
-        final IntervalTree startTree = whitelistedIntervalTreeMap.get(call.getContig());
+    public static <T> boolean isWhitelisted(final SVCallRecord call, final Map<String,IntervalTree<T>> whitelistedIntervalTreeMap) {
+        final IntervalTree<T> startTree = whitelistedIntervalTreeMap.get(call.getContig());
         if (startTree == null || !startTree.overlappers(call.getStart(), call.getStart() + 1).hasNext()) {
             return false;
         }
-        final IntervalTree endTree = whitelistedIntervalTreeMap.get(call.getEndContig());
+        final IntervalTree<T> endTree = whitelistedIntervalTreeMap.get(call.getEndContig());
         if (endTree == null || !endTree.overlappers(call.getEnd(), call.getEnd() + 1).hasNext()) {
             return false;
         }

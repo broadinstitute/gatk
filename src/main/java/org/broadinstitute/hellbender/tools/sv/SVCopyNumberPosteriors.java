@@ -139,7 +139,7 @@ public final class SVCopyNumberPosteriors extends VariantWalker {
     final String NEUTRAL_COPY_NUMBER_KEY = "NCN";
     public final List<StructuralVariantType> CNV_TYPES = Lists.newArrayList(StructuralVariantType.DEL, StructuralVariantType.DUP);
 
-    private final Map<String,IntervalTree> whitelistedIntervalTreeMap = new HashMap<>();
+    private final Map<String,IntervalTree<Object>> whitelistedIntervalTreeMap = new HashMap<>();
     private int numCopyStates;
     private List<IntegerCopyNumberState> copyStates;
     private List<VCFFileReader> posteriorsReaders;
@@ -201,12 +201,12 @@ public final class SVCopyNumberPosteriors extends VariantWalker {
     private void loadIntervalTree() {
         if (getTraversalIntervals() == null) {
             for (final SAMSequenceRecord sequence : dictionary.getSequences()) {
-                whitelistedIntervalTreeMap.put(sequence.getSequenceName(), new IntervalTree());
+                whitelistedIntervalTreeMap.put(sequence.getSequenceName(), new IntervalTree<>());
                 whitelistedIntervalTreeMap.get(sequence.getSequenceName()).put(1, sequence.getSequenceLength(), null);
             }
         } else {
             for (final SimpleInterval interval : getTraversalIntervals()) {
-                whitelistedIntervalTreeMap.putIfAbsent(interval.getContig(), new IntervalTree());
+                whitelistedIntervalTreeMap.putIfAbsent(interval.getContig(), new IntervalTree<>());
                 whitelistedIntervalTreeMap.get(interval.getContig()).put(interval.getStart(), interval.getEnd(), null);
             }
         }

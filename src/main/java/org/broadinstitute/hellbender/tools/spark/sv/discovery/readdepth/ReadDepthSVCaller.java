@@ -143,7 +143,7 @@ public final class ReadDepthSVCaller {
 
         //System.out.println("\tGetting events of " + maxGenotypes.size() + " maximal genotypes");
         final List<IndexedSVGraphEdge> referenceEdges = graph.getReferenceEdges();
-        final Collection<CalledSVGraphEvent> events = new ArrayList(maxGenotypes.size());
+        final Collection<CalledSVGraphEvent> events = new ArrayList<>(maxGenotypes.size());
         final double MIN_DEPTH_SUPPORT = 0.5;
         final double refPL = -10 * refP/Math.log(10);
         Collections.sort(maxGenotypes, Comparator.comparingDouble(g -> -g.getDepthLikelihood()));

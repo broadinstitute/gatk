@@ -23,7 +23,7 @@ public class SVGraphEdgePrior {
             } else if (evidence.getCalledVariant() != null) {
                 evidenceCount = (int) Math.round(meanDepth * VARIANT_CALL_EVIDENCE_COUNT_FACTOR);
             } else if (evidence.getEvidenceTargetLink() != null) {
-                evidenceCount = (int) Math.max(evidence.getEvidenceTargetLink().getReadPairs(), evidence.getEvidenceTargetLink().getSplitReads());
+                evidenceCount = Math.max(evidence.getEvidenceTargetLink().getReadPairs(), evidence.getEvidenceTargetLink().getSplitReads());
             } else {
                 evidenceCount = 0;
             }
