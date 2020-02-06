@@ -326,7 +326,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         return skip;
     }
 
-    protected boolean[] calculateKnownSites( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
+    protected static boolean[] calculateKnownSites( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
         final int readLength = read.getLength();
         final boolean[] knownSitesArray = new boolean[readLength];//initializes to all false
         final Cigar cigar = read.getCigar();
@@ -337,7 +337,7 @@ public final class BaseRecalibrationEngine implements Serializable {
                 // knownSite is outside clipping window for the read, ignore
                 continue;
             }
-            int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(softStart, cigar, knownSite.getStart(), ReadUtils.ClippingTail.LEFT_TAIL, true);
+            int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(softStart, cigar, knownSite.getStart(), ReadUtils.ClippingTail.RIGHT_TAIL, true);
             if( featureStartOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
                 featureStartOnRead = 0;
             }

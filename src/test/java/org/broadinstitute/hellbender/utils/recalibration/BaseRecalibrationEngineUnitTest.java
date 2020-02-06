@@ -93,6 +93,16 @@ public final class BaseRecalibrationEngineUnitTest {
         }
     }
 
+    @Test
+    public void calculateKnownSitesLeadingInsertionSkip() {
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("4I4M"));
+        List<SimpleInterval> knownSites = Arrays.asList(new SimpleInterval(read));
+        boolean[] expected = new boolean[read.getLength()];
+        Arrays.fill(expected, true);
+        boolean[] actual = BaseRecalibrationEngine.calculateKnownSites(read, knownSites);
+        Assert.assertEquals(actual, expected);
+    }
+
     @DataProvider(name = "CalculateIsIndelData")
     public Object[][] makeCalculateIsIndelData() {
         List<Object[]> tests = new ArrayList<>();
