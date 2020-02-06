@@ -592,11 +592,15 @@ public final class SelectVariants extends VariantWalker {
         initalizeAlleleAnyploidIndicesCache(vc);
 
         final VariantContext sub = subsetRecord(vc, preserveAlleles, removeUnusedAlternates);
-        final VariantContextBuilder builder = new VariantContextBuilder(vc);
+        final VariantContext filteredGenotypeToNocall;
+
         if ( setFilteredGenotypesToNocall ) {
+            final VariantContextBuilder builder = new VariantContextBuilder(sub);
             GATKVariantContextUtils.setFilteredGenotypeToNocall(builder, sub, setFilteredGenotypesToNocall, this::getGenotypeFilters);
+            filteredGenotypeToNocall = builder.make();
+        } else {
+            filteredGenotypeToNocall = sub;
         }
-        final VariantContext filteredGenotypeToNocall = setFilteredGenotypesToNocall ? builder.make(): sub;
 
         // Not excluding non-variants OR (subsetted polymorphic variants AND not spanning deletion) AND (including filtered loci OR subsetted variant) is not filtered
         // If exclude non-variants argument is not called, filtering will NOT occur.

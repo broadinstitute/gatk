@@ -98,6 +98,18 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testUntrimmedVariantsWithSetFilteredGtToNocall() throws IOException {
+        final String testFile = getToolTestDataDir() + "untrimmed.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn SAMPLE_01 --set-filtered-gt-to-nocall", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "untrimmed.vcf")
+        );
+
+        spec.executeTest("testUntrimmedVariants--" + testFile, this);
+    }
+
+    @Test
     public void testComplexSelectionWithNonExistingSamples()  throws IOException {
         final String testFile = getToolTestDataDir() + "vcfexample2.vcf";
         final String samplesFile = getToolTestDataDir() + "samples.args";
