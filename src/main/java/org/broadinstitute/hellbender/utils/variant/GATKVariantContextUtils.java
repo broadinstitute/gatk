@@ -906,7 +906,7 @@ public final class GATKVariantContextUtils {
      */
     public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
                                                            final Allele inputRef, final List<Allele> inputAlts) {
-        Utils.validate( !(refAllele.length() < inputRef.length()), () -> "BUG: inputRef="+inputRef+" is longer than refAllele="+refAllele);
+        Utils.validate( refAllele.length() > inputRef.length(), () -> "BUG: inputRef="+inputRef+" is longer than refAllele="+refAllele);
         final byte[] extraBases = Arrays.copyOfRange(refAllele.getBases(), inputRef.length(), refAllele.length());
 
         final Map<Allele, Allele> map = new LinkedHashMap<>();
