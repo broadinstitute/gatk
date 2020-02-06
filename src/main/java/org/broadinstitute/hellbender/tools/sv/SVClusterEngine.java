@@ -161,10 +161,6 @@ public class SVClusterEngine extends LocatableClusterEngine<SVCallRecordWithEvid
     }
 
     public static boolean isDepthOnlyCall(final SVCallRecordWithEvidence call) {
-        if (call.getAlgorithms().isEmpty()) return false;
-        for (final String alg : call.getAlgorithms()) {
-            if (!alg.equals(SVCluster.DEPTH_ALGORITHM)) return false;
-        }
-        return true;
+        return call.getAlgorithms().size() == 1 && call.getAlgorithms().get(0).equals(SVCluster.DEPTH_ALGORITHM);
     }
 }

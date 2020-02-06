@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
+import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
@@ -14,13 +17,14 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.codecs.SVCallRecordCodec;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -33,7 +37,10 @@ import java.util.stream.StreamSupport;
  *
  * <ul>
  *     <li>
- *         SV VCFs
+ *         Standardized SV VCFs
+ *     </li>
+ *     <li>
+ *         gCNV segments VCFs
  *     </li>
  * </ul>
  *
@@ -41,14 +48,17 @@ import java.util.stream.StreamSupport;
  *
  * <ul>
  *     <li>
- *         Sparse variants file
+ *         TSV variants file
+ *     </li>
+ *     <li>
+ *         Small CNV interval list (optional)
  *     </li>
  * </ul>
  *
  * <h3>Usage example</h3>
  *
  * <pre>
- *     gatk SVCreateSparseVariants
+ *     gatk MergeSVCalls
  * </pre>
  *
  * @author Mark Walker &lt;markw@broadinstitute.org&gt;
@@ -61,22 +71,49 @@ import java.util.stream.StreamSupport;
 )
 @DocumentedFeature
 public final class MergeSVCalls extends GATKTool {
-    public static final String MIN_GCNV_QUALITY = "min-gcnv-quality";
+    public static final String MIN_GCNV_QUALITY_LONG_NAME = "min-gcnv-quality";
+    public static final String SMALL_CNV_SIZE_LONG_NAME = "small-cnv-size";
+    public static final String SMALL_CNV_PADDING_LONG_NAME = "small-cnv-padding";
+    public static final String SMALL_CNV_OUTPUT_LONG_NAME = "small-cnv-output";
     public static final String IGNORE_DICTIONARY_LONG_NAME = "ignore-dict";
 
+    public static final int DEFAULT_SMALL_CNV_SIZE = 5000;
+    public static final int DEFAULT_SMALL_CNV_PADDING = 1000;
+
     @Argument(
-            doc = "Input VCFs",
+            doc = "Input standardized SV and gCNV segments VCFs",
             fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
             shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME
     )
     private List<String> inputFiles;
 
     @Argument(
-            doc = "Output VCF",
+            doc = "Output TSV file",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private File outputFile;
+
+    @Argument(
+            doc = "Small CNV intervals output",
+            fullName = SMALL_CNV_OUTPUT_LONG_NAME,
+            optional = true
+    )
+    private File smallCNVOutput;
+
+    @Argument(
+            doc = "Small CNV size",
+            fullName = SMALL_CNV_SIZE_LONG_NAME,
+            optional = true
+    )
+    private int smallCNVSize = DEFAULT_SMALL_CNV_SIZE;
+
+    @Argument(
+            doc = "Small CNV interval padding",
+            fullName = SMALL_CNV_PADDING_LONG_NAME,
+            optional = true
+    )
+    private int smallCNVPadding = DEFAULT_SMALL_CNV_PADDING;
 
     @Argument(
             doc = "Skip VCF sequence dictionary check",
@@ -87,7 +124,7 @@ public final class MergeSVCalls extends GATKTool {
 
     @Argument(
             doc = "Min gCNV quality (QS)",
-            fullName = MIN_GCNV_QUALITY,
+            fullName = MIN_GCNV_QUALITY_LONG_NAME,
             minValue = 0,
             maxValue = Integer.MAX_VALUE,
             optional = true
@@ -104,21 +141,24 @@ public final class MergeSVCalls extends GATKTool {
         if (dictionary == null) {
             throw new UserException("Reference sequence dictionary required");
         }
+        records = new ArrayList<>();
     }
 
     @Override
     public Object onTraversalSuccess() {
+        records.sort(IntervalUtils.getDictionaryOrderComparator(dictionary));
+        if (smallCNVOutput != null) {
+            generateSmallEvents();
+        }
+        writeVariants();
         return null;
     }
 
     @Override
     public void traverse() {
-        records = new ArrayList<>();
         for (int i = 0; i < inputFiles.size(); i++) {
             processFile(inputFiles.get(i), i);
         }
-        records.sort(IntervalUtils.getDictionaryOrderComparator(dictionary));
-        writeVariants();
     }
 
     private final void processFile(final String file, final int index) {
@@ -132,12 +172,14 @@ public final class MergeSVCalls extends GATKTool {
                     .map(v -> SVCallRecord.createDepthOnlyFromGCNV(v, minGCNVQuality))
                     .filter(r -> r != null);
         } else {
-            inputRecords = inputVariants.map(SVCallRecord::createNonDepthCall);
+            inputRecords = inputVariants.map(SVCallRecord::create);
         }
-        records.addAll(inputRecords.collect(Collectors.toList()));
+        final Collection<SVCallRecord> inputRecordCollection = inputRecords.collect(Collectors.toList());
+        inputRecordCollection.stream().forEachOrdered(r -> progressMeter.update(r.getStartAsInterval()));
+        records.addAll(inputRecordCollection);
     }
 
-    private final VCFHeader getHeaderFromFeatureSource(final FeatureDataSource<VariantContext> source) {
+    private VCFHeader getHeaderFromFeatureSource(final FeatureDataSource<VariantContext> source) {
         final Object header = source.getHeader();
         if ( ! (header instanceof VCFHeader) ) {
             throw new GATKException("Header for " + source.getName() + " is not in VCF header format");
@@ -146,12 +188,35 @@ public final class MergeSVCalls extends GATKTool {
     }
 
     private FeatureDataSource<VariantContext> getFeatureDataSource(final String vcf, final String name) {
-        final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(vcf, name, 100000, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
+        final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(
+                vcf, name, 100000, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
         if (!skipVcfDictionaryCheck) {
             featureDataSource.getSequenceDictionary().assertSameDictionary(dictionary);
         }
         featureDataSource.setIntervalsForTraversal(getTraversalIntervals());
         return featureDataSource;
+    }
+
+    private void generateSmallEvents() {
+        final GenomeLocParser parser = new GenomeLocParser(dictionary);
+        final List<SimpleInterval> smallEventIntervals = records.stream().filter(this::isSmallCNV)
+                .map(r -> new SimpleInterval(r.getContig(), r.getStart(), r.getEnd())).collect(Collectors.toList());
+        final List<GenomeLoc> smallEventLocs = IntervalUtils.genomeLocsFromLocatables(parser, smallEventIntervals);
+        final GenomeLocSortedSet intervalSet = IntervalUtils.sortAndMergeIntervals(parser, smallEventLocs, IntervalMergingRule.ALL);
+        final IntervalList intervalList = new IntervalList(dictionary);
+        intervalList.addall(intervalSet.stream().map(Interval::new).collect(Collectors.toList()));
+        intervalList.write(smallCNVOutput);
+    }
+
+    private static boolean isCNV(final SVCallRecord call) {
+        return call.getType().equals(StructuralVariantType.DEL) || call.getType().equals(StructuralVariantType.DUP)
+                || (call.getType().equals(StructuralVariantType.BND) && call.getContig().equals(call.getEndContig())
+                    && call.getStartStrand() != call.getEndStrand());
+    }
+
+    private boolean isSmallCNV(final SVCallRecord call) {
+        if (!isCNV(call)) return false;
+        return call.getEnd() - call.getStart() <= smallCNVSize;
     }
 
     private void writeVariants() {

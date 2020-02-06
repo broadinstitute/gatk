@@ -27,6 +27,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
@@ -140,8 +141,6 @@ public final class SVCluster extends GATKTool {
     public static String SVLEN_ATTRIBUTE = GATKSVVCFConstants.SVLEN;
     public static String SVTYPE_ATTRIBUTE = VCFConstants.SVTYPE;
     public static String STRANDS_ATTRIBUTE = "STRANDS";
-    public static String START_STRAND_ATTRIBUTE = "SS";
-    public static String END_STRAND_ATTRIBUTE = "ES";
     public static String ALGORITHMS_ATTRIBUTE = "ALGORITHMS";
     public static String START_SPLIT_READ_COUNT_ATTRIBUTE = "SSR";
     public static String END_SPLIT_READ_COUNT_ATTRIBUTE = "ESR";
@@ -239,8 +238,8 @@ public final class SVCluster extends GATKTool {
     @Override
     public void traverse() {
         StreamSupport.stream(Spliterators.spliteratorUnknownSize(reader.iterator(), Spliterator.ORDERED), false)
-                .filter(this::isValidSize)
-                .filter(this::isWhitelisted)
+                .filter(call -> isValidSize(call, minEventSize))
+                .filter(call -> isWhitelisted(call, whitelistedIntervalTreeMap))
                 .forEachOrdered(this::processRecord);
         if (!defragmenter.isEmpty()) {
             processClusters();
@@ -264,7 +263,10 @@ public final class SVCluster extends GATKTool {
     private void processClusters() {
         final List<SVCallRecordWithEvidence> defragmentedCalls = defragmenter.getOutput();
         defragmentedCalls.stream().forEachOrdered(clusterEngine::add);
-        nonDepthRawCallsBuffer.stream().map(SVCallRecordWithEvidence::new).forEachOrdered(clusterEngine::add);
+        nonDepthRawCallsBuffer.stream()
+                .map(SVCallRecordWithEvidence::new)
+                .flatMap(this::convertInversionsToBreakends)
+                .forEachOrdered(clusterEngine::add);
         nonDepthRawCallsBuffer.clear();
         final List<SVCallRecordWithEvidence> clusteredCalls = clusterEngine.getOutput();
         final List<SVCallRecordWithEvidence> callsWithEvidence = evidenceCollector.collectEvidence(clusteredCalls);
@@ -287,8 +289,7 @@ public final class SVCluster extends GATKTool {
         header.addMetaDataLine(new VCFInfoHeaderLine(END_POS_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "End position"));
         header.addMetaDataLine(new VCFInfoHeaderLine(SVLEN_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Variant length"));
         header.addMetaDataLine(new VCFInfoHeaderLine(SVTYPE_ATTRIBUTE, 1, VCFHeaderLineType.String, "Variant type"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(START_STRAND_ATTRIBUTE, 1, VCFHeaderLineType.String, "Start strand"));
-        header.addMetaDataLine(new VCFInfoHeaderLine(END_STRAND_ATTRIBUTE, 1, VCFHeaderLineType.String, "End strand"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(STRANDS_ATTRIBUTE, 1, VCFHeaderLineType.String, "Start and end strands"));
         header.addMetaDataLine(new VCFInfoHeaderLine(ALGORITHMS_ATTRIBUTE, 1, VCFHeaderLineType.String, "List of calling algorithms"));
         header.addMetaDataLine(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_KEY, 1, VCFHeaderLineType.String, "Genotype"));
         header.addMetaDataLine(new VCFFormatHeaderLine(START_SPLIT_READ_COUNT_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read count at start of variant"));
@@ -307,8 +308,7 @@ public final class SVCluster extends GATKTool {
         builder.attribute(END_POS_ATTRIBUTE, call.getEnd());
         builder.attribute(SVLEN_ATTRIBUTE, call.getLength());
         builder.attribute(SVTYPE_ATTRIBUTE, call.getType());
-        builder.attribute(START_STRAND_ATTRIBUTE, getStrandString(call.getStartStrand()));
-        builder.attribute(END_STRAND_ATTRIBUTE, getStrandString(call.getEndStrand()));
+        builder.attribute(STRANDS_ATTRIBUTE, getStrandString(call));
         builder.attribute(ALGORITHMS_ATTRIBUTE, call.getAlgorithms());
         final List<Genotype> genotypes = new ArrayList<>();
         final Map<String,Integer> startSplitReadCounts = getSplitReadCountsAtPosition(call.getStartSplitReadSites(), call.getStart());
@@ -330,6 +330,23 @@ public final class SVCluster extends GATKTool {
         builder.id(String.format("SVx%08X", variantsWritten));
         variantsWritten++;
         return builder.make();
+    }
+
+    private Stream<SVCallRecordWithEvidence> convertInversionsToBreakends(final SVCallRecordWithEvidence call) {
+        if (!call.getType().equals(StructuralVariantType.INV)) {
+            return Stream.of(call);
+        }
+        final SVCallRecordWithEvidence positiveBreakend = new SVCallRecordWithEvidence(call.getContig(), call.getStart(), true,
+                call.getEndContig(), call.getEnd(), true, StructuralVariantType.BND, -1, call.getAlgorithms(),
+                call.getSamples(), call.getStartSplitReadSites(), call.getEndSplitReadSites(), call.getDiscordantPairs());
+        final SVCallRecordWithEvidence negativeBreakend = new SVCallRecordWithEvidence(call.getContig(), call.getStart(), false,
+                call.getEndContig(), call.getEnd(), false, StructuralVariantType.BND, -1, call.getAlgorithms(),
+                call.getSamples(), call.getStartSplitReadSites(), call.getEndSplitReadSites(), call.getDiscordantPairs());
+        return Stream.of(positiveBreakend, negativeBreakend);
+    }
+
+    private static String getStrandString(final SVCallRecord call) {
+        return getStrandString(call.getStartStrand()) + getStrandString(call.getEndStrand());
     }
 
     private static String getStrandString(final boolean strand) {
@@ -356,14 +373,11 @@ public final class SVCluster extends GATKTool {
                         Collectors.reducing(0, e -> 1, Integer::sum)));
     }
 
-    private boolean isValidSize(final SVCallRecord call) {
-        return !((call.getType().equals(StructuralVariantType.DEL)
-                || call.getType().equals(StructuralVariantType.DUP)
-                || call.getType().equals(StructuralVariantType.INV))
-                && call.getLength() < minEventSize);
+    public static boolean isValidSize(final SVCallRecord call, final int minEventSize) {
+        return call.getType().equals(StructuralVariantType.BND) || call.getLength() >= minEventSize;
     }
 
-    private boolean isWhitelisted(final SVCallRecord call) {
+    public static boolean isWhitelisted(final SVCallRecord call, final Map<String,IntervalTree> whitelistedIntervalTreeMap) {
         final IntervalTree startTree = whitelistedIntervalTreeMap.get(call.getContig());
         if (startTree == null || !startTree.overlappers(call.getStart(), call.getStart() + 1).hasNext()) {
             return false;

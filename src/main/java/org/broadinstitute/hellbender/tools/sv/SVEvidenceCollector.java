@@ -20,11 +20,13 @@ public class SVEvidenceCollector {
     private SimpleInterval splitReadCacheInterval;
     private SimpleInterval discordantPairCacheInterval;
     private int splitReadPadding;
-    private int discordantPairPadding;
+    private int discordantPairInnerPadding;
+    private int discordantPairOuterPadding;
     private ProgressMeter progressMeter;
 
     public static final int DEFAULT_SPLIT_READ_PADDING = 50;
-    public static final int DEFAULT_DISCORDANT_PAIR_PADDING = 500;
+    public static final int DEFAULT_DISCORDANT_PAIR_INNER_PADDING = 50;
+    public static final int DEFAULT_DISCORDANT_PAIR_OUTER_PADDING = 500;
 
     public SVEvidenceCollector(final FeatureDataSource<SplitReadEvidence> splitReadSource,
                                final FeatureDataSource<DiscordantPairEvidence> discordantPairSource,
@@ -36,7 +38,8 @@ public class SVEvidenceCollector {
         this.splitReadCacheInterval = null;
         this.discordantPairCacheInterval = null;
         this.splitReadPadding = DEFAULT_SPLIT_READ_PADDING;
-        this.discordantPairPadding = DEFAULT_DISCORDANT_PAIR_PADDING;
+        this.discordantPairInnerPadding = DEFAULT_DISCORDANT_PAIR_INNER_PADDING;
+        this.discordantPairOuterPadding = DEFAULT_DISCORDANT_PAIR_OUTER_PADDING;
         this.progressMeter = progressMeter;
     }
 
@@ -50,16 +53,24 @@ public class SVEvidenceCollector {
         splitReadPadding = padding;
     }
 
-    public void setDiscordantPairPadding(final int padding) {
-        discordantPairPadding = padding;
+    public void setDiscordantPairInnerPadding(final int padding) {
+        discordantPairInnerPadding = padding;
+    }
+
+    public void setDiscordantPairOuterPadding(final int padding) {
+        discordantPairOuterPadding = padding;
     }
 
     public int getSplitReadPadding() {
         return splitReadPadding;
     }
 
-    public int getDiscordantPairPadding() {
-        return discordantPairPadding;
+    public int getDiscordantPairInnerPadding() {
+        return discordantPairInnerPadding;
+    }
+
+    public int getDiscordantPairOuterPadding() {
+        return discordantPairOuterPadding;
     }
 
     public List<SVCallRecordWithEvidence> collectEvidence(final List<SVCallRecordWithEvidence> calls) {
@@ -201,7 +212,7 @@ public class SVEvidenceCollector {
         if (invalidCacheInterval(discordantPairCacheInterval, startInterval)) {
             final Set<SimpleInterval> queryIntervalSet = discordantPairStartOverlapDetector.getOverlaps(startInterval);
             if (queryIntervalSet.size() != 1) {
-                throw new IllegalArgumentException("Call end split read interval " + startInterval + " overlapped " + queryIntervalSet.size() + " query intervals");
+                throw new IllegalArgumentException("Call discordant pair interval " + startInterval + " overlapped " + queryIntervalSet.size() + " query intervals");
             }
             discordantPairCacheInterval = queryIntervalSet.iterator().next();
             discordantPairSource.queryAndPrefetch(discordantPairCacheInterval);
@@ -214,11 +225,21 @@ public class SVEvidenceCollector {
     }
 
     private SimpleInterval getDiscordantPairStartInterval(final SVCallRecord call) {
-        return call.getStartAsInterval().expandWithinContig(discordantPairPadding, dictionary);
+        final String contig = call.getContig();
+        if (call.getStartStrand()) {
+            return IntervalUtils.trimIntervalToContig(contig, call.getStart() - discordantPairOuterPadding, call.getStart() + discordantPairInnerPadding, dictionary.getSequence(contig).getSequenceLength());
+        } else {
+            return IntervalUtils.trimIntervalToContig(contig, call.getStart() - discordantPairInnerPadding, call.getStart() + discordantPairOuterPadding, dictionary.getSequence(contig).getSequenceLength());
+        }
     }
 
     private SimpleInterval getDiscordantPairEndInterval(final SVCallRecord call) {
-        return call.getEndAsInterval().expandWithinContig(discordantPairPadding, dictionary);
+        final String contig = call.getEndContig();
+        if (call.getEndStrand()) {
+            return IntervalUtils.trimIntervalToContig(contig, call.getEnd() - discordantPairOuterPadding, call.getEnd() + discordantPairInnerPadding, dictionary.getSequence(contig).getSequenceLength());
+        } else {
+            return IntervalUtils.trimIntervalToContig(contig, call.getEnd() - discordantPairInnerPadding, call.getEnd() + discordantPairOuterPadding, dictionary.getSequence(contig).getSequenceLength());
+        }
     }
 
     private boolean discordantPairOverlapsInterval(final DiscordantPairEvidence evidence,

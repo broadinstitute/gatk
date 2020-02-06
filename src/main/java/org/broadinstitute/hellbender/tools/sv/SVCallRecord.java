@@ -36,18 +36,9 @@ public class SVCallRecord implements Feature {
             SVCluster.SVTYPE_ATTRIBUTE
     );
 
-    private final static List<String> depthCallerAttributes = Arrays.asList(
-            GermlineCNVSegmentVariantComposer.QA,
-            GermlineCNVSegmentVariantComposer.CN,
-            GermlineCNVSegmentVariantComposer.NP,
-            GermlineCNVSegmentVariantComposer.QS,
-            GermlineCNVSegmentVariantComposer.QSE,
-            GermlineCNVSegmentVariantComposer.QSS
-    );
-
-    public static SVCallRecord createNonDepthCall(final VariantContext variant) {
+    public static SVCallRecord create(final VariantContext variant) {
         Utils.nonNull(variant);
-        Utils.validate(variant.getAttributes().keySet().containsAll(nonDepthCallerAttributes), "Non-depth call missing attributes");
+        Utils.validate(variant.getAttributes().keySet().containsAll(nonDepthCallerAttributes), "Call is missing attributes");
         final String startContig = variant.getContig();
         final int start = variant.getStart();
         final String endContig = variant.getAttributeAsString(SVCluster.END_CONTIG_ATTRIBUTE, "NA");
