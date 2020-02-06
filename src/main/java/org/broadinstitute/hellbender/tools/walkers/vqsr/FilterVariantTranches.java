@@ -4,6 +4,7 @@ import java.util.*;
 import java.io.File;
 import java.util.stream.Collectors;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFFilterHeaderLine;
@@ -23,6 +24,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 /**
@@ -181,15 +183,15 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
 
         for (FeatureInput<VariantContext> featureSource : resources) {
             for (VariantContext v : featureContext.getValues(featureSource)) {
-                if (variant.isSNP()){
-                    if(variant.getAlternateAlleles().stream().anyMatch(v.getAlternateAlleles()::contains)) {
-                        resourceSNPScores.add(Double.parseDouble((String) variant.getAttribute(infoKey)));
-                        return;
-                    }
-                } else if (variant.isIndel()){
-                    if(variant.getAlternateAlleles().stream().anyMatch(v.getAlternateAlleles()::contains)){
-                        resourceIndelScores.add(Double.parseDouble((String)variant.getAttribute(infoKey)));
-                        return;
+                for (final Allele a : variant.getAlternateAlleles()) {
+                    if ((variant.getStart() == v.getStart()) && GATKVariantContextUtils.isAlleleInList(variant.getReference(), a, v.getReference(), v.getAlternateAlleles())) {
+                        if (variant.isSNP()) {
+                            resourceSNPScores.add(Double.parseDouble((String) variant.getAttribute(infoKey)));
+                            return;
+                        } else {
+                            resourceIndelScores.add(Double.parseDouble((String)variant.getAttribute(infoKey)));
+                            return;
+                        }
                     }
                 }
             }
@@ -201,8 +203,20 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
         logger.info(String.format("Found %d SNPs and %d indels with INFO score key:%s.", scoredSnps, scoredIndels, infoKey));
         logger.info(String.format("Found %d SNPs and %d indels in the resources.", resourceSNPScores.size(), resourceIndelScores.size()));
 
-        if ((scoredSnps == 0 && scoredIndels == 0) || (resourceSNPScores.size() == 0 && resourceIndelScores.size() == 0)){
-            throw new UserException("VCF must contain SNPs and indels with scores and resources must contain matching SNPs and indels.");
+        if (scoredSnps == 0 && scoredIndels == 0) {
+            throw new UserException.BadInput("VCF contains no variants or no variants with INFO score key \"" + infoKey + "\"");
+        }
+
+        if (resourceSNPScores.size() == 0 && resourceIndelScores.size() == 0) {
+            throw new UserException.BadInput("Neither SNP nor indel resource contains variants overlapping input.  Filtering cannot be performed.");
+        }
+
+        if ((scoredSnps > 0 && resourceSNPScores.size() == 0)) {
+            throw new UserException.BadInput("SNPs are present in input VCF, but cannot be filtered because no overlapping SNPs were found in the resources.");
+        }
+
+        if ((scoredIndels > 0 && resourceIndelScores.size() == 0)) {
+            throw new UserException.BadInput("Indels are present in input VCF, but cannot be filtered because no overlapping indels were found in the resources.");
         }
 
         Collections.sort(resourceSNPScores, Collections.reverseOrder());
