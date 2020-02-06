@@ -1044,7 +1044,7 @@ public final class SelectVariants extends VariantWalker {
     private VariantContext subsetRecord(final VariantContext vc, final boolean preserveAlleles, final boolean removeUnusedAlternates) {
         //subContextFromSamples() always decodes the vc, which is a fairly expensive operation.  Avoid if possible
         if (noSamplesSpecified && !removeUnusedAlternates) {
-            return vc;
+            return preserveAlleles? vc : GATKVariantContextUtils.trimAlleles(vc,true,true);
         }
 
         // strip out the alternate alleles that aren't being used
@@ -1052,7 +1052,7 @@ public final class SelectVariants extends VariantWalker {
 
         // If no subsetting happened, exit now
         if (sub.getNSamples() == vc.getNSamples() && sub.getNAlleles() == vc.getNAlleles()) {
-            return vc;
+            return preserveAlleles? vc : GATKVariantContextUtils.trimAlleles(vc,true,true);
         }
 
         // fix the PL and AD values if sub has fewer alleles than original vc and remove a fraction of the genotypes if needed
