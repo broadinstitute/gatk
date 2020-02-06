@@ -8,7 +8,6 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.variantcontext.VariantContextComparator;
 import htsjdk.variant.variantcontext.VariantContextUtils;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
@@ -634,7 +633,7 @@ public final class SelectVariants extends VariantWalker {
                 //remove annotations being dropped and write variantcontext
                 final VariantContext variantContextToWrite = buildVariantContextWithDroppedAnnotationsRemoved(filteredGenotypeToNocall);
                 if (variantContextToWrite.getStart() != vc.getStart()) {
-                    //if variant has shifted, need to add to priority queue in case later variant get moved ahead of it
+                    //if variant has shifted, need to add to priority queue it is now after a variant to follow
                     pendingVariants.add(variantContextToWrite);
                 } else {
                     vcfWriter.add(variantContextToWrite);
