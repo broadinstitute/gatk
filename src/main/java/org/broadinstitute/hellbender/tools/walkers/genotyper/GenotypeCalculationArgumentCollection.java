@@ -18,9 +18,11 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public static final String SUPPORTING_CALLSET_SHORT_NAME = "population";
     public static final String NUM_REF_SAMPLES_LONG_NAME = "num-reference-samples-if-no-call";
     public static final String MAX_ALTERNATE_ALLELES_LONG_NAME = "max-alternate-alleles";
+    public static final String MAX_GENOTYPE_COUNT_LONG_NAME = "max-genotype-count";
 
     public static final double DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
     public static final int DEFAULT_MAX_ALTERNATE_ALLELES = 6;
+    public static final int DEFAULT_MAX_GENOTYPE_COUNT = 1024;
 
     /**
      * Creates a GenotypeCalculationArgumentCollection with default values.
@@ -139,8 +141,8 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * See also {@link #MAX_ALTERNATE_ALLELES}.
      */
     @Advanced
-    @Argument(fullName = "max-genotype-count", doc = "Maximum number of genotypes to consider at any site", optional = true)
-    public int MAX_GENOTYPE_COUNT = 1024;
+    @Argument(fullName = MAX_GENOTYPE_COUNT_LONG_NAME, doc = "Maximum number of genotypes to consider at any site", optional = true)
+    public int MAX_GENOTYPE_COUNT = DEFAULT_MAX_GENOTYPE_COUNT;
 
     /**
      *   Sample ploidy - equivalent to number of chromosomes per pool. In pooled experiments this should be = # of samples in pool * individual sample ploidy

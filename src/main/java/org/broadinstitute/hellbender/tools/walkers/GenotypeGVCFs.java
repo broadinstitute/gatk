@@ -16,7 +16,9 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantLocusWalker;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBBaseArgumentCollection;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
@@ -144,6 +146,9 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @ArgumentCollection
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
 
+    @ArgumentCollection
+    private GenomicsDBBaseArgumentCollection genomicsdbArgs = new GenomicsDBBaseArgumentCollection();
+
     /**
      * This option can only be activated if intervals are specified.
      */
@@ -199,6 +204,14 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @Override
     public boolean requiresReference() {
         return true;
+    }
+
+    @Override
+    protected GenomicsDBOptions getGenomicsDBOptions() {
+        if (genomicsDBOptions == null) {
+            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs, genotypeArgs);
+        }
+        return genomicsDBOptions;
     }
 
     @Override

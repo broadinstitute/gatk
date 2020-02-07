@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.googlecode.protobuf.format.JsonFormat;
-import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -103,15 +102,11 @@ public class GenomicsDBUtils {
                         .setVidMappingFile(vidmapJson)
                         .setCallsetMappingFile(callsetJson)
                         .setVcfHeaderFilename(vcfHeader)
-                        .setProduceGTField(false)
+                        .setProduceGTField(genomicsDBOptions.doCallGenotypes())
                         .setProduceGTWithMinPLValueForSpanningDeletions(false)
                         .setSitesOnlyQuery(false)
-                        .setMaxDiploidAltAllelesThatCanBeGenotyped(GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED);
-        if (genomicsDBOptions != null) {
-            exportConfigurationBuilder.setProduceGTField(genomicsDBOptions.doCallGenotypes()).
-                    setMaxDiploidAltAllelesThatCanBeGenotyped(genomicsDBOptions.getMaxAlternateAlleles());
-        }
-
+                        .setMaxDiploidAltAllelesThatCanBeGenotyped(genomicsDBOptions.getMaxAlternateAlleles())
+                        .setMaxGenotypeCount(genomicsDBOptions.getMaxGenotypeCount());
 
         final Path arrayFolder = Paths.get(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
 

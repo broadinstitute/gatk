@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBBaseArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFs;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
@@ -87,9 +88,6 @@ import java.util.*;
 @DocumentedFeature
 @BetaFeature
 public final class GnarlyGenotyper extends VariantWalker {
-
-    public static final int PIPELINE_MAX_ALT_COUNT = GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES;
-
     private static final OneShotLogger warning = new OneShotLogger(GnarlyGenotyper.class);
 
     private static final boolean SUMMARIZE_PLs = false;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
@@ -129,6 +127,8 @@ public final class GnarlyGenotyper extends VariantWalker {
     @Argument(fullName = "strip-allele-specific-annotations", shortName = "strip-as", doc = "Remove raw AS values and don't calculate finalized values")
     private boolean stripASAnnotations = false;
 
+    @ArgumentCollection
+    private GenomicsDBBaseArgumentCollection genomicsdbArgs = new GenomicsDBBaseArgumentCollection();
 
     /**
      * The rsIDs from this file are used to populate the ID column of the output.  Also, the DB INFO flag will be set
@@ -169,7 +169,8 @@ public final class GnarlyGenotyper extends VariantWalker {
     @Override
     protected GenomicsDBOptions getGenomicsDBOptions() {
         if (genomicsDBOptions == null) {
-            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), CALL_GENOTYPES, PIPELINE_MAX_ALT_COUNT);
+            genomicsdbArgs.callGenotypes = true;
+            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs, genotypeArgs);
         }
         return genomicsDBOptions;
     }
