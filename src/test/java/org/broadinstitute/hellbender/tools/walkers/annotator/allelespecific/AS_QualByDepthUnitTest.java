@@ -13,8 +13,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.testng.Assert.*;
-
 /**
  * Created by emeryj on 8/11/17.
  */
@@ -36,14 +34,17 @@ public class AS_QualByDepthUnitTest extends ReducibleAnnotationBaseTest {
 
     @Test
     public void testParseQualList() {
+        final int NON_REF_INDEX = 2;
         final String goodQualList = "|234|0"; //combined VCs from GenomicsDB have zero value for NON-REF
         final String trickyQualList = "|234|"; //older single-sample GVCFs don't have a value for NON-REF -- GenomicsDB assigns an empty value, which is fair
         final VariantContext withNonRefValue = new VariantContextBuilder(GATKVariantContextUtils.makeFromAlleles("good", "chr1", 10001, Arrays.asList("A","T", Allele.NON_REF_STRING))).
                 attribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, goodQualList).make();
         final VariantContext withNoNonRefValue = new VariantContextBuilder(GATKVariantContextUtils.makeFromAlleles("good", "chr1", 10001, Arrays.asList("A","T", Allele.NON_REF_STRING))).
                 attribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, trickyQualList).make();
-        Assert.assertTrue(AS_QualByDepth.parseQualList(withNonRefValue).size() == withNonRefValue.getAlternateAlleles().size());
-        Assert.assertTrue(AS_QualByDepth.parseQualList(withNoNonRefValue).size() == withNonRefValue.getAlternateAlleles().size());
+        Assert.assertEquals(AS_QualByDepth.parseQualList(withNonRefValue).size(), withNonRefValue.getAlternateAlleles().size());
+        final List<Integer> qualsFromNoNonRefList = AS_QualByDepth.parseQualList(withNoNonRefValue);
+        Assert.assertEquals(qualsFromNoNonRefList.size(), withNonRefValue.getAlternateAlleles().size());
+        Assert.assertEquals((int)qualsFromNoNonRefList.get(NON_REF_INDEX), 0);  //int cast because Integer results in ambiguous method call for assert
     }
 
 }
