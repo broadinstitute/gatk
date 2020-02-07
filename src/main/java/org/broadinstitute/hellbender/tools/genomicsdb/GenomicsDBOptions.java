@@ -10,7 +10,7 @@ import java.nio.file.Path;
 public final class GenomicsDBOptions {
     final private Path reference;
     final private boolean callGenotypes;
-    final private int maxAlternateAlleles;
+    final private int maxDiploidAltAllelesThatCanBeGenotyped;
     final private int maxGenotypeCount;
     final private boolean useVCFCodec;
 
@@ -25,7 +25,7 @@ public final class GenomicsDBOptions {
     public GenomicsDBOptions(final Path reference, GenomicsDBArgumentCollection genomicsdbArgs) {
         this.reference = reference;
         this.callGenotypes = genomicsdbArgs.callGenotypes;
-        this.maxAlternateAlleles = genomicsdbArgs.maxAlternateAlleles;
+        this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;
         this.maxGenotypeCount = genomicsdbArgs.maxGenotypeCount;
         this.useVCFCodec = genomicsdbArgs.useVCFCodec;
     }
@@ -33,7 +33,7 @@ public final class GenomicsDBOptions {
     public GenomicsDBOptions(final Path reference, GenomicsDBBaseArgumentCollection genomicsdbArgs, GenotypeCalculationArgumentCollection genotypeCalcArgs) {
         this.reference = reference;
         this.callGenotypes = genomicsdbArgs.callGenotypes;
-        this.maxAlternateAlleles = genotypeCalcArgs.MAX_ALTERNATE_ALLELES;
+        this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;
         this.maxGenotypeCount = genotypeCalcArgs.MAX_GENOTYPE_COUNT;
         this.useVCFCodec = genomicsdbArgs.useVCFCodec;
     }
@@ -46,8 +46,8 @@ public final class GenomicsDBOptions {
         return callGenotypes;
     }
 
-    public int getMaxAlternateAlleles() {
-        return maxAlternateAlleles;
+    public int getMaxDiploidAltAllelesThatCanBeGenotyped() {
+        return maxDiploidAltAllelesThatCanBeGenotyped;
     }
 
     public int getMaxGenotypeCount() {

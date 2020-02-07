@@ -88,6 +88,9 @@ import java.util.*;
 @DocumentedFeature
 @BetaFeature
 public final class GnarlyGenotyper extends VariantWalker {
+
+    public static final int PIPELINE_MAX_ALT_COUNT = GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES;
+
     private static final OneShotLogger warning = new OneShotLogger(GnarlyGenotyper.class);
 
     private static final boolean SUMMARIZE_PLs = false;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
@@ -169,7 +172,8 @@ public final class GnarlyGenotyper extends VariantWalker {
     @Override
     protected GenomicsDBOptions getGenomicsDBOptions() {
         if (genomicsDBOptions == null) {
-            genomicsdbArgs.callGenotypes = true;
+            genomicsdbArgs.callGenotypes = CALL_GENOTYPES;
+            genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped = PIPELINE_MAX_ALT_COUNT;
             genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs, genotypeArgs);
         }
         return genomicsDBOptions;

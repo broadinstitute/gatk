@@ -105,7 +105,7 @@ public class GenomicsDBUtils {
                         .setProduceGTField(genomicsDBOptions.doCallGenotypes())
                         .setProduceGTWithMinPLValueForSpanningDeletions(false)
                         .setSitesOnlyQuery(false)
-                        .setMaxDiploidAltAllelesThatCanBeGenotyped(genomicsDBOptions.getMaxAlternateAlleles())
+                        .setMaxDiploidAltAllelesThatCanBeGenotyped(genomicsDBOptions.getMaxDiploidAltAllelesThatCanBeGenotyped())
                         .setMaxGenotypeCount(genomicsDBOptions.getMaxGenotypeCount());
 
         final Path arrayFolder = Paths.get(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
