@@ -451,7 +451,7 @@ public final class SelectVariants extends VariantWalker {
 
     private final Map<Integer, Integer> ploidyToNumberOfAlleles = new LinkedHashMap<Integer, Integer>();
 
-    private PriorityQueue<VariantContext> pendingVariants;
+    final private PriorityQueue<VariantContext> pendingVariants = new PriorityQueue<>(Comparator.comparingInt(VariantContext::getStart));
 
     /**
      * Set up the VCF writer, the sample expressions and regexs, filters inputs, and the JEXL matcher
@@ -527,8 +527,6 @@ public final class SelectVariants extends VariantWalker {
             }
         }
 
-        pendingVariants = new PriorityQueue<>(Comparator.comparingInt(VariantContext::getStart));
-
         final Path outPath = vcfOutput.toPath();
         vcfWriter = createVCFWriter(outPath);
         vcfWriter.writeHeader(new VCFHeader(actualLines, samples));
@@ -539,6 +537,7 @@ public final class SelectVariants extends VariantWalker {
 
         /*check for pending variants to write out
         since variant starts will only be moved further right, we can write out a pending variant if the current variant start is after the pending variant start
+        variant record locations can move to the right due to allele trimming if preserveAlleles is false
          */
         while (!pendingVariants.isEmpty() && (pendingVariants.peek().getStart()<=vc.getStart() || !(pendingVariants.peek().getContig().equals(vc.getContig())))) {
             vcfWriter.add(pendingVariants.poll());
@@ -632,19 +631,13 @@ public final class SelectVariants extends VariantWalker {
                     (!selectRandomFraction || Utils.getRandomGenerator().nextDouble() < fractionRandom)) {
                 //remove annotations being dropped and write variantcontext
                 final VariantContext variantContextToWrite = buildVariantContextWithDroppedAnnotationsRemoved(filteredGenotypeToNocall);
-                if (variantContextToWrite.getStart() != vc.getStart()) {
-                    //if variant has shifted, need to add to priority queue it is now after a variant to follow
-                    pendingVariants.add(variantContextToWrite);
-                } else {
-                    vcfWriter.add(variantContextToWrite);
-                }
+                pendingVariants.add(variantContextToWrite);
             }
         }
     }
 
     /**
      * write out all remaining pending variants
-     * @return
      */
     @Override
     public Object onTraversalSuccess() {
