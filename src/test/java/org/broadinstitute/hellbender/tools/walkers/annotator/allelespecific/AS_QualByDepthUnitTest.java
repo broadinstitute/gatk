@@ -34,7 +34,7 @@ public class AS_QualByDepthUnitTest extends ReducibleAnnotationBaseTest {
 
     @Test
     public void testParseQualList() {
-        final int NON_REF_INDEX = 2;
+        final int NON_REF_INDEX = 1; //finalized QD values won't have an entry for ref
         final String goodQualList = "|234|0"; //combined VCs from GenomicsDB have zero value for NON-REF
         final String trickyQualList = "|234|"; //older single-sample GVCFs don't have a value for NON-REF -- GenomicsDB assigns an empty value, which is fair
         final VariantContext withNonRefValue = new VariantContextBuilder(GATKVariantContextUtils.makeFromAlleles("good", "chr1", 10001, Arrays.asList("A","T", Allele.NON_REF_STRING))).
