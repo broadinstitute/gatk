@@ -91,7 +91,7 @@ public class StrandArtifactFilter extends Mutect2AlleleFilter {
 
     @Override
     protected void accumulateDataForLearning(final VariantContext vc, final ErrorProbabilities errorProbabilities, final Mutect2FilteringEngine filteringEngine) {
-        if (requiredAnnotations().stream().allMatch(vc::hasAttribute)) {
+        if (requiredInfoAnnotations().stream().allMatch(vc::hasAttribute)) {
             final List<EStep> altESteps = calculateArtifactProbabilities(vc, filteringEngine);
             eSteps.addAll(altESteps);
         }
@@ -166,7 +166,7 @@ public class StrandArtifactFilter extends Mutect2AlleleFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() {
+    protected List<String> requiredInfoAnnotations() {
         return Collections.emptyList();
     }
 

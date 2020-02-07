@@ -45,6 +45,6 @@ public class NuMTFilter extends HardAlleleFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.emptyList(); }
+    protected List<String> requiredInfoAnnotations() { return Collections.emptyList(); }
 
 }

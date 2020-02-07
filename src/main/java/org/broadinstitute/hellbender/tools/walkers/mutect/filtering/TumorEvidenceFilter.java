@@ -40,6 +40,6 @@ public class TumorEvidenceFilter extends Mutect2AlleleFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY); }
 
 }

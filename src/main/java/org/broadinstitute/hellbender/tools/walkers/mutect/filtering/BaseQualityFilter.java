@@ -30,5 +30,5 @@ public class BaseQualityFilter extends HardAlleleFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY); }
 }

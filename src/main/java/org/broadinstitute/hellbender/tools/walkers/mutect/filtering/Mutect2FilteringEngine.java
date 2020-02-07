@@ -216,7 +216,7 @@ public class Mutect2FilteringEngine {
         errorProbabilities.getProbabilitiesForVariantFilters().entrySet().stream()
                 .forEach(entry -> {
                     entry.getKey().phredScaledPosteriorAnnotationName().ifPresent(annotation -> {
-                        if (entry.getKey().requiredAnnotations().stream().allMatch(vc::hasAttribute)) {
+                        if (entry.getKey().requiredInfoAnnotations().stream().allMatch(vc::hasAttribute)) {
                             vcb.attribute(annotation, QualityUtils.errorProbToQual(entry.getValue()));
                         }
                     });

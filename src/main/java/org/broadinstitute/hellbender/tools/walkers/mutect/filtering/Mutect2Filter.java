@@ -21,7 +21,7 @@ public abstract class Mutect2Filter {
     public abstract ErrorType errorType();
     public abstract String filterName();
     public abstract Optional<String> phredScaledPosteriorAnnotationName();
-    protected abstract List<String> requiredAnnotations();
+    protected abstract List<String> requiredInfoAnnotations();
 
     /**
      *

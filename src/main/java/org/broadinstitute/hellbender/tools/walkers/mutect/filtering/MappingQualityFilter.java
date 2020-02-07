@@ -44,5 +44,5 @@ public class MappingQualityFilter extends HardAlleleFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY); }
 }

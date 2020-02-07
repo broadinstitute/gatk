@@ -49,7 +49,7 @@ public abstract class Mutect2AlleleFilter extends Mutect2Filter {
      */
     @Override
     public List<Double> errorProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        return requiredAnnotations().stream().allMatch(vc::hasAttribute) ?
+        return requiredInfoAnnotations().stream().allMatch(vc::hasAttribute) ?
                 calculateErrorProbabilityForAlleles(vc, filteringEngine, referenceContext)
                         .stream().map(prob -> Mutect2FilteringEngine.roundFinitePrecisionErrors(prob)).collect(Collectors.toList()) :
                 Collections.<Double>emptyList();

@@ -98,7 +98,7 @@ public class FilteredHaplotypeFilter extends Mutect2VariantFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.emptyList(); }
+    protected List<String> requiredInfoAnnotations() { return Collections.emptyList(); }
 
     @Override
     public Optional<String> phredScaledPosteriorAnnotationName() { return Optional.empty(); }

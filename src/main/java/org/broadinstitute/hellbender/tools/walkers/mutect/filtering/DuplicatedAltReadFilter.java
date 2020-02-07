@@ -32,5 +32,5 @@ public class DuplicatedAltReadFilter extends HardAlleleFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(UniqueAltReadCount.KEY); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(UniqueAltReadCount.KEY); }
 }

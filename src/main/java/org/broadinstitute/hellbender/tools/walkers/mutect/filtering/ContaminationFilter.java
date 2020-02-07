@@ -89,5 +89,5 @@ public class ContaminationFilter extends Mutect2AlleleFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.POPULATION_AF_KEY); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.POPULATION_AF_KEY); }
 }

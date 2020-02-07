@@ -38,5 +38,5 @@ public class ChimericOriginalAlignmentFilter extends HardAlleleFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY); }
 }

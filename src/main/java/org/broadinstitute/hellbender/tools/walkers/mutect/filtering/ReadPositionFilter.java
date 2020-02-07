@@ -33,5 +33,5 @@ public class ReadPositionFilter extends HardAlleleFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.MEDIAN_READ_POSITON_KEY); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.MEDIAN_READ_POSITON_KEY); }
 }
