@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
@@ -9,7 +8,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResult;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
@@ -18,7 +16,6 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvLocatableTableCodec;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
@@ -276,6 +273,7 @@ public final class ReadThreadingAssembler {
             debugActiveRegionOutputStream.getNewLineBuilder()
                 .setRow(new String[]{
                         assemblyRegion.getSpan().toString(),
+                        assemblyRegion.getPaddedSpan().toString(),
                         !resultSet.getKmerSizes().isEmpty() ?  resultSet.getKmerSizes().stream().map(Object::toString).collect(Collectors.joining(",")) : "ASSEMBLY_FAILED",
                         Integer.toString(resultSet.getHaplotypeCount())
                 }).write();
@@ -823,10 +821,12 @@ public final class ReadThreadingAssembler {
         this.kmersUsedHistogram = new Histogram(1.0);
     }
 
+    public static List<String> DEBUG_ACTIVE_REGION_OUT_HEADER_LINES = Arrays.asList("called_interval", "assembly_interval", "kmers_assembled", "haplotypes_found");
+
     public void setDebugActiveRegionOut(final File file){
         try {
             this.debugActiveRegionOutputStream = new SimpleXSVWriter(file.toPath(), '\t', "HEADER");
-            debugActiveRegionOutputStream.setHeaderLine( Arrays.asList("active_region", "kmers_assembled", "haplotypes_found") );
+            debugActiveRegionOutputStream.setHeaderLine(DEBUG_ACTIVE_REGION_OUT_HEADER_LINES);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(file, "Unable to create output file for activeRegion data", e);
         }

@@ -33,12 +33,12 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     //
     // ---------------------------------------------------------------------------------------------------------------
     /**
-     * This argument is meant for debugging. Output a -L parsable summary file with all of the boundaries and summary features of each
-     * region the assembly engine assembled.
+     * This argument is meant for debugging. Output a tab separated GATK inteval list summary file with all of the boundaries and summary
+     * features of each region the assembly engine assembled.
      */
     @Hidden
-    @Argument(fullName="active-region-out", doc="Write debug interval list file containing summary info about each active region", optional = true)
-    public String assemblyRegionOutput = null;
+    @Argument(fullName="active-region-out", doc="Write a interval list file of all active regions that were used for assembly and summary statistics", optional = true)
+    public String activeRegionOut = null;
 
     // -----------------------------------------------------------------------------------------------
     // arguments to control internal behavior of the read threading assembler

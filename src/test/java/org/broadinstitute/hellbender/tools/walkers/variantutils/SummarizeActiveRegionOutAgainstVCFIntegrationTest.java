@@ -19,8 +19,8 @@ public class SummarizeActiveRegionOutAgainstVCFIntegrationTest extends CommandLi
 
         final String[] args = {
                 "--active-region-summary", inputAssemblyRegion.getAbsolutePath(),
-                "--variants-to-count", inputVCF.getAbsolutePath(),
-                "--output", output.getAbsolutePath()
+                "-V", inputVCF.getAbsolutePath(),
+                "-O", output.getAbsolutePath()
         };
 
         runCommandLine(args);
