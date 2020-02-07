@@ -16,7 +16,7 @@ public final class OptionalReferenceInputArgumentCollection extends ReferenceInp
     private GATKInputPath referenceInputPath;
 
     @Override
-    public GATKInputPath getReferenceInputPath() {
+    public GATKInputPath getReferenceSpecifier() {
         return referenceInputPath;
     }
 }
