@@ -1,18 +1,25 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
+import java.util.Comparator;
 import java.util.List;
+
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import shaded.cloud_nio.com.google.common.collect.Comparators;
 
 import java.io.File;
 import java.io.IOException;
@@ -83,6 +90,43 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         );
 
         spec.executeTest("testComplexSelection--" + testFile, this);
+    }
+
+    /**
+     * When input variants are untrimmed, they can be trimmed by select variants, which may change their order.
+     * This test confirms that this case is handled correctly, and the resulting variants are ouput correctly sorted.
+     */
+    @Test
+    public void testUntrimmedVariants() throws IOException {
+        final File testFile = new File(getToolTestDataDir() + "untrimmed.vcf");
+        final File output = File.createTempFile("test_untrimmed", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(testFile)
+                .addOutput(output)
+                .addArgument(StandardArgumentDefinitions.SAMPLE_NAME_SHORT_NAME, "SAMPLE_01");
+
+        runCommandLine(args);
+
+        final List<VariantContext> vcs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getPath()).getRight();
+
+        Assert.assertTrue(Comparators.isInOrder(vcs, Comparator.comparingInt(VariantContext::getStart)));
+    }
+
+    @Test
+    public void testUntrimmedVariantsWithSetFilteredGtToNocall() throws IOException {
+        final File testFile = new File(getToolTestDataDir() + "untrimmed.vcf");
+        final File output = File.createTempFile("test_untrimmed", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(testFile)
+                .addOutput(output)
+                .addArgument(StandardArgumentDefinitions.SAMPLE_NAME_SHORT_NAME, "SAMPLE_01")
+                .addArgument("set-filtered-gt-to-nocall");
+
+        runCommandLine(args);
+
+        final List<VariantContext> vcs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getPath()).getRight();
+
+        Assert.assertTrue(Comparators.isInOrder(vcs, Comparator.comparingInt(VariantContext::getStart)));
     }
 
     @Test
