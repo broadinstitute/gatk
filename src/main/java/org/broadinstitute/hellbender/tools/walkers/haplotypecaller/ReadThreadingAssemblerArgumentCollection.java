@@ -24,6 +24,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public static final String CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME = "capture-assembly-failure-bam";
     public static final String KMER_SIZE_LONG_NAME = "kmer-size";
     public static final String DONT_INCREASE_KMER_SIZE_LONG_NAME = "dont-increase-kmer-sizes-for-cycles";
+    public static final String LINKED_DE_BRUIJN_GRAPH_LONG_NAME = "linked-de-bruijn-graph";
 
     // -----------------------------------------------------------------------------------------------
     // arguments to control internal behavior of the read threading assembler
@@ -34,7 +35,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      */
     @Advanced
     @Argument(fullName= KMER_SIZE_LONG_NAME, doc="Kmer size to use in the read threading assembler", optional = true)
-    public List<Integer> kmerSizes = Lists.newArrayList(10,25);
+    public List<Integer> kmerSizes = Lists.newArrayList(10, 25);
 
     /**
      * When graph cycles are detected, the normal behavior is to increase kmer sizes iteratively until the cycles are
@@ -131,8 +132,16 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      *        sites. Use this mode at your own risk.
      */
     @Hidden
-    @Argument(fullName="linked-de-bruijn-graph", doc = "If enabled, the Assembly Engine will construct a Linked De Brujin graph to recover better haplotypes", optional = true)
+    @Argument(fullName= LINKED_DE_BRUIJN_GRAPH_LONG_NAME, doc = "If enabled, the Assembly Engine will construct a Linked De Brujin graph to recover better haplotypes", optional = true)
     public boolean useLinkedDeBrujinGraph = false;
+
+    /**
+     * This is used to disable the recovery of paths that were dropped in the graph based on the junction trees. Disabling this
+     * will affect sensitivity but improve phasing and runtime somewhat.
+     */
+    @Hidden
+    @Argument(fullName="disable-artificial-haplotype-recovery", doc = "If in 'linked-de-bruijn-graph' mode, disable recovery of haplotypes based on graph edges that are not in junction trees", optional = true)
+    public boolean disableArtificialHaplotypeRecovery = false;
 
     @Advanced
     @Argument(fullName="debug-assembly", shortName="debug", doc="Print out verbose debug information about each assembly region", optional = true)

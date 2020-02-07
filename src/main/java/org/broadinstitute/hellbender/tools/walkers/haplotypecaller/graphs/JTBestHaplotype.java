@@ -19,6 +19,13 @@ import java.util.stream.Collectors;
 public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends KBestHaplotype<V, E> {
     private JunctionTreeManager junctionTreeManager; // An object for storing and managing operations on the queue of junction trees active for this path
     private int decisionEdgesTakenSinceLastJunctionTreeEvidence;
+    private int maxReferenceSpan;
+
+    public boolean isWasPoorlyRecovered() {
+        return wasPoorlyRecovered;
+    }
+
+    private boolean wasPoorlyRecovered = false;
 
     // NOTE, this constructor is used by JunctionTreeKBestHaplotypeFinder, in both cases paths are chosen by non-junction tree paths
     public JTBestHaplotype(final JTBestHaplotype<V, E> previousPath, final List<E> edgesToExtend, final double edgePenalty) {
@@ -47,6 +54,10 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         return junctionTreeManager.hasJunctionTreeEvidence();
     }
 
+    public boolean wasLastEdgeFollowedBasedOnJTEvidence() {
+        return decisionEdgesTakenSinceLastJunctionTreeEvidence == 0;
+    }
+
     // returns true if there is a symbolic edge pointing to the reference end or if there is insufficient node data
     public boolean hasStoppingEvidence(final int weightThreshold) {
 
@@ -73,6 +84,12 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         return eldestTree == null ? 0 : eldestTree.getChildrenNodes().values().stream()
                 .mapToInt(JunctionTreeLinkedDeBruinGraph.ThreadingNode::getEvidenceCount).sum();
     }
+
+    // Helper method for marking trees as visited
+    public void markTreesAsVisited(final List<JunctionTreeLinkedDeBruinGraph.ThreadingTree> trees) {
+        junctionTreeManager.visitedTrees.addAll(trees);
+    }
+
 
     /**
      * This method is the primary logic of deciding how to traverse junction paths and with what score.
@@ -165,6 +182,13 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         if (junctionTreeManager.addJunctionTree(junctionTreeForNode)) {
             decisionEdgesTakenSinceLastJunctionTreeEvidence = 0;
         }
+    }
+
+    /**
+     * Add a flag of graph that based on this haplotype we think we should expand the kmer size
+     */
+    public void setWasPoorlyRecovered(final boolean b) {
+        this.wasPoorlyRecovered = b;
     }
 
     /**

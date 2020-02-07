@@ -8,7 +8,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
@@ -34,11 +33,11 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
     private static final long serialVersionUID = 1l;
     private static final MultiDeBruijnVertex SYMBOLIC_END_VETEX = new MultiDeBruijnVertex(new byte[]{'_'});
     private MultiSampleEdge SYMBOLIC_END_EDGE;
-
+    
     private Map<MultiDeBruijnVertex, ThreadingTree> readThreadingJunctionTrees = new HashMap<>();
 
     // TODO should this be constructed here or elsewhere
-    private Set<Kmer> kmers = new HashSet<>();
+    private final Set<Kmer> kmers = new HashSet<>();
 
     public JunctionTreeLinkedDeBruinGraph(int kmerSize) {
         this(kmerSize, false, (byte)6, 1);
@@ -139,24 +138,26 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
      * @param prevVertex Current vertex to extend off of
      * @param sequence Sequence of kmers to extend
      * @param kmerStart index of where the current kmer starts
+     * @param alterTrees flag to control if we actually put anything into junction trees as a result of this path
      * @return The next vertex in the sequence. Null if the corresponding edge doesn't exist.
      */
-    protected MultiDeBruijnVertex extendJunctionThreadingByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, final JunctionTreeThreadingHelper nodesHelper) {
+    protected MultiDeBruijnVertex extendJunctionThreadingByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, final JunctionTreeThreadingHelper nodesHelper, final boolean alterTrees) {
         final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(prevVertex);
 
         final int nextPos = kmerStart + kmerSize - 1;
         for (final MultiSampleEdge outgoingEdge : outgoingEdges) {
             final MultiDeBruijnVertex target = getEdgeTarget(outgoingEdge);
             if (target.getSuffix() == sequence[nextPos]) {
-                // Only want to create a new tree if we walk into a node that meets our junction tree criteria
-                // NOTE: we do this deciding on our path
-                nodesHelper.addTreeIfNecessary(prevVertex);
+                if (alterTrees) {
+                    // Only want to create a new tree if we walk into a node that meets our junction tree criteria
+                    // NOTE: we do this deciding on our path
+                    nodesHelper.addTreeIfNecessary(prevVertex);
 
-                // If this node has an out-degree > 1, add the edge we took to existing trees
-                if (outgoingEdges.size() != 1) {
-                    nodesHelper.addEdgeToJunctionTreeNodes(outgoingEdge);
+                    // If this node has an out-degree > 1, add the edge we took to existing trees
+                    if (outgoingEdges.size() != 1) {
+                        nodesHelper.addEdgeToJunctionTreeNodes(outgoingEdge);
+                    }
                 }
-
                 return target;
             }
         }
@@ -394,6 +395,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
      * @param refHaplotype ref haplotype location
      */
     public void postProcessForHaplotypeFinding(final File debugGraphOutputPath, final Locatable refHaplotype) {
+        annotateEdgesWithReferenceIndices();
         generateJunctionTrees();
         if (debugGraphTransformations) {
             printGraph(new File(debugGraphOutputPath, refHaplotype + "-sequenceGraph." + kmerSize + ".0.4.JT_unpruned.dot"), 10000);
@@ -401,6 +403,18 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
         pruneJunctionTrees(JunctionTreeKBestHaplotypeFinder.DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED);
         if (debugGraphTransformations) {
             printGraph(new File(debugGraphOutputPath, refHaplotype + "-sequenceGraph." + kmerSize + ".0.5.JT_pruned.dot"), 10000);
+        }
+    }
+
+    private void annotateEdgesWithReferenceIndices() {
+        final List<MultiDeBruijnVertex> referencePath = getReferencePath(TraversalDirection.downwards);
+        MultiDeBruijnVertex lastVert = null;
+        int refIndex = 0;
+        for (MultiDeBruijnVertex nextVert : referencePath) {
+            if (lastVert != null) {
+                getEdge(lastVert, nextVert).addReferenceIndex(refIndex++);
+            }
+            lastVert = nextVert;
         }
     }
 
@@ -452,25 +466,42 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
 
         // loop over all of the bases in sequence, extending the graph by one base at each point, as appropriate
         MultiDeBruijnVertex lastVertex = startingVertex;
-        int kmersPastSinceLast = 0;
+        boolean hasToRediscoverKmer = false;
         for ( int i = startPos + 1; i <= seqForKmers.stop - kmerSize; i++ ) {
-            final MultiDeBruijnVertex vertex;
-            if (kmersPastSinceLast == 0) {
-                vertex = extendJunctionThreadingByOne(lastVertex, seqForKmers.sequence, i, nodeHelper);
+            MultiDeBruijnVertex vertex;
+            if (!hasToRediscoverKmer) {
+                vertex = extendJunctionThreadingByOne(lastVertex, seqForKmers.sequence, i, nodeHelper, true);
             } else {
                 Kmer kmer = new Kmer(seqForKmers.sequence, i, kmerSize);
                 vertex = kmerToVertexMap.get(kmer);
-                // TODO this might cause problems
-                if (vertex != null) {
-                   attemptToResolveThreadingBetweenVertexes(lastVertex, nodeHelper, vertex);
+            }
+
+            // If we missed the vertex, attempt to recover the path from the graph if there is no ambiguity
+            if (vertex == null && !hasToRediscoverKmer) {
+                final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(lastVertex);
+                MultiDeBruijnVertex tentativeVertex = null;
+                if (outgoingEdges.size()==1) {
+                    tentativeVertex = getEdgeTarget(outgoingEdges.stream().findFirst().get());
+                }
+                // Loop over the tentative path until the end of the read, we have walked over kmersize bases, or there is another missing path in the graph respectively
+                for (int j = i+1; j <= seqForKmers.stop - kmerSize &&
+                                j <= i + kmerSize &&
+                                tentativeVertex != null; j++) {
+                    tentativeVertex = extendJunctionThreadingByOne(tentativeVertex, seqForKmers.sequence, j, null, false);
+                }
+                // If tentativeVertex is not null then we will be able to successfully traverse the read through the graph
+                if (tentativeVertex != null) {
+                    vertex = getEdgeTarget(outgoingEdges.stream().findFirst().get());
                 }
             }
+
             // If for whatever reason vertex = null, then we have fallen off the corrected graph so we don't update anything
             if (vertex != null) {
                 lastVertex = vertex;
-                kmersPastSinceLast = 0;
+                hasToRediscoverKmer = false;
             } else {
-                kmersPastSinceLast++;
+                nodeHelper.clear();
+                hasToRediscoverKmer = true;
             }
         }
 
@@ -511,13 +542,6 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
         return Optional.ofNullable(readThreadingJunctionTrees.get(vertex));
     }
 
-    // TODO this needs to be filled out and resolved
-    // TODO as an extension, this should be made to intelligently pick nodes if there is a fork (possibly an expensive step)
-    private List<ThreadingNode> attemptToResolveThreadingBetweenVertexes(MultiDeBruijnVertex startingVertex, JunctionTreeThreadingHelper threadingNodes, MultiDeBruijnVertex vertex) {
-        threadingNodes.clear(); // Clear the nodes currently as they might cause issues down the line.
-        return Collections.emptyList();
-    }
-
     @VisibleForTesting
     // Test method for returning all existing junction trees.
     public Map<MultiDeBruijnVertex, ThreadingTree> getReadThreadingJunctionTrees(boolean pruned) {
@@ -535,10 +559,12 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
      * its children nodes, each of which stores a count of the evidence seen supporting the given edge.
      */
     public class ThreadingTree {
-        private ThreadingNode rootNode;
+        private final ThreadingNode rootNode;
+        private final MultiDeBruijnVertex treeVertex; // this reference exists purely for toString() reasons
 
-        private ThreadingTree() {
-            rootNode = new ThreadingNode(null);
+        private ThreadingTree(final MultiDeBruijnVertex treeVertex) {
+            this.rootNode = new ThreadingNode(null);
+            this.treeVertex = treeVertex;
         }
 
         /**
@@ -568,6 +594,10 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
 
         }
 
+        public String toString() {
+            return "ThreadingTree_at_"+treeVertex.getSequenceString()+"_with_evidence_"+rootNode.count;
+        }
+
         // getter for the root node, TODO to possibly be replaced when the graph gets hidden from prying eyes.
         public ThreadingNode getRootNode() {
             return rootNode;
@@ -577,7 +607,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
     // Linked node object for storing tree topography
     public class ThreadingNode {
         private Map<MultiSampleEdge, ThreadingNode> childrenNodes;
-        private MultiSampleEdge prevEdge; // This may be null if this node corresponds to the root of the graph
+        private final MultiSampleEdge prevEdge; // This may be null if this node corresponds to the root of the graph
         private int count = 0;
 
         private ThreadingNode(MultiSampleEdge edge) {
@@ -650,7 +680,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
         }
 
         // Returns a unique name based on the memory id that conforms to the restrictions placed on .dot file nodes
-        String getDotName() {
+        public String getDotName() {
             return "TreadingNode_" + Integer.toHexString(hashCode());
         }
 
@@ -680,7 +710,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
      * into a single place.
      */
     private class JunctionTreeThreadingHelper {
-        List<ThreadingNode> trackedNodes = new ArrayList<>(3);
+        final List<ThreadingNode> trackedNodes = new ArrayList<>(3);
 
         // Helper method used to determine whether a vertex meets the criteria to hold a junction tree
         // The current criteria, if any outgoing edge from a particular vertex leads to a vertex with inDegree > 1, then it warrants a tree. Or if it is the reference start vertex.
@@ -704,7 +734,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
         // Adds a junction tree prevVertex if the vertex warrants a junciton tree
         private void addTreeIfNecessary(MultiDeBruijnVertex prevVertex) {
             if (vertexWarrantsJunctionTree(prevVertex)) {
-                trackedNodes.add(readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree()).getAndIncrementRootNode());
+                trackedNodes.add(readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree(prevVertex)).getAndIncrementRootNode());
             }
         }
     }

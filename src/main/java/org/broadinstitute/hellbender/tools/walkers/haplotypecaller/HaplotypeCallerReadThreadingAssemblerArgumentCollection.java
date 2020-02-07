@@ -41,6 +41,7 @@ public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends Rea
         assemblyEngine.setRecoverDanglingBranches(!doNotRecoverDanglingBranches);
         assemblyEngine.setRecoverAllDanglingBranches(recoverAllDanglingBranches);
         assemblyEngine.setMinDanglingBranchLength(minDanglingBranchLength);
+        assemblyEngine.setArtificialHaplotypeRecoveryMode(disableArtificialHaplotypeRecovery);
 
         if ( graphOutput != null ) {
             assemblyEngine.setGraphWriter(new File(graphOutput));
