@@ -118,7 +118,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--active-region-out", assemblyRegionOutPath,
+                "--" + ReadThreadingAssemblerArgumentCollection.ACTIVE_REGION_OUT_LONG_NAME, assemblyRegionOutPath,
                 "--" + AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "2",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };

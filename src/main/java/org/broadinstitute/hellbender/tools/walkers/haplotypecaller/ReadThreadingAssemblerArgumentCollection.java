@@ -24,6 +24,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public static final String CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME = "capture-assembly-failure-bam";
     public static final String KMER_SIZE_LONG_NAME = "kmer-size";
     public static final String DONT_INCREASE_KMER_SIZE_LONG_NAME = "dont-increase-kmer-sizes-for-cycles";
+    public static final String ACTIVE_REGION_OUT_LONG_NAME = "active-region-out";
     public static final String LINKED_DE_BRUIJN_GRAPH_LONG_NAME = "linked-de-bruijn-graph";
 
 
@@ -37,7 +38,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * features of each region the assembly engine assembled.
      */
     @Hidden
-    @Argument(fullName="active-region-out", doc="Write a interval list file of all active regions that were used for assembly and summary statistics", optional = true)
+    @Argument(fullName= ACTIVE_REGION_OUT_LONG_NAME, doc="Write a interval list file of all active regions that were used for assembly and summary statistics", optional = true)
     public String activeRegionOut = null;
 
     // -----------------------------------------------------------------------------------------------
