@@ -4,9 +4,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -20,8 +18,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
-import java.util.HashSet;
-import java.util.Set;
 
 @CommandLineProgramProperties(
         summary = "If too many low heteroplasmy sites pass other filters, then filter all low heteroplasmy sites",
@@ -63,7 +59,7 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
 
     @Override
     protected void firstPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-        // if the site is not filtered, but it is low het increment counter
+        // if the site is not filtered but it is low het, increment counter
         if (variant.isNotFiltered() && isLowHeteroplasmy(variant)) {
             unfilteredLowHetSites++;
         }
@@ -91,7 +87,6 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
     }
 
     protected boolean isLowHeteroplasmy(VariantContext v) {
-        // does 0.0 make sense for orElse?
         return v.getGenotypes().stream().map(g -> lowestAF(g)).min(Double::compareTo).orElse(0.0) < lowHetThreshold;
     }
 
