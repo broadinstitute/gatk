@@ -14,16 +14,13 @@ public abstract class ReferenceInputArgumentCollection implements Serializable {
     /**
      * Get the name of the reference input specified at the command line.
      */
-    public abstract GATKPathSpecifier getReferenceInputPath();
+    public abstract GATKPathSpecifier getReferenceSpecifier();
 
-    //TODO: this implementation mimics what the previous implementation did (return the string
-    // entered by the user). We should either get rid of it entirely, or rename, but either
-    // way we should minimize usage of it for anything other than error reporting.
     /**
      * Get the name of the reference file specified at the command line.
      */
     public String getReferenceFileName() {
-        final GATKPathSpecifier inputPath = getReferenceInputPath();
+        final GATKPathSpecifier inputPath = getReferenceSpecifier();
         return inputPath == null ? null : inputPath.getRawInputString();
     }
 
@@ -31,6 +28,6 @@ public abstract class ReferenceInputArgumentCollection implements Serializable {
      * Get the Path to the reference, may be null
      */
     public Path getReferencePath() {
-        return getReferenceInputPath() != null ? getReferenceInputPath().toPath() : null;
+        return getReferenceSpecifier() != null ? getReferenceSpecifier().toPath() : null;
     }
 }

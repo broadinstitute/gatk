@@ -187,7 +187,7 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
         vcfWriter.writeHeader(vcfHeader);
         bamHeader = getHeaderForReads();
         samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(bamHeader)));
-        referenceReader = AssemblyBasedCallerUtils.createReferenceReader(Utils.nonNull(referenceArguments.getReferenceFileName()));
+        referenceReader = AssemblyBasedCallerUtils.createReferenceReader(Utils.nonNull(referenceArguments.getReferenceSpecifier()));
         assemblyEngine = MTAC.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
         haplotypeBAMWriter = bamOutputPath == null ? Optional.empty() :

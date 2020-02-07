@@ -347,7 +347,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             if (hasCramInput() && !hasReference()){
                 throw UserException.MISSING_REFERENCE_FOR_CRAM;
             }
-            output = source.getParallelReads(input, referenceArguments.getReferenceInputPath(), traversalParameters, bamPartitionSplitSize, useNio);
+            output = source.getParallelReads(input, referenceArguments.getReferenceSpecifier(), traversalParameters, bamPartitionSplitSize, useNio);
         }
         return output;
     }
@@ -372,7 +372,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     public void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads, SAMFileHeader header, final boolean sortReadsToHeader) {
         try {
             ReadsSparkSink.writeReads(ctx, outputFile,
-                    hasReference() ? referenceArguments.getReferenceInputPath() : null,
+                    hasReference() ? referenceArguments.getReferenceSpecifier() : null,
                     reads, header, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
                     getRecommendedNumReducers(), shardedPartsDir, createOutputBamIndex, createOutputBamSplittingIndex, sortReadsToHeader, splittingIndexGranularity);
         } catch (IOException e) {
@@ -567,7 +567,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         readInputs = new LinkedHashMap<>();
         readsSource = new ReadsSparkSource(sparkContext, readArguments.getReadValidationStringency());
         for (String input : readArguments.getReadFilesNames()) {
-            readInputs.put(input, readsSource.getHeader(input, referenceArguments.getReferenceInputPath()));
+            readInputs.put(input, readsSource.getHeader(input, referenceArguments.getReferenceSpecifier()));
         }
         readsHeader = createHeaderMerger().getMergedHeader();
     }
@@ -593,7 +593,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Initializes our reference source. Does nothing if no reference was specified.
      */
     private void initializeReference() {
-        final GATKPathSpecifier referencePath = referenceArguments.getReferenceInputPath();
+        final GATKPathSpecifier referencePath = referenceArguments.getReferenceSpecifier();
         if ( referencePath != null ) {
             referenceSource = new ReferenceMultiSparkSource(referencePath, getReferenceWindowFunction());
             referenceDictionary = referenceSource.getReferenceSequenceDictionary(readsHeader != null ? readsHeader.getSequenceDictionary() : null);

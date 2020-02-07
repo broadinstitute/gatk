@@ -41,7 +41,7 @@ public final class ReferenceInputArgumentCollectionTest {
     public void testGetNullPath(){
         final ReferenceInputArgumentCollection nullPath = new ReferenceInputArgumentCollection(){
             private static final long serialVersionUID = 0L;
-            @Override public GATKPathSpecifier getReferenceInputPath() { return null;}
+            @Override public GATKPathSpecifier getReferenceSpecifier() { return null;}
         };
 
         Assert.assertNull(nullPath.getReferencePath());

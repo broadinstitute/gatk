@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VcfUtils;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 
 import java.io.File;
@@ -138,7 +139,7 @@ public class VariantAnnotator extends VariantWalker {
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc="The file to whcih variants should be written", optional=false)
+            doc="The file to which variants should be written", optional=false)
     protected File outputFile;
 
     /**
@@ -188,23 +189,27 @@ public class VariantAnnotator extends VariantWalker {
      */
     public void onTraversalStart() {
         // get the list of all sample names from the variant VCF, if applicable
-        final  List<String> samples = getHeaderForVariants().getGenotypeSamples();
+        final List<String> samples = getHeaderForVariants().getGenotypeSamples();
         variantSamples = new IndexedSampleList(samples);
 
         annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, comps, false, false);
-        annotatorEngine.addExpressions(expressionsToUse, resources, expressionAlleleConcordance );
+        annotatorEngine.addExpressions(expressionsToUse, resources, expressionAlleleConcordance);
 
         // setup the header fields
         // note that if any of the definitions conflict with our new ones, then we want to overwrite the old ones
-        final Set<VCFHeaderLine> hInfo = new HashSet<>();
-
+        Set<VCFHeaderLine> hInfo = new HashSet<>();
         hInfo.addAll(annotatorEngine.getVCFAnnotationDescriptions(false));
         hInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
 
-        // TODO ask reviewer, VCFUtils.withUpdatedContigs is what GATK3 calls into, it isn't used anywhere in 4 though so should it be used here?
-        VCFHeader vcfHeader = new VCFHeader(hInfo, samples);
+        if (hasReference()) {
+            hInfo = VcfUtils.updateHeaderContigLines(
+                    hInfo,
+                    referenceArguments.getReferencePath(),
+                    getReferenceDictionary(),
+                    false);
+        }
         vcfWriter = createVCFWriter(outputFile);
-        vcfWriter.writeHeader(VCFUtils.withUpdatedContigs(vcfHeader, hasReference()? new File(referenceArguments.getReferenceFileName()): null, referenceArguments.getReferencePath()==null ? getBestAvailableSequenceDictionary(): getReferenceDictionary()));
+        vcfWriter.writeHeader(new VCFHeader(hInfo, samples));
     }
 
     /**
