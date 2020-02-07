@@ -72,6 +72,8 @@ public class SomaticClusteringModel {
         callableSites = mutectStats.stream().filter(stat -> stat.getStatistic().equals(Mutect2Engine.CALLABLE_SITES_NAME))
                 .mapToDouble(MutectStats::getValue).findFirst();
 
+        Utils.validateArg(callableSites.orElse(1) >= 0.5, "No callable sites found in Mutect stats.  Something is seriously wrong!");
+
         clusters.add(new BetaBinomialCluster(INITIAL_BACKGROUND_BETA));
         clusters.add(new BetaBinomialCluster(INITIAL_HIGH_AF_BETA));
         logClusterWeights = new double[] {Math.log1p(INITIAL_HIGH_AF_WEIGHT), Math.log(INITIAL_HIGH_AF_WEIGHT)};
