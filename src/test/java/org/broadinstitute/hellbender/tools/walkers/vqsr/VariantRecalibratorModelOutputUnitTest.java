@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
+import Jama.Matrix;
 import com.google.common.collect.Lists;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,6 +17,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -205,8 +207,15 @@ public class VariantRecalibratorModelOutputUnitTest extends GATKBaseTest {
         goodGaussian1.initializeRandomSigma(rand);
 
         MultivariateGaussian goodGaussian2 = new MultivariateGaussian(dataSize, numAnnotations);
-        goodGaussian2.initializeRandomMu(rand);
-        goodGaussian2.initializeRandomSigma(rand);
+        double[] mu = new double[numAnnotations];
+        Arrays.fill( goodGaussian2.mu, Double.NaN );
+
+        final double[][] nanSigma = new double[mu.length][mu.length];
+        for( final double[] row : nanSigma ) {
+            Arrays.fill(row, Double.NaN);
+        }
+        final Matrix tmp = new Matrix(nanSigma);
+        goodGaussian2.sigma.setMatrix(0, mu.length - 1, 0, mu.length - 1, tmp);
 
         List<MultivariateGaussian> goodGaussianList = new ArrayList<>();
         goodGaussianList.add(goodGaussian1);

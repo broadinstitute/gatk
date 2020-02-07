@@ -4,6 +4,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
@@ -32,7 +33,7 @@ public class VariantRecalibratorEngine {
 
     public GaussianMixtureModel generateModel(final List<VariantDatum> data, final int maxGaussians ) {
         if( data == null || data.isEmpty() ) {
-            throw new IllegalArgumentException("No data found.");
+            throw new UserException.VQSRNegativeModelFailure("No data found.");
         }
         if( maxGaussians <= 0 ) {
             throw new IllegalArgumentException("maxGaussians must be a positive integer but found: " + maxGaussians);
