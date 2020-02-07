@@ -25,6 +25,8 @@ import imageio
 import pydicom
 import sqlite3
 import zipfile
+import matplotlib
+matplotlib.use('Agg')
 import numpy as np
 import nibabel as nib
 import matplotlib.pyplot as plt
@@ -413,7 +415,7 @@ def _write_tensors_from_dicoms(zoom_x: int, zoom_y: int, zoom_width: int, zoom_h
             mri_group = 'ukb_mri'
 
         if v == MRI_TO_SEGMENT:
-            _tensorize_short_axis_segmented_cardiac_mri(views[v], v, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, sample_str, mri_date, mri_group, stats)
+            _tensorize_short_axis_segmented_cardiac_mri(views[v], v, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
         else:
