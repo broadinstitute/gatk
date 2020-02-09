@@ -23,8 +23,8 @@ public final class IndexRangeUnitTest extends GATKBaseTest {
     @Test(dataProvider = "correctFromToData")
     public void testCorrectConstruction(final int from, final int to) {
         final IndexRange range = new IndexRange(from,to);
-        Assert.assertEquals(range.from, from);
-        Assert.assertEquals(range.to, to);
+        Assert.assertEquals(range.getStart(), from);
+        Assert.assertEquals(range.getEnd(), to);
     }
 
     @Test(dataProvider = "correctFromToData", dependsOnMethods = "testCorrectConstruction")
@@ -107,7 +107,7 @@ public final class IndexRangeUnitTest extends GATKBaseTest {
         Assert.assertNotEquals(range01,range11);
         Assert.assertNotEquals(range01,range12);
         Assert.assertFalse(range01.equals(null));
-        Assert.assertEquals(range01,new IndexRange(range01.from,range01.to));
+        Assert.assertEquals(range01,new IndexRange(range01.getStart(),range01.getEnd()));
         Assert.assertFalse(range01.equals(new Object()));
     }
 
