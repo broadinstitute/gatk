@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.special.Beta;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.utils.*;
@@ -34,7 +33,7 @@ public class SomaticLikelihoodsEngine {
             // alleleCounts = \sum_r \bar{z}_r, where \bar{z}_r is an a-dimensional vector of the expectation of z_r with respect to q(f)
             final double[] alleleCounts = getEffectiveCounts(logLikelihoods, dirichletPosterior);
             final double[] newDirichletPosterior = MathArrays.ebeAdd(alleleCounts, priorPseudocounts);
-            converged = MathArrays.distance1(dirichletPosterior, newDirichletPosterior) < CONVERGENCE_THRESHOLD;
+            converged = MathArrays.distance1(dirichletPosterior, newDirichletPosterior)/MathUtils.sum(newDirichletPosterior) < CONVERGENCE_THRESHOLD;
             dirichletPosterior = newDirichletPosterior;
         }
 
@@ -55,32 +54,16 @@ public class SomaticLikelihoodsEngine {
                 read -> NaturalLogUtils.posteriors(effectiveLogWeights, logLikelihoods.getColumn(read)));
     }
 
-    /**
-     * @param logLikelihoods matrix of alleles x reads
-     * @param priorPseudocounts
-     */
-    public static double logEvidence(final RealMatrix logLikelihoods, final double[] priorPseudocounts) {
-        return logEvidence(logLikelihoods, priorPseudocounts, 0.0, -1);
-    }
-
-
         /**
          * @param logLikelihoods matrix of alleles x reads (NOTE: NON_REF allele is assumed to be last)
          * @param priorPseudocounts
-         * @param alleleFractionThreshold lower bound of allele fractions to consider for non-ref likelihood
          */
-    public static double logEvidence(final RealMatrix logLikelihoods, final double[] priorPseudocounts, final double alleleFractionThreshold, final int nonRefIndex) {
+    public static double logEvidence(final RealMatrix logLikelihoods, final double[] priorPseudocounts) {
         final int numberOfAlleles = logLikelihoods.getRowDimension();
         Utils.validateArg(numberOfAlleles == priorPseudocounts.length, "Must have one pseudocount per allele.");
         final double[] alleleFractionsPosterior = alleleFractionsPosterior(logLikelihoods, priorPseudocounts);
         final double priorContribution = logDirichletNormalization(priorPseudocounts);
         final double posteriorContribution = -logDirichletNormalization(alleleFractionsPosterior);
-        final double posteriorTotal = MathUtils.sum(alleleFractionsPosterior);
-        double thresholdedPosteriorContribution = posteriorContribution;
-        if (nonRefIndex > 0) {
-            thresholdedPosteriorContribution += Math.log(1-Beta.regularizedBeta(alleleFractionThreshold,
-                    alleleFractionsPosterior[nonRefIndex], posteriorTotal - alleleFractionsPosterior[nonRefIndex]));
-        }
 
         final double[] logAlleleFractions = new Dirichlet(alleleFractionsPosterior).effectiveLogMultinomialWeights();
 
@@ -91,7 +74,7 @@ public class SomaticLikelihoodsEngine {
             return likelihoodsContribution(logLikelihoodsForRead, responsibilities) - entropyContribution;
         });
 
-        return priorContribution + thresholdedPosteriorContribution + likelihoodsAndEntropyContribution;
+        return priorContribution + posteriorContribution + likelihoodsAndEntropyContribution;
     }
 
     private static double likelihoodsContribution(final double[] logLikelihoodsForRead, final double[] responsibilities) {
@@ -104,13 +87,6 @@ public class SomaticLikelihoodsEngine {
             result += (responsibilities[n] < NEGLIGIBLE_RESPONSIBILITY ? 0 : logLikelihoodsForRead[n] * responsibilities[n]);
         }
         return result;
-    }
-
-
-    // same as above using the default flat prior
-    public static double logEvidence(final RealMatrix logLikelihoods, final double minAF, final int nonRefIndex) {
-        final double[] flatPrior = new IndexRange(0, logLikelihoods.getRowDimension()).mapToDouble(n -> 1);
-        return logEvidence(logLikelihoods, flatPrior, minAF, nonRefIndex);
     }
 
     private static double xLogx(final double x) {
