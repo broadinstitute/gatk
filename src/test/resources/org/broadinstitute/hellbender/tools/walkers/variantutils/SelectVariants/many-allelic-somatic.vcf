@@ -1,0 +1,102 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=base_qual,Description="alt median base quality">
+##FILTER=<ID=clustered_events,Description="Clustered events observed in the tumor">
+##FILTER=<ID=contamination,Description="contamination">
+##FILTER=<ID=duplicate,Description="evidence for alt allele is overrepresented by apparent duplicates">
+##FILTER=<ID=fragment,Description="abs(ref - alt) median fragment length">
+##FILTER=<ID=germline,Description="Evidence indicates this site is germline, not somatic">
+##FILTER=<ID=haplotype,Description="Variant near filtered variant on same haplotype.">
+##FILTER=<ID=low_allele_frac,Description="Allele fraction is below specified threshold">
+##FILTER=<ID=map_qual,Description="ref - alt median mapping quality">
+##FILTER=<ID=multiallelic,Description="Site filtered because too many alt alleles pass tumor LOD">
+##FILTER=<ID=n_ratio,Description="Ratio of N to alt exceeds specified ratio">
+##FILTER=<ID=normal_artifact,Description="artifact_in_normal">
+##FILTER=<ID=numt_chimera,Description="NuMT variant with too many ALT reads originally from autosome">
+##FILTER=<ID=numt_novel,Description="Alt depth is below expected coverage of NuMT in autosome">
+##FILTER=<ID=orientation,Description="orientation bias detected by the orientation bias mixture model">
+##FILTER=<ID=panel_of_normals,Description="Blacklisted site in panel of normals">
+##FILTER=<ID=position,Description="median distance of alt variants from end of reads">
+##FILTER=<ID=slippage,Description="Site filtered due to contraction of short tandem repeat region">
+##FILTER=<ID=strand_bias,Description="Evidence for alt allele comes from one read direction only">
+##FILTER=<ID=strict_strand,Description="Evidence for alt allele is not represented in both directions">
+##FILTER=<ID=weak_evidence,Description="Mutation does not meet likelihood threshold">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=AF,Number=A,Type=Float,Description="Allele fractions of alternate alleles in the tumor">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=F1R2,Number=R,Type=Integer,Description="Count of reads in F1R2 pair orientation supporting each allele">
+##FORMAT=<ID=F2R1,Number=R,Type=Integer,Description="Count of reads in F2R1 pair orientation supporting each allele">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phasing set (typically the position of the first variant in the set)">
+##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+##INFO=<ID=CONTQ,Number=1,Type=Float,Description="Phred-scaled qualities that alt allele are not due to contamination">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=ECNT,Number=1,Type=Integer,Description="Number of events in this haplotype">
+##INFO=<ID=GERMQ,Number=1,Type=Integer,Description="Phred-scaled quality that alt alleles are not germline variants">
+##INFO=<ID=MBQ,Number=R,Type=Integer,Description="median base quality">
+##INFO=<ID=MFRL,Number=R,Type=Integer,Description="median fragment length">
+##INFO=<ID=MMQ,Number=R,Type=Integer,Description="median mapping quality">
+##INFO=<ID=MPOS,Number=A,Type=Integer,Description="median distance from end of read">
+##INFO=<ID=NALOD,Number=A,Type=Float,Description="Negative log 10 odds of artifact in normal with same allele fraction as tumor">
+##INFO=<ID=NCount,Number=1,Type=Integer,Description="Count of N bases in the pileup">
+##INFO=<ID=NLOD,Number=A,Type=Float,Description="Normal log 10 likelihood ratio of diploid het or hom alt genotypes">
+##INFO=<ID=OCM,Number=1,Type=Integer,Description="Number of alt reads whose original alignment doesn't match the current contig.">
+##INFO=<ID=PON,Number=0,Type=Flag,Description="site found in panel of normals">
+##INFO=<ID=POPAF,Number=A,Type=Float,Description="negative log 10 population allele frequencies of alt alleles">
+##INFO=<ID=ROQ,Number=1,Type=Float,Description="Phred-scaled qualities that alt allele are not due to read orientation artifact">
+##INFO=<ID=RPA,Number=.,Type=Integer,Description="Number of times tandem repeat unit is repeated, for each allele (including reference)">
+##INFO=<ID=RU,Number=1,Type=String,Description="Tandem repeat unit (bases)">
+##INFO=<ID=SEQQ,Number=1,Type=Integer,Description="Phred-scaled quality that alt alleles are not sequencing errors">
+##INFO=<ID=STR,Number=0,Type=Flag,Description="Variant is a short tandem repeat">
+##INFO=<ID=STRANDQ,Number=1,Type=Integer,Description="Phred-scaled quality of strand bias artifact">
+##INFO=<ID=STRQ,Number=1,Type=Integer,Description="Phred-scaled quality that alt alleles in STRs are not polymerase slippage errors">
+##INFO=<ID=TLOD,Number=A,Type=Float,Description="Log 10 likelihood ratio score of variant existing versus not existing">
+##INFO=<ID=UNIQ_ALT_READ_COUNT,Number=1,Type=Integer,Description="Number of ALT reads with unique start and mate end positions at a variant site">
+##MutectVersion=2.2
+##contig=<ID=M,length=16571>
+##contig=<ID=1,length=249250621>
+##contig=<ID=2,length=243199373>
+##contig=<ID=3,length=198022430>
+##contig=<ID=4,length=191154276>
+##contig=<ID=5,length=180915260>
+##contig=<ID=6,length=171115067>
+##contig=<ID=7,length=159138663>
+##contig=<ID=8,length=146364022>
+##contig=<ID=9,length=141213431>
+##contig=<ID=10,length=135534747>
+##contig=<ID=11,length=135006516>
+##contig=<ID=12,length=133851895>
+##contig=<ID=13,length=115169878>
+##contig=<ID=14,length=107349540>
+##contig=<ID=15,length=102531392>
+##contig=<ID=16,length=90354753>
+##contig=<ID=17,length=81195210>
+##contig=<ID=18,length=78077248>
+##contig=<ID=19,length=59128983>
+##contig=<ID=20,length=63025520>
+##contig=<ID=21,length=48129895>
+##contig=<ID=22,length=51304566>
+##contig=<ID=X,length=155270560>
+##contig=<ID=Y,length=59373566>
+##source=FilterMutectCalls
+##source=Mutect2
+##tumor_sample=TUMOR
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TUMOR
+1	8934636	.	CAAAA	C,CA,CAA,CAAA,AAAAA,CAAAAA,CAAAAAA,CAAAAAAA,CAAAAAAAA	.	multiallelic	CONTQ=3;DP=135;ECNT=2;GERMQ=93;MBQ=27,28,27,27,27,22,27,27,27,27;MFRL=310,315,315,306,325,333,319,312,318,307;MMQ=60,60,60,60,60,60,60,60,60,60;MPOS=10,5,4,55,3,39,28,9,3;POPAF=7.30,7.30,7.30,7.30,7.30,7.30,7.30,7.30,7.30;ROQ=93;SEQQ=93;STRANDQ=93;TLOD=7.27,11.32,10.05,12.92,5.19,19.51,21.93,14.39,5.92	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6/7/8/9:20,8,10,10,14,5,18,20,14,11:0.062,0.078,0.076,0.101,0.033,0.141,0.158,0.113,0.084:130:16,7,5,8,11,3,15,16,12,8:4,1,5,2,3,1,3,4,2,2:19,1,109,1
+1	29362766	.	ATTTTTT	A,AT,ATT,ATTT,ATTTT,ATTTTT,ATTTTTTT,ATTTTTTTT	.	multiallelic	CONTQ=88;DP=878;ECNT=2;GERMQ=93;MBQ=20,20,20,20,20,20,20,20,20;MFRL=168,156,171,177,172,172,169,175,167;MMQ=60,60,60,60,60,60,60,60,60;MPOS=36,33,44,40,49,45,43,43;POPAF=7.30,7.30,7.30,7.30,7.30,7.30,0.526,7.30;ROQ=93;RPA=22,16,17,18,19,20,21,23,24;RU=T;SEQQ=93;STR;STRANDQ=93;STRQ=93;TLOD=3.64,14.33,11.50,38.37,45.26,65.91,19.36,17.57	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6/7/8:177,16,24,34,84,113,166,76,70:0.018,0.030,0.036,0.109,0.146,0.209,0.080,0.078:760:35,13,7,18,31,36,55,20,22:139,3,17,14,52,74,108,54,40:86,91,252,331
+1	29363188	.	ATTT	A,AT,ATT,ATTTT,ATTTTT,ATTTTTT	.	multiallelic	CONTQ=86;DP=614;ECNT=2;GERMQ=77;MBQ=20,20,20,20,20,20,20;MFRL=174,174,174,175,170,174,164;MMQ=60,60,60,60,60,60,60;MPOS=34,36,41,45,44,22;POPAF=2.71,0.967,7.30,2.79,7.30,7.30;ROQ=93;RPA=17,14,15,16,18,19,20;RU=T;SEQQ=93;STR;STRANDQ=93;STRQ=93;TLOD=12.32,23.63,69.98,55.85,13.33,3.93	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6:181,22,50,110,103,33,15:0.037,0.079,0.209,0.197,0.059,0.024:514:64,4,22,55,41,8,7:116,18,28,55,58,25,8:77,104,132,201
+1	120612040	.	TCCG	T,TCCTCCGCCGCCG,TCCGCCGCCGCCGCCGCCG	.	clustered_events;multiallelic	CONTQ=9;DP=576;ECNT=5;GERMQ=4;MBQ=23,25,24,25;MFRL=188,191,185,177;MMQ=60,60,46,46;MPOS=32,31,26;POPAF=7.30,7.30,7.30;ROQ=93;SEQQ=93;STRANDQ=93;TLOD=5.72,173.26,14.63	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3:273,8,75,18:0.020,0.202,0.049:374:120,3,35,4:130,5,35,5:156,117,60,41
+1	162736851	.	G	GA,GAA,GAAA,GAAAA,GAAAAA,GAAAAAA	.	clustered_events;contamination;multiallelic	CONTQ=1;DP=143;ECNT=3;GERMQ=50;MBQ=28,28,28,28,28,28,28;MFRL=182,224,303,320,306,312,312;MMQ=60,60,60,60,60,60,60;MPOS=32,27,15,20,4,4;POPAF=1.77,0.622,1.70,0.174,1.57,2.99;ROQ=93;RPA=4,5,6,7,8,9,10;RU=A;SEQQ=93;STR;STRANDQ=93;STRQ=93;TLOD=9.33,101.35,48.58,35.86,12.27,6.01	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6:2,10,50,31,23,9,5:0.067,0.376,0.247,0.178,0.073,0.044:130:2,8,36,20,16,7,4:0,1,14,11,7,2,1:2,0,124,4
+1	205648813	.	AACACACACAC	A,AACACAC,AACACACAC,AACACACACACAC,AACACACACACACAC,AACACACACACACACAC,AACACACACACACACACAC,AACACACACACACACACACAC,AACACACACACACACACACACAC,AACACACACACACACACACACACAC,AACACACACACACACACACACACACACACACAC	.	contamination;multiallelic	CONTQ=1;DP=728;ECNT=2;GERMQ=93;MBQ=20,20,20,22,20,20,22,20,21,20,22,24;MFRL=181,155,176,259,179,185,212,191,197,157,222,288;MMQ=60,60,60,60,60,60,60,60,60,60,60,60;MPOS=37,51,43,55,54,51,51,50,55,49,40;POPAF=0.396,1.12,1.03,1.28,7.30,7.30,7.30,7.30,7.30,7.30,7.30;ROQ=93;RPA=20,15,18,19,21,22,23,24,25,26,27,31;RU=AC;SEQQ=93;STR;STRANDQ=93;STRQ=93;TLOD=10.69,22.90,26.22,95.60,63.98,94.10,25.07,29.01,18.66,15.10,15.08	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6/7/8/9/10/11:56,6,24,23,79,70,76,31,29,23,12,8:0.012,0.045,0.049,0.180,0.155,0.179,0.073,0.076,0.053,0.031,0.020:437:20,0,11,7,33,33,24,10,10,14,6,4:32,6,13,16,46,36,50,20,19,8,5,4:27,29,158,223
+1	243736210	.	CTTTT	C,CT,CTT,CTTT,CTTTTT,CTTTTTT,CTTTTTTT	.	multiallelic	CONTQ=31;DP=793;ECNT=1;GERMQ=93;MBQ=20,26,20,20,20,20,26,20;MFRL=173,314,171,176,172,167,173,167;MMQ=60,60,60,60,60,60,60,60;MPOS=32,22,31,31,22,16,29;POPAF=1.96,0.625,7.30,2.18,7.30,7.30,7.30;ROQ=93;RPA=15,11,12,13,14,16,17,18;RU=T;SEQQ=93;STR;STRANDQ=93;STRQ=93;TLOD=10.09,26.33,122.41,197.30,20.33,6.91,3.03	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6/7:213,14,47,154,234,48,13,12:0.016,0.052,0.209,0.329,0.052,0.020,0.014:735:128,9,36,102,155,30,13,9:80,5,11,50,76,16,0,3:116,97,304,218
+1	243862215	.	CAAAAA	C,CAAA,CAA,CAAAA,CAAAAAA,CAAAAAAA,CAAAAAAAA	.	contamination;multiallelic	CONTQ=1;DP=590;ECNT=1;GERMQ=93;MBQ=20,28,20,25,20,20,20,20;MFRL=174,162,190,182,180,180,173,180;MMQ=60,60,60,60,60,60,60,60;MPOS=36,38,34,40,36,29,33;POPAF=2.48,7.30,1.12,1.30,7.30,7.30,7.30;ROQ=93;RPA=15,10,13,12,14,16,17,18;RU=A;SEQQ=93;STR;STRANDQ=93;STRQ=93;TLOD=3.24,15.44,29.63,88.23,45.96,25.70,5.10	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6/7:212,3,37,22,95,82,48,23:8.570e-03,0.054,0.054,0.175,0.144,0.092,0.035:522:131,3,21,13,52,53,33,15:72,0,16,8,42,29,15,7:103,109,166,144
+1	243862767	.	CTATATATATATATATATATATATATATATATATATA	C,CTA,CTATA,CTATATA,CTATATATA,CTATATATATA,CTATATATATATA,CTATATATATATATA,CTATATATATATATATA,CTATATATATATATATATATA	.	multiallelic	CONTQ=93;DP=432;ECNT=2;GERMQ=44;MBQ=20,26,20,20,26,20,23,21,25,20,20;MFRL=196,208,206,210,197,198,214,220,206,192,184;MMQ=60,60,60,60,60,60,60,60,60,60,60;MPOS=42,44,49,46,56,45,52,38,46,52;POPAF=7.30,7.30,7.30,7.30,0.318,1.30,1.51,7.30,7.30,1.68;ROQ=93;RPA=24,6,7,8,9,10,11,12,13,14,16;RU=TA;SEQQ=93;STR;STRANDQ=93;STRQ=93;TLOD=37.80,261.96,174.24,25.52,7.48,6.88,41.14,42.43,12.46,11.12	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6/7/8/9/10:10,25,137,97,19,7,8,26,30,12,8:0.062,0.357,0.250,0.050,0.020,0.022,0.071,0.081,0.037,0.026:379:2,12,62,47,10,3,4,8,17,7,2:5,13,72,50,9,4,4,18,13,5,6:4,6,190,179
+1	243863808	.	ATTT	AT,A,ATT,ATTTT,TTTT,ATTTTT,ATTTTTT	.	multiallelic	CONTQ=70;DP=778;ECNT=2;GERMQ=93;MBQ=20,20,20,20,20,20,20,20;MFRL=172,173,188,168,176,179,177,167;MMQ=60,60,60,60,60,60,60,60;MPOS=38,55,42,46,31,44,31;POPAF=0.291,7.30,1.77,7.30,7.30,7.30,7.30;ROQ=93;SEQQ=93;STRANDQ=93;TLOD=15.70,6.52,31.81,91.14,4.49,50.30,7.48	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6/7:203,39,18,87,166,16,93,51:0.050,0.022,0.114,0.259,0.016,0.144,0.055:673:85,19,8,41,56,13,39,16:113,19,10,40,102,3,47,31:83,120,209,261
+1	243865411	.	CAAAAAA	C,CA,CAA,CAAA,CAAAA,CAAAAA,CAAAAAAA,CAAAAAAAA	.	multiallelic	CONTQ=79;DP=749;ECNT=1;GERMQ=93;MBQ=20,24,28,20,20,20,20,20,20;MFRL=174,204,185,192,180,175,185,176,175;MMQ=60,60,60,60,60,60,60,60,60;MPOS=27,44,45,36,39,38,39,43;POPAF=2.30,0.924,0.322,1.34,7.30,2.61,7.30,7.30;ROQ=93;RPA=18,12,13,14,15,16,17,19,20;RU=A;SEQQ=93;STR;STRANDQ=93;STRQ=93;TLOD=9.09,7.79,61.98,87.03,144.61,67.86,4.91,11.91	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6/7/8:96,12,13,77,117,192,128,28,36:0.016,0.017,0.106,0.169,0.288,0.176,0.026,0.050:699:56,9,9,46,77,132,82,10,24:39,3,4,31,37,58,45,18,11:40,56,305,298
+1	243867062	.	CAAAAAAAAAAAAA	C,CAAAAAAAA,CAAAAAAAAA,CAAAAAAAAAA,CAAAAAAAAAAA,CAAAAAAAAAAAA,AAAAAAAAAAAAAA,CAAAAAAAAAAAAAA,CAAAAAAAAAAAAAAA,CAAAAAAAAAAAAAAAA	.	clustered_events;contamination;multiallelic	CONTQ=1;DP=421;ECNT=4;GERMQ=93;MBQ=20,27,27,20,20,20,20,20,20,20,20;MFRL=182,201,183,168,187,180,173,169,166,187,171;MMQ=60,60,60,60,60,60,60,60,60,60,60;MPOS=38,35,20,32,26,28,32,35,35,23;POPAF=1.68,7.30,7.30,7.30,7.30,7.30,7.30,0.804,1.47,2.50;ROQ=93;SEQQ=93;STRANDQ=93;TLOD=242.39,5.10,5.43,6.98,17.76,18.76,8.95,18.39,10.37,5.75	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6/7/8/9/10:100,73,8,10,14,28,41,10,45,35,14:0.175,0.021,0.026,0.033,0.070,0.095,0.024,0.111,0.088,0.039:378:60,46,6,8,6,21,27,8,28,32,10:38,27,2,2,7,6,14,2,15,3,4:62,38,168,110
+1	243906155	.	CTTT	C,CT,CTT,TTTT,CTTTT,CTTTTT	.	contamination;multiallelic	CONTQ=1;DP=861;ECNT=1;GERMQ=93;MBQ=20,20,20,20,25,20,23;MFRL=170,163,173,174,185,175,175;MMQ=60,60,60,60,60,60,60;MPOS=51,46,42,36,39,36;POPAF=4.01,7.30,2.20,7.30,7.30,1.48;ROQ=93;SEQQ=93;STRANDQ=93;TLOD=3.04,41.62,121.52,4.98,59.06,10.74	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6:363,13,65,167,9,127,34:0.011,0.073,0.204,0.010,0.141,0.032:778:195,6,48,76,4,52,25:165,7,17,88,4,74,9:194,169,219,196
+1	243908040	.	CAAAAAA	C,CAA,CAAA,CAAAA,CAAAAA,CAAAAAAA,CAAAAAAAA,CAAAAAAAAAAA	.	contamination;multiallelic	CONTQ=2;DP=336;ECNT=1;GERMQ=93;MBQ=20,27,28,27,27,20,23,24,27;MFRL=182,170,301,188,181,178,175,178,182;MMQ=60,60,60,60,60,60,60,60,60;MPOS=24,30,29,28,32,28,31,31;POPAF=2.56,7.30,1.57,2.18,2.92,7.30,7.30,7.30;ROQ=93;RPA=22,16,18,19,20,21,23,24,27;RU=A;SEQQ=93;STR;STRANDQ=93;STRQ=93;TLOD=3.27,11.47,12.33,15.01,38.45,14.50,18.08,3.10	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6/7/8:82,5,11,18,32,68,38,40,9:0.018,0.044,0.057,0.092,0.213,0.111,0.118,0.030:303:57,1,5,10,22,46,25,33,4:21,4,6,8,10,22,13,7,5:49,33,138,83
+1	243913885	.	CTTTT	C,CT,CTT,CTTT,CTTTTT,CTTTTTT,CTTTTTTT,CTTTTTTTT	.	contamination;multiallelic	CONTQ=1;DP=873;ECNT=2;GERMQ=93;MBQ=20,28,20,20,20,20,25,28,20;MFRL=176,224,165,176,183,179,174,216,174;MMQ=60,60,60,60,60,60,60,60,60;MPOS=13,25,21,35,35,25,21,25;POPAF=4.01,7.30,7.30,2.73,1.40,7.30,1.25,2.89;ROQ=93;RPA=16,12,13,14,15,17,18,19,20;RU=T;SEQQ=93;STR;STRANDQ=93;STRQ=93;TLOD=11.40,4.26,43.59,89.71,65.13,36.73,17.56,5.44	GT:AD:AF:DP:F1R2:F2R1:SB	0/1/2/3/4/5/6/7/8:269,14,12,56,131,136,56,24,21:0.016,0.012,0.068,0.168,0.170,0.076,0.036,0.026:719:98,9,6,27,56,66,17,7,4:168,5,6,29,75,70,39,17,17:86,183,126,324

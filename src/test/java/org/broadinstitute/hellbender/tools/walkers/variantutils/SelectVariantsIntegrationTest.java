@@ -971,4 +971,17 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
 
         IntegrationTestSpec.assertEqualTextFiles(IOUtils.getPath(out), IOUtils.getPath(expectedFile), null);
     }
+
+    // the input test file is a somatic VCF with several many-allelic sites and no PLs.  This tests that the tool does not attempt
+    // to create a PL-to-alleles cache, which would cause the tool to freeze.  See https://github.com/broadinstitute/gatk/issues/6291
+    @Test
+    public void testManyAllelicWithoutPLsDoesntFreeze() {
+        final File input = new File(getToolTestDataDir(), "many-allelic-somatic.vcf");
+        final File output = createTempFile("output", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(input)
+                .addReference(b37Reference)
+                .addOutput(output);
+        runCommandLine(args);
+    }
 }
