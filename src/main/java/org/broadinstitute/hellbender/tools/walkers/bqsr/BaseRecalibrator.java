@@ -196,8 +196,8 @@ public final class BaseRecalibrator extends ReadWalker {
         generateReport();
         logger.info("...done!");
 
-        //logger.info("BaseRecalibrator was able to recalibrate " + result + " reads");
-        return recalibrationEngine.getNumReadsProcessed();
+        logger.info("BaseRecalibrator was able to recalibrate " + recalibrationEngine.getNumReadsProcessed() + " reads");
+        return "SUCCESS";
     }
 
     /**
