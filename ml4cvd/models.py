@@ -542,6 +542,138 @@ def make_variational_multimodal_multitask_model(
     return m, encoder, decoder
 
 
+def _build_convolutional_encoder(
+        input_tensor: K.placeholder,
+        tm: TensorMap,
+        layers: Dict[str, Layer],
+        activation: str = None,
+        conv_layers: List[int] = None,
+        max_pools: List[int] = None,
+        dense_blocks: List[int] = None,
+        block_size: List[int] = None,
+        conv_type: str = None,
+        conv_normalize: str = None,
+        conv_regularize: str = None,
+        conv_x: int = None,
+        conv_y: int = None,
+        conv_z: int = None,
+        conv_dropout: float = None,
+        conv_width: int = None,
+        conv_dilate: bool = None,
+        pool_x: int = None,
+        pool_y: int = None,
+        pool_z: int = None,
+        pool_type: int = None,
+        padding: str = None,
+) -> K.placeholder:
+    conv_fxns = _conv_layers_from_kind_and_dimension(tm.axes(), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
+    pool_layers = _pool_layers_from_kind_and_dimension(tm.axes(), pool_type, len(max_pools), pool_x, pool_y, pool_z)
+    last_conv = _conv_block_new(input_tensor, layers, conv_fxns, pool_layers, tm.axes(), activation, conv_normalize, conv_regularize,
+                                conv_dropout, None)
+    dense_conv_fxns = _conv_layers_from_kind_and_dimension(tm.axes(), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False,
+                                                           block_size)
+    dense_pool_layers = _pool_layers_from_kind_and_dimension(tm.axes(), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
+    last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, tm.axes(), activation, conv_normalize,
+                             conv_regularize, conv_dropout)
+    return last_conv
+
+
+def _build_mlp_encoder(
+    input_tensor: K.placeholder,
+    tm: TensorMap,
+    layers: Dict[str, Layer],
+    activation: str = None,
+    conv_normalize: str = None,
+) -> K.placeholder:
+    mlp_input = input_tensor
+    mlp = _dense_layer(mlp_input, layers, tm.annotation_units, activation, conv_normalize)
+    return mlp
+
+
+def _build_bottleneck(
+        input_multimodal,
+        layers: Dict[str, Layer],
+        mlp_inputs: List[K.placeholder],
+        activation: str = None,
+        dense_layers: List[int] = None,
+        dropout: float = None,
+        mlp_concat: bool = None,
+        conv_normalize: str = None,
+) -> K.placeholder:
+    if len(input_multimodal) > 1:
+        multimodal_activation = concatenate(input_multimodal)
+    elif len(input_multimodal) == 1:
+        multimodal_activation = input_multimodal[0]
+    else:
+        raise ValueError('No input activations.')
+
+    if len(mlp_inputs) > 1:
+        mlp_input = concatenate(mlp_inputs)
+    elif len(mlp_inputs) == 1:
+        mlp_input = mlp_inputs[0]
+    else:
+        mlp_input = None
+
+    for i, hidden_units in enumerate(dense_layers):
+        if i == len(dense_layers) - 1:
+            multimodal_activation = _dense_layer(multimodal_activation, layers, hidden_units, activation, conv_normalize, name='embed')
+        else:
+            multimodal_activation = _dense_layer(multimodal_activation, layers, hidden_units, activation, conv_normalize)
+        if dropout > 0:
+            multimodal_activation = Dropout(dropout)(multimodal_activation)
+        if mlp_concat and mlp_input is not None:
+            multimodal_activation = concatenate([multimodal_activation, mlp_input])
+    return multimodal_activation
+
+
+def _build_decoder(
+        tm: TensorMap,
+        multimodal_activation: K.placeholder,
+        last_conv: K.placeholder,
+        layers: Dict[str, Layer],
+        losses: List[str],
+        loss_weights: List[float],
+        my_metrics: Dict[str, str],
+        activation: str = None,
+        conv_layers: List[int] = None,
+        dense_blocks: List[int] = None,
+        conv_type: str = None,
+        conv_x: int = None,
+        conv_y: int = None,
+        conv_z: int = None,
+        conv_width: int = None,
+        u_connect: bool = None,
+        pool_x: int = None,
+        pool_y: int = None,
+        pool_z: int = None,
+        padding: str = None,
+) -> Layer:
+    losses.append(tm.loss)
+    loss_weights.append(tm.loss_weight)
+    my_metrics[tm.output_name()] = tm.metrics
+
+    if tm.axes() > 1:
+        all_filters = conv_layers + dense_blocks
+        conv_layer, kernel = _conv_layer_from_kind_and_dimension(tm.axes(), conv_type, conv_width, conv_x, conv_y, conv_z)
+        for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'Pooling'))):
+            early_conv = _get_last_layer_by_kind(layers, 'Conv', int(name.split(JOIN_CHAR)[-1]))
+            if u_connect:
+                last_conv = _upsampler(tm.axes(), pool_x, pool_y, pool_z)(last_conv)
+                last_conv = conv_layer(filters=all_filters[-(1 + i)], kernel_size=kernel, padding=padding)(last_conv)
+                last_conv = _activation_layer(activation)(last_conv)
+                last_conv = concatenate([last_conv, early_conv])
+            else:
+                last_conv = _upsampler(tm.axes(), pool_x, pool_y, pool_z)(last_conv)
+                last_conv = conv_layer(filters=all_filters[-(1 + i)], kernel_size=kernel, padding=padding)(last_conv)
+
+        conv_label = conv_layer(tm.shape[-1], _one_by_n_kernel(tm.axes()), activation="linear")(last_conv)
+        return Activation(tm.activation, name=tm.output_name())(conv_label)
+    elif tm.is_categorical():
+        return Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(multimodal_activation)
+    else:
+        return Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)
+
+
 def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
                                     tensor_maps_out: List[TensorMap] = None,
                                     activation: str = None,
@@ -573,12 +705,12 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
                                     **kwargs) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
 
-	This model factory can be used to make networks for classification, regression, and segmentation
-	The tasks attempted are given by the output TensorMaps.
-	The modalities and the first layers in the architecture are determined by the input TensorMaps.
+    This model factory can be used to make networks for classification, regression, and segmentation
+    The tasks attempted are given by the output TensorMaps.
+    The modalities and the first layers in the architecture are determined by the input TensorMaps.
 
-	Hyperparameters are exposed to the command line.
-	Model summary printed to output
+    Hyperparameters are exposed to the command line.
+    Model summary printed to output
 
     :param model_file: HD5 model file to load and return.
     :param model_layers: HD5 model file whose weights will be loaded into this model when layer names match.
@@ -621,88 +753,53 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
 
     input_tensors = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
     input_multimodal = []
-    channel_axis = -1
     layers = {}
+    mlp_inputs = []
 
-    for j, tm in enumerate(tensor_maps_in):
-        if len(tm.shape) > 1:
-            conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
-            pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
-            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize,
-                                        conv_dropout, None)
-            dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False,
-                                                                   block_size)
-            dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
-            last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize,
-                                     conv_regularize, conv_dropout)
-            input_multimodal.append(Flatten(name=f'embed_{tm.output_name()}')(last_conv))
+    # build encoders
+    last_conv = None
+    for j, (tm, input_tensor) in enumerate(zip(tensor_maps_in, input_tensors)):
+        if tm.axes() > 1:
+            last_conv = _build_convolutional_encoder(
+                input_tensor, tm, layers, activation, conv_layers, max_pools, dense_blocks, block_size, conv_type,
+                conv_normalize, conv_regularize, conv_x, conv_y, conv_z, conv_dropout, conv_width, conv_dilate, pool_x,
+                pool_y, pool_z, pool_type, padding,
+            )
+            encoder_out = Flatten()(last_conv)
         else:
-            mlp_input = input_tensors[j]
-            mlp = _dense_layer(mlp_input, layers, tm.annotation_units, activation, conv_normalize)
-            input_multimodal.append(mlp)
+            encoder_out = _build_mlp_encoder(
+                input_tensor, tm, layers, activation, conv_normalize,
+            )
+            mlp_inputs.append(encoder_out)
+        input_multimodal.append(encoder_out)
 
-    if len(input_multimodal) > 1:
-        multimodal_activation = concatenate(input_multimodal, axis=channel_axis)
-    elif len(input_multimodal) == 1:
-        multimodal_activation = input_multimodal[0]
-    else:
-        raise ValueError('No input activations.')
+    multimodal_activation = _build_bottleneck(
+        input_multimodal, layers, mlp_inputs, activation, dense_layers, dropout, mlp_concat, conv_normalize,
+    )
 
-    for i, hidden_units in enumerate(dense_layers):
-        if i == len(dense_layers) - 1:
-            multimodal_activation = _dense_layer(multimodal_activation, layers, hidden_units, activation, conv_normalize, name='embed')
-        else:
-            multimodal_activation = _dense_layer(multimodal_activation, layers, hidden_units, activation, conv_normalize)
-        if dropout > 0:
-            multimodal_activation = Dropout(dropout)(multimodal_activation)
-        if mlp_concat:
-            multimodal_activation = concatenate([multimodal_activation, mlp_input], axis=channel_axis)
-
+    # build decoders
     losses = []
     my_metrics = {}
     loss_weights = []
     output_predictions = {}
     output_tensor_maps_to_process = tensor_maps_out.copy()
-
     while len(output_tensor_maps_to_process) > 0:
         tm = output_tensor_maps_to_process.pop(0)
-
-        if not tm.parents is None and any(not p in output_predictions for p in tm.parents):
+        if tm.parents is not None and set(tm.parents) <= set(tensor_maps_out):
+            raise ValueError(f'Output tensor {tm.output_name()} must have all its parents as output.')
+        if tm.parents is not None and not (set(tm.parents) <= set(output_predictions.keys())):
             output_tensor_maps_to_process.append(tm)
             continue
+        output_predictions[tm] = _build_decoder(
+            tm, multimodal_activation, last_conv, layers, losses, loss_weights, my_metrics, activation, conv_layers,
+            dense_blocks, conv_type, conv_x, conv_y, conv_z, conv_width, u_connect, pool_x, pool_y, pool_z, padding,
+        )
 
-        losses.append(tm.loss)
-        loss_weights.append(tm.loss_weight)
-        my_metrics[tm.output_name()] = tm.metrics
-
-        if len(tm.shape) > 1:
-            all_filters = conv_layers + dense_blocks
-            conv_layer, kernel = _conv_layer_from_kind_and_dimension(len(tm.shape), conv_type, conv_width, conv_x, conv_y, conv_z)
-            for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'Pooling'))):
-                early_conv = _get_last_layer_by_kind(layers, 'Conv', int(name.split(JOIN_CHAR)[-1]))
-                if u_connect:
-                    last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
-                    last_conv = conv_layer(filters=all_filters[-(1 + i)], kernel_size=kernel, padding=padding)(last_conv)
-                    last_conv = _activation_layer(activation)(last_conv)
-                    last_conv = concatenate([last_conv, early_conv])
-                else:
-                    last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
-                    last_conv = conv_layer(filters=all_filters[-(1 + i)], kernel_size=kernel, padding=padding)(last_conv)
-
-            conv_label = conv_layer(tm.shape[channel_axis], _one_by_n_kernel(len(tm.shape)), activation="linear")(last_conv)
-            output_predictions[tm] = Activation(tm.activation, name=tm.output_name())(conv_label)
-        elif tm.parents is not None:
-            parented_activation = concatenate([multimodal_activation] + [output_predictions[p] for p in tm.parents])
-            parented_activation = _dense_layer(parented_activation, layers, tm.annotation_units, activation, conv_normalize)
-            output_predictions[tm] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(parented_activation)
-        elif tm.is_categorical():
-            output_predictions[tm] = Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(multimodal_activation)
-        else:
-            output_predictions[tm] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)
-
-    m = Model(inputs=input_tensors, outputs=list(output_predictions.values()))
+    # merge encoders, bottleneck, decoders
+    m = Model(inputs=input_tensors, outputs=[output_predictions[tm] for tm in tensor_maps_out])
     m.summary()
 
+    # load layers for transfer learning
     model_layers = kwargs.get('model_layers', False)
     if model_layers:
         loaded = 0
