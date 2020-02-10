@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -17,7 +15,7 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.codecs.SVCallRecordCodec;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
@@ -26,8 +24,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Paths;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -106,27 +106,6 @@ public final class MergeSVCalls extends GATKTool {
     private File outputFile;
 
     @Argument(
-            doc = "Small CNV intervals output",
-            fullName = SMALL_CNV_OUTPUT_LONG_NAME,
-            optional = true
-    )
-    private File smallCNVOutput;
-
-    @Argument(
-            doc = "Small CNV size",
-            fullName = SMALL_CNV_SIZE_LONG_NAME,
-            optional = true
-    )
-    private int smallCNVSize = DEFAULT_SMALL_CNV_SIZE;
-
-    @Argument(
-            doc = "Small CNV interval padding",
-            fullName = SMALL_CNV_PADDING_LONG_NAME,
-            optional = true
-    )
-    private int smallCNVPadding = DEFAULT_SMALL_CNV_PADDING;
-
-    @Argument(
             doc = "Skip VCF sequence dictionary check",
             fullName = IGNORE_DICTIONARY_LONG_NAME,
             optional = true
@@ -158,9 +137,6 @@ public final class MergeSVCalls extends GATKTool {
     @Override
     public Object onTraversalSuccess() {
         records.sort(IntervalUtils.getDictionaryOrderComparator(dictionary));
-        if (smallCNVOutput != null) {
-            generateSmallEvents();
-        }
         writeVariants();
         return null;
     }
@@ -254,29 +230,7 @@ public final class MergeSVCalls extends GATKTool {
         featureDataSource.setIntervalsForTraversal(getTraversalIntervals());
         return featureDataSource;
     }
-
-    private void generateSmallEvents() {
-        final GenomeLocParser parser = new GenomeLocParser(dictionary);
-        final List<SimpleInterval> smallEventIntervals = records.stream().filter(this::isSmallCNV)
-                .map(r -> new SimpleInterval(r.getContig(), r.getStart(), r.getEnd())).collect(Collectors.toList());
-        final List<GenomeLoc> smallEventLocs = IntervalUtils.genomeLocsFromLocatables(parser, smallEventIntervals);
-        final GenomeLocSortedSet intervalSet = IntervalUtils.sortAndMergeIntervals(parser, smallEventLocs, IntervalMergingRule.ALL);
-        final IntervalList intervalList = new IntervalList(dictionary);
-        intervalList.addall(intervalSet.stream().map(Interval::new).collect(Collectors.toList()));
-        intervalList.write(smallCNVOutput);
-    }
-
-    private static boolean isCNV(final SVCallRecord call) {
-        return call.getType().equals(StructuralVariantType.DEL) || call.getType().equals(StructuralVariantType.DUP)
-                || (call.getType().equals(StructuralVariantType.BND) && call.getContig().equals(call.getEndContig())
-                    && call.getStartStrand() != call.getEndStrand());
-    }
-
-    private boolean isSmallCNV(final SVCallRecord call) {
-        if (!isCNV(call)) return false;
-        return call.getEnd() - call.getStart() <= smallCNVSize;
-    }
-
+    
     private void writeVariants() {
         final SVCallRecordCodec callRecordCodec = new SVCallRecordCodec();
         try (final PrintStream writer = new PrintStream(outputFile)) {
