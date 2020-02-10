@@ -107,7 +107,6 @@ import java.util.stream.Collectors;
 )
 @DocumentedFeature
 public final class CollectFragmentCounts extends ReadWalker {
-    //private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 10;
     private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 0;
 
 

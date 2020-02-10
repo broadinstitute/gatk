@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
+import java.util.function.Predicate;
 
 /**
  * A FeatureWalker is a tool that processes a {@link Feature} at a time from a source of Features, with
@@ -61,7 +62,7 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
             drivingFeatures = new FeatureDataSource<>(new FeatureInput<>(drivingFile.getAbsolutePath()), FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, null, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, referenceArguments.getReferencePath());
 
             final FeatureInput<F> drivingFeaturesInput = new FeatureInput<>(drivingFile.getAbsolutePath(), "drivingFeatureFile");
-            features.addToFeatureSources(0, drivingFeaturesInput, codec.getFeatureType(), cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+            features.addToFeatureSources(FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, drivingFeaturesInput, codec.getFeatureType(), cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                          referenceArguments.getReferencePath());
         } else {
             throw new UserException("File " + drivingFile + " contains features of the wrong type.");
@@ -95,6 +96,7 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
                     progressMeter.update(feature);
                 });
     }
+
 
     /**
      * This method can be overridden if you need to customize the interval for a given feature.
