@@ -11,7 +11,7 @@ public class GenomicsDBBaseArgumentCollection implements Serializable {
   public static final String USE_VCF_CODEC_LONG_NAME = "genomicsdb-use-vcf-codec";
 
   private static final boolean DEFAULT_CALL_GENOTYPES = false;
-  private static final boolean DEFAULT_USE_VCF_CODEC = true;
+  private static final boolean DEFAULT_USE_VCF_CODEC = false;
 
   /**
    * Not full-fledged arguments for now.
@@ -28,7 +28,7 @@ public class GenomicsDBBaseArgumentCollection implements Serializable {
   @Advanced
   @Argument(
       fullName = USE_VCF_CODEC_LONG_NAME,
-      doc = "Use VCF Codec Streaming for data from GenomicsDB",
+      doc = "Use VCF Codec Streaming for data from GenomicsDB instead of the default BCF",
       optional = true)
   public boolean useVCFCodec = DEFAULT_USE_VCF_CODEC;
 }

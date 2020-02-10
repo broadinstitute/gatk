@@ -52,6 +52,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.genomicsdb.GenomicsDBUtils;
 import org.genomicsdb.model.GenomicsDBExportConfiguration;
 import org.genomicsdb.model.GenomicsDBVidMapProto;
@@ -712,17 +713,6 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         return out.iterator();
     }
 
-    /**
-     * Genotype.getAnyAttribute() returns String or Integer based on the VC being decoded fully, so use this routine instead to
-     * guarantee that it is an int.
-     */
-    private static int getAttributeAsInt(Genotype genotype, String key) {
-        Object x = genotype.getExtendedAttribute(key);
-        if (x == null) throw new RuntimeException("Genotype field key does not exist");
-        if (x instanceof Integer) return (Integer)x;
-        return Integer.parseInt((String)x); // throws an exception if this isn't a string
-    }
-
     @Test(dataProvider = "getRenameCombinations")
     public void testRenamingSamples(final Map<String, String> renamingMap, final int threads, final int batchSize) throws IOException {
         final LinkedHashMap<String, String> sampleMap = new LinkedHashMap<>(renamingMap);
@@ -752,7 +742,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 expectedSampleNames.forEach( sample -> {
                     Assert.assertEquals(vc.getGenotype(sample).getAnyAttribute(SAMPLE_NAME_KEY), renamingMap.get(sample));
                     //check another attribute just to make sure we're not mangling things
-                    Assert.assertEquals(getAttributeAsInt(vc.getGenotype(sample), ANOTHER_ATTRIBUTE_KEY), 10);
+                    Assert.assertEquals(VariantContextGetters.getAttributeAsInt(vc.getGenotype(sample), ANOTHER_ATTRIBUTE_KEY, -1), 10);
                 });
             });
         }

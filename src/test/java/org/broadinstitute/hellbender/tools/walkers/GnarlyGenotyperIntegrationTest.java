@@ -62,16 +62,16 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
      * Have a customized checker as the VariantContextUtils.assertEqualVariants version does a
      * simplistic ToString() comparison that does not account for differences in Scientific versus Decimal
      * notations.
-     * @param v1 List of actual variant contexts
-     * @param v2 List of expected variant contexts
+     * @param actualVC List of actual variant contexts
+     * @param expectedVC List of expected variant contexts
      */
     private static void assertEqualVariants(
-            final List<VariantContext> v1, final List<VariantContext> v2) {
-        Utils.nonNull(v1, "v1");
-        Utils.nonNull(v2, "v2");
-        Assert.assertEquals(v1.size(), v2.size());
-        for (int i = 0; i < v1.size(); i++) {
-            VariantContextTestUtils.assertVariantContextsAreEqual(v1.get(i), v2.get(i), new ArrayList<String>(), new ArrayList<String>());
+            final List<VariantContext> actualVC, final List<VariantContext> expectedVC) {
+        Utils.nonNull(actualVC, "actualVC");
+        Utils.nonNull(expectedVC, "expectedVC");
+        Assert.assertEquals(actualVC.size(), expectedVC.size());
+        for (int i = 0; i < actualVC.size(); i++) {
+            VariantContextTestUtils.assertVariantContextsAreEqual(actualVC.get(i), expectedVC.get(i), new ArrayList<String>(), new ArrayList<String>());
         }
     }
 

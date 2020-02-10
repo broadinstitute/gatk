@@ -1,11 +1,8 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
-import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
-
-import java.io.Serializable;
 
 public class GenomicsDBArgumentCollection extends GenomicsDBBaseArgumentCollection {
   private static final long serialVersionUID = 1L;
