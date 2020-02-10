@@ -230,12 +230,16 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
         }
         else if (vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
             String asQuals = vc.getAttributeAsString(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "").replaceAll("\\[\\]\\s","");
-            String[] values = asQuals.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
+            String[] values = asQuals.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX, -1); //allow for empty tokens at the end
             if (values.length != vc.getNAlleles()) {
                 throw new IllegalStateException("Number of AS_QUALapprox values doesn't match the number of alleles in the variant context.");
             }
             for (int i = 1; i < vc.getNAlleles(); i++) {
-                alleleQualList.add(Integer.parseInt(values[i]));
+                if (!values[i].equals("")) {
+                    alleleQualList.add(Integer.parseInt(values[i]));
+                } else {
+                    alleleQualList.add(0);
+                }
             }
         }
         return alleleQualList;
