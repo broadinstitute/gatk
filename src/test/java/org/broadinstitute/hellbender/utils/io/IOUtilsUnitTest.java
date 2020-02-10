@@ -28,6 +28,7 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class IOUtilsUnitTest extends GATKBaseTest {
 
@@ -592,6 +593,26 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         Assert.assertTrue(tempFile.exists(), "file was not written to temp file: " + tempFile);
         Assert.assertEquals(tempFile.getParentFile().getAbsolutePath(), (tempDir.getAbsolutePath()),
                 "file was not written to temp file: " + tempFile + " in dir: " + tempDir);
+    }
+
+    @Test
+    public void testCreateTempFileWithContent() throws IOException {
+        final String prefix = "prefix";
+        final String suffix = ".txt";
+        final List<String> inputStrings = Arrays.asList("first line", "second line");
+
+        final File tempFile = IOUtils.writeTempFile(inputStrings,prefix, suffix);
+
+        Assert.assertTrue(tempFile.exists(), "file was not written to temp file: " + tempFile);
+        Assert.assertTrue(tempFile.getName().startsWith("prefix"));
+        Assert.assertTrue(tempFile.getName().endsWith(".txt"));
+
+        final List<String> actualStrings = new ArrayList<>();
+        try (Stream<String> lines = Files.lines( tempFile.toPath())) {
+            lines.forEach(actualStrings::add);
+        }
+
+        Assert.assertEquals(actualStrings, inputStrings);
     }
 
     @DataProvider

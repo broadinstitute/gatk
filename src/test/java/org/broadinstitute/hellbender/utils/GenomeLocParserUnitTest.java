@@ -125,6 +125,13 @@ public final class GenomeLocParserUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testStringIsTrimmed() {
+        final String locString = "1:1-10";
+        final GenomeLoc loc = genomeLocParser.parseGenomeLoc(" " + "1:1-10" + "  ");
+        Assert.assertEquals(loc.toString(), locString);
+    }
+
+    @Test
     public void testCreateGenomeLoc1() {
         GenomeLoc loc = genomeLocParser.createGenomeLoc("1", 1, 100);
         assertEquals(0, loc.getContigIndex());

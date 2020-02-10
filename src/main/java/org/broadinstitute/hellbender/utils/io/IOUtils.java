@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
@@ -145,6 +146,23 @@ public final class IOUtils {
         try {
             File tempFile = File.createTempFile(prefix, suffix, directory).toPath().normalize().toFile();
             FileUtils.writeStringToFile(tempFile, content, StandardCharsets.UTF_8);
+            return tempFile;
+        } catch (IOException e) {
+            throw new UserException.BadTempDir(e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Writes multiple lines of content to a temp file and returns the temporary file.
+     * @param prefix prefix to use for the temp file name
+     * @param suffix extension to use for the temp file
+     * @param content List<String> Strings that will be written to the file as separate lines
+     * @return temporary File that will be deleted on exit
+     */
+    public static File writeTempFile(final List<String> content, final String prefix, final String suffix) {
+        try {
+            final File tempFile = createTempFile(prefix, suffix);
+            FileUtils.writeLines(tempFile, content);
             return tempFile;
         } catch (IOException e) {
             throw new UserException.BadTempDir(e.getMessage(), e);
