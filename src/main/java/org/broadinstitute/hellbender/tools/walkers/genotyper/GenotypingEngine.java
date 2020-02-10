@@ -8,18 +8,14 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import org.apache.commons.math3.special.Gamma;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculationResult;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFPriorProvider;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.CustomAFPriorProvider;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.HeterozygosityAFPriorProvider;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -191,7 +187,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     @VisibleForTesting
-    static boolean noAllelesOrFirstAlleleIsNotNonRef(List<Allele> altAlleles) {
+    static boolean noAllelesOrFirstAlleleIsNotNonRef(final List<Allele> altAlleles) {
         Utils.nonNull(altAlleles);
         return altAlleles.isEmpty() ||  altAlleles.get(0) != (Allele.NON_REF_ALLELE);
     }
@@ -299,7 +295,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @return  true if the location is covered by an upstream deletion, false otherwise
      */
     boolean isVcCoveredByDeletion(final VariantContext vc) {
-        for (Iterator<SimpleInterval> it = upstreamDeletionsLoc.iterator(); it.hasNext(); ) {
+        for (final Iterator<SimpleInterval> it = upstreamDeletionsLoc.iterator(); it.hasNext(); ) {
             final SimpleInterval loc = it.next();
             if (!loc.getContig().equals(vc.getContig())) { // deletion is not on contig.
                 it.remove();
@@ -377,7 +373,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
 
         if (doAlleleSpecificCalcs){
-            List<Integer> perAlleleQuals = new ArrayList<>();
+            final List<Integer> perAlleleQuals = new ArrayList<>();
             //Per-allele quals are not calculated for biallelic sites
             if (AFresult.getAllelesUsedInGenotyping().size() > 2) {
                 for (final Allele a : allAllelesToUse) {
@@ -392,7 +388,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 perAlleleQuals.add((int)Math.round(AFresult.log10ProbOnlyRefAlleleExists()*-10));
             }
 
-            attributes.put(GATKVCFConstants.AS_QUAL_KEY, perAlleleQuals.stream().mapToInt(q -> Math.round(q)).boxed().collect(Collectors.toList()));
+            attributes.put(GATKVCFConstants.AS_QUAL_KEY, perAlleleQuals.stream().mapToInt(Math::round).boxed().collect(Collectors.toList()));
         }
 
         if ( configuration.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED ) {

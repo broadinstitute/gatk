@@ -80,7 +80,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
                 new GenotypeBuilder("sample1").alleles(gtAlleles).PL(new double[]{0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}).make(),  // homVar for first alt -- note that these are doubles, so they get renormalized
                 new GenotypeBuilder("sample2").alleles(gtAlleles).PL(new double[]{0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0}).make()); // homVar for second alt
         final VariantContext vc = new VariantContextBuilder("test", "1",1, refAllele.length(), allelesIns).genotypes(genotypes).make();
-        final VariantContext vcOut = genotypingEngine.calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.INDEL);
+        final VariantContext vcOut = genotypingEngine.calculateGenotypes(vc);
         Assert.assertFalse(vcOut.getAlleles().contains(altT));
 
         // Make sure the spanning deletion is removed since the deletion was removed
@@ -189,7 +189,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
                         .collect(Collectors.toList()))
                 .make();
 
-        final VariantContext variantContext = genotypingEngine.calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.BOTH);
+        final VariantContext variantContext = genotypingEngine.calculateGenotypes(vc);
         if (expectedEventualAlleles != 1) {
             Assert.assertNotNull(variantContext);
             Assert.assertEquals(variantContext.getAlleles().size(), expectedEventualAlleles,
