@@ -693,14 +693,15 @@ public final class SelectVariants extends VariantWalker {
      * Initialize the cache of PL index to a list of alleles for each ploidy.
      *
      * @param vc    Variant Context
-    */
+     */
     private void initalizeAlleleAnyploidIndicesCache(final VariantContext vc) {
         if (vc.getType() != VariantContext.Type.NO_VARIATION) { // Bypass if not a variant
             for (final Genotype g : vc.getGenotypes()) {
-                if (g.getPloidy() != 0) {
-                    // Make a new entry if the cache does not have an entry for the ploidy or the number of alleles for the cached ploidy is less
-                    // that the
-                    if (!ploidyToNumberOfAlleles.containsKey(g.getPloidy()) || ploidyToNumberOfAlleles.get(g.getPloidy()) < vc.getNAlleles()) {
+                // Make a new entry if the we have not yet cached a PL to allele indices map for this ploidy and allele count
+                // skip if there are no PLs -- this avoids hanging on high-allelic somatic samples, for example, where
+                // there's no need for the PL indices since they don't exist
+                if (g.getPloidy() != 0 && (!ploidyToNumberOfAlleles.containsKey(g.getPloidy()) || ploidyToNumberOfAlleles.get(g.getPloidy()) < vc.getNAlleles())) {
+                    if (vc.getGenotypes().stream().anyMatch(Genotype::hasLikelihoods)) {
                         GenotypeLikelihoods.initializeAnyploidPLIndexToAlleleIndices(vc.getNAlleles() - 1, g.getPloidy());
                         ploidyToNumberOfAlleles.put(g.getPloidy(), vc.getNAlleles());
                     }
