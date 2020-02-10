@@ -8,7 +8,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Set;
 
 /**
  * A band pass filtering version of the activity profile
@@ -26,37 +25,25 @@ public class BandPassActivityProfile extends ActivityProfile {
     private final double[] gaussianKernel;
 
     /**
-     * Create a new BandPassActivityProfile with default sigma and filter sizes
-     */
-    public BandPassActivityProfile(final Set<SimpleInterval> restrictToIntervals,
-                                   final int maxProbPropagationDistance, final double activeProbThreshold,
-                                   final SAMFileHeader samHeader) {
-        this(restrictToIntervals, maxProbPropagationDistance, activeProbThreshold, MAX_FILTER_SIZE, DEFAULT_SIGMA, samHeader);
-    }
-
-    /**
      * sets adaptiveFilterSize to true
      */
-    public BandPassActivityProfile(final Set<SimpleInterval> restrictToIntervals,
-                                   final int maxProbPropagationDistance, final double activeProbThreshold,
+    public BandPassActivityProfile(final int maxProbPropagationDistance, final double activeProbThreshold,
                                    final int maxFilterSize, final double sigma, final SAMFileHeader samHeader) {
-        this(restrictToIntervals, maxProbPropagationDistance, activeProbThreshold, maxFilterSize, sigma, true, samHeader);
+        this(maxProbPropagationDistance, activeProbThreshold, maxFilterSize, sigma, true, samHeader);
     }
 
     /**
      * Create an activity profile that implements a band pass filter on the states
-     *
-     * @param restrictToIntervals only include states that are within these intervals, if not null
-     * @param maxProbPropagationDistance region probability propagation distance beyond it's maximum size
+     *  @param maxProbPropagationDistance region probability propagation distance beyond it's maximum size
      * @param activeProbThreshold  threshold for the probability of a profile state being active
      * @param maxFilterSize the maximum size of the band pass filter we are allowed to create, regardless of sigma
      * @param sigma the variance of the Gaussian kernel for this band pass filter
      * @param adaptiveFilterSize if true, use the kernel itself to determine the best filter size
      */
-    public BandPassActivityProfile(final Set<SimpleInterval> restrictToIntervals, final int maxProbPropagationDistance,
+    public BandPassActivityProfile(final int maxProbPropagationDistance,
                                    final double activeProbThreshold, final int maxFilterSize, final double sigma, final boolean adaptiveFilterSize,
                                    final SAMFileHeader samHeader) {
-        super(maxProbPropagationDistance, activeProbThreshold, restrictToIntervals, samHeader);
+        super(maxProbPropagationDistance, activeProbThreshold, samHeader);
 
         Utils.validateArg(sigma >= 0, "Sigma must be greater than or equal to 0");
 

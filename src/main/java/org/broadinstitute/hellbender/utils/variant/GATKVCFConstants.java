@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.vcf.VCFConstants;
 
 import java.util.Arrays;
 import java.util.List;
@@ -164,7 +165,7 @@ public final class GATKVCFConstants {
     public final static String ALLELE_FRACTION_FILTER_NAME =                   "low_allele_frac";
     public static final String POTENTIAL_POLYMORPHIC_NUMT_FILTER_NAME =        "numt_novel";
 
-    public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(POLYMERASE_SLIPPAGE,
+    public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(VCFConstants.PASSES_FILTERS_v4, POLYMERASE_SLIPPAGE,
             PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_EVIDENCE_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
             MULTIALLELIC_FILTER_NAME, STRAND_ARTIFACT_FILTER_NAME, ARTIFACT_IN_NORMAL_FILTER_NAME,
             MEDIAN_BASE_QUALITY_FILTER_NAME, MEDIAN_MAPPING_QUALITY_FILTER_NAME,

@@ -13,7 +13,6 @@ import java.util.*;
  */
 public class ActivityProfile {
     protected final List<ActivityProfileState> stateList;
-    protected final Set<SimpleInterval> restrictToIntervals;
 
     protected final int maxProbPropagationDistance;
     protected final double activeProbThreshold;
@@ -30,23 +29,12 @@ public class ActivityProfile {
     protected int contigLength = -1;
 
     /**
-     * Create a new empty ActivityProfile
-     * @param maxProbPropagationDistance region probability propagation distance beyond its maximum size
-     * @param activeProbThreshold threshold for the probability of an activity profile state being active
-     */
-    public ActivityProfile(final int maxProbPropagationDistance, final double activeProbThreshold, final SAMFileHeader header) {
-        this(maxProbPropagationDistance, activeProbThreshold, null, header);
-    }
-
-    /**
      * Create a empty ActivityProfile, restricting output to profiles overlapping intervals, if not null
      * @param maxProbPropagationDistance region probability propagation distance beyond its maximum size
      * @param activeProbThreshold threshold for the probability of a profile state being active
-     * @param intervals only include states that are within these intervals, if not null
      */
-    public ActivityProfile(final int maxProbPropagationDistance, final double activeProbThreshold, final Set<SimpleInterval> intervals, final SAMFileHeader header) {
+    public ActivityProfile(final int maxProbPropagationDistance, final double activeProbThreshold, final SAMFileHeader header) {
         this.stateList = new ArrayList<>();
-        this.restrictToIntervals = intervals;
         this.maxProbPropagationDistance = maxProbPropagationDistance;
         this.activeProbThreshold = activeProbThreshold;
         this.samHeader = header;
@@ -291,12 +279,7 @@ public class ActivityProfile {
                 return regions;
             }
             else {
-                if ( restrictToIntervals == null ) {
-                    regions.add(nextRegion);
-                }
-                else {
-                    regions.addAll(nextRegion.splitAndTrimToIntervals(restrictToIntervals));
-                }
+                regions.add(nextRegion);
             }
         }
     }
@@ -337,7 +320,6 @@ public class ActivityProfile {
 
         // we need to create the active region, and clip out the states we're extracting from this profile
         final List<ActivityProfileState> sub = stateList.subList(0, offsetOfNextRegionEnd + 1);
-        final List<ActivityProfileState> supportingStates = new ArrayList<>(sub);
         sub.clear();
 
         // update the start and stop locations as necessary
@@ -347,7 +329,7 @@ public class ActivityProfile {
             regionStartLoc = stateList.get(0).getLoc();
         }
         final SimpleInterval regionLoc = new SimpleInterval(first.getLoc().getContig(), first.getLoc().getStart(), first.getLoc().getStart() + offsetOfNextRegionEnd);
-        return new AssemblyRegion(regionLoc, supportingStates, isActiveRegion, assemblyRegionExtension, samHeader);
+        return new AssemblyRegion(regionLoc, isActiveRegion, assemblyRegionExtension, samHeader);
     }
 
     /**

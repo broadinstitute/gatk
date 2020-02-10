@@ -465,6 +465,8 @@ public final class SelectVariants extends VariantWalker {
         return genomicsDBOptions;
     }
 
+    final private PriorityQueue<VariantContext> pendingVariants = new PriorityQueue<>(Comparator.comparingInt(VariantContext::getStart));
+
     /**
      * Set up the VCF writer, the sample expressions and regexs, filters inputs, and the JEXL matcher
      *
@@ -547,6 +549,14 @@ public final class SelectVariants extends VariantWalker {
     @Override
     public void apply(VariantContext vc, ReadsContext readsContext, ReferenceContext ref, FeatureContext featureContext) {
 
+        /*check for pending variants to write out
+        since variant starts will only be moved further right, we can write out a pending variant if the current variant start is after the pending variant start
+        variant record locations can move to the right due to allele trimming if preserveAlleles is false
+         */
+        while (!pendingVariants.isEmpty() && (pendingVariants.peek().getStart()<=vc.getStart() || !(pendingVariants.peek().getContig().equals(vc.getContig())))) {
+            vcfWriter.add(pendingVariants.poll());
+        }
+
         if (fullyDecode) {
             vc = vc.fullyDecode(getHeaderForVariants(), lenientVCFProcessing);
         }
@@ -594,11 +604,15 @@ public final class SelectVariants extends VariantWalker {
         initalizeAlleleAnyploidIndicesCache(vc);
 
         final VariantContext sub = subsetRecord(vc, preserveAlleles, removeUnusedAlternates);
-        final VariantContextBuilder builder = new VariantContextBuilder(vc);
+        final VariantContext filteredGenotypeToNocall;
+
         if ( setFilteredGenotypesToNocall ) {
+            final VariantContextBuilder builder = new VariantContextBuilder(sub);
             GATKVariantContextUtils.setFilteredGenotypeToNocall(builder, sub, setFilteredGenotypesToNocall, this::getGenotypeFilters);
+            filteredGenotypeToNocall = builder.make();
+        } else {
+            filteredGenotypeToNocall = sub;
         }
-        final VariantContext filteredGenotypeToNocall = setFilteredGenotypesToNocall ? builder.make(): sub;
 
         // Not excluding non-variants OR (subsetted polymorphic variants AND not spanning deletion) AND (including filtered loci OR subsetted variant) is not filtered
         // If exclude non-variants argument is not called, filtering will NOT occur.
@@ -631,9 +645,20 @@ public final class SelectVariants extends VariantWalker {
                     (!selectRandomFraction || Utils.getRandomGenerator().nextDouble() < fractionRandom)) {
                 //remove annotations being dropped and write variantcontext
                 final VariantContext variantContextToWrite = buildVariantContextWithDroppedAnnotationsRemoved(filteredGenotypeToNocall);
-                vcfWriter.add(variantContextToWrite);
+                pendingVariants.add(variantContextToWrite);
             }
         }
+    }
+
+    /**
+     * write out all remaining pending variants
+     */
+    @Override
+    public Object onTraversalSuccess() {
+        while(!pendingVariants.isEmpty()) {
+            vcfWriter.add(pendingVariants.poll());
+        }
+        return null;
     }
 
     private VariantContext buildVariantContextWithDroppedAnnotationsRemoved(final VariantContext vc) {

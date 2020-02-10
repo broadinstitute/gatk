@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalDouble;
 
 /**
@@ -69,6 +70,9 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
         final int leadingHardClips = firstElement.getOperator() == CigarOperator.HARD_CLIP ? firstElement.getLength() : 0;
         final int trailingHardClips = lastElement.getOperator() == CigarOperator.HARD_CLIP ? lastElement.getLength() : 0;
 
+        if (offset >= cigar.getReadLength()) {
+            return OptionalDouble.empty();
+        }
         int readPos = leadingHardClips + AlignmentUtils.calcAlignmentByteArrayOffset(read.getCigar(), offset, false, 0, 0);
         final int numAlignedBases = AlignmentUtils.getNumAlignedBasesCountingSoftClips( read );
         final int numOriginalBases = numAlignedBases + leadingHardClips + trailingHardClips;

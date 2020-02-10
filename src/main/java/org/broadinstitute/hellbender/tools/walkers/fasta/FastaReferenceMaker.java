@@ -138,7 +138,9 @@ public class FastaReferenceMaker extends ReferenceWalker {
     public void closeTool() {
         super.closeTool();
         try{
-            writer.close();
+           if( writer != null ) {
+               writer.close();
+           }
         } catch (IllegalStateException e){
             //sink this
         } catch (IOException e) {

@@ -119,7 +119,7 @@ public class GenotypeGVCFsEngine
         final List<VariantContext> variantsToProcess = getVariantSubsetToProcess(loc, variants);
 
         ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
-        final VariantContext mergedVC = merger.merge(variantsToProcess, loc, ref.getBase(), !outputNonVariants, false);
+        final VariantContext mergedVC = merger.merge(variantsToProcess, loc, ref.getBase(), true, false);
         final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, outputNonVariants, tlodThreshold, afTolerance) :
                 regenotypeVC(mergedVC, ref, features, outputNonVariants);
 
@@ -173,38 +173,9 @@ public class GenotypeGVCFsEngine
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
             VariantContext reannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
             reannotated = annotationEngine.annotateContext(reannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
-            return removeNonRefAlleles(reannotated);
+            return reannotated;
         } else {
             return null;
-        }
-    }
-
-    /**
-     * Remove NON-REF alleles from the variant context
-     *
-     * @param vc   the variant context
-     * @return variant context with the NON-REF alleles removed if multiallelic or replaced with NO-CALL alleles if biallelic
-     */
-    private VariantContext removeNonRefAlleles(final VariantContext vc) {
-
-        // If NON_REF is the only alt allele, ignore this site
-        final List<Allele> newAlleles = new ArrayList<>();
-        // Only keep alleles that are not NON-REF
-        for ( final Allele allele : vc.getAlleles() ) {
-            if ( !allele.equals(Allele.NON_REF_ALLELE) ) {
-                newAlleles.add(allele);
-            }
-        }
-
-        // If no alt allele, then remove INFO fields that require alt alleles
-        if ( newAlleles.size() == 1 ) {
-            final VariantContextBuilder builder = new VariantContextBuilder(vc).alleles(newAlleles);
-            for ( final String name : infoHeaderAltAllelesLineNames ) {
-                builder.rmAttributes(Arrays.asList(name));
-            }
-            return builder.make();
-        } else {
-            return vc;
         }
     }
 

@@ -61,7 +61,7 @@ public class BandPassActivityProfileUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "BandPassBasicTest")
     public void testBandPass(final int start, final boolean precedingIsActive, final int nPrecedingSites, final int bandPassSize, final double sigma) {
-        final BandPassActivityProfile profile = new BandPassActivityProfile(null, MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, bandPassSize, sigma, false, header);
+        final BandPassActivityProfile profile = new BandPassActivityProfile(MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, bandPassSize, sigma, false, header);
 
         final int expectedBandSize = bandPassSize * 2 + 1;
         Assert.assertEquals(profile.getFilteredSize(), bandPassSize, "Wrong filter size");
@@ -116,7 +116,7 @@ public class BandPassActivityProfileUnitTest extends GATKBaseTest {
     @Test(dataProvider = "BandPassComposition")
     public void testBandPassComposition(final int bandPassSize, final int integrationLength) {
         final int start = 1;
-        final BandPassActivityProfile profile = new BandPassActivityProfile(null, MAX_PROB_PROPAGATION_DISTANCE,
+        final BandPassActivityProfile profile = new BandPassActivityProfile(MAX_PROB_PROPAGATION_DISTANCE,
                 ACTIVE_PROB_THRESHOLD, bandPassSize, BandPassActivityProfile.DEFAULT_SIGMA, header);
         final double[] rawActiveProbs = new double[integrationLength + bandPassSize * 2];
 
@@ -190,7 +190,7 @@ public class BandPassActivityProfileUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "KernelCreation")
     public void testKernelCreation(final double sigma, final int maxSize, final double[] expectedKernel) {
-        final BandPassActivityProfile profile = new BandPassActivityProfile(null, MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD,
+        final BandPassActivityProfile profile = new BandPassActivityProfile(MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD,
                 maxSize, sigma, true, header);
 
         final double[] kernel = profile.getKernel();

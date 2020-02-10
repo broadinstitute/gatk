@@ -64,7 +64,7 @@ public class ActivityProfileUnitTest extends GATKBaseTest {
                 case Base: return new ActivityProfile(MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, header);
                 case BandPass:
                     // zero size => equivalent to ActivityProfile
-                    return new BandPassActivityProfile(null, MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, 0, 0.01, false, header);
+                    return new BandPassActivityProfile(MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, 0, 0.01, false, header);
                 default: throw new IllegalStateException(type.toString());
             }
         }
@@ -75,7 +75,7 @@ public class ActivityProfileUnitTest extends GATKBaseTest {
                 int start = regionStart.getStart() + startsAndStops[i];
                 int end = regionStart.getStart() + startsAndStops[i+1] - 1;
                 GenomeLoc activeLoc = genomeLocParser.createGenomeLoc(regionStart.getContig(), start, end);
-                AssemblyRegion r = new AssemblyRegion(new SimpleInterval(activeLoc), Collections.<ActivityProfileState>emptyList(), isActive, extension, header);
+                AssemblyRegion r = new AssemblyRegion(new SimpleInterval(activeLoc), isActive, extension, header);
                 l.add(r);
                 isActive = ! isActive;
             }

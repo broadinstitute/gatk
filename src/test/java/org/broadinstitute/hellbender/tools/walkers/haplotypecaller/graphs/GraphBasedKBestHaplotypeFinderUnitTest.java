@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
-import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -668,7 +667,7 @@ public final class GraphBasedKBestHaplotypeFinderUnitTest extends GATKBaseTest {
                         String theRef = preRefString + refString + Strings.repeat(indelString1, refIndel1) + refString + Strings.repeat(indelString2, refIndel2) + refString + postRefString;
                         String theRead = refString + Strings.repeat(indelString1, refIndel1 + indelOp1 * indelSize1) + refString + Strings.repeat(indelString2, refIndel2 + indelOp2 * indelSize2) + refString;
 
-                        Cigar calculatedCigar = CigarUtils.leftAlignCigarSequentially(AlignmentUtils.consolidateCigar(givenCigar), theRef.getBytes(), theRead.getBytes(), preRefString.length(), 0);
+                        Cigar calculatedCigar = AlignmentUtils.leftAlignIndels(AlignmentUtils.consolidateCigar(givenCigar), theRef.getBytes(), theRead.getBytes(), preRefString.length());
                         Assert.assertEquals(AlignmentUtils.consolidateCigar(calculatedCigar).toString(), AlignmentUtils.consolidateCigar(expectedCigar).toString(), "Cigar strings do not match!");
                     }
                 }
@@ -682,7 +681,7 @@ public final class GraphBasedKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final String hap = "GTCTCTCTCTCTCTCTCTCTCTATATATATATATTT";
         final Cigar originalCigar = TextCigarCodec.decode("18M4I12M4D2M");
 
-        final Cigar result = CigarUtils.leftAlignCigarSequentially(originalCigar, ref.getBytes(), hap.getBytes(), 0, 0);
+        final Cigar result = AlignmentUtils.leftAlignIndels(originalCigar, ref.getBytes(), hap.getBytes(), 0);
         logger.warn("Result is " + result);
         Assert.assertEquals(originalCigar.getReferenceLength(), result.getReferenceLength(), "Reference lengths are different");
     }

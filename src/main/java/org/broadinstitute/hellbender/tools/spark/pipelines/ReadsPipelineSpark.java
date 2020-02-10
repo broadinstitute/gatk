@@ -127,7 +127,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     public final AssemblyRegionReadShardArgumentCollection shardingArgs = new AssemblyRegionReadShardArgumentCollection();
 
     @ArgumentCollection
-    public final AssemblyRegionArgumentCollection assemblyRegionArgs = new HaplotypeCallerSpark.HaplotypeCallerAssemblyRegionArgumentCollection();
+    public final AssemblyRegionArgumentCollection assemblyRegionArgs = new AssemblyRegionArgumentCollection();
 
     /**
      * command-line arguments to fine tune the apply BQSR step.
@@ -221,7 +221,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
                 .flatMap(interval -> Shard.divideIntervalIntoShards(interval, shardingArgs.readShardSize, shardingArgs.readShardPadding, sequenceDictionary).stream())
                 .collect(Collectors.toList());
 
-        HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(ctx, filteredReadsForHC, readsHeader, sequenceDictionary, referenceArguments.getReferenceFileName(), intervalShards, hcArgs, shardingArgs, assemblyRegionArgs, true, output, makeVariantAnnotations(), logger, strict, createOutputVariantIndex);
+        HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(ctx, filteredReadsForHC, readsHeader, sequenceDictionary, referenceArguments.getReferenceFileName(), intervalShards, hcArgs, shardingArgs, assemblyRegionArgs, output, makeVariantAnnotations(), logger, strict, createOutputVariantIndex);
 
         if (bwaEngine != null) {
             bwaEngine.close();

@@ -650,6 +650,14 @@ public class VariantRecalibrator extends MultiVariantWalker {
                     goodModel = engine.generateModel(positiveTrainingData, VRAC.MAX_GAUSSIANS);
                     engine.evaluateData(dataManager.getData(), goodModel, false);
                     if (goodModel.failedToConverge) {
+                        if (outputModel != null) {
+                            final GATKReport report = writeModelReport(goodModel, null, USE_ANNOTATIONS);
+                            try (final PrintStream modelReportStream = new PrintStream(outputModel)) {
+                                report.print(modelReportStream);
+                            } catch (FileNotFoundException e) {
+                                throw new UserException.CouldNotCreateOutputFile("File: (" + outputModel + ")", e);
+                            }
+                        }
                         throw new UserException.VQSRPositiveModelFailure("Positive training model failed to converge.  One or more annotations " +
                                 "(usually MQ) may have insufficient variance.  Please consider lowering the maximum number" +
                                 " of Gaussians allowed for use in the model (via --max-gaussians 4, for example).");
@@ -866,16 +874,18 @@ public class VariantRecalibrator extends MultiVariantWalker {
         final GATKReportTable goodPMix = makeVectorTable("GoodGaussianPMix", "Pmixture log 10 used to evaluate model", gaussianStrings, pMixtureLog10s, "pMixLog10", formatString, "Gaussian");
         report.addTable(goodPMix);
 
-        gaussianStrings.clear();
-        final double[] pMixtureLog10sBad = new double[badModel.getModelGaussians().size()];
-        idx = 0;
+        if (badModel != null) {
+            gaussianStrings.clear();
+            final double[] pMixtureLog10sBad = new double[badModel.getModelGaussians().size()];
+            idx = 0;
 
-        for( final MultivariateGaussian gaussian : badModel.getModelGaussians() ) {
-            pMixtureLog10sBad[idx] = gaussian.pMixtureLog10;
-            gaussianStrings.add(Integer.toString(idx++));
+            for (final MultivariateGaussian gaussian : badModel.getModelGaussians()) {
+                pMixtureLog10sBad[idx] = gaussian.pMixtureLog10;
+                gaussianStrings.add(Integer.toString(idx++));
+            }
+            final GATKReportTable badPMix = makeVectorTable("BadGaussianPMix", "Pmixture log 10 used to evaluate model", gaussianStrings, pMixtureLog10sBad, "pMixLog10", formatString, "Gaussian");
+            report.addTable(badPMix);
         }
-        final GATKReportTable badPMix = makeVectorTable("BadGaussianPMix", "Pmixture log 10 used to evaluate model", gaussianStrings, pMixtureLog10sBad, "pMixLog10", formatString, "Gaussian");
-        report.addTable(badPMix);
 
         //The model and Gaussians don't know what the annotations are, so get them from this class
         //VariantDataManager keeps the annotation in the same order as the argument list
@@ -893,19 +903,21 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 formatString);
         report.addTable(positiveCovariance);
 
-        //do the same for the negative model means
-        final GATKReportTable negativeMeans = makeMeansTable(
-                "NegativeModelMeans", "Vector of annotation values to describe the (normalized) mean for each Gaussian in the negative model",
-                annotationList, badModel, formatString);
-        report.addTable(negativeMeans);
+        if (badModel != null) {
+            //do the same for the negative model means
+            final GATKReportTable negativeMeans = makeMeansTable(
+                    "NegativeModelMeans", "Vector of annotation values to describe the (normalized) mean for each Gaussian in the negative model",
+                    annotationList, badModel, formatString);
+            report.addTable(negativeMeans);
 
-        final GATKReportTable negativeCovariance = makeCovariancesTable(
-                "NegativeModelCovariances",
-                "Matrix to describe the (normalized) covariance for each Gaussian in the negative model; covariance matrices are joined by row",
-                annotationList,
-                badModel,
-                formatString);
-        report.addTable(negativeCovariance);
+            final GATKReportTable negativeCovariance = makeCovariancesTable(
+                    "NegativeModelCovariances",
+                    "Matrix to describe the (normalized) covariance for each Gaussian in the negative model; covariance matrices are joined by row",
+                    annotationList,
+                    badModel,
+                    formatString);
+            report.addTable(negativeCovariance);
+        }
 
         return report;
     }

@@ -23,7 +23,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import javax.annotation.Nullable;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Supplier;
@@ -50,7 +49,6 @@ public class FindAssemblyRegionsSpark {
      * @param assemblyRegionEvaluatorSupplierBroadcast evaluator used to determine whether a locus is active
      * @param shardingArgs the arguments for sharding reads
      * @param assemblyRegionArgs the arguments for finding assembly regions
-     * @param includeReadsWithDeletionsInIsActivePileups include reads with deletion at loci
      * @param shuffle whether to use a shuffle or not when sharding reads
      * @return an RDD of assembly regions
      */
@@ -65,12 +63,11 @@ public class FindAssemblyRegionsSpark {
             final Broadcast<Supplier<AssemblyRegionEvaluator>> assemblyRegionEvaluatorSupplierBroadcast,
             final AssemblyRegionReadShardArgumentCollection shardingArgs,
             final AssemblyRegionArgumentCollection assemblyRegionArgs,
-            final boolean includeReadsWithDeletionsInIsActivePileups,
             final boolean shuffle) {
         JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, sequenceDictionary, intervalShards, shardingArgs.readShardSize, shuffle);
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
         return shardedReads.mapPartitions(getAssemblyRegionsFunctionFast(referenceFileName, bFeatureManager, header,
-                assemblyRegionEvaluatorSupplierBroadcast, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups));
+                assemblyRegionEvaluatorSupplierBroadcast, assemblyRegionArgs));
     }
 
     private static FlatMapFunction<Iterator<Shard<GATKRead>>, AssemblyRegionWalkerContext> getAssemblyRegionsFunctionFast(
@@ -78,8 +75,7 @@ public class FindAssemblyRegionsSpark {
             final Broadcast<FeatureManager> bFeatureManager,
             final SAMFileHeader header,
             final Broadcast<Supplier<AssemblyRegionEvaluator>> supplierBroadcast,
-            final AssemblyRegionArgumentCollection assemblyRegionArgs,
-            final boolean includeReadsWithDeletionsInIsActivePileups) {
+            final AssemblyRegionArgumentCollection assemblyRegionArgs) {
         return (FlatMapFunction<Iterator<Shard<GATKRead>>, AssemblyRegionWalkerContext>) shardedReadIterator -> {
             final ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
             final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
@@ -94,14 +90,11 @@ public class FindAssemblyRegionsSpark {
                     .map(downsampledShardedRead -> {
                         final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(
                                 new ShardToMultiIntervalShardAdapter<>(downsampledShardedRead),
-                                header, reference, features, assemblyRegionEvaluator,
-                                assemblyRegionArgs.minAssemblyRegionSize, assemblyRegionArgs.maxAssemblyRegionSize,
-                                assemblyRegionArgs.assemblyRegionPadding, assemblyRegionArgs.activeProbThreshold,
-                                assemblyRegionArgs.maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups);
+                                header, reference, features, assemblyRegionEvaluator, assemblyRegionArgs);
                         return Utils.stream(assemblyRegionIter).map(assemblyRegion ->
                                 new AssemblyRegionWalkerContext(assemblyRegion,
-                                        new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),
-                                        new FeatureContext(features, assemblyRegion.getExtendedSpan()))).iterator();
+                                        new ReferenceContext(reference, assemblyRegion.getPaddedSpan()),
+                                        new FeatureContext(features, assemblyRegion.getPaddedSpan()))).iterator();
                     }).iterator();
             return Iterators.concat(iterators);
         };
@@ -120,7 +113,6 @@ public class FindAssemblyRegionsSpark {
      * @param assemblyRegionEvaluatorSupplierBroadcast evaluator used to determine whether a locus is active
      * @param shardingArgs the arguments for sharding reads
      * @param assemblyRegionArgs the arguments for finding assembly regions
-     * @param includeReadsWithDeletionsInIsActivePileups include reads with deletion at loci
      * @param shuffle whether to use a shuffle or not when sharding reads
      * @return an RDD of assembly regions
      */
@@ -135,14 +127,13 @@ public class FindAssemblyRegionsSpark {
             final Broadcast<Supplier<AssemblyRegionEvaluator>> assemblyRegionEvaluatorSupplierBroadcast,
             final AssemblyRegionReadShardArgumentCollection shardingArgs,
             final AssemblyRegionArgumentCollection assemblyRegionArgs,
-            final boolean includeReadsWithDeletionsInIsActivePileups,
             final boolean shuffle) {
         JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, sequenceDictionary, intervalShards, shardingArgs.readShardSize, shuffle);
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
 
         // 1. Calculate activity for each locus in the desired intervals, in parallel.
         JavaRDD<ActivityProfileStateRange> activityProfileStates = shardedReads.mapPartitions(getActivityProfileStatesFunction(referenceFileName, bFeatureManager, header,
-                assemblyRegionEvaluatorSupplierBroadcast, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups));
+                assemblyRegionEvaluatorSupplierBroadcast, assemblyRegionArgs));
 
         // 2. Group by contig. We need to do this so we can perform the band pass filter over the whole contig, so we
         // produce assembly regions that are identical to those produced by AssemblyRegionWalker.
@@ -183,8 +174,7 @@ public class FindAssemblyRegionsSpark {
             final Broadcast<FeatureManager> bFeatureManager,
             final SAMFileHeader header,
             final Broadcast<Supplier<AssemblyRegionEvaluator>> supplierBroadcast,
-            final AssemblyRegionArgumentCollection assemblyRegionArgs,
-            final boolean includeReadsWithDeletionsInIsActivePileups) {
+            final AssemblyRegionArgumentCollection assemblyRegionArgs) {
         return (FlatMapFunction<Iterator<Shard<GATKRead>>, ActivityProfileStateRange>) shardedReadIterator -> {
             final ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
             final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
@@ -201,8 +191,8 @@ public class FindAssemblyRegionsSpark {
                     .map(shardedRead -> {
                         final Iterator<ActivityProfileState> activityProfileStateIter = new ActivityProfileStateIterator(
                                 new ShardToMultiIntervalShardAdapter<>(shardedRead),
-                                header, reference, features, assemblyRegionEvaluator,
-                                includeReadsWithDeletionsInIsActivePileups);
+                                header, reference, features, assemblyRegionEvaluator
+                        );
                         return new ActivityProfileStateRange(shardedRead, activityProfileStateIter);
                     }).iterator();
         };
@@ -237,7 +227,7 @@ public class FindAssemblyRegionsSpark {
         // TODO: interfaces could be improved to avoid casting
         ReadlessAssemblyRegion readlessAssemblyRegion = (ReadlessAssemblyRegion) ((ShardBoundaryShard<GATKRead>) shard).getShardBoundary();
         int extension = Math.max(shard.getInterval().getStart() - shard.getPaddedInterval().getStart(), shard.getPaddedInterval().getEnd() - shard.getInterval().getEnd());
-        AssemblyRegion assemblyRegion = new AssemblyRegion(shard.getInterval(), Collections.emptyList(), readlessAssemblyRegion.isActive(), extension, header);
+        AssemblyRegion assemblyRegion = new AssemblyRegion(shard.getInterval(), readlessAssemblyRegion.isActive(), extension, header);
         assemblyRegion.addAll(Lists.newArrayList(downsampledShardedRead));
         return assemblyRegion;
     }
@@ -251,8 +241,8 @@ public class FindAssemblyRegionsSpark {
             final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
             return Utils.stream(assemblyRegionIter).map(assemblyRegion ->
                     new AssemblyRegionWalkerContext(assemblyRegion,
-                            new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),
-                            new FeatureContext(features, assemblyRegion.getExtendedSpan()))).iterator();
+                            new ReferenceContext(reference, assemblyRegion.getPaddedSpan()),
+                            new FeatureContext(features, assemblyRegion.getPaddedSpan()))).iterator();
         };
     }
 }

@@ -24,6 +24,7 @@ class MultivariateGaussian {
     private Matrix cachedSigmaInverse;
     final private double[] pVarInGaussian;
     int pVarInGaussianIndex;
+    final private static double EPSILON = 1e-100;
 
     public MultivariateGaussian( final int numVariants, final int numAnnotations  ) {
         mu = new double[numAnnotations];
@@ -102,9 +103,13 @@ class MultivariateGaussian {
 
 
     public void precomputeDenominatorForEvaluation() {
+        //if the contribution of this Gaussian is zero, then don't bother
+        if (pMixtureLog10 == Double.NEGATIVE_INFINITY) {
+            return;
+        }
         precomputeInverse();
         cachedDenomLog10 = Math.log10(Math.pow(2.0 * Math.PI, -1.0 * ((double) mu.length) / 2.0)) + Math.log10(Math.pow(sigma.det(), -0.5)) ;
-        if (Double.isNaN(cachedDenomLog10)) {
+        if (Double.isNaN(cachedDenomLog10) || sigma.det() < EPSILON) {
             throw new GATKException("Denominator for gaussian evaluation cannot be computed. One or more annotations (usually MQ) may have insufficient variance.");
         }
     }
@@ -127,6 +132,9 @@ class MultivariateGaussian {
     }
 
     public double evaluateDatumLog10( final VariantDatum datum ) {
+        if (pMixtureLog10 == Double.NEGATIVE_INFINITY) {
+            return Double.NEGATIVE_INFINITY;
+        }
         double sumKernel = 0.0;
         final double[] crossProdTmp = new double[mu.length];
         Arrays.fill(crossProdTmp, 0.0);

@@ -356,7 +356,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
     public void testGetHeaderLines() throws Exception {
         final Set<VCFHeaderLine> vcfHeaderLines = model.getVCFHeaderLines();
         Assert.assertEquals(vcfHeaderLines.size(), 1);
-        Assert.assertEquals(vcfHeaderLines.iterator().next(), new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE_NAME, "Represents any possible alternative allele at this location"));
+        Assert.assertEquals(vcfHeaderLines.iterator().next(), new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE_NAME, ReferenceConfidenceModel.NON_REF_ALLELE_DESCRIPTION));
     }
 
     @Test
@@ -614,7 +614,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
     private void checkReferenceModelResult(final RefConfData data, final List<VariantContext> contexts, final List<Integer> expectedDPs, final List<VariantContext> calls) {
         Assert.assertNotNull(contexts);
 
-        final SimpleInterval loc = data.getActiveRegion().getExtendedSpan();
+        final SimpleInterval loc = data.getActiveRegion().getPaddedSpan();
         final List<Boolean> seenBP = new ArrayList<>(Collections.nCopies(data.getActiveRegion().getSpan().size(), false));
 
         for ( int i = 0; i < loc.size(); i++ ) {

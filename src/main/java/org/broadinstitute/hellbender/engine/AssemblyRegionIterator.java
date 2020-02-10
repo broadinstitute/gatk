@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -39,11 +40,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
     private final ReferenceDataSource reference;
     private final FeatureManager features;
     private final AssemblyRegionEvaluator evaluator;
-    private final int minRegionSize;
-    private final int maxRegionSize;
-    private final int assemblyRegionPadding;
-    private final double activeProbThreshold;
-    private final int maxProbPropagationDistance;
+    final AssemblyRegionArgumentCollection assemblyRegionArgs;
     
     private AssemblyRegion readyRegion;
     private Queue<AssemblyRegion> pendingRegions;
@@ -56,63 +53,43 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
     /**
      * Constructs an AssemblyRegionIterator over a provided read shard
-     *
-     * @param readShard MultiIntervalShard containing the reads that will go into the assembly regions.
+     *  @param readShard MultiIntervalShard containing the reads that will go into the assembly regions.
      *                  Must have a MAPPED filter set on it.
      * @param readHeader header for the reads
      * @param reference source of reference bases (may be null)
      * @param features source of arbitrary features (may be null)
      * @param evaluator evaluator used to determine whether a locus is active
-     * @param minRegionSize minimum size of an assembly region
-     * @param maxRegionSize maximum size of an assembly region
-     * @param assemblyRegionPadding number of bases of padding on either side of an assembly region
-     * @param activeProbThreshold minimum probability for a locus to be considered active
-     * @param maxProbPropagationDistance upper limit on how many bases away probability mass can be moved around
-     *                                   when calculating the boundaries between active and inactive assembly regions
      */
     public AssemblyRegionIterator(final MultiIntervalShard<GATKRead> readShard,
                                   final SAMFileHeader readHeader,
                                   final ReferenceDataSource reference,
                                   final FeatureManager features,
                                   final AssemblyRegionEvaluator evaluator,
-                                  final int minRegionSize,
-                                  final int maxRegionSize,
-                                  final int assemblyRegionPadding,
-                                  final double activeProbThreshold,
-                                  final int maxProbPropagationDistance,
-                                  final boolean includeReadsWithDeletionsInIsActivePileups) {
+                                  final AssemblyRegionArgumentCollection assemblyRegionArgs) {
 
         Utils.nonNull(readShard);
         Utils.nonNull(readHeader);
         Utils.nonNull(evaluator);
-        Utils.validateArg(minRegionSize >= 1, "minRegionSize must be >= 1");
-        Utils.validateArg(maxRegionSize >= 1, "maxRegionSize must be >= 1");
-        Utils.validateArg(minRegionSize <= maxRegionSize, "minRegionSize must be <= maxRegionSize");
-        Utils.validateArg(assemblyRegionPadding >= 0, "assemblyRegionPadding must be >= 0");
-        Utils.validateArg(activeProbThreshold >= 0.0, "activeProbThreshold must be >= 0.0");
-        Utils.validateArg(maxProbPropagationDistance >= 0, "maxProbPropagationDistance must be >= 0");
+        assemblyRegionArgs.validate();
+
 
         this.readShard = readShard;
         this.readHeader = readHeader;
         this.reference = reference;
         this.features = features;
         this.evaluator = evaluator;
-        this.minRegionSize = minRegionSize;
-        this.maxRegionSize = maxRegionSize;
-        this.assemblyRegionPadding = assemblyRegionPadding;
-        this.activeProbThreshold = activeProbThreshold;
-        this.maxProbPropagationDistance = maxProbPropagationDistance;
+        this.assemblyRegionArgs = assemblyRegionArgs;
 
         this.readyRegion = null;
         this.previousRegionReads = null;
         this.pendingRegions = new ArrayDeque<>();
         this.readCachingIterator = new ReadCachingIterator(readShard.iterator());
         this.readCache = new ArrayDeque<>();
-        this.activityProfile = new BandPassActivityProfile(null, maxProbPropagationDistance, activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
+        this.activityProfile = new BandPassActivityProfile(assemblyRegionArgs.maxProbPropagationDistance, assemblyRegionArgs.activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
 
         // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
         // for uncovered locations. This is critical for reproducing GATK 3.x behavior!
-        this.libs = new LocusIteratorByState(readCachingIterator, DownsamplingMethod.NONE, false, ReadUtils.getSamplesFromHeader(readHeader), readHeader, includeReadsWithDeletionsInIsActivePileups);
+        this.libs = new LocusIteratorByState(readCachingIterator, DownsamplingMethod.NONE, false, ReadUtils.getSamplesFromHeader(readHeader), readHeader);
         final IntervalLocusIterator intervalLocusIterator = new IntervalLocusIterator(readShard.getIntervals().iterator());
         this.locusIterator = new IntervalAlignmentContextIterator(libs, intervalLocusIterator, readHeader.getSequenceDictionary());
 
@@ -148,7 +125,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
             // Ordering matters here: need to check for forceConversion before adding current pileup to the activity profile
             if ( ! activityProfile.isEmpty() ) {
                 final boolean forceConversion = pileup.getLocation().getStart() != activityProfile.getEnd() + 1;
-                pendingRegions.addAll(activityProfile.popReadyAssemblyRegions(assemblyRegionPadding, minRegionSize, maxRegionSize, forceConversion));
+                pendingRegions.addAll(activityProfile.popReadyAssemblyRegions(assemblyRegionArgs.assemblyRegionPadding, assemblyRegionArgs.minAssemblyRegionSize, assemblyRegionArgs.maxAssemblyRegionSize, forceConversion));
             }
 
             // Add the current pileup to the activity profile
@@ -161,7 +138,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
             // A pending region only becomes ready once our locus iterator has advanced beyond the end of its extended span
             // (this ensures that we've loaded all reads that belong in the new region)
-            if ( ! pendingRegions.isEmpty() && IntervalUtils.isAfter(pileup.getLocation(), pendingRegions.peek().getExtendedSpan(), readHeader.getSequenceDictionary()) ) {
+            if ( ! pendingRegions.isEmpty() && IntervalUtils.isAfter(pileup.getLocation(), pendingRegions.peek().getPaddedSpan(), readHeader.getSequenceDictionary()) ) {
                 nextRegion = pendingRegions.poll();
             }
         }
@@ -179,7 +156,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
             if ( ! activityProfile.isEmpty() ) {
                 // Pop the activity profile a final time with forceConversion == true
-                pendingRegions.addAll(activityProfile.popReadyAssemblyRegions(assemblyRegionPadding, minRegionSize, maxRegionSize, true));
+                pendingRegions.addAll(activityProfile.popReadyAssemblyRegions(assemblyRegionArgs.assemblyRegionPadding, assemblyRegionArgs.minAssemblyRegionSize, assemblyRegionArgs.maxAssemblyRegionSize, true));
             }
 
             // Grab the next pending region if there is one, unless we already have a region ready to go
@@ -201,7 +178,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         // First we need to check the previous region for reads that also belong in this region
         if ( previousRegionReads != null ) {
             for ( final GATKRead previousRegionRead : previousRegionReads ) {
-                if ( region.getExtendedSpan().overlaps(previousRegionRead) ) {
+                if ( region.getPaddedSpan().overlaps(previousRegionRead) ) {
                     region.add(previousRegionRead);
                 }
             }
@@ -217,7 +194,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
             // Stop once we encounter a read that starts after the end of the last region's span
             // (and leave it in the readCache)
-            if ( IntervalUtils.isAfter(nextRead, region.getExtendedSpan(), readHeader.getSequenceDictionary()) ) {
+            if ( IntervalUtils.isAfter(nextRead, region.getPaddedSpan(), readHeader.getSequenceDictionary()) ) {
                 break;
             }
 
@@ -226,7 +203,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
             // Add the read if it overlaps the region's extended span. If it doesn't, it must end before the
             // start of the region's extended span, so we discard it.
-            if ( region.getExtendedSpan().overlaps(nextRead) ) {
+            if ( region.getPaddedSpan().overlaps(nextRead) ) {
                 region.add(nextRead);
             }
         }

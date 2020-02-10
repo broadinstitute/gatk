@@ -91,21 +91,18 @@ public final class AssemblyResultSetUnitTest extends GATKBaseTest {
         for (final Map.Entry<Haplotype,AssemblyResult> entry : haplotypesAndResultSets.entrySet())
             subject.add(entry.getKey(),entry.getValue());
         subject.setRegionForGenotyping(original);
-        final SimpleInterval originalLocation = original.getExtendedSpan();
+        final SimpleInterval originalLocation = original.getPaddedSpan();
         final int length = originalLocation.size();
         final SimpleInterval newLocation = new SimpleInterval(originalLocation.getContig(),
                                                   originalLocation.getStart() + length / 2,
                                                   originalLocation.getEnd() - length / 2);
-        final AssemblyRegion newRegion = original.trim(newLocation);
+        final AssemblyRegion newRegion = original.trim(newLocation, newLocation);
 
         final Map<Haplotype,Haplotype> originalHaplotypesByTrimmed = new HashMap<>(haplotypesAndResultSets.size());
         for (final Haplotype h : haplotypesAndResultSets.keySet())
-            originalHaplotypesByTrimmed.put(h.trim(newRegion.getExtendedSpan()), h);
+            originalHaplotypesByTrimmed.put(h.trim(newRegion.getPaddedSpan()), h);
 
         final AssemblyResultSet trimmed = subject.trimTo(newRegion);
-
-        Assert.assertFalse(subject.wasTrimmed());
-        Assert.assertTrue(trimmed.wasTrimmed());
 
         for (final Haplotype h : trimmed.getHaplotypeList()) {
             Assert.assertEquals(h.getGenomeLocation(), newLocation);
@@ -116,14 +113,14 @@ public final class AssemblyResultSetUnitTest extends GATKBaseTest {
     @DataProvider(name="trimmingData")
     public Iterator<Object[]> trimmingData() {
         final AssemblyRegion activeRegion = new AssemblyRegion(new SimpleInterval("1",1000,1100), 25, header);
-        final int length = activeRegion.getExtendedSpan().size();
+        final int length = activeRegion.getPaddedSpan().size();
         final RandomDNA rnd = new RandomDNA(13); // keep it prepoducible by fixing the seed to lucky 13.
         final AssemblyRegionTestDataSet actd = new AssemblyRegionTestDataSet(10,new String(rnd.nextBases(length)),new String[] {
                 "Civar:*1T*" }, new String[0], new byte[0], new byte[0], new byte[0]);
 
         final List<Haplotype> haplotypes = actd.haplotypeList();
         for (final Haplotype h : haplotypes)
-            h.setGenomeLocation(activeRegion.getExtendedSpan());
+            h.setGenomeLocation(activeRegion.getPaddedSpan());
 
         final ReadThreadingGraph rtg = new ReadThreadingGraph(10);
         for (final Haplotype h : haplotypes)

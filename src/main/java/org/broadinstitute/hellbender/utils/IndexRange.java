@@ -40,7 +40,7 @@ public final class IndexRange {
      *     It won't ever be negative nor greater than {@link #to}.
      * </p>
      */
-    public final int from;
+    private int from;
 
     /**
      * Index following the last index included in the range.
@@ -49,7 +49,7 @@ public final class IndexRange {
      *     It won't ever be negative nor less than {@link #from}.
      * </p>
      */
-    public final int to;
+    private int to;
 
     /**
      * Creates a new range given its {@code from} and {@code to} indices.
@@ -60,10 +60,50 @@ public final class IndexRange {
      *                                  negative.
      */
     public IndexRange(final int fromIndex, final int toIndex) {
-        Utils.validateArg(fromIndex <= toIndex, "the range size cannot be negative");
-        Utils.validateArg(fromIndex >= 0, "the range cannot contain negative indices");
         from = fromIndex;
         to = toIndex;
+        validate();
+    }
+
+    public void shift(final int shift) {
+        to += shift;
+        from += shift;
+        validate();
+    }
+
+    public void shiftLeft(final int shift) {
+        shift(-shift);
+    }
+
+    public void shiftStart(final int shift) {
+        from += shift;
+        validate();
+    }
+
+    public void shiftStartLeft(final int shift) {
+        shiftStart(-shift);
+    }
+
+    public void shiftEnd(final int shift) {
+        to += shift;
+        validate();
+    }
+
+    public void shiftEndLeft(final int shift) {
+        shiftEnd(-shift);
+    }
+
+    public int getStart() {
+        return from;
+    }
+
+    public int getEnd() {
+        return to;
+    }
+
+    private void validate() {
+        Utils.validateArg(from <= to, "the range size cannot be negative");
+        Utils.validateArg(from >= 0, "the range cannot contain negative indices");
     }
 
     /**
@@ -171,6 +211,7 @@ public final class IndexRange {
         forEach(i -> {if (predicate.test(i)) result.add(i); } );
         return result;
     }
+
 
     @Override
     public boolean equals(final Object other) {

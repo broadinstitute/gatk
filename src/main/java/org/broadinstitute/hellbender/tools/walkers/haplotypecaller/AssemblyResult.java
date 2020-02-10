@@ -3,6 +3,9 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.AbstractReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+
+import java.util.Set;
 
 /**
  * Result of assembling, with the resulting graph and status
@@ -11,6 +14,8 @@ public final class AssemblyResult {
     private final Status status;
     private final AbstractReadThreadingGraph threadingGraph;
     private final SeqGraph graph;
+    private Set<Haplotype> discoveredHaplotypes;
+    private boolean containsSuspectHaplotypes;
 
     /**
      * Create a new assembly result
@@ -40,6 +45,22 @@ public final class AssemblyResult {
 
     public int getKmerSize() {
         return graph == null? threadingGraph.getKmerSize() : graph.getKmerSize();
+    }
+
+    public Set<Haplotype> getDiscoveredHaplotypes() {
+        return discoveredHaplotypes;
+    }
+
+    public void setDiscoveredHaplotypes(Set<Haplotype> discoveredHaplotypes) {
+        this.discoveredHaplotypes = discoveredHaplotypes;
+    }
+
+    public boolean containsSuspectHaplotypes() {
+        return containsSuspectHaplotypes;
+    }
+
+    public void setContainsSuspectHaplotypes(boolean containsSuspectHaplotypes) {
+        this.containsSuspectHaplotypes = containsSuspectHaplotypes;
     }
 
     /**

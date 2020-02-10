@@ -66,7 +66,7 @@ public class Path<V extends BaseVertex, E extends BaseEdge> {
         Utils.nonNull(p, "Path cannot be null");
         Utils.nonNull(edge, "Edge cannot be null");
         Utils.validateArg(p.graph.containsEdge(edge), () -> "Graph must contain edge " + edge + " but it doesn't");
-        if ( ! p.graph.getEdgeSource(edge).equals(p.lastVertex) ) { throw new IllegalStateException("Edges added to path must be contiguous."); }
+        Utils.validate( p.graph.getEdgeSource(edge).equals(p.lastVertex), "Edges added to path must be contiguous.");
 
         graph = p.graph;
         lastVertex = p.graph.getEdgeTarget(edge);
@@ -93,7 +93,8 @@ public class Path<V extends BaseVertex, E extends BaseEdge> {
         for (int i = 0; i < edges.size(); i++) {
             if ( ! p.graph.getEdgeSource(edges.get(i)).equals(tmpVertex) ) {
                 throw new IllegalStateException("Edges added to path must be contiguous.");
-            } tmpVertex = p.graph.getEdgeTarget(edges.get(i));
+            }
+            tmpVertex = p.graph.getEdgeTarget(edges.get(i));
         }
 
         graph = p.graph;
