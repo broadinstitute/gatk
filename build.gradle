@@ -137,7 +137,7 @@ def looksLikeWereInAGitRepository(){
 
 // Ensure that we have a clone of the git repository, and resolve any required git-lfs
 // resource files that are needed to run the build but are still lfs stub files.
-def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage) {
+def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage, skipGitCheck) {
     if (!JavaVersion.current().isJava8Compatible()) {
         throw new GradleException(
                 "Java 8 or later is required to build GATK, but ${JavaVersion.current()} was found. "
@@ -152,7 +152,7 @@ def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage) {
     if (!JavaVersion.current().isJava8() && !JavaVersion.current().isJava11()) {
         println("Warning: using Java ${JavaVersion.current()} but only Java 8 and Java 11 have been tested.")
     }
-    if (!looksLikeWereInAGitRepository()) {
+    if (!skipGitCheck && !looksLikeWereInAGitRepository() ) {
         throw new GradleException("This doesn't appear to be a git folder. " +
                 "The GATK Github repository must be cloned using \"git clone\" to run the build. " +
                 "\n$buildPrerequisitesMessage")
@@ -162,7 +162,12 @@ def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage) {
     resolveLargeResourceStubFiles(largeResourcesFolder, buildPrerequisitesMessage)
 }
 
-ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage)
+final isRelease = Boolean.getBoolean("release")
+final versionOverriden = System.getProperty("versionOverride") != null
+
+ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage, versionOverriden)
+version = (versionOverriden ? System.getProperty("versionOverride") : gitVersion().replaceAll(".dirty", "")) + (isRelease ?  "" : "-SNAPSHOT")
+
 
 configurations.all {
     resolutionStrategy {
@@ -398,9 +403,6 @@ def createGatkSymlinks(destinationDir, archivePath, suffix, baseJarName, seconda
     createSymlinks(archivePath.getAbsolutePath(), symlinkLocation)
     createSymlinks(archivePath.getAbsolutePath(), symlinkLocation2)
 }
-
-final isRelease = Boolean.getBoolean("release")
-version = (isRelease ? gitVersion() : gitVersion() + "-SNAPSHOT").replaceAll(".dirty", "")
 
 logger.info("build for version:" + version)
 group = 'org.broadinstitute'
