@@ -95,12 +95,10 @@ def _build_tensor_from_file(file_name: str, target_column: str, normalization: b
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if error:
             raise error
+        if normalization:
+            tm.normalization = {'mean': mean, 'std': std}
         try:
-            t = table[os.path.basename(hd5.filename).replace('.hd5', '')]
-            if normalization:
-                tm.normalization = {'mean': mean, 'std': std}
-            tn = t
-            return tn
+            return table[os.path.basename(hd5.filename).replace('.hd5', '')].copy()
         except KeyError:
             raise KeyError(f'User id not in file {file_name}.')
     return tensor_from_file
