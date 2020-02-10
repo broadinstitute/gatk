@@ -1,8 +1,7 @@
-package org.broadinstitute.hellbender.engine;
+package org.broadinstitute.hellbender.engine.progressmeter;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,17 +16,17 @@ import java.util.concurrent.TimeUnit;
  * at a configurable time interval.
  *
  * Clients set the update interval at construction, which controls how many seconds must elapse
- * before printing an update. Then call {@link #start} at traversal start, {@link #update(Locatable)}
+ * before printing an update. Then call {@link #start} at traversal start, {@link #update(T)}
  * after processing each record from the primary input, and {@link #stop} at traversal end to print
  * summary statistics.
  *
- * Note that {@link #start} must only be called once, before any {@link #update(Locatable)}.
- * Note no {@link #update(Locatable)} must be called after {@link #stop}.
+ * Note that {@link #start} must only be called once, before any {@link #update(T)}.
+ * Note no {@link #update(T)} must be called after {@link #stop}.
  *
  * All output is made at INFO level via log4j.
  */
-public final class ProgressMeter {
-    protected static final Logger logger = LogManager.getLogger(ProgressMeter.class);
+public abstract class ProgressMeter<T> {
+    private static final Logger logger = LogManager.getLogger(ProgressMeter.class);
 
     /**
      * By default, we output a line to the logger after this many seconds have elapsed
@@ -76,10 +75,9 @@ public final class ProgressMeter {
     private long lastPrintTimeMs = 0L;
 
     /**
-     * The genomic location of the most recently processed record, or null if the most recent record had no location.
-     * Updated only when we actually output a line to the logger.
+     * The most recently processed record, or null if the most recent update was a null.
      */
-    private Locatable currentLocus = null;
+    private T currentRecord = null;
 
     /**
      * The number of times we've outputted a status line to the logger via {@link #printProgress}.
@@ -149,7 +147,7 @@ public final class ProgressMeter {
         Utils.validate(millisecondsBetweenUpdates > 0, "millisecondsBetweenUpdates must be > 0");
 
         this.scheduler = Executors.newScheduledThreadPool(1,
-                                                          new ThreadFactoryBuilder().setDaemon(true).setNameFormat("Progress Meter").build());
+                new ThreadFactoryBuilder().setDaemon(true).setNameFormat("Progress Meter").build());
     }
 
     /**
@@ -182,7 +180,7 @@ public final class ProgressMeter {
         lastPrintTimeMs = startTimeMs;
         numRecordsProcessed = 0L;
         numLoggerUpdates = 0L;
-        currentLocus = null;
+        currentRecord = null;
 
         scheduler.scheduleAtFixedRate(this::printProgress, millisecondsBetweenUpdates, millisecondsBetweenUpdates, TimeUnit.MILLISECONDS);
     }
@@ -198,19 +196,19 @@ public final class ProgressMeter {
      * @param currentLocus the genomic location of the record just processed or null if the most recent record had no location.
      * @throws IllegalStateException if the meter has not been started yet or has been stopped already
      */
-    public synchronized void update( final Locatable currentLocus ) {
+    public synchronized void update( final T currentLocus ) {
         update(currentLocus, 1);
     }
 
     /**
      * Signal to the progress meter that several additional records hav been processed. Will output
-     * statistics to the logger roughly every {@link #secondsBetweenUpdates} seconds.
+     * statistics to the logger roughly every {@link #millisecondsBetweenUpdates} seconds.
      * @param currentLocus the genomic location of the last record just processed or null if the most recent
      *                     record had no location.
      * @param recordCountIncrease number of new records processed.
      * @throws IllegalStateException if the meter has not been started yet or has been stopped already
      */
-    public synchronized void update( final Locatable currentLocus, final long recordCountIncrease ) {
+    public synchronized void update( final T currentLocus, final long recordCountIncrease ) {
         if ( disabled ) {
             return;
         }
@@ -218,7 +216,7 @@ public final class ProgressMeter {
         Utils.validate(started, "the progress meter has not been started yet");
         Utils.validate( !stopped, "the progress meter has been stopped already");
         ++numRecordsProcessed;
-        this.currentLocus = currentLocus;
+        this.currentRecord = currentLocus;
     }
 
     /**
@@ -258,8 +256,17 @@ public final class ProgressMeter {
         lastPrintTimeMs = currentTimeMs;
         ++numLoggerUpdates;
         logger.info(String.format("%20s  %15.1f  %20d  %15.1f",
-                                  currentLocusString(), elapsedTimeInMinutes(), numRecordsProcessed, processingRate()));
+                                  formatRecord(currentRecord), elapsedTimeInMinutes(), numRecordsProcessed, processingRate()));
     }
+
+    /**
+     * Format the current record into a string for printing.  This should ideally give the user some information about
+     * the state of progress.
+     *
+     * @param currentRecord the most recent update the ProgressMeter has recieved.
+     * @return a String summarizing the state of progress from this given record.
+     */
+    protected abstract String formatRecord(final T currentRecord);
 
     /**
      * @return the total minutes elapsed since we called {@link #start}
@@ -304,15 +311,6 @@ public final class ProgressMeter {
     @VisibleForTesting
     long getNumRecordsProcessed(){
         return numRecordsProcessed;
-    }
-
-
-    /**
-     * @return genomic location of the most recent record formatted for output to the logger
-     */
-    private String currentLocusString() {
-        return currentLocus != null ? currentLocus.getContig() + ":" + currentLocus.getStart() :
-                                      "unmapped";
     }
 
     /**

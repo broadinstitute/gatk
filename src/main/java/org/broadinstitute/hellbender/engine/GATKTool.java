@@ -28,6 +28,9 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.engine.progressmeter.LocatableProgressMeter;
+import org.broadinstitute.hellbender.engine.progressmeter.ProgressMeter;
+import org.broadinstitute.hellbender.engine.progressmeter.LocatableProgressMeter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
@@ -224,10 +227,10 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Progress meter to print out traversal statistics. Subclasses must invoke
-     * {@link ProgressMeter#update(Locatable)} after each record processed from
+     * {@link LocatableProgressMeter#update(Locatable)} after each record processed from
      * the primary input in their {@link #traverse} method.
      */
-    protected ProgressMeter progressMeter;
+    protected LocatableProgressMeter progressMeter;
 
     /**
      * Return the list of GATKCommandLinePluginDescriptors to be used for this tool.
@@ -600,7 +603,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Does this tool want to disable the progress meter? If so, override here to return true
-     * 
+     *
      * @return true if this tools wants to disable progress meter output, otherwise false
      */
     public boolean disableProgressMeter() {
@@ -740,7 +743,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Helper method to initialize the progress meter without exposing engine level arguements.
      */
     protected final void initializeProgressMeter(final String progressMeterRecordLabel) {
-        progressMeter = new ProgressMeter(secondsBetweenProgressUpdates, disableProgressMeter());
+        progressMeter = new LocatableProgressMeter(secondsBetweenProgressUpdates, disableProgressMeter());
         progressMeter.setRecordLabel(progressMeterRecordLabel);
     }
 

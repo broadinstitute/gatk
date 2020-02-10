@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.utils.codecs;
 
+import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.LocationAware;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.tribble.FeatureCodecHeader;
 import htsjdk.tribble.index.tabix.TabixFormat;
-import org.broadinstitute.hellbender.engine.ProgressMeter;
+import org.broadinstitute.hellbender.engine.progressmeter.LocatableProgressMeter;
+import org.broadinstitute.hellbender.engine.progressmeter.ProgressMeter;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,7 +20,7 @@ import java.io.InputStream;
 public final class ProgressReportingDelegatingCodec<A extends Feature, B> implements FeatureCodec<A, B> {
     private final FeatureCodec<A, B> delegatee;
 
-    private final ProgressMeter pm;
+    private final ProgressMeter<Locatable> pm;
 
     //Note: this default constructor is needed for the FeatureManager when it loads codecs.
     @SuppressWarnings("unused")
@@ -32,7 +34,7 @@ public final class ProgressReportingDelegatingCodec<A extends Feature, B> implem
             throw new IllegalArgumentException("secondsBetweenUpdates must be > 0.0");
         }
         this.delegatee = delegatee;
-        this.pm = new ProgressMeter(secondsBetweenUpdates);
+        this.pm = new LocatableProgressMeter(secondsBetweenUpdates);
     }
 
     @Override
