@@ -29,10 +29,24 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
     private final String countScript = "/dsde/working/tsato/consensus/tp53/test/bams/count_MIs.sh";
 
     @Test
+    public void testTemp() {
+        final File out = new File("/dsde/working/tsato/consensus/tp53/test/tmp/test.bam");
+        final String cloud = "gs://broad-dsde-methods/cromwell-execution-39/SpikeinNA12878/d6425c0d-4282-4a7b-bee9-f59134e500aa/call-GroupCoffee/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.bam";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument("R", hg19)
+                .addArgument("I", cloud)
+                .addArgument("DS", "0.5")
+                .addArgument("O", out.getAbsolutePath());
+        runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
+    }
+
+    @Test
     public void test(){
         final File out = new File("/dsde/working/tsato/consensus/tp53/test/tmp/test.bam");
         final File countTableBefore = createTempFile("before", "csv");
         runProcess(new ProcessController(), new String[]{ countScript, medium, countTableBefore.getAbsolutePath()});
+        final String cloud = "gs://broad-dsde-methods/cromwell-execution-39/SpikeinNA12878/d6425c0d-4282-4a7b-bee9-f59134e500aa/call-GroupCoffee/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.bam";
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addArgument("R", hg19)
