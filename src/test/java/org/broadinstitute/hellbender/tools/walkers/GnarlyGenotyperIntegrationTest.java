@@ -71,7 +71,7 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         Utils.nonNull(expectedVC, "expectedVC");
         Assert.assertEquals(actualVC.size(), expectedVC.size());
         for (int i = 0; i < actualVC.size(); i++) {
-            VariantContextTestUtils.assertVariantContextsAreEqual(actualVC.get(i), expectedVC.get(i), new ArrayList<String>(), new ArrayList<String>());
+            VariantContextTestUtils.assertVariantContextsAreEqual(actualVC.get(i), expectedVC.get(i), Collections.EMPTY_LIST, Collections.EMPTY_LIST);
         }
     }
 
