@@ -163,11 +163,14 @@ def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage, sk
 }
 
 final isRelease = Boolean.getBoolean("release")
-final versionOverriden = System.getProperty("versionOverride") != null
+final versionOverridden = System.getProperty("versionOverride") != null
 
-ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage, versionOverriden)
-version = (versionOverriden ? System.getProperty("versionOverride") : gitVersion().replaceAll(".dirty", "")) + (isRelease ?  "" : "-SNAPSHOT")
+ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage, versionOverridden)
+version = (versionOverridden ? System.getProperty("versionOverride") : gitVersion().replaceAll(".dirty", "")) + (isRelease ?  "" : "-SNAPSHOT")
 
+if (versionOverridden) {
+    println "Version number overridden as " + version
+}
 
 configurations.all {
     resolutionStrategy {
