@@ -388,7 +388,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 perAlleleQuals.add((int)Math.round(AFresult.log10ProbOnlyRefAlleleExists()*-10));
             }
 
-            attributes.put(GATKVCFConstants.AS_QUAL_KEY, perAlleleQuals.stream().mapToInt(Math::round).boxed().collect(Collectors.toList()));
+            attributes.put(GATKVCFConstants.AS_QUAL_KEY, perAlleleQuals.stream().mapToInt(Math::round).collect(Collectors.toList()));
         }
 
         if ( configuration.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED ) {
