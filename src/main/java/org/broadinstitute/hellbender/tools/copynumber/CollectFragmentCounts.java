@@ -221,7 +221,7 @@ public final class CollectFragmentCounts extends ReadWalker {
     private List<SimpleInterval> getAlignmentIntervals(final GATKRead read) {
 
         if (spliced) {
-            final IntervalList alignmentIntervals = new IntervalList(getMasterSequenceDictionary());
+            IntervalList alignmentIntervals = new IntervalList(getMasterSequenceDictionary());
             final SAMRecord rec = read.convertToSAMRecord(getHeaderForReads());
             if(SAMUtils.getMateCigar(rec) == null) {
                 throw new GATKException("Mate cigar must be present if using spliced reads");
@@ -245,7 +245,7 @@ public final class CollectFragmentCounts extends ReadWalker {
                 }
             }
             if (overlapsMate) {
-                alignmentIntervals.unique();
+                alignmentIntervals = alignmentIntervals.uniqued();
             }
             return alignmentIntervals.getIntervals().stream().map(i -> new SimpleInterval(i.getContig(), i.getStart(), i.getEnd())).collect(Collectors.toList());
         } else {
@@ -259,9 +259,6 @@ public final class CollectFragmentCounts extends ReadWalker {
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
 
         if ((!read.isReverseStrand() || !inGoodPair(read))) {
-            if (read.getStart()> 14382 && read.getEnd()<14836) {
-                System.out.println();
-            }
             final List<SimpleInterval> alignmentIntervals = getAlignmentIntervals(read);
 
             List<Gff3Feature> features = featureContext.getValues(gffFile);

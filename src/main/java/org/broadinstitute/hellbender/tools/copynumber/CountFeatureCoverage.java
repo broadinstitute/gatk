@@ -134,7 +134,7 @@ public class CountFeatureCoverage extends FeatureWalker<Gff3Feature> {
     private List<SimpleInterval> getAlignmentIntervals(final GATKRead read) {
 
         if (spliced) {
-            final IntervalList alignmentIntervals = new IntervalList(getMasterSequenceDictionary());
+            IntervalList alignmentIntervals = new IntervalList(getMasterSequenceDictionary());
             final SAMRecord rec = read.convertToSAMRecord(getHeaderForReads());
 
             if(SAMUtils.getMateCigar(rec) == null) {
@@ -159,7 +159,7 @@ public class CountFeatureCoverage extends FeatureWalker<Gff3Feature> {
                 }
             }
             if (overlapsMate) {
-                alignmentIntervals.unique();
+                alignmentIntervals = alignmentIntervals.uniqued();
             }
             return alignmentIntervals.getIntervals().stream().map(i -> new SimpleInterval(i.getContig(), i.getStart(), i.getEnd())).collect(Collectors.toList());
         } else {
