@@ -5,7 +5,12 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Describes the results of the AFCalc
@@ -131,11 +136,16 @@ public final class AFCalculationResult {
     }
 
     /**
-     * Are we confident that an allele is present
+     * Are we confident that an allele is present?
      */
     public boolean passesThreshold(final Allele allele, final double phredScaleQualThreshold) {
         Utils.nonNull(allele);
-        return getLog10PosteriorOfAlleleAbsent(allele) + EPSILON < QualityUtils.qualToErrorProbLog10(phredScaleQualThreshold);
+        if( QualityUtils.qualToErrorProb(phredScaleQualThreshold) < 1e-1) {
+              // using the approximation that log(1+x) ~ x for small values of x
+            return getLog10PosteriorOfAlleleAbsent(allele) - EPSILON < -QualityUtils.qualToErrorProb(phredScaleQualThreshold);
+        } else {
+            return getLog10PosteriorOfAlleleAbsent(allele) - EPSILON < Math.log10(1 - QualityUtils.qualToErrorProb(phredScaleQualThreshold));
+        }
     }
 
     /**

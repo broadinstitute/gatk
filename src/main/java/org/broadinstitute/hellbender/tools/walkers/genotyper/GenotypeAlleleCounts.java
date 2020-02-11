@@ -671,18 +671,18 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      * alleles 1 and 3 are absent, so we perform {@code action} on 1 and 3.
      */
     public void forEachAbsentAlleleIndex(final IntConsumer action, final int alleleCount) {
-        int presentAlleleIndex = 0;
-        int presentAllele = sortedAlleleCounts[0];
+        int currentAlleleIndex = 0;
+        int currentAllele = sortedAlleleCounts[0];
 
         for (int n = 0; n < alleleCount; n++) {
-            // if we find n in sortedAlleleCounts, it is present, so we move presentAllele to the next
+            // if we find n in sortedAlleleCounts, it is present, so we move currentAllele to the next
             // index in sortedAlleleCounts and skip the allele; otherwise the allele is absent and we perform the action on it.
-            if (n == presentAllele) {
+            if (n == currentAllele) {
                 // if we haven't exhausted all the present alleles, move to the next one.
                 // Note that distinctAlleleCount == sortedAlleleCounts.length/2
-                if (++presentAlleleIndex < distinctAlleleCount) {
+                if (++currentAlleleIndex < distinctAlleleCount) {
                     // every other entry in sortedAlleleCounts is an allele index; hence we multiply by 2
-                    presentAllele = sortedAlleleCounts[2 * presentAlleleIndex];
+                    currentAllele = sortedAlleleCounts[2 * currentAlleleIndex];
                 }
                 continue;
             }
@@ -693,6 +693,4 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
     public double sumOverAlleleIndicesAndCounts(final IntToDoubleBiFunction func) {
         return new IndexRange(0, distinctAlleleCount).sum(n -> func.apply(sortedAlleleCounts[2*n], sortedAlleleCounts[2*n+1]));
     }
-
-
 }
