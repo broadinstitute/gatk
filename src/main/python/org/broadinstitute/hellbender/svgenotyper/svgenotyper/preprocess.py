@@ -3,12 +3,12 @@ import pandas as pd
 import pyro
 import torch
 
-from .constants import SVTypes
 from . import constants
+from .constants import SVTypes
+from .model import SVGenotyperData
 
 
-def create_tensors(svtype: SVTypes,
-                   vids_list: list,
+def create_tensors(vids_list: list,
                    gt_list: list,
                    data_list: list,
                    cnlp_list: list,
@@ -39,17 +39,6 @@ def create_tensors(svtype: SVTypes,
     samples_np = np.array(samples_list, dtype='str')
     vids_np = np.array(vids_list, dtype='str')
 
-    filtered_idx = (svtype_t == svtype).nonzero().flatten()
-    gt_t = gt_t[filtered_idx, :]
-    pe_t = pe_t[filtered_idx, :]
-    sr1_t = sr1_t[filtered_idx, :]
-    sr2_t = sr2_t[filtered_idx, :]
-    ncn_t = ncn_t[filtered_idx, :]
-    cnlp_t = cnlp_t[filtered_idx, :, :]
-    svlen_t = svlen_t[filtered_idx]
-    svtype_t = svtype_t[filtered_idx]
-    vids_np = vids_np[filtered_idx.cpu()]
-
     return gt_t, pe_t, sr1_t, sr2_t, ncn_t, cnlp_t, svlen_t, svtype_t, mean_count_t, samples_np, vids_np
 
 
@@ -63,17 +52,9 @@ def compute_preprocessed_tensors(k: int,
                                  cnlp_t: torch.Tensor,
                                  ncn_t: torch.Tensor,
                                  svtype_t: torch.Tensor,
-                                 device: str):
-    pyro.enable_validation(True)
-
-    num_variants = pe_t.shape[0]
-    num_samples = pe_t.shape[1]
-
+                                 device: str) -> SVGenotyperData:
     # Per-base depth
-    depth_raw_t = mean_count_t.squeeze(-1).to(dtype=torch.get_default_dtype(), device=device)
-
-    # Depth per copy
-    depth_t = depth_raw_t * 0.5
+    depth_t = 0.5 * mean_count_t.squeeze(-1).to(dtype=torch.get_default_dtype(), device=device)
 
     # Copy state posterior probabilities
     cn_prob_t = torch.exp(cnlp_t / (-10. * torch.log10(torch.tensor(np.exp(1.), device=device))))
@@ -119,4 +100,5 @@ def compute_preprocessed_tensors(k: int,
 
     rd_gt_prob_t += depth_dilution_factor
     rd_gt_prob_t = rd_gt_prob_t / rd_gt_prob_t.sum(dim=-1).unsqueeze(-1)
-    return num_variants, num_samples, pe_t, sr1_t, sr2_t, depth_t, rd_gt_prob_t
+
+    return SVGenotyperData(pe_t, sr1_t, sr2_t, depth_t, rd_gt_prob_t)
