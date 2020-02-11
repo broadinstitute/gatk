@@ -7,6 +7,7 @@ import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.tribble.readers.LineIterator;
+import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -892,7 +893,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
             exportConfigurationBuilder.setVidMapping(vidMapPB);
         }
 
-        return new GenomicsDBFeatureReader<>(exportConfigurationBuilder.build(), new VCFCodec(), Optional.empty());
+        return new GenomicsDBFeatureReader<>(exportConfigurationBuilder.build(), new BCF2Codec(), Optional.empty());
     }
 
     private static FeatureReader<VariantContext> getGenomicsDBFeatureReader(
