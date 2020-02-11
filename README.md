@@ -68,7 +68,7 @@ releases of the toolkit.
       suite, you can skip this step since the build itself will use git-lfs to download the minimal set of large `lfs`
       resource files required to complete the build. The test resources will not be downloaded, but this greatly reduces
       the size of the download.
-    * Gradle 3.1 or greater. We recommend using the `./gradlew` script which will
+    * Gradle 5.6. We recommend using the `./gradlew` script which will
       download and use an appropriate gradle version automatically (see examples below).
     * R 3.2.5 (needed for running the test suite)
 * Pre-packaged Docker images with all needed dependencies installed can be found on
@@ -527,7 +527,8 @@ To perform an upload, use
 ./gradlew uploadArchives
 ```
 
-Currently all builds are considered snapshots.  The archive name is based off of `git describe`.
+Builds are considered snapshots by default.  You can mark a build as a release build by setting `-Drelease=true`.  
+The archive name is based off of `git describe`.
 
 #### <a name="docker_building">Building GATK4 Docker images</a>
 
@@ -582,8 +583,6 @@ We welcome all contributions to the GATK project. The contribution can be a [iss
 or a [pull request](https://github.com/broadinstitute/gatk/pulls). If you're not a committer, you will 
 need to [make a fork](https://help.github.com/articles/fork-a-repo/) of the gatk repository 
 and [issue a pull request](https://help.github.com/articles/be-social/) from your fork.
-
-To become a committer, you need to make several high-quality code contributions and be approved by the current committers.
 
 For ideas on what to contribute, check issues labeled ["Help wanted (Community)"](https://github.com/broadinstitute/gatk/issues?q=is%3Aopen+is%3Aissue+label%3A%22Help+Wanted+%28Community%29%22). Comment on the issue to indicate you're interested in contibuting code and for sharing your questions and ideas.
 
