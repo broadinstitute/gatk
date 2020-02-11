@@ -14,3 +14,4 @@ apache-beam[gcp]==2.12.0
 google-cloud-storage==1.13.0
 ipywidgets==7.5.1
 bokeh
+pytest
