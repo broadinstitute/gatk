@@ -230,7 +230,7 @@ public final class MergeSVCalls extends GATKTool {
         featureDataSource.setIntervalsForTraversal(getTraversalIntervals());
         return featureDataSource;
     }
-    
+
     private void writeVariants() {
         final SVCallRecordCodec callRecordCodec = new SVCallRecordCodec();
         try (final PrintStream writer = new PrintStream(outputFile)) {
