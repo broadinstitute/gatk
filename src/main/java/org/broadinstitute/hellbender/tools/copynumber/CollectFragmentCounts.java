@@ -184,8 +184,9 @@ public final class CollectFragmentCounts extends ReadWalker {
                 if (geneIDSet.contains(geneID)) {
                     logger.warn("geneid " + geneID + " is not unique, consists of multiple disjoint regions ");
                 }
-                featureCountsMap.put(getBareBonesFeature(feature), MutablePair.of(0.0,0.0));
-                featureOverlapDetector.addLhs(feature, feature);
+                final Gff3Feature bareBonesFeature = getBareBonesFeature(feature);
+                featureCountsMap.put(bareBonesFeature, MutablePair.of(0.0,0.0));
+                featureOverlapDetector.addLhs(bareBonesFeature, bareBonesFeature);
                 geneIDSet.add(geneID);
             }
         }
