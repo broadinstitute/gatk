@@ -11,6 +11,7 @@ import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.tribble.gff.Gff3BaseData;
 import htsjdk.tribble.gff.Gff3Feature;
@@ -138,6 +139,8 @@ public final class CollectFragmentCounts extends ReadWalker {
 
     final private Map<Gff3Feature, MutablePair<Double, Double>> featureCountsMap = new LinkedHashMap<>();
 
+    final private OverlapDetector<Gff3Feature> featureOverlapDetector = new OverlapDetector(0,0);
+
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> readFilters = new ArrayList<>(super.getDefaultReadFilters());
@@ -182,6 +185,7 @@ public final class CollectFragmentCounts extends ReadWalker {
                     logger.warn("geneid " + geneID + " is not unique, consists of multiple disjoint regions ");
                 }
                 featureCountsMap.put(getBareBonesFeature(feature), MutablePair.of(0.0,0.0));
+                featureOverlapDetector.addLhs(feature, feature);
                 geneIDSet.add(geneID);
             }
         }
@@ -193,6 +197,9 @@ public final class CollectFragmentCounts extends ReadWalker {
 
     @Override
     public SimpleInterval getReadInterval(final GATKRead read) {
+        if (spliced) {
+            return super.getReadInterval(read);
+        }
         if (read.isUnmapped()) {
             return null;
         }
@@ -221,7 +228,7 @@ public final class CollectFragmentCounts extends ReadWalker {
     private List<SimpleInterval> getAlignmentIntervals(final GATKRead read) {
 
         if (spliced) {
-            IntervalList alignmentIntervals = new IntervalList(getMasterSequenceDictionary());
+            final IntervalList alignmentIntervals = new IntervalList(getMasterSequenceDictionary());
             final SAMRecord rec = read.convertToSAMRecord(getHeaderForReads());
             if(SAMUtils.getMateCigar(rec) == null) {
                 throw new GATKException("Mate cigar must be present if using spliced reads");
@@ -245,7 +252,7 @@ public final class CollectFragmentCounts extends ReadWalker {
                 }
             }
             if (overlapsMate) {
-                alignmentIntervals = alignmentIntervals.uniqued();
+                alignmentIntervals.unique();
             }
             return alignmentIntervals.getIntervals().stream().map(i -> new SimpleInterval(i.getContig(), i.getStart(), i.getEnd())).collect(Collectors.toList());
         } else {
@@ -258,10 +265,11 @@ public final class CollectFragmentCounts extends ReadWalker {
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
 
-        if ((!read.isReverseStrand() || !inGoodPair(read))) {
+        if ((!spliced || !read.isReverseStrand() || !inGoodPair(read))) {
             final List<SimpleInterval> alignmentIntervals = getAlignmentIntervals(read);
 
-            List<Gff3Feature> features = featureContext.getValues(gffFile);
+            //List<Gff3Feature> features = featureContext.getValues(gffFile);
+            Set<Gff3Feature> features = featureOverlapDetector.getOverlaps(getReadInterval(read));
 
             final Strand fragmentStrand = getFragmentStrand(read);
 
