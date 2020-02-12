@@ -63,7 +63,7 @@ public class Evoquer extends GATKTool {
     public static final String DEFAULT_PROJECT_ID = "broad-dsp-spec-ops";
 
     public static final int DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM = 1000000;
-    
+
     //==================================================================================================================
     // Private Static Members:
 
@@ -84,7 +84,7 @@ public class Evoquer extends GATKTool {
             optional = true
     )
     private String projectID = null;
-    
+
     @Argument(
             fullName = "dataset-map",
             doc = "Path to a file containing a mapping from contig name to BigQuery dataset name. Each line should consist of a contig name, followed by a tab, followed by a dataset name.",
@@ -142,6 +142,34 @@ public class Evoquer extends GATKTool {
     private boolean useOptimizedQuery = true;
 
     @Argument(
+            fullName = "use-cohort-extract-query",
+            doc = "Use the cohort extraction query against BigQuery",
+            optional = true
+    )
+    private boolean useCohortExtractQuery = false;
+
+    @Argument(
+            fullName = "cohort-extract-filter-table",
+            doc = "Fully qualified name of the filtering table to use for cohort extraction",
+            optional = true
+    )
+    private String filteringFQTableName = null;
+
+    @Argument(
+            fullName = "use-model-feature-extract-query",
+            doc = "Use the VQSR model feature extraction query against BigQuery",
+            optional = true
+    )
+    private boolean useModelFeatureExtractQuery = false;
+
+    @Argument(
+            fullName = "training-sites-only",
+            doc = "For VQSR model feature extraction, only extract training sites",
+            optional = true
+    )
+    private boolean trainingSitesOnly = false;
+
+    @Argument(
             fullName = "run-query-only",
             doc = "If true, just do the query against BigQuery and retrieve the resulting records, but don't write a VCF",
             optional = true)
@@ -152,6 +180,12 @@ public class Evoquer extends GATKTool {
             doc = "If true, don't run the Gnarly Genotyper after combining variant records for each site",
             optional = true)
     private boolean disableGnarlyGenotyper = false;
+
+    @Argument(
+            fullName = "enable-variant-annotator",
+            doc = "If true, perform ChromosomeCount annotation (AC/AN/AF) for variant context, not necessary if running Gnarly",
+            optional = true)
+    private boolean enableVariantAnnotator = false;
 
     @Argument(
             fullName = "run-query-in-batch-mode",
@@ -228,7 +262,7 @@ public class Evoquer extends GATKTool {
                 logger.info("Disabling index creation on the output VCF, since this tool writes an unsorted VCF");
                 createOutputVariantIndex = false;
             }
-            
+
             vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
 
             // Set up our EvoquerEngine:
@@ -242,9 +276,14 @@ public class Evoquer extends GATKTool {
                     reference,
                     sampleTableName,
                     doLocalSort,
+                    useCohortExtractQuery,
+                    filteringFQTableName,
+                    useModelFeatureExtractQuery,
+                    trainingSitesOnly,
                     localSortMaxRecordsInRam,
                     runQueryOnly,
                     disableGnarlyGenotyper,
+                    enableVariantAnnotator,
                     keepAllSitesInGnarlyGenotyper,
                     runQueryInBatchMode,
                     printDebugInformation,
@@ -298,7 +337,7 @@ public class Evoquer extends GATKTool {
             logger.info(String.format("***Processed %d total sites", evoquerEngine.getTotalNumberOfSites()));
             logger.info(String.format("***Processed %d total variants", evoquerEngine.getTotalNumberOfVariants()));
         }
-        
+
         // Close up our writer if we have to:
         if ( vcfWriter != null ) {
             vcfWriter.close();
@@ -318,9 +357,9 @@ public class Evoquer extends GATKTool {
 
             for ( final String line : lines ) {
                 final String[] split = line.split("\\s+");
-                if ( split.length != 4 || split[0].trim().isEmpty() || split[1].trim().isEmpty() || split[2].trim().isEmpty() || split[3].trim().isEmpty() ) {
+                if ( split.length < 4 || split.length > 5 || split[0].trim().isEmpty() || split[1].trim().isEmpty() || split[2].trim().isEmpty() || split[3].trim().isEmpty() ) {
                     throw new UserException.BadInput("Dataset map file " + datasetMapFile + " contains a malformed line: \"" + line + "\". " +
-                            "Format should be: \"contig  dataset  petTableName  vetTableName\"");
+                            "Format should be: \"contig  dataset  petTableName  vetTableName  [altAlleleTableName]\"");
                 }
 
                 final String contig = split[0];
@@ -328,11 +367,14 @@ public class Evoquer extends GATKTool {
                 final String contigPetTableName = split[2];
                 final String contigVetTableName = split[3];
 
+                // provide default for backwards compatibility
+                final String contigAltAlleleTableName = (split.length == 5)?split[4]:"alt_allele";
+
                 if ( sequenceDictionary.getSequenceIndex(contig) == -1 ) {
                     throw new UserException.BadInput("Dataset map file " + datasetMapFile + " contains a contig not in our dictionary: " + contig);
                 }
 
-                datasetMap.put(contig, new EvoquerDataset(contigDataset, contigPetTableName, contigVetTableName));
+                datasetMap.put(contig, new EvoquerDataset(contigDataset, contigPetTableName, contigVetTableName, contigAltAlleleTableName));
             }
         } catch (IOException e) {
             throw new UserException.CouldNotReadInputFile(datasetMapFile, e);
@@ -345,7 +387,7 @@ public class Evoquer extends GATKTool {
         if ( uri == null ) {
             return null;
         }
-        
+
         try {
             final Path path = IOUtils.getPath(uri);
             return Files.readAllLines(path);
@@ -358,11 +400,13 @@ public class Evoquer extends GATKTool {
         private final String datasetName;
         private final String petTableName;
         private final String vetTableName;
+        private final String altAlleleTableName;
 
-        public EvoquerDataset( final String datasetName, final String petTableName, final String vetTableName ) {
+        public EvoquerDataset( final String datasetName, final String petTableName, final String vetTableName, final String altAlleleTableName ) {
             this.datasetName = datasetName;
             this.petTableName = petTableName;
             this.vetTableName = vetTableName;
+            this.altAlleleTableName = altAlleleTableName;
         }
 
         public String getDatasetName() { return datasetName; }
@@ -370,5 +414,7 @@ public class Evoquer extends GATKTool {
         public String getPetTableName() { return petTableName; }
 
         public String getVetTableName() { return vetTableName; }
+
+        public String getAltAlleleTableName() { return altAlleleTableName; }
     }
 }

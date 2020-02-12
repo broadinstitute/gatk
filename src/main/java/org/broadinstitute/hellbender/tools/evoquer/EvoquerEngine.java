@@ -7,10 +7,7 @@ import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import htsjdk.variant.vcf.*;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.StringUtils;
@@ -22,10 +19,11 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
-import org.broadinstitute.hellbender.tools.walkers.annotator.ChromosomeCounts;
-import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StrandBiasTest;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper.GnarlyGenotyperEngine;
+import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -33,6 +31,9 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static htsjdk.variant.vcf.VCFConstants.PASSES_FILTERS_v4;
+import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.*;
 
 /**
  * EvoquerEngine ("EvokerEngine"):
@@ -100,6 +101,11 @@ class EvoquerEngine {
     private final Map<String, String> contigToVariantTableMap;
 
     /**
+     * Map between contig name and the BigQuery table containing allele data from that contig.
+     */
+    private final Map<String, String> contigToAltAlleleTableMap;
+
+    /**
      * Map between contig name and the BigQuery table containing the list of samples
      */
     private final Map<String, String> contigToSampleTableMap;
@@ -108,6 +114,9 @@ class EvoquerEngine {
 
     private final boolean useOptimizedQuery;
     private final boolean useCohortExtractQuery;
+    private final String filteringFQTableName;
+    private final boolean useModelFeatureExtractQuery;
+    private final boolean trainingSitesOnly;
 
     private final boolean doLocalSort;
 
@@ -138,6 +147,9 @@ class EvoquerEngine {
                    final String sampleTableName,
                    final boolean doLocalSort,
                    final boolean useCohortExtractQuery,
+                   final String filteringFQTableName,
+                   final boolean useModelFeatureExtractQuery,
+                   final boolean  trainingSitesOnly,
                    final int localSortMaxRecordsInRam,
                    final boolean runQueryOnly,
                    final boolean disableGnarlyGenotyper,
@@ -151,6 +163,9 @@ class EvoquerEngine {
         this.precomputedResultsMode = false;
         this.useOptimizedQuery = useOptimizedQuery;
         this.useCohortExtractQuery = useCohortExtractQuery;
+        this.filteringFQTableName = filteringFQTableName;
+        this.useModelFeatureExtractQuery = useModelFeatureExtractQuery;
+        this.trainingSitesOnly = trainingSitesOnly;
 
         this.doLocalSort = doLocalSort;
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
@@ -168,18 +183,23 @@ class EvoquerEngine {
 
         final Map<String, String> tmpContigToPositionTableMap = new HashMap<>();
         final Map<String, String> tmpContigToVariantTableMap = new HashMap<>();
+        final Map<String, String> tmpContigToAltAlleleTableMap = new HashMap<>();
         final Map<String, String> tmpContigToSampleTableMap = new HashMap<>();
         for ( final Map.Entry<String, Evoquer.EvoquerDataset> datasetEntry : datasetMap.entrySet() ) {
             tmpContigToPositionTableMap.put(datasetEntry.getKey(), datasetEntry.getValue().getDatasetName() + "." + datasetEntry.getValue().getPetTableName());
             tmpContigToVariantTableMap.put(datasetEntry.getKey(), datasetEntry.getValue().getDatasetName() + "." + datasetEntry.getValue().getVetTableName());
+            tmpContigToAltAlleleTableMap.put(datasetEntry.getKey(), datasetEntry.getValue().getDatasetName() + "." + datasetEntry.getValue().getAltAlleleTableName());
             tmpContigToSampleTableMap.put(datasetEntry.getKey(), datasetEntry.getValue().getDatasetName() + "." + sampleTableName);
         }
         contigToPositionTableMap = Collections.unmodifiableMap(tmpContigToPositionTableMap);
         contigToVariantTableMap = Collections.unmodifiableMap(tmpContigToVariantTableMap);
+        contigToAltAlleleTableMap = Collections.unmodifiableMap(tmpContigToAltAlleleTableMap);
         contigToSampleTableMap = Collections.unmodifiableMap(tmpContigToSampleTableMap);
 
         // Get the samples used in the dataset:
-        populateSampleNames();
+        if (!useModelFeatureExtractQuery) {
+            populateSampleNames();
+        }
         this.vcfHeader = generateVcfHeader(toolDefaultVCFHeaderLines, refSource.getSequenceDictionary());
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
@@ -203,7 +223,10 @@ class EvoquerEngine {
         this.precomputedResultsMode = true;
         this.useOptimizedQuery = false;
         this.useCohortExtractQuery = false;
-        
+        this.filteringFQTableName = null;
+        this.useModelFeatureExtractQuery = false;
+        this.trainingSitesOnly = false;
+
         this.doLocalSort = false;
         this.localSortMaxRecordsInRam = 0;
 
@@ -217,6 +240,7 @@ class EvoquerEngine {
         this.projectID = null;
         this.contigToPositionTableMap = null;
         this.contigToVariantTableMap = null;
+        this.contigToAltAlleleTableMap = null;
         this.contigToSampleTableMap = null;
         this.queryRecordLimit = 0;
         this.runQueryOnly = false;
@@ -240,20 +264,39 @@ class EvoquerEngine {
             throw new GATKException("Cannot do live queries in precomputedResultsMode");
         }
 
-        if ( contigToPositionTableMap.containsKey(interval.getContig()) ) {
+        if (!contigToPositionTableMap.containsKey(interval.getContig())) {
+            logger.warn("Contig missing from contigPositionExpandedTableMap, ignoring interval: " + interval.toString());
+            return;
+        }
+
+        if ( useCohortExtractQuery ) {
+            if ( filteringFQTableName == null || filteringFQTableName.equals("") ) {
+                logger.warn("--cohort-extract-filter-table must be specified when extracting a cohort! ");
+                return;
+            }
+
+            final String variantQueryString = getCohortExtractQueryString(interval);
+            final List<String> fieldsToRetrieve = Arrays.asList("position", "sample", "state", "ref", "alt", "call_YNG_STATUS", "call_AS_VQSLOD", "call_GT", "call_GQ", "call_RGQ");
+            final BigQueryUtils.StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(variantQueryString, fieldsToRetrieve, projectID, runQueryInBatchMode);
+
+            createVariantsFromUngroupedTableResult(storageAPIAvroReader, interval.getContig());
+        }  else if ( useModelFeatureExtractQuery ) {
+            final String featureQueryString  = getVQSRFeatureExtractQueryString(interval, trainingSitesOnly);
+            logger.info(featureQueryString);
+            final List<String> fieldsToRetrieve = Arrays.asList("position", "ref", "allele", "RAW_QUAL", "ref_ad", "AS_MQRankSum", "AS_MQRankSum_ft", "AS_ReadPosRankSum", "AS_ReadPosRankSum_ft", "RAW_MQ", "RAW_AD", "RAW_AD_GT_1", "SB_REF_PLUS","SB_REF_MINUS","SB_ALT_PLUS","SB_ALT_MINUS");
+            final BigQueryUtils.StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, fieldsToRetrieve, projectID, runQueryInBatchMode);
+
+            createVQSRInputFromTableResult(storageAPIAvroReader, interval.getContig());
+        } else {
             String variantQueryString;
             List<String> fieldsToRetrieve;
+
             if ( doLocalSort ) {
-                if (useCohortExtractQuery) {
-                    variantQueryString  = getCohortExtractQueryString(interval);
-                    fieldsToRetrieve = Arrays.asList("position", "sample", "state", "ref", "alt", "call_GT", "call_GQ", "call_RGQ");
-                } else {
-                    variantQueryString = useOptimizedQuery ?
-                            getOptimizedUngroupedVariantQueryString(interval) :
-                            getUngroupedVariantQueryString(interval);
-                    // TODO: get the selected fields from the query string itself somehow
-                    fieldsToRetrieve = Arrays.asList("position", "sample", "state", "ref", "alt", "AS_RAW_MQ", "AS_RAW_MQRankSum", "AS_QUALapprox", "AS_RAW_ReadPosRankSum", "AS_SB_TABLE", "AS_VarDP", "call_GT", "call_AD", "call_DP", "call_GQ", "call_PGT", "call_PID", "call_PL");
-                }
+                variantQueryString = useOptimizedQuery ?
+                        getOptimizedUngroupedVariantQueryString(interval) :
+                        getUngroupedVariantQueryString(interval);
+                // TODO: get the selected fields from the query string itself somehow
+                fieldsToRetrieve = Arrays.asList("position", "sample", "state", "ref", "alt", "AS_RAW_MQ", "AS_RAW_MQRankSum", "AS_QUALapprox", "AS_RAW_ReadPosRankSum", "AS_SB_TABLE", "AS_VarDP", "call_GT", "call_AD", "call_DP", "call_GQ", "call_PGT", "call_PID", "call_PL");
             } else {
                 variantQueryString = useOptimizedQuery ?
                         getOptimizedGroupedVariantQueryString(interval) :
@@ -270,9 +313,6 @@ class EvoquerEngine {
             } else {
                 createVariantsFromGroupedTableResult(storageAPIAvroReader, interval.getContig());
             }
-        }
-        else {
-            logger.warn("Contig missing from contigPositionExpandedTableMap, ignoring interval: " + interval.toString());
         }
     }
 
@@ -359,6 +399,16 @@ class EvoquerEngine {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_SB_TABLE_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
 
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
+
+        // TODO: Temporary.  We don't really want these as FORMAT fields,
+        headerLines.add(
+                new VCFFormatHeaderLine(AS_VQS_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, the log odds of being a true variant versus being false under the trained gaussian mixture model")
+        );
+        headerLines.add(
+                new VCFFormatHeaderLine("YNG_STATUS", VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, status of the YNG filter")
+        );
+
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VARIANT_DEPTH_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.VARIANT_DEPTH_KEY));
 
@@ -375,7 +425,15 @@ class EvoquerEngine {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EXCESS_HET_KEY));
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
-        
+
+        // TODO: There m ust be a more appropriate constant to use for these
+        headerLines.add(
+            new VCFFilterHeaderLine(PASSES_FILTERS_v4, "PASSING")
+        );
+        headerLines.add(
+                new VCFInfoHeaderLine("YNG_STATUS", VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, status from the YNG table")
+        );
+
         return headerLines;
     }
 
@@ -453,6 +511,137 @@ class EvoquerEngine {
         }
     }
 
+    private EvoquerSortingCollection<GenericRecord> getEvoquerSortingCollection(org.apache.avro.Schema schema) {
+        final EvoquerSortingCollection.Codec<GenericRecord> sortingCollectionCodec = new AvroSortingCollectionCodec(schema);
+        final Comparator<GenericRecord> sortingCollectionComparator = new Comparator<GenericRecord>() {
+            @Override
+            public int compare( GenericRecord o1, GenericRecord o2 ) {
+                final long firstPosition = Long.parseLong(o1.get(POSITION_FIELD_NAME).toString());
+                final long secondPosition = Long.parseLong(o2.get(POSITION_FIELD_NAME).toString());
+
+                return Long.compare(firstPosition, secondPosition);
+            }
+        };
+        return EvoquerSortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam);
+    }
+
+    private void createVQSRInputFromTableResult(final GATKAvroReader avroReader, final String contig) {
+        final org.apache.avro.Schema schema = avroReader.getSchema();
+        final Set<String> columnNames = new HashSet<>();
+        if ( schema.getField(POSITION_FIELD_NAME) == null ) {
+            throw new UserException("Records must contain a position column");
+        }
+        schema.getFields().forEach(field -> columnNames.add(field.name()));
+
+        // TODO: this hardcodes a list of required fields... which this case doesn't require!
+        // should genericize/parameterize so we can also validate the schema here
+        // validateSchema(columnNames);
+
+        EvoquerSortingCollection<GenericRecord> sortingCollection =  getEvoquerSortingCollection(schema);
+
+        for ( final GenericRecord queryRow : avroReader ) {
+            if ( runQueryOnly ) {
+                continue;
+            }
+
+            sortingCollection.add(queryRow);
+        }
+
+        sortingCollection.printTempFileStats();
+
+        if ( runQueryOnly ) {
+            return;
+        }
+
+        for ( final GenericRecord row : sortingCollection ) {
+            processVQSRRecordForPosition(row, contig);
+        }
+    }
+
+    private void processVQSRRecordForPosition(GenericRecord rec, String contig) {
+        final long position = Long.parseLong(rec.get(POSITION_FIELD_NAME).toString());
+
+        // I don't understand why the other modes iterate through a list of all columns, and then
+        //  switch based on the column name rather than just getting the columns desired directly (like I'm going to do here).
+        // It might be because those field names are just prefixed versions of standard VCF fields?
+
+        // TODO: de-python names (no  _)
+        String ref = rec.get("ref").toString();
+        String allele = rec.get("allele").toString();
+
+        // Numbers are returned as Long (sci notation)
+        Double qual = Double.valueOf(rec.get("RAW_QUAL").toString());
+
+        Object o_raw_ref_ad = rec.get("ref_ad");
+        Double raw_ref_ad = (o_raw_ref_ad==null)?0:Double.valueOf(o_raw_ref_ad.toString());
+
+        Object o_AS_MQRankSum = rec.get("AS_MQRankSum");
+        Float AS_MQRankSum = (o_AS_MQRankSum==null)?null:Float.parseFloat(o_AS_MQRankSum.toString());
+
+        Object o_AS_ReadPosRankSum = rec.get("AS_ReadPosRankSum");
+        Float AS_ReadPosRankSum = (o_AS_ReadPosRankSum==null)?null:Float.parseFloat(o_AS_ReadPosRankSum.toString());
+
+        Double raw_mq = Double.valueOf(rec.get("RAW_MQ").toString());
+        Double raw_ad = Double.valueOf(rec.get("RAW_AD").toString());
+        Double raw_ad_gt_1 = Double.valueOf(rec.get("RAW_AD_GT_1").toString());
+
+        int sb_ref_plus = Double.valueOf(rec.get("SB_REF_PLUS").toString()).intValue();
+        int sb_ref_minus = Double.valueOf(rec.get("SB_REF_MINUS").toString()).intValue();
+        int sb_alt_plus = Double.valueOf(rec.get("SB_ALT_PLUS").toString()).intValue();
+        int sb_alt_minus = Double.valueOf(rec.get("SB_ALT_MINUS").toString()).intValue();
+
+        // TODO: KCIBUL QUESTION -- if we skip this... we won't have YNG Info @ extraction time?
+        if (raw_ad == 0) {
+            logger.info("skipping " + position + " because it has no alternate reads!");
+            return;
+        }
+
+//        logger.info("processing " + contig + ":" + position);
+
+
+
+        // NOTE: if VQSR required a merged VCF (e.g. multiple alleles on a  given row) we have to do some merging here...
+
+        final VariantContextBuilder builder = new VariantContextBuilder();
+
+        builder.chr(contig);
+        builder.start(position);
+
+        final List<Allele> alleles = new ArrayList<>();
+        alleles.add(Allele.create(ref, true));
+        alleles.add(Allele.create(allele, false));
+        builder.alleles(alleles);
+        builder.stop(position + alleles.get(0).length() - 1);
+
+
+        double qd_depth = (raw_ref_ad + raw_ad_gt_1);
+        double as_qd = QualByDepth.fixTooHighQD( (qual /  qd_depth) );
+
+        final int[][] refAltTable = new int[][]{new int[]{sb_ref_plus, sb_ref_minus}, new int[]{ sb_alt_plus, sb_alt_minus}};
+
+        double fs = QualityUtils.phredScaleErrorRate(Math.max(FisherStrand.pValueForContingencyTable(refAltTable), AS_StrandBiasTest.MIN_PVALUE));
+        double sor = StrandOddsRatio.calculateSOR(refAltTable);
+
+        double mq = Math.sqrt( raw_mq / raw_ad);
+
+        builder.attribute("AS_QD", String.format("%.2f", as_qd) );
+        builder.attribute("AS_FS", String.format("%.3f", fs));
+        builder.attribute("AS_MQ", String.format("%.2f", mq) );
+        builder.attribute("AS_MQRankSum", AS_MQRankSum==null?".":String.format("%.3f", AS_MQRankSum) );
+        builder.attribute("AS_ReadPosRankSum", AS_ReadPosRankSum==null?".":String.format("%.3f", AS_ReadPosRankSum));
+        builder.attribute("AS_SOR", String.format("%.3f", sor));
+
+        // check out 478765 -- we need to "merge" different variant  contexts  at the same position.
+        // I think if we just set the right "base" annotations it's possible the standard annotation processing
+        // merging will take care of it?
+        // Also -- is it possible to write a JS UDF like areEqual(ref1, alt2, ref2, alt2)?
+        VariantContext vc = builder.make();
+        vcfWriter.add(vc);
+        progressMeter.update(vc);
+
+
+    }
+
     private void createVariantsFromUngroupedTableResult(final GATKAvroReader avroReader, final String contig) {
 
         final org.apache.avro.Schema schema = avroReader.getSchema();
@@ -464,17 +653,7 @@ class EvoquerEngine {
         schema.getFields().forEach(field -> columnNames.add(field.name()));
         validateSchema(columnNames);
 
-        final EvoquerSortingCollection.Codec<GenericRecord> sortingCollectionCodec = new AvroSortingCollectionCodec(schema);
-        final Comparator<GenericRecord> sortingCollectionComparator = new Comparator<GenericRecord>() {
-            @Override
-            public int compare( GenericRecord o1, GenericRecord o2 ) {
-                final long firstPosition = Long.parseLong(o1.get(POSITION_FIELD_NAME).toString());
-                final long secondPosition = Long.parseLong(o2.get(POSITION_FIELD_NAME).toString());
-
-                return Long.compare(firstPosition, secondPosition);
-            }
-        };
-        final EvoquerSortingCollection<GenericRecord> sortingCollection = EvoquerSortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam);
+        EvoquerSortingCollection<GenericRecord> sortingCollection =  getEvoquerSortingCollection(schema);
 
         for ( final GenericRecord queryRow : avroReader ) {
             if ( runQueryOnly ) {
@@ -631,6 +810,19 @@ class EvoquerEngine {
                     genotypeBuilder.attribute(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, Integer.parseInt(columnValueString));
                 } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS) ) {
                     genotypeBuilder.AD(Arrays.stream(columnValueString.split(MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
+                } else if ( genotypeAttributeName.equals(GATKVCFConstants.AS_VQS_LOD_KEY) ) {
+
+                    // TODO: must be a better way to get these back up to the INFO field level
+                    genotypeBuilder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY,
+                            Arrays.stream(columnValueString.split(MULTIVALUE_FIELD_DELIMITER)).mapToDouble(Double::parseDouble).toArray()
+                    );
+                } else if ( genotypeAttributeName.equals("YNG_STATUS") ) {
+
+                    // TODO: must be a better way to get these back up to the INFO field level
+                    genotypeBuilder.attribute("YNG_STATUS",
+                            columnValueString.split(MULTIVALUE_FIELD_DELIMITER)
+                    );
+
                 } else {
                     genotypeBuilder.attribute(genotypeAttributeName, columnValueString);
                 }
@@ -691,7 +883,86 @@ class EvoquerEngine {
         // the NON_REF allele to still be present, and will give incorrect results if it's not.
         final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], disableGnarlyGenotyper, false, true);
 
-        final VariantContext finalizedVC = disableGnarlyGenotyper ? mergedVC : gnarlyGenotyper.finalizeGenotype(mergedVC);
+
+        // TODO: this is all a big mess, trying to pull YNG up to the INFO level and
+        // compute an appropriate FILTER status
+        Map<Allele, Double> vqsLodMap = new HashMap<>();
+        Map<Allele, String> yngStatusMap = new HashMap<>();
+        for (Genotype g : mergedVC.getGenotypes()) {
+            for (int i=1; i<g.getAlleles().size(); i++) {  // skip reference  by starting at 1?
+                Allele a = g.getAllele(i);
+
+                if (a.isNonReference()) {
+                    if (!vqsLodMap.containsKey(a)) {
+                        double[] vqslods = (double[]) g.getExtendedAttribute(GATKVCFConstants.AS_VQS_LOD_KEY);
+                        if (vqslods != null) {
+                            vqsLodMap.put(a, vqslods[i - 1]); // reference  allele is first, shift by one... but this feels icky
+                        }
+                    }
+
+                    if (!yngStatusMap.containsKey(a)) {
+                        String[] yngStatuses = (String[]) g.getExtendedAttribute("YNG_STATUS");
+                        if (yngStatuses != null) {
+                            yngStatusMap.put(a, yngStatuses[i - 1]); // reference  allele is first, shift by one... but this feels icky
+                        }
+                    }
+
+                    // TODO: remove this from the genotypes
+//                    g.getExtendedAttributes().remove(GATKVCFConstants.AS_VQS_LOD_KEY);
+//                    g.getExtendedAttributes().remove("YNG_STATUS");
+
+                }
+
+//                if (!filterMap.containsKey(a)) {
+//                    String[] vqslods = (String[]) g.getExtendedAttribute(GATKVCFConstants.AS_VQS_LOD_KEY);
+//                    vqsLodMap.put(a, vqslods[i]);
+//                }
+
+            }
+        }
+
+        Double[] values = new Double[ mergedVC.getAlternateAlleles().size() ];
+        String[] yngValues = new String[ mergedVC.getAlternateAlleles().size() ];
+
+        for (int i=0; i<mergedVC.getAlternateAlleles().size(); i++) {
+            Allele a = mergedVC.getAlternateAllele(i);
+
+            if (vqsLodMap.containsKey(a)) {
+                values[i] = vqsLodMap.get(a);
+            }
+            if (yngStatusMap.containsKey(a)) {
+                yngValues[i] = yngStatusMap.get(a);
+            }
+        }
+
+        // TODO: CALCULATE FILTER STATUS based on YNG Status, VQSLOD and appropriate threshold (SNP vs INDEL)
+
+        String filter = null;
+
+        // 1. if there are any Yays, the site is PASS
+        if (yngStatusMap.values().contains("Y")) {
+            filter = "PASS";
+        }
+
+        // 2. if ANY of the VQS lods pass the specific threshold, the site is PASS
+
+        // 3. otherwise, it's failing
+
+        final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
+        builder.getAttributes().put(GATKVCFConstants.AS_VQS_LOD_KEY, values );
+        builder.getAttributes().put("YNG_STATUS", yngValues );
+        if (filter != null) {
+            builder.filter(filter);
+        }
+
+        // TODO: end of above mess
+
+
+
+
+        final VariantContext filteredVC = builder.make();
+
+        final VariantContext finalizedVC = disableGnarlyGenotyper ? filteredVC : gnarlyGenotyper.finalizeGenotype(filteredVC);
         final VariantContext annotatedVC = enableVariantAnnotator ?
                 variantAnnotator.annotateContext(finalizedVC, new FeatureContext(), null, null, a -> true): finalizedVC;
 
@@ -941,12 +1212,14 @@ class EvoquerEngine {
                         "SELECT\n" +
                         "  new_pet.position,\n" +
                         "  new_pet.sample,\n" +
-                        "  state,\n" +
-                        "  ref,\n" +
-                        "  alt,\n" +
+                        "  new_pet.state,\n" +
+                        "  vet.ref,\n" +
+                        "  REPLACE(vet.alt,\",<NON_REF>\",\"\") alt,\n" +
+                        "  yng.vqslod  call_AS_VQSLOD,\n" +
+                        "  yng.yng_status call_YNG_STATUS,\n" +
                         "  call_GT,\n" +
                         "  call_GQ,\n" +
-                        "  cast(SPLIT(call_pl,\",\")[OFFSET(0)] as int64) as call_RGQ\n"+
+                        "  cast(SPLIT(call_pl,\",\")[OFFSET(0)] as int64) as call_RGQ\n" +
                         "FROM\n" +
                         "  new_pet\n" +
                         "LEFT OUTER JOIN\n" +
@@ -954,6 +1227,9 @@ class EvoquerEngine {
                         "   WHERE vet_inner.position >= %d AND vet_inner.position <= %d)\n" +
                         "  AS vet\n" +
                         "ON (new_pet.position = vet.position AND new_pet.sample = vet.sample)\n" +
+                        "LEFT OUTER JOIN\n" +
+                        "  `%s` AS yng\n" +
+                        "ON (new_pet.position = yng.position AND vet.ref = yng.ref AND REPLACE(vet.alt,\",<NON_REF>\",\"\") = yng.alt)" +
                         limitString,
 
                 getFQPositionTable(interval),
@@ -966,8 +1242,87 @@ class EvoquerEngine {
                 getFQTableName(contigToSampleTableMap.entrySet().iterator().next().getValue()),
                 getFQVariantTable(interval),
                 interval.getStart(),
-                interval.getEnd()
+                interval.getEnd(),
+                filteringFQTableName
         );
+    }
+
+    private String getVQSRFeatureExtractQueryString(final SimpleInterval interval, final boolean trainingSitesOnly) {
+            String trainingSitesStanza =
+                    !trainingSitesOnly?"":
+                            "AND position IN (SELECT position FROM `broad-dsp-spec-ops.joint_genotyping_ref.vqsr_training_sites_*` WHERE chrom='chr20')\n";
+            String query =
+                    "WITH ref_ad_info AS (\n" +
+                            "SELECT \n" +
+                            "  position,\n" +
+                            "  sum(cast(SPLIT(call_AD,\",\")[OFFSET(0)] as int64)) as ref_ad\n" +
+                            "FROM `@vet` \n" +
+                            "WHERE sample IN (SELECT sample FROM `@sample`)\n" +
+                            "AND (position >= @start AND position <= @end) \n" +
+                            trainingSitesStanza +
+                            "AND (\n" +
+                            "  SELECT SUM(CAST(part AS int64)) FROM UNNEST(SPLIT(call_AD, ',')) part WITH OFFSET index WHERE index >= 1 ) \n" +
+                            "  > 1\n" +
+                            "GROUP BY position),\n" +
+                            "ref_sb_info AS (\n" +
+                            "SELECT \n" +
+                            "  position,\n" +
+                            "  sum(cast(SPLIT(SPLIT(as_sb_table,\"|\")[OFFSET(0)],\",\")[OFFSET(0)] as int64)) as sb_ref_plus, \n" +
+                            "  sum(cast(SPLIT(SPLIT(as_sb_table,\"|\")[OFFSET(0)],\",\")[OFFSET(1)] as int64)) as sb_ref_minus  \n" +
+                            "FROM `@vet` \n" +
+                            "WHERE sample IN (SELECT sample FROM `@sample`)\n" +
+                            "AND (position >= @start AND position <= @end) \n" +
+                            trainingSitesStanza +
+                            "GROUP BY position)\n" +
+                            "SELECT \n" +
+                            "       ai.position, \n" +
+                            "       ai.ref, \n" +
+                            "       ai.allele, \n" +
+                            "       RAW_QUAL,\n" +
+                            "       radi.ref_ad,\n" +
+                            "       AS_MQRankSum,\n" +
+                            "       AS_MQRankSum_ft,\n" +
+                            "       AS_ReadPosRankSum,\n" +
+                            "       AS_ReadPosRankSum_ft,\n" +
+                            "       RAW_MQ,\n" +
+                            "       RAW_AD,\n" +
+                            "       RAW_AD_GT_1,\n" +
+                            "       rsbi.SB_REF_PLUS,\n" +
+                            "       rsbi.SB_REF_MINUS,\n" +
+                            "       SB_ALT_PLUS, \n" +
+                            "       SB_ALT_MINUS\n" +
+                            "FROM (\n" +
+                            "SELECT aa.position, \n" +
+                            "       ref, \n" +
+                            "       allele, \n" +
+                            "       SUM(qual) as RAW_QUAL,\n" +
+                            "       `bqutil`.fn.median(ARRAY_AGG( raw_mqranksum_x_10 IGNORE NULLS)) / 10.0 as AS_MQRankSum,\n" +
+                            "       `broad-dsp-spec-ops`.joint_genotyping_ref.freq_table(ARRAY_AGG(raw_mqranksum_x_10 IGNORE NULLS)) AS_MQRankSum_ft,\n" +
+                            "       `bqutil`.fn.median(ARRAY_AGG(raw_readposranksum_x_10 IGNORE NULLS)) / 10.0 as AS_ReadPosRankSum,\n" +
+                            "       `broad-dsp-spec-ops`.joint_genotyping_ref.freq_table(ARRAY_AGG(raw_readposranksum_x_10 IGNORE NULLS)) as AS_ReadPosRankSum_ft,\n" +
+                            "       SUM(RAW_MQ) as RAW_MQ,\n" +
+                            "       SUM(AD) as RAW_AD, \n" +
+                            "       SUM(CASE WHEN AD > 1 THEN AD ELSE 0 END) as RAW_AD_GT_1, # to match GATK implementation\n" +
+                            "       SUM(SB_ALT_PLUS)  as SB_ALT_PLUS, \n" +
+                            "       SUM(SB_ALT_MINUS) as SB_ALT_MINUS\n" +
+                            "FROM `@altAllele` as aa\n" +
+                            "WHERE (position >= @start AND position <= @end) \n" +
+                            trainingSitesStanza +
+                            "AND sample in (SELECT sample from `@sample` )\n" +
+                            "AND allele != '*'\n" +
+                            "GROUP BY 1,2,3\n" +
+                            ") ai\n" +
+                            "LEFT JOIN ref_ad_info radi ON (ai.position = radi.position)\n" +
+                            "LEFT JOIN ref_sb_info rsbi ON (ai.position = rsbi.position)\n" +
+                            "ORDER BY 1,2,3\n";
+
+            return query
+                .replaceAll("@vet", getFQVariantTable(interval))
+                .replaceAll("@pet", getFQPositionTable(interval))
+                .replaceAll("@sample", getFQTableName(contigToSampleTableMap.entrySet().iterator().next().getValue()))
+                .replaceAll("@start", String.format("%d",interval.getStart()))
+                .replaceAll( "@end", String.format("%d",interval.getEnd()))
+                .replaceAll( "@altAllele", getFQTableName(contigToAltAlleleTableMap.entrySet().iterator().next().getValue()));
     }
 
     private String getSampleListQueryString(final String sampleTableName) {
