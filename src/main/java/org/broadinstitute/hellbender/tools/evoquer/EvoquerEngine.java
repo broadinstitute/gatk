@@ -585,16 +585,17 @@ class EvoquerEngine {
         Double raw_ad = Double.valueOf(rec.get("RAW_AD").toString());
         Double raw_ad_gt_1 = Double.valueOf(rec.get("RAW_AD_GT_1").toString());
 
-        int sb_ref_plus = Double.valueOf(rec.get("SB_REF_PLUS").toString()).intValue();
-        int sb_ref_minus = Double.valueOf(rec.get("SB_REF_MINUS").toString()).intValue();
-        int sb_alt_plus = Double.valueOf(rec.get("SB_ALT_PLUS").toString()).intValue();
-        int sb_alt_minus = Double.valueOf(rec.get("SB_ALT_MINUS").toString()).intValue();
-
         // TODO: KCIBUL QUESTION -- if we skip this... we won't have YNG Info @ extraction time?
         if (raw_ad == 0) {
             logger.info("skipping " + position + " because it has no alternate reads!");
             return;
         }
+
+        int sb_ref_plus = Double.valueOf(rec.get("SB_REF_PLUS").toString()).intValue();
+        int sb_ref_minus = Double.valueOf(rec.get("SB_REF_MINUS").toString()).intValue();
+        int sb_alt_plus = Double.valueOf(rec.get("SB_ALT_PLUS").toString()).intValue();
+        int sb_alt_minus = Double.valueOf(rec.get("SB_ALT_MINUS").toString()).intValue();
+
 
 //        logger.info("processing " + contig + ":" + position);
 
@@ -1255,7 +1256,7 @@ class EvoquerEngine {
                     "WITH ref_ad_info AS (\n" +
                             "SELECT \n" +
                             "  position,\n" +
-                            "  sum(cast(SPLIT(call_AD,\",\")[OFFSET(0)] as int64)) as ref_ad\n" +
+                            "  IFNULL(sum(cast(SPLIT(call_AD,\",\")[OFFSET(0)] as int64)),0) as ref_ad\n" +
                             "FROM `@vet` \n" +
                             "WHERE sample IN (SELECT sample FROM `@sample`)\n" +
                             "AND (position >= @start AND position <= @end) \n" +
@@ -1267,8 +1268,8 @@ class EvoquerEngine {
                             "ref_sb_info AS (\n" +
                             "SELECT \n" +
                             "  position,\n" +
-                            "  sum(cast(SPLIT(SPLIT(as_sb_table,\"|\")[OFFSET(0)],\",\")[OFFSET(0)] as int64)) as sb_ref_plus, \n" +
-                            "  sum(cast(SPLIT(SPLIT(as_sb_table,\"|\")[OFFSET(0)],\",\")[OFFSET(1)] as int64)) as sb_ref_minus  \n" +
+                            "  IFNULL(sum(cast(SPLIT(SPLIT(as_sb_table,\"|\")[OFFSET(0)],\",\")[OFFSET(0)] as int64)),0) as sb_ref_plus, \n" +
+                            "  IFNULL(sum(cast(SPLIT(SPLIT(as_sb_table,\"|\")[OFFSET(0)],\",\")[OFFSET(1)] as int64)),0) as sb_ref_minus  \n" +
                             "FROM `@vet` \n" +
                             "WHERE sample IN (SELECT sample FROM `@sample`)\n" +
                             "AND (position >= @start AND position <= @end) \n" +
@@ -1295,16 +1296,16 @@ class EvoquerEngine {
                             "SELECT aa.position, \n" +
                             "       ref, \n" +
                             "       allele, \n" +
-                            "       SUM(qual) as RAW_QUAL,\n" +
+                            "       IFNULL(SUM(qual),0) as RAW_QUAL,\n" +
                             "       `bqutil`.fn.median(ARRAY_AGG( raw_mqranksum_x_10 IGNORE NULLS)) / 10.0 as AS_MQRankSum,\n" +
                             "       `broad-dsp-spec-ops`.joint_genotyping_ref.freq_table(ARRAY_AGG(raw_mqranksum_x_10 IGNORE NULLS)) AS_MQRankSum_ft,\n" +
                             "       `bqutil`.fn.median(ARRAY_AGG(raw_readposranksum_x_10 IGNORE NULLS)) / 10.0 as AS_ReadPosRankSum,\n" +
                             "       `broad-dsp-spec-ops`.joint_genotyping_ref.freq_table(ARRAY_AGG(raw_readposranksum_x_10 IGNORE NULLS)) as AS_ReadPosRankSum_ft,\n" +
-                            "       SUM(RAW_MQ) as RAW_MQ,\n" +
-                            "       SUM(AD) as RAW_AD, \n" +
-                            "       SUM(CASE WHEN AD > 1 THEN AD ELSE 0 END) as RAW_AD_GT_1, # to match GATK implementation\n" +
-                            "       SUM(SB_ALT_PLUS)  as SB_ALT_PLUS, \n" +
-                            "       SUM(SB_ALT_MINUS) as SB_ALT_MINUS\n" +
+                            "       IFNULL(SUM(RAW_MQ),0) as RAW_MQ,\n" +
+                            "       IFNULL(SUM(AD),0) as RAW_AD, \n" +
+                            "       IFNULL(SUM(CASE WHEN AD > 1 THEN AD ELSE 0 END),0) as RAW_AD_GT_1, # to match GATK implementation\n" +
+                            "       IFNULL(SUM(SB_ALT_PLUS),0)  as SB_ALT_PLUS, \n" +
+                            "       IFNULL(SUM(SB_ALT_MINUS),0) as SB_ALT_MINUS\n" +
                             "FROM `@altAllele` as aa\n" +
                             "WHERE (position >= @start AND position <= @end) \n" +
                             trainingSitesStanza +
