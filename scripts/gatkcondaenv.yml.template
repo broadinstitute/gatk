@@ -17,6 +17,7 @@ channels:
 - conda-forge
 - defaults
 dependencies:
+<<<<<<< HEAD
 
 # core python dependencies
 - conda-forge::python=3.6.10        # do not update

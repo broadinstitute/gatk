@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import pyro
 import torch
 
 from . import constants
@@ -17,7 +16,7 @@ def create_tensors(vids_list: list,
                    samples_list: list,
                    mean_count_df: pd.DataFrame,
                    device_name: str,
-                   default_dtype: torch.dtype):
+                   default_dtype: torch.dtype = torch.float32):
     device = torch.device(device_name)
     torch.set_default_dtype(default_dtype)
 
@@ -60,7 +59,7 @@ def compute_preprocessed_tensors(k: int,
     cn_prob_t = torch.exp(cnlp_t / (-10. * torch.log10(torch.tensor(np.exp(1.), device=device))))
 
     # Filter PE for insertions
-    pe_t = pe_t.where(svtype_t.ne(SVTypes.INS).unsqueeze(-1), torch.zeros(pe_t.shape, device=device))
+    pe_t = pe_t.where(svtype_t.ne(SVTypes.INS.value).unsqueeze(-1), torch.zeros(pe_t.shape, device=device))
 
     # Clamp values for numerical stability
     pe_t = pe_t.clone().clamp(0, constants.MAX_PE_COUNT)

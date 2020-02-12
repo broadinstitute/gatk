@@ -6,9 +6,9 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--vcf', help='Input VCF path')
-    parser.add_argument('--coverage-file', help='Table of sample mean per-base coverage')
-    parser.add_argument('--output', help='Output VCF path')
+    parser.add_argument('--vcf', help='Input VCF path', required=True)
+    parser.add_argument('--coverage-file', help='Table of sample mean per-base coverage', required=True)
+    parser.add_argument('--output', help='Output VCF path', required=True)
     parser.add_argument('--plots-dir', default=None, help='If specified, generates plots in this directory')
 
     parser.add_argument('--device', default='cpu', help='Device for Torch backend (e.g. "cpu", "cuda")')

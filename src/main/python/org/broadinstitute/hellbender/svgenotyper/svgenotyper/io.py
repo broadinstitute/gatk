@@ -8,7 +8,7 @@ from .preprocess import create_tensors, compute_preprocessed_tensors
 
 def load_data(vcf_path: str, mean_coverage_path: str, svtype: SVTypes, num_states: int, depth_dilution_factor: float,
               device: str = 'cpu', logging=True):
-    mean_count_df = pd.read_csv(mean_coverage_path, sep='\t', header=None)
+    mean_count_df = pd.read_csv(mean_coverage_path, sep='\t', header=None, index_col=0)
 
     vcf = VariantFile(vcf_path)
     samples_list = list(vcf.header.samples)
@@ -34,7 +34,7 @@ def load_data(vcf_path: str, mean_coverage_path: str, svtype: SVTypes, num_state
         cnlp_list.append([record.samples[sample]['CNLP'] for sample in samples_list])
         svlen_list.append(record.info['SVLEN'])
         if svtype_i != SVTypes.BND:
-            svtype_list.append(svtype_i)
+            svtype_list.append(svtype_i.value)
         else:
             strands = record.info['STRANDS']
             if strands == '+-':

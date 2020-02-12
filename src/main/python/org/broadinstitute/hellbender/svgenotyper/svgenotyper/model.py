@@ -42,13 +42,15 @@ class SVGenotyperPyroModel(object):
                      'test': {'epoch': [], 'elbo': []}}
 
         if svtype == SVTypes.DEL or svtype == SVTypes.DUP:
-            self.latent_sites = ['epsilon_pe', 'epsilon_sr1', 'epsilon_sr2', 'pi_pe', 'pi_sr1', 'pi_sr2', 'pi_rd']
+            self.latent_sites = ['eps_pe', 'eps_sr1', 'eps_sr2', 'pi_pe', 'pi_sr1', 'pi_sr2', 'pi_rd']
         elif svtype == SVTypes.INS:
-            self.latent_sites = ['epsilon_sr1', 'epsilon_sr2', 'pi_sr1', 'pi_sr2']
+            self.latent_sites = ['eps_sr1', 'eps_sr2', 'pi_sr1', 'pi_sr2']
         elif svtype == SVTypes.INV:
-            self.latent_sites = ['epsilon_pe', 'epsilon_sr1', 'epsilon_sr2', 'pi_sr1', 'pi_sr2', 'pi_pe']
+            self.latent_sites = ['eps_pe', 'eps_sr1', 'eps_sr2', 'pi_sr1', 'pi_sr2', 'pi_pe']
         else:
             raise ValueError('SV type {:s} not supported for genotyping.'.format(str(svtype)))
+
+        self.guide = AutoDiagonalNormal(poutine.block(self.model, expose=self.latent_sites))
 
     def get_latent_dim(self, n_variants: int):
         if self.svtype == SVTypes.DEL or self.svtype == SVTypes.DUP:
@@ -150,6 +152,3 @@ class SVGenotyperPyroModel(object):
             'm_sr2': m_sr2,
             'm_rd': m_rd
         }
-
-    def guide(self):
-        return AutoDiagonalNormal(poutine.block(self.model, expose=self.latent_sites))
