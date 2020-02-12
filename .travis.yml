@@ -1,5 +1,5 @@
 language: java
-dist: trusty
+dist: bionic
 group: travis_lts
 git:
   depth: 9999999

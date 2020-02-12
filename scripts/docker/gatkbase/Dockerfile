@@ -1,6 +1,6 @@
 # Using OpenJDK 8
 # This Dockerfile does not require any files that are in the GATK4 repo.
-FROM ubuntu:19.04
+FROM ubuntu:18.04
 
 #### Basic image utilities
 RUN apt-get update && \
@@ -45,11 +45,11 @@ RUN java -version
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9 && \
-    add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu disco-cran35/" && \
+    add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu bionic-cran35/" && \
     apt-get update && \
     apt-get install -y \
-        r-base-dev=3.6.1-3disco \
-        r-base-core=3.6.1-3disco && \
+        r-base-dev=3.6.2-1bionic \
+        r-base-core=3.6.2-1bionic && \
     apt-get -y clean && \
     apt-get -y autoremove && \
     apt-get  -y autoclean
