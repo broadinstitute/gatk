@@ -198,20 +198,4 @@ public abstract class LocusWalker extends WalkerBase {
         super.onShutdown();
     }
 
-    /**
-     *  The emit empty loci parameter comes with several pitfalls when used incorrectly.  Here we check and either give
-     *   warnings or errors.
-     */
-    protected void validateEmitEmptyLociParameters() {
-        if (emitEmptyLoci()) {
-            if (getBestAvailableSequenceDictionary() == null) {
-                throw new UserException.MissingReference("Could not create a sequence dictionary nor find a reference.  Therefore, emitting empty loci is impossible and this tool cannot be run.  The easiest fix here is to specify a reference dictionary.");
-            }
-            if (!hasReference() && !hasUserSuppliedIntervals()) {
-                logger.warn("****************************************");
-                logger.warn("* Running this tool without a reference nor intervals can yield unexpected results, since it will emit results for loci with no reads.  A sequence dictionary has been found.  The easiest way avoid this message is to specify a reference.");
-                logger.warn("****************************************");
-            }
-        }
-    }
 }

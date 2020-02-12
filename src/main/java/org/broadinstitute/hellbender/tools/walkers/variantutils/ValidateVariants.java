@@ -335,7 +335,7 @@ public final class ValidateVariants extends VariantWalker {
             final Set<ValidationType> result = new LinkedHashSet<>(ValidationType.CONCRETE_TYPES);
             result.removeAll(excludeTypeSet);
             if (result.contains(ValidationType.REF) && !hasReference()) {
-                throw new UserException.MissingReference("Validation type " + ValidationType.REF.name() + " was selected but no reference was provided.");
+                throw new UserException.MissingReference("Validation type " + ValidationType.REF.name() + " was selected but no reference was provided.", true);
             }
             return result;
         }

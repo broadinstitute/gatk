@@ -103,6 +103,12 @@ public class UserException extends RuntimeException {
         private static final long serialVersionUID = 0L;
 
         public MissingReference(String message) { super(message); }
+
+        public MissingReference(final String message, final boolean commandLine) {
+            super(message + (commandLine ? String.format("  A reference is specified with the -%s command line argument.", StandardArgumentDefinitions.REFERENCE_SHORT_NAME) : ""));
+        }
+
+
     }
 
     public static class MissingIndex extends UserException {

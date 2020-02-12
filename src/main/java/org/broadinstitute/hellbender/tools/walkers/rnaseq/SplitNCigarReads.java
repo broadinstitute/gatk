@@ -192,7 +192,7 @@ public final class SplitNCigarReads extends MultiplePassReadWalker {
         if (outputWriter != null ) { outputWriter.close(); }
         try {if (referenceReader != null) { referenceReader.close(); } }
         catch (IOException ex) {
-            throw new UserException.MissingReference("Could not find reference file");
+            throw new UserException.MissingReference("Could not find reference file", true);
         }
     }
 

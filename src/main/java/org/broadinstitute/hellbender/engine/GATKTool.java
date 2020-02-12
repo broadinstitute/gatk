@@ -445,7 +445,7 @@ public abstract class GATKTool extends CommandLineProgram {
                 factory = factory.referenceSequence(referenceArguments.getReferencePath());
             }
             else if (hasCramInput()) {
-                throw new UserException.MissingReference("A reference file is required when using CRAM files.");
+                throw new UserException.MissingReference("A reference file is required when using CRAM files.", true);
             }
 
             if(bamIndexCachingShouldBeEnabled()) {
@@ -823,7 +823,7 @@ public abstract class GATKTool extends CommandLineProgram {
     public final SAMFileGATKReadWriter createSAMWriter(final Path outputPath, final boolean preSorted) {
         final boolean isCramFile = IOUtils.isCramFile(outputPath);
         if (!hasReference() && isCramFile) {
-            throw new UserException.MissingReference("A reference file is required for writing CRAM files");
+            throw new UserException.MissingReference("A reference file is required for writing CRAM files", true);
         }
 
         return new SAMFileGATKReadWriter(
