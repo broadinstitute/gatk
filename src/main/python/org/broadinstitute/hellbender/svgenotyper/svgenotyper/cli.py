@@ -3,7 +3,7 @@ from . import arguments, train
 
 def main():
     args = arguments.parse_args()
-    train.run(args)
+    print(train.run(args))
 
 
 if __name__ == '__main__':

@@ -4,6 +4,7 @@ GENOTYPE_FIELDS = ['PE', 'SSR', 'ESR', 'NCN']
 
 MAX_PE_COUNT = 50
 MAX_SR_COUNT = 50
+MAX_GT_LOD = 99
 
 
 class SVTypes(Enum):

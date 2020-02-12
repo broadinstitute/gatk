@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 from pysam import VariantFile
 
@@ -7,7 +8,7 @@ from .preprocess import create_tensors, compute_preprocessed_tensors
 
 
 def load_data(vcf_path: str, mean_coverage_path: str, svtype: SVTypes, num_states: int, depth_dilution_factor: float,
-              device: str = 'cpu', logging=True):
+              device: str = 'cpu'):
     mean_count_df = pd.read_csv(mean_coverage_path, sep='\t', header=None, index_col=0)
 
     vcf = VariantFile(vcf_path)
@@ -46,8 +47,11 @@ def load_data(vcf_path: str, mean_coverage_path: str, svtype: SVTypes, num_state
             else:
                 raise ValueError('Invalid STRANDS value: ' + strands)
         num_processed += 1
-        if logging and num_processed % 1000 == 0:
-            print("Read {:d} vcf records...".format(num_processed))
+        if num_processed % 1000 == 0:
+            logging.info("Read {:d} vcf records...".format(num_processed))
+
+    if num_processed == 0:
+        return None
 
     gt_t, pe_t, sr1_t, sr2_t, ncn_t, cnlp_t, svlen_t, svtype_t, mean_count_t, samples_np, vids_np = \
         create_tensors(vids_list, gt_list, data_list, cnlp_list, svlen_list, svtype_list, samples_list, mean_count_df, device)

@@ -2,9 +2,10 @@ import pyro
 import pyro.distributions as dist
 from pyro import poutine
 from pyro.ops.indexing import Vindex
-from pyro.infer import config_enumerate
+from pyro.infer import config_enumerate, Predictive, infer_discrete
 from pyro.infer.autoguide import AutoDiagonalNormal
 
+import logging
 import torch
 
 from .constants import SVTypes
@@ -48,7 +49,7 @@ class SVGenotyperPyroModel(object):
         elif svtype == SVTypes.INV:
             self.latent_sites = ['eps_pe', 'eps_sr1', 'eps_sr2', 'pi_sr1', 'pi_sr2', 'pi_pe']
         else:
-            raise ValueError('SV type {:s} not supported for genotyping.'.format(str(svtype)))
+            raise ValueError('SV type {:s} not supported for genotyping.'.format(str(svtype.name)))
 
         self.guide = AutoDiagonalNormal(poutine.block(self.model, expose=self.latent_sites))
 
@@ -60,7 +61,7 @@ class SVGenotyperPyroModel(object):
         elif self.svtype == SVTypes.INV:
             return 3 + n_variants * 3
         else:
-            raise ValueError('SV type {:s} not supported for genotyping.'.format(str(self.svtype)))
+            raise ValueError('SV type {:s} not supported for genotyping.'.format(str(self.svtype.name)))
 
     @config_enumerate(default="parallel")
     def model(self,
@@ -91,14 +92,14 @@ class SVGenotyperPyroModel(object):
             if self.svtype == SVTypes.DEL or self.svtype == SVTypes.DUP:
                 m_rd = pyro.sample('m_rd', dist.Bernoulli(pi_rd))
             else:
-                m_rd = zero_t.expand(n_variants)
+                m_rd = zero_t.expand(n_variants).expand(n_variants).unsqueeze(-1)
 
             if self.svtype != SVTypes.INS:
                 eps_pe = pyro.sample('eps_pe', dist.Exponential(one_t)).unsqueeze(-1) * self.mu_eps_pe
                 eps_expanded_pe = eps_pe.expand(n_variants, n_samples, 1)
                 m_pe = pyro.sample('m_pe', dist.Bernoulli(pi_pe))
             else:
-                m_pe = zero_t.expand(n_variants)
+                m_pe = zero_t.expand(n_variants).unsqueeze(-1)
 
             eps_sr1 = pyro.sample('eps_sr1', dist.Exponential(one_t)).unsqueeze(-1) * self.mu_eps_sr1
             eps_sr2 = pyro.sample('eps_sr2', dist.Exponential(one_t)).unsqueeze(-1) * self.mu_eps_sr2
@@ -126,7 +127,7 @@ class SVGenotyperPyroModel(object):
                     # V x S
                     pyro.sample('obs_pe', dist.Poisson(rate=mu_obs_pe), obs=data_pe)
                 else:
-                    mu_obs_pe = zero_t.expand(n_variants, n_samples)
+                    mu_obs_pe = zero_t.unsqueeze(-1).expand(n_variants, n_samples)
 
                 # V x S x (K-1)
                 nonzero_locs_sr = k_range_t * ones_vsk1_t
@@ -147,8 +148,87 @@ class SVGenotyperPyroModel(object):
                 pyro.sample('obs_sr2', dist.Poisson(rate=mu_obs_sr2), obs=data_sr2)
         return {
             'z': z,
+            'mu_obs_pe': mu_obs_pe,
+            'mu_obs_sr1': mu_obs_sr1,
+            'mu_obs_sr2': mu_obs_sr2,
             'm_pe': m_pe,
             'm_sr1': m_sr1,
             'm_sr2': m_sr2,
             'm_rd': m_rd
         }
+
+    def infer_predictive(self, data: SVGenotyperData, log_freq: int = 100, n_samples: int = 1000):
+        logging.info("Running predictive distribution inference...")
+        samples = []
+        for i in range(n_samples):
+            predictive = Predictive(self.model, guide=self.guide, num_samples=1, return_sites=self.latent_sites)
+            sample = predictive(data_pe=data.pe_t, data_sr1=data.sr1_t, data_sr2=data.sr2_t, depth_t=data.depth_t, rd_gt_prob_t=data.rd_gt_prob_t)
+            sample = {key: sample[key].detach().cpu() for key in sample}
+            samples.append(sample)
+            if (i + 1) % log_freq == 0:
+                logging.info("[sample {:d}] predictive".format(i + 1))
+        result = {key: torch.stack([samples[i][key] for i in range(n_samples)], dim=0).numpy() for key in self.latent_sites}
+        logging.info("Inference complete.")
+        return result
+
+    def infer_discrete(self, data: SVGenotyperData, svtype: SVTypes, log_freq: int = 100, n_samples: int = 1000):
+        logging.info("Running discrete inference...")
+        posterior_samples = []
+        for i in range(n_samples):
+            guide_trace = poutine.trace(self.guide).get_trace(data_pe=data.pe_t, data_sr1=data.sr1_t,
+                                                              data_sr2=data.sr2_t, depth_t=data.depth_t,
+                                                              rd_gt_prob_t=data.rd_gt_prob_t)
+            trained_model = poutine.replay(self.model, trace=guide_trace)
+            inferred_model = infer_discrete(trained_model, temperature=1, first_available_dim=-3)
+            trace = poutine.trace(inferred_model).get_trace(data_pe=data.pe_t, data_sr1=data.sr1_t,
+                                                            data_sr2=data.sr2_t, depth_t=data.depth_t,
+                                                            rd_gt_prob_t=data.rd_gt_prob_t)
+            posterior_samples.append([trace.nodes["z"]["value"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["mu_obs_pe"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["mu_obs_sr1"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["mu_obs_sr2"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["m_pe"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["m_sr1"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["m_sr2"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["m_rd"].detach().cpu()])
+            if (i + 1) % log_freq == 0:
+                logging.info("[sample {:d}] discrete latent".format(i + 1))
+        posterior_samples = [torch.stack([posterior_samples[j][i] for j in range(n_samples)], dim=0) for i in range(8)]
+
+        z = posterior_samples[0]
+        mu_obs_pe = posterior_samples[1]
+        mu_obs_sr1 = posterior_samples[2]
+        mu_obs_sr2 = posterior_samples[3]
+        m_pe = posterior_samples[4]
+        m_sr1 = posterior_samples[5]
+        m_sr2 = posterior_samples[6]
+        m_rd = posterior_samples[7]
+
+        samples_pe = []
+        samples_sr1 = []
+        samples_sr2 = []
+        for i in range(n_samples):
+            if svtype == SVTypes.INS:
+                samples_pe.append(torch.zeros(1, device='cpu').unsqueeze(-1).expand(mu_obs_pe.shape[0], mu_obs_pe.shape[1]))
+            else:
+                samples_pe.append(dist.Poisson(rate=mu_obs_pe[i, ...]).sample())
+            samples_sr1.append(dist.Poisson(rate=mu_obs_sr1[i, ...]).sample())
+            samples_sr2.append(dist.Poisson(rate=mu_obs_sr2[i, ...]).sample())
+            if (i + 1) % log_freq == 0:
+                logging.info("[sample {:d}] discrete observed".format(i + 1))
+
+        pe = torch.stack(samples_pe, dim=0)
+        sr1 = torch.stack(samples_sr1, dim=0)
+        sr2 = torch.stack(samples_sr2, dim=0)
+        logging.info("Inference complete.")
+        return {
+            "z": z.numpy(),
+            "pe": pe.numpy(),
+            "sr1": sr1.numpy(),
+            "sr2": sr2.numpy(),
+            "m_pe": m_pe.numpy(),
+            "m_sr1": m_sr1.numpy(),
+            "m_sr2": m_sr2.numpy(),
+            "m_rd": m_rd.numpy()
+        }
+
