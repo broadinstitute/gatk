@@ -10,6 +10,8 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class MTLowHeteroplasmyFilterToolTest extends CommandLineProgramTest {
     private static final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
@@ -17,15 +19,17 @@ public class MTLowHeteroplasmyFilterToolTest extends CommandLineProgramTest {
 
     @Test
     public void testLowHetVariantsFiltered() {
+        final Set<Integer> low_het_sites = new HashSet<>(Arrays.asList(301, 302));
         final File outputFile = createTempFile("low-het-test", ".vcf");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(MITO_REF.getAbsolutePath())
                 .addArgument(StandardArgumentDefinitions.VARIANT_SHORT_NAME, NA12878_MITO_FILTERED_VCF.getAbsolutePath())
+                .addArgument(MTLowHeteroplasmyFilterTool.MIN_LOW_HET_SITES_LONG_NAME, 0)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
-        Assert.assertTrue(VariantContextTestUtils.streamVcf(outputFile)
-                .map(VariantContext::getFilters).allMatch(filterSet -> filterSet.contains(GATKVCFConstants.LOW_HET_FILTER_NAME)),
-                "exprected all variants to have " + GATKVCFConstants.LOW_HET_FILTER_NAME + " filter.");
+        Set<VariantContext> variants = VariantContextTestUtils.streamVcf(outputFile)
+                .filter(vcf -> vcf.getFilters().contains(GATKVCFConstants.LOW_HET_FILTER_NAME)).collect(Collectors.toSet());
+        Assert.assertEquals(variants.stream().map(var -> var.getStart()).collect(Collectors.toList()), low_het_sites, "exprected these sites to have " + GATKVCFConstants.LOW_HET_FILTER_NAME + " filter.");
     }
 
     @Test
@@ -34,7 +38,6 @@ public class MTLowHeteroplasmyFilterToolTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(MITO_REF.getAbsolutePath())
                 .addArgument(StandardArgumentDefinitions.VARIANT_SHORT_NAME, NA12878_MITO_FILTERED_VCF.getAbsolutePath())
-                .addArgument(MTLowHeteroplasmyFilterTool.MIN_LOW_HET_SITES_LONG_NAME, 5)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         Assert.assertTrue(VariantContextTestUtils.streamVcf(outputFile)

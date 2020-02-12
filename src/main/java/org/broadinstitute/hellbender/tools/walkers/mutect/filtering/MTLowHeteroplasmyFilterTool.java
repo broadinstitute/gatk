@@ -18,6 +18,11 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         summary = "If too many low heteroplasmy sites pass other filters, then filter all low heteroplasmy sites",
@@ -91,7 +96,7 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
     }
 
     protected double lowestAF(Genotype g) {
-        int[] depths = g.getAD();
-        return MathUtils.arrayMin(depths)/ MathUtils.sum(depths);
+        List<Integer> depths = Arrays.stream(g.getAD()).boxed().collect(Collectors.toList());
+        return Collections.min(depths.subList(1, depths.size())) / (double) depths.stream().mapToInt(Integer::intValue).sum();
     }
 }
