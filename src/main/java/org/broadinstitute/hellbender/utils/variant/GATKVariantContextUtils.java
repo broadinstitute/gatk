@@ -1983,5 +1983,27 @@ public final class GATKVariantContextUtils {
         return true;
     }
 
+    public static <T> List<T> removeDataForSymbolicAltAlleles(VariantContext vc, List<T> data) {
+        if (vc.hasSymbolicAlleles()) {
+            List<Allele> symbolicAlleles = vc.getAlternateAlleles().stream().filter(allele -> allele.isSymbolic()).collect(Collectors.toList());
+            // convert allele index to alt allele index
+            List<Integer> symAltIndexes = vc.getAlleleIndices(symbolicAlleles).stream().map(i -> i-1).collect(Collectors.toList());
+            return removeItemsByIndex(data, symAltIndexes);
+        } else {
+            return data;
+        }
+    }
+
+    public static <T> List<T> removeItemsByIndex(List<T> data, List<Integer> indexesToRemove) {
+        List<T> updated = new ArrayList<>();
+        new IndexRange(0, data.size()).forEach(i -> {
+            if (!indexesToRemove.contains(i)) {
+                updated.add(data.get(i));
+            }
+        });
+        return updated;
+    }
+
+
 }
 

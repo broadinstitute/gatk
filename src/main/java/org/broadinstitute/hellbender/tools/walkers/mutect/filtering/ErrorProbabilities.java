@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.function.Function;
@@ -32,14 +33,7 @@ public final class ErrorProbabilities {
                 .collect(toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));
 
         // if vc has symbolic alleles, remove them from each filter list
-        if (vc.hasSymbolicAlleles()) {
-            List<Allele> symbolicAlleles = vc.getAlternateAlleles().stream().filter(allele -> allele.isSymbolic()).collect(Collectors.toList());
-            // convert allele index to alt allele index
-            List<Integer> symAltIndexes = vc.getAlleleIndices(symbolicAlleles).stream().map(i -> i-1).collect(Collectors.toList());
-
-            alleleProbabilitiesByFilter.replaceAll((k, v) -> removeItemsByIndex(v, symAltIndexes));
-        }
-
+        alleleProbabilitiesByFilter.replaceAll((k, v) -> GATKVariantContextUtils.removeDataForSymbolicAltAlleles(vc, v));
         LinkedHashMap<ErrorType, List<List<Double>>> probabilitiesByAllelesForEachFilter = alleleProbabilitiesByFilter.entrySet().stream().collect(
                 groupingBy(entry -> entry.getKey().errorType(), LinkedHashMap::new, mapping(entry -> entry.getValue(), toList())));
         // convert the data so we have a list of probabilities by allele instead of filter
@@ -59,16 +53,6 @@ public final class ErrorProbabilities {
                 .stream().map(
                         alleleProbabilities -> alleleProbabilities.stream().map(p -> 1.0 - p).reduce(1.0, (a, b) -> a * b)).collect(Collectors.toList());
         combinedErrorProbabilitiesByAllele.replaceAll(trueProb -> Mutect2FilteringEngine.roundFinitePrecisionErrors(1.0 - trueProb));
-    }
-
-    private List<Double> removeItemsByIndex(List<Double> probs, List<Integer> indexesToRemove) {
-        List<Double> updated = new ArrayList<>();
-        new IndexRange(0, probs.size()).forEach(i -> {
-            if (!indexesToRemove.contains(i)) {
-                updated.add(probs.get(i));
-            }
-        });
-        return updated;
     }
 
     public List<Double> getCombinedErrorProbabilities() { return combinedErrorProbabilitiesByAllele; }

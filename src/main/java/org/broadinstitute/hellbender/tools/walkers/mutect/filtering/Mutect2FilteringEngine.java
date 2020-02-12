@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.tools.walkers.mutect.clustering.SomaticClus
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.io.File;
@@ -191,12 +192,11 @@ public class Mutect2FilteringEngine {
                         .map(entry -> addFilterStrings(entry.getValue(), errorThreshold, entry.getKey().filterName())).collect(Collectors.toList());
 
         // for each allele, merge all allele specific filters
-//      List<Iterator<String>> ASFiltersIterator = ASFilters.stream().map(list -> list.listIterator()).collect(Collectors.toList());
         List<List<String>> filtersByAllele = ErrorProbabilities.transpose(alleleStatusByFilter);
         List<List<String>> distinctFiltersByAllele = filtersByAllele.stream().map(this::getDistinctFiltersForAllele).collect(Collectors.toList());
         ListIterator<String> mergedFilterStringByAllele = distinctFiltersByAllele.stream().map(AnnotationUtils::encodeStringList).collect(Collectors.toList()).listIterator();
 
-        List<String> orderedASFilterStrings = vc.getAlleles().stream().map(allele -> allele.isReference() || allele.isSymbolic() ?
+        List<String> orderedASFilterStrings = vc.getAlternateAlleles().stream().map(allele -> allele.isSymbolic() ?
                 VCFConstants.EMPTY_INFO_FIELD : mergedFilterStringByAllele.next()).collect(Collectors.toList());
         String finalAttrString = AnnotationUtils.encodeAnyASListWithRawDelim(orderedASFilterStrings);
 
@@ -229,8 +229,10 @@ public class Mutect2FilteringEngine {
         // if all alleles have been filtered out, but for different reasons, fail the site.
         // if the site is only ref and symbolic, no filters will be applied so don't fail
         if (siteFiltersWithErrorProb.isEmpty() && !distinctFiltersByAllele.stream().allMatch(List::isEmpty)) {
+            List<List<String>> filtersNonSymbolicAlleles =  GATKVariantContextUtils.removeDataForSymbolicAltAlleles(vc, distinctFiltersByAllele);
             // if any allele passed, don't fail the site
-            if (!distinctFiltersByAllele.stream().flatMap(List::stream).anyMatch(f -> f.equals(VCFConstants.PASSES_FILTERS_v4))) {
+            if (!filtersNonSymbolicAlleles.stream().anyMatch(filterList -> filterList.contains(VCFConstants.EMPTY_INFO_FIELD))) {
+//            if (!distinctFiltersByAllele.stream().flatMap(List::stream).anyMatch(f -> f.equals(VCFConstants.PASSES_FILTERS_v4))) {
                 // we know the allele level filters exceeded their threshold - so set this prob to 1
                 siteFiltersWithErrorProb.put(GATKVCFConstants.FAIL, 1.0);
             }
@@ -249,23 +251,22 @@ public class Mutect2FilteringEngine {
     }
 
     /**
-     * Creates a list of the string names of all the filters that apply to the allele, or the string PASS if it passed all filters
+     * Creates a list of the string names of all the filters that apply to the allele, or the string . if it passed all filters
      * @param filtersForAllele all the filters applied to the allele
-     * @return list of filter names that apply to the allele or PASS
+     * @return list of filter names that apply to the allele or .
      */
     private List<String> getDistinctFiltersForAllele(final List<String> filtersForAllele) {
         final List<String> results = filtersForAllele.stream().distinct().collect(Collectors.toList());
-        if (results.size() > 1 && results.contains(VCFConstants.PASSES_FILTERS_v4)) {
-            results.remove(VCFConstants.PASSES_FILTERS_v4);
-        } else if (results.isEmpty()) {
-            results.add(VCFConstants.PASSES_FILTERS_v4);
+        results.remove(VCFConstants.PASSES_FILTERS_v4);
+        if (results.isEmpty()) {
+            results.add(VCFConstants.EMPTY_INFO_FIELD);
         }
         return results;
     }
 
     /**
      * For each allele, determine whether the filter should be applied and return either the
-     * filter name or PASS
+     * filter name or PASS. We use PASS as a place holder because the results are per alt allele.
      * @param probabilities the probabilities computed by the filter for the alleles
      * @param errorThreshold the theshold to use to determine whether filter applies
      * @param filterName the name of the filter being evaluated
