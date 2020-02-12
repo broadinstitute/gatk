@@ -90,12 +90,15 @@ def run(args):
     torch.random.manual_seed(args.random_seed)
     pyro.set_rng_seed(args.random_seed)
 
-    genotypes = {}
-    stats = {}
+    output_by_type = {}
     for svtype in [SVTypes.DEL, SVTypes.DUP, SVTypes.INS, SVTypes.INV]:
         model = SVGenotyperPyroModel(svtype, args.num_states, args.eps_pe, args.eps_sr1, args.eps_sr2, args.device)
-        data = load_data(vcf_path=args.vcf, mean_coverage_path=args.coverage_file, svtype=svtype, num_states=args.num_states,
-                         depth_dilution_factor=args.depth_dilution_factor, device=args.device)
+        samples_np, vids_np, data = load_data(vcf_path=args.vcf,
+                                              mean_coverage_path=args.coverage_file,
+                                              svtype=svtype,
+                                              num_states=args.num_states,
+                                              depth_dilution_factor=args.depth_dilution_factor,
+                                              device=args.device)
         if data is None:
             logging.info("No records of type {:s} found.".format(str(svtype.name)))
         else:
@@ -104,39 +107,66 @@ def run(args):
             predictive_samples = model.infer_predictive(data=data, log_freq=args.infer_predictive_log_freq, n_samples=args.infer_predictive_samples)
             discrete_samples = model.infer_discrete(data=data, svtype=svtype, log_freq=args.infer_discrete_log_freq, n_samples=args.infer_discrete_samples)
             freq = calculate_state_frequencies(model=model, discrete_samples=discrete_samples)
-            genotypes[svtype.name] = get_genotypes(freq_z=freq['z'])
-            stats[svtype.name] = get_predictive_stats(samples=predictive_samples)
-            stats[svtype.name].update(get_discrete_stats(samples=discrete_samples))
-    return genotypes, stats
+            genotypes = get_genotypes(freq_z=freq['z'])
+            stats = get_predictive_stats(samples=predictive_samples)
+            stats.update(get_discrete_stats(samples=discrete_samples))
+            output_by_type[svtype.name] = get_output(vids_np=vids_np, genotypes=genotypes, stats=stats)
+    output = {}
+    for svtype in output_by_type:
+        output.update(output_by_type[svtype])
+    return output
+
+
+def get_output(vids_np: np.ndarray, genotypes: dict, stats: dict):
+    n_variants = vids_np.size
+    output_dict = {}
+    for i in range(n_variants):
+        vid = vids_np[i]
+        output_dict[vid] = {
+            'gt': genotypes['gt'][i, :],
+            'gt_p': genotypes['gt_p'][i, :],
+            'gt_lod': genotypes['gt_lod'][i, :],
+            'p_m_pe': stats['m_pe']['mean'][i],
+            'p_m_sr1': stats['m_sr1']['mean'][i],
+            'p_m_sr2': stats['m_sr2']['mean'][i],
+            'p_m_rd': stats['m_rd']['mean'][i],
+        }
+    return output_dict
+
+
+def get_global_stats(stats: dict):
+    return {
+        'pi_pe_mean': stats['pi_pe']['mean'],
+        'pi_pe_std': stats['pi_pe']['std'],
+        'pi_sr1_mean': stats['pi_sr1']['mean'],
+        'pi_sr1_std': stats['pi_sr1']['std'],
+        'pi_sr2_mean': stats['pi_sr2']['mean'],
+        'pi_sr2_std': stats['pi_sr2']['std'],
+        'pi_rd_mean': stats['pi_rd']['mean'],
+        'pi_rd_std': stats['pi_rd']['std']
+    }
 
 
 def get_predictive_stats(samples: dict):
-    return {key: {'mean': samples[key].mean(axis=0).flatten(),
-                  'std': samples[key].std(axis=0).flatten()} for key in samples}
+    return {key: {'mean': samples[key].mean(axis=0).squeeze()} for key in samples}
 
 
 def get_discrete_stats(samples: dict):
-    return {key: {'mean': samples[key].astype(dtype='float').mean(axis=0).flatten(),
-                  'std': samples[key].astype(dtype='float').std(axis=0).flatten()} for key in samples}
+    return {key: {'mean': samples[key].astype(dtype='float').mean(axis=0).squeeze(),
+                  'std': samples[key].astype(dtype='float').std(axis=0).squeeze()} for key in ['m_pe', 'm_sr1', 'm_sr2', 'm_rd']}
 
 
 def get_genotypes(freq_z: dict):
-    gt = np.zeros(freq_z.shape[:2], dtype='int8')
-    p_gt = np.zeros(freq_z.shape[:2], dtype='float')
-    lod_gt = np.zeros(freq_z.shape[:2], dtype='float')
-    for i in range(freq_z.shape[0]):
-        for j in range(freq_z.shape[1]):
-            gt[i, j] = freq_z[i, j, :].argmax()
-            freq_sorted = np.sort(freq_z[i, j, :])
-            p_gt[i, j] = freq_sorted[-1]
-            if freq_sorted[-2] == 0:
-                lod_gt[i, j] = constants.MAX_GT_LOD
-            else:
-                lod_gt[i, j] = min(np.log(freq_sorted[-1]) - np.log(freq_sorted[-2]), constants.MAX_GT_LOD)
+    gt = freq_z.argmax(axis=2)
+    freq_sorted = np.sort(freq_z, axis=2)
+    gt_p = freq_sorted[..., -1]
+    gt_lod = np.log(freq_sorted[..., -1]) - np.log(freq_sorted[..., -2])
+    gt_lod[np.isinf(gt_lod)] = constants.MAX_GT_LOD
+    gt_lod[gt_lod > constants.MAX_GT_LOD] = constants.MAX_GT_LOD
     return {
         'gt': gt,
-        'p_gt': p_gt,
-        'lod_gt': lod_gt
+        'gt_p': gt_p,
+        'gt_lod': gt_lod
     }
 
 
