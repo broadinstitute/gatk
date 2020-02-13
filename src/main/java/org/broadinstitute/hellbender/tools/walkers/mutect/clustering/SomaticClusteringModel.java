@@ -8,6 +8,8 @@ import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.util.MathArrays;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.tools.walkers.mutect.MutectStats;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
@@ -35,6 +37,7 @@ import java.util.stream.IntStream;
  * mapping are not part of the clustering.
  */
 public class SomaticClusteringModel {
+    protected final Logger logger = LogManager.getLogger(this.getClass());
 
     private boolean clustersHaveBeenInitialized;
 
@@ -69,10 +72,16 @@ public class SomaticClusteringModel {
         logVariantPriors.put(0, MTFAC.getLogSnvPrior());
 
         logVariantVsArtifactPrior = MTFAC.initialLogPriorOfVariantVersusArtifact;
-        callableSites = mutectStats.stream().filter(stat -> stat.getStatistic().equals(Mutect2Engine.CALLABLE_SITES_NAME))
+
+        final OptionalDouble callableSitesFromStats = mutectStats.stream().filter(stat -> stat.getStatistic().equals(Mutect2Engine.CALLABLE_SITES_NAME))
                 .mapToDouble(MutectStats::getValue).findFirst();
 
-        Utils.validateArg(callableSites.orElse(1) >= 0.5, "No callable sites found in Mutect stats.  Something is seriously wrong!");
+        final boolean noCallableSites = callableSitesFromStats.isPresent() && callableSitesFromStats.getAsDouble() < 1;
+        if (noCallableSites) {
+            logger.warn("No callable sites found in Mutect stats.  Running without the full somatic clustering model.  Something is seriously wrong!");
+        }
+        callableSites = noCallableSites ? OptionalDouble.empty() : callableSitesFromStats;
+
 
         clusters.add(new BetaBinomialCluster(INITIAL_BACKGROUND_BETA));
         clusters.add(new BetaBinomialCluster(INITIAL_HIGH_AF_BETA));
