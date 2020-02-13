@@ -302,10 +302,11 @@ public final class SVCluster extends GATKTool {
         Utils.nonNull(call);
         final Allele altAllele = Allele.create("<" + call.getType().name() + ">", false);
         final Allele refAllele = Allele.REF_N;
-        final VariantContextBuilder builder = new VariantContextBuilder("", call.getContig(), call.getStart(), call.getEnd(),
+        final int end = call.getType().equals(StructuralVariantType.INS) ? call.getStart() + 1 : call.getEnd();
+        final VariantContextBuilder builder = new VariantContextBuilder("", call.getContig(), call.getStart(), end,
                 Lists.newArrayList(refAllele, altAllele));
         builder.attribute(END_CONTIG_ATTRIBUTE, call.getEndContig());
-        builder.attribute(END_POS_ATTRIBUTE, call.getEnd());
+        builder.attribute(END_POS_ATTRIBUTE, end);
         builder.attribute(SVLEN_ATTRIBUTE, call.getLength());
         builder.attribute(SVTYPE_ATTRIBUTE, call.getType());
         builder.attribute(STRANDS_ATTRIBUTE, getStrandString(call));
