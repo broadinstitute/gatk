@@ -1,23 +1,21 @@
-language: java
+language: generic
 dist: bionic
 group: travis_lts
 git:
   depth: 9999999
   lfs_skip_smudge: true
-jdk:
-- openjdk8
 env:
   matrix:
-  - SCALA_VERSION=2.11 TEST_TYPE=cloud UPLOAD=true TESTS_REQUIRE_GCLOUD=true
-  - SCALA_VERSION=2.11 TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - SCALA_VERSION=2.11 TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - SCALA_VERSION=2.11 TEST_TYPE=variantcalling TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - SCALA_VERSION=2.11 TEST_TYPE=python TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - SCALA_VERSION=2.11 RUN_CNV_GERMLINE_COHORT_WDL=true TESTS_REQUIRE_GCLOUD=true
-  - SCALA_VERSION=2.11 RUN_CNV_GERMLINE_CASE_WDL=true TESTS_REQUIRE_GCLOUD=true
-  - SCALA_VERSION=2.11 RUN_CNV_SOMATIC_WDL=true TESTS_REQUIRE_GCLOUD=true
-  - SCALA_VERSION=2.11 RUN_M2_WDL=true TESTS_REQUIRE_GCLOUD=true
-  - SCALA_VERSION=2.11 RUN_CNN_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - JAVA_VERSION=openjdk-8-jdk SCALA_VERSION=2.11 TEST_TYPE=cloud UPLOAD=true TESTS_REQUIRE_GCLOUD=true
+  - JAVA_VERSION=openjdk-8-jdk SCALA_VERSION=2.11 TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - JAVA_VERSION=openjdk-8-jdk SCALA_VERSION=2.11 TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - JAVA_VERSION=openjdk-8-jdk SCALA_VERSION=2.11 TEST_TYPE=variantcalling TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - JAVA_VERSION=openjdk-8-jdk SCALA_VERSION=2.11 TEST_TYPE=python TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - JAVA_VERSION=openjdk-8-jdk SCALA_VERSION=2.11 RUN_CNV_GERMLINE_COHORT_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - JAVA_VERSION=openjdk-8-jdk SCALA_VERSION=2.11 RUN_CNV_GERMLINE_CASE_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - JAVA_VERSION=openjdk-8-jdk SCALA_VERSION=2.11 RUN_CNV_SOMATIC_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - JAVA_VERSION=openjdk-8-jdk SCALA_VERSION=2.11 RUN_M2_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - JAVA_VERSION=openjdk-8-jdk SCALA_VERSION=2.11 RUN_CNN_WDL=true TESTS_REQUIRE_GCLOUD=true
   global:
   #gradle needs this
   - TERM=dumb
@@ -45,13 +43,14 @@ env:
 matrix:
   fast_finish: true
   include:
-     - jdk: oraclejdk8
-       env: SCALA_VERSION=2.11 TEST_TYPE=integration TEST_VERBOSITY=minimal TEST_REQUIRE_GCLOUD=true
      - jdk: openjdk11
+       language: java
        env: SCALA_VERSION=2.12 TEST_TYPE=integration TEST_VERBOSITY=minimal
      - jdk: openjdk11
+       language: java
        env: SCALA_VERSION=2.12 TEST_TYPE=unit TEST_VERBOSITY=minimal
      - jdk: openjdk11
+       language: java
        env: SCALA_VERSION=2.12 TEST_TYPE=cloud TESTS_REQUIRE_GCLOUD=true TEST_VERBOSITY=minimal
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
@@ -74,7 +73,7 @@ before_install:
     fi;
   fi;
  # Install java 8
-- if [[ TRAVIS_JDK_VERSION = "openjdk8" ]]; then
+- if [[ JAVA_VERSION = "openjdk-8-jdk" ]]; then
   sudo apt-get update;
   sudo apt install openjdk-8-jdk;
   fi
