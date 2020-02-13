@@ -73,8 +73,11 @@ before_install:
     fi;
   fi;
  # Install java 8
+- java -version
+- which java
 - if [[ $JAVA_VERSION = "openjdk-8-jdk" ]]; then
     echo "installing java 8"
+    echo ""
     sudo apt-get update;
     sudo apt install openjdk-8-jdk java-common;
     sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java;
@@ -83,6 +86,7 @@ before_install:
     export PATH=$JAVA_HOME:$PATH;
   fi
 - java -version
+- which java
 - REPORT_PATH=${TRAVIS_BRANCH}_${TRAVIS_JOB_NUMBER};
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
     echo "Test report will be written to  https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
