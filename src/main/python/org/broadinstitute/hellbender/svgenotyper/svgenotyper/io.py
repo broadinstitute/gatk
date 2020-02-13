@@ -70,6 +70,9 @@ def write_output(input_vcf_path: str, output_vcf_path: str, output_data: dict):
     header.info.add("PSR1", "1", "Float", "First split read support probability")
     header.info.add("PSR2", "1", "Float", "Second split read support probability")
     header.info.add("PRD", "1", "Float", "Read depth support probability")
+    header.info.add("EPE", "1", "Float", "Paired-end read background")
+    header.info.add("ESR1", "1", "Float", "First split read background")
+    header.info.add("ESR2", "1", "Float", "Second split read background")
     header.formats.add("PL", "1", "Float", "Genotype probability")
     header.formats.add("GQ", "1", "Float", "Genotype quality (log odds ratio)")
     
@@ -87,6 +90,9 @@ def write_output(input_vcf_path: str, output_vcf_path: str, output_data: dict):
         record.info['PSR1'] = vid_data['p_m_sr1']
         record.info['PSR2'] = vid_data['p_m_sr2']
         record.info['PRD'] = vid_data['p_m_rd']
+        record.info['EPE'] = vid_data['eps_pe']
+        record.info['ESR1'] = vid_data['eps_sr1']
+        record.info['ESR2'] = vid_data['eps_sr2']
         gt = vid_data['gt']
         gt_p = vid_data['gt_p']
         gt_lod = vid_data['gt_lod']

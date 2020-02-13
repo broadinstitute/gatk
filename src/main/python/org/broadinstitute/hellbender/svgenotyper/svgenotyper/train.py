@@ -110,18 +110,22 @@ def run(args):
             genotypes = get_genotypes(freq_z=freq['z'])
             stats = get_predictive_stats(samples=predictive_samples)
             stats.update(get_discrete_stats(samples=discrete_samples))
-            output_by_type[svtype.name] = get_output(vids_np=vids_np, genotypes=genotypes, stats=stats)
+            output_by_type[svtype.name] = get_output(vids_np=vids_np, genotypes=genotypes, stats=stats, args=args)
     output = {}
     for svtype in output_by_type:
         output.update(output_by_type[svtype])
     return output
 
 
-def get_output(vids_np: np.ndarray, genotypes: dict, stats: dict):
+def get_output(vids_np: np.ndarray, genotypes: dict, stats: dict, args):
     n_variants = vids_np.size
     output_dict = {}
     for i in range(n_variants):
         vid = vids_np[i]
+        if 'eps_pe' in stats:
+            eps_pe = stats['eps_pe']['mean'][i]
+        else:
+            eps_pe = 0
         output_dict[vid] = {
             'gt': genotypes['gt'][i, :],
             'gt_p': genotypes['gt_p'][i, :],
@@ -130,6 +134,9 @@ def get_output(vids_np: np.ndarray, genotypes: dict, stats: dict):
             'p_m_sr1': stats['m_sr1']['mean'][i],
             'p_m_sr2': stats['m_sr2']['mean'][i],
             'p_m_rd': stats['m_rd']['mean'][i],
+            'eps_pe': eps_pe * args.eps_pe,
+            'eps_sr1': stats['eps_sr1']['mean'][i] * args.eps_sr1,
+            'eps_sr2': stats['eps_sr2']['mean'][i] * args.eps_sr2
         }
     return output_dict
 
@@ -148,7 +155,7 @@ def get_global_stats(stats: dict):
 
 
 def get_predictive_stats(samples: dict):
-    return {key: {'mean': samples[key].mean(axis=0).squeeze()} for key in samples}
+    return {key: {'mean': samples[key].astype(dtype='float').mean(axis=0).squeeze()} for key in samples}
 
 
 def get_discrete_stats(samples: dict):
