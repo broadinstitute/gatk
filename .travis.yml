@@ -76,6 +76,7 @@ before_install:
 - if [[ $JAVA_VERSION = "openjdk-8-jdk" ]]; then
     sudo apt-get update;
     sudo apt install openjdk-8-jdk java-common;
+    sudo update-java-alternatives -l;
     sudo update-java-alternatives -s java-1.8.0-openjdk-amd64;
   fi
 - java -version
