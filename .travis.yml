@@ -73,7 +73,7 @@ before_install:
     fi;
   fi;
  # Install java 8
-- if [[ JAVA_VERSION = "openjdk-8-jdk" ]]; then
+- if [[ $JAVA_VERSION = "openjdk-8-jdk" ]]; then
   sudo apt-get update;
   sudo apt install openjdk-8-jdk;
   fi
