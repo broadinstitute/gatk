@@ -403,8 +403,9 @@ public final class IntervalUtils {
             } else {
                 try (PathLineIterator reader = new PathLineIterator(inputPath)) {
                     for (final String line : reader) {
-                        if (!line.trim().isEmpty()) {
-                            ret.add(glParser.parseGenomeLoc(line));
+                        final String trimmedLine = line.trim();
+                        if (!trimmedLine.isEmpty()) {
+                            ret.add(glParser.parseGenomeLoc(trimmedLine));
                         }
                     }
                 }
