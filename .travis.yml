@@ -74,8 +74,9 @@ before_install:
   fi;
  # Install java 8
 - if [[ $JAVA_VERSION = "openjdk-8-jdk" ]]; then
-  sudo apt-get update;
-  sudo apt install openjdk-8-jdk;
+    sudo apt-get update;
+    sudo apt install openjdk-8-jdk;
+    sudo update-java-alternatives -s java-1.8.0-openjdk-amd64
   fi
 - java -version
 - REPORT_PATH=${TRAVIS_BRANCH}_${TRAVIS_JOB_NUMBER};
