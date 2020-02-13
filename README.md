@@ -144,3 +144,30 @@ Open a terminal on your local machine and paste that command.
 If you get a public key error run: `gcloud compute config-ssh`
 
 Now open a browser on your laptop and go to the URL `http://localhost:8888`
+
+
+### Installing git-secrets
+
+```git-secrets``` helps us avoid committing secrets (e.g. private keys) and other critical data (e.g. PHI) to our 
+repositories. ```git-secrets``` can be obtained via [github](https://github.com/awslabs/git-secrets) or on MacOS can be 
+installed with Homebrew by running ```brew install git-secrets```. 
+
+To add hooks to all repositories that you initialize or clone in the future:
+
+```git secrets --install --global```
+
+To add hooks to all local repositories:
+
+```
+git secrets --install ~/.git-templates/git-secrets
+git config --global init.templateDir ~/.git-templates/git-secrets
+```
+
+We maintain our own custom "provider" to cover any private keys or other critical data that we would like to avoid 
+committing to our repositories. Feel free to add ```egrep```-compatible regular expressions to 
+```git_secrets_provider_ml4cvd.txt``` to match types of critical data that are not currently covered by the patterns in that 
+file. To register the patterns in this file with ```git-secrets```:
+
+```
+git secrets --add-provider -- cat ${HOME}/ml/git_secrets_provider_ml4cvd.txt
+```
