@@ -93,12 +93,12 @@ def run(args):
     output_by_type = {}
     for svtype in [SVTypes.DEL, SVTypes.DUP, SVTypes.INS, SVTypes.INV]:
         model = SVGenotyperPyroModel(svtype, args.num_states, args.eps_pe, args.eps_sr1, args.eps_sr2, args.device)
-        samples_np, vids_np, data = load_data(vcf_path=args.vcf,
-                                              mean_coverage_path=args.coverage_file,
-                                              svtype=svtype,
-                                              num_states=args.num_states,
-                                              depth_dilution_factor=args.depth_dilution_factor,
-                                              device=args.device)
+        vids_np, data = load_data(vcf_path=args.vcf,
+                                  mean_coverage_path=args.coverage_file,
+                                  svtype=svtype,
+                                  num_states=args.num_states,
+                                  depth_dilution_factor=args.depth_dilution_factor,
+                                  device=args.device)
         if data is None:
             logging.info("No records of type {:s} found.".format(str(svtype.name)))
         else:
@@ -110,11 +110,11 @@ def run(args):
             genotypes = get_genotypes(freq_z=freq['z'])
             stats = get_predictive_stats(samples=predictive_samples)
             stats.update(get_discrete_stats(samples=discrete_samples))
-            output_by_type[svtype.name] = get_output(vids_np=vids_np, genotypes=genotypes, stats=stats, args=args)
-    output = {}
+            output_by_type[svtype] = get_output(vids_np=vids_np, genotypes=genotypes, stats=stats, args=args)
+    results_output = {}
     for svtype in output_by_type:
-        output.update(output_by_type[svtype])
-    return output
+        results_output.update(output_by_type[svtype])
+    return results_output
 
 
 def get_output(vids_np: np.ndarray, genotypes: dict, stats: dict, args):

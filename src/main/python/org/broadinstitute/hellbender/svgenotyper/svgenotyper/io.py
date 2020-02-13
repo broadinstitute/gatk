@@ -7,20 +7,15 @@ from .constants import SVTypes
 from .preprocess import create_tensors, compute_preprocessed_tensors
 
 
-def load_data(vcf_path: str, mean_coverage_path: str, svtype: SVTypes, num_states: int, depth_dilution_factor: float,
-              device: str = 'cpu'):
-    mean_count_df = pd.read_csv(mean_coverage_path, sep='\t', header=None, index_col=0)
-
+def read_vcf(vcf_path: str, svtype: SVTypes):
     vcf = VariantFile(vcf_path)
     samples_list = list(vcf.header.samples)
-
     vids_list = []
     gt_list = []
     data_list = []
     cnlp_list = []
     svlen_list = []
     svtype_list = []
-
     num_processed = 0
     for record in vcf.fetch():
         # TODO: generate genotypes from depth posteriors
@@ -31,7 +26,7 @@ def load_data(vcf_path: str, mean_coverage_path: str, svtype: SVTypes, num_state
             continue
         vids_list.append(record.id)
         gt_list.append([sum(record.samples[sample]['GT']) for sample in samples_list])
-        data_list.append([[record.samples[sample][attr] for attr in constants.GENOTYPE_FIELDS] for sample in samples_list])
+        data_list.append([[record.samples[sample][attr] for attr in constants.INPUT_GENOTYPE_FIELDS] for sample in samples_list])
         cnlp_list.append([record.samples[sample]['CNLP'] for sample in samples_list])
         svlen_list.append(record.info['SVLEN'])
         if svtype_i != SVTypes.BND:
@@ -50,14 +45,20 @@ def load_data(vcf_path: str, mean_coverage_path: str, svtype: SVTypes, num_state
         if num_processed % 1000 == 0:
             logging.info("Read {:d} vcf records...".format(num_processed))
     vcf.close()
+    return vids_list, samples_list, gt_list, data_list, cnlp_list, svlen_list, svtype_list
 
-    if num_processed == 0:
-        return None, None, None
+
+def load_data(vcf_path: str, mean_coverage_path: str, svtype: SVTypes, num_states: int, depth_dilution_factor: float,
+              device: str = 'cpu'):
+    mean_count_df = pd.read_csv(mean_coverage_path, sep='\t', header=None, index_col=0)
+    vids_list, samples_list, gt_list, data_list, cnlp_list, svlen_list, svtype_list = read_vcf(vcf_path=vcf_path, svtype=svtype)
+    if len(vids_list) == 0:
+        return None, None
     gt_t, pe_t, sr1_t, sr2_t, ncn_t, cnlp_t, svlen_t, svtype_t, mean_count_t, samples_np, vids_np = create_tensors(
         vids_list, gt_list, data_list, cnlp_list, svlen_list, svtype_list, samples_list, mean_count_df, device)
     data = compute_preprocessed_tensors(num_states, svtype, depth_dilution_factor, pe_t, sr1_t, sr2_t, mean_count_t,
-                                        cnlp_t, ncn_t, svtype_t, device)
-    return samples_np, vids_np, data
+                                        cnlp_t, ncn_t, device)
+    return vids_np, data
 
 
 def write_output(input_vcf_path: str, output_vcf_path: str, output_data: dict):

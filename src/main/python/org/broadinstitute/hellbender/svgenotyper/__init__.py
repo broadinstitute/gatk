@@ -6,3 +6,4 @@ from .svgenotyper.io import load_data
 from .svgenotyper.model import SVGenotyperData, SVGenotyperPyroModel
 from .svgenotyper.preprocess import create_tensors, compute_preprocessed_tensors
 from .svgenotyper.train import run
+from .svgenotyper.plot import plot_sites

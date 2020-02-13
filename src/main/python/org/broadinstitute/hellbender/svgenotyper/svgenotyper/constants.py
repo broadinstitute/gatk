@@ -1,6 +1,6 @@
 from enum import Enum
 
-GENOTYPE_FIELDS = ['PE', 'SSR', 'ESR', 'NCN']
+INPUT_GENOTYPE_FIELDS = ['PE', 'SSR', 'ESR', 'NCN']
 
 MAX_PE_COUNT = 50
 MAX_SR_COUNT = 50

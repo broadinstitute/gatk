@@ -25,10 +25,10 @@ def create_tensors(vids_list: list,
     cnlp_np = np.array(cnlp_list)
 
     gt_t = torch.from_numpy(gt_np).long()
-    pe_t = torch.from_numpy(data_np[..., constants.GENOTYPE_FIELDS.index('PE')]).to(dtype=torch.get_default_dtype(), device=device)
-    sr1_t = torch.from_numpy(data_np[..., constants.GENOTYPE_FIELDS.index('SSR')]).to(dtype=torch.get_default_dtype(), device=device)
-    sr2_t = torch.from_numpy(data_np[..., constants.GENOTYPE_FIELDS.index('ESR')]).to(dtype=torch.get_default_dtype(), device=device)
-    ncn_t = torch.from_numpy(data_np[..., constants.GENOTYPE_FIELDS.index('NCN')]).long().to(device=device)
+    pe_t = torch.from_numpy(data_np[..., constants.INPUT_GENOTYPE_FIELDS.index('PE')]).to(dtype=torch.get_default_dtype(), device=device)
+    sr1_t = torch.from_numpy(data_np[..., constants.INPUT_GENOTYPE_FIELDS.index('SSR')]).to(dtype=torch.get_default_dtype(), device=device)
+    sr2_t = torch.from_numpy(data_np[..., constants.INPUT_GENOTYPE_FIELDS.index('ESR')]).to(dtype=torch.get_default_dtype(), device=device)
+    ncn_t = torch.from_numpy(data_np[..., constants.INPUT_GENOTYPE_FIELDS.index('NCN')]).long().to(device=device)
     cnlp_t = torch.from_numpy(cnlp_np).to(dtype=torch.get_default_dtype(), device=device)
 
     svlen_t = torch.from_numpy(np.array(svlen_list)).to(dtype=torch.get_default_dtype(), device=device)
@@ -50,21 +50,17 @@ def compute_preprocessed_tensors(k: int,
                                  mean_count_t: torch.Tensor,
                                  cnlp_t: torch.Tensor,
                                  ncn_t: torch.Tensor,
-                                 svtype_t: torch.Tensor,
                                  device: str) -> SVGenotyperData:
     # Per-base depth
-    depth_t = 0.5 * mean_count_t.squeeze(-1).to(dtype=torch.get_default_dtype(), device=device)
+    depth_t = mean_count_t.squeeze(-1).to(dtype=torch.get_default_dtype(), device=device)
 
     # Copy state posterior probabilities
     cn_prob_t = torch.exp(cnlp_t / (-10. * torch.log10(torch.tensor(np.exp(1.), device=device))))
 
-    # Filter PE for insertions
-    pe_t = pe_t.where(svtype_t.ne(SVTypes.INS.value).unsqueeze(-1), torch.zeros(pe_t.shape, device=device))
-
     # Clamp values for numerical stability
-    pe_t = pe_t.clone().clamp(0, constants.MAX_PE_COUNT)
-    sr1_t = sr1_t.clone().clamp(0, constants.MAX_SR_COUNT)
-    sr2_t = sr2_t.clone().clamp(0, constants.MAX_SR_COUNT)
+    pe_t = pe_t.clamp(0, constants.MAX_PE_COUNT)
+    sr1_t = sr1_t.clamp(0, constants.MAX_SR_COUNT)
+    sr2_t = sr2_t.clamp(0, constants.MAX_SR_COUNT)
 
     # TODO : we only use CNLP values from the VCF for CNVs
     rd_gt_prob_t = torch.ones((cn_prob_t.shape[0], cn_prob_t.shape[1], k), device=device) / float(k)
