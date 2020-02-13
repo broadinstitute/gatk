@@ -59,7 +59,7 @@ public final class CommonSuffixSplitter {
                     } else {
                         incomingTarget = prefixV;
                         graph.addVertex(prefixV);
-                        graph.addEdge(prefixV, suffixV, new BaseEdge(out.isRef(), 1));
+                        graph.addEdge(prefixV, suffixV, out.copy());
                         edgesToRemove.add(out);
                     }
 
