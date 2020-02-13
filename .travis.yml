@@ -87,6 +87,9 @@ before_install:
   fi
 - java -version
 - which java
+- echo $PATH
+- ls -l /usr/bin/java
+- ls -l /etc/alternatives/java
 - REPORT_PATH=${TRAVIS_BRANCH}_${TRAVIS_JOB_NUMBER};
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
     echo "Test report will be written to  https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
