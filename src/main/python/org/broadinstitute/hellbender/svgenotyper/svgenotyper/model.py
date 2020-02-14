@@ -32,22 +32,30 @@ class SVGenotyperPyroModel(object):
                  mu_eps_pe: float = 0.1,
                  mu_eps_sr1: float = 0.1,
                  mu_eps_sr2: float = 0.1,
+                 mu_lambda_pe: float = 0.1,
+                 mu_lambda_sr1: float = 0.1,
+                 mu_lambda_sr2: float = 0.1,
                  device: str = 'cpu'):
         self.k = k
         self.mu_eps_pe = mu_eps_pe
         self.mu_eps_sr1 = mu_eps_sr1
         self.mu_eps_sr2 = mu_eps_sr2
+        self.mu_lambda_pe = mu_lambda_pe
+        self.mu_lambda_sr1 = mu_lambda_sr1
+        self.mu_lambda_sr2 = mu_lambda_sr2
         self.svtype = svtype
         self.device = device
         self.loss = {'train': {'epoch': [], 'elbo': []},
                      'test': {'epoch': [], 'elbo': []}}
 
         if svtype == SVTypes.DEL or svtype == SVTypes.DUP:
-            self.latent_sites = ['eps_pe', 'eps_sr1', 'eps_sr2', 'pi_pe', 'pi_sr1', 'pi_sr2', 'pi_rd']
+            self.latent_sites = ['eps_pe', 'eps_sr1', 'eps_sr2', 'pi_pe', 'pi_sr1', 'pi_sr2', 'pi_rd', 'var_pe',
+                                 'var_sr1', 'var_sr2']
         elif svtype == SVTypes.INS:
-            self.latent_sites = ['eps_sr1', 'eps_sr2', 'pi_sr1', 'pi_sr2']
+            self.latent_sites = ['eps_sr1', 'eps_sr2', 'pi_sr1', 'pi_sr2', 'var_sr1', 'var_sr2']
         elif svtype == SVTypes.INV:
-            self.latent_sites = ['eps_pe', 'eps_sr1', 'eps_sr2', 'pi_sr1', 'pi_sr2', 'pi_pe']
+            self.latent_sites = ['eps_pe', 'eps_sr1', 'eps_sr2', 'pi_sr1', 'pi_sr2', 'pi_pe' 'var_pe', 'var_sr1',
+                                 'var_sr2']
         else:
             raise ValueError('SV type {:s} not supported for genotyping.'.format(str(svtype.name)))
 
@@ -82,11 +90,15 @@ class SVGenotyperPyroModel(object):
         pi_sr1 = pyro.sample('pi_sr1', dist.Beta(one_t, one_t))
         pi_sr2 = pyro.sample('pi_sr2', dist.Beta(one_t, one_t))
 
+        var_sr1 = pyro.sample('var_sr1', dist.Exponential(one_t)) * self.mu_lambda_sr1
+        var_sr2 = pyro.sample('var_sr2', dist.Exponential(one_t)) * self.mu_lambda_sr2
+
         if self.svtype == SVTypes.DEL or self.svtype == SVTypes.DUP:
             pi_rd = pyro.sample('pi_rd', dist.Beta(one_t, one_t))
 
         if self.svtype != SVTypes.INS:
             pi_pe = pyro.sample('pi_pe', dist.Beta(one_t, one_t))
+            var_pe = pyro.sample('var_pe', dist.Exponential(one_t)) * self.mu_lambda_pe
 
         with pyro.plate('variant', n_variants, dim=-2, device=self.device):
             if self.svtype == SVTypes.DEL or self.svtype == SVTypes.DUP:
@@ -124,10 +136,13 @@ class SVGenotyperPyroModel(object):
                     gated_locs_pe = (one_t - m_pe.unsqueeze(-2)) * m0_locs_pe + m_pe.unsqueeze(-2) * m1_locs_pe
                     # V x S
                     mu_obs_pe = depth_t * Vindex(gated_locs_pe)[..., z]
-                    # V x S
-                    pyro.sample('obs_pe', dist.Poisson(rate=mu_obs_pe), obs=data_pe)
+                    var_pe = mu_obs_pe * (1. + var_pe)
+                    r_pe = mu_obs_pe * mu_obs_pe / (var_pe - mu_obs_pe)
+                    p_pe = (var_pe - mu_obs_pe) / var_pe
+                    pyro.sample('obs_pe', dist.NegativeBinomial(total_count=r_pe, probs=p_pe), obs=data_pe)
                 else:
-                    mu_obs_pe = zero_t.unsqueeze(-1).expand(n_variants, n_samples)
+                    r_pe = one_t.unsqueeze(-1).expand(n_variants, n_samples)
+                    p_pe = one_t.unsqueeze(-1).expand(n_variants, n_samples)
 
                 # V x S x (K-1)
                 nonzero_locs_sr = k_range_t * ones_vsk1_t
@@ -143,14 +158,22 @@ class SVGenotyperPyroModel(object):
                 # V x S
                 mu_obs_sr1 = depth_t * Vindex(gated_locs_sr1)[..., z]
                 mu_obs_sr2 = depth_t * Vindex(gated_locs_sr2)[..., z]
-                # V x S
-                pyro.sample('obs_sr1', dist.Poisson(rate=mu_obs_sr1), obs=data_sr1)
-                pyro.sample('obs_sr2', dist.Poisson(rate=mu_obs_sr2), obs=data_sr2)
+                var_sr1 = mu_obs_sr1 * (1. + var_sr1)
+                var_sr2 = mu_obs_sr2 * (1. + var_sr2)
+                r_sr1 = mu_obs_sr1 * mu_obs_sr1 / (var_sr1 - mu_obs_sr1)
+                r_sr2 = mu_obs_sr2 * mu_obs_sr2 / (var_sr2 - mu_obs_sr2)
+                p_sr1 = (var_sr1 - mu_obs_sr1) / var_sr1
+                p_sr2 = (var_sr2 - mu_obs_sr2) / var_sr2
+                pyro.sample('sr1_obs', dist.NegativeBinomial(total_count=r_sr1, probs=p_sr1), obs=data_sr1)
+                pyro.sample('sr2_obs', dist.NegativeBinomial(total_count=r_sr2, probs=p_sr2), obs=data_sr2)
         return {
             'z': z,
-            'mu_obs_pe': mu_obs_pe,
-            'mu_obs_sr1': mu_obs_sr1,
-            'mu_obs_sr2': mu_obs_sr2,
+            'r_pe': r_pe,
+            'r_sr1': r_sr1,
+            'r_sr2': r_sr2,
+            'p_pe': p_pe,
+            'p_sr1': p_sr1,
+            'p_sr2': p_sr2,
             'm_pe': m_pe,
             'm_sr1': m_sr1,
             'm_sr2': m_sr2,
@@ -184,36 +207,42 @@ class SVGenotyperPyroModel(object):
                                                             data_sr2=data.sr2_t, depth_t=data.depth_t,
                                                             rd_gt_prob_t=data.rd_gt_prob_t)
             posterior_samples.append([trace.nodes["z"]["value"].detach().cpu(),
-                                      trace.nodes["_RETURN"]["value"]["mu_obs_pe"].detach().cpu(),
-                                      trace.nodes["_RETURN"]["value"]["mu_obs_sr1"].detach().cpu(),
-                                      trace.nodes["_RETURN"]["value"]["mu_obs_sr2"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["r_pe"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["r_sr1"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["r_sr2"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["p_pe"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["p_sr1"].detach().cpu(),
+                                      trace.nodes["_RETURN"]["value"]["p_sr2"].detach().cpu(),
                                       trace.nodes["_RETURN"]["value"]["m_pe"].detach().cpu(),
                                       trace.nodes["_RETURN"]["value"]["m_sr1"].detach().cpu(),
                                       trace.nodes["_RETURN"]["value"]["m_sr2"].detach().cpu(),
                                       trace.nodes["_RETURN"]["value"]["m_rd"].detach().cpu()])
             if (i + 1) % log_freq == 0:
                 logging.info("[sample {:d}] discrete latent".format(i + 1))
-        posterior_samples = [torch.stack([posterior_samples[j][i] for j in range(n_samples)], dim=0) for i in range(8)]
+        posterior_samples = [torch.stack([posterior_samples[j][i] for j in range(n_samples)], dim=0) for i in range(11)]
 
         z = posterior_samples[0]
-        mu_obs_pe = posterior_samples[1]
-        mu_obs_sr1 = posterior_samples[2]
-        mu_obs_sr2 = posterior_samples[3]
-        m_pe = posterior_samples[4]
-        m_sr1 = posterior_samples[5]
-        m_sr2 = posterior_samples[6]
-        m_rd = posterior_samples[7]
+        r_pe = posterior_samples[1]
+        r_sr1 = posterior_samples[2]
+        r_sr2 = posterior_samples[3]
+        p_pe = posterior_samples[4]
+        p_sr1 = posterior_samples[5]
+        p_sr2 = posterior_samples[6]
+        m_pe = posterior_samples[7]
+        m_sr1 = posterior_samples[8]
+        m_sr2 = posterior_samples[9]
+        m_rd = posterior_samples[10]
 
         samples_pe = []
         samples_sr1 = []
         samples_sr2 = []
         for i in range(n_samples):
             if svtype == SVTypes.INS:
-                samples_pe.append(torch.zeros(1, device='cpu').unsqueeze(-1).expand(mu_obs_pe.shape[0], mu_obs_pe.shape[1]))
+                samples_pe.append(torch.zeros(1, device='cpu').unsqueeze(-1).expand(r_pe.shape[0], r_pe.shape[1]))
             else:
-                samples_pe.append(dist.Poisson(rate=mu_obs_pe[i, ...]).sample())
-            samples_sr1.append(dist.Poisson(rate=mu_obs_sr1[i, ...]).sample())
-            samples_sr2.append(dist.Poisson(rate=mu_obs_sr2[i, ...]).sample())
+                samples_pe.append(dist.NegativeBinomial(total_count=r_pe[..., i], probs=p_pe[..., i]).sample())
+            samples_sr1.append(dist.NegativeBinomial(total_count=r_sr1[..., i], probs=p_sr1[..., i]).sample())
+            samples_sr2.append(dist.NegativeBinomial(total_count=r_sr2[..., i], probs=p_sr2[..., i]).sample())
             if (i + 1) % log_freq == 0:
                 logging.info("[sample {:d}] discrete observed".format(i + 1))
 

@@ -19,6 +19,9 @@ def parse_args():
     parser.add_argument('--eps-pe', default=0.1, type=float, help='Mean of PE noise prior')
     parser.add_argument('--eps-sr1', default=0.1, type=float, help='Mean of SR1 noise prior')
     parser.add_argument('--eps-sr2', default=0.1, type=float, help='Mean of SR2 noise prior')
+    parser.add_argument('--lambda-pe', default=0.1, type=float, help='Mean of PE variance factor prior')
+    parser.add_argument('--lambda-sr1', default=0.1, type=float, help='Mean of SR1 variance factor prior')
+    parser.add_argument('--lambda-sr2', default=0.1, type=float, help='Mean of SR2 variance factor prior')
 
     parser.add_argument('--lr-decay', default=1000., type=float, help='Learning rate decay constant (lower is faster)')
     parser.add_argument('--lr-min', default=1e-4, type=float, help='Minimum learning rate')

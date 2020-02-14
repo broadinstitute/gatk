@@ -62,9 +62,6 @@ def compute_preprocessed_tensors(k: int,
     sr1_t = sr1_t.clamp(0, constants.MAX_SR_COUNT)
     sr2_t = sr2_t.clamp(0, constants.MAX_SR_COUNT)
 
-    # TODO : we only use CNLP values from the VCF for CNVs
-    rd_gt_prob_t = torch.ones((cn_prob_t.shape[0], cn_prob_t.shape[1], k), device=device) / float(k)
-
     if svtype == SVTypes.DEL:
         n = cn_prob_t.shape[0]
         m = cn_prob_t.shape[1]
@@ -78,8 +75,7 @@ def compute_preprocessed_tensors(k: int,
         probs_list.append(torch.where(filled_index <= ncn_t.unsqueeze(-1) - k + 1, cn_prob_t, filled_zeros).sum(dim=-1).unsqueeze(-1))
         rd_gt_prob_t = torch.cat(probs_list, dim=-1)
         del filled_zeros, filled_index, probs_list
-
-    if svtype == SVTypes.DUP:
+    elif svtype == SVTypes.DUP:
         n = cn_prob_t.shape[0]
         m = cn_prob_t.shape[1]
         cn_prob_states = cn_prob_t.shape[2]
@@ -92,6 +88,9 @@ def compute_preprocessed_tensors(k: int,
         probs_list.append(torch.where(filled_index >= ncn_t.unsqueeze(-1) + k - 1, cn_prob_t, filled_zeros).sum(dim=-1).unsqueeze(-1))
         rd_gt_prob_t = torch.cat(probs_list, dim=-1)
         del filled_zeros, filled_index, probs_list
+    else:
+        # TODO: we only use CNLP values from the VCF for CNVs
+        rd_gt_prob_t = torch.ones((cn_prob_t.shape[0], cn_prob_t.shape[1], k), device=device) / float(k)
 
     rd_gt_prob_t += depth_dilution_factor
     rd_gt_prob_t = rd_gt_prob_t / rd_gt_prob_t.sum(dim=-1).unsqueeze(-1)

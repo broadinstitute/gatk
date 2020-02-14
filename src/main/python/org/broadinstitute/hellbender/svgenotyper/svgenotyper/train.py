@@ -92,7 +92,9 @@ def run(args):
 
     output_by_type = {}
     for svtype in [SVTypes.DEL, SVTypes.DUP, SVTypes.INS, SVTypes.INV]:
-        model = SVGenotyperPyroModel(svtype, args.num_states, args.eps_pe, args.eps_sr1, args.eps_sr2, args.device)
+        model = SVGenotyperPyroModel(svtype=svtype, k=args.num_states, mu_eps_pe=args.eps_pe, mu_eps_sr1=args.eps_sr1,
+                                     mu_eps_sr2=args.eps_sr2, mu_lambda_pe=args.lambda_pe, mu_lambda_sr1=args.lambda_sr1,
+                                     mu_lambda_sr2=args.lambda_sr2, device=args.device)
         vids_np, data = load_data(vcf_path=args.vcf,
                                   mean_coverage_path=args.coverage_file,
                                   svtype=svtype,
