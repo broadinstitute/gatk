@@ -240,9 +240,9 @@ class SVGenotyperPyroModel(object):
             if svtype == SVTypes.INS:
                 samples_pe.append(torch.zeros(1, device='cpu').unsqueeze(-1).expand(r_pe.shape[0], r_pe.shape[1]))
             else:
-                samples_pe.append(dist.NegativeBinomial(total_count=r_pe[..., i], probs=p_pe[..., i]).sample())
-            samples_sr1.append(dist.NegativeBinomial(total_count=r_sr1[..., i], probs=p_sr1[..., i]).sample())
-            samples_sr2.append(dist.NegativeBinomial(total_count=r_sr2[..., i], probs=p_sr2[..., i]).sample())
+                samples_pe.append(dist.NegativeBinomial(total_count=r_pe[i, ...], probs=p_pe[i, ...]).sample().detach())
+            samples_sr1.append(dist.NegativeBinomial(total_count=r_sr1[i, ...], probs=p_sr1[i, ...]).sample().detach())
+            samples_sr2.append(dist.NegativeBinomial(total_count=r_sr2[i, ...], probs=p_sr2[i, ...]).sample().detach())
             if (i + 1) % log_freq == 0:
                 logging.info("[sample {:d}] discrete observed".format(i + 1))
 
