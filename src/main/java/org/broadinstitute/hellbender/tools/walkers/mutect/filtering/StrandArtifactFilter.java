@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.function.DoubleUnaryOperator;
@@ -61,15 +62,16 @@ public class StrandArtifactFilter extends Mutect2AlleleFilter {
         }
         // remove symbolic alleles
         if (vc.hasSymbolicAlleles()) {
-            final List<List<Integer>> unfilteredSbs = new ArrayList<>(sbs);
-            sbs.clear();
-            List<Allele> symbolicAlleles = vc.getAlternateAlleles().stream().filter(allele -> allele.isSymbolic()).collect(Collectors.toList());
-            List<Integer> symIndexes = vc.getAlleleIndices(symbolicAlleles);
-            new IndexRange(0, sbs.size()).forEach(i -> {
-                        if (!symIndexes.contains(i)) {
-                            sbs.add(unfilteredSbs.get(i));
-                        }
-                    });
+//            final List<List<Integer>> unfilteredSbs = new ArrayList<>(sbs);
+//            sbs.clear();
+            sbs = GATKVariantContextUtils.removeDataForSymbolicAltAlleles(vc, sbs);
+//            List<Allele> symbolicAlleles = vc.getAlternateAlleles().stream().filter(allele -> allele.isSymbolic()).collect(Collectors.toList());
+//            List<Integer> symIndexes = vc.getAlleleIndices(symbolicAlleles);
+//            new IndexRange(0, unfilteredSbs.size()).forEach(i -> {
+//                        if (!symIndexes.contains(i)) {
+//                            sbs.add(unfilteredSbs.get(i));
+//                        }
+//                    });
         }
 
         final List<Integer> indelSizes = vc.getAlternateAlleles().stream().map(alt -> Math.abs(vc.getReference().length() - alt.length())).collect(Collectors.toList());
@@ -167,7 +169,7 @@ public class StrandArtifactFilter extends Mutect2AlleleFilter {
 
     @Override
     protected List<String> requiredInfoAnnotations() {
-        return Collections.emptyList();
+        return Collections.singletonList(GATKVCFConstants.AS_SB_TABLE_KEY);
     }
 
     private double artifactStrandLogLikelihood(final int strandCount, final int strandAltCount) {

@@ -232,7 +232,6 @@ public class Mutect2FilteringEngine {
             List<List<String>> filtersNonSymbolicAlleles =  GATKVariantContextUtils.removeDataForSymbolicAltAlleles(vc, distinctFiltersByAllele);
             // if any allele passed, don't fail the site
             if (!filtersNonSymbolicAlleles.stream().anyMatch(filterList -> filterList.contains(VCFConstants.EMPTY_INFO_FIELD))) {
-//            if (!distinctFiltersByAllele.stream().flatMap(List::stream).anyMatch(f -> f.equals(VCFConstants.PASSES_FILTERS_v4))) {
                 // we know the allele level filters exceeded their threshold - so set this prob to 1
                 siteFiltersWithErrorProb.put(GATKVCFConstants.FAIL, 1.0);
             }

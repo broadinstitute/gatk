@@ -36,5 +36,5 @@ public class StrictStrandBiasFilter extends HardAlleleFilter {
     }
 
     @Override
-    protected List<String> requiredInfoAnnotations() { return Collections.emptyList(); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.AS_SB_TABLE_KEY); }
 }
