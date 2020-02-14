@@ -77,7 +77,7 @@ public final class HMMUnitTest extends GATKBaseTest {
 
     private static List<ExpectedResult> TEST_EXPECTED_RESULTS;
 
-    @Test
+    @Test(groups = "R")
     public void testSetup() throws IOException {
         setUp();
     }
@@ -203,7 +203,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test(dataProvider = "testViterbiData")
+    @Test(groups = "R", dataProvider = "testViterbiData")
     public void testViterbi(final TestHMM model, final List<TestHMM.Datum> sequence, final List<TestHMM.State> expected) {
         final List<Integer> positions = IntStream.range(0, sequence.size()).boxed().collect(Collectors.toList());
         final List<TestHMM.State> observed = ViterbiAlgorithm.apply(sequence, positions, model);
@@ -222,7 +222,7 @@ public final class HMMUnitTest extends GATKBaseTest {
     /**
      * Test {@link ForwardBackwardAlgorithm.Result} methods not covered by other tests.
      */
-    @Test(dataProvider = "testFBResultData")
+    @Test(groups = "R", dataProvider = "testFBResultData")
     public void testFBResult(final TestHMM model, final List<TestHMM.Datum> sequence) {
         final List<Integer> positions = IntStream.range(0, sequence.size()).boxed().collect(Collectors.toList());
         final ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> forwardBackwardResult
@@ -233,7 +233,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         Assert.assertSame(forwardBackwardResult.model(), model);
     }
 
-    @Test(dataProvider = "testForwardData")
+    @Test(groups = "R", dataProvider = "testForwardData")
     public void testForward(final TestHMM model, final List<TestHMM.Datum> sequence, final List<double[]> expected) {
         final List<Integer> positions = IntStream.range(0, sequence.size()).boxed().collect(Collectors.toList());
         final ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> forwardBackwardResult
@@ -252,7 +252,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test(dataProvider = "testBackwardData")
+    @Test(groups = "R", dataProvider = "testBackwardData")
     public void testBackward(final TestHMM model, final List<TestHMM.Datum> sequence, final List<double[]> expected) {
         final List<Integer> positions = IntStream.range(0, sequence.size()).boxed().collect(Collectors.toList());
         final ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> forwardBackwardResult
@@ -271,7 +271,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test(dataProvider = "testPosteriorData")
+    @Test(groups = "R", dataProvider = "testPosteriorData")
     public void testPosterior(final TestHMM model, final List<TestHMM.Datum> sequence, final List<double[]> expected) {
         final List<Integer> positions = IntStream.range(0, sequence.size()).boxed().collect(Collectors.toList());
         final ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> forwardBackwardResult
@@ -297,14 +297,14 @@ public final class HMMUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test(dataProvider = "testModelData")
+    @Test(groups = "R", dataProvider = "testModelData")
     public void testViterbiOnEmptyData(final TestHMM model) {
         final List<TestHMM.State> bestPath = ViterbiAlgorithm.apply(new ArrayList<>(), new ArrayList<>(), model);
         Assert.assertNotNull(bestPath);
         Assert.assertEquals(bestPath, new ArrayList<>());
     }
 
-    @Test(dataProvider = "testModelData")
+    @Test(groups = "R", dataProvider = "testModelData")
     public void testForwardBackwardOnEmptyData(final TestHMM model) {
         final ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> fbResult = ForwardBackwardAlgorithm.apply(new ArrayList<>(), new ArrayList<>(), model);
         Assert.assertNotNull(fbResult);
@@ -317,7 +317,7 @@ public final class HMMUnitTest extends GATKBaseTest {
     // Checks that if all transmissions, priors and emission have the same prob,
     // all possible paths have the same
     // prob as well.
-    @Test
+    @Test(groups = "R")
     public void testAllPathEqualProbabilityProperty() {
        final int numStates = 3;
        final int length = 5; // dont make this too big as the number of paths to test is numStates ^ length.
@@ -346,7 +346,7 @@ public final class HMMUnitTest extends GATKBaseTest {
     // (priors and transitions to it are greater than any other state) and emission
     // priors are uniform, that the path that stays in that state the whole chain
     // is the most likely one.
-    @Test
+    @Test(groups = "R")
     public void testHeavyStateProperty() {
         final int numStates = 3;
         final int heavyState = numStates >> 1; // the (low) median is the heavy state.
@@ -381,7 +381,7 @@ public final class HMMUnitTest extends GATKBaseTest {
     // Checks that the FW algorithm produce posterior probabilities for the
     // hidden states at each position (i) in the chain accordingly with what its
     // expected given a random prior (P) and transition matrix (T): P x T^i .
-    @Test
+    @Test(groups = "R")
     public void testMultiplicativeTransitionsProperty() {
         final int numStates = 3;
         final int length = 5;
@@ -452,28 +452,28 @@ public final class HMMUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testForwardBackwardWithMismatchedDataPositionsLength() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Y)),
                 new ArrayList<>(Collections.singletonList(1)), model);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testViterbiWithMismatchedDataPositionsLength() {
         final TestHMM model = TEST_MODELS.get(0);
         ViterbiAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Y)),
                 new ArrayList<>(Collections.singletonList(1)), model);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testForwardBackwardWithNullDataPoints() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, null, TestHMM.Datum.Y)),
                 new ArrayList<>(Arrays.asList(1, 2, 3)), model);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithNullState() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -488,7 +488,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logProbability(2, (TestHMM.State)null);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithNullStateUsingPositionObject() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -504,7 +504,7 @@ public final class HMMUnitTest extends GATKBaseTest {
     }
 
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogDataLikelihoodWithWrongTarget() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -518,7 +518,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logDataLikelihood(14);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogDataLikelihoodWithWrongTargetUsingPositionObject() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -532,7 +532,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logDataLikelihood(Integer.valueOf(14));
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogBackProbabilityWithNullState() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -547,7 +547,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logBackwardProbability(2, null);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogBackProbabilityWithNullStateUsingPositionObject() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -562,7 +562,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logBackwardProbability(Integer.valueOf(2), null);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogForwardProbabilityWithNullState() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -577,7 +577,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logForwardProbability(2, null);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogForwardProbabilityWithNullStateUsingPositionObject() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -592,7 +592,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logForwardProbability(Integer.valueOf(2), null);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithNullPosition() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -607,7 +607,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logProbability(null, TestHMM.State.A);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithNegativePositionIndex() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -622,7 +622,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logProbability(-13, TestHMM.State.A);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithMadeUpPosition() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -637,7 +637,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logProbability(14, TestHMM.State.A);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithMadeUpPositionObject() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -652,7 +652,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logProbability(Integer.valueOf(14), TestHMM.State.A);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithASequenceThatIsTwoLong() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -667,7 +667,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logProbability(2, Arrays.asList(TestHMM.State.A, TestHMM.State.A, TestHMM.State.B));
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithASequenceThatIsTwoLongUsingPositionObject() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -682,7 +682,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logProbability(Integer.valueOf(2), Arrays.asList(TestHMM.State.A, TestHMM.State.A, TestHMM.State.B));
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogBackwardProbabilityWithNullPosition() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -697,7 +697,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logBackwardProbability(null, TestHMM.State.A);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogBackwardProbabilityWithNegativePositionIndex() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -712,7 +712,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logBackwardProbability(-13, TestHMM.State.A);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogForwardProbabilityWithNullPosition() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -727,7 +727,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logForwardProbability(null, TestHMM.State.A);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogForwardProbabilityWithNegativePositionIndex() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -742,7 +742,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logForwardProbability(-13, TestHMM.State.A);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithNonExistentPosition() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -757,7 +757,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logProbability(4, TestHMM.State.A);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithNonExistentPositionObject() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -772,7 +772,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logProbability(Integer.valueOf(4), TestHMM.State.A);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithANull() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -787,7 +787,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logProbability(null);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithSequenceWrongLength() {
         final TestHMM model = TEST_MODELS.get(0);
         ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
@@ -802,14 +802,14 @@ public final class HMMUnitTest extends GATKBaseTest {
         result.logProbability(Arrays.asList(TestHMM.State.A, TestHMM.State.A));
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "R", expectedExceptions = IllegalArgumentException.class)
     public void testViterbiWithNullDataPoints() {
         final TestHMM model = TEST_MODELS.get(0);
         ViterbiAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, null, TestHMM.Datum.Y)),
                 new ArrayList<>(Arrays.asList(1, 2, 3)), model);
     }
 
-    @Test
+    @Test(groups = "R")
     public void testGenerateHiddenStateChainOnUninformativeHMM() {
         final int numStates = 3;
         final UninformativeTestHMM model = new UninformativeTestHMM(numStates);
@@ -828,7 +828,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         Assert.assertEquals(averageCountDeviation, 0, 200);
     }
 
-    @Test
+    @Test(groups = "R")
     public void testGenerateHiddenStateChainOnHeavyStateHMM() {
         final int numStates = 3;
         final int heavyState = 1;
