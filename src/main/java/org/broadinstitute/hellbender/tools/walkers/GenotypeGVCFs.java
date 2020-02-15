@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantLocusWalker;
-import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBBaseArgumentCollection;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
@@ -147,7 +147,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
 
     @ArgumentCollection
-    private GenomicsDBBaseArgumentCollection genomicsdbArgs = new GenomicsDBBaseArgumentCollection();
+    private GenomicsDBArgumentCollection genomicsdbArgs = new GenomicsDBArgumentCollection();
 
     /**
      * This option can only be activated if intervals are specified.

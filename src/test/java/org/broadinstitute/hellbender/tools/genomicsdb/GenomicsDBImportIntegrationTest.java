@@ -529,19 +529,6 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static void checkGenomicsDBAgainstExpected(final String workspace, final List<SimpleInterval> intervals,
                                                        final String expectedCombinedVCF, final String referenceFile,
                                                        final boolean testAll, final List<String> attributesToIgnore,
-                                                       final boolean produceGTfield) throws IOException {
-        checkGenomicsDBAgainstExpected(workspace, intervals,
-                expectedCombinedVCF, referenceFile,
-                testAll,
-                attributesToIgnore,
-                produceGTfield,
-                false,
-                false);
-    }
-
-    private static void checkGenomicsDBAgainstExpected(final String workspace, final List<SimpleInterval> intervals,
-                                                       final String expectedCombinedVCF, final String referenceFile,
-                                                       final boolean testAll, final List<String> attributesToIgnore,
                                                        final boolean produceGTfield, final boolean sitesOnlyQuery) throws IOException {
         checkGenomicsDBAgainstExpected(workspace, intervals,
                 expectedCombinedVCF, referenceFile,

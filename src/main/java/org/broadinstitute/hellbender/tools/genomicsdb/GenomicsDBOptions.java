@@ -15,7 +15,7 @@ public final class GenomicsDBOptions {
     final private boolean useVCFCodec;
 
     public GenomicsDBOptions() {
-        this(null, new GenomicsDBArgumentCollection());
+        this(null);
     }
 
     public GenomicsDBOptions(final Path reference) {
@@ -23,14 +23,10 @@ public final class GenomicsDBOptions {
     }
 
     public GenomicsDBOptions(final Path reference, GenomicsDBArgumentCollection genomicsdbArgs) {
-        this.reference = reference;
-        this.callGenotypes = genomicsdbArgs.callGenotypes;
-        this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;
-        this.maxGenotypeCount = genomicsdbArgs.maxGenotypeCount;
-        this.useVCFCodec = genomicsdbArgs.useVCFCodec;
+        this(reference, genomicsdbArgs, new GenotypeCalculationArgumentCollection());
     }
 
-    public GenomicsDBOptions(final Path reference, GenomicsDBBaseArgumentCollection genomicsdbArgs, GenotypeCalculationArgumentCollection genotypeCalcArgs) {
+    public GenomicsDBOptions(final Path reference, GenomicsDBArgumentCollection genomicsdbArgs, GenotypeCalculationArgumentCollection genotypeCalcArgs) {
         this.reference = reference;
         this.callGenotypes = genomicsdbArgs.callGenotypes;
         this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;

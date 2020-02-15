@@ -17,7 +17,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
-import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBBaseArgumentCollection;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFs;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
@@ -131,7 +131,7 @@ public final class GnarlyGenotyper extends VariantWalker {
     private boolean stripASAnnotations = false;
 
     @ArgumentCollection
-    private GenomicsDBBaseArgumentCollection genomicsdbArgs = new GenomicsDBBaseArgumentCollection();
+    private GenomicsDBArgumentCollection genomicsdbArgs = new GenomicsDBArgumentCollection();
 
     /**
      * The rsIDs from this file are used to populate the ID column of the output.  Also, the DB INFO flag will be set
