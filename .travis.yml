@@ -13,6 +13,7 @@ env:
   - SCALA_VERSION=2.11 TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
   - SCALA_VERSION=2.11 TEST_TYPE=variantcalling TEST_DOCKER=true TEST_VERBOSITY=minimal
   - SCALA_VERSION=2.11 TEST_TYPE=python TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - SCALA_VERSION=2.11 TEST_TYPE=R TEST_DOCKER=true TEST_VERBOSITY=minimal
   - SCALA_VERSION=2.11 RUN_CNV_GERMLINE_COHORT_WDL=true TESTS_REQUIRE_GCLOUD=true
   - SCALA_VERSION=2.11 RUN_CNV_GERMLINE_CASE_WDL=true TESTS_REQUIRE_GCLOUD=true
   - SCALA_VERSION=2.11 RUN_CNV_SOMATIC_WDL=true TESTS_REQUIRE_GCLOUD=true
@@ -86,18 +87,6 @@ before_install:
     echo "Testing github authentication:";
     ssh -T git@github.com;
     echo "Done testing github authentication";
-  fi;
-#install R
-- if [[ $TEST_DOCKER != true ]]; then
-   sudo mkdir -p /usr/local/lib/R/;
-   sudo mkdir -p site-library;
-   sudo ln -sFv ~/site-library /usr/local/lib/R/site-library;
-   sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9;
-   sudo add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu trusty/";
-   sudo apt-get update;
-   sudo apt-get install -y --force-yes r-base-dev=3.2.5-1trusty0;
-   sudo apt-get install -y --force-yes r-base-core=3.2.5-1trusty0;
-   sudo Rscript scripts/docker/gatkbase/install_R_packages.R;
   fi;
 # Download Cromwell jar -- if you change the version, please change the CROMWELL_JAR env variable above, too.
 - if [[ $RUN_CNV_GERMLINE_COHORT_WDL == true || $RUN_CNV_GERMLINE_CASE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true ]]; then

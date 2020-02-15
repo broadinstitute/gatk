@@ -18,7 +18,7 @@ public class AlleleFrequencyQCIntegrationTest extends CommandLineProgramTest {
     }
 
 
-    @Test
+    @Test(groups = {"R"})
     public void testAlleleFrequencyIntegrationTest() throws IOException {
         String name = "testAFQCIntegration";
 
