@@ -1,8 +1,12 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SBIIndex;
+import htsjdk.samtools.SBIIndexMerger;
+import htsjdk.samtools.SBIIndexWriter;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -11,10 +15,12 @@ import org.broadinstitute.hellbender.tools.AbstractPrintReadsIntegrationTest;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 
 @Test(groups = "spark")
 public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsIntegrationTest {
@@ -61,4 +67,24 @@ public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsInte
         SamAssertionUtils.assertSamsEqual(IOUtils.getPath(outputPath), IOUtils.getPath(gcsInputPath), null);
     }
 
+
+    @DataProvider
+    public Object[][] getGranularityLevels(){
+        return new Object[][] {{1L}, {100L}};
+    }
+    @Test(dataProvider = "getGranularityLevels")
+    public void testSBIIndexGranularityArgument(long granularity) throws IOException {
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        File outBam = createTempFile("prefix","out.bam");
+        Path outBamPath = outBam.toPath();
+        Path sbiPath = outBamPath.resolveSibling(outBamPath.getFileName().toString() +  ".sbi");
+        args.addInput(getTestFile( "abam.bam"))
+                .addOutput(outBam)
+                .addArgument((GATKSparkTool.SPLITTING_INDEX_GRANULARITY), granularity);
+
+        runCommandLine(args);
+        SBIIndex load = SBIIndex.load(sbiPath);
+        Assert.assertEquals(load.getGranularity(), granularity);
+
+    }
 }
