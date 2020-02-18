@@ -62,16 +62,7 @@ public class StrandArtifactFilter extends Mutect2AlleleFilter {
         }
         // remove symbolic alleles
         if (vc.hasSymbolicAlleles()) {
-//            final List<List<Integer>> unfilteredSbs = new ArrayList<>(sbs);
-//            sbs.clear();
             sbs = GATKVariantContextUtils.removeDataForSymbolicAltAlleles(vc, sbs);
-//            List<Allele> symbolicAlleles = vc.getAlternateAlleles().stream().filter(allele -> allele.isSymbolic()).collect(Collectors.toList());
-//            List<Integer> symIndexes = vc.getAlleleIndices(symbolicAlleles);
-//            new IndexRange(0, unfilteredSbs.size()).forEach(i -> {
-//                        if (!symIndexes.contains(i)) {
-//                            sbs.add(unfilteredSbs.get(i));
-//                        }
-//                    });
         }
 
         final List<Integer> indelSizes = vc.getAlternateAlleles().stream().map(alt -> Math.abs(vc.getReference().length() - alt.length())).collect(Collectors.toList());

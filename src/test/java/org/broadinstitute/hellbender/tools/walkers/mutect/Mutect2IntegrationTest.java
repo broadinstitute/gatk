@@ -519,15 +519,15 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                                 GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME),
                         Collections.emptySet(),
                         Collections.emptySet(),
-                        Collections.emptySet(),
+                        ImmutableSet.of(GATKVCFConstants.DUPLICATED_EVIDENCE_FILTER_NAME),
                         ImmutableSet.of(GATKVCFConstants.FAIL)),
                         Arrays.asList(
                                 Arrays.asList(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME), // strand_bias, strict_stand
                                 Arrays.asList(GATKVCFConstants.CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME), // numt_chimera
                                 Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", "  + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // weak_evidence, low_allele_frac, possible_numt
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|weak_evidence, strand_bias, low_allele_frac, possible_numt|strand_bias, strict_strand, low_allele_frac, possible_numt
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD), // .
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD),  // .
+                                Arrays.asList(GATKVCFConstants.DUPLICATED_EVIDENCE_FILTER_NAME), // duplicate
                                 Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME) // weak_evidence, strand_bias, strict_stand|low_allele_frac, possible_numt
 
                         )},
@@ -561,6 +561,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 args -> args.add(M2FiltersArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, autosomalCoverage),
                 args -> args.add(M2FiltersArgumentCollection.MAX_NUMT_COPIES_IN_AUTOSOME_LONG_NAME, 4.0),
                 args -> args.add(M2FiltersArgumentCollection.MIN_READS_ON_EACH_STRAND_LONG_NAME, 1),
+                args -> args.add(M2FiltersArgumentCollection.UNIQUE_ALT_READ_COUNT_LONG_NAME, 2),
                 args -> {
                     intervals.stream().map(SimpleInterval::new).forEach(args::addInterval);
                     return args;
