@@ -1984,10 +1984,19 @@ public final class GATKVariantContextUtils {
     }
 
     public static <T> List<T> removeDataForSymbolicAltAlleles(VariantContext vc, List<T> data) {
+        return removeDataForSymbolicAlleles(vc, data, false);
+    }
+
+    public static <T> List<T> removeDataForSymbolicAlleles(VariantContext vc, List<T> data) {
+        return removeDataForSymbolicAlleles(vc, data, true);
+    }
+
+    protected static <T> List<T> removeDataForSymbolicAlleles(VariantContext vc, List<T> data, boolean dataContainsReference) {
         if (vc.hasSymbolicAlleles()) {
             List<Allele> symbolicAlleles = vc.getAlternateAlleles().stream().filter(allele -> allele.isSymbolic()).collect(Collectors.toList());
-            // convert allele index to alt allele index
-            List<Integer> symAltIndexes = vc.getAlleleIndices(symbolicAlleles).stream().map(i -> i-1).collect(Collectors.toList());
+            // convert allele index to index for data
+            int offset = dataContainsReference ? 0 : 1;
+            List<Integer> symAltIndexes = vc.getAlleleIndices(symbolicAlleles).stream().map(i -> i-offset).collect(Collectors.toList());
             return removeItemsByIndex(data, symAltIndexes);
         } else {
             return data;

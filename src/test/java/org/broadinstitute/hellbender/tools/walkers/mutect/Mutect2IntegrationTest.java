@@ -533,18 +533,18 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         )},
                 {NA12878_MITO_GVCF, .0009, 0.5, Arrays.asList("MT:1", "MT:37", "MT:40", "MT:152", "MT:157"), Arrays.asList(
                         Collections.emptySet(),
-                        ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME),
-                        ImmutableSet.of(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME),
+                        ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME),
+                        ImmutableSet.of(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME,GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME),
                         Collections.emptySet(),
                         ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.CONTAMINATION_FILTER_NAME,
                                 GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME,
-                                GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.READ_POSITION_FILTER_NAME, GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME)),
+                                GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.READ_POSITION_FILTER_NAME, GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME)),
                         Arrays.asList(
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD), //".",
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //"weak_evidence, base_qual|.",
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), // "weak_evidence, possible_numt|.",
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|weak_evidence, base_qual, low_allele_frac|.",
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.CONTAMINATION_FILTER_NAME + ", " + GATKVCFConstants.READ_POSITION_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD) // "weak_evidence, base_qual, map_qual, contamination, position, low_allele_frac, possible_numt|."
+                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //"weak_evidence, base_qual, strand_bias|.",
+                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), // "weak_evidence, strict_strand, strand_bias, possible_numt|.",
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|weak_evidence, base_qual, strand_bias, low_allele_frac|.",
+                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.CONTAMINATION_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.READ_POSITION_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD) // "weak_evidence, base_qual, map_qual, contamination, strand_artifact, position, low_allele_frac, possible_numt|."
                         )}
         };
     }

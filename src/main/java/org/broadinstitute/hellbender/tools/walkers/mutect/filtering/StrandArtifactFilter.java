@@ -1,13 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup.BetaBinomialDistribution;
-import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -62,7 +60,7 @@ public class StrandArtifactFilter extends Mutect2AlleleFilter {
         }
         // remove symbolic alleles
         if (vc.hasSymbolicAlleles()) {
-            sbs = GATKVariantContextUtils.removeDataForSymbolicAltAlleles(vc, sbs);
+            sbs = GATKVariantContextUtils.removeDataForSymbolicAlleles(vc, sbs);
         }
 
         final List<Integer> indelSizes = vc.getAlternateAlleles().stream().map(alt -> Math.abs(vc.getReference().length() - alt.length())).collect(Collectors.toList());

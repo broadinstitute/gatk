@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -25,6 +25,10 @@ public class StrictStrandBiasFilter extends HardAlleleFilter {
         List<List<Integer>> sbs = StrandBiasUtils.getSBsForAlleles(vc);
         if (minReadsOnEachStrand == 0 || sbs == null || sbs.isEmpty() || sbs.size() <= 1) {
             return Collections.emptyList();
+        }
+        // remove symbolic alleles
+        if (vc.hasSymbolicAlleles()) {
+            sbs = GATKVariantContextUtils.removeDataForSymbolicAlleles(vc, sbs);
         }
         // skip the reference
         return sbs.subList(1, sbs.size()).stream().map(altList -> altList.stream().anyMatch(x -> x == 0)).collect(Collectors.toList());

@@ -292,10 +292,10 @@ public class Mutect2FilteringEngine {
         filters.add(new TumorEvidenceFilter());
         filters.add(new BaseQualityFilter(MTFAC.minMedianBaseQuality));
         filters.add(new MappingQualityFilter(MTFAC.minMedianMappingQuality, MTFAC.longIndelLength));
-        filters.add(new DuplicatedAltReadFilter(MTFAC.uniqueAltReadCount)); // test
-        filters.add(new StrandArtifactFilter());  // test gvcf
+        filters.add(new DuplicatedAltReadFilter(MTFAC.uniqueAltReadCount));
+        filters.add(new StrandArtifactFilter());
         filters.add(new ContaminationFilter(MTFAC.contaminationTables, MTFAC.contaminationEstimate));
-        filters.add(new StrictStrandBiasFilter(MTFAC.minReadsOnEachStrand));  // test gvcf
+        filters.add(new StrictStrandBiasFilter(MTFAC.minReadsOnEachStrand));
         filters.add(new ReadPositionFilter(MTFAC.minMedianReadPosition));
         filters.add(new MinAlleleFractionFilter(MTFAC.minAf));
 
