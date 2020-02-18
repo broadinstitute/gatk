@@ -340,7 +340,7 @@ public final class CollectFragmentCounts extends ReadWalker {
                     .set("stop", fragmentCount.baseData.getEnd())
                     .set("strand", fragmentCount.baseData.getStrand().encode())
                     .set("sense_antisense", fragmentCount.sense? "sense" : "antisense")
-                    .set(name+"_counts", fragmentCount.count)
+                    .set(name+"_counts", fragmentCount.count, 2)
                     .set("gene_id", fragmentCount.baseData.getAttributes().get(gene_id_key));
         }
     }
