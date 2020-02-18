@@ -17,6 +17,8 @@ import htsjdk.tribble.gff.Gff3BaseData;
 import htsjdk.tribble.gff.Gff3Feature;
 import htsjdk.tribble.gff.Gff3FeatureImpl;
 import org.apache.commons.lang3.tuple.MutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.spark.sql.catalyst.expressions.Sin;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -121,8 +123,11 @@ public final class CollectFragmentCounts extends ReadWalker {
     @Argument(doc="gff file", shortName = "G")
     private FeatureInput<Gff3Feature> gffFile;
 
-    @Argument(doc="types to count", shortName = "T")
-    private Set<String> type = new HashSet<>(Arrays.asList("CDS"));
+    @Argument(doc="types to group by", shortName = "T")
+    private Set<String> grouping_type = new HashSet<>(Collections.singleton("gene"));
+
+    @Argument(doc="overlap type")
+    private Set<String> overlap_type = new HashSet<>(Collections.singleton("exon"));
 
     @Argument(doc="sample name to label counts", shortName = "N")
     private String name;
@@ -137,9 +142,9 @@ public final class CollectFragmentCounts extends ReadWalker {
             "a non-splicing aligner (such as bwa). ")
     private boolean spliced = true;
 
-    final private Map<Gff3Feature, MutablePair<Double, Double>> featureCountsMap = new LinkedHashMap<>();
+    final private LinkedHashSet<FeatureCoverage> featureCounts = new LinkedHashSet<>();
 
-    final private OverlapDetector<Gff3Feature> featureOverlapDetector = new OverlapDetector(0,0);
+    final private OverlapDetector<Pair<FeatureCoverage, Gff3BaseData>> featureOverlapDetector = new OverlapDetector<>(0,0);
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
@@ -150,6 +155,7 @@ public final class CollectFragmentCounts extends ReadWalker {
         readFilters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
         readFilters.add(ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE);
         readFilters.add(new InwardFragmentsFilter());
+        readFilters.add(ReadFilterLibrary.PRIMARY_LINE);
         //readFilters.add(new GoodPairReadFilter());
         return readFilters;
     }
@@ -168,28 +174,33 @@ public final class CollectFragmentCounts extends ReadWalker {
             throw new GATKException("sequence dictionary must be specified (" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME + ").");
         }
 
-        final Set<String> geneIDSet = new HashSet<>();
         logger.info("collecting list of features");
         for (final SAMSequenceRecord contig : dict.getSequences()) {
             final List<Gff3Feature> contigFeatures = features.getFeatures(gffFile, new SimpleInterval(contig.getSequenceName(), 1, contig.getSequenceLength()));
             logger.info("collecting features in " + contig.getSequenceName());
             for (final Gff3Feature feature : contigFeatures) {
-                if(!type.contains(feature.getType())) {
+                if(!overlap_type.contains(feature.getType())) {
                     continue;
                 }
-                final String geneID=feature.getAttribute(gene_id_key);
-                if (geneID == null) {
-                    throw new UserException("no geneid field " + gene_id_key + " found in feature at " + feature.getContig() + ":" + feature.getStart() + "-" + feature.getEnd());
+                final Gff3BaseData overlapBaseData = feature.getBaseData();
+                if (grouping_type.contains(feature.getType())) {
+                    addGroupingFeature(overlapBaseData, overlapBaseData);
                 }
-                if (geneIDSet.contains(geneID)) {
-                    logger.warn("geneid " + geneID + " is not unique, consists of multiple disjoint regions ");
-                }
-                final Gff3Feature bareBonesFeature = getBareBonesFeature(feature);
-                featureCountsMap.put(bareBonesFeature, MutablePair.of(0.0,0.0));
-                featureOverlapDetector.addLhs(bareBonesFeature, bareBonesFeature);
-                geneIDSet.add(geneID);
+
+                feature.getAncestors().stream().filter(f -> grouping_type.contains(f.getType())).map(Gff3Feature::getBaseData).forEach(b -> addGroupingFeature(b, overlapBaseData));
             }
         }
+    }
+
+    private void addGroupingFeature(final Gff3BaseData groupingBaseData, final Gff3BaseData overlappingBaseData) {
+        final String geneID = groupingBaseData.getAttributes().get(gene_id_key);
+        if (geneID == null) {
+            throw new UserException("no geneid field " + gene_id_key + " found in feature at " + groupingBaseData.getContig() + ":" + groupingBaseData.getStart() + "-" + groupingBaseData.getEnd());
+        }
+
+        final FeatureCoverage featureCoverage = new FeatureCoverage(groupingBaseData, groupingBaseData.getStrand() != Strand.NONE);
+        featureOverlapDetector.addLhs(Pair.of(featureCoverage, overlappingBaseData), overlappingBaseData);
+        featureCounts.add(featureCoverage);
     }
 
     private void validateArguments() {
@@ -270,27 +281,22 @@ public final class CollectFragmentCounts extends ReadWalker {
             final List<SimpleInterval> alignmentIntervals = getAlignmentIntervals(read);
 
             //List<Gff3Feature> features = featureContext.getValues(gffFile);
-            Set<Gff3Feature> features = featureOverlapDetector.getOverlaps(getReadInterval(read));
+            Set<Pair<FeatureCoverage, Gff3BaseData>> features = featureOverlapDetector.getOverlaps(getReadInterval(read));
 
             final Strand fragmentStrand = getFragmentStrand(read);
 
             final int basesOnReference = alignmentIntervals.stream().map(SimpleInterval::getLengthOnReference).reduce(0, Integer::sum);
-            for (final Gff3Feature feature : features) {
-                if(!type.contains(feature.getType())) {
-                    continue;
-                }
-                if (feature.getStart() == 10643) {
-                    System.out.println();
-                }
-                final boolean isSense = feature.getStrand() == Strand.NONE || feature.getStrand() == fragmentStrand;
-                final MutablePair<Double, Double> currentCount = featureCountsMap.get(getBareBonesFeature(feature));
+            for (final Pair<FeatureCoverage, Gff3BaseData> featureCoverageGff3BaseDataPair : features) {
+                final FeatureCoverage featureCoverage = featureCoverageGff3BaseDataPair.getLeft();
+                final Gff3BaseData overlapBaseData = featureCoverageGff3BaseDataPair.getRight();
+                final boolean isSense = !featureCoverage.isStranded || overlapBaseData.getStrand() == fragmentStrand;
 
                 for (final SimpleInterval interval : alignmentIntervals) {
-                    if(interval.overlaps(feature)) {
+                    if(interval.overlaps(overlapBaseData)) {
                         if (isSense) {
-                            currentCount.left += (float) interval.intersect(feature).size() / (float) basesOnReference;
+                            featureCoverage.addSenseCount((float)interval.intersect(overlapBaseData).size() / (float) basesOnReference);
                         } else {
-                            currentCount.right += (float) interval.intersect(feature).size() / (float) basesOnReference;
+                            featureCoverage.addAntiSenseCount((float) interval.intersect(overlapBaseData).size() / (float) basesOnReference);
                         }
                     }
                 }
@@ -308,10 +314,9 @@ public final class CollectFragmentCounts extends ReadWalker {
                 i++;
             }
             writer.writeMetadata("annotation_file", gffFile.toString());
-            for (final Map.Entry<Gff3Feature, MutablePair<Double, Double>> entry : featureCountsMap.entrySet()) {
-                writer.writeRecord(new FragmentCount(entry.getKey(),(int) Math.round(entry.getValue().left), true));
-                if (entry.getKey().getStrand()!= Strand.NONE) {
-                    writer.writeRecord(new FragmentCount(entry.getKey(), (int) Math.round(entry.getValue().right), false));
+            for (final FeatureCoverage featureCoverage : featureCounts) {
+                for (final SingleStrandFeatureCoverage singleStrandFeatureCoverage : featureCoverage.getSingleStrandCoverages()) {
+                    writer.writeRecord(singleStrandFeatureCoverage);
                 }
             }
         } catch (IOException ex) {
@@ -323,41 +328,82 @@ public final class CollectFragmentCounts extends ReadWalker {
         return null;
     }
 
-    public class FragmentCountWriter extends TableWriter<FragmentCount> {
+    public class FragmentCountWriter extends TableWriter<SingleStrandFeatureCoverage> {
 
         public FragmentCountWriter(final Path file ) throws IOException {
             super(file, new TableColumnCollection("gene_id", "contig", "start", "stop", "strand", "sense_antisense", name+"_counts"));
         }
 
-        protected void composeLine(final FragmentCount fragmentCount, final DataLine dataLine) {
-            dataLine.set("contig", fragmentCount.gff3BaseData.getContig())
-                    .set("start", fragmentCount.gff3BaseData.getStart())
-                    .set("stop", fragmentCount.gff3BaseData.getEnd())
-                    .set("strand", fragmentCount.gff3BaseData.getStrand().encode())
+        protected void composeLine(final SingleStrandFeatureCoverage fragmentCount, final DataLine dataLine) {
+            dataLine.set("contig", fragmentCount.baseData.getContig())
+                    .set("start", fragmentCount.baseData.getStart())
+                    .set("stop", fragmentCount.baseData.getEnd())
+                    .set("strand", fragmentCount.baseData.getStrand().encode())
                     .set("sense_antisense", fragmentCount.sense? "sense" : "antisense")
                     .set(name+"_counts", fragmentCount.count)
-                    .set("gene_id", fragmentCount.gff3BaseData.getAttribute(gene_id_key));
+                    .set("gene_id", fragmentCount.baseData.getAttributes().get(gene_id_key));
         }
     }
 
-    private Gff3Feature getBareBonesFeature(final Gff3Feature feature) {
-        return new Gff3FeatureImpl(feature.getContig(), "", "", feature.getStart(), feature.getEnd(), feature.getStrand(), 0, ImmutableMap.of(gene_id_key, feature.getAttribute(gene_id_key)));
+    public class FeatureCoverage {
+        private final Gff3BaseData baseData;
+        private float sense_count;
+        private float antisense_count;
+        private final boolean isStranded;
+
+        FeatureCoverage(final Gff3BaseData baseData, final boolean isStranded) {
+            this.baseData = baseData;
+            this.isStranded = isStranded;
+        }
+
+        public void addSenseCount(float count) {
+            sense_count += count;
+        }
+
+        public void addAntiSenseCount(float count) {
+            if (!isStranded) {
+                throw new GATKException("Should never add an antisense count to a non-stranded feature.");
+            }
+            antisense_count += count;
+        }
+
+        public List<SingleStrandFeatureCoverage> getSingleStrandCoverages() {
+            final List<SingleStrandFeatureCoverage> coverages = new ArrayList<>(Collections.singletonList(new SingleStrandFeatureCoverage(baseData, sense_count, true)));
+            if (isStranded) {
+                coverages.add(new SingleStrandFeatureCoverage(baseData, antisense_count, false));
+            }
+
+            return coverages;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = baseData.hashCode();
+            hash = 31 * hash + (int)sense_count;
+            hash = 31 * hash + (int)antisense_count;
+            hash = 31 * hash + (isStranded? 1 : 0);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(final Object other) {
+            if (! (other instanceof FeatureCoverage)) {
+                return false;
+            }
+
+            return baseData.equals(((FeatureCoverage) other).baseData) && sense_count == ((FeatureCoverage) other).sense_count &&
+                    antisense_count == ((FeatureCoverage) other).antisense_count && isStranded == ((FeatureCoverage) other).isStranded;
+        }
     }
 
-    public class FragmentCount {
-        public final Gff3Feature gff3BaseData;
+    public class SingleStrandFeatureCoverage {
+        public final Gff3BaseData baseData;
         //public final double count;
-        public final int count;
+        public final float count;
         public final boolean sense;
 
-//        FragmentCount(final Gff3Feature gtfFeature, final double count, final boolean sense) {
-//            this.gtfFeature = gtfFeature;
-//            this.count = count;
-//            this.sense = sense;
-//        }
-
-        FragmentCount(final Gff3Feature gtfFeature, final int count, final boolean sense) {
-            this.gff3BaseData = gtfFeature;
+        SingleStrandFeatureCoverage(final Gff3BaseData baseData, final float count, final boolean sense) {
+            this.baseData = baseData;
             this.count = count;
             this.sense = sense;
         }
