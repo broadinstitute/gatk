@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -557,10 +558,11 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
         final File standardVcf = createTempFile("standard", ".vcf");
         final File unthresholded = createTempFile("unthresholded", ".vcf");
+        final double minAF = 0.01;
 
         runMutect2(NA12878_MITO_BAM, standardVcf, "chrM:1-1000", MITO_REF.getAbsolutePath(), Optional.empty(),
                 args -> args.addArgument(AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString()),
-                args -> args.addNumericArgument(M2ArgumentCollection.MINIMUM_ALLELE_FRACTION_LONG_NAME, 0.01),
+                args -> args.addNumericArgument(M2ArgumentCollection.MINIMUM_ALLELE_FRACTION_LONG_NAME, minAF),
                 args -> args.addNumericArgument(M2ArgumentCollection.LOD_BAND_LONG_NAME, -2.0),
                 args -> args.addNumericArgument(M2ArgumentCollection.LOD_BAND_LONG_NAME, 0.0));
 
@@ -583,7 +585,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "chrM:750-750 A*, [<NON_REF>, G]");
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
         //First entry should be a homRef block
-        Assert.assertTrue(variantKeys.get(0).contains("*, [<NON_REF>]"));
+        Assert.assertTrue(keyForVariant(variants.get(0)).contains("*, [<NON_REF>]"));
 
         final ArgumentsBuilder validateVariantsArgs = new ArgumentsBuilder()
                 .addArgument("R", MITO_REF.getAbsolutePath())
@@ -606,7 +608,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // however, there are edge cases where this need not be true (this might indicate the need to fix our
         // LOD calculation for the NON-REF allele), so we allow one anomalous site
         final long changedRegularAlleleLodCount = expectedKeys.stream()
-                .filter(key -> !onlyNonRefTlodsChange(variantMap.get(key), variantMap2.get(key)))
+                .filter(key -> !onlyNonRefTlodsChange(variantMap.get(key), variantMap2.get(key), minAF))
                 .count();
 
         Assert.assertTrue(changedRegularAlleleLodCount <= 1);
@@ -623,10 +625,11 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 .filter(key -> variantMap.containsKey(key) && variantMap2.containsKey(key))
                 .collect(Collectors.toList());
         Assert.assertFalse(refBlockKeys.isEmpty());
-        refBlockKeys.forEach(key -> Assert.assertTrue(onlyNonRefTlodsChange(variantMap.get(key), variantMap2.get(key))));
+        
+        refBlockKeys.forEach(key -> Assert.assertTrue(onlyNonRefTlodsChange(variantMap.get(key), variantMap2.get(key), minAF)));
     }
 
-    private boolean onlyNonRefTlodsChange(final VariantContext v1, final VariantContext v2) {
+    private boolean onlyNonRefTlodsChange(final VariantContext v1, final VariantContext v2, final double minAF) {
         if (v1 == null || v2 == null || !v1.getReference().equals(v2.getReference()) ||
                 !(v1.getAlternateAlleles().size() == v2.getAlternateAlleles().size())) {
             return false;
@@ -639,6 +642,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final double[] tlods2 = !isHomRef ? VariantContextGetters.getAttributeAsDoubleArray(v2, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)
                 : new double[]{VariantContextGetters.getAttributeAsDouble(v2.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0)};
 
+        final double[] af1 = VariantContextGetters.getAttributeAsDoubleArray(v1, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 0);
+        final double[] af2 = VariantContextGetters.getAttributeAsDoubleArray(v2, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 0);
+
         for (int i = 0; i < v1.getAlternateAlleles().size(); i++) {
             if (!v1.getAlternateAllele(i).equals(v2.getAlternateAllele(i))) {
                 return false;
@@ -649,7 +655,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                     if (Math.abs(tlods1[i] - tlods2[i]) / tlods1[i] > VARIANT_TLOD_MATCH_PCT) {
                         return false;
                     }
-                } else if (Math.abs(tlods1[i] - tlods2[i]) > TLOD_MATCH_EPSILON) {
+                } else if (af2 != null && af2[i] > minAF && Math.abs(tlods1[i] - tlods2[i]) > TLOD_MATCH_EPSILON) {
                     return false;
                 }
             } else {

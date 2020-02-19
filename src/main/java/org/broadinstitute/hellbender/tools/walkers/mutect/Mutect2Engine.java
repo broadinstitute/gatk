@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Genotype;
@@ -10,9 +9,9 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,6 +26,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.HomogeneousPloidyMo
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
+import org.broadinstitute.hellbender.tools.walkers.readorientation.BetaDistributionShape;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.F1R2CountsCollector;
 import org.broadinstitute.hellbender.transformers.PalindromeArtifactClipReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
@@ -142,7 +142,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         genotypingEngine = new SomaticGenotypingEngine(MTAC, normalSamples, annotationEngine);
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutMD5, header);
         trimmer = new AssemblyRegionTrimmer(assemblyRegionArgs, header.getSequenceDictionary());
-        referenceConfidenceModel = new SomaticReferenceConfidenceModel(samplesList, header, 0, genotypingEngine);  //TODO: do something classier with the indel size arg
+        referenceConfidenceModel = new SomaticReferenceConfidenceModel(samplesList, header, 0, MTAC.minAF);  //TODO: do something classier with the indel size arg
         final List<String> tumorSamples = ReadUtils.getSamplesFromHeader(header).stream().filter(this::isTumorSample).collect(Collectors.toList());
         f1R2CountsCollector = MTAC.f1r2TarGz == null ? Optional.empty() : Optional.of(new F1R2CountsCollector(MTAC.f1r2Args, header, MTAC.f1r2TarGz, tumorSamples));
     }
@@ -475,20 +475,28 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return result;
     }
 
-    private static double logLikelihoodRatio(final int refCount, final List<Byte> altQuals) {
+    public static double logLikelihoodRatio(final int refCount, final List<Byte> altQuals) {
         return logLikelihoodRatio(refCount, altQuals, 1);
     }
 
-    // this implements the isActive() algorithm described in docs/mutect/mutect.pdf
-    // the multiplicative factor is for the special case where we pass a singleton list
-    // of alt quals and want to duplicate that alt qual over multiple reads
-    @VisibleForTesting
-    static double logLikelihoodRatio(final int nRef, final List<Byte> altQuals, final int repeatFactor) {
+
+
+    /**
+     *  this implements the isActive() algorithm described in docs/mutect/mutect.pdf
+     *  the multiplicative factor is for the special case where we pass a singleton list
+     *  of alt quals and want to duplicate that alt qual over multiple reads
+     * @param nRef          ref read count
+     * @param altQuals      Phred-scaled qualities of alt-supporting reads
+     * @param repeatFactor  Number of times each alt qual is duplicated
+     * @param afPrior       Beta prior on alt allele fraction
+     * @return
+     */
+    public static double logLikelihoodRatio(final int nRef, final List<Byte> altQuals, final int repeatFactor, final Optional<BetaDistributionShape> afPrior) {
         final int nAlt = repeatFactor * altQuals.size();
         final int n = nRef + nAlt;
 
         final double fTildeRatio = FastMath.exp(MathUtils.digamma(nRef + 1) - MathUtils.digamma(nAlt + 1));
-        final double betaEntropy = MathUtils.log10ToLog(-MathUtils.log10Factorial(n+1) + MathUtils.log10Factorial(nAlt) + MathUtils.log10Factorial(nRef));
+
 
         double readSum = 0;
         for (final byte qual : altQuals) {
@@ -499,8 +507,21 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             readSum += zBarAlt * (logOneMinusEpsilon - logEpsilon) + MathUtils.fastBernoulliEntropy(zBarAlt);
         }
 
+        final double betaEntropy;
+        if (afPrior.isPresent()) {
+            final double alpha = afPrior.get().getAlpha();
+            final double beta = afPrior.get().getBeta();
+            betaEntropy = Gamma.logGamma(alpha + beta) - Gamma.logGamma(alpha) - Gamma.logGamma(beta)
+                    - Gamma.logGamma(alpha + beta + n) + Gamma.logGamma(alpha + nAlt) + Gamma.logGamma(beta + nRef);
+        } else {
+            betaEntropy = MathUtils.log10ToLog(-MathUtils.log10Factorial(n + 1) + MathUtils.log10Factorial(nAlt) + MathUtils.log10Factorial(nRef));
+        }
         return betaEntropy + readSum * repeatFactor;
+    }
 
+    // the default case of a flat Beta(1,1) prior on allele fraction
+    public static double logLikelihoodRatio(final int nRef, final List<Byte> altQuals, final int repeatFactor) {
+        return logLikelihoodRatio(nRef, altQuals, repeatFactor, Optional.empty());
     }
 
     // same as above but with a constant error probability for several alts

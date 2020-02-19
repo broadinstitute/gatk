@@ -40,8 +40,16 @@ public class SomaticGenotypingEngine {
     final boolean hasNormal;
     protected VariantAnnotatorEngine annotationEngine;
 
+    // If MTAC.minAF is non-zero we softly cut off allele fractions below minAF with a Beta prior of the form Beta(1+epsilon, 1); that is
+    // the prior on allele fraction f is proportional to f^epsilon.  If epsilon is small this prior vanishes as f -> 0
+    // and very rapidly becomes flat.  We choose epsilon such that minAF^epsilon = 0.5.
+    private final double refPseudocount = 1;
+    private final double altPseudocount;
+
     public SomaticGenotypingEngine(final M2ArgumentCollection MTAC, final Set<String> normalSamples, final VariantAnnotatorEngine annotationEngine) {
         this.MTAC = MTAC;
+        altPseudocount = MTAC.minAF == 0.0 ? 1 : 1 - Math.log(2)/Math.log(MTAC.minAF);
+
         this.normalSamples = normalSamples;
         hasNormal = !normalSamples.isEmpty();
         this.annotationEngine = annotationEngine;
@@ -199,16 +207,19 @@ public class SomaticGenotypingEngine {
         return new CalledHaplotypes(outputCallsWithEventCountAnnotation, calledHaplotypes);
     }
 
+    private double[] makePriorPseudocounts(final int numAlleles) {
+        return new IndexRange(0, numAlleles).mapToDouble(n -> n == 0 ? refPseudocount : altPseudocount);
+    }
+
     // compute the likelihoods that each allele is contained at some allele fraction in the sample
     protected <EVIDENCE extends Locatable> PerAlleleCollection<Double> somaticLogOdds(final LikelihoodMatrix<EVIDENCE, Allele> logMatrix) {
         final int alleleListEnd = logMatrix.alleles().size()-1;
-        final int nonRefIndex = logMatrix.alleles().contains(Allele.NON_REF_ALLELE)
-            && logMatrix.alleles().get(alleleListEnd).equals(Allele.NON_REF_ALLELE) ? alleleListEnd : -1;
         if (logMatrix.alleles().contains(Allele.NON_REF_ALLELE) && !(logMatrix.alleles().get(alleleListEnd).equals(Allele.NON_REF_ALLELE))) {
             throw new IllegalStateException("<NON_REF> must be last in the allele list.");
         }
+
         final double logEvidenceWithAllAlleles = logMatrix.evidenceCount() == 0 ? 0 :
-                SomaticLikelihoodsEngine.logEvidence(getAsRealMatrix(logMatrix), MTAC.minAF, nonRefIndex);
+                SomaticLikelihoodsEngine.logEvidence(getAsRealMatrix(logMatrix), makePriorPseudocounts(logMatrix.numberOfAlleles()));
 
         final PerAlleleCollection<Double> lods = new PerAlleleCollection<>(PerAlleleCollection.Type.ALT_ONLY);
         final int refIndex = getRefIndex(logMatrix);
@@ -216,7 +227,7 @@ public class SomaticGenotypingEngine {
             final Allele allele = logMatrix.getAllele(a);
             final LikelihoodMatrix<EVIDENCE, Allele> logMatrixWithoutThisAllele = SubsettedLikelihoodMatrix.excludingAllele(logMatrix, allele);
             final double logEvidenceWithoutThisAllele = logMatrixWithoutThisAllele.evidenceCount() == 0 ? 0 :
-                    SomaticLikelihoodsEngine.logEvidence(getAsRealMatrix(logMatrixWithoutThisAllele), MTAC.minAF, logMatrixWithoutThisAllele.numberOfAlleles() > 1 ? nonRefIndex-1 : -1);  //nonRefIndex-1 because we're evaluating without one allele; if th
+                    SomaticLikelihoodsEngine.logEvidence(getAsRealMatrix(logMatrixWithoutThisAllele), makePriorPseudocounts(logMatrixWithoutThisAllele.numberOfAlleles()));
             lods.setAlt(allele, logEvidenceWithAllAlleles - logEvidenceWithoutThisAllele);
         });
         return lods;
