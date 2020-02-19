@@ -606,9 +606,9 @@ public interface GATKRead extends Locatable {
      * @throws IllegalArgumentException If the read is not paired, or if either read or mate is unmapped
      */
     default SamPairUtil.PairOrientation getPairOrientation() {
-        final boolean readIsOnReverseStrand = isReverseStrand();
-
         Utils.validateArg(isPaired() && !isUnmapped() && !mateIsUnmapped(), () -> "Invalid read: " + getName() + ". This requires paired reads with both reads aligned.");
+isProperlyPaired()
+        final boolean readIsOnReverseStrand = isReverseStrand();
 
         if(readIsOnReverseStrand == mateIsReverseStrand() )  {
             return SamPairUtil.PairOrientation.TANDEM;

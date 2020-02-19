@@ -1414,7 +1414,7 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         forwardStrandInnie.setMateIsReverseStrand(true);
         forwardStrandInnie.setPosition(new SimpleInterval("1", 100, 200));
         forwardStrandInnie.setMatePosition(new SimpleInterval("1", 200, 300));
-        forwardStrandInnie.setFragmentLength(200);
+        forwardStrandInnie.setFragmentLength(201);
 
         final GATKRead reverseStrandInnie = ArtificialReadUtils.createArtificialRead("100M");
         reverseStrandInnie.setIsPaired(true);
@@ -1422,7 +1422,7 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         reverseStrandInnie.setMateIsReverseStrand(false);
         reverseStrandInnie.setPosition(new SimpleInterval("1", 200, 300));
         reverseStrandInnie.setMatePosition(new SimpleInterval("1", 100, 200));
-        reverseStrandInnie.setFragmentLength(200);
+        reverseStrandInnie.setFragmentLength(201);
 
         final GATKRead forwardStrandOutie = ArtificialReadUtils.createArtificialRead("100M");
         forwardStrandOutie.setIsPaired(true);
@@ -1430,7 +1430,7 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         forwardStrandOutie.setMateIsReverseStrand(true);
         forwardStrandOutie.setPosition(new SimpleInterval("1", 200, 300));
         forwardStrandOutie.setMatePosition(new SimpleInterval("1", 100, 200));
-        forwardStrandOutie.setFragmentLength(-200);
+        forwardStrandOutie.setFragmentLength(-201);
 
         final GATKRead reverseStrandOutie = ArtificialReadUtils.createArtificialRead("100M");
         reverseStrandOutie.setIsPaired(true);
@@ -1438,7 +1438,7 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         reverseStrandOutie.setMateIsReverseStrand(false);
         reverseStrandOutie.setPosition(new SimpleInterval("1", 100, 200));
         reverseStrandOutie.setMatePosition(new SimpleInterval("1", 200, 300));
-        reverseStrandOutie.setFragmentLength(-200);
+        reverseStrandOutie.setFragmentLength(-201);
 
         final GATKRead forwardStrandTandem = ArtificialReadUtils.createArtificialRead("100M");
         forwardStrandTandem.setIsPaired(true);
