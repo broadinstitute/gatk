@@ -235,7 +235,7 @@ public final class GATKVariantContextUtils {
                                         final List<Allele> allelesToUse,
                                         final List<Allele> originalGT) {
         if(originalGT == null && assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
-            throw new IllegalArgumentException("origianlGT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
+            throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
         }
         if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL) {
             gb.alleles(noCallAlleles(ploidy)).noGQ();
@@ -247,7 +247,13 @@ public final class GATKVariantContextUtils {
                 final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, allelesToUse.size());
                 final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(maxLikelihoodIndex);
 
-                gb.alleles(alleleCounts.asAlleleList(allelesToUse));
+                final List<Allele> finalAlleles = alleleCounts.asAlleleList(allelesToUse);
+                if (finalAlleles.contains(Allele.NON_REF_ALLELE)) {
+                    gb.alleles(GATKVariantContextUtils.noCallAlleles(2));
+                    gb.PL(new int[genotypeLikelihoods.length]);
+                } else {
+                    gb.alleles(finalAlleles);
+                }
                 final int numAltAlleles = allelesToUse.size() - 1;
                 if ( numAltAlleles > 0 ) {
                     gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(maxLikelihoodIndex, genotypeLikelihoods));
@@ -261,7 +267,12 @@ public final class GATKVariantContextUtils {
             for (final Allele originalAllele : originalGT) {
                 best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
             }
-            gb.alleles(best);
+            if (best.contains(Allele.NON_REF_ALLELE)) {
+                gb.alleles(GATKVariantContextUtils.noCallAlleles(2));
+                gb.PL(new int[genotypeLikelihoods.length]);
+            } else {
+                gb.alleles(best);
+            }
         }
     }
 
