@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.fasta;
 
 import com.google.common.primitives.Bytes;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.FastaReferenceWriter;
 import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
@@ -18,6 +19,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -41,15 +43,11 @@ import java.util.Arrays;
  */
 @DocumentedFeature
 @CommandLineProgramProperties(
-        summary = "Create a new fasta shifted by the input amount and a shift_back file based on the intervals specified",
+        summary = "Create a new fasta starting at the shift-offset +1 position and a shift_back chain file that can be used with the Liftover tool",
         oneLineSummary = "Creates a shifted fasta file and shift_back file",
         programGroup = ReferenceProgramGroup.class
 )
 public class ShiftFasta extends GATKTool {
-    @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME,
-            shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME,
-            doc = "path to reference file, .fai should also exist in that location.")
-    private String referencePath;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -61,12 +59,9 @@ public class ShiftFasta extends GATKTool {
             doc = "Path to write the shift_back file to")
     protected String shiftBackOutput;
 
-    public static final String SHIFT_OFFSET = "shift-amount";
-    @Argument(fullName = SHIFT_OFFSET, doc="Number of bases to shift the reference by. For example, if 300 is specified, the new fasta will start at the 300th base")
+    public static final String SHIFT_OFFSET = "shift-offset";
+    @Argument(fullName = SHIFT_OFFSET, doc="Number of bases to skip in the reference before starting the shifted reference. For example, if 300 is specified, the new fasta will start at the 301th base (count starting at 1)")
     private int shiftOffset;
-
-    public static final String LIFTOVER_INTERVAL = "liftover-interval";
-    @Argument(fullName = LIFTOVER_INTERVAL, doc="Interval in the coordinates of the original fasta, that you plan to replace with data from the shift fasta. For example, if the reference is 1000 bases, -100:200 will make a shift back file from ")
 
     public static final String LINE_WIDTH_LONG_NAME = "line-width";
     @Argument(fullName= LINE_WIDTH_LONG_NAME, doc="Maximum length of sequence to write per line", optional=true)
@@ -74,6 +69,10 @@ public class ShiftFasta extends GATKTool {
 
     ReferenceDataSource refSource;
     FastaReferenceWriter refWriter;
+    FileWriter chainFileWriter;
+
+    // TODO how to get the header for the fasta
+    // TODO can we get the bases per line from the original fasta
 
     @Override
     public boolean requiresReference() {
@@ -89,6 +88,7 @@ public class ShiftFasta extends GATKTool {
                     .setFastaFile(path)
                     .setBasesPerLine(basesPerLine)
                     .build();
+            chainFileWriter = new FileWriter(shiftBackOutput);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile("Couldn't create " + output + ", encountered exception: " + e.getMessage(), e);
         }
@@ -101,16 +101,40 @@ public class ShiftFasta extends GATKTool {
             // TODO fix this??
             throw new UserException.BadInput("Reference length is too long");
         }
-        int splitIndex = ((int) refLengthLong) - shiftOffset + 1;
         // TODO make this not mito specific
-        byte[] bases = refSource.queryAndPrefetch(new SimpleInterval("chrM", 0, (int) refDict.getReferenceLength())).getBases();
-        byte[] origEnd = Arrays.copyOfRange(bases, splitIndex, bases.length);
-        byte[] origBegin = Arrays.copyOf(bases, splitIndex -1);
+        SAMSequenceRecord seq = refSource.getSequenceDictionary().getSequence(0);
+        byte[] bases = refSource.queryAndPrefetch(new SimpleInterval(seq.getSequenceName(), 1, (int) refDict.getReferenceLength())).getBases();
+        byte[] basesAtEnd = Arrays.copyOfRange(bases, shiftOffset, bases.length);
+        byte[] basesAtStart = Arrays.copyOf(bases, shiftOffset);
+        int shiftBackOffset = bases.length - shiftOffset;
         try {
-        refWriter.appendBases(origEnd).appendBases(origBegin);
+            refWriter.startSequence(seq.getSequenceName(), basesPerLine);
+            refWriter.appendBases(basesAtEnd).appendBases(basesAtStart);
+            chainFileWriter.append(createChainString(seq.getSequenceName(), shiftBackOffset, (int) refLengthLong, shiftOffset, bases.length, 0, shiftBackOffset, 1));
+            chainFileWriter.append("\n" + shiftBackOffset + "\n\n");
+            chainFileWriter.append(createChainString(seq.getSequenceName(), shiftOffset - 1, (int) refLengthLong, 0, shiftOffset, shiftBackOffset, bases.length, 2));
+            chainFileWriter.append("\n" + shiftOffset + "\n");
         } catch (IOException e) {
             throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
         }
+    }
+
+    private String createChainString(String name, int score, int length, int start, int end, int shiftBackStart, int shiftBackEnd, int id) {
+        String[] items = new String[] { "chain",
+                Integer.toString(score),
+                name,
+                Integer.toString(length),
+                "+",
+                Integer.toString(shiftBackStart),
+                Integer.toString(shiftBackEnd),
+                name,
+                Integer.toString(length),
+                "+",
+                Integer.toString(start),
+                Integer.toString(end),
+                Integer.toString(id)
+        };
+        return String.join("\t", items);
     }
 
     @Override
@@ -125,6 +149,9 @@ public class ShiftFasta extends GATKTool {
         try{
             if( refWriter != null ) {
                 refWriter.close();
+            }
+            if (chainFileWriter != null) {
+                chainFileWriter.close();
             }
         } catch (IllegalStateException e){
             //sink this
