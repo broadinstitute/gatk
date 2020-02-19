@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.longreads.graph;
 
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 public class AlignedBaseVertex extends SeqVertex implements Comparable<AlignedBaseVertex> {
@@ -40,15 +41,7 @@ public class AlignedBaseVertex extends SeqVertex implements Comparable<AlignedBa
      * @return {@code true} iff the given sequence and the sequence of {@code this} {@link AlignedBaseVertex} are the same.
      */
     public boolean isSequenceEqual(final byte[] seq ) {
-        if ( getSequence().length == seq.length ) {
-            for ( int i = 0 ; i < getSequence().length ; ++i ) {
-                if ( getSequence()[i] != seq[i] ) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
+        return Arrays.equals(getSequence(), seq);
     }
 
     /**
@@ -93,7 +86,7 @@ public class AlignedBaseVertex extends SeqVertex implements Comparable<AlignedBa
     public int compareTo(final AlignedBaseVertex o) {
 
         // 1 - position
-        // 2 - inseriton offset
+        // 2 - insertion offset
         // 3 - read name
 
         // Check contig / pos / insertion pos:

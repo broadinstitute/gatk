@@ -172,7 +172,7 @@ public class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
 
         // At this point, zipStarts contains all of the vertices in this graph that might start some linear
         // chain of vertices.  We walk through each start, building up the linear chain of vertices and then
-        //        // zipping them up with mergeLinearChain, if possible
+        // zipping them up with mergeLinearChain, if possible
         boolean mergedOne = false;
         for ( final SeqVertex zipStart : zipStarts ) {
             final LinkedList<SeqVertex> linearChain = traceLinearChain(zipStart);
@@ -399,7 +399,11 @@ public class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
         final String sourceName = nodeUnitigNameMap.get(source);
         final String targetName = nodeUnitigNameMap.get(target);
 
-        return String.format("L\t%s\t+\t%s\t+\t0M", sourceName, targetName);
+        return "L\t" +
+                sourceName +
+                "\t+\t" +
+                targetName +
+                "\t+\t0M";
     }
 
     private String getGfa2Header() {
@@ -408,7 +412,8 @@ public class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
 
     private String serialzeNodeToGfa2(final SeqVertex vertex, final String unitigName) {
         // <segment>  <- S <sid:id> <slen:int> <sequence> <tag>*
-        return String.format("S\t%s\t%d\t%s", unitigName, vertex.getSequence().length, vertex.getSequenceString());
+        return "S\t" + unitigName + "\t" + vertex.getSequence().length + "\t" + vertex.getSequenceString();
+//        return String.format("S\t%s\t%d\t%s", unitigName, vertex.getSequence().length, vertex.getSequenceString());
     }
 
     private String serializeEdgeToGfa2( final BaseEdge e, final int edgeNum, final Map<SeqVertex, String> nodeUnitigNameMap ) {
@@ -419,6 +424,8 @@ public class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
         final String targetName = nodeUnitigNameMap.get(target);
 
         // <edge>     <- E <eid:opt_id> <sid1:ref> <sid2:ref> <beg1:pos> <end1:pos> <beg2:pos> <end2:pos> <alignment> <tag>*
+
+        // TODO: Change this to concatenation or a StringBuilder:
         return String.format("E\tedge%06d\t%s\t%s\t%d$\t%d$\t%d\t%d\t%s",
                 edgeNum, sourceName, targetName,
                 source.getSequence().length, source.getSequence().length,

@@ -29,8 +29,8 @@ import java.util.Collections;
 import java.util.List;
 
 @CommandLineProgramProperties(
-        summary = "Make a graph from a bam file containing aligned reads to a reference.  This tool will always create a .gfa file representing the graph of the aligned reads.",
-        oneLineSummary = "Make a graph from a bam file containing aligned reads to a reference.",
+        summary = "Make a graph from a bam file containing reads aligned to a reference.  This tool will always create a .gfa file representing the graph of the aligned reads.",
+        oneLineSummary = "Make a graph from a bam file containing reads aligned to a reference.",
         programGroup = CoverageAnalysisProgramGroup.class
 )
 @ExperimentalFeature
@@ -40,6 +40,15 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
     //==================================================================================================================
     // Public Static Members:
 
+    public static final String OUTPUT_FILE_BASE_NAME_ARG = "output-file-base-name";
+    public static final String SKIP_ZIP_ARG = "skip-zip";
+    public static final String GRAPH_IN_ARG = "graph-in";
+    public static final String GRAPH_OUT_ARG = "graph-out";
+    public static final String RELABEL_EDGE_TYPES_ARG = "relabel-edge-types";
+    public static final String CREATE_DOT_FILES_ARG = "create-dot-files";
+    public static final String CREATE_GEXF_FILES_ARG = "create-gexf-files";
+    public static final String EDGE_TYPE_ARG = "edge-type";
+
     //==================================================================================================================
     // Private Static Members:
 
@@ -47,21 +56,21 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
     // Public Members:
 
     @Argument(
-            fullName  = "output-file-base-name",
+            fullName  = OUTPUT_FILE_BASE_NAME_ARG,
             optional = true,
             doc = "Base name for output files to be written.")
     private String outputFileBaseName = "aligned_base_graph";
 
     @Advanced
     @Argument(
-            fullName  = "skip-zip",
+            fullName  = SKIP_ZIP_ARG,
             optional = true,
             doc = "Skip the zipping stage in graph creation.")
     private Boolean skipZip = false;
 
     @Advanced
     @Argument(
-            fullName  = "graph-in",
+            fullName  = GRAPH_IN_ARG,
             optional = true,
             mutex = {"edge-type"},
             doc = "Initialize the graph object with the file at given path.")
@@ -69,26 +78,26 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
 
     @Advanced
     @Argument(
-            fullName  = "graph-out",
+            fullName  = GRAPH_OUT_ARG,
             optional = true,
             doc = "Saves the graph to the given path.")
     private File outputGraphFile = null;
 
     @Advanced
     @Argument(
-            fullName  = "relabel-edge-types",
+            fullName  = RELABEL_EDGE_TYPES_ARG,
             optional = true,
             doc = "If true, will overwrite types of existing edges when new data are added.")
     private boolean relabelEdgeTypes = false;
 
     @Argument(
-            fullName  = "create-dot-files",
+            fullName  = CREATE_DOT_FILES_ARG,
             optional = true,
             doc = "Create an additional DOT file for each GFA file created.")
-    private Boolean createDotFiles = false;
+    private boolean createDotFiles = false;
 
     @Argument(
-            fullName  = "create-gexf-files",
+            fullName  = CREATE_GEXF_FILES_ARG,
             optional = true,
             doc = "Create an additional GEXF file for each GFA file created.\n" +
                   "WARNING: GEXF files can get VERY large.  Use this at your own peril.")
@@ -96,7 +105,7 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
 
     @Advanced
     @Argument(
-            fullName  = "edge-type",
+            fullName  = EDGE_TYPE_ARG,
             optional = true,
             mutex = {"graph-in"},
             doc = "Use a specific edge type when creating links in the graph.  Will only work when creating a graph from scratch.")
@@ -141,8 +150,7 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
     }
 
     @Override
-    public void closeTool() {
-
+    public Object onTraversalSuccess() {
         if ( !skipZip ) {
             // Make sure we zip all adjacent nodes into big boy nodes because they're all grown up now.
             alignedBaseGraphCollection.collapseAdjacentNodes();
@@ -170,6 +178,8 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
         if ( outputGraphFile != null ) {
             serializeGraphToFile(alignedBaseGraphCollection, outputGraphFile);
         }
+
+        return null;
     }
 
     //==================================================================================================================

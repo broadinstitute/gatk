@@ -21,7 +21,7 @@ public class AlignedBaseGraphCollection implements Serializable {
 
     private static final long serialVersionUID = 0x1337L;
 
-    private final HashMap<String, AlignedBaseGraph>                                 contigSubGraphMap       = new HashMap<>();
+    private final HashMap<String, AlignedBaseGraph> contigSubGraphMap = new HashMap<>();
     private final HashMap<String, TreeMap<GenomicAndInsertionPosition, Set<AlignedBaseVertex>>> contigPositionVertexMap
             = new HashMap<>();
 
@@ -60,10 +60,8 @@ public class AlignedBaseGraphCollection implements Serializable {
      */
     public void serializeToDotFiles(final String baseName) {
         for ( final Map.Entry<String, AlignedBaseGraph> entry : contigSubGraphMap.entrySet() ) {
-            // Print the graph to a file.  We don't want to prune anything, so give the pruner a VERY LARGE NUMBER.
-            entry.getValue().printGraph(
-                    new File(baseName + '.' + entry.getKey() + ".dot"),
-                    0 );
+            // Print the graph to a file.  We don't want to prune anything, so give the pruner a factor of zero.
+            entry.getValue().printGraph(new File(baseName + '.' + entry.getKey() + ".dot"), 0 );
         }
     }
 
@@ -75,7 +73,7 @@ public class AlignedBaseGraphCollection implements Serializable {
      */
     public void serializeToGexfFiles(final String baseName) {
         for ( final Map.Entry<String, AlignedBaseGraph> entry : contigSubGraphMap.entrySet() ) {
-            // Print the graph to a file.  We don't want to prune anything, so give the pruner a VERY LARGE NUMBER.
+            // Print the graph to a file.  We don't want to prune anything, so give the pruner a factor of zero.
             entry.getValue().serializeToGexf(
                     new File(baseName + '.' + entry.getKey() + ".gexf"),
                     0,
@@ -160,7 +158,7 @@ public class AlignedBaseGraphCollection implements Serializable {
 
             // the new ZipLinearChains does these steps as well:
 
-//            // Here we must check for adjacent positions in the which have no links between them and add such links.
+//            // Here we must check for adjacent positions in the graph which have no links between them and add such links.
 //            // We should do this because we know they must be adjacent based on the alignment information we were given
 //            // in the supporting reads.
 //            logger.info("    Linking adjacent nodes (2 / 4)");
@@ -203,6 +201,12 @@ public class AlignedBaseGraphCollection implements Serializable {
         }
     }
 
+    /**
+     * Link nodes that are at adjacent positions in the graph according to their position information.
+     * We have already resolved the positions from the input alignment information, so if two nodes are exactly
+     * adjacent, they can be chained together.  This can occur in any data set.
+     * @param graph An {@link AlignedBaseGraph} contaning nodes to link together.
+     */
     private static void linkAdjacentNodes(final AlignedBaseGraph graph) {
 
         final HashSet<AlignedBaseVertex> startVertices = new HashSet<>();
@@ -229,6 +233,14 @@ public class AlignedBaseGraphCollection implements Serializable {
         }
     }
 
+    /**
+     * Link nodes that are at adjacent positions in the graph according to their position information if and only if
+     * they have genomic positions that occur before the given {@code pos}.
+     * We have already resolved the positions from the input alignment information, so if two nodes are exactly
+     * adjacent, they can be chained together.  This can occur in any data set.
+     * @param graph An {@link AlignedBaseGraph} contaning nodes to link together.
+     * @param pos A {@link GenomicAndInsertionPosition} to use as a boundary for linking nodes in the given {@code graph}.
+     */
     private static void linkAdjacentNodesBefore(final AlignedBaseGraph graph, final GenomicAndInsertionPosition pos) {
         final HashSet<AlignedBaseVertex> startVertices = new HashSet<>();
         final HashSet<AlignedBaseVertex> endVertices = new HashSet<>();
@@ -392,17 +404,13 @@ public class AlignedBaseGraphCollection implements Serializable {
         contigPositionVertexMap.put(contig, nodePositionMap);
 
         AlignedBaseVertex lastVertex = null;
-        AlignedBaseVertex vertex;
 
         if ( nodes.peek() != null ) {
             // Add the first position to our uncollapsed position map:
             contigUncollapsedPositionMap.put(contig, nodes.peek().getPos());
         }
 
-        while (nodes.peek() != null) {
-
-            // Get our vertex:
-            vertex = nodes.remove();
+        for ( final AlignedBaseVertex vertex : nodes ) {
 
             // Add the vertex to our graph
             graph.addVertex(vertex);
@@ -413,15 +421,10 @@ public class AlignedBaseGraphCollection implements Serializable {
             }
 
             // Add the nodes to our node store:
-            if (contigPositionVertexMap.get(contig).containsKey(vertex.getPos())) {
-                contigPositionVertexMap.get(contig).get(vertex.getPos()).add(vertex);
-            }
-            else {
-                contigPositionVertexMap.get(contig).put(
-                        vertex.getPos(),
-                        new HashSet<>(Collections.singletonList(vertex))
-                );
-            }
+            final Map<GenomicAndInsertionPosition, Set<AlignedBaseVertex>> posVtxMap =
+                    contigPositionVertexMap.get(contig);
+            posVtxMap.computeIfAbsent(vertex.getPos(), v -> new HashSet<>());
+            posVtxMap.get(vertex.getPos()).add(vertex);
 
             // Store the last vertex:
             lastVertex = vertex;
@@ -446,14 +449,12 @@ public class AlignedBaseGraphCollection implements Serializable {
                 contigPositionVertexMap.get(contig);
 
         AlignedBaseVertex lastVertex = null;
-        AlignedBaseVertex rawVertex = null;
         AlignedBaseVertex vertex;
 
         boolean lastNodeWasAddedToGraph = false;
 
         // Iterate through our nodes and find the best place to insert them:
-        while (nodes.peek() != null) {
-            rawVertex = nodes.remove();
+        for ( final AlignedBaseVertex rawVertex : nodes ) {
             vertex = rawVertex;
 
             // Get the nodes in the graph that aligns to this one:
@@ -475,8 +476,9 @@ public class AlignedBaseGraphCollection implements Serializable {
                         if ( lastNodeWasAddedToGraph ) {
                             // This if statement can probably be removed:
                             if (lastVertex.equals(vertex)) {
-                                logger.error("Equal Vertices detected: " + vertex.toString() + " @ " + vertex.getPos().toString());
-                                throw new GATKException("STILL BUSTED, BUSTER!");
+                                final String message = "Equal Vertices detected: " + vertex.toString() + " @ " + vertex.getPos().toString();
+                                logger.error(message);
+                                throw new GATKException(message);
                             }
                             graph.addEdge(lastVertex, vertex);
                         }
@@ -488,40 +490,41 @@ public class AlignedBaseGraphCollection implements Serializable {
 
             // We must add in the new vertex and its edges:
             if ( !vertexIsInGraph ) {
-                // Add our vertex to the graph:
-                graph.addVertex(vertex);
-
-                // Add the vertex to our positional data store:
-                if ( positionVertexMap.containsKey(vertex.getPos()) ) {
-                    positionVertexMap.get(vertex.getPos()).add(vertex);
-                }
-                else {
-                    positionVertexMap.put(
-                            vertex.getPos(),
-                            new HashSet<>(Collections.singletonList(vertex))
-                    );
-                }
-
-                // Add an edge from the previous position if we must:
-                if (lastVertex != null) {
-                    graph.addEdge(lastVertex, vertex);
-                }
+                addNewNodeToGraph(graph, positionVertexMap, lastVertex, vertex);
                 lastNodeWasAddedToGraph = true;
             }
             else if ( relabelEdgeTypes ) {
-                // If we need to relable edges, we should do so:
-                final BaseEdge edge = graph.getEdge(lastVertex, vertex);
-                if ( edge != null ) {
-                    final LabeledEdge labeledEdge = (LabeledEdge)edge;
-                    final String      newLabel    = LabeledEdge.createLabel(rawVertex);
-                    if ( !labeledEdge.getLabel().equals(newLabel) ) {
-                        logger.debug("Relabeling edge: " + labeledEdge.getLabel() + " -> " + newLabel);
-                        labeledEdge.updateLabel(newLabel);
-                    }
-                }
+                relabelEdges(graph, lastVertex, vertex, rawVertex);
             }
 
             lastVertex = vertex;
+        }
+    }
+
+    private void relabelEdges(final AlignedBaseGraph graph, final AlignedBaseVertex lastVertex, final AlignedBaseVertex vertex, final AlignedBaseVertex rawVertex) {
+        // If we need to relable edges, we should do so:
+        final BaseEdge edge = graph.getEdge(lastVertex, vertex);
+        if ( edge != null ) {
+            final LabeledEdge labeledEdge = (LabeledEdge)edge;
+            final String      newLabel    = LabeledEdge.createLabel(rawVertex);
+            if ( !labeledEdge.getLabel().equals(newLabel) ) {
+                logger.debug("Relabeling edge: " + labeledEdge.getLabel() + " -> " + newLabel);
+                labeledEdge.updateLabel(newLabel);
+            }
+        }
+    }
+
+    private void addNewNodeToGraph(final AlignedBaseGraph graph, final TreeMap<GenomicAndInsertionPosition, Set<AlignedBaseVertex>> positionVertexMap, final AlignedBaseVertex lastVertex, final AlignedBaseVertex vertex) {
+        // Add our vertex to the graph:
+        graph.addVertex(vertex);
+
+        // Add the vertex to our positional data store:
+        positionVertexMap.computeIfAbsent(vertex.getPos(), v -> new HashSet<>());
+        positionVertexMap.get(vertex.getPos()).add(vertex);
+
+        // Add an edge from the previous position if we must:
+        if (lastVertex != null) {
+            graph.addEdge(lastVertex, vertex);
         }
     }
 
@@ -539,7 +542,6 @@ public class AlignedBaseGraphCollection implements Serializable {
         final Queue<AlignedBaseVertex> nodeQueue = new ArrayDeque<>();
 
         int readBasePos = 0;
-        int insertionOffset = 0;
         // Start at start-1 just in case we begin with Soft Clips or Insertions:
         int genomePos = startPos - 1;
 
@@ -547,11 +549,13 @@ public class AlignedBaseGraphCollection implements Serializable {
             final CigarOperator cigarOperator = cigarElement.getOperator();
 
             // Ignore hard clips and padding:
-            if ( cigarOperator.equals(CigarOperator.HARD_CLIP) || cigarOperator.equals(CigarOperator.PADDING) ) {
+            if ( cigarOperator.equals(CigarOperator.HARD_CLIP) || cigarOperator.equals(CigarOperator.PADDING) ||
+                 cigarOperator.equals(CigarOperator.SKIPPED_REGION)) {
                 continue;
             }
 
             // Set up insertion position if we need to track inserted bases:
+            int insertionOffset = 0;
             insertionOffset = updateInsertionOffset(insertionOffset, cigarOperator);
 
             for ( int i = 0; i < cigarElement.getLength(); ++i ) {
@@ -574,9 +578,6 @@ public class AlignedBaseGraphCollection implements Serializable {
                     insertionOffset = updateInsertionOffset(insertionOffset, cigarOperator);
                 }
             }
-
-            // Reset insertion pos for the next cigar operator:
-            insertionOffset = 0;
         }
 
         return nodeQueue;
