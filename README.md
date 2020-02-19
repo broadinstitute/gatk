@@ -145,6 +145,9 @@ You can download and run pre-built versions of GATK4 from the following places:
 
 * Gradle keeps a cache of dependencies used to build GATK.  By default this goes in `~/.gradle`.  If there is insufficient free space in your home directory, you can change the location of the cache by setting the `GRADLE_USER_HOME` environment variable.
 
+* The version number is automatically derived from the git history using `git describe`, you can override it by setting the `versionOverride` property.
+  ( `./gradlew -DversionOverride=my_weird_version printVersion` )
+
 ## <a name="running">Running GATK4</a>
 
 * The standard way to run GATK4 tools is via the **`gatk`** wrapper script located in the root directory of a clone of this repository.
