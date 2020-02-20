@@ -176,6 +176,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     private boolean suppressReferencePath = false;
 
     private VariantContextWriter vcfWriter = null;
+    private VCFHeader vcfHeader = null;
 
     VariantContext lastVariant;
 
