@@ -1407,7 +1407,6 @@ public final class GATKVariantContextUtils {
         } else {
             final List<VariantContext> biallelics = new LinkedList<>();
 
-            int altIndex = 1;
             for (final Allele alt : vc.getAlternateAlleles()) {
                 final VariantContextBuilder builder = new VariantContextBuilder(vc);
 
@@ -1416,23 +1415,23 @@ public final class GATKVariantContextUtils {
                 builder.alleles(alleles);
 
                 // split allele specific filters
-                int index = vc.getAlleleIndex(alt);
+                int alleleIndex = vc.getAlleleIndex(alt);
+                int altIndex = alleleIndex - 1;
                 // the reason we are getting as list and then joining on , is because the default getAttributeAsString for a list will add spaces between items which we don't
                 // want to have to trim out later in the code
                 String asfiltersStr = String.join(",", vc.getCommonInfo().getAttributeAsStringList(GATKVCFConstants.AS_FILTER_STATUS_KEY, VCFConstants.EMPTY_INFO_FIELD));
                 List<String> filtersList = AnnotationUtils.decodeAnyASListWithRawDelim(asfiltersStr);
-                if (filtersList.size() > index) {
-                    String filters = filtersList.get(index);
+                if (filtersList.size() > altIndex) {
+                    String filters = filtersList.get(altIndex);
                     if (filters != null && !filters.isEmpty() && !filters.equals(VCFConstants.EMPTY_INFO_FIELD) && !filters.equals((VCFConstants.PASSES_FILTERS_v4))) {
                         AnnotationUtils.decodeAnyASList(filters).stream().forEach(filter -> builder.filter(filter));
                     }
-                    builder.attribute(GATKVCFConstants.AS_FILTER_STATUS_KEY, AnnotationUtils.encodeAnyASListWithRawDelim(new ArrayList<>(Arrays.asList(filtersList.get(0), filters))));
+                    builder.attribute(GATKVCFConstants.AS_FILTER_STATUS_KEY, filters);
                 }
 
-                builder.genotypes(AlleleSubsettingUtils.subsetSomaticAlleles(outputHeader, vc.getGenotypes(), alleles, new int[]{0, altIndex}));
+                builder.genotypes(AlleleSubsettingUtils.subsetSomaticAlleles(outputHeader, vc.getGenotypes(), alleles, new int[]{0, alleleIndex}));
                 final VariantContext trimmed = trimAlleles(builder.make(), trimLeft, true);
                 biallelics.add(trimmed);
-                altIndex++;
             }
             return biallelics;
         }
