@@ -3,9 +3,10 @@ import csv
 import logging
 import operator
 import numpy as np
+from typing import List
 from typing.io import TextIO
 
-from ml4cvd.TensorMap import TensorMap
+from ml4cvd.TensorMap import TensorMap, Interpretation
 from ml4cvd.tensor_from_file import _build_tensor_from_file
 from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4cvd.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
@@ -204,5 +205,15 @@ def _get_all_available_fields(available_fields_pd, keyword: str = None, category
     return filtered
 
 
-def generate_continuous_tensor_map_from_file(file_name: str, column_name, tensor_map_name: str, normalization: bool) -> TensorMap:
-    return TensorMap(f'{tensor_map_name}', channel_map={tensor_map_name: 0}, tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization))
+def generate_continuous_tensor_map_from_file(file_name: str,
+                                             column_name,
+                                             tensor_map_name: str,
+                                             normalization: bool,
+                                             discretization_bounds: List[float]) -> TensorMap:
+    if discretization_bounds:
+        return TensorMap(f'{tensor_map_name}', Interpretation.DISCRETIZED, channel_map={tensor_map_name: 0},
+                         tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization),
+                         discretization_bounds=discretization_bounds)
+    else:
+        return TensorMap(f'{tensor_map_name}', channel_map={tensor_map_name: 0},
+                         tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization))
