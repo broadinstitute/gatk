@@ -45,11 +45,12 @@ class _ShufflePaths(Iterator):
         self.idx = 0
 
     def __next__(self):
+        path = self.paths[self.idx]
         self.idx += 1
         if self.idx >= len(self.paths):
             self.idx = 0
             np.random.shuffle(self.paths)
-        return self.paths[self.idx - 1]
+        return path
 
 
 class _WeightedPaths(Iterator):
