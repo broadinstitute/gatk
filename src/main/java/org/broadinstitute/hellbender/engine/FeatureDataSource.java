@@ -277,12 +277,12 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             Utils.nonNull(genomicsDBOptions, "GenomicsDBOptions must not be null. Calling tool may not read from a GenomicsDB data source.");
         }
 
-        final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> BucketUtils.addPrefetcher(cloudPrefetchBuffer, is) : Utils.identityFunction());
-        final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> BucketUtils.addPrefetcher(cloudIndexPrefetchBuffer, is) : Utils.identityFunction());
-
         // Create a feature reader without requiring an index.  We will require one ourselves as soon as
         // a query by interval is attempted.
-        this.featureReader = getFeatureReader(featureInput, targetFeatureType, cloudWrapper, cloudIndexWrapper, genomicsDBOptions);
+        this.featureReader = getFeatureReader(featureInput, targetFeatureType,
+                BucketUtils.getPrefetchingWrapper(cloudPrefetchBuffer),
+                BucketUtils.getPrefetchingWrapper(cloudIndexPrefetchBuffer),
+                genomicsDBOptions);
 
         if (IOUtils.isGenomicsDBPath(featureInput)) {
             //genomics db uri's have no associated index file to read from, but they do support random access

@@ -173,9 +173,10 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
             SamReaderFactory customSamReaderFactory,
             int cloudPrefetchBuffer, int cloudIndexPrefetchBuffer) {
         this(samPaths, samIndices, customSamReaderFactory,
-            (cloudPrefetchBuffer > 0 ? is -> BucketUtils.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity()),
-            (cloudIndexPrefetchBuffer > 0 ? is -> BucketUtils.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity()));
+                BucketUtils.getPrefetchingWrapper(cloudPrefetchBuffer),
+                BucketUtils.getPrefetchingWrapper(cloudIndexPrefetchBuffer));
     }
+
 
     /**
      * Initialize this data source with multiple SAM/BAM/CRAM files, explicit indices for those files,

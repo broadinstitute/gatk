@@ -32,6 +32,7 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.function.Function;
 
 /**
  * Utilities for dealing with google buckets.
@@ -433,11 +434,25 @@ public final class BucketUtils {
         return CloudStorageFileSystem.forBucket(bucket, CloudStorageConfiguration.DEFAULT, storageOptions);
     }
 
+    /**
+     * Wrap a SeekableByteChannel with a prefetcher.
+     * @param bufferSizeMB buffer size in mb which the prefetcher should fetch ahead.
+     * @param channel a channel that needs prefetching
+     */
     public static SeekableByteChannel addPrefetcher(int bufferSizeMB, SeekableByteChannel channel) {
         try {
             return SeekableByteChannelPrefetcher.addPrefetcher(bufferSizeMB, channel);
         } catch (final IOException ex) {
             throw new GATKException("Unable to initialize the prefetcher: " + ex);
         }
+    }
+
+    /**
+     * Creates a wrapping function which adds a prefetcher if the buffer size is > 0 if its <= 0 then this wrapper returns the
+     * original channel.
+     * @param cloudPrefetchBuffer the prefetcher buffer size in MB
+     */
+    public static Function<SeekableByteChannel, SeekableByteChannel> getPrefetchingWrapper(final int cloudPrefetchBuffer) {
+        return cloudPrefetchBuffer > 0 ? is -> addPrefetcher(cloudPrefetchBuffer, is) : Utils.identityFunction();
     }
 }

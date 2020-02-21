@@ -225,8 +225,9 @@ public final class GatherVcfsCloud extends CommandLineProgram {
 
     private static FeatureReader<VariantContext> getReaderFromVCFUri(final Path variantPath, final int cloudPrefetchBuffer) {
         final String variantURI = variantPath.toUri().toString();
-        final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> BucketUtils.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
-        return AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), false, cloudWrapper, Function.identity());
+        return AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), false,
+                BucketUtils.getPrefetchingWrapper(cloudPrefetchBuffer),
+                Function.identity());
     }
 
     /** Validates that all headers contain the same set of genotyped samples and that files are in order by position of first record. */
@@ -374,7 +375,7 @@ public final class GatherVcfsCloud extends CommandLineProgram {
 
             for (final Path f : vcfs) {
                 log.info("Gathering " + f.toUri());
-                final Function<SeekableByteChannel, SeekableByteChannel> prefetcher = cloudPrefetchBuffer > 0 ? is -> BucketUtils.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity();
+                final Function<SeekableByteChannel, SeekableByteChannel> prefetcher = BucketUtils.getPrefetchingWrapper(cloudPrefetchBuffer);
                 try (final SeekableStream in = SeekableStreamFactory.getInstance().getStreamFor(f.toUri().toString(), prefetcher)) {
                     // a) It's good to check that the end of the file is valid and b) we need to know if there's a terminator block and not copy it
                     final BlockCompressedInputStream.FileTermination term = BlockCompressedInputStream.checkTermination(f);

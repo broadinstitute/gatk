@@ -1,20 +1,26 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
+import com.google.cloud.storage.contrib.nio.SeekableByteChannelPrefetcher;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
+import java.util.function.Function;
 
 public final class BucketUtilsTest extends GATKBaseTest {
 
@@ -169,5 +175,31 @@ public final class BucketUtilsTest extends GATKBaseTest {
 
         BucketUtils.deleteFile(intermediate);
         Assert.assertFalse(BucketUtils.fileExists(intermediate));
+    }
+
+    @Test
+    public void testAddPrefetcher() throws IOException {
+        try(final SeekableByteChannel chan = Files.newByteChannel(Paths.get(publicTestDir, "exampleFASTA.fasta"))){
+            final SeekableByteChannel prefetchingChannel = BucketUtils.addPrefetcher(1, chan);
+            Assert.assertTrue((prefetchingChannel instanceof SeekableByteChannelPrefetcher));
+        }
+    }
+
+    @DataProvider
+    public Object[][] getBufferSizes(){
+        return new Object[][]{
+                        {0, false},
+                        {1, true},
+                        {10, true}
+                };
+    }
+
+    @Test(dataProvider = "getBufferSizes")
+    public void testGetWrapper(int bufferSize, boolean prefetchingIsEnabled) throws IOException {
+        final Function<SeekableByteChannel, SeekableByteChannel> wrapper = BucketUtils.getPrefetchingWrapper(bufferSize);
+        try(final SeekableByteChannel chan = Files.newByteChannel(Paths.get(publicTestDir, "exampleFASTA.fasta"))){
+            SeekableByteChannel wrapped = wrapper.apply(chan);
+            Assert.assertEquals(wrapped instanceof SeekableByteChannelPrefetcher, prefetchingIsEnabled);
+        }
     }
 }

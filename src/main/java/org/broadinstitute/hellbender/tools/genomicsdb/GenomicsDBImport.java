@@ -827,10 +827,10 @@ public final class GenomicsDBImport extends GATKTool {
      */
     private FeatureReader<VariantContext> getReaderFromPath(final Path variantPath) {
         final String variantURI = variantPath.toAbsolutePath().toUri().toString();
-        final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> BucketUtils.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
-        final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> BucketUtils.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity());
         try {
-            final FeatureReader<VariantContext> reader = AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), true, cloudWrapper, cloudIndexWrapper);
+            final FeatureReader<VariantContext> reader = AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), true,
+                    BucketUtils.getPrefetchingWrapper(cloudPrefetchBuffer),
+                    BucketUtils.getPrefetchingWrapper(cloudIndexPrefetchBuffer));
 
             /* Anonymous FeatureReader subclass that wraps returned iterators to ensure that the GVCFs do not
              * contain MNPs.
