@@ -39,6 +39,7 @@ public final class CountReads extends ReadWalker {
 
     @Override
     public Object onTraversalSuccess() {
+        logger.info("CountReads counted " + count + " total reads");
         return count;
     }
 }
