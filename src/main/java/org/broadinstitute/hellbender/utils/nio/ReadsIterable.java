@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.nio;
 
-import com.google.cloud.storage.contrib.nio.CloudStorageOptions;
 import htsjdk.samtools.QueryInterval;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
@@ -16,6 +15,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
@@ -35,7 +35,7 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
     private final boolean removeHeader = true;
 
     class ReadsIterator implements CloseableIterator<SAMRecord> {
-        private final static int BUFSIZE = 200 * 1024 * 1024;
+        private final static int BUFSIZE_MB = 200;
         private SamReader bam;
         private SAMRecordIterator query;
         private SAMRecord nextRecord = null;
@@ -47,8 +47,7 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
             SeekableStream indexInMemory = new ByteArraySeekableStream(indexData);
             // set high-level retries to deal with servers that might be temporarily overloaded
             // while we're reading a very long file from them.
-            SeekableByteChannelPrefetcher chan = new SeekableByteChannelPrefetcher(
-                Files.newByteChannel(fpath), BUFSIZE);
+            SeekableByteChannel chan = BucketUtils.addPrefetcher( BUFSIZE_MB, Files.newByteChannel(fpath));
             ChannelAsSeekableStream bamOverNIO = new ChannelAsSeekableStream(chan, path);
             bam = SamReaderFactory.makeDefault()
                     .validationStringency(ValidationStringency.LENIENT)

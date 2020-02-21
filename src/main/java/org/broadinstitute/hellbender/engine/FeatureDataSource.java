@@ -3,7 +3,12 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.tribble.*;
+import htsjdk.tribble.AbstractFeatureReader;
+import htsjdk.tribble.CloseableTribbleIterator;
+import htsjdk.tribble.Feature;
+import htsjdk.tribble.FeatureCodec;
+import htsjdk.tribble.FeatureReader;
+import htsjdk.tribble.TribbleException;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
@@ -20,7 +25,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import org.genomicsdb.model.GenomicsDBExportConfiguration;
 import org.genomicsdb.reader.GenomicsDBFeatureReader;
 
@@ -273,8 +277,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             Utils.nonNull(genomicsDBOptions, "GenomicsDBOptions must not be null. Calling tool may not read from a GenomicsDB data source.");
         }
 
-        final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Utils.identityFunction());
-        final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is) : Utils.identityFunction());
+        final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> BucketUtils.addPrefetcher(cloudPrefetchBuffer, is) : Utils.identityFunction());
+        final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> BucketUtils.addPrefetcher(cloudIndexPrefetchBuffer, is) : Utils.identityFunction());
 
         // Create a feature reader without requiring an index.  We will require one ourselves as soon as
         // a query by interval is attempted.

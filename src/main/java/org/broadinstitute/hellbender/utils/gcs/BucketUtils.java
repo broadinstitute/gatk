@@ -5,6 +5,7 @@ import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration.Builder;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
+import com.google.cloud.storage.contrib.nio.SeekableByteChannelPrefetcher;
 import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
 import htsjdk.samtools.util.FileExtensions;
@@ -17,6 +18,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -26,6 +28,7 @@ import shaded.cloud_nio.com.google.cloud.http.HttpTransportOptions;
 import shaded.cloud_nio.org.threeten.bp.Duration;
 
 import java.io.*;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.UUID;
@@ -428,5 +431,13 @@ public final class BucketUtils {
 
         // 2. Create GCS filesystem object with those credentials
         return CloudStorageFileSystem.forBucket(bucket, CloudStorageConfiguration.DEFAULT, storageOptions);
+    }
+
+    public static SeekableByteChannel addPrefetcher(int bufferSizeMB, SeekableByteChannel channel) {
+        try {
+            return SeekableByteChannelPrefetcher.addPrefetcher(bufferSizeMB, channel);
+        } catch (final IOException ex) {
+            throw new GATKException("Unable to initialize the prefetcher: " + ex);
+        }
     }
 }

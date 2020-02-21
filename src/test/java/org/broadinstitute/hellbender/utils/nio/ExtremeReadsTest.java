@@ -1,6 +1,14 @@
 package org.broadinstitute.hellbender.utils.nio;
 
 import com.google.common.base.Stopwatch;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
@@ -10,12 +18,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import org.apache.logging.log4j.LogManager;
-import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.testng.annotations.Test;
-import org.testng.Assert;
-import org.apache.logging.log4j.Logger;
 
 /**
  * Stress test for reading lots of data from the cloud using a very small prefetch buffer.
@@ -40,8 +42,7 @@ public final class ExtremeReadsTest extends GATKBaseTest {
                 Path path = IOUtils.getPath(ExtremeReadsTest.fname);
                 ArrayList<SeekableByteChannel> chans = new ArrayList<SeekableByteChannel>();
                 for (int i=0; i<CHANNELS_PER_THREAD; i++) {
-                    SeekableByteChannelPrefetcher chan = new SeekableByteChannelPrefetcher(
-                        Files.newByteChannel(path), 2 * 1024 * 1024);
+                    SeekableByteChannel chan = BucketUtils.addPrefetcher(2, Files.newByteChannel(path));
                     // skip the first half
                     chan.position(chan.position()/2);
                     chans.add(chan);
