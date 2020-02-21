@@ -691,22 +691,22 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testIsIntervalFile() {
-        Assert.assertTrue(IntervalUtils.isIntervalFile(emptyIntervals));
-        Assert.assertTrue(IntervalUtils.isIntervalFile(emptyIntervals, true));
+    public void testIsGatkIntervalFile() {
+        Assert.assertTrue(IntervalUtils.isGatkIntervalFile(emptyIntervals));
+        Assert.assertTrue(IntervalUtils.isGatkIntervalFile(emptyIntervals, true));
 
-        Assert.assertFalse(IntervalUtils.isIntervalFile(INTERVAL_TEST_DATA + "intervals_from_features_test.vcf"));
-        Assert.assertFalse(IntervalUtils.isIntervalFile(INTERVAL_TEST_DATA + "intervals_from_features_test.bed"));
+        Assert.assertFalse(IntervalUtils.isGatkIntervalFile(INTERVAL_TEST_DATA + "intervals_from_features_test.vcf"));
+        Assert.assertFalse(IntervalUtils.isGatkIntervalFile(INTERVAL_TEST_DATA + "intervals_from_features_test.bed"));
 
-        List<String> extensions = Arrays.asList("interval_list", "intervals", "list", "picard");
+        List<String> extensions = Arrays.asList("intervals", "list");
         for (String extension: extensions) {
-            Assert.assertTrue(IntervalUtils.isIntervalFile("test_intervals." + extension, false), "Tested interval file extension: " + extension);
+            Assert.assertTrue(IntervalUtils.isGatkIntervalFile("test_intervals." + extension, false), "Tested interval file extension: " + extension);
         }
     }
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testMissingIntervalFile() {
-        IntervalUtils.isIntervalFile(GATKBaseTest.publicTestDir + "no_such_intervals.list");
+        IntervalUtils.isGatkIntervalFile(GATKBaseTest.publicTestDir + "no_such_intervals.list");
     }
 
     @Test
@@ -730,7 +730,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         GenomeLoc chr2 = hg19GenomeLocParser.parseGenomeLoc("2");
         GenomeLoc chr3 = hg19GenomeLocParser.parseGenomeLoc("3");
 
-        List<File> files = testFiles("basic.", 3, ".intervals");
+        List<File> files = testFiles("basic.", 3, ".interval_list");
 
         List<GenomeLoc> locs = intervalStringsToGenomeLocs("1", "2", "3");
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, files.size());
@@ -756,7 +756,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         GenomeLoc chr3 = hg19GenomeLocParser.parseGenomeLoc("3");
         GenomeLoc chr4 = hg19GenomeLocParser.parseGenomeLoc("4");
 
-        List<File> files = testFiles("less.", 3, ".intervals");
+        List<File> files = testFiles("less.", 3, ".interval_list");
 
         List<GenomeLoc> locs = intervalStringsToGenomeLocs("1", "2", "3", "4");
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, files.size());
@@ -798,7 +798,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         GenomeLoc chr2 = hg19GenomeLocParser.parseGenomeLoc("2:1-1");
         GenomeLoc chr3 = hg19GenomeLocParser.parseGenomeLoc("3:2-2");
 
-        List<File> files = testFiles("split.", 3, ".intervals");
+        List<File> files = testFiles("split.", 3, ".interval_list");
 
         List<GenomeLoc> locs = intervalStringsToGenomeLocs(intervals);
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, files.size());
@@ -826,7 +826,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         GenomeLoc chr2b = hg19GenomeLocParser.parseGenomeLoc("2:4-5");
         GenomeLoc chr3 = hg19GenomeLocParser.parseGenomeLoc("3:2-2");
 
-        List<File> files = testFiles("split.", 3, ".intervals");
+        List<File> files = testFiles("split.", 3, ".interval_list");
 
         List<GenomeLoc> locs = intervalStringsToGenomeLocs(intervals);
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, files.size());
@@ -854,7 +854,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         GenomeLoc chr3a = hg19GenomeLocParser.parseGenomeLoc("3:1-2");
         GenomeLoc chr3b = hg19GenomeLocParser.parseGenomeLoc("3:4-5");
 
-        List<File> files = testFiles("split.", 3, ".intervals");
+        List<File> files = testFiles("split.", 3, ".interval_list");
 
         List<GenomeLoc> locs = intervalStringsToGenomeLocs(intervals);
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, files.size());
@@ -876,7 +876,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testScatterFixedIntervalsFile() {
-        List<File> files = testFiles("sg.", 10, ".intervals");
+        List<File> files = testFiles("sg.", 10, ".interval_list");
         List<GenomeLoc> locs = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(hg19MiniIntervalFile));
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, files.size());
 
@@ -888,7 +888,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         //String splitCounts = "";
         for (int i = 0; i < splits.size(); i++) {
             int splitCount = splits.get(i).size();
-            Assert.assertEquals(splitCount, counts[i], "Num intervals in split " + i);
+            Assert.assertEquals(splitCount, counts[i], "Num.interval_list in split " + i);
         }
         //System.out.println(splitCounts.substring(2));
 
@@ -907,7 +907,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testScatterFixedIntervalsMax() {
-        List<File> files = testFiles("sg.", 4, ".intervals");
+        List<File> files = testFiles("sg.", 4, ".interval_list");
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(hg19ReferenceLocs, files.size());
         IntervalUtils.scatterFixedIntervals(hg19Header, splits, files);
 
@@ -926,7 +926,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         GenomeLoc chr2 = hg19GenomeLocParser.parseGenomeLoc("2:1-1");
         GenomeLoc chr3 = hg19GenomeLocParser.parseGenomeLoc("3:2-2");
 
-        List<File> files = testFiles("split.", 3, ".intervals");
+        List<File> files = testFiles("split.", 3, ".interval_list");
 
         IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs(intervals), files);
 
@@ -949,7 +949,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         GenomeLoc chr2 = hg19GenomeLocParser.parseGenomeLoc("2");
         GenomeLoc chr3 = hg19GenomeLocParser.parseGenomeLoc("3");
 
-        List<File> files = testFiles("contig_basic.", 3, ".intervals");
+        List<File> files = testFiles("contig_basic.", 3, ".interval_list");
 
         IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs("1", "2", "3"), files);
 
@@ -973,7 +973,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         GenomeLoc chr3 = hg19GenomeLocParser.parseGenomeLoc("3");
         GenomeLoc chr4 = hg19GenomeLocParser.parseGenomeLoc("4");
 
-        List<File> files = testFiles("contig_less.", 3, ".intervals");
+        List<File> files = testFiles("contig_less.", 3, ".interval_list");
 
         IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs("1", "2", "3", "4"), files);
 
@@ -1005,7 +1005,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         GenomeLoc chr2 = hg19GenomeLocParser.parseGenomeLoc("2:1-1");
         GenomeLoc chr3 = hg19GenomeLocParser.parseGenomeLoc("3:2-2");
 
-        List<File> files = testFiles("contig_split_start.", 3, ".intervals");
+        List<File> files = testFiles("contig_split_start.", 3, ".interval_list");
 
         IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs(intervals), files);
 
@@ -1031,7 +1031,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         GenomeLoc chr2b = hg19GenomeLocParser.parseGenomeLoc("2:4-5");
         GenomeLoc chr3 = hg19GenomeLocParser.parseGenomeLoc("3:2-2");
 
-        List<File> files = testFiles("contig_split_middle.", 3, ".intervals");
+        List<File> files = testFiles("contig_split_middle.", 3, ".interval_list");
 
         IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs(intervals), files);
 
@@ -1057,7 +1057,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         GenomeLoc chr3a = hg19GenomeLocParser.parseGenomeLoc("3:1-2");
         GenomeLoc chr3b = hg19GenomeLocParser.parseGenomeLoc("3:4-5");
 
-        List<File> files = testFiles("contig_split_end.", 3 ,".intervals");
+        List<File> files = testFiles("contig_split_end.", 3 ,".interval_list");
 
         IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs(intervals), files);
 
@@ -1077,7 +1077,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testScatterContigIntervalsMax() {
-        List<File> files = testFiles("sg.", 4, ".intervals");
+        List<File> files = testFiles("sg.", 4, ".interval_list");
         IntervalUtils.scatterContigIntervals(hg19Header, hg19ReferenceLocs, files);
 
         for (int i = 0; i < files.size(); i++) {
@@ -1099,7 +1099,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
     @DataProvider(name="unmergedIntervals")
     public Object[][] getUnmergedIntervals() {
         return new Object[][] {
-                new Object[] {"small_unmerged_picard_intervals.list"},
+                new Object[] {"small_unmerged_picard_intervals.interval_list"},
                 new Object[] {"small_unmerged_gatk_intervals.list"}
         };
     }
@@ -1179,26 +1179,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         IntervalUtils.loadIntervals(intervalArgs, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
     }
 
-    // TODO - remove once a corrected version of the exome interval list is released.
-    @Test(dataProvider="negativeOneLengthIntervalTestData")
-    public void testIntervalFileToListNegativeOneLength(GenomeLocParser genomeLocParser,
-                                                  String contig, int intervalStart, int intervalEnd ) throws Exception {
-
-        final SAMFileHeader picardFileHeader = new SAMFileHeader();
-        picardFileHeader.addSequence(genomeLocParser.getContigInfo("1"));
-
-        final IntervalList picardIntervals = new IntervalList(picardFileHeader);
-        // Need one good interval or else a UserException.MalformedFile( is thrown if no intervals
-        picardIntervals.add(new Interval(contig, 1, 2, true, "dummyname0"));
-        picardIntervals.add(new Interval(contig, intervalStart, intervalEnd, true, "dummyname1"));
-
-        final File picardIntervalFile = createTempFile("testIntervalFileToListNegativeOneLength", ".intervals");
-        picardIntervals.write(picardIntervalFile);
-
-        IntervalUtils.intervalFileToList(genomeLocParser, picardIntervalFile.getAbsolutePath());
-    }
-
-    @Test(expectedExceptions={UserException.CouldNotReadInputFile.class, UserException.MalformedGenomeLoc.class}, dataProvider="invalidIntervalTestData")
+    @Test(expectedExceptions={UserException.CouldNotReadInputFile.class, UserException.MalformedGenomeLoc.class, UserException.MalformedFile.class}, dataProvider="invalidIntervalTestData")
     public void testIntervalFileToListInvalidPicardIntervalHandling(GenomeLocParser genomeLocParser,
                                        String contig, int intervalStart, int intervalEnd ) throws Exception {
 
@@ -1209,12 +1190,12 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         final IntervalList picardIntervals = new IntervalList(picardFileHeader);
         picardIntervals.add(new Interval(contig, intervalStart, intervalEnd, true, "dummyname"));
 
-        final File picardIntervalFile = createTempFile("testIntervalFileToListInvalidPicardIntervalHandling", ".intervals");
+        final File picardIntervalFile = createTempFile("testIntervalFileToListInvalidPicardIntervalHandling", ".interval_list");
         picardIntervals.write(picardIntervalFile);
 
         // loadIntervals() will validate all intervals against the sequence dictionary in our genomeLocParser,
         // and should throw for all intervals in our invalidIntervalTestData set
-        IntervalUtils.intervalFileToList(genomeLocParser, picardIntervalFile.getAbsolutePath());
+        IntervalUtils.parseIntervalArguments(genomeLocParser, picardIntervalFile.getAbsolutePath());
     }
 
     @DataProvider(name="invalidIntervalTestData")

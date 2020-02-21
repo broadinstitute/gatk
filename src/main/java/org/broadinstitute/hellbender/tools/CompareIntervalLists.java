@@ -49,7 +49,7 @@ public class CompareIntervalLists extends CommandLineProgram {
 
     private static GenomeLocSortedSet getGenomeLocs(final GenomeLocParser genomeLocParser, final String intervalFile) {
 
-        final List<GenomeLoc> genomeLocs = IntervalUtils.intervalFileToList(genomeLocParser, intervalFile);
+        final List<GenomeLoc> genomeLocs = IntervalUtils.parseIntervalArguments(genomeLocParser, intervalFile);
         return  IntervalUtils.sortAndMergeIntervals(genomeLocParser, genomeLocs, IntervalMergingRule.ALL);
     }
 }

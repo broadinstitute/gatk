@@ -151,7 +151,7 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
     }
 
     private static List<SimpleInterval> readIntervals(final File intervalsFile) {
-        return IntervalUtils.intervalFileToList(GLP, intervalsFile.getAbsolutePath()).stream().map(SimpleInterval::new).collect(Collectors.toList());
+        return IntervalUtils.parseIntervalArguments(GLP, intervalsFile.getAbsolutePath()).stream().map(SimpleInterval::new).collect(Collectors.toList());
     }
 
     private static void checkIntervalSizes(final int scatterCount, final File outputDir, final int expectedTotalLength, String extension) {

@@ -27,7 +27,19 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -42,8 +54,8 @@ public final class IntervalUtils {
     /**
      * Recognized extensions for interval files
      */
-    public static final List<String> INTERVAL_FILE_EXTENSIONS = Collections.unmodifiableList(Arrays.asList(
-        ".list", ".interval_list", ".intervals", ".picard"
+    public static final List<String> GATK_INTERVAL_FILE_EXTENSIONS = Collections.unmodifiableList(Arrays.asList(
+        ".list", ".intervals"
     ));
 
     /**
@@ -303,19 +315,15 @@ public final class IntervalUtils {
         }
         // If it's a Feature-containing file, convert it to a list of intervals
         else if ( FeatureManager.isFeatureFile(IOUtils.getPath(arg)) ) {
-            rawIntervals.addAll(featureFileToIntervals(parser, arg));
+            try {
+                rawIntervals.addAll(featureFileToIntervals(parser, arg));
+            } catch (final IllegalArgumentException e){
+                throw new UserException.MalformedFile(IOUtils.getPath(arg), "Failure while loading intervals from file.", e);
+            }
         }
         // If it's an interval file, add its contents to the raw interval list
-        else if ( isIntervalFile(arg) ) {
-            try {
-                rawIntervals.addAll(intervalFileToList(parser, arg));
-            }
-            catch ( final UserException.MalformedGenomeLoc e ) {
-                throw e;
-            }
-            catch ( final Exception e ) {
-                throw new UserException.MalformedFile(new File(arg), "Interval file could not be parsed in any supported format.", e);
-            }
+        else if ( isGatkIntervalFile(arg) ) {
+            rawIntervals.addAll(gatkIntervalFileToList(parser, arg));
         }
         // If it's neither a Feature-containing file nor an interval file, but is an existing file, throw an error.
         // Note that since contigs can contain periods in their names, we can't use the mere presence of an "extension"
@@ -323,7 +331,7 @@ public final class IntervalUtils {
         else if ( new File(arg).exists() ) {
             throw new UserException.CouldNotReadInputFile(arg, String.format("The file %s exists, but does not contain Features " +
                     "(ie., is not in a supported Feature file format such as vcf, bcf, or bed), " +
-                    "and does not have one of the supported interval file extensions (" + INTERVAL_FILE_EXTENSIONS + "). " +
+                    "and does not have one of the supported interval file extensions (" + GATK_INTERVAL_FILE_EXTENSIONS + "). " +
                     "Please rename your file with the appropriate extension. If %s is NOT supposed to be a file, " +
                     "please move or rename the file at location %s", arg, arg, new File(arg).getAbsolutePath()));
         }
@@ -356,67 +364,35 @@ public final class IntervalUtils {
     }
 
     /**
-     * Read a file of genome locations to process. The file may be in Picard
-     * or GATK interval format.
+     * Read a file of genome locations to process, this file must be in GATK interval format.
      *
      * @param glParser   GenomeLocParser
      * @param fileName  interval file
      * @return List<GenomeLoc> List of Genome Locs that have been parsed from file
      */
-    public static List<GenomeLoc> intervalFileToList(final GenomeLocParser glParser, final String fileName) {
+    private static List<GenomeLoc> gatkIntervalFileToList(final GenomeLocParser glParser, final String fileName) {
         Utils.nonNull(glParser, "glParser is null");
         Utils.nonNull(fileName, "file name is null");
 
         final Path inputPath = IOUtils.getPath(fileName);
         final List<GenomeLoc> ret = new ArrayList<>();
 
-        /**
-         * First try to read the file as a Picard interval file since that's well structured --
-         * we'll fail quickly if it's not a valid file.
-         */
-        boolean isPicardInterval = false;
-        try {
-            // Note: Picard will skip over intervals with contigs not in the sequence dictionary
-            final IntervalList il = IntervalList.fromPath(inputPath);
-            isPicardInterval = true;
-
-            for (final Interval interval : il.getIntervals()) {
-                // The current Agilent exome interval list is off-by-one on all end positions. Until this is fixed we
-                // need to tolerate intervals where the end is one before the start. We should remove this once a
-                // corrected version of the interval list is released. This is tracked in:
-                // https://github.com/broadinstitute/gatk/issues/2089
-                if (interval.getStart() - interval.getEnd() == 1 ) {
-                    logger.warn("Ignoring possibly incorrectly converted length 1 interval : " + interval);
-                }
-                else if ( glParser.isValidGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true)) {
-                    ret.add(glParser.createGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true));
-                } else {
-                    throw new UserException(inputPath.toUri() +  " has an invalid interval : " + interval) ;
+        try (final PathLineIterator reader = new PathLineIterator(inputPath)) {
+            for (final String line : reader) {
+                final String trimmedLine = line.trim();
+                if (!trimmedLine.isEmpty()) {
+                    ret.add(glParser.parseGenomeLoc(trimmedLine));
                 }
             }
-        }
-        // if that didn't work, try parsing file as a GATK interval file
-        catch (final Exception e) {
-            if ( isPicardInterval ) // definitely a picard file, but we failed to parse
-            {
-                throw new UserException.CouldNotReadInputFile(inputPath, e);
-            } else {
-                try (PathLineIterator reader = new PathLineIterator(inputPath)) {
-                    for (final String line : reader) {
-                        final String trimmedLine = line.trim();
-                        if (!trimmedLine.isEmpty()) {
-                            ret.add(glParser.parseGenomeLoc(trimmedLine));
-                        }
-                    }
-                }
+            if (ret.isEmpty()) {
+                throw new UserException.MalformedFile(inputPath, "It contains no intervals.");
             }
+            return ret;
+        } catch (final UserException e){
+            throw e;
+        } catch ( final Exception e ) {
+            throw new UserException.MalformedFile(inputPath, "Interval file could not be parsed as a GATK interval file", e);
         }
-
-        if ( ret.isEmpty() ) {
-            throw new UserException.MalformedFile(inputPath, "It contains no intervals.");
-        }
-
-        return ret;
     }
 
     /**
@@ -547,21 +523,21 @@ public final class IntervalUtils {
      * @param str token to identify as a filename.
      * @return true if the token looks like a filename, or false otherwise.
      */
-    public static boolean isIntervalFile(final String str) {
-        return isIntervalFile(str, true);
+    public static boolean isGatkIntervalFile(final String str) {
+        return isGatkIntervalFile(str, true);
     }
 
     /**
      * Check if string argument was intended as a file
-     * Accepted file extensions are defined in {@link #INTERVAL_FILE_EXTENSIONS}
+     * Accepted file extensions are defined in {@link #GATK_INTERVAL_FILE_EXTENSIONS}
      * @param str token to identify as a filename.
      * @param checkExists if true throws an exception if the file doesn't exist and has an interval file extension
      * @return true if the token looks like an interval file name, or false otherwise.
      */
-    public static boolean isIntervalFile(final String str, final boolean checkExists) {
+    public static boolean isGatkIntervalFile(final String str, final boolean checkExists) {
         Utils.nonNull(str);
         boolean hasIntervalFileExtension = false;
-        for ( final String extension : INTERVAL_FILE_EXTENSIONS ) {
+        for ( final String extension : GATK_INTERVAL_FILE_EXTENSIONS) {
             if ( str.toLowerCase().endsWith(extension) ) {
                 hasIntervalFileExtension = true;
             }
