@@ -1440,7 +1440,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final GenotypeBuilder gb = new GenotypeBuilder("test");
         final double[] logLikelhoods = MathUtils.normalizeLog10(likelihoods);
 
-        GATKVariantContextUtils.makeGenotypeCall(originalGT.size(), gb, mode, logLikelhoods, allelesToUse);
+        GATKVariantContextUtils.makeGenotypeCall(originalGT.size(), gb, mode, logLikelhoods, allelesToUse, null);
 
         final Genotype g = gb.make();
         Assert.assertEquals(new LinkedHashSet<>(g.getAlleles()), new LinkedHashSet<>(expectedAlleles));

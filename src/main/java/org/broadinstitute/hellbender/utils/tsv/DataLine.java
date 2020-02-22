@@ -314,6 +314,12 @@ public final class DataLine {
         return values[index];
     }
 
+    public String get() {
+        final String result = get(nextIndex);
+        nextIndex++;
+        return result;
+    }
+
     /**
      * Returns the int value in a column by its index.
      *
@@ -334,6 +340,19 @@ public final class DataLine {
     }
 
     /**
+     * Returns the int value in a column at the current column index and advance it.
+     *
+     * @return any int value.
+     * @throws IllegalStateException    if the current column has not been initialized and contains a {@code null}.
+     * @throws RuntimeException         if the value at that target column cannot be transformed into an integer.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link DataLine}.
+     */
+    public int getInt() {
+        return getInt(nextIndex++);
+    }
+
+    /**
      * Returns the long value in a column by its index.
      *
      * @param index the target column index.
@@ -350,6 +369,12 @@ public final class DataLine {
         } catch (final NumberFormatException ex) {
             throw formatErrorFactory.apply(String.format("expected long value for column %s but found %s", columns.nameAt(index), get(index)));
         }
+    }
+
+    public long getLong() {
+        final long result = getLong(nextIndex);
+        nextIndex++;
+        return result;
     }
 
     /**
