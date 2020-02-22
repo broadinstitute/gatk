@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -229,7 +230,8 @@ public final class AssemblyRegion implements Locatable {
         final AssemblyRegion result = new AssemblyRegion( newActiveSpan, newPaddedSpan, isActive, header );
 
         final List<GATKRead> trimmedReads = reads.stream()
-                .map(read -> ReadClipper.hardClipToRegion(read, newPaddedSpan.getStart(), newPaddedSpan.getEnd()))
+                .map(read -> {GATKRead clipped = ReadClipper.hardClipToRegion(read, newPaddedSpan.getStart(), newPaddedSpan.getEnd());
+                              return clipped;})
                 .filter(read -> !read.isEmpty() && read.overlaps(result.paddedSpan))
                 .sorted(new ReadCoordinateComparator(header))
                 .collect(Collectors.toList());
@@ -238,6 +240,7 @@ public final class AssemblyRegion implements Locatable {
         result.addAll(trimmedReads);
         return result;
     }
+
 
     /**
      * Add read to this region

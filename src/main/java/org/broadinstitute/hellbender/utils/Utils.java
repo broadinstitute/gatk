@@ -4,16 +4,13 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.util.ParsingUtils;
-import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -29,11 +26,9 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -97,11 +92,11 @@ public final class Utils {
 
     public static List<String> warnUserLines(final String msg) {
         final List<String> results = new ArrayList<>();
-        results.add(String.format(TEXT_WARNING_BORDER));
-        results.add(String.format(TEXT_WARNING_PREFIX + "WARNING:"));
-        results.add(String.format(TEXT_WARNING_PREFIX));
+        results.add(TEXT_WARNING_BORDER);
+        results.add(TEXT_WARNING_PREFIX + "WARNING:");
+        results.add(TEXT_WARNING_PREFIX);
         prettyPrintWarningMessage(results, msg);
-        results.add(String.format(TEXT_WARNING_BORDER));
+        results.add(TEXT_WARNING_BORDER);
         return results;
     }
 
@@ -165,7 +160,7 @@ public final class Utils {
      * @throws IllegalArgumentException if {@code separator} or {@code objects} is {@code null}.
      * @return a string with the values separated by the separator
      */
-    public static String join(final String separator, final Object ... objects) {
+    public static String join(final CharSequence separator, final Object ... objects) {
         Utils.nonNull(separator, "the separator cannot be null");
         Utils.nonNull(objects, "the value array cannot be null");
 
@@ -173,9 +168,9 @@ public final class Utils {
             return "";
         } else {
             final StringBuilder ret = new StringBuilder();
-            ret.append(String.valueOf(objects[0]));
+            ret.append(objects[0]);
             for (int i = 1; i < objects.length; i++) {
-                ret.append(separator).append(String.valueOf(objects[i]));
+                ret.append(separator).append(objects[i]);
             }
             return ret.toString();
         }
@@ -263,17 +258,74 @@ public final class Utils {
      * @return a concat of all bytes in allBytes in order
      */
     public static byte[] concat(final byte[] ... allBytes) {
-        int size = 0;
-        for ( final byte[] bytes : allBytes ) size += bytes.length;
-
-        final byte[] c = new byte[size];
-        int offset = 0;
-        for ( final byte[] bytes : allBytes ) {
-            System.arraycopy(bytes, 0, c, offset, bytes.length);
-            offset += bytes.length;
+        if (allBytes.length == 0) {
+            return ArrayUtils.EMPTY_BYTE_ARRAY;
+        } else if (allBytes.length == 1) {
+            return allBytes[0].length == 0 ? allBytes[0] : allBytes[0].clone();
+        } else {
+            int size = 0;
+            for (final byte[] bytes : allBytes) size += bytes.length;
+            if (size == 0) {
+                return ArrayUtils.EMPTY_BYTE_ARRAY;
+            } else {
+                final byte[] c = new byte[size];
+                int offset = 0;
+                for (final byte[] bytes : allBytes) {
+                    System.arraycopy(bytes, 0, c, offset, bytes.length);
+                    offset += bytes.length;
+                }
+                return c;
+            }
         }
+    }
 
-        return c;
+    public static <T> T[] concat(final T[] a, final T[] b, final IntFunction<T[]> constructor) {
+        Utils.nonNull(a);
+        Utils.nonNull(b);
+        if (a.length != 0) {
+            if (b.length != 0) {
+                final T[] c = constructor.apply(a.length + b.length);
+                System.arraycopy(a, 0, c, 0, a.length);
+                System.arraycopy(b, 0, c, a.length, b.length);
+                return c;
+            } else {
+                return a.clone();
+            }
+        } else if (b.length != 0) {
+            return b.clone();
+        } else {
+            return a.clone();
+        }
+    }
+
+    /**
+     * Concats two byte arrays.
+     * <p>
+     *     A bit more efficient than calling the more general {@link #concat(byte[]...)}.
+     * </p>
+     * @param a left array to concat.
+     * @param b right array to concat.
+     * @return never {@code null};
+     */
+    public static byte[] concat(final byte[] a, final byte[] b) {
+        final int length = a.length + b.length;
+        if (length == 0) {
+            return ArrayUtils.EMPTY_BYTE_ARRAY;
+        } else if (length == a.length) {
+            return a.clone();
+        } else if (length == b.length) {
+            return b.clone();
+        } else {
+            final byte[] c = new byte[length];
+            int i = 0;
+            for (final byte aa : a) {
+                c[i++] = aa;
+            }
+            for (final byte bb : b) {
+                c[i++] = bb;
+            }
+            return c;
+        }
     }
 
     /**
@@ -723,6 +775,24 @@ public final class Utils {
         return index;
     }
 
+    /**
+     * Checks whether an index is within bounds considering a collection or array of a particular size
+     * whose first position index is 0
+     * @param index the query index.
+     * @param length the collection or array size.
+     * @param errorMessage the error message to use in case of an exception is thrown.
+     * @return same value as the input {@code index}.
+     */
+    public static int validIndex(final int index, final int length, final String errorMessage) {
+        if (index < 0) {
+            throw new IllegalArgumentException(errorMessage);
+        } else if (index >= length) {
+            throw new IllegalArgumentException(errorMessage);
+        }
+        return index;
+    }
+
+
     public static void validateArg(final boolean condition, final String msg){
         if (!condition){
             throw new IllegalArgumentException(msg);
@@ -1098,6 +1168,10 @@ public final class Utils {
         };
     }
 
+    public static <T> Stream<T> stream(final Enumeration<T> enumeration) {
+        return Utils.stream(Iterators.forEnumeration(enumeration));
+    }
+
     public static <T> Stream<T> stream(final Iterable<T> iterable) {
         return StreamSupport.stream(iterable.spliterator(), false);
     }
@@ -1239,7 +1313,7 @@ public final class Utils {
     }
 
     /**
-     * Splits a given {@link String} using {@link String#indexOf} instead of regex to speed things up.
+     * Splits a given {@link String} using {@link String#indexOf(String)} instead of regex to speed things up.
      * If given an empty delimiter, will return each character in the string as a token.
      * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
      * but has been measured to be ~2x faster (see {@code StringSplitSpeedUnitTest} for details).
@@ -1388,22 +1462,31 @@ public final class Utils {
         return patterns;
     }
 
-
     /**
-     * Removes the last portion of a list so that it has a new size of at
-     * most a given number of elements.
-     * @param list the list to modify.
-     * @param maxLength the intended maximum length for the list.
+     * Runs a task in parallel returning it returned result.
+     * <p> This call will wait until such task is completed.</p>
+     * @param threads number of threads requested. 0 would result in using a system default,
+     *                usually the host number of CPU cores.
+     * @param supplier the task to run.
+     * @param <T> the type of the return.
+     * @return whatever the input task returns in the end, it can be {@code null}.
+     * @throws GATKException if the run was interrupted or resulted in a checked exception. Unchecked exceptions and Error
+     *   progragate as they are.
      */
-    public static void truncate(final List<?> list, final int maxLength) {
-        Utils.nonNull(list);
-        ParamUtils.isPositiveOrZero(maxLength, "new maximum length");
-        if (maxLength == 0) { // special quicker case when ml == 0.
-            list.clear();
-        } else {
-            final int length = list.size();
-            if (maxLength < length) {  // if not we are done.
-                list.subList(maxLength, length).clear();
+    public static <T> T runInParallel(final int threads, final Supplier<T> supplier) {
+        final ForkJoinPool threadPool = threads == 0 ? new ForkJoinPool() : new ForkJoinPool(threads);
+        try {
+            return threadPool.submit(supplier::get).get();
+        } catch (final InterruptedException e) {
+            throw new GATKException("task interrupted", e);
+        } catch (final ExecutionException e) {
+            final Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            } else if (cause instanceof Error) {
+                throw (Error) cause;
+            } else {
+                throw new GATKException("exception when executing parallel task ", cause);
             }
         }
     }

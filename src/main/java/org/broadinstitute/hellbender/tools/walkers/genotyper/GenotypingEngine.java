@@ -7,6 +7,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
@@ -15,6 +16,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -111,7 +113,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @param vc                                 Input variant context to complete.
      * @return                                   VC with assigned genotypes
      */
-    public VariantContext calculateGenotypes(final VariantContext vc, final List<VariantContext> givenAlleles) {
+    public VariantContext calculateGenotypes(final VariantContext vc, final GenotypePriorCalculator gpc, final List<VariantContext> givenAlleles) {
         // if input VC can't be genotyped, exit with either null VCC or, in case where we need to emit all sites, an empty call
         if (hasTooManyAlternativeAlleles(vc) || vc.getNSamples() == 0) {
             return null;
@@ -120,12 +122,11 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         final int defaultPloidy = configuration.genotypeArgs.samplePloidy;
         final int maxAltAlleles = configuration.genotypeArgs.MAX_ALTERNATE_ALLELES;
 
-
         VariantContext reducedVC = vc;
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
             final List<Allele> allelesToKeep = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, defaultPloidy, maxAltAlleles);
             final GenotypesContext reducedGenotypes = allelesToKeep.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, GenotypeAssignmentMethod.SET_TO_NO_CALL, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc, GenotypeAssignmentMethod.SET_TO_NO_CALL, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
             reducedVC = new VariantContextBuilder(vc).alleles(allelesToKeep).genotypes(reducedGenotypes).make();
         }
 
@@ -135,9 +136,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
         final double log10Confidence =
-                ! outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
-                        ? AFresult.log10ProbOnlyRefAlleleExists() + 0.0 : AFresult.log10ProbVariantPresent() + 0.0 ;
-
+                    !outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
+                            ? AFresult.log10ProbOnlyRefAlleleExists() + 0.0 : AFresult.log10ProbVariantPresent() + 0.0;
 
         // Add 0.0 removes -0.0 occurrences.
         final double phredScaledConfidence = (-10.0 * log10Confidence) + 0.0;
@@ -157,7 +157,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // start constructing the resulting VC
         final List<Allele> outputAlleles = outputAlternativeAlleles.outputAlleles(vc.getReference());
         recordDeletions(vc, outputAlleles);
-        
+
         final VariantContextBuilder builder = new VariantContextBuilder(callSourceString(), vc.getContig(), vc.getStart(), vc.getEnd(), outputAlleles);
 
         builder.log10PError(log10Confidence);
@@ -168,7 +168,16 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // create the genotypes
         //TODO: omit subsetting if output alleles is not a proper subset of vc.getAlleles
         final GenotypesContext genotypes = outputAlleles.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+
+        if (configuration.genotypeArgs.usePosteriorProbabilitiesToCalculateQual && hasPosteriors(genotypes)) {
+            final double log10NoVariantPosterior = phredNoVariantPosteriorProbability(genotypes) * -.1;
+            final double qualUpdate = !outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
+                    ? log10NoVariantPosterior + 0.0 : MathUtils.log10OneMinusPow10(log10NoVariantPosterior) + 0.0;
+            if (!Double.isNaN(qualUpdate)) {
+                builder.log10PError(qualUpdate);
+            }
+        }
 
         // calculating strand bias involves overwriting data structures, so we do it last
         final Map<String, Object> attributes = composeCallAttributes(vc, outputAlternativeAlleles.alternativeAlleleMLECounts(),
@@ -177,8 +186,22 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         return builder.genotypes(genotypes).attributes(attributes).make();
     }
 
+    private double phredNoVariantPosteriorProbability(final GenotypesContext gc) {
+        return gc.stream()
+                .map(gt -> VariantContextGetters.getAttributeAsDoubleArray(gt, VCFConstants.GENOTYPE_POSTERIORS_KEY, () -> new double[]{Double.NaN}, Double.NaN))
+                .mapToDouble(probs -> probs[0] - QualityUtils.phredSum(probs))
+                .filter(d -> !Double.isNaN(d))
+                // We do not want to return 0 if empty but NaN,
+                // so rather than simply call .sum() we have a custom reduce
+                .reduce(Double.NaN, (a, b) -> Double.isNaN(a) ? b : (Double.isNaN(b) ? a : a + b) );
+    }
+
+    private boolean hasPosteriors(final GenotypesContext gc) {
+        return gc.stream().anyMatch(g -> g.hasExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY));
+    }
+
     public VariantContext calculateGenotypes(final VariantContext vc) {
-        return calculateGenotypes(vc, Collections.emptyList());
+        return calculateGenotypes(vc, null, Collections.emptyList());
     }
 
     @VisibleForTesting

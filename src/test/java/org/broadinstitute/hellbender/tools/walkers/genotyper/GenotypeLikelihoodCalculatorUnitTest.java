@@ -15,7 +15,7 @@ import org.testng.annotations.Test;
 import java.util.*;
 
 /**
- * Tests {@link GenotypeLikelihoodCalculators} and {@link GenotypeLikelihoodCalculator}.
+ * Tests {@link GenotypeLikelihoodCalculators} and {@link GenotypeLikelihoodCalculatorDRAGEN}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */

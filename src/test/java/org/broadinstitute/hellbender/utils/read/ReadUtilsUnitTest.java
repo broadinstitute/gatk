@@ -242,6 +242,29 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 203).getLeft().intValue(), 3);  // the first D base
     }
 
+    @Test
+    public void testReadsWithSoftclipsInReadCoordinateRefCoordinate( ){
+        final SAMFileHeader header;
+        try(final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference))) {
+            header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        }
+        final int readLength = 120;
+
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 100, readLength);
+        read.setBases(Utils.dupBytes((byte) 'A', readLength));
+        read.setBaseQualities(Utils.dupBytes((byte)30, readLength));
+        read.setCigar("10H10S100M10S");
+
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 89).getLeft().intValue(), -1); // Beyond the start of the read
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 90).getLeft().intValue(), 0);  // the first S base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 99).getLeft().intValue(), 9);  // the last S base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 100).getLeft().intValue(), 10);  // the first M base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 199).getLeft().intValue(), 109);  // the last M base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 200).getLeft().intValue(), 110);  // the first trailing S base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 209).getLeft().intValue(), 119);  // the last trailing S base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 210).getLeft().intValue(), -1);  // the first base beyond the end of the read
+    }
+
     @DataProvider(name = "HasWellDefinedFragmentSizeData")
     public Object[][] makeHasWellDefinedFragmentSizeData() throws Exception {
         final List<Object[]> tests = new LinkedList<>();

@@ -153,6 +153,10 @@ public final class ReferenceContext implements Iterable<Byte>, Locatable, BasicR
     public int getEnd() { return interval.getEnd(); }
 
 
+    public SAMSequenceRecord getSequenceRecord() {
+        return dataSource != null ? dataSource.getSequenceDictionary().getSequence(getContig()) : null;
+    }
+
     /**
      * Determines whether this ReferenceContext has a backing reference data source. A ReferenceContext with
      * no backing data source will always return an empty bases array from {@link #getBases()} and an

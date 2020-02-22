@@ -6,19 +6,23 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
+import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
+import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
-import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 
 /**
@@ -152,7 +156,20 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
-        return HaplotypeCallerEngine.makeStandardHCReadFilters();
+        return HaplotypeCallerEngine.makeStandardHCReadFilters(hcArgs.mappingQualityThreshold);
+    }
+
+    /**
+     * This is being used to set the mapping quality filter when in dragen mode... there are problems here...
+     */
+    protected String[] customCommandLineValidation() {
+        if (hcArgs.dragenMode) {
+            final GATKReadFilterPluginDescriptor readFilterPlugin =
+                    getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
+            Optional<ReadFilter> filterOptional = readFilterPlugin.getResolvedInstances().stream().filter(rf -> rf instanceof MappingQualityReadFilter).findFirst();
+            filterOptional.ifPresent(readFilter -> ((MappingQualityReadFilter) readFilter).minMappingQualityScore = 1);
+        }
+        return null;
     }
 
     @Override
@@ -160,6 +177,11 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public boolean useVariantAnnotations() { return true;}
+
+    @Override
+    public ReadTransformer makePostReadFilterTransformer() {
+        return super.makePostReadFilterTransformer().andThen(hcArgs.transformDRAGENMapQ ? new DRAGENMappingQualityReadTransformer() : ReadTransformer.identity());
+    }
 
     /**
      * If we are in reference confidence mode we want to filter the annotations as there are certain annotations in the standard
@@ -189,6 +211,44 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
             logger.warn("* Generated GVCFs that contain MNPs can only be genotyped individually. *");
             logger.warn("* Multi-sample calling from MNP-enabled GVCFs is unsupported.           *");
             logger.warn("*************************************************************************");
+        }
+
+        if (hcArgs.dragenMode) {
+            logger.warn("*************************************************************************");
+            logger.warn("* DRAGEN-GATK mode enabled                                              *");
+            logger.warn("* The following arguments have had their inputs overwritten:            *");
+            logger.warn("* --apply-frd                                                           *");
+            logger.warn("* --apply-bqd                                                           *");
+            logger.warn("* --transform-dragen-mapping-quality                                    *");
+            logger.warn("* --soft-clip-low-quality-ends                                          *");
+            logger.warn("* --mapping-quality-threshold  1                                        *");
+            logger.warn("* --minimum-mapping-quality  1                                          *");
+            logger.warn("* --allele-informative-reads-overlap-margin  1                          *");
+            logger.warn("* --disable-cap-base-qualities-to-map-quality                           *");
+            logger.warn("* --enable-dynamic-read-disqualification-for-genotyping                 *");
+            logger.warn("* --expected-mismatch-rate-for-read-disqualification  0.03              *");
+            logger.warn("* --genotype-assignment-method USE_POSTERIOR_PROBABILITIES              *");
+            logger.warn("* --padding-around-indels  150                                          *");
+            logger.warn("* --standard-min-confidence-threshold-for-calling 3.0                   *");
+            logger.warn("* --use-posteriors-to-calculate-qual                                    *");
+            logger.warn("* --allele-informative-reads-overlap-margin  1                          *");
+            logger.warn("*                                                                       *");
+            logger.warn("* If you would like to run DRAGEN-GATK with different inputs for any    *");
+            logger.warn("* of the above arguments please manually construct the command.         *");
+            logger.warn("*************************************************************************");
+            hcArgs.applyBQD = true;
+            hcArgs.applyFRD = true;
+            hcArgs.transformDRAGENMapQ = true;
+            hcArgs.softClipLowQualityEnds = true;
+            hcArgs.mappingQualityThreshold = 1;
+            hcArgs.informativeReadOverlapMargin = 1;
+            hcArgs.likelihoodArgs.disableCapReadQualitiesToMapQ = true;
+            hcArgs.likelihoodArgs.enableDynamicReadDisqualification = true;
+            hcArgs.likelihoodArgs.expectedErrorRatePerBase = 0.03;
+            hcArgs.standardArgs.genotypeArgs.genotypeAssignmentMethod = GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES;
+            hcArgs.standardArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = 3.0;
+            hcArgs.standardArgs.genotypeArgs.usePosteriorProbabilitiesToCalculateQual = true;
+            assemblyRegionArgs.indelPaddingForGenotyping = 150;
         }
 
         final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(),

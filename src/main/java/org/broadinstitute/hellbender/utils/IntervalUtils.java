@@ -40,6 +40,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -1523,7 +1524,7 @@ public final class IntervalUtils {
      *                   exceptions to be thrown.  Never {@code null}.
      * @return an instance of {@code Comapator<Locatable>} for use in sorting of Locatables.
      */
-    public static Comparator<Locatable> getDictionaryOrderComparator(final SAMSequenceDictionary dictionary) {
+    public static <T extends Locatable> Comparator<T> getDictionaryOrderComparator(final SAMSequenceDictionary dictionary) {
         Utils.nonNull(dictionary);
         return (o1, o2) -> IntervalUtils.compareLocatables(o1, o2, dictionary);
     }
@@ -1558,5 +1559,64 @@ public final class IntervalUtils {
         return interval1.overlaps(interval2) &&
                 (interval1.intersect(interval2).size() >= (interval2.size() * reciprocalOverlapThreshold)) &&
                 (interval2.intersect(interval1).size() >= (interval1.size() * reciprocalOverlapThreshold));
+    }
+
+    /**
+     * Given a collection of {@link SimpleInterval} instances returns a map where the key is the enclosing contig name and the value is the
+     * list of the intervals  on that contig that result from sorting and then merging those that are contiguous or overlap.
+     *
+     * <p>
+     *     The output collections (map and lists) are mutable, and any modification on them should not change the inputs as a side effect.
+     * </p>
+     *
+     * @param input input collection of lacatables, may contain duplicates.
+     * @param <L> the locatable type.
+     * @throws IllegalArgumentException if input is {@code null}.
+     * @return never {@code null}, but perhaps an empty map. It is guarantee that no value in the map is an empty list upon return.
+     */
+    public static <L extends Locatable> Map<String, List<SimpleInterval>> sortAndMergeOverlappingIntervals(final Collection<SimpleInterval> input) {
+        return sortAndMergeOverlappingIntervals(input, SimpleInterval::mergeWithContiguous);
+    }
+
+    /**
+     * Given a collection of locatables returns a map where the key is the enclosing contig name and the value is the
+     * list of locatables on that contig that results from sorting and then merging those that are contiguous or overlap.
+     * <p>
+     *     The output collections (map and lists) are mutable, and any modification on them should not change the inputs as a side effect.
+     * </p>
+     *
+     * @param input input collection of lacatables, may contain duplicates.
+     * @param combiner binary operator that returns the result of combining two locatables. If the locatable type is immutable
+     *                 the combiner could return one of the input locatables if one encloses the other completely, otherwise
+     *                 it must return a new instance.
+     * @param <L> the locatable type.
+     * @throws IllegalArgumentException if either the input or the combiner is {@code null}.
+     * @return never {@code null}.
+     */
+    public static <L extends Locatable> Map<String, List<L>> sortAndMergeOverlappingIntervals(final Collection<L> input, final BinaryOperator<L> combiner) {
+        Utils.nonNull(input);
+        Utils.nonNull(combiner);
+        // Due to the fact that a symple groupBy does not guarantee the mutability of the
+        // returned map and lists we need to makes sure providing the collections' factories/suppliers
+        final Map<String, List<L>> result =
+                input.stream().collect(Collectors.groupingBy(Locatable::getContig,
+                        HashMap::new,
+                        Collectors.toCollection(ArrayList::new)));
+        for (final List<L> list : result.values()) {
+            final int size = list.size();
+            int j;
+            L prev = list.get(j = 0); // we know it cannot be empty.
+            for (int i = 1; i < size; i++) {
+                final L next = list.get(i);
+                if (prev.getEnd() >= next.getStart()) {
+                    list.set(j, prev = combiner.apply(prev, next));
+                } else {
+                    list.set(++j, prev = next);
+                }
+            }
+            // we clear the rest of the list.
+            list.subList(j, size).clear();
+        }
+        return result;
     }
 }
