@@ -36,6 +36,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
@@ -416,6 +417,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         if ( emitReferenceConfidence() ) {
             headerInfo.addAll(referenceConfidenceModel.getVCFHeaderLines());
+        }
+
+        if (hcArgs.likelihoodArgs.dragstrParams != null) {
+            headerInfo.addAll(DragstrUtils.vcfHeaderLines());
         }
 
         final VCFHeader vcfHeader = new VCFHeader(headerInfo, sampleSet);

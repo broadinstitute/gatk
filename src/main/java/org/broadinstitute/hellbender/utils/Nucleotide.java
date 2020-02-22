@@ -29,7 +29,7 @@ import java.util.List;
  * <p>
  *     For naming consistency it is recommended to use {@link #decode} and {@link #encodeAsByte}
  *     or {@link #encodeAsString} methods to translate byte/char and string encodings from and
- *     into values of this enum over the inherited {@link #toString}, {@link #name} or {@link #valueOf}.
+ *     into values of this enum over the inherited {@link #toString}, {@link #name()} or {@link #valueOf}.
  * </p>
  *
  * <p>
@@ -284,10 +284,11 @@ public enum Nucleotide {
      * to a valid nucleotide specification.
      */
     public static Nucleotide decode(final char ch) {
-        if ((ch & 0xFF00) != 0) {
-            return INVALID;
+        if ((ch & 0xFFFFFF80) == 0) { // all valid codes have ascii lower than 127 so we may just treat all
+            // higher values as invalid.
+            return baseToValue[ch & 0x7F];
         } else {
-            return baseToValue[ch & 0xFF];
+            return INVALID;
         }
     }
 
@@ -554,10 +555,10 @@ public enum Nucleotide {
         }
 
         public void add(final char base) {
-            if ((base & 0xFF00) != 0) {
-                counts[INVALID.ordinal()]++;
+            if ((base & 0xFFFFFF80) == 0) {
+                counts[baseToOrdinal[base & 0x7F]]++;
             } else {
-                counts[baseToOrdinal[base & 0xFF]]++;
+                counts[INVALID.ordinal()]++;
             }
         }
 

@@ -34,6 +34,9 @@ import shaded.cloud_nio.org.threeten.bp.Duration;
 import java.io.*;
 import java.net.URL;
 import java.nio.channels.SeekableByteChannel;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.UUID;
@@ -205,6 +208,58 @@ public final class BucketUtils {
             OutputStream fout = createFile(destPath)) {
             ByteStreams.copy(in, fout);
         }
+    }
+
+    /**
+     * If a provided path makes reference to a remote resource, it copies it over to a temporary local file that
+     * is returned.
+     * <p>
+     *     The returned temporary file will be marked for deletion on exit if so requested.
+     * </p>
+     * <p>
+     *     If the source is actually a local file it is considered to be already staged, unless forceStaggingOfLocalFiles is true,
+     *     and it simply returns the corresponding File object, neither the deletion
+     *     on exit request nor the tempDir input have any effect.
+     * </p>
+     * <p>
+     *     In order to distinguish between these two scenarios you must call {@link BucketUtils#isCloudStorageUrl(String)}
+     *     independently.
+     * </p>
+     * @param sourcePath
+     * @param tempDir if provided the temporary file is created under this directory, if needed. If {@code null} the system
+     *                default temporary file location is used instead.
+     * @return never {@code null}.
+     * @throws IOException if such an exeception occurs.
+     */
+    public static File stageFile(String sourcePath, final File tempDir, final boolean markForDeletionOnExit, final boolean forceStaggingOfLocalFiles) throws IOException {
+        final boolean stage = BucketUtils.isRemoteStorageUrl(sourcePath) || forceStaggingOfLocalFiles;
+        File result;
+        if (!stage) {
+            try {
+                result = new File(new URL(sourcePath).toURI());
+            } catch (final URISyntaxException | MalformedURLException ex) {
+                result = new File(sourcePath);
+            }
+            if (!result.isFile()) {
+                throw new GATKException("cannot stage a non-regular file: " + result);
+            }
+        } else {
+            final int lastDotOffset = sourcePath.lastIndexOf(".");
+            final String extension = sourcePath.length() - lastDotOffset < 10 ? sourcePath.substring(lastDotOffset) : ".tmp";
+            try {
+                result = File.createTempFile("staging-", extension, tempDir);
+                if (markForDeletionOnExit) {
+                    result.deleteOnExit();
+                }
+                BucketUtils.copyFile(sourcePath, result.toString());
+            } catch (final Exception ex) {
+                throw new GATKException("could not stage source " + sourcePath, ex);
+            }
+            if (!result.exists()) {
+                throw new GATKException("could not stage source " + sourcePath + " in " + result);
+            }
+        }
+        return result;
     }
 
     /**

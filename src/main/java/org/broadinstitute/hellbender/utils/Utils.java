@@ -34,6 +34,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -263,17 +264,74 @@ public final class Utils {
      * @return a concat of all bytes in allBytes in order
      */
     public static byte[] concat(final byte[] ... allBytes) {
-        int size = 0;
-        for ( final byte[] bytes : allBytes ) size += bytes.length;
-
-        final byte[] c = new byte[size];
-        int offset = 0;
-        for ( final byte[] bytes : allBytes ) {
-            System.arraycopy(bytes, 0, c, offset, bytes.length);
-            offset += bytes.length;
+        if (allBytes.length == 0) {
+            return ArrayUtils.EMPTY_BYTE_ARRAY;
+        } else if (allBytes.length == 1) {
+            return allBytes[0].length == 0 ? allBytes[0] : allBytes[0].clone();
+        } else {
+            int size = 0;
+            for (final byte[] bytes : allBytes) size += bytes.length;
+            if (size == 0) {
+                return ArrayUtils.EMPTY_BYTE_ARRAY;
+            } else {
+                final byte[] c = new byte[size];
+                int offset = 0;
+                for (final byte[] bytes : allBytes) {
+                    System.arraycopy(bytes, 0, c, offset, bytes.length);
+                    offset += bytes.length;
+                }
+                return c;
+            }
         }
+    }
 
-        return c;
+    public static <T> T[] concat(final T[] a, final T[] b, final IntFunction<T[]> constructor) {
+        Utils.nonNull(a);
+        Utils.nonNull(b);
+        if (a.length != 0) {
+            if (b.length != 0) {
+                final T[] c = constructor.apply(a.length + b.length);
+                System.arraycopy(a, 0, c, 0, a.length);
+                System.arraycopy(b, 0, c, a.length, b.length);
+                return c;
+            } else {
+                return a.clone();
+            }
+        } else if (b.length != 0) {
+            return b.clone();
+        } else {
+            return a.clone();
+        }
+    }
+
+    /**
+     * Concats two byte arrays.
+     * <p>
+     *     A bit more efficient than calling the more general {@link #concat(byte[]...)}.
+     * </p>
+     * @param a left array to concat.
+     * @param b right array to concat.
+     * @return never {@code null};
+     */
+    public static byte[] concat(final byte[] a, final byte[] b) {
+        final int length = a.length + b.length;
+        if (length == 0) {
+            return ArrayUtils.EMPTY_BYTE_ARRAY;
+        } else if (length == a.length) {
+            return a.clone();
+        } else if (length == b.length) {
+            return b.clone();
+        } else {
+            final byte[] c = new byte[length];
+            int i = 0;
+            for (final byte aa : a) {
+                c[i++] = aa;
+            }
+            for (final byte bb : b) {
+                c[i++] = bb;
+            }
+            return c;
+        }
     }
 
     /**
@@ -1239,7 +1297,7 @@ public final class Utils {
     }
 
     /**
-     * Splits a given {@link String} using {@link String#indexOf} instead of regex to speed things up.
+     * Splits a given {@link String} using {@link String#indexOf(String)} instead of regex to speed things up.
      * If given an empty delimiter, will return each character in the string as a token.
      * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
      * but has been measured to be ~2x faster (see {@code StringSplitSpeedUnitTest} for details).
@@ -1388,7 +1446,6 @@ public final class Utils {
         return patterns;
     }
 
-
     /**
      * Removes the last portion of a list so that it has a new size of at
      * most a given number of elements.
@@ -1406,5 +1463,37 @@ public final class Utils {
                 list.subList(maxLength, length).clear();
             }
         }
+    }
+
+    public static void flip(final byte[] array, final int from, final int to) {
+        for (int i = from, j = to -1; i < j; i++, j--) {
+            final byte b = array[i];
+            array[i] = array[j];
+            array[j] = b;
+        }
+    }
+
+    public static boolean deleteFileTree(final File base) {
+        if (base.isFile()) { // quick return if ordinary file.
+            return base.delete();
+        }
+        final Deque<File> toDelete = new ArrayDeque<>();
+        final Deque<File> toVisit = new ArrayDeque<>();
+        toVisit.push(base);
+        while (!toVisit.isEmpty()) {
+            final File next = toVisit.pop();
+            toDelete.push(next);
+            final File[] subFiles = next.listFiles();
+            if (subFiles != null) {
+                for (final File sub : subFiles) {
+                    toVisit.push(sub);
+                }
+            }
+        }
+        boolean result = true;
+        while (!toDelete.isEmpty()) {
+            result = result & toDelete.pop().delete();
+        }
+        return result;
     }
 }

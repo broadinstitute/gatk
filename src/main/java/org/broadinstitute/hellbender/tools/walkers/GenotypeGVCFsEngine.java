@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -41,8 +42,8 @@ public class GenotypeGVCFsEngine
     private VariantAnnotatorEngine annotationEngine = null;
 
     //the genotyping engine
-    private GenotypingEngine<?> genotypingEngine = null;
     private GenotypingEngine<?> forceOutputGenotypingEngine = null;
+    private MinimalGenotypingEngine genotypingEngine = null;
 
     // the INFO field annotation key names to remove
     private final List<String> infoFieldAnnotationKeyNamesToRemove = new ArrayList<>();
@@ -57,6 +58,8 @@ public class GenotypeGVCFsEngine
     private VCFHeader outputHeader;
 
     private SampleList samples;
+
+    private DragstrParams dragStrParams;
 
     final VCFHeader inputVCFHeader;
 
@@ -96,7 +99,7 @@ public class GenotypeGVCFsEngine
 
         // We only want the engine to generate the AS_QUAL key if we are using AlleleSpecific annotations.
         genotypingEngine = new MinimalGenotypingEngine(createMinimalArgs(false), samples,
-                annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific));
+                annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific), this.dragStrParams);
         forceOutputGenotypingEngine = new MinimalGenotypingEngine(createMinimalArgs(true), samples,
                 annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific));
 
@@ -118,7 +121,12 @@ public class GenotypeGVCFsEngine
     {
         final List<VariantContext> variantsToProcess = getVariantSubsetToProcess(loc, variants);
 
-        ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
+        if (dragStrParams == null || !genotypeArgs.dontUseDragstrPriors) {
+            ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
+        } else {
+            ref.setWindow(dragStrParams.maximumPeriod() * dragStrParams.maximumRepeats(), dragStrParams.maximumPeriod() * dragStrParams.maximumRepeats());
+        }
+        genotypingEngine.setReferenceContext(ref);
         final VariantContext mergedVC = merger.merge(variantsToProcess, loc, ref.getBase(), true, false);
         final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, outputNonVariants, tlodThreshold, afTolerance) :
                 regenotypeVC(mergedVC, ref, features, outputNonVariants);
@@ -226,8 +234,12 @@ public class GenotypeGVCFsEngine
         return new VariantContextBuilder(newVC).attributes(attrs).make();
     }
 
-    private VariantContext calculateGenotypes(VariantContext vc, final boolean forceOutput){
-        return (forceOutput ? forceOutputGenotypingEngine : genotypingEngine).calculateGenotypes(vc);
+    private VariantContext calculateGenotypes(VariantContext vc, final boolean forceOutput) {
+        return (forceOutput ? forceOutputGenotypingEngine : genotypingEngine).calculateGenotypes(vc, null, Collections.singletonList(vc));
+    }
+
+    private VariantContext calculateGenotypes(VariantContext vc) {
+        return calculateGenotypes(vc, false);
     }
 
     /**

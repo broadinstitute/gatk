@@ -7,14 +7,20 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.MathArrays;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.Dirichlet;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -36,6 +42,10 @@ public final class AlleleFrequencyCalculator {
     private final int defaultPloidy;
 
 
+    public int getPloidy() {
+        return defaultPloidy;
+    }
+
     public AlleleFrequencyCalculator(final double refPseudocount, final double snpPseudocount, final double indelPseudocount, final int defaultPloidy) {
         this.refPseudocount = refPseudocount;
         this.snpPseudocount = snpPseudocount;
@@ -50,10 +60,55 @@ public final class AlleleFrequencyCalculator {
         return new AlleleFrequencyCalculator(refPseudocount, snpPseudocount, indelPseudocount, genotypeArgs.samplePloidy);
     }
 
+
+    public static AlleleFrequencyCalculator makeCalculator(final DragstrParams dragstrParms, final int period, final int repeats, final int ploidy, final double snpHeterozygosity, final double scale) {
+        final double api = dragstrParms.api(period, repeats);
+        final double log10IndelFreq = api * -.1;
+        final double log10RefFreq = MathUtils.log10OneMinusPow10(log10IndelFreq);
+        final double log10SnpFreq = log10RefFreq + Math.log10(snpHeterozygosity);
+        final double log10Sum = MathUtils.log10SumLog10(log10RefFreq, log10IndelFreq, log10SnpFreq);
+        final double log10ScaleUp = Math.log10(scale) - log10Sum;
+        final double refPseudoCount = Math.pow(10, log10ScaleUp + log10RefFreq);
+        final double indelPseudoCount = Math.pow(10, log10ScaleUp + log10IndelFreq);
+        final double snpPseudoCount = Math.pow(10, log10ScaleUp + log10SnpFreq);
+        return  new AlleleFrequencyCalculator(refPseudoCount, snpPseudoCount, indelPseudoCount, ploidy);
+    }
+
+
+    public double[] getPriorFrequencies(final AlleleList<Allele> alleleList) {
+        final double total = this.snpPseudocount + this.refPseudocount + this.indelPseudocount;
+        final double[] result = new double[alleleList.numberOfAlleles()];
+        final int refLength = alleleList.indexOfReference() == -1 ? -1 : alleleList.getAllele(alleleList.indexOfReference()).length();
+        if (refLength == -1) {
+            throw new GATKException("allele list must have a reference allele");
+        }
+        for (int i = 0; i < alleleList.numberOfAlleles(); i++) {
+            final Allele a = alleleList.getAllele(i);
+            if (a.isReference()) {
+                result[i] = this.refPseudocount / total;
+            } else if (a.isSymbolic() || a == Allele.SPAN_DEL) {
+                if (Allele.SV_SIMPLE_INS.equals(a) || Allele.SV_SIMPLE_DEL.equals(a)) {
+                    result[i] = this.indelPseudocount / total;
+                        // arbitrary assumes that indels are the least likely and that other SV as 10 times as unlikely as indel.
+                } else {
+                    result[i] = this.snpPseudocount / (total * 10);
+                }
+            } else {
+                if (a.length() == refLength) {
+                    result[i] = this.snpPseudocount / total;
+                } else {
+                    result[i] = this.indelPseudocount / total;
+                }
+            }
+        }
+        return result;
+    }
+
     public AFCalculationResult calculate(final VariantContext vc) {
         // maxAltAlleles is not used by getLog10PNonRef, so don't worry about the 0
         return calculate(vc, defaultPloidy);
     }
+
 
     /**
      * Compute the probability of the alleles segregating given the genotype likelihoods of the samples in vc
