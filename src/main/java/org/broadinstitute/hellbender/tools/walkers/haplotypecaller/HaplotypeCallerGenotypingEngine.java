@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -12,11 +13,13 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -139,6 +142,10 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(readLikelihoods, activeRegionWindow);
         }
 
+        final DragstrUtils.STRSequenceAnalyzer dragstrs = !startPosKeySet.isEmpty() && hcArgs.likelihoodArgs.dragstrParams != null && !hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors
+                ? DragstrUtils.repeatPeriodAndCounts(ref, startPosKeySet.first() - refLoc.getStart(), startPosKeySet.last() + 2 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod())
+                : null;
+
         for( final int loc : startPosKeySet ) {
             if( loc < activeRegionWindow.getStart() || loc > activeRegionWindow.getEnd() ) {
                 continue;
@@ -180,19 +187,22 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             }
 
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles);
-            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), givenAlleles);
+            final AlleleFrequencyCalculator afc = resolveCustomAlleleFrequencyCalculator(mergedVC, dragstrs, loc - refLoc.getStart() + 1    , ploidy, snpHeterozygosity);
+            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), afc, givenAlleles);
             if( call != null ) {
-
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
                         emitReferenceConfidence, alleleMapper, readAlleleLikelihoods, call, variantCallingRelevantOverlap);
 
-                final VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, mergedAllelesListSizeBeforePossibleTrimming, readAlleleLikelihoods, call, annotationEngine);
+                VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, mergedAllelesListSizeBeforePossibleTrimming, readAlleleLikelihoods, call, annotationEngine);
+
+                if (dragstrs != null && GATKVariantContextUtils.containsInlineIndel(annotatedCall)) {
+                    annotatedCall = DragstrUtils.annotate(annotatedCall, hcArgs.likelihoodArgs.dragstrParams, dragstrs, loc - refLoc.getStart() + 1, ploidy, snpHeterozygosity);
+                }
                 returnCalls.add( annotatedCall );
 
                 if (withBamOut) {
                     AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(call, readAlleleLikelihoods);
                 }
-
                 // maintain the set of all called haplotypes
                 call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
             }
@@ -200,6 +210,16 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
         final List<VariantContext> phasedCalls = doPhysicalPhasing ? AssemblyBasedCallerUtils.phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
+    }
+
+    private AlleleFrequencyCalculator resolveCustomAlleleFrequencyCalculator(final VariantContext vc, final DragstrUtils.STRSequenceAnalyzer strs, final int pos, final int ploidy, final double snpHeterozygosity) {
+       if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors || !GATKVariantContextUtils.containsInlineIndel(vc)) {
+            return alleleFrequencyCalculator;
+        } else {
+            final int period = strs.mostRepeatedPeriod(pos);
+            final int repeats = strs.numberOfMostRepeats(pos);
+            return hcArgs.likelihoodArgs.dragstrParams.getAFCalculator(period, repeats, ploidy, snpHeterozygosity, hcArgs.standardArgs.genotypeArgs.dragstrPriorScale);
+        }
     }
 
     @VisibleForTesting
@@ -363,6 +383,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         final ReferenceContext referenceContext = new ReferenceContext(refData, locus, refLocInterval);
 
         final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods, a -> true);
+
+
 
         // NOTE: We choose to reverseTrimAlleles() here as opposed to when we actually do the trimming because otherwise we would have to resolve
         //       the mismatching readAlleleLikelihoods object which is keyed to the old, possibly incorrectly trimmed alleles.

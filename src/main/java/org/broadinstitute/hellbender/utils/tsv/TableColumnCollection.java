@@ -111,6 +111,11 @@ public final class TableColumnCollection {
                 .collect(Collectors.toMap(names::get, Function.identity()));
     }
 
+    public static TableColumnCollection make(final String ... columnNames) {
+        checkNames(columnNames, IllegalArgumentException::new);
+        return new TableColumnCollection(columnNames);
+    }
+
     /**
      * Returns the column names ordered by column index.
      *

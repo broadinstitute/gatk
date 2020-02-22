@@ -8,6 +8,7 @@ import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.Permutation;
@@ -50,6 +51,7 @@ public final class AlleleSubsettingUtils {
     public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
                                                  final List<Allele> originalAlleles,
                                                  final List<Allele> allelesToKeep,
+                                                 final AlleleFrequencyCalculator afc,
                                                  final GenotypeAssignmentMethod assignmentMethod,
                                                  final int depth) {
         Utils.nonNull(originalGs, "original GenotypesContext must not be null");
@@ -95,7 +97,7 @@ public final class AlleleSubsettingUtils {
             else {
                 gb.noPL().noGQ();
             }
-            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g.getAlleles());
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g.getAlleles(), afc);
 
             // restrict SAC to the new allele subset
             if (g.hasExtendedAttribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY)) {

@@ -65,7 +65,7 @@ public final class StrandBiasBySample extends GenotypeAnnotation implements Stan
         Utils.nonNull(gb);
 
         if ( likelihoods == null || !g.isCalled() ) {
-            logger.warn("Annotation will not be calculated, genotype is not called or alleleLikelihoodMap is null");
+            logger.warn("Annotation will not be calculated, genotype is not called or alleleLikelihoodMap is null at " + vc);
             return;
         }
 

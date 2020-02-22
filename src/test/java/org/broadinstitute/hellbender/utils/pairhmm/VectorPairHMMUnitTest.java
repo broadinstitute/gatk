@@ -3,6 +3,9 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PairHMMInputScoreImputation;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PairHMMInputScoreImputator;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.StandardPairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -67,11 +70,27 @@ public final class VectorPairHMMUnitTest extends GATKBaseTest {
                 ReadUtils.setInsertionBaseQualities(read, insertionQuals);
                 ReadUtils.setDeletionBaseQualities(read, deletionQuals);
 
-                final Map<GATKRead, byte[]> gpcs = new LinkedHashMap<>(readLength);
-                gpcs.put(read, gcp);
+                final PairHMMInputScoreImputator inputScoreImputator = (r_) ->
+                    new PairHMMInputScoreImputation() {
+
+                        @Override
+                        public byte[] delOpenPenalties() {
+                            return deletionQuals;
+                        }
+
+                        @Override
+                        public byte[] insOpenPenalties() {
+                            return insertionQuals;
+                        }
+
+                        @Override
+                        public byte[] gapContinuationPenalties() {
+                            return gcp;
+                        }
+                    };
 
                 hmm.initialize(Arrays.asList(hap), null, 0, 0);
-                hmm.computeLog10Likelihoods(matrix(Arrays.asList(hap)), Arrays.asList(read), gpcs);
+                hmm.computeLog10Likelihoods(matrix(Arrays.asList(hap)), Arrays.asList(read), inputScoreImputator);
 
                 final double[] la = hmm.getLogLikelihoodArray();
 
