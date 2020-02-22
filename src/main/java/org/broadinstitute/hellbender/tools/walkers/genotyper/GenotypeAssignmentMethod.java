@@ -41,5 +41,11 @@ public enum GenotypeAssignmentMethod {
     /**
      * do not even bother changing the GTs
      */
-    DO_NOT_ASSIGN_GENOTYPES
+    DO_NOT_ASSIGN_GENOTYPES,
+
+    /**
+     * Use posteriors probabilties:
+     */
+    USE_POSTERIOR_PROBABILITIES,
+
 }

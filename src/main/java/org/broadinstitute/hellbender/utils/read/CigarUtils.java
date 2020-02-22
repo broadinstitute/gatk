@@ -456,4 +456,24 @@ public final class CigarUtils {
         }
         return refBasesClipped;
     }
+
+    public static int countRefBases(final Cigar cigar) {
+        int result = 0;
+        for (final CigarElement element : cigar) {
+            if (element.getOperator().consumesReferenceBases()) {
+                result += element.getLength();
+            }
+        }
+        return result;
+    }
+
+    public static int countOperator(final Cigar cigar, final CigarOperator op) {
+        int result = 0;
+        for (final CigarElement element : cigar) {
+            if (element.getOperator() == op) {
+                result++;
+            }
+        }
+        return result;
+    }
 }

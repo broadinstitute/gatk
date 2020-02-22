@@ -32,6 +32,7 @@ public final class MathUtils {
     public static final double LOG_ONE_THIRD = -Math.log(3.0);
     public static final double INV_LOG_2 = 1.0 / Math.log(2.0);
     private static final double LOG_10 = Math.log(10);
+    private static final double INV_LOG_10 = 1.0 / LOG_10;
     public static final double LOG10_E = Math.log10(Math.E);
 
     private static final double ROOT_TWO_PI = Math.sqrt(2.0 * Math.PI);
@@ -152,6 +153,26 @@ public final class MathUtils {
         return sum(MathArrays.ebeMultiply(Utils.nonNull(a), Utils.nonNull(b)));
     }
 
+    public static double[] doubles(final double start, final double end, final double step) {
+        final double diff = end - start;
+        if (diff == 0) {
+            return new double[] {start};
+        } else if ((diff > 0) == (step > 0)) {
+            final long lengthAsLong = Math.round(Math.floor(1.0 + diff / step));
+            if (lengthAsLong > Integer.MAX_VALUE) {
+                throw new IllegalArgumentException("cannot produce such a large sequence with " + lengthAsLong + " elements");
+            }
+            final int length = (int) lengthAsLong;
+            final double[] result = new double[length];
+            for (int i = 0; i < length; i++) {
+                result[i] = start + step * i;
+            }
+            return result;
+        } else {
+            throw new IllegalArgumentException("the max - min difference and increment must have the same sign");
+        }
+    }
+
     @FunctionalInterface
     public interface IntToDoubleArrayFunction {
         double[] apply(int value);
@@ -247,8 +268,9 @@ public final class MathUtils {
         if (a > 0) return Double.NaN;
         if (a == 0) return Double.NEGATIVE_INFINITY;
         final double b = a * LOG_10;
-        return NaturalLogUtils.log1mexp(b) / LOG_10;
+        return NaturalLogUtils.log1mexp(b) * INV_LOG_10;
     }
+
 
     /**
      * Check that the log10 prob vector vector is well formed
@@ -618,6 +640,23 @@ public final class MathUtils {
     }
 
     /**
+     * Do the log-sum trick for three double values.
+     * @param a
+     * @param b
+     * @param c
+     * @return the sum... perhaps NaN or infinity if it applies.
+     */
+    public static double log10SumLog10(final double a, final double b, final double c) {
+        if (a >= b && a >= c)  {
+            return a + Math.log10(1 + Math.pow(10.0, b - a) + Math.pow(10.0, c - a));
+        } else if (b >= c) {
+            return b + Math.log10(1 + Math.pow(10.0, a - b) + Math.pow(10.0, c - b));
+        } else {
+            return c + Math.log10(1 + Math.pow(10.0, a - c) + Math.pow(10.0, b - c));
+        }
+    }
+
+    /**
      * Calculate f(x) = log10 ( Normal(x | mu = mean, sigma = sd) )
      * @param mean the desired mean of the Normal distribution
      * @param sd the desired standard deviation of the Normal distribution
@@ -758,6 +797,36 @@ public final class MathUtils {
         return array[maxElementIndex(array)];
     }
 
+    /**
+     * Returns the maximum value within and int array interval.
+     * <p>
+     *     A default value must be provided in case the requested interval is empty.
+     * </p>
+     *
+     * @param array the source array.
+     * @param from first position to be considered.
+     * @param to position after the last to be considered (i.e. exclusive).
+     * @param defaultValue the default value to return in case that the interval provided is empty.
+     * @throws IndexOutOfBoundsException if the from-to interval indexes point to a invalid index range.
+     * @return any integer value is a valid return for this method.
+     */
+    public static int arrayMax(final int[] array, final int from, final int to, final int defaultValue) {
+        if (to > from) {
+            int value = array[from];
+            for (int i = from + 1; i < to; i++) {
+                final int candidate = array[i];
+                if (candidate > value) {
+                    value = candidate;
+                }
+            }
+            return value;
+        } else if (from >= 0) {
+            return defaultValue;
+        } else {
+            throw new ArrayIndexOutOfBoundsException(from);
+        }
+    }
+
     public static double arrayMax(final double[] array) {
         Utils.nonNull(array);
         return array[maxElementIndex(array)];
@@ -812,6 +881,10 @@ public final class MathUtils {
      *
      * Uses the approximation log10(1-x) = log10(1/x - 1) + log10(x) to avoid very quick underflow
      * in 1-x when x is very small
+     *
+     * log10(1-x) = log10( x * (1-x) / x )
+     *            = log10(x) + log10( (1-x) / x)
+     *            = log10(x) + log10(1/x - 1)
      *
      * @param x a positive double value between 0.0 and 1.0
      * @return an estimate of log10(1-x)
