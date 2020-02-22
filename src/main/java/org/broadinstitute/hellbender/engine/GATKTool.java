@@ -69,8 +69,9 @@ public abstract class GATKTool extends CommandLineProgram {
     private String masterSequenceDictionaryFilename = null;
 
     public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "seconds-between-progress-updates";
+
     @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
-    private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
+    protected double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
     @ArgumentCollection
     protected SequenceDictionaryValidationArgumentCollection seqValidationArguments = getSequenceDictionaryValidationArgumentCollection();
@@ -1047,7 +1048,9 @@ public abstract class GATKTool extends CommandLineProgram {
             onTraversalStart();
             progressMeter.start();
             traverse();
-            progressMeter.stop();
+            if (!progressMeter.stopped()) {
+                progressMeter.stop();
+            }
             return onTraversalSuccess();
         } finally {
             closeTool();

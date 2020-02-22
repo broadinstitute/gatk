@@ -111,7 +111,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @param vc                                 Input variant context to complete.
      * @return                                   VC with assigned genotypes
      */
-    public VariantContext calculateGenotypes(final VariantContext vc, final List<VariantContext> givenAlleles) {
+    public VariantContext calculateGenotypes(final VariantContext vc, final AlleleFrequencyCalculator customAFC, final List<VariantContext> givenAlleles) {
         // if input VC can't be genotyped, exit with either null VCC or, in case where we need to emit all sites, an empty call
         if (hasTooManyAlternativeAlleles(vc) || vc.getNSamples() == 0) {
             return null;
@@ -119,18 +119,18 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         final int defaultPloidy = configuration.genotypeArgs.samplePloidy;
         final int maxAltAlleles = configuration.genotypeArgs.MAX_ALTERNATE_ALLELES;
-
+        final AlleleFrequencyCalculator afc = customAFC == null ? alleleFrequencyCalculator : customAFC;
 
         VariantContext reducedVC = vc;
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
             final List<Allele> allelesToKeep = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, defaultPloidy, maxAltAlleles);
             final GenotypesContext reducedGenotypes = allelesToKeep.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, GenotypeAssignmentMethod.SET_TO_NO_CALL, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, afc, GenotypeAssignmentMethod.SET_TO_NO_CALL, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
             reducedVC = new VariantContextBuilder(vc).alleles(allelesToKeep).genotypes(reducedGenotypes).make();
         }
 
 
-        final AFCalculationResult AFresult = alleleFrequencyCalculator.calculate(reducedVC, defaultPloidy);
+        final AFCalculationResult AFresult = afc.calculate(reducedVC, defaultPloidy);
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc, givenAlleles);
 
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
@@ -168,7 +168,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // create the genotypes
         //TODO: omit subsetting if output alleles is not a proper subset of vc.getAlleles
         final GenotypesContext genotypes = outputAlleles.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, afc, configuration.genotypeArgs.genotypeAssignmentMethod, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
 
         // calculating strand bias involves overwriting data structures, so we do it last
         final Map<String, Object> attributes = composeCallAttributes(vc, outputAlternativeAlleles.alternativeAlleleMLECounts(),
@@ -178,7 +178,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     public VariantContext calculateGenotypes(final VariantContext vc) {
-        return calculateGenotypes(vc, Collections.emptyList());
+        return calculateGenotypes(vc, null, Collections.emptyList());
     }
 
     @VisibleForTesting

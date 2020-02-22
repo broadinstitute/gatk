@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.google.common.base.Strings;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PairHMMInputScoreImputator;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.StandardPairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -518,12 +520,13 @@ public final class PairHMMUnitTest extends GATKBaseTest {
 
         final byte[] readQuals= Utils.dupBytes(baseQual, readBases.length);
         final List<GATKRead> reads = Arrays.asList(ArtificialReadUtils.createArtificialRead(readBases, readQuals, readBases.length + "M"));
-        final Map<GATKRead, byte[]> gpcs = buildGapContinuationPenalties(reads, gcp);
 
-        hmm.computeLog10Likelihoods(matrix(Arrays.asList(refH)), Collections.emptyList(), gpcs);
+        final PairHMMInputScoreImputator inputScoreImputator = StandardPairHMMInputScoreImputator.newInstance((byte) 45, (byte) 100);
+
+        hmm.computeLog10Likelihoods(matrix(Arrays.asList(refH)), Collections.emptyList(), inputScoreImputator);
         Assert.assertEquals(hmm.getLogLikelihoodArray(), null);
 
-        hmm.computeLog10Likelihoods(matrix(Arrays.asList(refH)), reads, gpcs);
+        hmm.computeLog10Likelihoods(matrix(Arrays.asList(refH)), reads, inputScoreImputator);
         final double expected = getExpectedMatchingLogLikelihood(readBases, refBases, baseQual, insQual);
         final double[] la = hmm.getLogLikelihoodArray();
 

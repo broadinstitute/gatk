@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
@@ -26,6 +27,10 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public static final int DEFAULT_MAX_ALTERNATE_ALLELES = 6;
     public static final int DEFAULT_MAX_GENOTYPE_COUNT = 1024;
 
+    @Argument(fullName="dragstr-prior-scale")
+    public double dragstrPriorScale = 10; // similar to the default scale for HC without dragstr.
+
+
     /**
      * Creates a GenotypeCalculationArgumentCollection with default values.
      */
@@ -48,6 +53,16 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
         this.supportVariants = other.supportVariants;
         this.numRefIfMissing = other.numRefIfMissing;
     }
+
+    @Argument(fullName = "dont-use-dragstr-priors", optional = true)
+    public boolean dontUseDragstrPriors = false;
+
+    /**
+     * As of version 4.1.0.0, this argument is no longer needed because the new qual score is now on by default. See GATK 3.3 release notes for more details.
+     */
+    @Deprecated
+    @Argument(fullName = "use-new-qual-calculator", shortName = "new-qual", doc = "Use the new AF model instead of the so-called exact model", optional = true)
+    public boolean useNewAFCalculator = true;
 
     /**
      * Depending on the value of the --max_alternate_alleles argument, we may genotype only a fraction of the alleles being sent on for genotyping.
@@ -167,4 +182,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      */
     @Argument(fullName= NUM_REF_SAMPLES_LONG_NAME,doc="Number of hom-ref genotypes to infer at sites not present in a panel",optional=true)
     public int numRefIfMissing = 0;
+
+    @Argument(fullName= "genotype-assignment-method", shortName = "gam", doc = "How we assign genotypes", optional = true)
+    public GenotypeAssignmentMethod genotypeAssignmentMethod = GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN;
 }

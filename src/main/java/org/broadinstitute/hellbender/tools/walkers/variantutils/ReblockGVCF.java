@@ -470,11 +470,11 @@ public final class ReblockGVCF extends VariantWalker {
             builder.alleles(newAlleleSet);
             final GenotypesContext gc;
             if(!genotypesWereModified) {
-                gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(), PLOIDY_TWO, result.getAlleles(), newAlleleSet, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(), PLOIDY_TWO, result.getAlleles(), newAlleleSet, null, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
                 builder.genotypes(gc);
             }
             else {
-                gc = AlleleSubsettingUtils.subsetAlleles(newGenotypes, PLOIDY_TWO, result.getAlleles(), newAlleleSet, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                gc = AlleleSubsettingUtils.subsetAlleles(newGenotypes, PLOIDY_TWO, result.getAlleles(), newAlleleSet, null, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
                 builder.genotypes(gc);
             }
             g = gc.get(0);
@@ -530,7 +530,7 @@ public final class ReblockGVCF extends VariantWalker {
                         continue;
                     }
                     final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
-                            HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), Arrays.asList(result.getReference(), alt),
+                            HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), Arrays.asList(result.getReference(), alt), null,
                             GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0));
                     if (gc.get(0).hasPL()) {
                         quals.add(Integer.toString(gc.get(0).getPL()[0]));
@@ -540,7 +540,7 @@ public final class ReblockGVCF extends VariantWalker {
                 }
                 attrMap.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM +String.join(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM, quals));
                 List<Integer> as_varDP = AS_QualByDepth.getAlleleDepths(AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
-                        HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), newAlleleSet,
+                        HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), newAlleleSet, null,
                         GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)));
                 if (as_varDP != null) {
                     attrMap.put(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, as_varDP.stream().map( n -> Integer.toString(n)).collect(Collectors.joining(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM)));
