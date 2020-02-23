@@ -96,7 +96,7 @@ public class GenotypeLikelihoodCalculator {
      *     never used in practice).
      * </p>
      */
-    private double[] readAlleleLikelihoodByAlleleCount = null;
+    protected double[] readAlleleLikelihoodByAlleleCount = null;
     /**
      * Indicates how many reads the calculator supports.
      *
@@ -229,17 +229,26 @@ public class GenotypeLikelihoodCalculator {
      * @return never {@code null}.
      */
     public <EVIDENCE, A extends Allele> GenotypeLikelihoods genotypeLikelihoods(final LikelihoodMatrix<EVIDENCE, A> likelihoods) {
+        final double[] readLikelihoodsByGenotypeIndex = getReadRawReadLikelihoodsByGenotypeIndex(likelihoods);
+        return GenotypeLikelihoods.fromLog10Likelihoods(readLikelihoodsByGenotypeIndex);
+    }
+
+    /**
+     * A helper method that actually does the matrix operations but returns the raw values.
+     *
+     * @return the raw array (in log10 likelihoods space) of the GL for each genotype
+     */
+    <EVIDENCE, A extends Allele> double[] getReadRawReadLikelihoodsByGenotypeIndex(final LikelihoodMatrix<EVIDENCE, A> likelihoods) {
         Utils.nonNull(likelihoods);
         Utils.validateArg(likelihoods.numberOfAlleles() == alleleCount, "mismatch between allele list and alleleCount");
         final int readCount = likelihoods.evidenceCount();
         ensureReadCapacity(readCount);
 
-        /// [x][y][z] = z * LnLk(Read_x | Allele_y)
+        /// [x][y][z] = log(z * LnLk(Read_x | Allele_y))
         final double[] readLikelihoodComponentsByAlleleCount
                 = readLikelihoodComponentsByAlleleCount(likelihoods);
         final double[][] genotypeLikelihoodByRead = genotypeLikelihoodByRead(readLikelihoodComponentsByAlleleCount,readCount);
-        final double[] readLikelihoodsByGenotypeIndex = genotypeLikelihoods(genotypeLikelihoodByRead, readCount);
-        return GenotypeLikelihoods.fromLog10Likelihoods(readLikelihoodsByGenotypeIndex);
+        return genotypeLikelihoods(genotypeLikelihoodByRead, readCount);
     }
 
     /**
@@ -250,7 +259,7 @@ public class GenotypeLikelihoodCalculator {
      * @return never {@code null}, one position per genotype where the <i>i</i> entry is the likelihood of the ith
      *   genotype (0-based).
      */
-    private double[] genotypeLikelihoods(final double[][] readLikelihoodsByGenotypeIndex, final int readCount) {
+    double[] genotypeLikelihoods(final double[][] readLikelihoodsByGenotypeIndex, final int readCount) {
         final double[] result = new double[genotypeCount];
         final double denominator = readCount * MathUtils.log10(ploidy);
         // instead of dividing each read likelihood by ploidy ( so subtract log10(ploidy) )
@@ -345,7 +354,7 @@ public class GenotypeLikelihoodCalculator {
      * Calculates the likelihood component by read for a given genotype allele count assuming that there are
      * exactly two alleles present in the genotype (with arbitrary non-zero counts each).
      */
-    private void twoComponentGenotypeLikelihoodByRead(final GenotypeAlleleCounts genotypeAlleleCounts,
+    void twoComponentGenotypeLikelihoodByRead(final GenotypeAlleleCounts genotypeAlleleCounts,
                                                       final double[] likelihoodByRead,
                                                       final double[] readLikelihoodComponentsByAlleleCount,
                                                       final int readCount) {
@@ -366,7 +375,7 @@ public class GenotypeLikelihoodCalculator {
      * Calculates the likelihood component by read for a given genotype allele count assuming that there are
      * exactly one allele present in the genotype.
      */
-    private void singleComponentGenotypeLikelihoodByRead(final GenotypeAlleleCounts genotypeAlleleCounts,
+    void singleComponentGenotypeLikelihoodByRead(final GenotypeAlleleCounts genotypeAlleleCounts,
                                                          final double[] likelihoodByRead, final double[] readLikelihoodComponentsByAlleleCount, final int readCount) {
         final int allele = genotypeAlleleCounts.alleleIndexAt(0);
         // the count of the only component must be = ploidy.

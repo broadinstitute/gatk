@@ -52,6 +52,12 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     protected final List<List<EVIDENCE>> evidenceBySampleIndex;
 
     /**
+     * TODO come up with a better way to store this
+     * Evidence by sample index. Each sub array contains reference to the evidence of the ith sample.
+     */
+    protected final List<List<EVIDENCE>> filteredEvidenceBySampleIndex;
+
+    /**
      * Indexed per sample, allele and finally evidence (within sample).
      * <p>
      *     valuesBySampleIndex[s][a][r] == lnLk(R_r | A_a) where R_r comes from Sample s.
@@ -129,6 +135,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         referenceAlleleIndex = findReferenceAllele(alleles);
 
         evidenceIndexBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
+        filteredEvidenceBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
 
         setupIndexes(evidenceBySample, sampleCount, alleleCount);
 
@@ -141,13 +148,16 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     AlleleLikelihoods(final AlleleList alleles,
                       final SampleList samples,
                       final List<List<EVIDENCE>> evidenceBySampleIndex,
+                      final List<List<EVIDENCE>> filteredEvidenceBySampleIndex,
                       final double[][][] values) {
         this.samples = samples;
         this.alleles = alleles;
         this.evidenceBySampleIndex = evidenceBySampleIndex;
         this.valuesBySampleIndex = values;
         final int sampleCount = samples.numberOfSamples();
-        evidenceIndexBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
+
+        this.evidenceIndexBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
+        this.filteredEvidenceBySampleIndex = filteredEvidenceBySampleIndex != null ? filteredEvidenceBySampleIndex : new ArrayList<>(Collections.nCopies(sampleCount, null));
 
         referenceAlleleIndex = findReferenceAllele(alleles);
         sampleMatrices = (LikelihoodMatrix<EVIDENCE,A>[]) new LikelihoodMatrix[sampleCount];
@@ -252,6 +262,17 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      *   the array will be null.
      */
     public List<EVIDENCE> sampleEvidence(final int sampleIndex) {
+        return Collections.unmodifiableList(evidenceBySampleIndex.get(sampleIndex));
+    }
+
+    /**
+     * Returns returns the units of evidence that have been removed by PairHMM error score filtering.
+     *
+     * @param sampleIndex the requested sample.
+     * @return never {@code null} but perhaps a zero-length array if there is no filtered evidence for a sample. No element in
+     *   the array will be null.
+     */
+    public List<EVIDENCE> filteredSampleEvidence(final int sampleIndex) {
         return Collections.unmodifiableList(evidenceBySampleIndex.get(sampleIndex));
     }
 
@@ -601,6 +622,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
                 alleles,
                 samples,
                 newEvidenceBySampleIndex,
+                null, //TODO this is only currently used for Somatic and i'm alright with removing this for now but this is NOT robust and 3 of these methods is too many
                 newLikelihoodValues);
 
         result.isNaturalLog = this.isNaturalLog;
@@ -648,6 +670,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
                 new IndexedAlleleList(newAlleles),
                 samples,
                 newEvidenceBySampleIndex,
+                null, // TODO Until somebody decides to use this for an annotation I will resolve to delete this in all transformations except for the one I care about for DRAGEN-GATK
                 newLikelihoodValues);
         result.isNaturalLog = isNaturalLog;
         return result;
@@ -693,6 +716,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
 
         @SuppressWarnings({"rawtypes","unchecked"})
         final List<List<EVIDENCE>> newEvidenceBySampleIndex = new ArrayList<>(sampleCount);
+        final List<List<EVIDENCE>> newFilteredEvidenceBySampleIndex = new ArrayList<>(sampleCount);
 
         for (int s = 0; s < sampleCount; s++) {
             final int[] sampleEvidenceToKeep = evidenceToKeep[s];
@@ -705,9 +729,15 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             newEvidenceBySampleIndex.add(newSampleEvidence);
         }
 
+        //TODO this is umomptimized, when i productionize this should be made to avoid stream api calls.
+        for (int s = 0; s < sampleCount; s++) {
+            newFilteredEvidenceBySampleIndex.set(s, newFilteredEvidenceBySampleIndex.get(s).stream().filter(e -> e.overlaps(overlap)).collect(Collectors.toList()));
+        }
+
         // Finally we create the new evidence-likelihood
         final AlleleLikelihoods<EVIDENCE, B> result = new AlleleLikelihoods<>(new IndexedAlleleList<>(newAlleles), samples,
                 newEvidenceBySampleIndex,
+                newFilteredEvidenceBySampleIndex,
                 newLikelihoodValues);
         result.isNaturalLog = isNaturalLog;
         return result;
@@ -1191,6 +1221,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
 
         final Set<EVIDENCE> evidenceToRemoveSet = new HashSet<>(evidenceToRemove);
         final int[] evidenceIndicesToKeep = IntStream.range(0, sampleEvidence.size()).filter(r -> !evidenceToRemoveSet.contains(sampleEvidence.get(r))).toArray();
+        final int[] evidenceIndeciesToRemove = IntStream.range(0, sampleEvidence.size()).filter(r -> evidenceToRemoveSet.contains(sampleEvidence.get(r))).toArray();
 
         // Nothing to remove we just finish here.
         if (evidenceIndicesToKeep.length == sampleEvidence.size()) {
@@ -1198,6 +1229,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         }
 
         final List<EVIDENCE> newSampleEvidence = Arrays.stream(evidenceIndicesToKeep).mapToObj(sampleEvidence::get).collect(Collectors.toList());
+        final List<EVIDENCE> filteredSampleEvidence = Arrays.stream(evidenceIndeciesToRemove).mapToObj(sampleEvidence::get).collect(Collectors.toList());
         final Object2IntMap<EVIDENCE> indexByEvidence = evidenceIndexBySampleIndex(sampleIndex);
         indexByEvidence.clear();
         new IndexRange(0, newSampleEvidence.size()).forEach(r -> indexByEvidence.put(newSampleEvidence.get(r), r));
@@ -1214,6 +1246,9 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
 
         valuesBySampleIndex[sampleIndex] = newSampleValues;
         evidenceBySampleIndex.set(sampleIndex, newSampleEvidence);
+
+        // here we track the evidence that was removed as it might be important for genotyping later
+        filteredEvidenceBySampleIndex.set(sampleIndex, filteredSampleEvidence);
     }
 
     /**

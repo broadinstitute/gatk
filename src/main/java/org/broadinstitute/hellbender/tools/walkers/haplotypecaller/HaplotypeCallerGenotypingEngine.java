@@ -35,7 +35,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     private static final Logger logger = LogManager.getLogger(HaplotypeCallerGenotypingEngine.class);
 
 
-    private final GenotypersModel genotypingModel;
+    private final DRAGENBQDGenotypesModel genotypingModel;
 
     private final PloidyModel ploidyModel;
     private final ReferenceConfidenceMode referenceConfidenceMode;
@@ -183,7 +183,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 mergedAllelesListSizeBeforePossibleTrimming++;
             }
 
-            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles);
+            //TODO this might only be passed in one case or another
+
+            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart());
             final AlleleFrequencyCalculator afc = resolveCustomAlleleFrequencyCalculator(mergedVC, dragstrs, loc - refLoc.getStart() + 1    , ploidy, snpHeterozygosity);
             final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), afc, givenAlleles);
             if( call != null ) {
@@ -396,12 +398,12 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @param mergedVC               Input VC with event to genotype
      * @return                       GenotypesContext object wrapping genotype objects with PLs
      */
-    protected GenotypesContext calculateGLsForThisEvent(final AlleleLikelihoods<GATKRead, Allele> readLikelihoods, final VariantContext mergedVC, final List<Allele> noCallAlleles ) {
+    protected GenotypesContext calculateGLsForThisEvent(final AlleleLikelihoods<GATKRead, Allele> readLikelihoods, final VariantContext mergedVC, final List<Allele> noCallAlleles, final byte[] paddedReference, final int offsetForRefIntoEvent ) {
         Utils.nonNull(readLikelihoods, "readLikelihoods");
         Utils.nonNull(mergedVC, "mergedVC");
         final List<Allele> vcAlleles = mergedVC.getAlleles();
         final AlleleList<Allele> alleleList = readLikelihoods.numberOfAlleles() == vcAlleles.size() ? readLikelihoods : new IndexedAlleleList<>(vcAlleles);
-        final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods));
+        final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods),paddedReference,offsetForRefIntoEvent);
         final int sampleCount = samples.numberOfSamples();
         final GenotypesContext result = GenotypesContext.create(sampleCount);
         for (int s = 0; s < sampleCount; s++) {
