@@ -72,25 +72,21 @@ public final class CigarUtils {
     }
 
     /**
-     * Removes all clipping operators from the cigar.
+     * Removes all clipping and padding operators from the cigar.
      */
     public static Cigar removeClipsAndPadding(final Cigar cigar) {
         Utils.nonNull(cigar, "cigar is null");
         final List<CigarElement> elements = new ArrayList<>(cigar.numCigarElements());
         for ( final CigarElement ce : cigar.getCigarElements() ) {
-            if ( !isClipOperator(ce.getOperator()) ) {
+            if ( !isClipOrPaddingOperator(ce.getOperator()) ) {
                 elements.add(ce);
             }
         }
         return new Cigar(elements);
     }
 
-    private static boolean isClipOperator(final CigarOperator op) {
+    private static boolean isClipOrPaddingOperator(final CigarOperator op) {
         return op == CigarOperator.S || op == CigarOperator.H || op == CigarOperator.P;
-    }
-
-    private static boolean isClipOperator(final CigarElement el) {
-        return isClipOperator(el.getOperator());
     }
 
     /**
@@ -280,6 +276,7 @@ public final class CigarUtils {
 
     private static int countClippedBases(final Cigar cigar, final ClippingTail tail, final boolean includeSoftClips, final boolean includeHardClips) {
         Utils.nonNull(cigar);
+        Utils.nonNull(tail);
 
         if (cigar.numCigarElements() == 0) {
             return 0;
@@ -289,7 +286,8 @@ public final class CigarUtils {
         final Predicate<CigarOperator> pred = !includeHardClips ? op -> op == CigarOperator.S :
                 (includeSoftClips ? op -> op.isClipping() : op -> op == CigarOperator.H);
         int result = 0;
-        for (final CigarElement elem : tail == ClippingTail.LEFT_TAIL ? cigar : Lists.reverse(cigar.getCigarElements())) {
+        final Iterable<CigarElement> cigarElementsStartingWithClips = tail == ClippingTail.LEFT_TAIL ? cigar : Lists.reverse(cigar.getCigarElements());
+        for (final CigarElement elem : cigarElementsStartingWithClips) {
             final CigarOperator operator = elem.getOperator();
             if (!operator.isClipping()) {
                 return result;
@@ -298,7 +296,7 @@ public final class CigarUtils {
             }
         }
 
-        throw new IllegalArgumentException("Input cigar has a single soft clip region that cannot be assigned to the left or right of the read");
+        throw new IllegalArgumentException("Input cigar has a single clipped region that cannot be assigned unambiguously to the left or right of the read");
     }
 
     /**
@@ -353,7 +351,8 @@ public final class CigarUtils {
     }
 
     /**
-     * replace soft clips (S) with match (M) operators, merging any consecutive M's that result eg 10S10M -> 20M.
+     * replace soft clips (S) with match (M) operators, normalizing the result by all the transformations of the {@link CigarBuilder} class:
+     * merging consecutive identical operators and removing zero-length elements.  For example 10S10M -> 20M and 10S10M10I10I -> 20M20I.
      */
     public static Cigar revertSoftClips(final Cigar originalCigar) {
         final CigarBuilder builder = new CigarBuilder();

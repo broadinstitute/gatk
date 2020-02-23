@@ -9,6 +9,19 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * This class allows code that manipulates cigars to do so naively by handling complications such as merging consecutive
+ * identical operators within the builder.  A CigarBuilder takes care of the following:
+ *
+ * 1)  Merging consecutive identical operators, eg 10M5M -> 15M
+ * 2)  Eliminating leading and trailing deletions, eg 10D10M -> 10M and 10M10D -> 10M
+ * 3)  Shifting insertions to the left of adjacent deletions, eg 10M10D10I -> 10M10I10D
+ * 4)  Validating the overall structure of [hard clip] [soft clip] non-clip [soft clip] [hard clip]
+ *
+ * Edge cases, such as removing a deletion that immediately follows a leading insertion, *are* handled correctly.  See the unit tests.
+ *
+ * All of this is achieved simply by invoking add() repeatedly, followed by make().
+ */
 public class CigarBuilder {
 
     private final List<CigarElement> cigarElements = new ArrayList<>();
