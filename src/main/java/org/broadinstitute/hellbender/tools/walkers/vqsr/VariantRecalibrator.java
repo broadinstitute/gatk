@@ -573,6 +573,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
             else if( VRAC.useASannotations ) {
                 for (final Allele allele : vc.getAlternateAlleles()) {
                     if (!GATKVCFConstants.isSpanningDeletion(allele) && VariantDataManager.checkVariationClass(vc, allele, VRAC.MODE)) {
+                        //note that this may not be the minimal representation for the ref and alt allele
                         addDatum(reduceSum, isInput, context, vc, vc.getReference(), allele);
                     }
                 }

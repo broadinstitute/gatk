@@ -1,156 +1,137 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
+import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Stream;
 
 public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTest {
+    private static final String trancheVCF = largeFileTestDir + "VQSR/g94982_20_1m_10m_python_2dcnn.vcf.gz";
+    private static final String snpInput = largeFileTestDir + "VQSR/g94982_20_1m_10m_python_2dcnn.snps.vcf.gz";
+    private static final String indelInput = largeFileTestDir + "VQSR/g94982_20_1m_10m_python_2dcnn.indels.vcf.gz";
+    private final static String indelTruthVCF = largeFileTestDir + "VQSR/ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf";
+    private final static String snpTruthVCF = largeFileTestDir + "VQSR/Omni25_sites_1525_samples.b37.20.1M-10M.vcf";
+    private final static String emptyVCF = largeFileTestDir + "VQSR/emptyB37.vcf";
+    private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
 
+    @DataProvider(name="getFilteringArgs")
+    public Object[][] getFilteringArgs() {
+        return new Object[][]{
+                //default tranches
+                {
+                        Arrays.asList(snpTruthVCF, indelTruthVCF), NO_EXTRA_ARGS,
+                        largeFileTestDir + "VQSR/expected/g94982_20_1m_10m_tranche_defaults.vcf"
+                },
+                //with tranches
+                {
+                        Arrays.asList(snpTruthVCF, indelTruthVCF), Arrays.asList("-indel-tranche", "99.0", "-snp-tranche", "99.5", "--invalidate-previous-filters", "true"),
+                        largeFileTestDir + "VQSR/expected/g94982_20_1m_10m_tranched_99_99.5.vcf"
+                },
+                //duplicate tranches specified
+                {
+                        Arrays.asList(snpTruthVCF, indelTruthVCF), Arrays.asList("-snp-tranche", "99.5", "--indel-tranche", "99.0", "-snp-tranche", "99.5", "-indel-tranche", "99.0", "--invalidate-previous-filters", "true"),
+                        largeFileTestDir + "VQSR/expected/g94982_20_1m_10m_tranched_99_99.5.vcf"
+                },
+                //multiple tranches
+                {
+                        Arrays.asList(snpTruthVCF, indelTruthVCF),
+                        Arrays.asList("-snp-tranche", "95.0",
+                        "-snp-tranche", "99.0",
+                        "-snp-tranche", "99.9",
+                        "-indel-tranche", "95.0",
+                        "-indel-tranche", "99.0",
+                        "-indel-tranche", "99.9",
+                        "--invalidate-previous-filters", "true"),
+                        largeFileTestDir + "VQSR/expected/g94982_20_1m_10m_tranched_95_99_99.9.vcf"
+                },
+                //different tranche ordering -- expected is same as above
+                {
+                        Arrays.asList(snpTruthVCF, indelTruthVCF),
+                        Arrays.asList("-snp-tranche", "99.9",
+                        "-snp-tranche", "95.0",
+                        "-snp-tranche", "99.0",
+                        "-indel-tranche", "99.9",
+                        "-indel-tranche", "95.0",
+                        "-indel-tranche", "99.0",
+                        "--invalidate-previous-filters", "true"),
+                        largeFileTestDir + "VQSR/expected/g94982_20_1m_10m_tranched_95_99_99.9.vcf"
+                },
+                //the old tranche values are lower than the defaults
+                {
+                        Arrays.asList(snpTruthVCF, indelTruthVCF),
+                        Arrays.asList("-snp-tranche", "99.0","-indel-tranche", "99.0"),
+                        largeFileTestDir + "VQSR/expected/g94982_20_1m_10m_tranched_99_with_old_filters.vcf"
+                }
+        };
+    }
+
+    @DataProvider(name="getBadResourceCombos")
+    public Object[][] getBadResourceCombos() {
+        return new Object[][]{
+                //default tranches
+                {snpInput, indelTruthVCF}, {indelInput, snpTruthVCF}, {emptyVCF, snpTruthVCF}, {trancheVCF, emptyVCF}
+        };
+    }
+
+    @DataProvider(name="getGoodResourceCombos")
+    public Object[][] getGoodResourceCombos() {
+        return new Object[][]{
+                //default tranches
+                {snpInput, snpTruthVCF}, {indelInput, indelTruthVCF}
+        };
+    }
 
     /**
      * Run the tool on a small test VCF.
      */
-    @Test
-    public void testTrancheFilteringDefaults() throws IOException {
-        final String trancheVCF = largeFileTestDir + "VQSR/g94982_20_1m_10m_python_2dcnn.vcf.gz";
-        final String indelTruthVCF = largeFileTestDir + "VQSR/ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf";
-        final String snpTruthVCF = largeFileTestDir + "VQSR/Omni25_sites_1525_samples.b37.20.1M-10M.vcf";
-
+    @Test(dataProvider = "getFilteringArgs")
+    public void runTrancheFiltering(final List<String> resources, final List<String> extraArgs,
+                                    final String expectedOutput) throws IOException {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
                 .addArgument("info-key", "MIX_SMALL_2D_W_DROPOUT")
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false")
+                .add(StringUtils.join(extraArgs.toArray(), " "));
+       resources.stream().forEach(r -> argsBuilder.addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, r));
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(argsBuilder.toString(),
-                Arrays.asList(largeFileTestDir + "VQSR/expected/g94982_20_1m_10m_tranche_defaults.vcf"));
+                Arrays.asList(expectedOutput));
         spec.executeTest("testTrancheFiltering", this);
     }
 
-    @Test
-    public void testTrancheFiltering() throws IOException {
-        final String trancheVCF = largeFileTestDir + "VQSR/g94982_20_1m_10m_python_2dcnn.vcf.gz";
-        final String indelTruthVCF = largeFileTestDir + "VQSR/ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf";
-        final String snpTruthVCF = largeFileTestDir + "VQSR/Omni25_sites_1525_samples.b37.20.1M-10M.vcf";
+        @Test(dataProvider = "getBadResourceCombos", expectedExceptions = UserException.BadInput.class)
+        public void runTrancheFilteringOnBadInputs(final String inputVcf, final String resourceVcf) {
+            final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+            argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcf)
+                    .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, resourceVcf)
+                    .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
+                    .addArgument("info-key", "MIX_SMALL_2D_W_DROPOUT")
+                    .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
+            runCommandLine(argsBuilder);
+        }
+
+    @Test(dataProvider = "getGoodResourceCombos")
+    public void runTrancheFilteringOnGoodInputs(final String inputVcf, final String resourceVcf) {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
+        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcf)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, resourceVcf)
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
-                .addArgument("snp-tranche", "99.5")
-                .addArgument("indel-tranche", "99.0")
-                .addArgument("invalidate-previous-filters", "true")
                 .addArgument("info-key", "MIX_SMALL_2D_W_DROPOUT")
                 .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
-        final IntegrationTestSpec spec = new IntegrationTestSpec(argsBuilder.toString(),
-                    Arrays.asList(largeFileTestDir + "VQSR/expected/g94982_20_1m_10m_tranched_99_99.5.vcf"));
-        spec.executeTest("testTrancheFiltering", this);
+        runCommandLine(argsBuilder);
     }
-
-    @Test
-    public void testTrancheFilteringDuplicate() throws IOException {
-        final String trancheVCF = largeFileTestDir + "VQSR/g94982_20_1m_10m_python_2dcnn.vcf.gz";
-        final String indelTruthVCF = largeFileTestDir + "VQSR/ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf";
-        final String snpTruthVCF = largeFileTestDir + "VQSR/Omni25_sites_1525_samples.b37.20.1M-10M.vcf";
-
-        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
-                .addArgument("snp-tranche", "99.5")
-                .addArgument("indel-tranche", "99.0")
-                .addArgument("snp-tranche", "99.5")
-                .addArgument("indel-tranche", "99.0")
-                .addArgument("invalidate-previous-filters", "true")
-                .addArgument("info-key", "MIX_SMALL_2D_W_DROPOUT")
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
-
-        final IntegrationTestSpec spec = new IntegrationTestSpec(argsBuilder.toString(),
-                Arrays.asList(largeFileTestDir + "VQSR/expected/g94982_20_1m_10m_tranched_99_99.5.vcf"));
-        spec.executeTest("testTrancheFilteringDuplicate", this);
-    }
-
-    @Test
-    public void testTrancheFilteringTranches() throws IOException {
-        final String trancheVCF = largeFileTestDir + "VQSR/g94982_20_1m_10m_python_2dcnn.vcf.gz";
-        final String indelTruthVCF = largeFileTestDir + "VQSR/ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf";
-        final String snpTruthVCF = largeFileTestDir + "VQSR/Omni25_sites_1525_samples.b37.20.1M-10M.vcf";
-
-        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
-                .addArgument("snp-tranche", "95.0")
-                .addArgument("snp-tranche", "99.0")
-                .addArgument("snp-tranche", "99.9")
-                .addArgument("indel-tranche", "95.0")
-                .addArgument("indel-tranche", "99.0")
-                .addArgument("indel-tranche", "99.9")
-                .addArgument("invalidate-previous-filters", "true")
-                .addArgument("info-key", "MIX_SMALL_2D_W_DROPOUT")
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
-
-        final IntegrationTestSpec spec = new IntegrationTestSpec(argsBuilder.toString(),
-                Arrays.asList(largeFileTestDir + "VQSR/expected/g94982_20_1m_10m_tranched_95_99_99.9.vcf"));
-        spec.executeTest("testTrancheFilteringTranchesOrder", this);
-    }
-
-    @Test
-    public void testTrancheFilteringTranchesOrder() throws IOException {
-        final String trancheVCF = largeFileTestDir + "VQSR/g94982_20_1m_10m_python_2dcnn.vcf.gz";
-        final String indelTruthVCF = largeFileTestDir + "VQSR/ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf";
-        final String snpTruthVCF = largeFileTestDir + "VQSR/Omni25_sites_1525_samples.b37.20.1M-10M.vcf";
-        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
-                .addArgument("snp-tranche", "99.9")
-                .addArgument("snp-tranche", "95.0")
-                .addArgument("snp-tranche", "99.0")
-                .addArgument("indel-tranche", "99.9")
-                .addArgument("indel-tranche", "95.0")
-                .addArgument("indel-tranche", "99.0")
-                .addArgument("invalidate-previous-filters", "true")
-                .addArgument("info-key", "MIX_SMALL_2D_W_DROPOUT")
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
-
-        final IntegrationTestSpec spec = new IntegrationTestSpec(argsBuilder.toString(),
-                Arrays.asList(largeFileTestDir + "VQSR/expected/g94982_20_1m_10m_tranched_95_99_99.9.vcf"));
-        spec.executeTest("testTrancheFilteringTranchesOrder", this);
-    }
-
-    @Test
-    public void testTrancheFilteringWithOldFilters() throws IOException {
-        final String trancheVCF = largeFileTestDir + "VQSR/g94982_20_1m_10m_python_2dcnn.vcf.gz";
-        final String indelTruthVCF = largeFileTestDir + "VQSR/ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf";
-        final String snpTruthVCF = largeFileTestDir + "VQSR/Omni25_sites_1525_samples.b37.20.1M-10M.vcf";
-
-        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
-                .addArgument("snp-tranche", "99.0")
-                .addArgument("indel-tranche", "99.0")
-                .addArgument("info-key", "MIX_SMALL_2D_W_DROPOUT")
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
-
-        final IntegrationTestSpec spec = new IntegrationTestSpec(argsBuilder.toString(),
-                Arrays.asList(largeFileTestDir + "VQSR/expected/g94982_20_1m_10m_tranched_99_with_old_filters.vcf"));
-        spec.executeTest("testTrancheFiltering", this);
-    }
-
 }

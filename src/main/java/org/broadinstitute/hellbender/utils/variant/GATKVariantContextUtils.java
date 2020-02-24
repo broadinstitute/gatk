@@ -147,6 +147,34 @@ public final class GATKVariantContextUtils {
     }
 
     /**
+     *  Does an allele match any in a list of alleles?
+     *  We don't assume that ref1/alt1 are in their minimal representation
+     * @param ref1
+     * @param alt1
+     * @param ref2
+     * @param altList
+     * @return
+     */
+    public static boolean isAlleleInList(final Allele ref1, final Allele alt1, final Allele ref2, final List<Allele> altList) {
+        final Allele commonRef;
+        if (ref1.equals(ref2)) {
+            return altList.contains(alt1);
+        } else {
+            commonRef = determineReferenceAllele(ref1, ref2);
+        }
+        final Map<Allele, Allele> alleleMap;
+        if (ref1.equals(commonRef)) {
+            alleleMap = GATKVariantContextUtils.createAlleleMapping(commonRef, ref2, altList);
+            return alleleMap.values().contains(alt1);
+        } else if (ref2.equals(commonRef)) {
+            alleleMap = GATKVariantContextUtils.createAlleleMapping(commonRef, ref1, Arrays.asList(alt1));
+            return altList.contains(alleleMap.get(alt1));
+        } else {
+            throw new IllegalStateException("Reference alleles " + ref1 + " and " + ref2 + " have common reference allele " + commonRef + " which is equal to neither.");
+        }
+    }
+
+    /**
      * Determines the common reference allele
      *
      * @param VCs    the list of VariantContexts
@@ -159,14 +187,28 @@ public final class GATKVariantContextUtils {
         for ( final VariantContext vc : VCs ) {
             if ( contextMatchesLoc(vc, loc) ) {
                 final Allele myRef = vc.getReference();
-                if ( ref == null || ref.length() < myRef.length() )
-                    ref = myRef;
-                else if ( ref.length() == myRef.length() && ! ref.equals(myRef) )
-                    throw new TribbleException(String.format("The provided variant file(s) have inconsistent references for the same position(s) at %s:%d, %s vs. %s", vc.getContig(), vc.getStart(), ref, myRef));
+                try {
+                    ref = determineReferenceAllele(ref, myRef);
+                } catch (TribbleException e) {
+                    throw new TribbleException(String.format("The provided variant file(s) have inconsistent references " +
+                            "for the same position(s) at %s:%d, %s vs. %s", vc.getContig(), vc.getStart(), ref, myRef));
+                }
             }
         }
-
         return ref;
+    }
+
+    public static Allele determineReferenceAllele(final Allele ref1, final Allele ref2) {
+        if ( ref1 == null || ref1.length() < ref2.length() ) {
+            return ref2;
+        } else if ( ref2 == null || ref2.length() < ref1.length()) {
+            return ref1;
+        }
+        else if ( ref1.length() == ref2.length() && ! ref1.equals(ref2) ) {
+            throw new TribbleException(String.format("The provided reference alleles do not appear to represent the same position, %s vs. %s", ref1, ref2));
+        } else {  //the lengths are the same and they're equal, so we could return ref1 or ref2
+            return ref1;
+        }
     }
 
     /**
@@ -968,7 +1010,7 @@ public final class GATKVariantContextUtils {
             nFiltered += vc.isFiltered() ? 1 : 0;
             if ( vc.isVariant() ) variantSources.add(vc.getSource());
 
-            AlleleMapper alleleMapping = resolveIncompatibleAlleles(refAllele, vc, alleles);
+            AlleleMapper alleleMapping = resolveIncompatibleAlleles(refAllele, vc);
 
             alleles.addAll(alleleMapping.values());
 
@@ -1071,14 +1113,19 @@ public final class GATKVariantContextUtils {
         return loc == null || loc.getStart() == vc.getStart();
     }
 
-    public static AlleleMapper resolveIncompatibleAlleles(final Allele refAllele, final VariantContext vc, final LinkedHashSet<Allele> allAlleles) {
+    public static AlleleMapper resolveIncompatibleAlleles(final Allele refAllele, final VariantContext vc) {
         if ( refAllele.equals(vc.getReference()) )
             return new AlleleMapper(vc);
         else {
-            final Map<Allele, Allele> map = createAlleleMapping(refAllele, vc, allAlleles);
+            final Map<Allele, Allele> map = createAlleleMapping(refAllele, vc);
             map.put(vc.getReference(), refAllele);
             return new AlleleMapper(map);
         }
+    }
+
+    public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
+                                                          final VariantContext oneVC) {
+        return createAlleleMapping(refAllele, oneVC.getReference(), oneVC.getAlternateAlleles());
     }
 
     //TODO as part of a larger refactoring effort {@link #createAlleleMapping} can be merged with {@link ReferenceConfidenceVariantContextMerger#remapAlleles}.
@@ -1095,24 +1142,19 @@ public final class GATKVariantContextUtils {
      * myRef => refAllele and myAlt => AGA
      *
      * @param refAllele          the new (extended) reference allele
-     * @param oneVC              the Variant Context to extend
-     * @param currentAlleles     the list of alleles already created
+     * @param inputRef           the reference allele that may need to be extended
+     * @param inputAlts          the alternate alleles that may need to be extended
      * @return a non-null mapping of original alleles to new (extended) ones
      */
     public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
-                                                           final VariantContext oneVC,
-                                                           final Collection<Allele> currentAlleles) {
-        final Allele myRef = oneVC.getReference();
-        Utils.validate(refAllele.length() > myRef.length(), () -> "BUG: myRef="+myRef+" is longer than refAllele="+refAllele);
-        final byte[] extraBases = Arrays.copyOfRange(refAllele.getBases(), myRef.length(), refAllele.length());
+                                                           final Allele inputRef, final List<Allele> inputAlts) {
+        Utils.validate( refAllele.length() > inputRef.length(), () -> "BUG: inputRef="+inputRef+" is longer than refAllele="+refAllele);
+        final byte[] extraBases = Arrays.copyOfRange(refAllele.getBases(), inputRef.length(), refAllele.length());
 
         final Map<Allele, Allele> map = new LinkedHashMap<>();
-        for ( final Allele a : oneVC.getAlternateAlleles() ) {
+        for ( final Allele a : inputAlts ) {
             if ( isNonSymbolicExtendableAllele(a) ) {
                 Allele extended = Allele.extend(a, extraBases);
-                for ( final Allele b : currentAlleles )
-                    if ( extended.equals(b) )
-                        extended = b;
                 map.put(a, extended);
             } else if (a.equals(Allele.SPAN_DEL)) {
                 map.put(a, a);

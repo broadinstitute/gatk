@@ -158,6 +158,12 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         }
     }
 
+    @Test
+    public void testMatchingAlleles() {
+        Assert.assertTrue(GATKVariantContextUtils.isAlleleInList(Allele.REF_A, Allele.ALT_T, ATCref, Arrays.asList(Allele.ALT_A, Allele.create("TTC",false))));
+        Assert.assertTrue(GATKVariantContextUtils.isAlleleInList(Allele.REF_A, Allele.ALT_T, ATCref, Arrays.asList(Allele.ALT_T, Allele.create("TTC",false))));
+    }
+
     // --------------------------------------------------------------------------------
     //
     // Test allele merging

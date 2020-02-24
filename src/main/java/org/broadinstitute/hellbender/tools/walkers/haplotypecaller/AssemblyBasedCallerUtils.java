@@ -569,7 +569,7 @@ public final class AssemblyBasedCallerUtils {
                     } else if (spanningEvent.getReference().length() < mergedVC.getReference().length()) {
                         // spanning event has shorter ref allele than merged VC; we need to pad out its alt allele
                         final Map<Allele, Allele> spanningEventAlleleMappingToMergedVc
-                                = GATKVariantContextUtils.createAlleleMapping(mergedVC.getReference(), spanningEvent, new ArrayList<>());
+                                = GATKVariantContextUtils.createAlleleMapping(mergedVC.getReference(), spanningEvent);
                         final Allele remappedSpanningEventAltAllele = spanningEventAlleleMappingToMergedVc.get(spanningEvent.getAlternateAllele(0));
                         // in the case of GGA mode the spanning event might not match an allele in the mergedVC
                         if (result.containsKey(remappedSpanningEventAltAllele)) {

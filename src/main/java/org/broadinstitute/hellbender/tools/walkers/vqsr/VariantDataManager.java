@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 
@@ -340,6 +341,7 @@ public class VariantDataManager {
             //if we're in allele-specific mode and an allele-specific annotation has been requested, parse the appropriate value from the list
             if(vrac.useASannotations && annotationKey.startsWith(GATKVCFConstants.ALLELE_SPECIFIC_PREFIX)) {
                 final List<Object> valueList = vc.getAttributeAsList(annotationKey);
+                //FIXME: we need to look at the ref allele here too
                 if (vc.hasAllele(datum.alternateAllele)) {
                     final int altIndex = vc.getAlleleIndex(datum.alternateAllele)-1; //-1 is to convert the index from all alleles (including reference) to just alternate alleles
                     value = Double.parseDouble((String)valueList.get(altIndex));
@@ -411,7 +413,10 @@ public class VariantDataManager {
 
     private boolean doAllelesMatch(final VariantContext trainVC, final VariantDatum datum) {
         //only do this check in the allele-specific case, where each datum represents one allele
-        return datum.alternateAllele == null || trainVC.getAlternateAlleles().contains(datum.alternateAllele);
+        if (datum.alternateAllele == null) {
+            return true;
+        }
+        return GATKVariantContextUtils.isAlleleInList(datum.referenceAllele, datum.alternateAllele, trainVC.getReference(), trainVC.getAlternateAlleles());
     }
 
     protected static boolean checkVariationClass( final VariantContext evalVC, final VariantContext trainVC ) {
