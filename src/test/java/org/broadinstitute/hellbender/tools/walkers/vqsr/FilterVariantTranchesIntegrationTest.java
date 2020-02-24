@@ -22,7 +22,7 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
     private static final String indelInput = largeFileTestDir + "VQSR/g94982_20_1m_10m_python_2dcnn.indels.vcf.gz";
     private final static String indelTruthVCF = largeFileTestDir + "VQSR/ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf";
     private final static String snpTruthVCF = largeFileTestDir + "VQSR/Omni25_sites_1525_samples.b37.20.1M-10M.vcf";
-    private final static String emptyVCF = toolsTestDir + "walkers/VQSR/emptyB37.vcf";
+    private final static String emptyVCF = largeFileTestDir + "VQSR/emptyB37.vcf";
     private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
 
     @DataProvider(name="getFilteringArgs")
