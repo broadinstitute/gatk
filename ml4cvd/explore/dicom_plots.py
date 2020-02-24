@@ -24,16 +24,13 @@ from IPython.display import display
 from IPython.display import HTML
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
+from ml4cvd.runtime_data_defines import get_cardiac_mri_folder
 import numpy as np
 import pydicom
 from scipy.ndimage.morphology import binary_closing
 from scipy.ndimage.morphology import binary_erosion
 import tensorflow as tf
 
-DEFAULT_MRI_FOLDERS = {
-    'fake': 'gs://ml4cvd/projects/fake_mris/',
-    'ukb': 'gs://ml4cvd/data/mris/cardiac/'
-}
 # Constants for use with 'CINE_segmented_SAX_InlineVF'
 # TODO(deflaux) move these constants into ml4cvd/defines.py and then import the
 # ml4cvd package.
@@ -108,16 +105,12 @@ def _get_overlay_from_dicom(d):
     big_structure = _unit_disk(big_radius)
     m2 = binary_closing(overlay, big_structure).astype(np.int)
     anatomical_mask = m1 + m2
-    ventricle_pixels = np.count_nonzero(
-        anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
-    myocardium_pixels = np.count_nonzero(
-        anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
+    ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
+    myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
     if ventricle_pixels == 0 and myocardium_pixels > MRI_MAX_MYOCARDIUM:
       erode_structure = _unit_disk(small_radius*1.5)
-      anatomical_mask = (anatomical_mask
-                         - binary_erosion(m1, erode_structure).astype(np.int))
-      ventricle_pixels = np.count_nonzero(
-          anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
+      anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
+      ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
     return overlay, anatomical_mask, ventricle_pixels
 
 
@@ -149,8 +142,7 @@ def plot_cardiac_long_axis(b_series, sides=7, fig_width=18, title_prefix=''):
   height = b_series[0].pixel_array.shape[0]
   width = b_series[0].pixel_array.shape[1]
   fig_height = int(np.ceil(fig_width * (height/width)))
-  fig, axes = plt.subplots(sides, sides,
-                           figsize=(fig_width, fig_height), facecolor='beige')
+  fig, axes = plt.subplots(sides, sides, figsize=(fig_width, fig_height), facecolor='beige')
   for dcm in b_series:
     idx = (dcm.InstanceNumber-1) % MRI_FRAMES
     if idx >= sides*sides:
@@ -206,8 +198,7 @@ def plot_cardiac_short_axis(series, transpose=False, fig_width=18,
     width = series[0].pixel_array.shape[1]
 
   fig_height = int(np.ceil(fig_width * ((rows * height)/(cols * width))))
-  fig, axes = plt.subplots(rows, cols,
-                           figsize=(fig_width, fig_height), facecolor='beige')
+  fig, axes = plt.subplots(rows, cols, figsize=(fig_width, fig_height), facecolor='beige')
   for dcm in series:
     col = (dcm.InstanceNumber-1)%cols
     row = (dcm.InstanceNumber-1)//cols
@@ -249,9 +240,8 @@ def plot_mri_series(sample_mri, dicoms, series_name, sax_sides,
       the proportion of the width based on the data to be plotted.
 
   """
-  title_prefix = (dicoms[series_name][0].SeriesDescription + ' from MRI '
-                  + os.path.basename(sample_mri))
-  print('Rendering ' + title_prefix)
+  title_prefix = f'{dicoms[series_name][0].SeriesDescription}  from MRI {os.path.basename(sample_mri)}'
+  print(f'Rendering {title_prefix}.')
   if 'cine_segmented_lax' in series_name:
     plot_cardiac_short_axis(dicoms[series_name],
                             transpose=lax_transpose,
@@ -263,7 +253,7 @@ def plot_mri_series(sample_mri, dicoms, series_name, sax_sides,
                            fig_width=fig_width,
                            title_prefix=title_prefix)
   else:
-    print('Visualization not currently implemented for ', series_name)
+    print(f'Visualization not currently implemented for {series_name}.')
     return None
 
 
@@ -286,12 +276,11 @@ def choose_mri_series(sample_mri):
       with zipfile.ZipFile(local_path, 'r') as zip_ref:
         zip_ref.extractall(tmpdirname)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-      return HTML('''
+      return HTML(f'''
       <div class="alert alert-block alert-danger">
-      <b>Warning:</b> Cardiac MRI not available for sample {}:
-      <hr><p><pre>{}</pre></p>
-      </div>
-      '''.format(os.path.basename(sample_mri), e.message))
+      <b>Warning:</b> Cardiac MRI not available for sample {os.path.basename(sample_mri)}:
+      <hr><p><pre>{e.message}</pre></p>
+      </div>''')
 
     filtered_dicoms = collections.defaultdict(list)
     series_descriptions = []
@@ -304,11 +293,9 @@ def choose_mri_series(sample_mri):
         filtered_dicoms[dcm.SeriesDescription.lower()].append(dcm)
       if 'cine_segmented_sax_inlinevf' == dcm.SeriesDescription.lower():
         cur_angle = (dcm.InstanceNumber - 1) // MRI_FRAMES
-        filtered_dicoms[dcm.SeriesDescription.lower() + '_angle_'
-                        + str(cur_angle)].append(dcm)
+        filtered_dicoms[f'{dcm.SeriesDescription.lower()}_angle_{str(cur_angle)}'].append(dcm)
 
-    print(os.path.basename(sample_mri) + ' contains: '
-          + str(sorted(set(series_descriptions))))
+    print(f'{os.path.basename(sample_mri)} contains: {str(sorted(set(series_descriptions)))}.')
 
     if filtered_dicoms:
       series_name_chooser = widgets.Dropdown(
@@ -350,52 +337,44 @@ def choose_mri_series(sample_mri):
            'fig_width': fig_width_chooser})
       display(viz_controls_ui, viz_controls_output)
     else:
-      print('\n\nNeither CINE_segmented_SAX_InlineVF nor CINE_segmented_LAX ',
-            'available in MRI for sample ',
-            os.path.basename(sample_mri),
+      print(f'\n\nNeither CINE_segmented_SAX_InlineVF nor CINE_segmented_LAX available in MRI for sample {os.path.basename(sample_mri)}.',
             '\n\nTry a different MRI.')
       return None
 
 
-def choose_cardiac_mri(sample_id, gcs_folder=None):
+def choose_cardiac_mri(sample_id, folder=None):
   """Render widget to choose the cardiac MRI to plot.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
-    gcs_folder: The local or Cloud Storage folder under which the files reside.
+    folder: The local or Cloud Storage folder under which the files reside.
 
   Returns:
     ipywidget or HTML upon error.
   """
-  if gcs_folder is None:
-    if 'fake' in str(sample_id):
-      gcs_folder = DEFAULT_MRI_FOLDERS['fake']
-    else:
-      gcs_folder = DEFAULT_MRI_FOLDERS['ukb']
+  if folder is None:
+    folder = get_cardiac_mri_folder(sample_id)
 
   sample_mri_glob = str(sample_id) + '_*.zip'
   try:
-    sample_mris = tf.io.gfile.glob(pattern=os.path.join(gcs_folder,
-                                                        sample_mri_glob))
+    sample_mris = tf.io.gfile.glob(pattern=os.path.join(folder, sample_mri_glob))
   except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-    return HTML('''
+    return HTML(f'''
     <div class="alert alert-block alert-danger">
-    <b>Warning:</b> Cardiac MRI not available for sample {}:
-    <hr><p><pre>{}</pre></p>
-    </div>
-    '''.format(sample_id, e.message))
+    <b>Warning:</b> Cardiac MRI not available for sample {sample_id}:
+    <hr><p><pre>{e.message}</pre></p>
+    </div>''')
 
   if not sample_mris:
-    return HTML('''
+    return HTML(f'''
     <div class="alert alert-block alert-danger">
-    <b>Warning:</b> Cardiac MRI not available for sample {}
-    </div>
-    '''.format(sample_id))
+    <b>Warning:</b> Cardiac MRI not available for sample {sample_id}
+    </div>''')
 
   mri_chooser = widgets.Dropdown(
       options=[(os.path.basename(mri), mri) for mri in sample_mris],
       value=sample_mris[0],
-      description='Choose an MRI to visualize for sample {}:'.format(sample_id),
+      description=f'Choose an MRI to visualize for sample {sample_id}:',
       style={'description_width': 'initial'},
       layout=widgets.Layout(width='800px')
   )
