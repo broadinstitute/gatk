@@ -549,8 +549,7 @@ public class AlignedBaseGraphCollection implements Serializable {
             final CigarOperator cigarOperator = cigarElement.getOperator();
 
             // Ignore hard clips and padding:
-            if ( cigarOperator.equals(CigarOperator.HARD_CLIP) || cigarOperator.equals(CigarOperator.PADDING) ||
-                 cigarOperator.equals(CigarOperator.SKIPPED_REGION)) {
+            if ( cigarOperator.equals(CigarOperator.HARD_CLIP) || cigarOperator.equals(CigarOperator.PADDING) ) {
                 continue;
             }
 
