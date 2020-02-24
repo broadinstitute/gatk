@@ -29,6 +29,19 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
     private final String countScript = "/dsde/working/tsato/consensus/tp53/test/bams/count_MIs.sh";
 
     @Test
+    public void testSimplex() {
+        final File out = new File("/dsde/working/tsato/consensus/tp53/test/tmp/simplex.bam");
+        final String cloud = "gs://fc-secure-429c9379-aa5e-4884-8c35-7a5b947efc37/9bd19b02-cdcd-4454-b332-1277758b8d4b/GenerateDuplexConsensusBams/00a10a89-3dc0-48a4-bb16-f19c69b45b96/call-FGBioGroupReadsByUmi/D04_denovo_bloodbiopsy_2-5pct_rep2.fgbio.groupByUmi.bam";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument("R", hg19)
+                .addArgument("I", cloud)
+                .addArgument("keep-only-simplex", "true")
+                .addArgument("O", out.getAbsolutePath());
+        runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
+    }
+
+    @Test
     public void testTemp() {
         final File out = new File("/dsde/working/tsato/consensus/tp53/test/tmp/test.bam");
         final String cloud = "gs://broad-dsde-methods/cromwell-execution-39/SpikeinNA12878/d6425c0d-4282-4a7b-bee9-f59134e500aa/call-GroupCoffee/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.bam";

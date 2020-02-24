@@ -29,16 +29,31 @@ public class InferOriginalReadTest extends CommandLineProgramTest {
     private final String tp53_AGA_TGA = tp53TestDir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.AGG-TGA.grouped.bam";
     private final String tp53_full_grouped = tp53TestDir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.umi_grouped.bam";
 
-    private final String mutectTestDir = "/Users/tsato/workspace/gatk/src/test/java/org/broadinstitute/hellbender/tools/walkers/mutect/";
-    private final String fgbioGroupByUMIScript = mutectTestDir + "fgbio_group_reads_by_umi.sh";
-    private final String fgbioConsensusScript = mutectTestDir + "fgbio_consensus.sh";
+    private final String consensusDir = "/Users/tsato/workspace/gatk/src/test/java/org/broadinstitute/hellbender/tools/walkers/mutect/consensus/";
+    private final String fgbioGroupByUMIScript = consensusDir + "fgbio_group_reads_by_umi.sh";
+    private final String fgbioConsensusScript = consensusDir + "fgbio_consensus.sh";
     // /Users/tsato/workspace/gatk/src/main/java/org/broadinstitute/hellbender/tools/walkers/mutect/sort.sh
-    private final String sortScript = mutectTestDir + "sort.sh";
-    private final String realignScript = mutectTestDir + "realign.sh";
-    private final String mergeBamAlignmentScript = mutectTestDir + "merge_bam_alignment.sh";
+    private final String sortScript = consensusDir + "sort.sh";
+    private final String realignScript = consensusDir + "realign.sh";
+    private final String mergeBamAlignmentScript = consensusDir + "merge_bam_alignment.sh";
 
     private final String homeDir = "/dsde/working/tsato/consensus/bams/synthetic-test/";
     private final String testDir = "/dsde/working/tsato/consensus/tp53/test/";
+
+    @Test
+    public void testNA12878Deletion(){
+        final String findLostReadsDir = "/dsde/working/tsato/consensus/indel/NA12878_truth/find-lost-reads/";
+        final String bam = findLostReadsDir +  "SM-EYXL1.RG_merged.chr22.deletion.bam";
+        final String groupedBam = findLostReadsDir + "SM-EYXL1.RG_merged.chr22.deletion.grouped.bam";
+        // runProcess(new ProcessController(), new String[]{ fgbioGroupByUMIScript, bam, groupedBam, findLostReadsDir });
+        // runProcess(new ProcessController(), new String[]{ realignScript, groupedBam, "SM-EYXL1.RG_merged.chr22.deletion", findLostReadsDir });
+        runProcess(new ProcessController(), new String[]{ fgbioConsensusScript, groupedBam, "SM-EYXL1.RG_merged.chr22.deletion", findLostReadsDir });
+        final String consensusBam = findLostReadsDir + "SM-EYXL1.RG_merged.chr22.deletion" + ".consensus.bam";
+        // runProcess(new ProcessController(), new String[]{ realignScript, consensusBam, "SM-EYXL1.RG_merged.chr22.deletion.consensus", findLostReadsDir });
+        // TODO: input to the file should be the output name
+        int d = 3;
+    }
+
 
     @Test
     public void test(){

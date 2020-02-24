@@ -27,5 +27,9 @@ ${reference} \
 "${fastq1_name}" \
 "${fastq2_name}" > "${out_dir}${base_name}".aligned.sam
 
+# sort the sam, thereby converting to bam
+samtools sort "${out_dir}${base_name}".aligned.sam -o "${out_dir}${base_name}".aligned.sorted.bam
+samtools index "${out_dir}${base_name}".aligned.sorted.bam "${out_dir}${base_name}".aligned.sorted.bai
+
 # Then MergeBamAlignment
 
