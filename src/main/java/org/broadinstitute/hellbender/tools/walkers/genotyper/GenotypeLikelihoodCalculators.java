@@ -281,6 +281,7 @@ public final class GenotypeLikelihoodCalculators {
      * @return never {@code null}.
      */
     public synchronized GenotypeLikelihoodCalculatorDRAGEN getInstanceDRAGEN(final int ploidy, final int alleleCount) {
+        Utils.validate(ploidy == 2, "DRAGEN genotyping mode currently only supports diploid samples");
         checkPloidyAndMaximumAllele(ploidy, alleleCount);
 
         if (calculateGenotypeCountUsingTables(ploidy, alleleCount) == GENOTYPE_COUNT_OVERFLOW) {
@@ -360,7 +361,7 @@ public final class GenotypeLikelihoodCalculators {
      *
      * @return the number of genotypes given ploidy and allele count (0 or greater).
      */
-    public int genotypeCount(final int ploidy, final int alleleCount) {
+    public synchronized int genotypeCount(final int ploidy, final int alleleCount) {
 
         final int result = calculateGenotypeCountUsingTables(ploidy, alleleCount);
         if (result == GENOTYPE_COUNT_OVERFLOW) {

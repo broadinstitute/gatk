@@ -22,21 +22,26 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
     private final int cachePloidyCapacity;
     private GenotypeLikelihoodCalculatorDRAGEN[][] likelihoodCalculators;
     private final GenotypeLikelihoodCalculators calculators;
+    private final boolean computeBQD;
+    private final boolean computeFRD;
 
     // We keep a fallback model in mind... this might want to be adjusted as implementation workds
     private final IndependentSampleGenotypesModel fallbackModel;
 
-    public DRAGENBQDGenotypesModel() { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY); }
+    public DRAGENBQDGenotypesModel() { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY, true, true); }
 
     /**
      *  Initialize model with given maximum allele count and ploidy for caching
      */
-    public DRAGENBQDGenotypesModel(final int calculatorCachePloidyCapacity, final int calculatorCacheAlleleCapacity) {
+    public DRAGENBQDGenotypesModel(final int calculatorCachePloidyCapacity, final int calculatorCacheAlleleCapacity,
+                                   final boolean useBQDModel, final boolean useFRDModel) {
         fallbackModel = new IndependentSampleGenotypesModel(calculatorCachePloidyCapacity, calculatorCacheAlleleCapacity);
         cachePloidyCapacity = calculatorCachePloidyCapacity;
         cacheAlleleCountCapacity = calculatorCacheAlleleCapacity;
         likelihoodCalculators = new GenotypeLikelihoodCalculatorDRAGEN[calculatorCachePloidyCapacity][calculatorCacheAlleleCapacity];
         calculators = new GenotypeLikelihoodCalculators();
+        this.computeBQD = useBQDModel;
+        this.computeFRD = useFRDModel;
     }
 
 //    @Override TODO unify the two calling infrastructures
@@ -46,7 +51,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
         Utils.nonNull(data, "the genotyping data cannot be null");
 
         // for right now, don't handle any deletions whatsoever
-        // Also for right now lets not worry too much abotu alleles. 
+        // Also for right now lets not worry too much abotu alleles.
         if (FRDBQDUtils.containsInsertionOrDeletion(genotypingAlleles) || data.numberOfAlleles() > 3) {
             return fallbackModel.calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent);
         }
@@ -124,17 +129,17 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             double[] BQDCallResults = null;
             double[] FRDCallResults = null;
 
-            if (true) { // TODO this will become a switch to do frd work or bqd work calling out to the things
+            if (computeBQD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
                 double forwardHomopolymerAdjustment = FRDBQDUtils.computeForwardHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent);
                 double reverseHomopolymerAdjustment = FRDBQDUtils.computeReverseHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent);
-                BQDCallResults = likelihoodsCalculator.calculateBQDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment);
+                BQDCallResults = likelihoodsCalculator.calculateBQDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment, calculators);
             }
 
             System.out.println("Genotyping model results for genotypes given BQD results");
             System.out.println(Arrays.asList(BQDCallResults));
 
-            if (false) { // TODO this will become a switch to do frd work or bqd work calling out to the things
-//                FRDCallResults = likelihoodsCalculator.calculateBQDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment);
+            if (computeFRD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
+                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment);
             }
 
             System.out.println("Genotyping model results for genotypes given FRD results");
@@ -163,6 +168,11 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             likelihoodCalculators[samplePloidy][alleleCount] = newOne;
             return newOne;
         }
-        return null;
+    }
 
+    // TODO this can be done away with at some future date
+    @Override
+    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(AlleleList<A> genotypingAlleles, GenotypingData<A> data) {
+        return null;
+    }
 }
