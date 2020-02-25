@@ -1201,4 +1201,25 @@ public final class AlignmentUtilsUnitTest {
 
         Assert.assertEquals(originalCigar.equals(newCigar), !cigar.endsWith("D"));
     }
+
+    @DataProvider(name = "ReadStartOnReferenceHaplotypeData")
+    public Object[][] makeReadStartOnReferenceHaplotypeData() {
+        List<Object[]> tests = new ArrayList<>();
+        tests.add(new Object[]{ "30M5D20M", 50, 55 });
+        tests.add(new Object[]{ "30M5I20M", 50, 45 });
+        tests.add(new Object[]{ "55M", 50, 50 });
+        tests.add(new Object[]{ "30M5D30M5D30M", 80, 90 });
+        tests.add(new Object[]{ "30M5D30M5I30M", 80, 80 });
+        tests.add(new Object[]{ "30M5D30M5I30M", 80, 80 });
+
+        return tests.toArray(new Object[][]{});
+    }
+
+
+    @Test(dataProvider = "ReadStartOnReferenceHaplotypeData")
+    public void testReadStartOnReferenceHaplotype(final String cigar, final int readStartOnHaplotype, final int expectedOffsetInRef){
+        final Cigar haplotypeVsRefCigar = TextCigarCodec.decode(cigar);
+        final int offsetInRef = AlignmentUtils.readStartOnReferenceHaplotype(haplotypeVsRefCigar, readStartOnHaplotype);
+        Assert.assertEquals(offsetInRef, expectedOffsetInRef);
+    }
 }

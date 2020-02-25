@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.read;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -959,14 +960,15 @@ public final class AlignmentUtils {
 
     /**
      * Given a read's first aligned base on an alt haplotype, find the first aligned base in the reference haplotype.  This
-     * mthod assumes that the alt haplotype and reference haplotype start at the same place.  That is, the alt haplotype
+     * method assumes that the alt haplotype and reference haplotype start at the same place.  That is, the alt haplotype
      * starts at index 0 within the reference base array.
      *
      * @param haplotypeVsRefCigar
      * @param readStartOnHaplotype
      * @return
      */
-    private static int readStartOnReferenceHaplotype(final Cigar haplotypeVsRefCigar, final int readStartOnHaplotype) {
+    @VisibleForTesting
+    static int readStartOnReferenceHaplotype(final Cigar haplotypeVsRefCigar, final int readStartOnHaplotype) {
         if (readStartOnHaplotype == 0) {
             return 0;
         }
