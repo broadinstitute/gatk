@@ -4,9 +4,11 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.Cigar;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.util.Interval;
@@ -25,6 +27,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.AlignmentAgreesWithHeaderReadFilter;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -142,13 +145,20 @@ public final class CollectFragmentCounts extends ReadWalker {
             "a non-splicing aligner (such as bwa). ")
     private boolean spliced = true;
 
-    final private LinkedHashSet<FeatureCoverage> featureCounts = new LinkedHashSet<>();
+    final private LinkedHashMap<Gff3BaseData, FeatureCoverage> featureCounts = new LinkedHashMap<>();
 
     final private OverlapDetector<Pair<FeatureCoverage, Gff3BaseData>> featureOverlapDetector = new OverlapDetector<>(0,0);
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
-        final List<ReadFilter> readFilters = new ArrayList<>(super.getDefaultReadFilters());
+        final List<ReadFilter> readFilters = new ArrayList<>();
+        readFilters.add(ReadFilterLibrary.VALID_ALIGNMENT_START);
+        readFilters.add(ReadFilterLibrary.VALID_ALIGNMENT_END);
+        readFilters.add(new AlignmentAgreesWithHeaderReadFilter(getHeaderForReads()));
+        readFilters.add(ReadFilterLibrary.HAS_READ_GROUP);
+        readFilters.add(ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS);
+        readFilters.add(ReadFilterLibrary.READLENGTH_EQUALS_CIGARLENGTH);
+        readFilters.add(ReadFilterLibrary.SEQ_IS_STORED);
         readFilters.add(ReadFilterLibrary.MAPPED);
         readFilters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
         readFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
@@ -156,6 +166,7 @@ public final class CollectFragmentCounts extends ReadWalker {
         readFilters.add(ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE);
         readFilters.add(new InwardFragmentsFilter());
         readFilters.add(ReadFilterLibrary.PRIMARY_LINE);
+        readFilters.add(new NotMultiMappingReadFilter());
         //readFilters.add(new GoodPairReadFilter());
         return readFilters;
     }
@@ -198,9 +209,11 @@ public final class CollectFragmentCounts extends ReadWalker {
             throw new UserException("no geneid field " + gene_id_key + " found in feature at " + groupingBaseData.getContig() + ":" + groupingBaseData.getStart() + "-" + groupingBaseData.getEnd());
         }
 
-        final FeatureCoverage featureCoverage = new FeatureCoverage(groupingBaseData, groupingBaseData.getStrand() != Strand.NONE);
+        final FeatureCoverage featureCoverage = featureCounts.computeIfAbsent(groupingBaseData,
+                g -> new FeatureCoverage(g, g.getStrand() != Strand.NONE));
         featureOverlapDetector.addLhs(Pair.of(featureCoverage, overlappingBaseData), overlappingBaseData);
-        featureCounts.add(featureCoverage);
+
+
     }
 
     private void validateArguments() {
@@ -240,7 +253,9 @@ public final class CollectFragmentCounts extends ReadWalker {
     private List<SimpleInterval> getAlignmentIntervals(final GATKRead read) {
 
         if (spliced) {
-            final IntervalList alignmentIntervals = new IntervalList(getMasterSequenceDictionary());
+            final SAMFileHeader intervalHeader = new SAMFileHeader(getMasterSequenceDictionary());
+            intervalHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+            final IntervalList alignmentIntervals = new IntervalList(intervalHeader);
             final SAMRecord rec = read.convertToSAMRecord(getHeaderForReads());
             if(SAMUtils.getMateCigar(rec) == null) {
                 throw new GATKException("Mate cigar must be present if using spliced reads");
@@ -264,7 +279,8 @@ public final class CollectFragmentCounts extends ReadWalker {
                 }
             }
             if (overlapsMate) {
-                alignmentIntervals.unique();
+                //alignmentIntervals.unique();
+                return IntervalList.getUniqueIntervals(alignmentIntervals, true).stream().map(i -> new SimpleInterval(i.getContig(), i.getStart(), i.getEnd())).collect(Collectors.toList());
             }
             return alignmentIntervals.getIntervals().stream().map(i -> new SimpleInterval(i.getContig(), i.getStart(), i.getEnd())).collect(Collectors.toList());
         } else {
@@ -285,20 +301,45 @@ public final class CollectFragmentCounts extends ReadWalker {
 
             final Strand fragmentStrand = getFragmentStrand(read);
 
-            final int basesOnReference = alignmentIntervals.stream().map(SimpleInterval::getLengthOnReference).reduce(0, Integer::sum);
-            for (final Pair<FeatureCoverage, Gff3BaseData> featureCoverageGff3BaseDataPair : features) {
-                final FeatureCoverage featureCoverage = featureCoverageGff3BaseDataPair.getLeft();
-                final Gff3BaseData overlapBaseData = featureCoverageGff3BaseDataPair.getRight();
-                final boolean isSense = !featureCoverage.isStranded || overlapBaseData.getStrand() == fragmentStrand;
 
-                for (final SimpleInterval interval : alignmentIntervals) {
-                    if(interval.overlaps(overlapBaseData)) {
-                        if (isSense) {
-                            featureCoverage.addSenseCount((float)interval.intersect(overlapBaseData).size() / (float) basesOnReference);
-                        } else {
-                            featureCoverage.addAntiSenseCount((float) interval.intersect(overlapBaseData).size() / (float) basesOnReference);
+
+            final int basesOnReference = alignmentIntervals.stream().map(SimpleInterval::getLengthOnReference).reduce(0, Integer::sum);
+            final Map<FeatureCoverage, Set<Gff3BaseData>> overlapsByGroupingFeatures = new LinkedHashMap<>();
+            for (final Pair<FeatureCoverage, Gff3BaseData> feature : features) {
+                final Set<Gff3BaseData> overlappingFeatures = overlapsByGroupingFeatures.computeIfAbsent(feature.getLeft(), b -> new HashSet<>());
+                overlappingFeatures.add(feature.getRight());
+            }
+//            final Map<FeatureCoverage, Set<Gff3BaseData>> overlapsByGroupingFeatures = features.stream().collect(Collectors.groupingBy(
+//                    Pair::getLeft, Collectors.mapping(
+//                            Pair::getRight,Collectors.toSet())
+//                    )
+//            );
+
+            final int nGroupingFeaturesCovered = overlapsByGroupingFeatures.size();
+            for (final Map.Entry<FeatureCoverage, Set<Gff3BaseData>> overlapsByGroupingFeature : overlapsByGroupingFeatures.entrySet()) {
+                final FeatureCoverage featureCoverage = overlapsByGroupingFeature.getKey();
+                final boolean isSense = !featureCoverage.isStranded || featureCoverage.baseData.getStrand() == fragmentStrand;
+
+                float maxCounts = 0;
+                for (final Gff3BaseData overlapBaseData : overlapsByGroupingFeature.getValue()) {
+                    if (!overlapBaseData.getStrand().equals(featureCoverage.baseData.getStrand())) {
+                        throw new GATKException("Grouping feature " + featureCoverage.baseData.getId() + " and subfeature " + overlapBaseData.getId() + " are on different strands (" + overlapBaseData.getStrand() + "," + featureCoverage.baseData.getStrand() + ")");
+                    }
+                    float thisCounts = 0;
+                    for (final SimpleInterval interval : alignmentIntervals) {
+                        if (interval.overlaps(overlapBaseData)) {
+                            thisCounts += 1.0/(float)nGroupingFeaturesCovered;
+                            //thisCounts += (float) interval.intersect(overlapBaseData).size() / (float) basesOnReference;
                         }
                     }
+                    if (thisCounts>maxCounts) {
+                        maxCounts = thisCounts;
+                    }
+                }
+                if (isSense) {
+                    featureCoverage.addSenseCount(maxCounts);
+                } else {
+                    featureCoverage.addAntiSenseCount(maxCounts);
                 }
             }
         }
@@ -314,7 +355,7 @@ public final class CollectFragmentCounts extends ReadWalker {
                 i++;
             }
             writer.writeMetadata("annotation_file", gffFile.toString());
-            for (final FeatureCoverage featureCoverage : featureCounts) {
+            for (final FeatureCoverage featureCoverage : featureCounts.values()) {
                 for (final SingleStrandFeatureCoverage singleStrandFeatureCoverage : featureCoverage.getSingleStrandCoverages()) {
                     writer.writeRecord(singleStrandFeatureCoverage);
                 }
@@ -406,6 +447,13 @@ public final class CollectFragmentCounts extends ReadWalker {
             this.baseData = baseData;
             this.count = count;
             this.sense = sense;
+        }
+    }
+
+    public class NotMultiMappingReadFilter extends ReadFilter {
+        @Override
+        public boolean test(GATKRead read) {
+            return read.hasAttribute(SAMTag.NH.toString()) && read.getAttributeAsInteger(SAMTag.NH.toString()) == 1;
         }
     }
 
