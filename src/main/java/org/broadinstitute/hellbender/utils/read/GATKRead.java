@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Unified read interface for use throughout the GATK.
@@ -605,18 +606,23 @@ public interface GATKRead extends Locatable {
      * Computes the pair orientation
      * @throws IllegalArgumentException If the read is not paired, or if either read or mate is unmapped
      */
-    default SamPairUtil.PairOrientation getPairOrientation() {
-        Utils.validateArg(isPaired() && !isUnmapped() && !mateIsUnmapped(), () -> "Invalid read: " + getName() + ". This requires paired reads with both reads aligned.");
-isProperlyPaired()
+    default Optional<SamPairUtil.PairOrientation> getPairOrientation() {
+        Utils.validateArg(isPaired(), () -> "Invalid read: " + getName() + " is not paired.");
+
+        // while we throw an error for unpaired reads -- because in that case this method is irrelevant to the sequencing protocol --
+        // we return Optional.empty() for paired reads whose orientation can't be determined
+        if (isUnmapped() || mateIsUnmapped() || !getContig().equals(getMateContig())) {
+            return Optional.empty();
+        }
         final boolean readIsOnReverseStrand = isReverseStrand();
 
         if(readIsOnReverseStrand == mateIsReverseStrand() )  {
-            return SamPairUtil.PairOrientation.TANDEM;
+            return Optional.of(SamPairUtil.PairOrientation.TANDEM);
         }
 
         final long positiveStrandFivePrimePos = readIsOnReverseStrand ?  getMateStart() :  getStart();
         final long negativeStrandFivePrimePos = readIsOnReverseStrand ?  getEnd() : getStart() + getFragmentLength();
-        return positiveStrandFivePrimePos < negativeStrandFivePrimePos ? SamPairUtil.PairOrientation.FR : SamPairUtil.PairOrientation.RF;
+        return Optional.of(positiveStrandFivePrimePos < negativeStrandFivePrimePos ? SamPairUtil.PairOrientation.FR : SamPairUtil.PairOrientation.RF);
     }
 
     /**

@@ -12,6 +12,7 @@ import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -1381,6 +1382,35 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         Assert.assertEquals(read.convertToSAMRecord(hg19Header).getMateAlignmentStart(), SAMRecord.NO_ALIGNMENT_START);
     }
 
+    @DataProvider(name = "pair_orientation_empty_results")
+    public Object[][] pairOrientationEmpty() {
+        final GATKRead unmappedRead = ArtificialReadUtils.createArtificialRead("100M");
+        unmappedRead.setIsPaired(true);
+        unmappedRead.setIsUnmapped();
+
+        final GATKRead mateUnmappedRead = ArtificialReadUtils.createArtificialRead("100M");
+        mateUnmappedRead.setIsPaired(true);
+        mateUnmappedRead.setIsUnmapped();
+
+        final GATKRead mateOnDifferentContigRead = ArtificialReadUtils.createArtificialRead("100M");
+        mateOnDifferentContigRead.setIsPaired(true);
+        mateOnDifferentContigRead.setIsReverseStrand(false);
+        mateOnDifferentContigRead.setMateIsReverseStrand(true);
+        mateOnDifferentContigRead.setPosition(new SimpleInterval("1", 100, 200));
+        mateOnDifferentContigRead.setMatePosition(new SimpleInterval("2", 200, 300));
+
+        return new Object[][]{
+                {unmappedRead},
+                {mateUnmappedRead},
+                {mateOnDifferentContigRead}
+        };
+    }
+
+    @Test(dataProvider = "pair_orientation_empty_results")
+    public void testGetPairOrientationEmpty(final GATKRead read) {
+        Assert.assertFalse(read.getPairOrientation().isPresent());
+    }
+
     @DataProvider(name = "pair_orientation_failures")
     public Object[][] pairOrientationFailures() {
         final GATKRead unpairedRead = ArtificialReadUtils.createArtificialRead("100M");
@@ -1395,15 +1425,13 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         mateUnmappedRead.setIsUnmapped();
 
         return new Object[][]{
-                {unpairedRead},
-                {unmappedRead},
-                {mateUnmappedRead},
+                {unpairedRead}
         };
     }
 
     @Test(dataProvider = "pair_orientation_failures", expectedExceptions = IllegalArgumentException.class)
     public void testGetPairOrientationFailures(final GATKRead read) {
-        final SamPairUtil.PairOrientation pairOrientation = read.getPairOrientation();
+        final Optional<SamPairUtil.PairOrientation> pairOrientation = read.getPairOrientation();
     }
 
     @DataProvider(name = "pair_orientation")
@@ -1466,7 +1494,7 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "pair_orientation")
     public void testGetPairOrientation(final GATKRead read, final SamPairUtil.PairOrientation expected) {
-        final SamPairUtil.PairOrientation pairOrientation = read.getPairOrientation();
+        final SamPairUtil.PairOrientation pairOrientation = read.getPairOrientation().get();
         Assert.assertEquals(pairOrientation, expected);
     }
 }
