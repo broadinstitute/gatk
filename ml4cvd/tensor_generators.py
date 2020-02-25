@@ -66,10 +66,12 @@ class _WeightedPaths(Iterator):
 
 
 class TensorGenerator:
-    def __init__(self, batch_size, input_maps, output_maps, paths, num_workers, cache_size, weights=None, keep_paths=False, mixup=0.0, name='worker', siamese=False):
+    def __init__(self, batch_size, input_maps, output_maps, paths, num_workers, cache_size,
+                 weights=None, keep_paths=False, mixup=0.0, name='worker', siamese=False, augment=False):
         """
         :param paths: If weights is provided, paths should be a list of path lists the same length as weights
         """
+        self.augment = augment
         self.run_on_main_thread = num_workers == 0
         self.q = None
         self._started = False
@@ -115,6 +117,7 @@ class TensorGenerator:
                 self.batch_function, self.batch_size, self.keep_paths, self.batch_function_kwargs,
                 self.cache_size,
                 name,
+                self.augment,
             )
             self.worker_instances.append(worker_instance)
             if not self.run_on_main_thread:
@@ -210,6 +213,7 @@ class _MultiModalMultiTaskWorker:
                  batch_function: BatchFunction, batch_size: int, return_paths: bool, batch_func_kwargs: Dict,
                  cache_size: float,
                  name: str,
+                 augment: bool,
                  ):
         self.q = q
         self.input_maps = input_maps
@@ -222,6 +226,7 @@ class _MultiModalMultiTaskWorker:
         self.batch_func_kwargs = batch_func_kwargs
         self.cache_size = cache_size
         self.name = name
+        self.augment = augment
 
         self.stats = Counter()
         self.epoch_stats = Counter()
@@ -252,7 +257,7 @@ class _MultiModalMultiTaskWorker:
             return self.hd5
         if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
             self.hd5 = h5py.File(path, 'r')
-        tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, self.hd5, self.dependents))
+        tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, self.hd5, self.dependents), augment=self.augment)
         batch[name][idx] = tensor
         if tm.cacheable:
             self.cache[path, name] = tensor
@@ -519,9 +524,9 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
     else:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv)
         weights = None
-    generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese)
-    generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, weights, keep_paths, name='validation_worker', siamese=siamese)
-    generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, 0, weights, keep_paths or keep_paths_test, name='test_worker', siamese=siamese)
+    generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese, augment=True)
+    generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, weights, keep_paths, name='validation_worker', siamese=siamese, augment=False)
+    generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, 0, weights, keep_paths or keep_paths_test, name='test_worker', siamese=siamese, augment=False)
     return generate_train, generate_valid, generate_test
 
 

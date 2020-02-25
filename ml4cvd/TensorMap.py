@@ -72,6 +72,7 @@ class TensorMap(object):
                  channel_map: Optional[Dict[str, int]] = None,
                  storage_type: Optional[StorageType] = None,
                  dependent_map: Optional[str] = None,
+                 augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
                  normalization: Optional[Dict[str, Any]] = None,  # TODO what type is this really?
                  annotation_units: Optional[int] = 32,
                  tensor_from_file: Optional[Callable] = None,
@@ -95,6 +96,7 @@ class TensorMap(object):
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
         :param storage_type: StorageType of tensor map
         :param dependent_map: TensorMap that depends on or is determined by this one
+        :param augmentations: Tensor shape preserving transformations not applied at validation or test time
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
@@ -117,6 +119,7 @@ class TensorMap(object):
         self.loss_weight = loss_weight
         self.channel_map = channel_map
         self.storage_type = storage_type
+        self.augmentations = augmentations
         self.normalization = normalization
         self.dependent_map = dependent_map
         self.annotation_units = annotation_units
@@ -262,8 +265,9 @@ class TensorMap(object):
         return keras.utils.to_categorical(np.digitize(np_tensor, bins=self.discretization_bounds),
                                           num_classes=len(self.discretization_bounds) + 1)
 
-    def postprocess_tensor(self, np_tensor):
+    def postprocess_tensor(self, np_tensor, augment: bool):
         self.validator(self, np_tensor)
+        np_tensor = self.apply_augmentations(np_tensor, augment)
         np_tensor = self.normalize(np_tensor)
         return self.discretize(np_tensor)
 
@@ -278,6 +282,12 @@ class TensorMap(object):
             return self.zero_mean_std1(np_tensor)
         else:
             return np_tensor
+
+    def apply_augmentations(self, tensor: np.ndarray, augment: bool) -> np.ndarray:
+        if augment and self.augmentations is not None:
+            for augmentation in self.augmentations:
+                tensor = augmentation(tensor)
+        return tensor
 
 
 def make_range_validator(minimum: float, maximum: float):
