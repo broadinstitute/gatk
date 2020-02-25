@@ -32,16 +32,6 @@ def create_scheduler(lr_min: float, lr_init: float, lr_decay: float, beta1: floa
     })
 
 
-def initialize_guide(svi: SVI, model: SVGenotyperPyroModel, data: SVGenotyperData) -> float:
-    n_latent_dim = model.get_latent_dim(data.pe_t.shape[0])
-    loc_init = torch.zeros(n_latent_dim, device=model.device)
-    pyro.param("auto_loc", loc_init)
-    scale_init = torch.ones(n_latent_dim, device=model.device)
-    pyro.param("auto_scale", scale_init, constraint=constraints.positive)
-    return svi.loss(model.model, model.guide, data_pe=data.pe_t, data_sr1=data.sr1_t, data_sr2=data.sr2_t,
-                    depth_t=data.depth_t, rd_gt_prob_t=data.rd_gt_prob_t)
-
-
 def run_training(model: SVGenotyperPyroModel,
                  data: SVGenotyperData,
                  args) -> List[float]:
@@ -54,10 +44,7 @@ def run_training(model: SVGenotyperPyroModel,
     else:
         loss = TraceEnum_ELBO()
     svi = SVI(model.model, model.guide, optim=scheduler, loss=loss)
-    initial_loss = initialize_guide(svi=svi, model=model, data=data)
     train_elbo = []
-
-    logging.info("Initial loss: {:.4f}".format(initial_loss))
     logging.info("Running model training...")
     # Run training loop.  Use try to allow for keyboard interrupt.
     try:
@@ -94,7 +81,9 @@ def run(args):
     for svtype in [SVTypes.DEL, SVTypes.DUP, SVTypes.INS, SVTypes.INV]:
         model = SVGenotyperPyroModel(svtype=svtype, k=args.num_states, mu_eps_pe=args.eps_pe, mu_eps_sr1=args.eps_sr1,
                                      mu_eps_sr2=args.eps_sr2, mu_lambda_pe=args.lambda_pe, mu_lambda_sr1=args.lambda_sr1,
-                                     mu_lambda_sr2=args.lambda_sr2, device=args.device)
+                                     mu_lambda_sr2=args.lambda_sr2, var_phi_pe=args.var_phi_pe,
+                                     var_phi_sr1=args.var_phi_sr1, var_phi_sr2=args.var_phi_sr2, mu_eta_q=args.mu_eta_q,
+                                     mu_eta_r=args.mu_eta_r, device=args.device)
         vids_np, data = load_data(vcf_path=args.vcf,
                                   mean_coverage_path=args.coverage_file,
                                   svtype=svtype,
@@ -128,6 +117,10 @@ def get_output(vids_np: np.ndarray, genotypes: dict, stats: dict, args):
             eps_pe = stats['eps_pe']['mean'][i]
         else:
             eps_pe = 0
+        if 'phi_pe' in stats:
+            phi_pe = stats['phi_pe']['mean'][i]
+        else:
+            phi_pe = 0
         output_dict[vid] = {
             'gt': genotypes['gt'][i, :],
             'gt_p': genotypes['gt_p'][i, :],
@@ -138,7 +131,10 @@ def get_output(vids_np: np.ndarray, genotypes: dict, stats: dict, args):
             'p_m_rd': stats['m_rd']['mean'][i],
             'eps_pe': eps_pe * args.eps_pe,
             'eps_sr1': stats['eps_sr1']['mean'][i] * args.eps_sr1,
-            'eps_sr2': stats['eps_sr2']['mean'][i] * args.eps_sr2
+            'eps_sr2': stats['eps_sr2']['mean'][i] * args.eps_sr2,
+            'phi_pe': phi_pe * args.mu_phi_pe,
+            'phi_sr1': stats['phi_sr1']['mean'][i] * args.mu_phi_sr1,
+            'phi_sr2': stats['phi_sr2']['mean'][i] * args.mu_phi_sr2
         }
     return output_dict
 
@@ -152,7 +148,13 @@ def get_global_stats(stats: dict):
         'pi_sr2_mean': stats['pi_sr2']['mean'],
         'pi_sr2_std': stats['pi_sr2']['std'],
         'pi_rd_mean': stats['pi_rd']['mean'],
-        'pi_rd_std': stats['pi_rd']['std']
+        'pi_rd_std': stats['pi_rd']['std'],
+        'lambda_pe_mean': stats['lambda_pe']['mean'],
+        'lambda_pe_std': stats['lambda_pe']['std'],
+        'lambda_sr1_mean': stats['lambda_sr1']['mean'],
+        'lambda_sr1_std': stats['lambda_sr1']['std'],
+        'lambda_sr2_mean': stats['lambda_sr2']['mean'],
+        'lambda_sr2_std': stats['lambda_sr2']['std'],
     }
 
 
@@ -161,8 +163,9 @@ def get_predictive_stats(samples: dict):
 
 
 def get_discrete_stats(samples: dict):
+    discrete_sites = ['m_pe', 'm_sr1', 'm_sr2', 'm_rd']
     return {key: {'mean': samples[key].astype(dtype='float').mean(axis=0).squeeze(),
-                  'std': samples[key].astype(dtype='float').std(axis=0).squeeze()} for key in ['m_pe', 'm_sr1', 'm_sr2', 'm_rd']}
+                  'std': samples[key].astype(dtype='float').std(axis=0).squeeze()} for key in discrete_sites}
 
 
 def get_genotypes(freq_z: dict):

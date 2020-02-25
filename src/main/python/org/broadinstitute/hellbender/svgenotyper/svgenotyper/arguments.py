@@ -22,6 +22,11 @@ def parse_args():
     parser.add_argument('--lambda-pe', default=0.1, type=float, help='Mean of PE variance factor prior')
     parser.add_argument('--lambda-sr1', default=0.1, type=float, help='Mean of SR1 variance factor prior')
     parser.add_argument('--lambda-sr2', default=0.1, type=float, help='Mean of SR2 variance factor prior')
+    parser.add_argument('--var-phi-pe', default=0.1, type=float, help='Variance of PE bias prior')
+    parser.add_argument('--var-phi-sr1', default=0.1, type=float, help='Variance of SR1 bias prior')
+    parser.add_argument('--var-phi-sr2', default=0.1, type=float, help='Variance of SR2 bias prior')
+    parser.add_argument('--mu-eta-q', default=0.1, type=float, help='Mean of allele frequency prior')
+    parser.add_argument('--mu-eta-r', default=0.1, type=float, help='Mean of secondary allele prior (DUP only)')
 
     parser.add_argument('--lr-decay', default=1000., type=float, help='Learning rate decay constant (lower is faster)')
     parser.add_argument('--lr-min', default=1e-4, type=float, help='Minimum learning rate')
@@ -44,4 +49,3 @@ def parse_args():
 
     print('Arguments are', args)
     return args
-

@@ -4,9 +4,8 @@ from pyro import poutine
 from pyro.ops.indexing import Vindex
 from pyro.infer import config_enumerate, Predictive, infer_discrete
 from pyro.infer.autoguide import AutoDiagonalNormal
-
-import logging
 import torch
+import logging
 
 from .constants import SVTypes
 
@@ -35,6 +34,11 @@ class SVGenotyperPyroModel(object):
                  mu_lambda_pe: float = 0.1,
                  mu_lambda_sr1: float = 0.1,
                  mu_lambda_sr2: float = 0.1,
+                 var_phi_pe: float = 0.1,
+                 var_phi_sr1: float = 0.1,
+                 var_phi_sr2: float = 0.1,
+                 mu_eta_q: float = 0.1,
+                 mu_eta_r: float = 0.01,
                  device: str = 'cpu'):
         self.k = k
         self.mu_eps_pe = mu_eps_pe
@@ -43,33 +47,31 @@ class SVGenotyperPyroModel(object):
         self.mu_lambda_pe = mu_lambda_pe
         self.mu_lambda_sr1 = mu_lambda_sr1
         self.mu_lambda_sr2 = mu_lambda_sr2
+        self.var_phi_pe = var_phi_pe
+        self.var_phi_sr1 = var_phi_sr1
+        self.var_phi_sr2 = var_phi_sr2
+        self.mu_eta_q = mu_eta_q,
+        self.mu_eta_r = mu_eta_r,
         self.svtype = svtype
         self.device = device
         self.loss = {'train': {'epoch': [], 'elbo': []},
                      'test': {'epoch': [], 'elbo': []}}
 
-        if svtype == SVTypes.DEL or svtype == SVTypes.DUP:
-            self.latent_sites = ['eps_pe', 'eps_sr1', 'eps_sr2', 'pi_pe', 'pi_sr1', 'pi_sr2', 'pi_rd', 'var_pe',
-                                 'var_sr1', 'var_sr2']
+        if svtype == SVTypes.DEL:
+            self.latent_sites = ['eta', 'epsilon_pe', 'epsilon_sr1', 'epsilon_sr2', 'var_pe', 'var_sr1', 'var_sr2',
+                                 'phi_pe', 'phi_sr1', 'phi_sr2']
+        elif svtype == SVTypes.DUP:
+            self.latent_sites = ['eta', 'zeta', 'epsilon_pe', 'epsilon_sr1', 'epsilon_sr2', 'var_pe', 'var_sr1',
+                                 'var_sr2', 'phi_pe', 'phi_sr1', 'phi_sr2']
         elif svtype == SVTypes.INS:
-            self.latent_sites = ['eps_sr1', 'eps_sr2', 'pi_sr1', 'pi_sr2', 'var_sr1', 'var_sr2']
+            self.latent_sites = ['eta', 'epsilon_sr1', 'epsilon_sr2', 'var_sr1', 'var_sr2', 'phi_sr1', 'phi_sr2']
         elif svtype == SVTypes.INV:
-            self.latent_sites = ['eps_pe', 'eps_sr1', 'eps_sr2', 'pi_sr1', 'pi_sr2', 'pi_pe' 'var_pe', 'var_sr1',
-                                 'var_sr2']
+            self.latent_sites = ['eta', 'epsilon_pe', 'epsilon_sr1', 'epsilon_sr2', 'var_pe', 'var_sr1', 'var_sr2',
+                                 'phi_pe', 'phi_sr1', 'phi_sr2']
         else:
             raise ValueError('SV type {:s} not supported for genotyping.'.format(str(svtype.name)))
 
         self.guide = AutoDiagonalNormal(poutine.block(self.model, expose=self.latent_sites))
-
-    def get_latent_dim(self, n_variants: int):
-        if self.svtype == SVTypes.DEL or self.svtype == SVTypes.DUP:
-            return 4 + n_variants * 3
-        elif self.svtype == SVTypes.INS:
-            return 2 + n_variants * 2
-        elif self.svtype == SVTypes.INV:
-            return 3 + n_variants * 3
-        else:
-            raise ValueError('SV type {:s} not supported for genotyping.'.format(str(self.svtype.name)))
 
     @config_enumerate(default="parallel")
     def model(self,
@@ -83,22 +85,20 @@ class SVGenotyperPyroModel(object):
         n_samples = data_pe.shape[1]
         zero_t = torch.zeros(1, device=self.device)
         one_t = torch.ones(1, device=self.device)
-        k_range_t = torch.arange(1, self.k).to(device=self.device)
-        ones_vsk1_t = torch.ones(n_variants, n_samples, self.k - 1, device=self.device)
-        w_uniform_t = torch.ones(self.k, device=self.device) / self.k
+        k_range_t = torch.arange(0, self.k).to(dtype=torch.get_default_dtype(), device=self.device)
 
         pi_sr1 = pyro.sample('pi_sr1', dist.Beta(one_t, one_t))
         pi_sr2 = pyro.sample('pi_sr2', dist.Beta(one_t, one_t))
 
-        var_sr1 = pyro.sample('var_sr1', dist.Exponential(one_t)) * self.mu_lambda_sr1
-        var_sr2 = pyro.sample('var_sr2', dist.Exponential(one_t)) * self.mu_lambda_sr2
+        lambda_sr1 = pyro.sample('lambda_sr1', dist.Exponential(one_t)) * self.mu_lambda_sr1
+        lambda_sr2 = pyro.sample('lambda_sr2', dist.Exponential(one_t)) * self.mu_lambda_sr2
 
         if self.svtype == SVTypes.DEL or self.svtype == SVTypes.DUP:
             pi_rd = pyro.sample('pi_rd', dist.Beta(one_t, one_t))
 
         if self.svtype != SVTypes.INS:
             pi_pe = pyro.sample('pi_pe', dist.Beta(one_t, one_t))
-            var_pe = pyro.sample('var_pe', dist.Exponential(one_t)) * self.mu_lambda_pe
+            lambda_pe = pyro.sample('lambda_pe', dist.Exponential(one_t)) * self.mu_lambda_pe
 
         with pyro.plate('variant', n_variants, dim=-2, device=self.device):
             if self.svtype == SVTypes.DEL or self.svtype == SVTypes.DUP:
@@ -107,59 +107,81 @@ class SVGenotyperPyroModel(object):
                 m_rd = zero_t.expand(n_variants).expand(n_variants).unsqueeze(-1)
 
             if self.svtype != SVTypes.INS:
-                eps_pe = pyro.sample('eps_pe', dist.Exponential(one_t)).unsqueeze(-1) * self.mu_eps_pe
-                eps_expanded_pe = eps_pe.expand(n_variants, n_samples, 1)
+                phi_pe = pyro.sample('phi_pe', dist.LogNormal(zero_t, self.var_phi_pe))
+                eps_pe = pyro.sample('eps_pe', dist.Exponential(one_t)) * self.mu_eps_pe
                 m_pe = pyro.sample('m_pe', dist.Bernoulli(pi_pe))
             else:
                 m_pe = zero_t.expand(n_variants).unsqueeze(-1)
 
-            eps_sr1 = pyro.sample('eps_sr1', dist.Exponential(one_t)).unsqueeze(-1) * self.mu_eps_sr1
-            eps_sr2 = pyro.sample('eps_sr2', dist.Exponential(one_t)).unsqueeze(-1) * self.mu_eps_sr2
-            eps_expanded_sr1 = eps_sr1.expand(n_variants, n_samples, 1)
-            eps_expanded_sr2 = eps_sr2.expand(n_variants, n_samples, 1)
+            phi_sr1 = pyro.sample('phi_sr1', dist.LogNormal(zero_t, self.var_phi_sr1))
+            phi_sr2 = pyro.sample('phi_sr2', dist.LogNormal(zero_t, self.var_phi_sr2))
+            eps_sr1 = pyro.sample('eps_sr1', dist.Exponential(one_t)) * self.mu_eps_sr1
+            eps_sr2 = pyro.sample('eps_sr2', dist.Exponential(one_t)) * self.mu_eps_sr2
             m_sr1 = pyro.sample('m_sr1', dist.Bernoulli(pi_sr1))
             m_sr2 = pyro.sample('m_sr2', dist.Bernoulli(pi_sr2))
 
+            eta_q = pyro.sample('eta_q', dist.Exponential(one_t)) * self.mu_eta_q
+            if self.k == 3:
+                q = 1. - torch.exp(-eta_q)
+                p = 1. - q
+                z0 = p * p
+                z1 = 2 * p * q
+                z2 = q * q
+                z_prior = torch.stack([z0, z1, z2], dim=-1)
+            elif self.k == 5:
+                eta_r = pyro.sample('eta_r', dist.Exponential(one_t)) * self.mu_eta_r
+                q = 1 - torch.exp(-eta_q)
+                r = (1 - q) * (1 - torch.exp(-eta_r))
+                p = 1 - q - r
+                z0 = p * p
+                z1 = 2 * q * p
+                z2 = 2 * p * r + q * q
+                z3 = 2 * q * r
+                z4 = r * r
+                z_prior = torch.stack([z0, z1, z2, z3, z4], dim=-1)
+            else:
+                raise ValueError("Unsupported number of states K = {:d}".format(self.k))
+
             with pyro.plate('sample', n_samples, dim=-1, device=self.device):
 
-                z_weights = m_rd.unsqueeze(-1) * rd_gt_prob_t + (one_t - m_rd.unsqueeze(-1)) * w_uniform_t
+                if self.svtype != SVTypes.INS:
+                    # V x 1 x K
+                    m1_locs_pe = phi_pe.unsqueeze(-1) * k_range_t.unsqueeze(0).unsqueeze(0) + eps_pe.unsqueeze(-1)
+                    # V x S x K
+                    m0_locs_pe = eps_pe.unsqueeze(-1).expand(n_variants, n_samples, self.k)
+                    # V x S x K
+                    locs_pe = (1. - m_pe.unsqueeze(-1)) * m0_locs_pe + m_pe.unsqueeze(-1) * m1_locs_pe
+
+                # V x 1 x K
+                m1_locs_sr1 = phi_sr1.unsqueeze(-1) * k_range_t.unsqueeze(0).unsqueeze(0) + eps_sr1.unsqueeze(-1)
+                m1_locs_sr2 = phi_sr2.unsqueeze(-1) * k_range_t.unsqueeze(0).unsqueeze(0) + eps_sr2.unsqueeze(-1)
+                # V x S x K
+                m0_locs_sr1 = eps_sr1.unsqueeze(-1).expand(n_variants, n_samples, self.k)
+                m0_locs_sr2 = eps_sr2.unsqueeze(-1).expand(n_variants, n_samples, self.k)
+                # V x S x K
+                locs_sr1 = (1. - m_sr1.unsqueeze(-1)) * m0_locs_sr1 + m_sr1.unsqueeze(-1) * m1_locs_sr1
+                locs_sr2 = (1. - m_sr2.unsqueeze(-1)) * m0_locs_sr2 + m_sr2.unsqueeze(-1) * m1_locs_sr2
+
+                z_weights = m_rd.unsqueeze(-1) * rd_gt_prob_t + (1. - m_rd.unsqueeze(-1)) * z_prior
                 z = pyro.sample('z', dist.Categorical(z_weights))
 
                 if self.svtype != SVTypes.INS:
-                    # V x S x (K-1)
-                    nonzero_locs_pe = k_range_t * ones_vsk1_t
-                    # V x S x K
-                    m1_locs_pe = torch.cat([eps_expanded_pe, nonzero_locs_pe], dim=-1)
-                    # V x S x K
-                    m0_locs_pe = eps_expanded_pe.expand(n_variants, n_samples, self.k)
-                    # V x S x K
-                    gated_locs_pe = (one_t - m_pe.unsqueeze(-2)) * m0_locs_pe + m_pe.unsqueeze(-2) * m1_locs_pe
-                    # V x S
-                    mu_obs_pe = depth_t * Vindex(gated_locs_pe)[..., z]
-                    var_pe = mu_obs_pe * (1. + var_pe)
+                    # V x 1 x K
+                    mu_obs_pe = depth_t * Vindex(locs_pe)[..., z]
+                    var_pe = mu_obs_pe * (1. + lambda_pe)
                     r_pe = mu_obs_pe * mu_obs_pe / (var_pe - mu_obs_pe)
                     p_pe = (var_pe - mu_obs_pe) / var_pe
-                    pyro.sample('obs_pe', dist.NegativeBinomial(total_count=r_pe, probs=p_pe), obs=data_pe)
+                    pyro.sample('pe_obs', dist.NegativeBinomial(total_count=r_pe, probs=p_pe), obs=data_pe)
                 else:
-                    r_pe = one_t.unsqueeze(-1).expand(n_variants, n_samples)
-                    p_pe = one_t.unsqueeze(-1).expand(n_variants, n_samples)
+                    r_pe = one_t.expand(n_variants, n_samples)
+                    p_pe = one_t.expand(n_variants, n_samples)
 
-                # V x S x (K-1)
-                nonzero_locs_sr = k_range_t * ones_vsk1_t
-                # V x S x K
-                m1_locs_sr1 = torch.cat([eps_expanded_sr1, nonzero_locs_sr], dim=-1)
-                m1_locs_sr2 = torch.cat([eps_expanded_sr2, nonzero_locs_sr], dim=-1)
-                # V x S x K
-                m0_locs_sr1 = eps_expanded_sr1.expand(n_variants, n_samples, self.k)
-                m0_locs_sr2 = eps_expanded_sr2.expand(n_variants, n_samples, self.k)
-                # V x S x K
-                gated_locs_sr1 = (1. - m_sr1.unsqueeze(-2)) * m0_locs_sr1 + m_sr1.unsqueeze(-2) * m1_locs_sr1
-                gated_locs_sr2 = (1. - m_sr2.unsqueeze(-2)) * m0_locs_sr2 + m_sr2.unsqueeze(-2) * m1_locs_sr2
-                # V x S
-                mu_obs_sr1 = depth_t * Vindex(gated_locs_sr1)[..., z]
-                mu_obs_sr2 = depth_t * Vindex(gated_locs_sr2)[..., z]
-                var_sr1 = mu_obs_sr1 * (1. + var_sr1)
-                var_sr2 = mu_obs_sr2 * (1. + var_sr2)
+                # V x 1 x K
+                mu_obs_sr1 = depth_t * Vindex(locs_sr1)[..., z]
+                mu_obs_sr2 = depth_t * Vindex(locs_sr2)[..., z]
+
+                var_sr1 = mu_obs_sr1 * (1. + lambda_sr1)
+                var_sr2 = mu_obs_sr2 * (1. + lambda_sr2)
                 r_sr1 = mu_obs_sr1 * mu_obs_sr1 / (var_sr1 - mu_obs_sr1)
                 r_sr2 = mu_obs_sr2 * mu_obs_sr2 / (var_sr2 - mu_obs_sr2)
                 p_sr1 = (var_sr1 - mu_obs_sr1) / var_sr1
@@ -197,16 +219,16 @@ class SVGenotyperPyroModel(object):
     def infer_discrete(self, data: SVGenotyperData, svtype: SVTypes, log_freq: int = 100, n_samples: int = 1000):
         logging.info("Running discrete inference...")
         posterior_samples = []
+        guide_trace = poutine.trace(self.guide).get_trace(data_pe=data.pe_t, data_sr1=data.sr1_t,
+                                                          data_sr2=data.sr2_t, depth_t=data.depth_t,
+                                                          rd_gt_prob_t=data.rd_gt_prob_t)
+        trained_model = poutine.replay(self.model, trace=guide_trace)
         for i in range(n_samples):
-            guide_trace = poutine.trace(self.guide).get_trace(data_pe=data.pe_t, data_sr1=data.sr1_t,
-                                                              data_sr2=data.sr2_t, depth_t=data.depth_t,
-                                                              rd_gt_prob_t=data.rd_gt_prob_t)
-            trained_model = poutine.replay(self.model, trace=guide_trace)
             inferred_model = infer_discrete(trained_model, temperature=1, first_available_dim=-3)
             trace = poutine.trace(inferred_model).get_trace(data_pe=data.pe_t, data_sr1=data.sr1_t,
                                                             data_sr2=data.sr2_t, depth_t=data.depth_t,
                                                             rd_gt_prob_t=data.rd_gt_prob_t)
-            posterior_samples.append([trace.nodes["z"]["value"].detach().cpu(),
+            posterior_samples.append([trace.nodes["_RETURN"]["value"]["z"].detach().cpu(),
                                       trace.nodes["_RETURN"]["value"]["r_pe"].detach().cpu(),
                                       trace.nodes["_RETURN"]["value"]["r_sr1"].detach().cpu(),
                                       trace.nodes["_RETURN"]["value"]["r_sr2"].detach().cpu(),
