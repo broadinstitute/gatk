@@ -379,7 +379,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         final TestGATKToolWithReads tool = new TestGATKToolWithReads();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
         final File bamFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
-        final File intervalsFile = new File(publicTestDir + "picard_intervals.list");
+        final File intervalsFile = new File(publicTestDir + "picard_intervals.interval_list");
         final String[] args = {
                 "-I", bamFile.getCanonicalPath(),
                 "-L", intervalsFile.getCanonicalPath()
