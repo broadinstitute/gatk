@@ -38,7 +38,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
         final int deletionSize = refAllele.length() - altT.length();
         final int start = 1;
         final VariantContext deletionVC = new VariantContextBuilder("testDeletion", "1", start, start + deletionSize, allelesDel).make();
-        genotypingEngine.recordDeletion(deletionSize, deletionVC);
+        genotypingEngine.recordDeletions(deletionVC, Collections.singletonList(altT));
     }
 
     private static GenotypingEngine<?> getGenotypingEngine() {

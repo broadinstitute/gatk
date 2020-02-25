@@ -1,15 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.util.IntervalCoordinateComparator;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import org.apache.commons.math3.special.Gamma;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
@@ -159,7 +156,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         // start constructing the resulting VC
         final List<Allele> outputAlleles = outputAlternativeAlleles.outputAlleles(vc.getReference());
-        outputAlleles.forEach(a -> recordDeletion(vc.getReference().length() - a.length(), vc));
+        recordDeletions(vc, outputAlleles);
         
         final VariantContextBuilder builder = new VariantContextBuilder(callSourceString(), vc.getContig(), vc.getStart(), vc.getEnd(), outputAlleles);
 
@@ -270,22 +267,27 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     /**
-     *  Record emitted deletion in order to remove downstream spanning deletion alleles that are not covered by any emitted deletion.
-     *  In addition to recording a new deletion, this method culls previously-recorded deletions that end before the current variant
+     *  Record emitted deletions in order to remove downstream spanning deletion alleles that are not covered by any emitted deletion.
+     *  In addition to recording new deletions, this method culls previously-recorded deletions that end before the current variant
      *  context.  This assumes that variants are traversed in order.
      *
-     * @param deletionSize  size of deletion in bases
-     * @param vc            variant context
+     * @param vc                VariantContext, potentially multiallelic and potentially containing one or more deletion alleles
+     * @param emittedAlleles    The subset of the variant's alt alleles that are actually emitted
      */
-    void recordDeletion(final int deletionSize, final VariantContext vc) {
+    @VisibleForTesting
+    void recordDeletions(final VariantContext vc, final Collection<Allele> emittedAlleles) {
         while (!upstreamDeletionsLoc.isEmpty() && (!upstreamDeletionsLoc.peek().contigsMatch(vc) || upstreamDeletionsLoc.peek().getEnd() < vc.getStart())) {
             upstreamDeletionsLoc.poll();
         }
 
-        // In a deletion
-        if (deletionSize > 0) {
-            final SimpleInterval genomeLoc = new SimpleInterval(vc.getContig(), vc.getStart(), vc.getStart() + deletionSize);
-            upstreamDeletionsLoc.add(genomeLoc);
+        for (final Allele allele : emittedAlleles) {
+            final int deletionSize = vc.getReference().length() - allele.length();
+
+            // In a deletion
+            if (deletionSize > 0) {
+                final SimpleInterval genomeLoc = new SimpleInterval(vc.getContig(), vc.getStart(), vc.getStart() + deletionSize);
+                upstreamDeletionsLoc.add(genomeLoc);
+            }
         }
     }
 
