@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.utils.IndexRange;
@@ -168,18 +169,19 @@ public final class CigarUtils {
      * Checks if cigar starts with a deletion (ignoring any clips at the beginning).
      */
     private static boolean startsOrEndsWithDeletionIgnoringClips(final List<CigarElement> elems) {
-        CigarOperator lastOp = null;
-        for (final CigarElement elem : elems) {
-               final CigarOperator op = elem.getOperator();
-               if (((lastOp == null || lastOp.isClipping()) && op == CigarOperator.DELETION)
-                   || (lastOp == CigarOperator.DELETION && op.isClipping())) {
-                   return true;
-               }
-               lastOp = op;
+
+        for (final boolean leftSide : new boolean[] {true, false}) {
+            for (final CigarElement elem : leftSide ? elems : Lists.reverse(elems)) {
+                final CigarOperator op = elem.getOperator();
+                if (op == CigarOperator.DELETION) { //first non-clipping is deletion
+                    return true;
+                } else if (!op.isClipping()) {  // first non-clipping is non deletion
+                    break;
+                }
+            }
         }
 
-        // the for loop captures every case except a terminal deletion not followed by any clipping
-        return lastOp == CigarOperator.DELETION;
+        return false;
     }
 
     /**
