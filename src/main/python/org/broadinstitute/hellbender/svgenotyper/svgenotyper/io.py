@@ -77,6 +77,9 @@ def write_vcf(input_vcf_path: str, output_vcf_path: str, output_data: dict, glob
     header.info.add("EPE", "1", "Float", "Paired-end read background")
     header.info.add("ESR1", "1", "Float", "First split read background")
     header.info.add("ESR2", "1", "Float", "Second split read background")
+    header.info.add("PHI_PE", "1", "Float", "Paired-end mean bias")
+    header.info.add("PHI_SR1", "1", "Float", "First split mean bias")
+    header.info.add("PHI_SR2", "1", "Float", "Second split mean bias")
     header.formats.add("PL", "1", "Float", "Genotype probability")
     header.formats.add("GQ", "1", "Float", "Genotype quality (log odds ratio)")
 
@@ -101,6 +104,9 @@ def write_vcf(input_vcf_path: str, output_vcf_path: str, output_data: dict, glob
         record.info['EPE'] = vid_data['eps_pe']
         record.info['ESR1'] = vid_data['eps_sr1']
         record.info['ESR2'] = vid_data['eps_sr2']
+        record.info['PHI_PE'] = vid_data['phi_pe']
+        record.info['PHI_SR1'] = vid_data['phi_sr1']
+        record.info['PHI_SR2'] = vid_data['phi_sr2']
         gt = vid_data['gt']
         gt_p = vid_data['gt_p']
         gt_lod = vid_data['gt_lod']
