@@ -78,16 +78,17 @@ def run(args):
     pyro.set_rng_seed(args.random_seed)
 
     output_by_type = {}
+    global_stats_by_type = {}
     for svtype in [SVTypes.DEL, SVTypes.DUP, SVTypes.INS, SVTypes.INV]:
         model = SVGenotyperPyroModel(svtype=svtype, k=args.num_states, mu_eps_pe=args.eps_pe, mu_eps_sr1=args.eps_sr1,
                                      mu_eps_sr2=args.eps_sr2, mu_lambda_pe=args.lambda_pe, mu_lambda_sr1=args.lambda_sr1,
-                                     mu_lambda_sr2=args.lambda_sr2, var_phi_pe=args.var_phi_pe,
-                                     var_phi_sr1=args.var_phi_sr1, var_phi_sr2=args.var_phi_sr2, mu_eta_q=args.mu_eta_q,
-                                     mu_eta_r=args.mu_eta_r, device=args.device)
+                                     mu_lambda_sr2=args.lambda_sr2, var_phi_pe=args.phi_pe, var_phi_sr1=args.phi_sr1,
+                                     var_phi_sr2=args.phi_sr2, mu_eta_q=args.eta_q, mu_eta_r=args.eta_r,
+                                     device=args.device)
         vids_np, data = load_data(vcf_path=args.vcf,
                                   mean_coverage_path=args.coverage_file,
                                   svtype=svtype,
-                                  num_states=args.num_states,
+                                  num_states=model.k,
                                   depth_dilution_factor=args.depth_dilution_factor,
                                   device=args.device)
         if data is None:
@@ -102,10 +103,11 @@ def run(args):
             stats = get_predictive_stats(samples=predictive_samples)
             stats.update(get_discrete_stats(samples=discrete_samples))
             output_by_type[svtype] = get_output(vids_np=vids_np, genotypes=genotypes, stats=stats, args=args)
+            global_stats_by_type[svtype] = get_global_stats(stats)
     results_output = {}
     for svtype in output_by_type:
         results_output.update(output_by_type[svtype])
-    return results_output
+    return results_output, global_stats_by_type
 
 
 def get_output(vids_np: np.ndarray, genotypes: dict, stats: dict, args):
@@ -114,13 +116,17 @@ def get_output(vids_np: np.ndarray, genotypes: dict, stats: dict, args):
     for i in range(n_variants):
         vid = vids_np[i]
         if 'eps_pe' in stats:
-            eps_pe = stats['eps_pe']['mean'][i]
+            eps_pe = stats['eps_pe']['mean'][i] * args.eps_pe
         else:
             eps_pe = 0
         if 'phi_pe' in stats:
-            phi_pe = stats['phi_pe']['mean'][i]
+            phi_pe = stats['phi_pe']['mean'][i] * args.phi_pe
         else:
             phi_pe = 0
+        if 'eta_r' in stats:
+            eta_r = stats['eta_r']['mean'][i] * args.eta_r
+        else:
+            eta_r = 0
         output_dict[vid] = {
             'gt': genotypes['gt'][i, :],
             'gt_p': genotypes['gt_p'][i, :],
@@ -129,43 +135,36 @@ def get_output(vids_np: np.ndarray, genotypes: dict, stats: dict, args):
             'p_m_sr1': stats['m_sr1']['mean'][i],
             'p_m_sr2': stats['m_sr2']['mean'][i],
             'p_m_rd': stats['m_rd']['mean'][i],
-            'eps_pe': eps_pe * args.eps_pe,
+            'eps_pe': eps_pe,
             'eps_sr1': stats['eps_sr1']['mean'][i] * args.eps_sr1,
             'eps_sr2': stats['eps_sr2']['mean'][i] * args.eps_sr2,
-            'phi_pe': phi_pe * args.mu_phi_pe,
-            'phi_sr1': stats['phi_sr1']['mean'][i] * args.mu_phi_sr1,
-            'phi_sr2': stats['phi_sr2']['mean'][i] * args.mu_phi_sr2
+            'phi_pe': phi_pe,
+            'phi_sr1': stats['phi_sr1']['mean'][i] * args.phi_sr1,
+            'phi_sr2': stats['phi_sr2']['mean'][i] * args.phi_sr2,
+            'eta_q': stats['eta_q']['mean'][i] * args.eta_q,
+            'eta_r': eta_r
         }
     return output_dict
 
 
 def get_global_stats(stats: dict):
-    return {
-        'pi_pe_mean': stats['pi_pe']['mean'],
-        'pi_pe_std': stats['pi_pe']['std'],
-        'pi_sr1_mean': stats['pi_sr1']['mean'],
-        'pi_sr1_std': stats['pi_sr1']['std'],
-        'pi_sr2_mean': stats['pi_sr2']['mean'],
-        'pi_sr2_std': stats['pi_sr2']['std'],
-        'pi_rd_mean': stats['pi_rd']['mean'],
-        'pi_rd_std': stats['pi_rd']['std'],
-        'lambda_pe_mean': stats['lambda_pe']['mean'],
-        'lambda_pe_std': stats['lambda_pe']['std'],
-        'lambda_sr1_mean': stats['lambda_sr1']['mean'],
-        'lambda_sr1_std': stats['lambda_sr1']['std'],
-        'lambda_sr2_mean': stats['lambda_sr2']['mean'],
-        'lambda_sr2_std': stats['lambda_sr2']['std'],
-    }
+    global_sites = ['pi_sr1', 'pi_sr2', 'pi_pe', 'pi_rd', 'lambda_pe', 'lambda_sr1', 'lambda_sr2']
+    global_stats = {}
+    for site in global_sites:
+        if site in stats:
+            global_stats[site + '_mean'] = stats[site]['mean']
+            global_stats[site + '_std'] = stats[site]['std']
+    return global_stats
 
 
 def get_predictive_stats(samples: dict):
-    return {key: {'mean': samples[key].astype(dtype='float').mean(axis=0).squeeze()} for key in samples}
+    return {key: {'mean': samples[key].astype(dtype='float').mean(axis=0).squeeze(),
+                  'std': samples[key].astype(dtype='float').std(axis=0).squeeze()} for key in samples}
 
 
 def get_discrete_stats(samples: dict):
     discrete_sites = ['m_pe', 'm_sr1', 'm_sr2', 'm_rd']
-    return {key: {'mean': samples[key].astype(dtype='float').mean(axis=0).squeeze(),
-                  'std': samples[key].astype(dtype='float').std(axis=0).squeeze()} for key in discrete_sites}
+    return {key: {'mean': samples[key].astype(dtype='float').mean(axis=0).squeeze()} for key in discrete_sites}
 
 
 def get_genotypes(freq_z: dict):

@@ -27,7 +27,7 @@ class SVGenotyperData(object):
 class SVGenotyperPyroModel(object):
     def __init__(self,
                  svtype: SVTypes,
-                 k: int = 5,
+                 k: int = None,
                  mu_eps_pe: float = 0.1,
                  mu_eps_sr1: float = 0.1,
                  mu_eps_sr2: float = 0.1,
@@ -40,7 +40,6 @@ class SVGenotyperPyroModel(object):
                  mu_eta_q: float = 0.1,
                  mu_eta_r: float = 0.01,
                  device: str = 'cpu'):
-        self.k = k
         self.mu_eps_pe = mu_eps_pe
         self.mu_eps_sr1 = mu_eps_sr1
         self.mu_eps_sr2 = mu_eps_sr2
@@ -50,26 +49,44 @@ class SVGenotyperPyroModel(object):
         self.var_phi_pe = var_phi_pe
         self.var_phi_sr1 = var_phi_sr1
         self.var_phi_sr2 = var_phi_sr2
-        self.mu_eta_q = mu_eta_q,
-        self.mu_eta_r = mu_eta_r,
+        self.mu_eta_q = mu_eta_q
+        self.mu_eta_r = mu_eta_r
         self.svtype = svtype
         self.device = device
         self.loss = {'train': {'epoch': [], 'elbo': []},
                      'test': {'epoch': [], 'elbo': []}}
 
-        if svtype == SVTypes.DEL:
-            self.latent_sites = ['eta', 'epsilon_pe', 'epsilon_sr1', 'epsilon_sr2', 'var_pe', 'var_sr1', 'var_sr2',
-                                 'phi_pe', 'phi_sr1', 'phi_sr2']
+        if k is not None:
+            self.k = k
+        elif svtype in [SVTypes.DEL, SVTypes.INS, SVTypes.INV]:
+            self.k = 3
         elif svtype == SVTypes.DUP:
-            self.latent_sites = ['eta', 'zeta', 'epsilon_pe', 'epsilon_sr1', 'epsilon_sr2', 'var_pe', 'var_sr1',
-                                 'var_sr2', 'phi_pe', 'phi_sr1', 'phi_sr2']
-        elif svtype == SVTypes.INS:
-            self.latent_sites = ['eta', 'epsilon_sr1', 'epsilon_sr2', 'var_sr1', 'var_sr2', 'phi_sr1', 'phi_sr2']
-        elif svtype == SVTypes.INV:
-            self.latent_sites = ['eta', 'epsilon_pe', 'epsilon_sr1', 'epsilon_sr2', 'var_pe', 'var_sr1', 'var_sr2',
-                                 'phi_pe', 'phi_sr1', 'phi_sr2']
+            self.k = 5
         else:
             raise ValueError('SV type {:s} not supported for genotyping.'.format(str(svtype.name)))
+
+        if svtype == SVTypes.DEL:
+            self.latent_sites = ['pi_sr1', 'pi_sr2', 'pi_pe', 'pi_rd', 'eps_pe', 'eps_sr1', 'eps_sr2',
+                                 'lambda_pe', 'lambda_sr1', 'lambda_sr2', 'phi_pe', 'phi_sr1', 'phi_sr2']
+        elif svtype == SVTypes.DUP:
+            self.latent_sites = ['pi_sr1', 'pi_sr2', 'pi_pe', 'pi_rd', 'eps_pe', 'eps_sr1', 'eps_sr2',
+                                 'lambda_pe', 'lambda_sr1', 'lambda_sr2', 'phi_pe', 'phi_sr1', 'phi_sr2']
+        elif svtype == SVTypes.INS:
+            self.latent_sites = ['pi_sr1', 'pi_sr2', 'eps_sr1', 'eps_sr2',
+                                 'lambda_sr1', 'lambda_sr2', 'phi_sr1', 'phi_sr2']
+        elif svtype == SVTypes.INV:
+            self.latent_sites = ['pi_sr1', 'pi_sr2', 'pi_pe', 'eps_pe', 'eps_sr1', 'eps_sr2',
+                                 'lambda_pe', 'lambda_sr1', 'lambda_sr2', 'phi_pe', 'phi_sr1', 'phi_sr2']
+        else:
+            raise ValueError('SV type {:s} not supported for genotyping.'.format(str(svtype.name)))
+
+        if self.k == 3:
+            self.latent_sites.append('eta_q')
+        elif self.k == 5:
+            self.latent_sites.append('eta_q')
+            self.latent_sites.append('eta_r')
+        else:
+            raise ValueError('Unsupported number of states: {:d}'.format(self.k))
 
         self.guide = AutoDiagonalNormal(poutine.block(self.model, expose=self.latent_sites))
 

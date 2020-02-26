@@ -61,7 +61,7 @@ def load_data(vcf_path: str, mean_coverage_path: str, svtype: SVTypes, num_state
     return vids_np, data
 
 
-def write_output(input_vcf_path: str, output_vcf_path: str, output_data: dict):
+def write_output(input_vcf_path: str, output_vcf_path: str, output_data: dict, global_stats: dict):
     vcf_in = VariantFile(input_vcf_path)
     samples_list = list(vcf_in.header.samples)
     n_samples = len(samples_list)
@@ -76,6 +76,10 @@ def write_output(input_vcf_path: str, output_vcf_path: str, output_data: dict):
     header.info.add("ESR2", "1", "Float", "Second split read background")
     header.formats.add("PL", "1", "Float", "Genotype probability")
     header.formats.add("GQ", "1", "Float", "Genotype quality (log odds ratio)")
+
+    for svtype in global_stats:
+        items = {key: "{:0.4f}".format(float(global_stats[svtype][key])) for key in global_stats[svtype]}.items()
+        header.add_meta(key="SVGenotyper_" + svtype.name, items=items)
     
     vcf_out = VariantFile(output_vcf_path, 'w', header=vcf_in.header)
     for record in vcf_in.fetch():
