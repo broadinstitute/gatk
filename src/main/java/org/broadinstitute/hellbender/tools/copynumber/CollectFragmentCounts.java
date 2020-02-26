@@ -294,10 +294,18 @@ public final class CollectFragmentCounts extends ReadWalker {
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
 
         if ((!spliced || !read.isReverseStrand() || !inGoodPair(read))) {
+            if (read.getName().equals("HJWYCDSXX190619:4:2502:16269:12540")) {
+                System.out.println();
+            }
             final List<SimpleInterval> alignmentIntervals = getAlignmentIntervals(read);
 
             //List<Gff3Feature> features = featureContext.getValues(gffFile);
-            Set<Pair<FeatureCoverage, Gff3BaseData>> features = featureOverlapDetector.getOverlaps(getReadInterval(read));
+            Set<Pair<FeatureCoverage, Gff3BaseData>> features ;
+            if (spliced) {
+                features = alignmentIntervals.stream().flatMap(i -> featureOverlapDetector.getOverlaps(i).stream()).collect(Collectors.toSet());
+            } else {
+                features = featureOverlapDetector.getOverlaps(getReadInterval(read));
+            }
 
             final Strand fragmentStrand = getFragmentStrand(read);
 
@@ -320,22 +328,22 @@ public final class CollectFragmentCounts extends ReadWalker {
                 final FeatureCoverage featureCoverage = overlapsByGroupingFeature.getKey();
                 final boolean isSense = !featureCoverage.isStranded || featureCoverage.baseData.getStrand() == fragmentStrand;
 
-                float maxCounts = 0;
-                for (final Gff3BaseData overlapBaseData : overlapsByGroupingFeature.getValue()) {
-                    if (!overlapBaseData.getStrand().equals(featureCoverage.baseData.getStrand())) {
-                        throw new GATKException("Grouping feature " + featureCoverage.baseData.getId() + " and subfeature " + overlapBaseData.getId() + " are on different strands (" + overlapBaseData.getStrand() + "," + featureCoverage.baseData.getStrand() + ")");
-                    }
-                    float thisCounts = 0;
-                    for (final SimpleInterval interval : alignmentIntervals) {
-                        if (interval.overlaps(overlapBaseData)) {
-                            thisCounts += 1.0/(float)nGroupingFeaturesCovered;
-                            //thisCounts += (float) interval.intersect(overlapBaseData).size() / (float) basesOnReference;
-                        }
-                    }
-                    if (thisCounts>maxCounts) {
-                        maxCounts = thisCounts;
-                    }
-                }
+                float maxCounts = (float)1.0/(float)nGroupingFeaturesCovered;
+//                float maxCounts = 0;
+//                for (final Gff3BaseData overlapBaseData : overlapsByGroupingFeature.getValue()) {
+//                    if (!overlapBaseData.getStrand().equals(featureCoverage.baseData.getStrand())) {
+//                        throw new GATKException("Grouping feature " + featureCoverage.baseData.getId() + " and subfeature " + overlapBaseData.getId() + " are on different strands (" + overlapBaseData.getStrand() + "," + featureCoverage.baseData.getStrand() + ")");
+//                    }
+//                    float thisCounts = 0;
+//                    for (final SimpleInterval interval : alignmentIntervals) {
+//                        if (interval.overlaps(overlapBaseData)) {
+//                            thisCounts += (float) interval.intersect(overlapBaseData).size() / (float) basesOnReference;
+//                        }
+//                    }
+//                    if (thisCounts>maxCounts) {
+//                        maxCounts = thisCounts;
+//                    }
+//                }
                 if (isSense) {
                     featureCoverage.addSenseCount(maxCounts);
                 } else {
