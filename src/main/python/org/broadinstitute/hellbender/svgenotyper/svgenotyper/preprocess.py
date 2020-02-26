@@ -7,13 +7,11 @@ from .constants import SVTypes
 from .model import SVGenotyperData
 
 
-def create_tensors(vids_list: list,
-                   gt_list: list,
+def create_tensors(gt_list: list,
                    data_list: list,
                    cnlp_list: list,
                    svlen_list: list,
                    svtype_list: list,
-                   samples_list: list,
                    mean_count_df: pd.DataFrame,
                    device_name: str,
                    default_dtype: torch.dtype = torch.float32):
@@ -35,10 +33,7 @@ def create_tensors(vids_list: list,
     svtype_t = torch.from_numpy(np.array(svtype_list)).long().to(device=device).squeeze(-1)
     mean_count_t = torch.from_numpy(mean_count_df.values).to(dtype=torch.get_default_dtype(), device=device).squeeze(-1)
 
-    samples_np = np.array(samples_list, dtype='str')
-    vids_np = np.array(vids_list, dtype='str')
-
-    return gt_t, pe_t, sr1_t, sr2_t, ncn_t, cnlp_t, svlen_t, svtype_t, mean_count_t, samples_np, vids_np
+    return gt_t, pe_t, sr1_t, sr2_t, ncn_t, cnlp_t, svlen_t, svtype_t, mean_count_t
 
 
 def compute_preprocessed_tensors(k: int,

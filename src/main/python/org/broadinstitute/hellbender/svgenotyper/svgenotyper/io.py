@@ -1,10 +1,13 @@
 import logging
+import os
 import pandas as pd
 from pysam import VariantFile
+import torch
 
 from . import constants
 from .constants import SVTypes
 from .preprocess import create_tensors, compute_preprocessed_tensors
+from .model import SVGenotyperData
 
 
 def read_vcf(vcf_path: str, svtype: SVTypes):
@@ -53,15 +56,15 @@ def load_data(vcf_path: str, mean_coverage_path: str, svtype: SVTypes, num_state
     mean_count_df = pd.read_csv(mean_coverage_path, sep='\t', header=None, index_col=0)
     vids_list, samples_list, gt_list, data_list, cnlp_list, svlen_list, svtype_list = read_vcf(vcf_path=vcf_path, svtype=svtype)
     if len(vids_list) == 0:
-        return None, None
-    gt_t, pe_t, sr1_t, sr2_t, ncn_t, cnlp_t, svlen_t, svtype_t, mean_count_t, samples_np, vids_np = create_tensors(
-        vids_list, gt_list, data_list, cnlp_list, svlen_list, svtype_list, samples_list, mean_count_df, device)
+        return None, None, None
+    gt_t, pe_t, sr1_t, sr2_t, ncn_t, cnlp_t, svlen_t, svtype_t, mean_count_t = create_tensors(
+        gt_list, data_list, cnlp_list, svlen_list, svtype_list, mean_count_df, device)
     data = compute_preprocessed_tensors(num_states, svtype, depth_dilution_factor, pe_t, sr1_t, sr2_t, mean_count_t,
                                         cnlp_t, ncn_t, device)
-    return vids_np, data
+    return vids_list, samples_list, data
 
 
-def write_output(input_vcf_path: str, output_vcf_path: str, output_data: dict, global_stats: dict):
+def write_vcf(input_vcf_path: str, output_vcf_path: str, output_data: dict, global_stats: dict):
     vcf_in = VariantFile(input_vcf_path)
     samples_list = list(vcf_in.header.samples)
     n_samples = len(samples_list)
@@ -121,3 +124,32 @@ def write_output(input_vcf_path: str, output_vcf_path: str, output_data: dict, g
         vcf_out.write(record)
     vcf_in.close()
     vcf_out.close()
+
+
+def save_tensors(data: SVGenotyperData, base_path: str):
+    data_vars = vars(data)
+    for var in data_vars:
+        torch.save(data_vars[var], base_path + "." + var + ".pt")
+
+
+def save_list(data: list, path: str):
+    with open(path, 'w') as f:
+        f.writelines([x + '\n' for x in data])
+
+
+def load_tensors(directory: str, model_name: str, svtype: SVTypes):
+    base_path = os.path.join(directory, model_name + "." + svtype.name)
+    pe_t = torch.load(base_path + ".pe_t.pt")
+    sr1_t = torch.load(base_path + ".sr1_t.pt")
+    sr2_t = torch.load(base_path + ".sr2_t.pt")
+    depth_t = torch.load(base_path + ".depth_t.pt")
+    rd_gt_prob_t = torch.load(base_path + ".rd_gt_prob_t.pt")
+    return SVGenotyperData(pe_t=pe_t, sr1_t=sr1_t, sr2_t=sr2_t, depth_t=depth_t, rd_gt_prob_t=rd_gt_prob_t)
+
+
+def load_list(path: str):
+    with open(path, 'r') as f:
+        lines = f.readlines()
+        if lines is None or len(lines) == 0:
+            raise ValueError("Tried to read empty list: {:s}".format(path))
+        return [x.strip() for x in lines]

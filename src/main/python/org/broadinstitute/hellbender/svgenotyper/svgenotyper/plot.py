@@ -29,7 +29,7 @@ def plot_sites(vcf_path: str, mean_coverage_path: str, vids: list = None, out_di
 
     vcf = VariantFile(vcf_path)
     samples_list = list(vcf.header.samples)
-    mean_cov = mean_cov_df.loc[samples_list].to_numpy().squeeze(-1)
+    mean_cov = mean_cov_df.loc[samples_list].values.squeeze(-1)
     if vids is not None:
         vids_set = set(vids)
     for record in vcf.fetch():

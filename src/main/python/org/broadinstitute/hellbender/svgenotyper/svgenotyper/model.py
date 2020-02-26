@@ -1,3 +1,5 @@
+import json
+import logging
 import pyro
 import pyro.distributions as dist
 from pyro import poutine
@@ -5,7 +7,6 @@ from pyro.ops.indexing import Vindex
 from pyro.infer import config_enumerate, Predictive, infer_discrete
 from pyro.infer.autoguide import AutoDiagonalNormal
 import torch
-import logging
 
 from .constants import SVTypes
 
@@ -39,7 +40,8 @@ class SVGenotyperPyroModel(object):
                  var_phi_sr2: float = 0.1,
                  mu_eta_q: float = 0.1,
                  mu_eta_r: float = 0.01,
-                 device: str = 'cpu'):
+                 device: str = 'cpu',
+                 loss: dict = None):
         self.mu_eps_pe = mu_eps_pe
         self.mu_eps_sr1 = mu_eps_sr1
         self.mu_eps_sr2 = mu_eps_sr2
@@ -53,8 +55,10 @@ class SVGenotyperPyroModel(object):
         self.mu_eta_r = mu_eta_r
         self.svtype = svtype
         self.device = device
-        self.loss = {'train': {'epoch': [], 'elbo': []},
-                     'test': {'epoch': [], 'elbo': []}}
+        if loss is None:
+            self.loss = {'epoch': [], 'elbo': []}
+        else:
+            self.loss = loss
 
         if k is not None:
             self.k = k
@@ -299,4 +303,3 @@ class SVGenotyperPyroModel(object):
             "m_sr2": m_sr2.numpy(),
             "m_rd": m_rd.numpy()
         }
-
