@@ -13,7 +13,7 @@ import java.util.List;
 //Note: Names in this interface are unusual because of name clash in a subclass.
 // For example the name of AlleleList.alleleCount() cannot be simply size(), as would be usual,
 // because {@link ReadLikelihoods} implements AlleleList and SampleList and then size() would be ambiguous.
-public interface AlleleList<A extends Allele>{
+public interface AlleleList<A extends Allele> extends List<A> {
 
     /**
      * Returns the number of alleles in this AlleleList.
@@ -103,26 +103,13 @@ public interface AlleleList<A extends Allele>{
     }
 
     /**
-     * Resolves the index of the reference allele in an allele-list.
+     * Resolves the index of the reference allele in an allele-list which is always 0.
      *
-     * <p>
-     *     If there is no reference allele, it returns -1. If there is more than one reference allele,
-     *     it returns the first occurrence (lowest index).
-     * </p>
-     *
-     *
-     * @throws IllegalArgumentException if {@code list} is {@code null}.
-     *
-     * @return -1 if there is no reference allele, or a values in [0,{@code list.alleleCount()}).
+     * @return always 0.
      */
+    @Deprecated
     default int indexOfReference() {
-        final int alleleCount = this.numberOfAlleles();
-        for (int i = 0; i < alleleCount; i++) {
-            if (this.getAllele(i).isReference()) {
-                return i;
-            }
-        }
-        return -1;
+        return 0;
     }
 
     /**
@@ -130,7 +117,8 @@ public interface AlleleList<A extends Allele>{
      *
      * @return never {@code null}.
      */
-    default public List<A> asListOfAlleles() {
+    @
+    default List<A> asListOfAlleles() {
         return new AbstractList<A>() {
 
             @Override
