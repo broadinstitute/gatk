@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.read;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -76,13 +77,13 @@ public final class AlignmentUtils {
         if ( referenceStart < 1 ) { throw new IllegalArgumentException("reference start much be >= 1 but got " + referenceStart); }
 
         // compute the smith-waterman alignment of read -> haplotype
-        final SmithWatermanAlignment swPairwiseAlignment = aligner.align(haplotype.getBases(), originalRead.getBases(), CigarUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
-        if ( swPairwiseAlignment.getAlignmentOffset() == -1 ) {
+        final SmithWatermanAlignment readToHaplotypeSWAlignment = aligner.align(haplotype.getBases(), originalRead.getBases(), CigarUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
+        if ( readToHaplotypeSWAlignment.getAlignmentOffset() == -1 ) {
             // sw can fail (reasons not clear) so if it happens just don't realign the read
             return originalRead;
         }
 
-        final Cigar swCigar = consolidateCigar(swPairwiseAlignment.getCigar());
+        final Cigar swCigar = consolidateCigar(readToHaplotypeSWAlignment.getCigar());
 
         // since we're modifying the read we need to clone it
         final GATKRead read = originalRead.copy();
@@ -93,18 +94,33 @@ public final class AlignmentUtils {
         }
 
         // compute here the read starts w.r.t. the reference from the SW result and the hap -> ref cigar
-        final Cigar extendedHaplotypeCigar = haplotype.getConsolidatedPaddedCigar(1000);
-        final int readStartOnHaplotype = calcFirstBaseMatchingReferenceInCigar(extendedHaplotypeCigar, swPairwiseAlignment.getAlignmentOffset());
-        final int readStartOnReference = referenceStart + haplotype.getAlignmentStartHapwrtRef() + readStartOnHaplotype;
+        final Cigar rightPaddedHaplotypeVsRefCigar = haplotype.getConsolidatedPaddedCigar(1000);
+
+        // this computes the number of reference bases before the read starts, based on the haplotype vs ref cigar
+        // This cigar corresponds exactly to the readToRefCigarRaw, below.  One might wonder whether readToRefCigarRaw and
+        // readToRefCigarClean ever imply different starts, which could occur if if the former has a leading deletion.  However,
+        // according to the logic of applyCigarToCigar, this can only happen if the read has a leading deletion wrt its best haplotype,
+        // which our SW aligner won't do, or if the read starts on a haplotype base that is in a deletion wrt to reference, which is nonsensical
+        // since a base that exists is not a deletion.  Thus, there is nothing to worry about, in contrast to below where we do check
+        // whether left-alignment shifted the start position.
+        final int readStartOnReferenceHaplotype = readStartOnReferenceHaplotype(rightPaddedHaplotypeVsRefCigar, readToHaplotypeSWAlignment.getAlignmentOffset());
+
+
+        //final int readStartOnReference = referenceStart + haplotype.getAlignmentStartHapwrtRef() + readStartOnHaplotype;
+
+        final int readStartOnReference = referenceStart + haplotype.getAlignmentStartHapwrtRef() + readStartOnReferenceHaplotype;
 
         // compute the read -> ref alignment by mapping read -> hap -> ref from the
         // SW of read -> hap mapped through the given by hap -> ref
-        final Cigar haplotypeToRef = trimCigarByBases(extendedHaplotypeCigar, swPairwiseAlignment.getAlignmentOffset(), extendedHaplotypeCigar.getReadLength() - 1);
+
+        // this is the sub-cigar of the haplotype-to-ref alignment, with cigar elements before the read start removed.  Elements after the read end are kept.
+        final Cigar haplotypeToRef = trimCigarByBases(rightPaddedHaplotypeVsRefCigar, readToHaplotypeSWAlignment.getAlignmentOffset(), rightPaddedHaplotypeVsRefCigar.getReadLength() - 1);
+
         final Cigar readToRefCigarRaw = applyCigarToCigar(swCigar, haplotypeToRef);
         final Cigar readToRefCigarClean = cleanUpCigar(readToRefCigarRaw);
-        final Cigar readToRefCigar = leftAlignIndels(readToRefCigarClean, refHaplotype.getBases(),
-                originalRead.getBases(), readStartOnHaplotype);
+        final Cigar readToRefCigar = leftAlignIndels(readToRefCigarClean, refHaplotype.getBases(), originalRead.getBases(), readStartOnReferenceHaplotype);
 
+        // it's possible that left-alignment shifted a deletion to the beginning of a read and removed it, shifting the first aligned base to the right
         final int leadingDeletions = readToRefCigarClean.getReferenceLength() - readToRefCigar.getReferenceLength();
         read.setPosition(read.getContig(), readStartOnReference + leadingDeletions);
 
@@ -943,6 +959,37 @@ public final class AlignmentUtils {
     }
 
     /**
+     * Given a read's first aligned base on an alt haplotype, find the first aligned base in the reference haplotype.  This
+     * method assumes that the alt haplotype and reference haplotype start at the same place.  That is, the alt haplotype
+     * starts at index 0 within the reference base array.
+     *
+     * @param haplotypeVsRefCigar
+     * @param readStartOnHaplotype
+     * @return
+     */
+    @VisibleForTesting
+    static int readStartOnReferenceHaplotype(final Cigar haplotypeVsRefCigar, final int readStartOnHaplotype) {
+        if (readStartOnHaplotype == 0) {
+            return 0;
+        }
+        // move forward in the haplotype vs ref cigar until we have consumed enough haplotype bases to reach the read start
+        // the number of reference bases consumed during this traversal gives us the reference start
+        int refBasesConsumedBeforeReadStart = 0;
+        int haplotypeBasesConsumed = 0;
+        for (final CigarElement element : haplotypeVsRefCigar) {
+            refBasesConsumedBeforeReadStart += lengthOnReference(element);
+            haplotypeBasesConsumed += lengthOnRead(element);
+
+            if (haplotypeBasesConsumed >= readStartOnHaplotype) {
+                final int excess = element.getOperator().consumesReferenceBases() ? haplotypeBasesConsumed - readStartOnHaplotype : 0;
+                return refBasesConsumedBeforeReadStart - excess;
+            }
+        }
+
+        throw new IllegalArgumentException("Cigar doesn't reach the read start");
+    }
+
+    /**
      * Clean up the incoming cigar
      *
      * Removes elements with zero size
@@ -1185,47 +1232,6 @@ public final class AlignmentUtils {
         if ( length > 0 )
             dest.add(new CigarElement(length, elt.getOperator()));
         return pos + elt.getLength();
-    }
-
-    /**
-     * Get the offset (base 0) of the first reference aligned base in Cigar that occurs after readStartByBaseOfCigar base of the cigar
-     *
-     * The main purpose of this routine is to find a good start position for a read given it's cigar.  The real
-     * challenge is that the starting base might be inside an insertion, in which case the read actually starts
-     * at the next M/EQ/X operator.
-     *
-     * @param cigar a non-null cigar
-     * @param readStartByBaseOfCigar finds the first base after this (0 indexed) that aligns to the reference genome (M, EQ, X)
-     * @throws IllegalStateException if no such base can be found
-     * @return an offset into cigar
-     */
-    public static int calcFirstBaseMatchingReferenceInCigar(final Cigar cigar, int readStartByBaseOfCigar) {
-        if ( cigar == null ) throw new IllegalArgumentException("cigar cannot be null");
-        if ( readStartByBaseOfCigar >= cigar.getReadLength() ) throw new IllegalArgumentException("readStartByBaseOfCigar " + readStartByBaseOfCigar + " must be <= readLength " + cigar.getReadLength());
-
-        int hapOffset = 0, refOffset = 0;
-        for ( final CigarElement ce : cigar.getCigarElements() ) {
-            for ( int i = 0; i < ce.getLength(); i++ ) {
-                switch ( ce.getOperator() ) {
-                    case M:case EQ:case X:
-                        if ( hapOffset >= readStartByBaseOfCigar )
-                            return refOffset;
-                        hapOffset++;
-                        refOffset++;
-                        break;
-                    case I: case S:
-                        hapOffset++;
-                        break;
-                    case D:
-                        refOffset++;
-                        break;
-                    default:
-                        throw new IllegalStateException("calcFirstBaseMatchingReferenceInCigar does not support cigar " + ce.getOperator() + " in cigar " + cigar);
-                }
-            }
-        }
-
-        throw new IllegalStateException("Never found appropriate matching state for cigar " + cigar + " given start of " + readStartByBaseOfCigar);
     }
 
     /**

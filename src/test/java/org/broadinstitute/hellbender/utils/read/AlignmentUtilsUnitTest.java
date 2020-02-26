@@ -1072,55 +1072,6 @@ public final class AlignmentUtilsUnitTest {
     // Test AlignmentUtils.applyCigarToCigar() //
     //////////////////////////////////////////
 
-    @DataProvider(name = "ReadOffsetFromCigarData")
-    public Object[][] makeReadOffsetFromCigarData() {
-        List<Object[]> tests = new ArrayList<>();
-
-        final int SIZE = 10;
-        for ( int i = 0; i < SIZE; i++ ) {
-            tests.add(new Object[]{SIZE + "M", i, i});
-        }
-
-        //          0123ii45
-        // ref    : ACGT--AC
-        // hap    : AC--xxAC (2M2D2I2M)
-        // ref.pos: 01    45
-        tests.add(new Object[]{"2M2D2I2M", 0, 0});
-        tests.add(new Object[]{"2M2D2I2M", 1, 1});
-        tests.add(new Object[]{"2M2D2I2M", 2, 4});
-        tests.add(new Object[]{"2M2D2I2M", 3, 4});
-        tests.add(new Object[]{"2M2D2I2M", 4, 4});
-        tests.add(new Object[]{"2M2D2I2M", 5, 5});
-
-        // 10132723 - 10132075 - 500 = 148
-        // what's the offset of the first match after the I?
-        // 108M + 14D + 24M + 2M = 148
-        // What's the offset of the first base that is after the I?
-        // 108M + 24M + 2M + 18I = 134M + 18I = 152 - 1 = 151
-        tests.add(new Object[]{"108M14D24M2M18I29M92M", 0, 0});
-        tests.add(new Object[]{"108M14D24M2M18I29M92M", 107, 107});
-        tests.add(new Object[]{"108M14D24M2M18I29M92M", 108, 108 + 14}); // first base after the deletion
-
-        tests.add(new Object[]{"108M14D24M2M18I29M92M", 132, 132+14}); // 2 before insertion
-        tests.add(new Object[]{"108M14D24M2M18I29M92M", 133, 133+14}); // last base before insertion
-
-        // entering into the insertion
-        for ( int i = 0; i < 18; i++ ) {
-            tests.add(new Object[]{"108M14D24M2M18I29M92M", 134+i, 148}); // inside insertion
-        }
-        tests.add(new Object[]{"108M14D24M2M18I29M92M", 134+18, 148}); // first base after insertion matches at same as insertion
-        tests.add(new Object[]{"108M14D24M2M18I29M92M", 134+18+1, 149});
-        tests.add(new Object[]{"108M14D24M2M18I29M92M", 134+18+2, 150});
-
-        return tests.toArray(new Object[][]{});
-    }
-
-    @Test(dataProvider = "ReadOffsetFromCigarData", enabled = !DEBUG)
-    public void testReadOffsetFromCigar(final String cigarString, final int startOnCigar, final int expectedOffset) {
-        final Cigar cigar = TextCigarCodec.decode(cigarString);
-        final int actualOffset = AlignmentUtils.calcFirstBaseMatchingReferenceInCigar(cigar, startOnCigar);
-        Assert.assertEquals(actualOffset, expectedOffset);
-    }
 
     //////////////////////////////////////////
     // Test AlignmentUtils.addCigarElements() //
@@ -1249,5 +1200,26 @@ public final class AlignmentUtilsUnitTest {
         final Cigar newCigar = AlignmentUtils.removeTrailingDeletions(originalCigar);
 
         Assert.assertEquals(originalCigar.equals(newCigar), !cigar.endsWith("D"));
+    }
+
+    @DataProvider(name = "ReadStartOnReferenceHaplotypeData")
+    public Object[][] makeReadStartOnReferenceHaplotypeData() {
+        List<Object[]> tests = new ArrayList<>();
+        tests.add(new Object[]{ "30M5D20M", 50, 55 });
+        tests.add(new Object[]{ "30M5I20M", 50, 45 });
+        tests.add(new Object[]{ "55M", 50, 50 });
+        tests.add(new Object[]{ "30M5D30M5D30M", 80, 90 });
+        tests.add(new Object[]{ "30M5D30M5I30M", 80, 80 });
+        tests.add(new Object[]{ "30M5D30M5I30M", 80, 80 });
+
+        return tests.toArray(new Object[][]{});
+    }
+
+
+    @Test(dataProvider = "ReadStartOnReferenceHaplotypeData")
+    public void testReadStartOnReferenceHaplotype(final String cigar, final int readStartOnHaplotype, final int expectedOffsetInRef){
+        final Cigar haplotypeVsRefCigar = TextCigarCodec.decode(cigar);
+        final int offsetInRef = AlignmentUtils.readStartOnReferenceHaplotype(haplotypeVsRefCigar, readStartOnHaplotype);
+        Assert.assertEquals(offsetInRef, expectedOffsetInRef);
     }
 }
