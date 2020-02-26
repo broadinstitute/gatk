@@ -293,13 +293,13 @@ public final class SplitNCigarReads extends MultiplePassReadWalker {
 
         // we keep only the section of the read that is aligned to the reference between startRefIndex and stopRefIndex (inclusive).
         // the other sections of the read are clipped:
-        final Cigar cigar = read.getCigar();
-        final int startRefIndex = read.getUnclippedStart() + CigarUtils.countRefBasesAndClips(cigar, 0, cigarFirstIndex); //goes through the prefix of the cigar (up to cigarStartIndex) and move the reference index.
-        final int stopRefIndex = startRefIndex + CigarUtils.countRefBasesAndClips(cigar, cigarFirstIndex,cigarSecondIndex)-1; //goes through a consecutive non-N section of the cigar (up to cigarEndIndex) and move the reference index.
+        final List<CigarElement> elements = read.getCigarElements();
+        final int startRefIndex = read.getUnclippedStart() + CigarUtils.countRefBasesAndClips(elements, 0, cigarFirstIndex); //goes through the prefix of the cigar (up to cigarStartIndex) and move the reference index.
+        final int stopRefIndex = startRefIndex + CigarUtils.countRefBasesAndClips(elements, cigarFirstIndex,cigarSecondIndex)-1; //goes through a consecutive non-N section of the cigar (up to cigarEndIndex) and move the reference index.
 
         if ( forSplitPositions != null ) {
             final String contig = read.getContig();
-            final int splitStart = startRefIndex + CigarUtils.countRefBasesAndClips(cigar,cigarFirstIndex,cigarEndIndex);  //we use cigarEndIndex instead of cigarSecondIndex so we won't take into account the D's at the end.
+            final int splitStart = startRefIndex + CigarUtils.countRefBasesAndClips(elements,cigarFirstIndex,cigarEndIndex);  //we use cigarEndIndex instead of cigarSecondIndex so we won't take into account the D's at the end.
             final int splitEnd = splitStart + read.getCigarElement(cigarEndIndex).getLength() - 1;
             forSplitPositions.addSplicePosition(contig, splitStart, splitEnd);
         }

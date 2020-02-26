@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.utils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.function.*;
+import java.util.function.IntConsumer;
+import java.util.function.IntPredicate;
+import java.util.function.IntToDoubleFunction;
+import java.util.function.IntUnaryOperator;
 
 /**
  * Represents 0-based integer index range.
@@ -181,6 +183,20 @@ public final class IndexRange {
         double result = 0;
         for (int i = from; i < to; i++) {
             result += lambda.applyAsDouble(i);
+        }
+        return result;
+    }
+
+    /**
+     * Sums the values of an int -> double function applied to this range
+     *
+     * @param lambda the int -> double function
+     */
+    public double sum(final IntUnaryOperator lambda) {
+        Utils.nonNull(lambda, "the lambda function cannot be null");
+        double result = 0;
+        for (int i = from; i < to; i++) {
+            result += lambda.applyAsInt(i);
         }
         return result;
     }

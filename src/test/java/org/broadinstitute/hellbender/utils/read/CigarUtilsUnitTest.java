@@ -123,7 +123,7 @@ public final class CigarUtilsUnitTest {
 
     @Test(dataProvider = "testData_countRefBasesBasedOnCigar")
     public void testCountRefBasesBasedOnCigar(final String cigarStrIn, final int start, final int end, final int expected){
-        final int actual = CigarUtils.countRefBasesAndClips(TextCigarCodec.decode(cigarStrIn), start, end);
+        final int actual = CigarUtils.countRefBasesAndClips(TextCigarCodec.decode(cigarStrIn).getCigarElements(), start, end);
         Assert.assertEquals(actual, expected, cigarStrIn);
     }
 
@@ -134,17 +134,17 @@ public final class CigarUtilsUnitTest {
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarStart1(){
         final String cigarStrIn = "1M1=1X";
-        CigarUtils.countRefBasesAndClips(TextCigarCodec.decode(cigarStrIn), -1, 1);
+        CigarUtils.countRefBasesAndClips(TextCigarCodec.decode(cigarStrIn).getCigarElements(), -1, 1);
     }
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarStart2(){
         final String cigarStrIn = "1M1=1X";
-        CigarUtils.countRefBasesAndClips(TextCigarCodec.decode(cigarStrIn), 2, 1);
+        CigarUtils.countRefBasesAndClips(TextCigarCodec.decode(cigarStrIn).getCigarElements(), 2, 1);
     }
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarEnd2(){
         final String cigarStrIn = "1M1=1X";
-        CigarUtils.countRefBasesAndClips(TextCigarCodec.decode(cigarStrIn), 1, 6);
+        CigarUtils.countRefBasesAndClips(TextCigarCodec.decode(cigarStrIn).getCigarElements(), 1, 6);
     }
 
 

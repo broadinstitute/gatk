@@ -6,6 +6,7 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
@@ -50,25 +51,27 @@ public final class CigarUtils {
      * For example original position = 10. cigar: 2M3I2D1M. If you remove the 2M the new starting position is 12.
      * If you remove the 2M3I it is still 12. If you remove 2M3I2D (not reasonable cigar), you will get position 14.
      */
-    public static int countRefBasesAndClips(final Cigar cigar, final int cigarStartIndex, final int cigarEndIndex){
-        return countRefBasesAndMaybeAlsoClips(cigar, cigarStartIndex, cigarEndIndex, true, true);
+    public static int countRefBasesAndClips(final List<CigarElement> elems, final int cigarStartIndex, final int cigarEndIndex){
+        return countRefBasesAndMaybeAlsoClips(elems, cigarStartIndex, cigarEndIndex, true, true);
     }
 
-    public static int countRefBasesAndSoftClips(final Cigar cigar, final int cigarStartIndex, final int cigarEndIndex){
-        return countRefBasesAndMaybeAlsoClips(cigar, cigarStartIndex, cigarEndIndex, true, false);
+    public static int countRefBasesAndSoftClips(final List<CigarElement> elems, final int cigarStartIndex, final int cigarEndIndex){
+        return countRefBasesAndMaybeAlsoClips(elems, cigarStartIndex, cigarEndIndex, true, false);
     }
 
-    private static int countRefBasesAndMaybeAlsoClips(final Cigar cigar, final int cigarStartIndex, final int cigarEndIndex, final boolean includeSoftClips, final boolean includeHardClips) {
-        final List<CigarElement> elems = Utils.nonNull(cigar).getCigarElements();
+    private static int countRefBasesAndMaybeAlsoClips(final List<CigarElement> elems, final int cigarStartIndex, final int cigarEndIndex, final boolean includeSoftClips, final boolean includeHardClips) {
+        Utils.nonNull(elems);
         Utils.validateArg(cigarStartIndex >= 0 && cigarEndIndex <= elems.size() && cigarStartIndex <= cigarEndIndex, () -> "invalid index:" + 0 + " -" + elems.size());
-        final Predicate<CigarOperator> consumesRefBases = CigarOperator::consumesReferenceBases;
-        final Predicate<CigarOperator> clippingPredicate = op -> (includeSoftClips && op == CigarOperator.SOFT_CLIP) || (includeHardClips && op == CigarOperator.HARD_CLIP);
-        final Predicate<CigarOperator> countOperator = consumesRefBases.or(clippingPredicate);
 
-        return elems.subList(cigarStartIndex, cigarEndIndex).stream()
-                .filter(elem -> countOperator.test(elem.getOperator()))
-                .mapToInt(CigarElement::getLength)
-                .sum();
+        int result = 0;
+        for (final CigarElement elem : elems.subList(cigarStartIndex, cigarEndIndex)) {
+            final CigarOperator op = elem.getOperator();
+            if (op.consumesReferenceBases() || (includeSoftClips && op == CigarOperator.SOFT_CLIP) || (includeHardClips && op == CigarOperator.HARD_CLIP)) {
+                result += elem.getLength();
+            }
+        }
+
+        return result;
     }
 
     /**

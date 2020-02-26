@@ -457,7 +457,7 @@ public class ReadClipper {
      */
     public static GATKRead softClipToRegionIncludingClippedBases( final GATKRead read, final int refStart, final int refStop ) {
         final int start = read.getUnclippedStart();
-        final int stop = start + CigarUtils.countRefBasesAndClips(read.getCigar(), 0, read.numCigarElements()) - 1;
+        final int stop = start + CigarUtils.countRefBasesAndClips(read.getCigarElements(), 0, read.numCigarElements()) - 1;
 
         if (start <= refStop && stop >= refStart) {
             if (start < refStart && stop > refStop) {
