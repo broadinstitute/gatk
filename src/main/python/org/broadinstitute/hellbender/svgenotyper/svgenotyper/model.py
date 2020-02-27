@@ -214,15 +214,6 @@ class SVGenotyperPyroModel(object):
         logging.info("Inference complete.")
         return {key: sample[key].detach().cpu().numpy() for key in sample}
 
-    def clean_tensors(self, off_limit_tensors):
-        import gc
-        tensors = [o for o in gc.get_objects() if torch.is_tensor(o)]
-        for tensor in tensors:
-            for t in off_limit_tensors:
-                if tensor is t:
-                    continue
-            del tensor
-
     def infer_discrete(self, data: SVGenotyperData, svtype: SVTypes, log_freq: int = 100, n_samples: int = 1000):
         logging.info("Running discrete inference...")
         sites = ['z', 'm_sr1', 'm_sr2']
@@ -235,15 +226,15 @@ class SVGenotyperPyroModel(object):
                                                           data_sr2=data.sr2_t, depth_t=data.depth_t,
                                                           rd_gt_prob_t=data.rd_gt_prob_t)
         trained_model = poutine.replay(self.model, trace=guide_trace)
-        for i in range(n_samples):
-            inferred_model = infer_discrete(trained_model, temperature=1, first_available_dim=-3)
-            trace = poutine.trace(inferred_model).get_trace(data_pe=data.pe_t, data_sr1=data.sr1_t,
-                                                            data_sr2=data.sr2_t, depth_t=data.depth_t,
-                                                            rd_gt_prob_t=data.rd_gt_prob_t)
-            posterior_samples.append({site: trace.nodes[site]["value"].detach().cpu() for site in sites})
-            self.clean_tensors([data.pe_t, data.sr1_t, data.sr2_t, data.depth_t, data.rd_gt_prob_t])
-            if (i + 1) % log_freq == 0:
-                logging.info("[sample {:d}] discrete latent".format(i + 1))
+        with torch.no_grad():
+            for i in range(n_samples):
+                inferred_model = infer_discrete(trained_model, temperature=1, first_available_dim=-3)
+                trace = poutine.trace(inferred_model).get_trace(data_pe=data.pe_t, data_sr1=data.sr1_t,
+                                                                data_sr2=data.sr2_t, depth_t=data.depth_t,
+                                                                rd_gt_prob_t=data.rd_gt_prob_t)
+                posterior_samples.append({site: trace.nodes[site]["value"].detach().cpu() for site in sites})
+                if (i + 1) % log_freq == 0:
+                    logging.info("[sample {:d}] discrete latent".format(i + 1))
         posterior_samples = {site: torch.stack([posterior_samples[i][site] for i in range(n_samples)], dim=0).numpy() for site in sites}
         logging.info("Inference complete.")
 
