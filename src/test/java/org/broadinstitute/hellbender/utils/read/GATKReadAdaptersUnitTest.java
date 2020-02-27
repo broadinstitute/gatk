@@ -43,7 +43,7 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         final SAMRecord samRecord = basicSAMRecord();
         final GATKRead basicSamRead = new SAMRecordToGATKReadAdapter(samRecord);
 
-        final SAMRecord samRecordUnmapped = basicSAMRecord();
+        final SAMRecord samRecordUnmapped = basicUnmappedSAMRecord();
         samRecordUnmapped.setReadUnmappedFlag(true);
         final GATKRead basicSamReadUnmapped = new SAMRecordToGATKReadAdapter(samRecordUnmapped);
 
@@ -61,6 +61,7 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         record.setEnd((long)sam.getAlignmentEnd()-1);     //ADAM records are 0-based
         record.setReadMapped(!sam.getReadUnmappedFlag());
         record.setCigar(sam.getCigarString());
+        record.setReferenceName(sam.getReferenceName());
         return new BDGAlignmentRecordToGATKReadAdapter(record, getSAMHeader());
     }
 
@@ -96,10 +97,17 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         read.setMateAlignmentStart(BASIC_READ_MATE_START);
         read.setReadPairedFlag(true);
         read.setFirstOfPairFlag(true);
+        read.setReferenceName(BASIC_READ_CONTIG);
         // ArtificialReadUtils adds this tag, but explicitly add it for symmetry with basicGoogleGenomicsRead
         read.setAttribute(SAMTag.PG.name(), BASIC_PROGRAM);
 
         return read;
+    }
+
+    private static SAMRecord basicUnmappedSAMRecord() {
+        SAMRecord sam = basicSAMRecord();
+        sam.setReferenceName(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME);
+        return sam;
     }
 
     private static List<GATKRead> getUnmappedReads() {
