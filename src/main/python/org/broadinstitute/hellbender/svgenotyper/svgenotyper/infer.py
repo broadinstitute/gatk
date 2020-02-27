@@ -41,8 +41,8 @@ def run(args):
             sample_ids_list = io.load_list(base_path + ".sample_ids.list")
             data = io.load_tensors(directory=args.model_dir, model_name=args.model_name, svtype=svtype, device=args.device)
 
-            predictive_samples = model.infer_predictive(data=data, log_freq=args.infer_predictive_log_freq, n_samples=args.infer_predictive_samples)
-            discrete_samples = model.infer_discrete(data=data, svtype=svtype, log_freq=args.infer_discrete_log_freq, n_samples=args.infer_discrete_samples)
+            predictive_samples = model.infer_predictive(data=data, n_samples=args.infer_predictive_samples)
+            discrete_samples = model.infer_discrete(data=data, log_freq=args.infer_discrete_log_freq, n_samples=args.infer_discrete_samples)
             freq = calculate_state_frequencies(model=model, discrete_samples=discrete_samples)
             genotypes = get_genotypes(freq_z=freq['z'])
             stats = get_predictive_stats(samples=predictive_samples)

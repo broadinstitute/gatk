@@ -60,15 +60,12 @@ def parse_args_infer():
 
     parser.add_argument('--jit', action='store_true', help='Enable JIT compilation')
 
-    parser.add_argument('--infer-predictive-log-freq', default=100, type=int,
-                        help='Number of predictive inference samples between log messages')
     parser.add_argument('--infer-predictive-samples', default=1000, type=int,
                         help='Number of samples for predictive inference')
-
-    parser.add_argument('--infer-discrete-log-freq', default=100, type=int,
-                        help='Number of discrete inference samples between log messages')
     parser.add_argument('--infer-discrete-samples', default=1000, type=int,
                         help='Number of samples for discrete inference')
+    parser.add_argument('--infer-discrete-log-freq', default=100, type=int,
+                        help='Number of discrete inference samples between log messages')
 
     args = parser.parse_args()
 
