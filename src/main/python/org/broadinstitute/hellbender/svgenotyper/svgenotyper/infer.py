@@ -129,10 +129,13 @@ def get_genotypes(freq_z: dict):
 def calculate_state_frequencies(model: SVGenotyperPyroModel, discrete_samples: dict):
     z = discrete_samples['z']
     z_freq = np.zeros((z.shape[1], z.shape[2], model.k))
-    z_bins = np.arange(model.k + 1) - 0.5
-    for i in range(z.shape[1]):
-        for j in range(z.shape[2]):
-            z_freq[i, j, :], _ = np.histogram(z[:, i, j], bins=z_bins, density=True)
+    for i in model.k:
+        locs = z == i
+        z_copy = z.copy()
+        z_copy[locs] = 1
+        z_copy[~locs] = 0
+        z_freq[..., i] = z_copy.sum(axis=1)
+    z_freq = z_freq / z_freq.sum(axis=2)
     m_pe_freq = discrete_samples['m_pe'].mean(axis=0)
     m_sr1_freq = discrete_samples['m_sr1'].mean(axis=0)
     m_sr2_freq = discrete_samples['m_sr2'].mean(axis=0)

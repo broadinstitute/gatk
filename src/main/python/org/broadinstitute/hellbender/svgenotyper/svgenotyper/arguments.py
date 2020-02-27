@@ -1,9 +1,10 @@
 import argparse
 
+"""
+Parse command line arguments.
+"""
 
 def parse_args_train():
-    """Parse command line arguments.
-    """
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--vcf', help='Input VCF path', required=True)
@@ -38,7 +39,6 @@ def parse_args_train():
     parser.add_argument('--iter-log-freq', default=100, type=int, help='Number of iterations between log messages')
     parser.add_argument('--jit', action='store_true', help='Enable JIT compilation')
 
-    # Parse, print, set annotations and seed
     args = parser.parse_args()
 
     print('Arguments are', args)
@@ -47,8 +47,6 @@ def parse_args_train():
 
 
 def parse_args_infer():
-    """Parse command line arguments.
-    """
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--vcf', help='Input VCF path', required=True)
@@ -72,7 +70,6 @@ def parse_args_infer():
     parser.add_argument('--infer-discrete-samples', default=1000, type=int,
                         help='Number of samples for discrete inference')
 
-    # Parse, print, set annotations and seed
     args = parser.parse_args()
 
     print('Arguments are', args)
