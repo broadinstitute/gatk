@@ -1193,7 +1193,7 @@ public final class ReadUtils {
         Utils.nonNull(header);
 
         if (null == referenceFile && outputPath.toString().endsWith(FileExtensions.CRAM)) {
-            throw new UserException("A reference file is required for writing CRAM files");
+            throw new UserException.MissingReference("A reference file is required for writing CRAM files");
         }
 
         return factory.makeWriter(header.clone(), preSorted, outputPath, referenceFile);

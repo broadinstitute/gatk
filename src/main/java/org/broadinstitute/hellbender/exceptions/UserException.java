@@ -103,7 +103,13 @@ public class UserException extends RuntimeException {
         private static final long serialVersionUID = 0L;
 
         public MissingReference(String message) { super(message); }
+
+        public MissingReference(final String message, final boolean commandLine) {
+            super(message + (commandLine ? String.format("  A reference is specified with the -%s command line argument.", StandardArgumentDefinitions.REFERENCE_SHORT_NAME) : ""));
+        }
     }
+
+    public static final MissingReference MISSING_REFERENCE_FOR_CRAM = new MissingReference("A reference file is required when using CRAM files.", true);
 
     public static class MissingIndex extends UserException {
         private static final long serialVersionUID = 0L;
