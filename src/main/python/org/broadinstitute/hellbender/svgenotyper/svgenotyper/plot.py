@@ -5,6 +5,68 @@ import pandas as pd
 from pysam import VariantFile
 
 
+def plot_sites_per_genome_summary(vcf_path: str, out_path: str):
+    vcf = VariantFile(vcf_path)
+    samples_list = list(vcf.header.samples)
+    svtypes_list = ['DEL', 'DUP', 'INS', 'INV']
+    site_counts = {sample: {svtype: 0 for svtype in svtypes_list} for sample in samples_list}
+    infos_list = ['PPE', 'PSR1', 'PSR2', 'PRD', 'EPE', 'ESR1', 'ESR2', 'PHI_PE', 'PHI_SR1', 'PHI_SR2']
+    site_infos = {info: {svtype: [] for svtype in svtypes_list} for info in infos_list}
+    for record in vcf.fetch():
+        svtype = record.info['SVTYPE']
+        for sample in samples_list:
+            if sum(record.samples[sample]['GT']) > 0:
+                site_counts[sample][svtype] += 1
+        for info in infos_list:
+            site_infos[info][svtype].append(record.info[info])
+    rows = 1
+    cols = 2
+    figure_width = 8
+    figure_height = 4
+
+    pf, axes = plt.subplots(rows, cols, figsize=(figure_width, figure_height))
+
+    total_counts = [sum([x[svtype] for svtype in svtypes_list]) for x in site_counts.values()]
+    axes[0].boxplot(total_counts, labels=['ALL'])
+    axes[0].set_ylabel('sites per genome')
+
+    counts_by_type = [[x[svtype] for x in site_counts.values()] for svtype in svtypes_list]
+    axes[1].boxplot(counts_by_type, labels=svtypes_list)
+    axes[1].set_ylabel('sites per genome')
+
+    rows = len(svtypes_list)
+    cols = len(infos_list)
+    figure_width = 14
+    figure_height = 4
+
+    pf, axes = plt.subplots(rows, cols, figsize=(figure_width, figure_height))
+    unit_interval_bins = np.arange(0, 1.05, 0.05)
+    phi_bins = np.arange(0, 1.575, 0.075)
+    bins = {
+        'PPE': unit_interval_bins,
+        'PSR1': unit_interval_bins,
+        'PSR2': unit_interval_bins,
+        'PRD': unit_interval_bins,
+        'EPE': unit_interval_bins,
+        'ESR1': unit_interval_bins,
+        'ESR2': unit_interval_bins,
+        'PHI_PE': phi_bins,
+        'PHI_SR1': phi_bins,
+        'PHI_SR2': phi_bins
+    }
+    for i in range(len(svtypes_list)):
+        for j in range(len(infos_list)):
+            axes[i, j].hist(site_infos[infos_list[j]][svtypes_list[i]], bins=bins[infos_list[j]], density=True)
+            axes[i, j].set_yticks([])
+            if j == 0:
+                axes[i, j].set_ylabel(svtypes_list[i])
+            if i == 0:
+                axes[i, j].set_title(infos_list[j])
+    plt.tight_layout()
+    plt.show()
+
+
+
 def plot_sites(vcf_path: str, mean_coverage_path: str, vids: list = None, out_dir: str = 'figures'):
 
     rows = 3

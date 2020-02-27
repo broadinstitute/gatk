@@ -25,7 +25,7 @@ def run(args):
 
     output_by_type = {}
     global_stats_by_type = {}
-    for svtype in [SVTypes.DEL]: #, SVTypes.DUP, SVTypes.INS, SVTypes.INV]:
+    for svtype in [SVTypes.DEL, SVTypes.DUP, SVTypes.INS, SVTypes.INV]:
         base_path = os.path.join(args.model_dir, args.model_name + "." + svtype.name)
         params = load_model(base_path)
         if params is None:
@@ -36,10 +36,10 @@ def run(args):
                                          mu_lambda_sr2=params['mu_lambda_sr2'], var_phi_pe=params['var_phi_pe'], var_phi_sr1=params['var_phi_sr1'],
                                          var_phi_sr2=params['var_phi_sr2'], mu_eta_q=params['mu_eta_q'], mu_eta_r=params['mu_eta_r'],
                                          device=args.device, loss=params['loss'])
-            load_param_store(base_path)
+            load_param_store(base_path, device=args.device)
             vids_list = io.load_list(base_path + ".vids.list")
             sample_ids_list = io.load_list(base_path + ".sample_ids.list")
-            data = io.load_tensors(directory=args.model_dir, model_name=args.model_name, svtype=svtype)
+            data = io.load_tensors(directory=args.model_dir, model_name=args.model_name, svtype=svtype, device=args.device)
 
             predictive_samples = model.infer_predictive(data=data, log_freq=args.infer_predictive_log_freq, n_samples=args.infer_predictive_samples)
             discrete_samples = model.infer_discrete(data=data, svtype=svtype, log_freq=args.infer_discrete_log_freq, n_samples=args.infer_discrete_samples)
@@ -153,6 +153,6 @@ def load_model(base_path: str):
         logging.warning("Could not locate model file {:s}".format(model_path))
 
 
-def load_param_store(base_path: str):
+def load_param_store(base_path: str, device: str = 'cpu'):
     pyro.clear_param_store()
-    pyro.get_param_store().load(base_path + '.param_store.pyro')
+    pyro.get_param_store().load(base_path + '.param_store.pyro', map_location=torch.device(device))
