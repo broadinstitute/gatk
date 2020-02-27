@@ -219,7 +219,7 @@ class SVGenotyperPyroModel(object):
         sites = ['z', 'm_sr1', 'm_sr2']
         if svtype == SVTypes.DEL or svtype == SVTypes.DUP or svtype == SVTypes.INV:
             sites.append('m_pe')
-        elif svtype == SVTypes.DEL or svtype == SVTypes.DUP:
+        if svtype == SVTypes.DEL or svtype == SVTypes.DUP:
             sites.append('m_rd')
         posterior_samples = []
         guide_trace = poutine.trace(self.guide).get_trace(data_pe=data.pe_t, data_sr1=data.sr1_t,
