@@ -1,5 +1,5 @@
-import json
 import logging
+import numpy as np
 import pyro
 import pyro.distributions as dist
 from pyro import poutine
@@ -193,9 +193,6 @@ class SVGenotyperPyroModel(object):
                     r_pe = mu_obs_pe * mu_obs_pe / (var_pe - mu_obs_pe)
                     p_pe = (var_pe - mu_obs_pe) / var_pe
                     pyro.sample('pe_obs', dist.NegativeBinomial(total_count=r_pe, probs=p_pe), obs=data_pe)
-                else:
-                    r_pe = one_t.expand(n_variants, n_samples)
-                    p_pe = one_t.expand(n_variants, n_samples)
 
                 # V x 1 x K
                 mu_obs_sr1 = depth_t * Vindex(locs_sr1)[..., z]
@@ -209,19 +206,6 @@ class SVGenotyperPyroModel(object):
                 p_sr2 = (var_sr2 - mu_obs_sr2) / var_sr2
                 pyro.sample('sr1_obs', dist.NegativeBinomial(total_count=r_sr1, probs=p_sr1), obs=data_sr1)
                 pyro.sample('sr2_obs', dist.NegativeBinomial(total_count=r_sr2, probs=p_sr2), obs=data_sr2)
-        return {
-            'z': z,
-            'r_pe': r_pe,
-            'r_sr1': r_sr1,
-            'r_sr2': r_sr2,
-            'p_pe': p_pe,
-            'p_sr1': p_sr1,
-            'p_sr2': p_sr2,
-            'm_pe': m_pe,
-            'm_sr1': m_sr1,
-            'm_sr2': m_sr2,
-            'm_rd': m_rd
-        }
 
     def infer_predictive(self, data: SVGenotyperData, n_samples: int = 1000):
         logging.info("Running predictive distribution inference...")
@@ -230,8 +214,13 @@ class SVGenotyperPyroModel(object):
         logging.info("Inference complete.")
         return {key: sample[key].detach().cpu().numpy() for key in sample}
 
-    def infer_discrete(self, data: SVGenotyperData, log_freq: int = 100, n_samples: int = 1000):
+    def infer_discrete(self, data: SVGenotyperData, svtype: SVTypes, log_freq: int = 100, n_samples: int = 1000):
         logging.info("Running discrete inference...")
+        sites = ['z', 'm_sr1', 'm_sr2']
+        if svtype == SVTypes.DEL or svtype == SVTypes.DUP or svtype == SVTypes.INV:
+            sites.append('m_pe')
+        elif svtype == SVTypes.DEL or svtype == SVTypes.DUP:
+            sites.append('m_rd')
         posterior_samples = []
         guide_trace = poutine.trace(self.guide).get_trace(data_pe=data.pe_t, data_sr1=data.sr1_t,
                                                           data_sr2=data.sr2_t, depth_t=data.depth_t,
@@ -242,26 +231,29 @@ class SVGenotyperPyroModel(object):
             trace = poutine.trace(inferred_model).get_trace(data_pe=data.pe_t, data_sr1=data.sr1_t,
                                                             data_sr2=data.sr2_t, depth_t=data.depth_t,
                                                             rd_gt_prob_t=data.rd_gt_prob_t)
-            posterior_samples.append([trace.nodes["_RETURN"]["value"]["z"].detach().cpu(),
-                                      trace.nodes["_RETURN"]["value"]["m_pe"].detach().cpu(),
-                                      trace.nodes["_RETURN"]["value"]["m_sr1"].detach().cpu(),
-                                      trace.nodes["_RETURN"]["value"]["m_sr2"].detach().cpu(),
-                                      trace.nodes["_RETURN"]["value"]["m_rd"].detach().cpu()])
+            posterior_samples.append({site: trace.nodes[site]["value"].detach().cpu() for site in sites})
             if (i + 1) % log_freq == 0:
                 logging.info("[sample {:d}] discrete latent".format(i + 1))
-        posterior_samples = [torch.stack([posterior_samples[j][i] for j in range(n_samples)], dim=0) for i in range(5)]
+        posterior_samples = {site: torch.stack([posterior_samples[i][site] for i in range(n_samples)], dim=0).numpy() for site in sites}
         logging.info("Inference complete.")
-        z = posterior_samples[0]
-        m_pe = posterior_samples[1]
-        m_sr1 = posterior_samples[2]
-        m_sr2 = posterior_samples[3]
-        m_rd = posterior_samples[4]
+
+        z = posterior_samples['z']
+        m_sr1 = posterior_samples['m_sr1']
+        m_sr2 = posterior_samples['m_sr2']
+        if 'm_pe' in posterior_samples:
+            m_pe = posterior_samples['m_pe']
+        else:
+            m_pe = np.zeros(m_sr1.shape)
+        if 'm_rd' in posterior_samples:
+            m_rd = posterior_samples['m_rd']
+        else:
+            m_rd = np.zeros(m_sr1.shape)
         return {
-            "z": z.numpy(),
-            "m_pe": m_pe.numpy(),
-            "m_sr1": m_sr1.numpy(),
-            "m_sr2": m_sr2.numpy(),
-            "m_rd": m_rd.numpy()
+            "z": z,
+            "m_pe": m_pe,
+            "m_sr1": m_sr1,
+            "m_sr2": m_sr2,
+            "m_rd": m_rd
         }
 
     def infer_discrete_full(self, data: SVGenotyperData, svtype: SVTypes, log_freq: int = 100, n_samples: int = 1000):
