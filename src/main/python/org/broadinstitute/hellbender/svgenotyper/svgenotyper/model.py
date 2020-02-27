@@ -225,17 +225,10 @@ class SVGenotyperPyroModel(object):
 
     def infer_predictive(self, data: SVGenotyperData, log_freq: int = 100, n_samples: int = 1000):
         logging.info("Running predictive distribution inference...")
-        samples = []
-        for i in range(n_samples):
-            predictive = Predictive(self.model, guide=self.guide, num_samples=1, return_sites=self.latent_sites)
-            sample = predictive(data_pe=data.pe_t, data_sr1=data.sr1_t, data_sr2=data.sr2_t, depth_t=data.depth_t, rd_gt_prob_t=data.rd_gt_prob_t)
-            sample = {key: sample[key].detach().cpu() for key in sample}
-            samples.append(sample)
-            if (i + 1) % log_freq == 0:
-                logging.info("[sample {:d}] predictive".format(i + 1))
-        result = {key: torch.stack([samples[i][key] for i in range(n_samples)], dim=0).numpy() for key in self.latent_sites}
+        predictive = Predictive(self.model, guide=self.guide, num_samples=n_samples, return_sites=self.latent_sites)
+        sample = predictive(data_pe=data.pe_t, data_sr1=data.sr1_t, data_sr2=data.sr2_t, depth_t=data.depth_t, rd_gt_prob_t=data.rd_gt_prob_t)
         logging.info("Inference complete.")
-        return result
+        return {key: sample[key].detach().cpu().numpy() for key in sample}
 
     def infer_discrete(self, data: SVGenotyperData, svtype: SVTypes, log_freq: int = 100, n_samples: int = 1000):
         logging.info("Running discrete inference...")
