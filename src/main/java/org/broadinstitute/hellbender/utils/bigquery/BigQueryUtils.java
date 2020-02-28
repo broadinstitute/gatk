@@ -385,6 +385,9 @@ public class BigQueryUtils {
 
         final TableResult result = executeQuery(queryStringIntoTempTable, runQueryInBatchMode);
 
+        final Table tableInfo = getBigQueryEndPoint().getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
+        logger.info(String.format("Query temp table created with %s rows and %s bytes in size", tableInfo.getNumRows(), tableInfo.getNumBytes()));
+
         return new StorageAPIAvroReader(projectID, tempTableDataset, tempTableName, fieldsToRetrieve);
     }
 
