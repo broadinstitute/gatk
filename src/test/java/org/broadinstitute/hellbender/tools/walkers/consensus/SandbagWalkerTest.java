@@ -1,8 +1,9 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect.consensus;
+package org.broadinstitute.hellbender.tools.walkers.consensus;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.mutect.InferOriginalRead;
+import org.broadinstitute.hellbender.tools.walkers.mutect.consensus.SandbagWalker;
 import org.testng.annotations.Test;
 
 import java.io.File;

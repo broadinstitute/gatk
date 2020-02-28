@@ -1,13 +1,21 @@
-if [ "$#" -ne 3 ]; then
-  echo "this script takes 3 arguments: <bam> <out> <out_dir>"
+if [ "$#" -lt 3 ]; then
+  echo "this script takes 3 arguments: <bam> <out> <out_dir> (<debug>)"
   exit 1
 fi
+
+# (2/27/20): If you get a segfault from groupByUMI--
 
 export bam=$1
 export out=$2
 export out_dir=$3
+export debug=$4
+export min_mapq=28
 
-export fgbio_jar="/dsde/working/tsato/consensus/fgbio.jar"
+echo $bam
+echo $out
+
+
+export fgbio_jar="/Users/tsato/Downloads/fgbio-1.1.0.jar"
 
 #export home_dir="/dsde/working/tsato/consensus/"
 
@@ -19,8 +27,12 @@ export fgbio_jar="/dsde/working/tsato/consensus/fgbio.jar"
 # export bam="/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.bam"
 # export out="/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.grouped.bam"
 
-# export java_command="java -jar -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=49015 $fgbio_jar"
-export java_command="java -jar $fgbio_jar"
+
+if [ "$debug" ]; then
+  export java_command="java -jar -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=49015 $fgbio_jar"
+else
+  export java_command="java -jar $fgbio_jar"
+fi
 
 $java_command \
 GroupReadsByUmi \
@@ -28,7 +40,9 @@ GroupReadsByUmi \
 -i $bam \
 -o $out \
 --strategy=paired \
--f $out_dir/family_size.tsv
+--min-map-q="$min_mapq" \
+-f "$out_dir"/family_size.tsv
+
 # create an indel only sam file
 # it contains some 146M's but that's OK
 # export out_indel_only="/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.grouped.I.sam"

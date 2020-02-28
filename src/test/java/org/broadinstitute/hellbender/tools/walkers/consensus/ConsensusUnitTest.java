@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect.consensus;
+package org.broadinstitute.hellbender.tools.walkers.consensus;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;

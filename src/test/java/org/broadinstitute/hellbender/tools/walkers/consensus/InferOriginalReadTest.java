@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
+package org.broadinstitute.hellbender.tools.walkers.consensus;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
