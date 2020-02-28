@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  * Experimental version of the ReadThreadingGraph with support for threading reads to generate JunctionTrees for resolving
  * connectivity information at longer ranges.
  *
- * Note that many of the non-DeBruin graph alterations that are made to ReadThreadingGraph are not made here:
+ * Note that many of the non-DeBruijn graph alterations that are made to ReadThreadingGraph are not made here:
  * - Non-Unique kmers are not duplicated by this graph
  * - Kmers are not Zipped together to form a SeqGraph
  * - The reference path is stored in its entirety rather than being calculated on the fly
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  * For ease of debugging, this graph supports the method {@link #printSimplifiedGraph(File, int)}} which generates a SequenceGraph and
  * adds the junction trees to the output .dot file.
  */
-public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
+public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph {
     private static final long serialVersionUID = 1l;
     private static final MultiDeBruijnVertex SYMBOLIC_END_VETEX = new MultiDeBruijnVertex(new byte[]{'_'});
     private MultiSampleEdge SYMBOLIC_END_EDGE;
@@ -39,7 +39,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
     // TODO should this be constructed here or elsewhere
     private final Set<Kmer> kmers = new HashSet<>();
 
-    public JunctionTreeLinkedDeBruinGraph(int kmerSize) {
+    public JunctionTreeLinkedDeBruijnGraph(int kmerSize) {
         this(kmerSize, false, (byte)6, 1);
     }
 
@@ -47,7 +47,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
      * Create a new ReadThreadingAssembler using kmerSize for matching
      * @param kmerSize must be >= 1
      */
-    JunctionTreeLinkedDeBruinGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples) {
+    JunctionTreeLinkedDeBruijnGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples) {
         super(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
     }
 
@@ -241,7 +241,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
     // Generate a SeqGraph that is special
     @Override
     public SeqGraph toSequenceGraph() {
-        throw new UnsupportedOperationException("Cannot construct a sequence graph using JunctionTreeLinkedDeBruinGraph");
+        throw new UnsupportedOperationException("Cannot construct a sequence graph using JunctionTreeLinkedDeBruijnGraph");
     }
 
     /**

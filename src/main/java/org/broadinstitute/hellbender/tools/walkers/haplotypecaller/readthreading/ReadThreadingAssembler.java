@@ -74,7 +74,7 @@ public final class ReadThreadingAssembler {
                                   final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
                                   final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
-                                  final int maxUnprunedVariants, final boolean useLinkedDebrujinGraphs) {
+                                  final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = new ArrayList<>(kmerSizes);
         kmerSizes.sort(Integer::compareTo);
@@ -82,9 +82,9 @@ public final class ReadThreadingAssembler {
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
-        this.generateSeqGraph = !useLinkedDebrujinGraphs;
+        this.generateSeqGraph = !useLinkedDebruijnGraphs;
         if (!generateSeqGraph) {
-            logger.error("JunctionTreeLinkedDeBruinGraph is enabled.\n This is an experimental assembly graph mode that has not been fully validated\n\n");
+            logger.error("JunctionTreeLinkedDeBruijnGraph is enabled.\n This is an experimental assembly graph mode that has not been fully validated\n\n");
         }
 
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants) :
@@ -596,7 +596,7 @@ public final class ReadThreadingAssembler {
 
         // TODO figure out how you want to hook this in
         final AbstractReadThreadingGraph rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples) :
-                new JunctionTreeLinkedDeBruinGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
+                new JunctionTreeLinkedDeBruijnGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 

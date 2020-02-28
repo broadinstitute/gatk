@@ -4,7 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.JunctionTreeLinkedDeBruinGraph;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.JunctionTreeLinkedDeBruijnGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -29,14 +29,14 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
     // List for mapping vertexes that start chains of kmers that do not diverge, used to cut down on repeated graph traversal
     private Map<V, List<E>> graphKmerChainCache = new HashMap<>();
 
-    // Graph to be operated on, in this case cast as an JunctionTreeLinkedDeBruinGraph
-    private JunctionTreeLinkedDeBruinGraph junctionTreeLinkedDeBruinGraph;
+    // Graph to be operated on, in this case cast as an JunctionTreeLinkedDeBruijnGraph
+    private JunctionTreeLinkedDeBruijnGraph junctionTreeLinkedDeBruijnGraph;
     private final boolean experimentalEndRecoveryMode;
 
     public JunctionTreeKBestHaplotypeFinder(final BaseGraph<V, E> graph, final Set<V> sources, Set<V> sinks, final int branchWeightThreshold, final boolean experimentalEndRecoveryMode) {
         super(sinks, sources, graph);
-        Utils.validate(graph instanceof JunctionTreeLinkedDeBruinGraph, "JunctionTreeKBestHaplotypeFinder requires an JunctionTreeLinkedDeBruinGraph be provided");
-        this.junctionTreeLinkedDeBruinGraph = (JunctionTreeLinkedDeBruinGraph) graph;
+        Utils.validate(graph instanceof JunctionTreeLinkedDeBruijnGraph, "JunctionTreeKBestHaplotypeFinder requires an JunctionTreeLinkedDeBruijnGraph be provided");
+        this.junctionTreeLinkedDeBruijnGraph = (JunctionTreeLinkedDeBruijnGraph) graph;
         this.experimentalEndRecoveryMode = experimentalEndRecoveryMode;
         ParamUtils.isPositive(junctionTreeEvidenceWeightThreshold, "Pruning Weight Threshold must be a positive number greater than 0");
     }
@@ -136,7 +136,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             if (chain.isEmpty()) {
                 // Keep going until we reach a fork, reference sink, or fork
                 while (outgoingEdges.size() == 1 && // Case (2)
-                        !junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend).isPresent() && // Case (1)
+                        !junctionTreeLinkedDeBruijnGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend).isPresent() && // Case (1)
                         !sinks.contains(vertexToExtend))// Case (3)
                 {
                     final E edge = outgoingEdges.iterator().next();
@@ -163,7 +163,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             // code to decide what to do at that interesting node
             ////////////////////////////////////////////////////////////
             // In the event we have a junction tree on top of a vertex with outDegree > 1, we add this first before we traverse paths
-            junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend).ifPresent(pathToExtend::addJunctionTree);
+            junctionTreeLinkedDeBruijnGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend).ifPresent(pathToExtend::addJunctionTree);
 
             //TODO this can probabaly be 100% consumed by getApplicableNextEdgesBasedOnJunctionTrees() as a check... that would simplify things somewhat
             // If we are at a reference end then we close out the path
@@ -175,7 +175,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
                 // check that we were able to recover the missing path
                 if (newPath != null) {
                     //TODO this code corresponds to where we check how well the path matches with the reference path, its not currently enabled but left in as we will do further evaluations
-                    //annotatePathBasedOnGraph(newPath, junctionTreeLinkedDeBruinGraph);
+                    //annotatePathBasedOnGraph(newPath, junctionTreeLinkedDeBruijnGraph);
                     result.add(newPath);
                 }
                 pathToExtend.getEdges().forEach(unvisitedPivotalEdges::remove);
@@ -270,8 +270,8 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
             // create a new path with the beginging of the best edge stapled to the front
             JTBestHaplotype<V, E> pathToAdd = new JTBestHaplotype<>(new JTBestHaplotype<>(bestMatchingHaplotype.get().getFirstVertex(), graph), edgesBeforeSplit, bestMatchingHaplotype.get().score());
-            List<JunctionTreeLinkedDeBruinGraph.ThreadingTree> treesPassed = pathToAdd.getVertices().stream()
-                    .map(v -> junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) v))
+            List<JunctionTreeLinkedDeBruijnGraph.ThreadingTree> treesPassed = pathToAdd.getVertices().stream()
+                    .map(v -> junctionTreeLinkedDeBruijnGraph.getJunctionTreeForNode((MultiDeBruijnVertex) v))
                     .filter(Optional::isPresent)
                     .map(Optional::get)
                     .collect(Collectors.toList());
@@ -282,7 +282,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
     //TODO this probably needs to be more testing...
     //TODO thiss might be best computed in the paths as they are being expanded
-    private void annotatePathBasedOnGraph(final JTBestHaplotype<V, E> newPath, final JunctionTreeLinkedDeBruinGraph graph) {
+    private void annotatePathBasedOnGraph(final JTBestHaplotype<V, E> newPath, final JunctionTreeLinkedDeBruijnGraph graph) {
         int farthestReferenceEdgeReached = 0;
         int numUpstreamRefEdgesEncountered = 0;
         int lastReferenceEdgeVisited = 0;

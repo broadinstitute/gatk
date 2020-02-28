@@ -5,7 +5,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.JunctionTreeLinkedDeBruinGraph;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.JunctionTreeLinkedDeBruijnGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
@@ -45,7 +45,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
 
     @Test (dataProvider = "loopingReferences")
     public void testRecoveryOfLoopingReferenceSequences(final String ref, final int kmerSize, final int readlength, final boolean resolvable) {
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(kmerSize);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(kmerSize);
         assembler.addSequence("anonymous", getBytes(ref), true);
         // Add "reads" to the graph
         for (int i = 0; i + readlength <= ref.length(); i ++) {
@@ -77,7 +77,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final int kmerSize = 3;
         final int readlength = 6;
 
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(kmerSize);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(kmerSize);
         assembler.addSequence("anonymous", getBytes(ref), true);
         // Add "reads" to the graph
         for (int i = 0; i + readlength < ref.length(); i ++) {
@@ -98,7 +98,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
 
     @Test
     public void testRecoveryOfAPathDroppedByJunctionTrees() {
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(5);
         String ref = "AAAACAC"+"C"+"ATGTGCGG"+"T"+"GGGTT"; // the first site has an interesting graph structure and the second site is used to ensure the graph isinterestingg
 
         // A simple snip het
@@ -128,7 +128,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // This test documents one of the known edge cases in the pivotal edge recovery code where sometimes an edge might be
     // dropped if there doesn't happen to be any result path that connects to the root vertex of this dorpped path
     public void testRecoveryOfAPathDroppedByJunctionTreeFailureDueToStillBeingUnreachable() {
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(5);
         String ref = "AAAACAC"+"C"+"ATGTGCGG"+"TTTAGAGAG"+"GGGTT"; // the first site has an interesting graph structure and the second site is used to ensure the graph is interestingg
 
         // A simple snip het
@@ -157,7 +157,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // TODO heurisitic for stapling the front onto this path. this might be addressed in the future.
     @Test (enabled = false)
     public void testRecoveryOfDroppedPathChoosingMostLikePathDespiteThatPathHavingAWorseScore() {
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(7);
         String ref =            "AAAACAC"+"C"+"ATGTGCGG"+"A"+"TTTAGAGAG"+"C"+"GGGTTCC"+"A"+"GAGAGATATA"+"C"+"GAGTTTTGTTT"; // the first site has an interesting graph structure and the second site is used to ensure the graph isinterestingg
 
         String completePath1 =  "AAAACAC"+"T"+"ATGTGCGG"+"A"+"TTTAGAGAG"+"A"+"GGGTTCC"+"T"+"GAGAGATATA"+"C"+"GAGTTTTGTTT";
@@ -203,7 +203,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final int kmerSize = 5;
         final int readlength = 8;
 
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(kmerSize);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(kmerSize);
         assembler.addSequence("anonymous", getBytes(ref), true);
         // Add "reads" to the graph
         for (int i = 0; i + readlength < ref.length(); i ++) {
@@ -228,7 +228,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final int kmerSize = 5;
         final int readlength = 8;
 
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(kmerSize);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(kmerSize);
         assembler.addSequence("anonymous", getBytes(ref), true);
         // Add "reads" to the graph
         for (int i = 0; i + readlength < ref.length(); i ++) {
@@ -248,7 +248,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     @Test
     // Due to there being no JT covering the reference, we assert that we are only finding the read supported alt path despite the reference path being a reasonable start path
     public void testJunctionTreeRefusesToFollowReferencePathUnlessThereIsNoChoice() {
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(4);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(4);
         String ref = "AAAACAC"+"CCGA"+"ATGTGGGG"+"A"+"GGGTT"; // the first site has an interesting graph structure and the second site is used to ensure the graph isinterestingg
 
         // A simple snip het
@@ -274,8 +274,8 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // This test asserts the current behavior towards junction tree ending because of insufficient junction tree data, if we are past our point of junction tree evidence we will fail
     // to find paths, thus this test documents the limitations therein.
     public void testPathTerminationBasedOnDistanceFromLastHaplotype() {
-        final JunctionTreeLinkedDeBruinGraph assembler1 = new JunctionTreeLinkedDeBruinGraph(6);
-        final JunctionTreeLinkedDeBruinGraph assembler2 = new JunctionTreeLinkedDeBruinGraph(6);
+        final JunctionTreeLinkedDeBruijnGraph assembler1 = new JunctionTreeLinkedDeBruijnGraph(6);
+        final JunctionTreeLinkedDeBruijnGraph assembler2 = new JunctionTreeLinkedDeBruijnGraph(6);
 
         String ref =  "AAACAC"+"C"+"ATGGCGG"+"A"+"GGAGTT"+"T"+"GCTCGAA"+"G"+"GGCGTA"+"C"+"CCTACCT"; // the first site has an interesting graph structure and the second site is used to ensure the graph isinterestingg
         String alt1 = "AAACAC"+"A"+"ATGGCGG"+"T"+"GGAGTT"+"G"+"GCTCGAA"+"A"+"GGCGTA"+"G"+"CCTACCT";
@@ -313,7 +313,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // We are asserting that the JunctionTree generated by this case lives on the node itself
     public void testPerfectlyPhasedHaplotypeRecoveryRef() {
         int readlength = 20;
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(7);
         String ref = "AAACAAG"+"G"+"TTGGGTTCG"+"A"+"GCGGGGTTC"+"T"+"CTCGAAGT"+"T"+"CTTGGTAATAT"+"A"+"GGGGGCCCC"; // Reference with 5 sites all separated by at least kmer size
         String alt1 = "AAACAAG"+"T"+"TTGGGTTCG"+"G"+"GCGGGGTTC"+"A"+"CTCGAAGT"+"C"+"CTTGGTAATAT"+"G"+"GGGGGCCCC"; // Alt with different values for all sites
 
@@ -327,7 +327,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruijnGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 10);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
@@ -348,7 +348,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // evidence for a particular path, if there is insufficient evidence we simply end up with combinatorial expansion like before
     public void testInsufficientJunctionTreeDataCausingCombinatorialExpansion() {
         int readlength = 20;
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(7);
         String ref = "AAACAAG"+"G"+"TTGGGTTCG"+"A"+"GCGGGGTTC"+"T"+"CTCGAAGT"+"T"+"CTTGGTAATAT"+"A"+"GGGGGCCCC"; // Reference with 5 sites all separated by at least kmer size
         String alt1 = "AAACAAG"+"T"+"TTGGGTTCG"+"G"+"GCGGGGTTC"+"A"+"CTCGAAGT"+"C"+"CTTGGTAATAT"+"G"+"GGGGGCCCC"; // Alt with different values for all sites
 
@@ -361,7 +361,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruijnGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 10);
 
         JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
@@ -384,7 +384,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // We are asserting that the JunctionTree generated by this case lives on the node itself
     public void testPerfectlyPhasedHaplotypeRecoveryTwoAlts() {
         int readlength = 20;
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(7);
         String ref = "AAACAAG"+"G"+"TTGGGTTCG"+"A"+"GCGGGGTTC"+"T"+"CTCGAAGT"+"T"+"CTTGGTAATAT"+"A"+"GGGGGCCCC"; // Reference with 5 sites all separated by at least kmer size
         String alt1 = "AAACAAG"+"T"+"TTGGGTTCG"+"G"+"GCGGGGTTC"+"A"+"CTCGAAGT"+"C"+"CTTGGTAATAT"+"G"+"GGGGGCCCC"; // Alt with different values for all sites
         String alt2 = "AAACAAG"+"T"+"TTGGGTTCG"+"G"+"GCGGGGTTC"+"C"+"CTCGAAGT"+"C"+"CTTGGTAATAT"+"G"+"GGGGGCCCC"; // Alt with one different value from alt1
@@ -399,7 +399,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruijnGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 6);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
@@ -420,7 +420,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // TODO this test is disabled
     public void testNonUniqueRefStopPosition() {
         int readlength = 15;
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(7);
         String ref = "AACTTGGGTGTGTGAAACCCGGGTTGTGTGTGAA"; // The sequence GTGTGTGAA is repeated
 
         // Generate some reads that do not span the entire active region
@@ -432,7 +432,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruijnGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 2);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(3);
@@ -453,7 +453,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     @Test
     public void testNonUniqueRefStopPositionNoStopJTToResolveIt() {
         int readlength = 15;
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(7);
         String ref = "AACTTGGGTGTGTGAAACCCGGGTTGTGTGTGAA"; // The sequence GTGTGTGAA is repeated
 
         // Generate some reads that do not span the entire active region
@@ -465,7 +465,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruijnGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 1);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
@@ -486,7 +486,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // Test asserting that the behavior is reasonable when there is read data past the reference end kmer
     public void testReferenceEndWithErrorSpanningPastEndBase() {
         int readlength = 15;
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(7);
         String ref = "AACTGGGTT"  +  "GCGCGCGTTACCCGT"; // The sequence GTGTGTGAA is repeated
         String alt = "AACTGGGTT"+"T"+"GCGCGCGTTACCCGTTT"; // Alt contig with error spanning past the end of the reference sequence
 
@@ -499,7 +499,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruijnGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 1); //TODO this will become 2 once the change is implemented
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
@@ -520,7 +520,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // Test asserting that the behavior is reasonable when there is read data past the reference end kmer
     public void testFullReferencePathRecoveryDespiteReadsNotReachingLastBase() {
         int readlength = 15;
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(7);
         String ref = "AACTGGGTT"  +  "GCGCGCGTTACCCGT"; // The sequence GTGTGTGAA is repeated
         String alt = "AACTGGGTT"+"T"+"GCGCGCGTTACCC"; // Alt contig that doesn't reach the end of the reference
 
@@ -533,7 +533,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruijnGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 1);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
@@ -554,7 +554,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // The read evidence at the loop is short (15 bases) and consequently doesn't span the entire loop.
     public void testOfLoopingReferenceReadsTooShortToRecoverIt() {
         int readlength = 15;
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(7);
         String ref = "AAACTTTCGCGGGCCCTTAAACCCGCCCTTAAACCCGCCCTTAAACCGCTGTAAGAAA"; // The sequence GCCCTTAAACCC (12 bases) is repeated
 
         // Generate some reads that do not span the entire active region
@@ -567,7 +567,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruijnGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 2);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
@@ -589,7 +589,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // This test illustrates a current known issue with the new algorithm, where old junction trees with subranchees that don't have a lot of data
     // are used in place of younger trees that might cointain evidence of new paths. This particular test shows that a variant might be dropped as a result.
     public void testOrphanedSubBranchDueToLackingOldJunctionTree() {
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(6);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(6);
 
         String ref        = "AAAACAC"+"T"+"ATGTGGGG"+"A"+"GGGTTAA"+"A"+"GTCTGAA";
         String haplotype1 = "AAAACAC"+"G"+"ATGTGGGG"+"T"+"GGGTTAA"+"A"+"GTCTGAA";
@@ -631,7 +631,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // This is a test enforcing that the behavior around nodes are both outDegree > 1 while also having downstream children with inDegree > 1.
     // We are asserting that the JunctionTree generated by this case lives on the node itself
     public void testEdgeCaseInvolvingHighInDegreeAndOutDegreeChars() {
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(4);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(4);
         String ref = "AAAACAC"+"CCGA"+"ATGTGGGG"+"A"+"GGGTT"; // the first site has an interesting graph structure and the second site is used to ensurethe graph is intersting
 
         // A simple snip het
@@ -647,7 +647,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruijnGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 6);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
@@ -669,7 +669,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // This is a test enforcing that the behavior around nodes are both outDegree > 1 while also having downstream children with inDegree > 1.
     // We are asserting that the JunctionTree generated by this case lives on the node itself
     public void testGraphRecoveryWhenTreeContainsRepeatedKmers() {
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(5);
         String ref = "AAATCTTCGGGGGGGGGGGGGGTTTCTGGG"; // the first site has an interesting graph structure and the second site is used to ensurethe graph is intersting
 
         // A simple snip het
@@ -693,7 +693,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
 
     @Test
     public void testSimpleJunctionTreeIncludeRefInJunctionTreeTwoSites() {
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(5);
         String ref = "GGGAAAT" + "T" + "TCCGGC" + "T" + "CGTTTA"; //Two variant sites in close proximity
 
         // A simple snip het
@@ -723,7 +723,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // Disabled until multi-sink/source edges are supported
     @Test (enabled = false)
     public void testDeadNode(){
-        final JunctionTreeLinkedDeBruinGraph g = new JunctionTreeLinkedDeBruinGraph(3);
+        final JunctionTreeLinkedDeBruijnGraph g = new JunctionTreeLinkedDeBruijnGraph(3);
         final MultiDeBruijnVertex v1 = new MultiDeBruijnVertex("a".getBytes());
         final MultiDeBruijnVertex v2 = new MultiDeBruijnVertex("b".getBytes());
         final MultiDeBruijnVertex v3 = new MultiDeBruijnVertex("c".getBytes());
@@ -762,7 +762,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     }
 
     private static int weight = 1;
-    final Set<MultiDeBruijnVertex> createVertices(final JunctionTreeLinkedDeBruinGraph graph, final int n, final MultiDeBruijnVertex source, final MultiDeBruijnVertex target) {
+    final Set<MultiDeBruijnVertex> createVertices(final JunctionTreeLinkedDeBruijnGraph graph, final int n, final MultiDeBruijnVertex source, final MultiDeBruijnVertex target) {
         final List<String> seqs = Arrays.asList("A", "C", "G", "T");
         final Set<MultiDeBruijnVertex> vertices = new LinkedHashSet<>();
         for ( int i = 0; i < n; i++ ) {
@@ -778,7 +778,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "BasicPathFindingData")
     public void testBasicPathFindingNoJunctionTrees(final int nStartNodes, final int nBranchesPerBubble, final int nEndNodes) {
-        final JunctionTreeLinkedDeBruinGraph graph = new JunctionTreeLinkedDeBruinGraph(11);
+        final JunctionTreeLinkedDeBruijnGraph graph = new JunctionTreeLinkedDeBruijnGraph(11);
 
         final MultiDeBruijnVertex middleTop = new MultiDeBruijnVertex("GTAC".getBytes());
         final MultiDeBruijnVertex middleBottom = new MultiDeBruijnVertex("ACTG".getBytes());
@@ -809,7 +809,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     @Test(dataProvider = "BasicBubbleDataProvider")
     public void testBasicBubbleData(final int refBubbleLength, final int altBubbleLength) {
         // Construct the assembly graph
-        JunctionTreeLinkedDeBruinGraph graph = new JunctionTreeLinkedDeBruinGraph(4);
+        JunctionTreeLinkedDeBruijnGraph graph = new JunctionTreeLinkedDeBruijnGraph(4);
         final String preRef = "ATGG";
         final String postRef = "GCGGC";
 
@@ -972,7 +972,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     //TODO is a dead end after dangling tail recovery. This needs to be resolved with either SmithWaterman or by coopting the threading code
     public void testIntraNodeInsertionDeletion() {
         // Construct the assembly graph
-        final JunctionTreeLinkedDeBruinGraph graph = new JunctionTreeLinkedDeBruinGraph(5);
+        final JunctionTreeLinkedDeBruijnGraph graph = new JunctionTreeLinkedDeBruijnGraph(5);
         final String ref = "TTTT" + "CCCCCGGG" + "TTT";
         final String alt = "TTTT" + "AAACCCCC" + "TTT";
 
@@ -1059,7 +1059,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     //TODO this test will make a good base for testing later realignment if the leading Ns are cut back down
     public void testHardSWPath() {
         // Construct the assembly graph
-        final JunctionTreeLinkedDeBruinGraph graph = new JunctionTreeLinkedDeBruinGraph(11);
+        final JunctionTreeLinkedDeBruijnGraph graph = new JunctionTreeLinkedDeBruijnGraph(11);
         String ref = "NNNNNNNNNNN"+"TGTGTGTGTGTGTGACAGAGAGAGAGAGAGAGAGAGAGAGAGAGA"+"NNN"; // Alt with one different value from alt1
         String alt = "NNNNNNNNNNN"+"ACAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGA"+"NNN"; // Alt with one different value from alt1
 
@@ -1093,7 +1093,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     @Test
     public void testKmerGraphSimpleReferenceRecovery() {
         // Construct the assembly graph
-        final JunctionTreeLinkedDeBruinGraph graph = new JunctionTreeLinkedDeBruinGraph(5);
+        final JunctionTreeLinkedDeBruijnGraph graph = new JunctionTreeLinkedDeBruijnGraph(5);
         final MultiDeBruijnVertex refSource = new MultiDeBruijnVertex( "AAATT".getBytes() );
         final MultiDeBruijnVertex k1 = new MultiDeBruijnVertex( "AATTT".getBytes() );
         final MultiDeBruijnVertex k2 = new MultiDeBruijnVertex( "ATTTG".getBytes() );
@@ -1122,7 +1122,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     @Test
     public void testKmerGraphSimpleReferenceRecoveryWithSNP() {
         // Construct the assembly graph
-        final JunctionTreeLinkedDeBruinGraph graph = new JunctionTreeLinkedDeBruinGraph(5);
+        final JunctionTreeLinkedDeBruijnGraph graph = new JunctionTreeLinkedDeBruijnGraph(5);
         final MultiDeBruijnVertex refSource = new MultiDeBruijnVertex( "AAATT".getBytes() );
         final MultiDeBruijnVertex k1 = new MultiDeBruijnVertex( "AATTT".getBytes() );
         final MultiDeBruijnVertex k2 = new MultiDeBruijnVertex( "ATTTG".getBytes() );
@@ -1203,7 +1203,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     @Test
     public void testCreateMapOfPivotalEdgesInTopoglogicalOrderBasicExample() {
         int readlength = 20;
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(7);
         String ref = "TAAACAAG"+"G"+"TTGGGTTCG"+"A"+"GCGGGGTTC"+"T"+"CTCGAAGT"+"T"+"CTTGGTAATAT"+"A"+"GGGGGCCCC"; // Reference with 5 sites all separated by at least kmer size
         String alt1 = "TAAACAAG"+"T"+"TTGGGTTCG"+"G"+"GCGGGGTTC"+"A"+"CTCGAAGT"+"C"+"CTTGGTAATAT"+"G"+"GGGGGCCCC"; // Alt with different values for all sites
 
@@ -1237,7 +1237,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     // this test asserts that included in pivotal edges are edges that are only reachable by following uncovered reference path
     public void testCreateMapOfPivotalEdgesInTopoglogicalOrderHiddenReferenceSequence() {
         int readlength = 20;
-        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        final JunctionTreeLinkedDeBruijnGraph assembler = new JunctionTreeLinkedDeBruijnGraph(7);
         String ref =  "TAAACAAG"+"G"+"TTGGGTTCG"+"AGCGGT"+"CTCGAAGT"+"T"+"CTTGGTAATAT"+"A"+"GGGGGCCCC"; // Reference with 5 sites all separated by at least kmer size
         String alt1 = "TAAACAAG"+"T"+"TTGGGTTCG"+"GGCGGA"+"CTCGAAGT"+"C"+"CTTGGTAATAT"+"G"+"GGGGGCCCC"; // Alt with different values for all sites
         String alt2 =                        "AGCGGTCT"+"G"+"CGAAGT"+"T"+"CTTGGTAATAT"+"A"+"GGGGGCCCC"; // A snippet of reference sequence starting after an uncovered reference edge
