@@ -29,7 +29,7 @@ np.set_printoptions(threshold=np.inf)
 
 
 TENSOR_GENERATOR_TIMEOUT = 64
-TENSOR_GENERATOR_MAX_Q_SIZE = 32
+TENSOR_GENERATOR_MAX_Q_SIZE = 4
 
 Path = str
 PathIterator = Iterator[Path]

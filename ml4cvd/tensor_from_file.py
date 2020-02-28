@@ -7,8 +7,9 @@ import vtk
 import h5py
 import logging
 import numpy as np
+
 import vtk.util.numpy_support
-from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
@@ -474,7 +475,7 @@ def _get_lead_cm(length):
 
 TMAPS['ecg_median_1lead_categorical'] = TensorMap('median',  Interpretation.CATEGORICAL, shape=(600, 32), activation='softmax', tensor_from_file=_make_ecg_rest(),
                                                   channel_map=_get_lead_cm(32)[0],
-                                                  loss=weighted_crossentropy(_get_lead_cm(32)[1], 'ecg_median_categorical'))
+                                                  loss=weighted_crossentropy(np.array(_get_lead_cm(32)[1]), 'ecg_median_categorical'))
 
 TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), path_prefix='ecg_rest', tensor_from_file=_make_ecg_rest(),
                                                 channel_map={'window0': 0, 'window1': 1, 'window2': 2, 'window3': 3,
@@ -776,8 +777,8 @@ TMAPS['lesions'] = TensorMap('lesions_final_mask', Interpretation.CATEGORICAL, s
                              tensor_from_file=_mask_from_file, channel_map={'not_lesion': 0, 'lesion': 1}, loss=weighted_crossentropy([0.01, 10.0], 'lesion'))
 
 
-def _combined_subset_tensor(tensor_keys, start, stop, step=1, pad_shape=None):
-    slice_subsets = [_slice_subset_tensor(k, start, stop, step=step, pad_shape=pad_shape, allow_channels=False) for k in tensor_keys]
+def _combined_subset_tensor(tensor_keys, start, stop, step=1, pad_shape=None, flip_swap=False):
+    slice_subsets = [_slice_subset_tensor(k, start, stop, step=step, pad_shape=pad_shape, allow_channels=False, flip_swap=flip_swap) for k in tensor_keys]
 
     def mask_subset_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         tensor = np.zeros(tm.shape, dtype=np.float32)
@@ -787,9 +788,16 @@ def _combined_subset_tensor(tensor_keys, start, stop, step=1, pad_shape=None):
     return mask_subset_from_file
 
 
-TMAPS['t1_and_t2_flair_30_slices'] = TensorMap('t1_and_t2_flair_30_slices', Interpretation.CONTINUOUS, shape=(192, 256, 30, 2), path_prefix='ukb_brain_mri/float_array/', 
+TMAPS['t1_and_t2_flair_30_slices'] = TensorMap('t1_and_t2_flair_30_slices', Interpretation.CONTINUOUS, shape=(192, 256, 30, 2), path_prefix='ukb_brain_mri',
                                                tensor_from_file=_combined_subset_tensor(['T1', 'T2_FLAIR'], 90, 150, 2, pad_shape=(192, 256, 256)),
                                                normalization={'zero_mean_std1': True})
+_dicom_keys = ['t1_p2_1mm_fov256_sag_ti_880_1', 't2_flair_sag_p2_1mm_fs_ellip_pf78_1']
+TMAPS['t1_t2_dicom_30_slices'] = TensorMap('t1_t2_dicom_30_slices', Interpretation.CONTINUOUS, shape=(192, 256, 30, 2), path_prefix='ukb_brain_mri',
+                                           tensor_from_file=_combined_subset_tensor(_dicom_keys, 130, 190, 2, pad_shape=(192, 256, 256), flip_swap=True),
+                                           normalization={'zero_mean_std1': True})
+TMAPS['t1_t2_dicom_50_slices'] = TensorMap('t1_t2_dicom_50_slices', Interpretation.CONTINUOUS, shape=(192, 256, 50, 2), path_prefix='ukb_brain_mri',
+                                           tensor_from_file=_combined_subset_tensor(_dicom_keys, 100, 200, 2, pad_shape=(192, 256, 256), flip_swap=True),
+                                           normalization={'zero_mean_std1': True})
 
 
 def _ttn_tensor_from_file(tm, hd5, dependents={}):
@@ -1250,9 +1258,9 @@ def preprocess_with_function(fxn):
     def preprocess_tensor_from_file(tm, hd5, dependents={}):
         missing = True
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.hd5_key_guess(hd5):
+        if tm.hd5_key_guess() in hd5:
             missing = False
-            continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess(hd5))[0]
+            continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[0]
         if missing and tm.sentinel is None:
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
         elif missing:

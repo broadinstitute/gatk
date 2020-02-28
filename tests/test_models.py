@@ -119,7 +119,7 @@ class TestMakeMultimodalMultitaskModel:
         This is a test we would like to pass, but fails now.
         Shows we can't go from 1d to >1d.
         """
-        with pytest.raises(UnboundLocalError):
+        with pytest.raises(AttributeError):
             make_multimodal_multitask_model(
                 [input_tmap],
                 [output_tmap],

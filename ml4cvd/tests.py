@@ -1,6 +1,6 @@
 import unittest
 
-from keras.losses import logcosh
+from tensorflow.keras.losses import logcosh
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.arguments import parse_args
@@ -56,6 +56,7 @@ class TestTrainingModels(unittest.TestCase):
         args.output_tensors = ['coronary_artery_disease_soft', 'diabetes_type_2',
                                'hypertension', 'myocardial_infarction']
         args.epochs = 2
+        args.optimizer = 'radam'
         args.batch_size = 64
         args.training_steps = 60
         args.validation_steps = 1
@@ -77,6 +78,7 @@ class TestPretrainedModels(unittest.TestCase):
         delta = 15e-2
         args = parse_args()
         args.tensors = ALL_TENSORS
+        args.optimizer = 'radam'
         args.model_file = MODELS + 'ecg_rest_regress.hd5'
         args.input_tensors = ['ecg_rest']
         args.output_tensors = ['p-axis', 'p-duration', 'p-offset', 'p-onset', 'pp-interval', 'pq-interval', 'q-offset', 'q-onset', 'qrs-complexes',
@@ -100,6 +102,7 @@ class TestPretrainedModels(unittest.TestCase):
     def test_ecg_rhythm(self):
         delta = 1e-1
         args = parse_args()
+        args.optimizer = 'radam'
         args.tensors = ALL_TENSORS
         args.model_file = MODELS + 'ecg_rest_rhythm.hd5'
         args.input_tensors = ['ecg_rest']

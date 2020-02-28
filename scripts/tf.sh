@@ -7,10 +7,10 @@
 ################### VARIABLES ############################################
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
-DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-gpu"
-DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-cpu"
+DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-gpu"
+DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
-DOCKER_COMMAND="nvidia-docker"
+DOCKER_COMMAND="docker"
 INTERACTIVE=""
 PYTHON_COMMAND="python"
 TEST_COMMAND="python -m pytest"
@@ -112,7 +112,7 @@ Attempting to run Docker with
 LAUNCH_MESSAGE
 
 
-${DOCKER_COMMAND} run ${INTERACTIVE} \
+${DOCKER_COMMAND} run ${INTERACTIVE} --gpus all \
 --rm \
 --ipc=host \
 -v /home/${USER}/jupyter/root/:/root/ \

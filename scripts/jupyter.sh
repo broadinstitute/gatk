@@ -7,10 +7,10 @@
 ################### VARIABLES ############################################
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
-DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-gpu"
+DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-gpu"
 DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
-DOCKER_COMMAND="nvidia-docker"
+DOCKER_COMMAND="docker" #"nvidia-docker"
 PORT="8888"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
@@ -72,10 +72,10 @@ shift $((OPTIND - 1))
 
 ################### SCRIPT BODY ##########################################
 
-if ! docker pull ${DOCKER_IMAGE}; then
-    echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
-    exit 1;
-fi
+#if ! docker pull ${DOCKER_IMAGE}; then
+#    echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
+#    exit 1;
+#fi
 
 # Get your external IP directly from a DNS provider
 WANIP=$(dig +short myip.opendns.com @resolver1.opendns.com)
@@ -95,6 +95,7 @@ chmod o+w /home/${USER}/jupyter/
 mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
 
 ${DOCKER_COMMAND} run -it \
+--gpus all \
 --rm \
 --ipc=host \
 -v /home/${USER}/:/home/${USER}/ \

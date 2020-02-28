@@ -15,7 +15,7 @@ import h5py
 import logging
 import numpy as np
 import pandas as pd
-from keras.models import Model
+from tensorflow.keras.models import Model
 
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:

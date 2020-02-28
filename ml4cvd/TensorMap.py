@@ -13,8 +13,8 @@ from enum import Enum, auto
 from typing import Any, Union, Callable, Dict, List, Optional, Tuple
 
 import h5py
-import keras
 import numpy as np
+from tensorflow.keras import Model
 
 from ml4cvd.defines import StorageType, EPS, JOIN_CHAR, STOP_CHAR
 from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
@@ -60,7 +60,7 @@ class TensorMap(object):
                  interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
                  loss: Optional[Union[str, Callable]] = None,
                  shape: Optional[Tuple[int]] = None,
-                 model: Optional[keras.Model] = None,
+                 model: Optional[Model] = None,
                  metrics: Optional[List[Union[str, Callable]]] = None,
                  parents: Optional[List["TensorMap"]] = None,
                  sentinel: Optional[float] = None,
