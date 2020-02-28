@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
@@ -41,6 +42,7 @@ public final class ReadThreadingAssembler {
     private final boolean dontIncreaseKmerSizesForCycles;
     private final boolean allowNonUniqueKmersInRef;
     private final boolean generateSeqGraph;
+    private boolean recoverHaplotypesFromEdgesNotCoveredInJunctionTrees = true;
     private final int numPruningSamples;
     private final int numBestHaplotypesPerGraph;
 
@@ -173,6 +175,15 @@ public final class ReadThreadingAssembler {
             }
         }
         if ( graphHaplotypeHistogramPath != null ) { haplotypeHistogram.add((double)resultSet.getHaplotypeCount()); }
+        if ( debugActiveRegionOutputStream != null ) {
+            debugActiveRegionOutputStream.getNewLineBuilder()
+                    .setRow(new String[]{
+                            assemblyRegion.getSpan().toString(),
+                            assemblyRegion.getPaddedSpan().toString(),
+                            !resultSet.getKmerSizes().isEmpty() ?  resultSet.getKmerSizes().stream().map(Object::toString).collect(Collectors.joining(",")) : "ASSEMBLY_FAILED",
+                            Integer.toString(resultSet.getHaplotypeCount())
+                    }).write();
+        }
 
         return resultSet;
     }
@@ -264,19 +275,6 @@ public final class ReadThreadingAssembler {
                     hasAdequatelyAssembledGraph = true;
                 }
             }
-        }
-
-        // print the graphs if the appropriate debug option has been turned on
-        if ( graphOutputPath != null ) { printGraphs(nonRefSeqGraphs); }
-        if ( graphHaplotypeHistogramPath != null ) { haplotypeHistogram.add((double)resultSet.getHaplotypeCount()); }
-        if ( debugActiveRegionOutputStream != null ) {
-            debugActiveRegionOutputStream.getNewLineBuilder()
-                .setRow(new String[]{
-                        assemblyRegion.getSpan().toString(),
-                        assemblyRegion.getPaddedSpan().toString(),
-                        !resultSet.getKmerSizes().isEmpty() ?  resultSet.getKmerSizes().stream().map(Object::toString).collect(Collectors.joining(",")) : "ASSEMBLY_FAILED",
-                        Integer.toString(resultSet.getHaplotypeCount())
-                }).write();
         }
 
         // This indicates that we have thrown everything away... we should go back and check that we weren't too conservative about assembly results that might otherwise be good
