@@ -34,7 +34,7 @@ import java.util.List;
  *
  * <h2>File format example 1</h2>
  * <pre>
- *     HEADER a b c
+ *     HEADER pos a b c
  *     1:1  1   2   3
  *     1:2  4   5   6
  *     1:3  7   8   9

@@ -93,17 +93,17 @@ public final class TableCodecUnitTest extends GATKBaseTest {
         LineReader reader= makeReader(asList("HEADER a b c"));
         LineIterator li= new LineIteratorImpl(reader);
         List<String> hd = tc.readActualHeader(li);
-        Assert.assertEquals(hd, asList("HEADER", "a", "b", "c"));
+        Assert.assertEquals(hd, asList("a", "b", "c"));
     }
 
     @Test
     public void testDecodeHeader2(){
         TableCodec tc = new TableCodec();
         final String str2= "1:1  1   2   3";
-        LineReader reader= makeReader(asList("HEADER a b c", str2));
+        LineReader reader= makeReader(asList("HEADER position a b c", str2));
         LineIterator li= new LineIteratorImpl(reader);
         List<String> hd = tc.readActualHeader(li);
-        Assert.assertEquals(hd, asList("HEADER", "a", "b", "c"));
+        Assert.assertEquals(hd, asList("position", "a", "b", "c"));
 
         final TableFeature decode = tc.decode(str2);
         Assert.assertEquals(decode.get("a"), "1");
@@ -138,15 +138,15 @@ public final class TableCodecUnitTest extends GATKBaseTest {
         LineReader reader= makeReader(asList("HEADER a b c", "HEADER d e f"));
         LineIterator li= new LineIteratorImpl(reader);
         final List<String> strings = tc.readActualHeader(li);
-        Assert.assertEquals(strings, asList("HEADER", "a", "b", "c"));
+        Assert.assertEquals(strings, asList("a", "b", "c"));
     }
 
     @Test(expectedExceptions =  UserException.MalformedFile.class)
     public void testTwoHeadersFailsOnRepeat(){
         TableCodec tc = new TableCodec();
-        Assert.assertEquals(tc.readActualHeader(new LineIteratorImpl(makeReader(asList("HEADER a b c")))), asList("HEADER", "a", "b", "c"));
+        Assert.assertEquals(tc.readActualHeader(new LineIteratorImpl(makeReader(asList("HEADER a b c")))), asList("a", "b", "c"));
 
-        Assert.assertEquals(tc.readActualHeader(new LineIteratorImpl(makeReader(asList("HEADER a b c")))), asList("HEADER", "a", "b", "c"));
+        Assert.assertEquals(tc.readActualHeader(new LineIteratorImpl(makeReader(asList("HEADER a b c")))), asList("a", "b", "c"));
     }
 
     @Test
@@ -155,7 +155,7 @@ public final class TableCodecUnitTest extends GATKBaseTest {
         LineReader reader= makeReader(asList("#HEADER a b c", "HEADER d e f"));
         LineIterator li= new LineIteratorImpl(reader);
         List<String> hd = tc.readActualHeader(li);
-        Assert.assertEquals(hd, asList("HEADER", "d", "e", "f"));
+        Assert.assertEquals(hd, asList("d", "e", "f"));
     }
 
     private LineReader makeReader(List<String> strings) {
