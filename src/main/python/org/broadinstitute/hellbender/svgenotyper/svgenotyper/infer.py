@@ -48,7 +48,7 @@ def run(args):
             stats = get_predictive_stats(samples=predictive_samples)
             stats.update(get_discrete_stats(samples=discrete_samples))
             output_by_type[svtype] = get_output(vids_list=vids_list, genotypes=genotypes, stats=stats, params=params)
-            global_stats_by_type[svtype] = get_global_stats(stats)
+            global_stats_by_type[svtype] = get_global_stats(stats=stats, model=model)
     output = {}
     for svtype in output_by_type:
         output.update(output_by_type[svtype])
@@ -92,13 +92,22 @@ def get_output(vids_list: list, genotypes: dict, stats: dict, params: dict):
     return output_dict
 
 
-def get_global_stats(stats: dict):
+def get_global_stats(stats: dict, model: SVGenotyperPyroModel):
     global_sites = ['pi_sr1', 'pi_sr2', 'pi_pe', 'pi_rd', 'lambda_pe', 'lambda_sr1', 'lambda_sr2']
+    global_site_scales = {
+        'pi_sr1': 1.,
+        'pi_sr2': 1.,
+        'pi_pe': 1.,
+        'pi_rd': 1.,
+        'lambda_pe': model.mu_lambda_pe,
+        'lambda_sr1': model.mu_lambda_sr1,
+        'lambda_sr2': model.mu_lambda_sr2
+    }
     global_stats = {}
     for site in global_sites:
         if site in stats:
-            global_stats[site + '_mean'] = stats[site]['mean']
-            global_stats[site + '_std'] = stats[site]['std']
+            global_stats[site + '_mean'] = stats[site]['mean'] * global_site_scales[site]
+            global_stats[site + '_std'] = stats[site]['std'] * global_site_scales[site]
     return global_stats
 
 

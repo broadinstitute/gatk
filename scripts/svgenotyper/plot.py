@@ -229,11 +229,11 @@ def plot_genotype_ternary_diagrams(vcf_path: str, out_path: str):
         for k in range(len(gq_cutoffs)):
             if gt.shape[0] > 0:
                 gt_freq_k = gt_freq.copy()
-                cutoff_locs = gq.min(axis=1) < gq_cutoffs[k]
+                cutoff_locs = gq.max(axis=1) < gq_cutoffs[k]
                 gt_freq_k[cutoff_locs, :] = 0
             else:
                 gt_freq_k = np.zeros(np.shape([]))
-            label = "{:s}, minGQ>{:d}".format(svtype, gq_cutoffs[k])
+            label = "{:s}, maxGQ>{:d}".format(svtype, gq_cutoffs[k])
             _draw_ternary(gt_freq_k, axis=axes[k, i], label=label)
     plt.tight_layout()
     plt.savefig(out_path)
@@ -251,7 +251,7 @@ def parse_args():
     parser.add_argument('--coverage-file', help='Table of sample mean per-base coverage (required for site plots)')
     parser.add_argument('--image-ext', help='Image extension', default='png')
 
-    parser.add_argument('--sites', help='If specified, plot sites with these variant IDs')
+    parser.add_argument('--sites', nargs='+', help='If specified, plot sites with these variant IDs')
     parser.add_argument('--all-sites', action='store_true', help='Plot all sites')
 
     args = parser.parse_args()
