@@ -31,13 +31,13 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
     public void testCohortWithoutIntervalAnnotations() {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         Arrays.stream(TEST_COUNT_FILES).forEach(argsBuilder::addInput);
-        argsBuilder.addArgument(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.COHORT.name())
-                .addArgument("L", SIM_INTERVAL_LIST_SUBSET_FILE.getAbsolutePath())
-                .addArgument(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
+        argsBuilder.add(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.COHORT.name())
+                .add("L", SIM_INTERVAL_LIST_SUBSET_FILE.getAbsolutePath())
+                .add(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
                         CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-cohort")
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString());
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-cohort")
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString());
         runCommandLine(argsBuilder);
     }
 
@@ -49,13 +49,13 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
     public void testCase() {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         Arrays.stream(TEST_COUNT_FILES, 0, 5).forEach(argsBuilder::addInput);
-        argsBuilder.addArgument(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.CASE.name())
-                .addArgument(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
+        argsBuilder.add(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.CASE.name())
+                .add(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
                         CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.MODEL_LONG_NAME,
+                .add(CopyNumberStandardArgument.MODEL_LONG_NAME,
                         new File(OUTPUT_DIR, "test-germline-cnv-cohort-model").getAbsolutePath())
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-case");
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-case");
         runCommandLine(argsBuilder);
     }
 
@@ -63,11 +63,11 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
     public void testCaseWithoutModel() {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         Arrays.stream(TEST_COUNT_FILES, 0, 5).forEach(argsBuilder::addInput);
-        argsBuilder.addArgument(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.CASE.name())
-                .addArgument(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
+        argsBuilder.add(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.CASE.name())
+                .add(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
                         CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-case");
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-case");
         runCommandLine(argsBuilder);
     }
 

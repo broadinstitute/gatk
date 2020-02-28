@@ -33,7 +33,7 @@ public final class BwaAndMarkDuplicatesPipelineSparkIntegrationTest extends Comm
         args.addReference(ref);
         args.addInput(input);
         args.addOutput(output);
-        args.addBooleanArgument(MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME, true);
+        args.add(MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME, true);
         this.runCommandLine(args.getArgsArray());
 
         SamAssertionUtils.assertSamsEqual(output, expectedSam);

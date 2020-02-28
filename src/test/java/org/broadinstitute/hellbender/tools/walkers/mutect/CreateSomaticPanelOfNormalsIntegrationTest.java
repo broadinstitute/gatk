@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
@@ -17,7 +16,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -45,7 +43,7 @@ public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgr
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addReference(new File(b37Reference))
-                .addArgument("V", genomicsDBUri)
+                .add("V", genomicsDBUri)
                 .addOutput(output);
 
         Utils.resetRandomGenerator();
@@ -89,7 +87,7 @@ public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgr
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addReference(new File(b37Reference))
-                .addArgument("V", genomicsDBUri)
+                .add("V", genomicsDBUri)
                 .addOutput(output);
 
         Utils.resetRandomGenerator();
@@ -113,9 +111,9 @@ public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgr
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addReference(new File(b37Reference))
-                .addArgument("V", genomicsDBUri)
-                .addArgument(CreateSomaticPanelOfNormals.MIN_SAMPLE_COUNT_LONG_NAME, "1")
-                .addArgument(M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD.getAbsolutePath())
+                .add("V", genomicsDBUri)
+                .add(CreateSomaticPanelOfNormals.MIN_SAMPLE_COUNT_LONG_NAME, "1")
+                .add(M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD.getAbsolutePath())
                 .addOutput(output);
 
         Utils.resetRandomGenerator();
@@ -149,7 +147,7 @@ public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgr
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addReference(new File(b37Reference))
-                .addArgument("V", genomicsDBUri)
+                .add("V", genomicsDBUri)
                 .addOutput(output);
 
         Utils.resetRandomGenerator();

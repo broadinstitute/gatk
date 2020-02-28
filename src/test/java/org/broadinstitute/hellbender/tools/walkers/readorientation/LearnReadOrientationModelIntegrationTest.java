@@ -52,9 +52,9 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
 
         final ArgumentsBuilder splitIntervalsArgs = new ArgumentsBuilder()
                 .addReference(b37Reference)
-                .addIntervalFile(new File(intervalList))
+                .addIntervals(new File(intervalList))
                 .addOutput(intervalDir)
-                .addNumericArgument(SplitIntervals.SCATTER_COUNT_SHORT_NAME, scatterCount);
+                .add(SplitIntervals.SCATTER_COUNT_SHORT_NAME, scatterCount);
 
         runCommandLine(splitIntervalsArgs, SplitIntervals.class.getSimpleName());
 
@@ -67,7 +67,7 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
             final ArgumentsBuilder collectF1R2CountsArgs = new ArgumentsBuilder()
                     .addReference(b37Reference)
                     .addInput(new File(hapmapBamSnippet))
-                    .addIntervalFile(intervals[i])
+                    .addIntervals(intervals[i])
                     .addOutput(scatteredTarGzs.get(i));
 
             runCommandLine(collectF1R2CountsArgs, CollectF1R2Counts.class.getSimpleName());
@@ -102,13 +102,13 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
                 .addReference(b37Reference)
                 .addInput(new File(hapmapBamSnippet))
                 .addOutput(unfilteredVcf)
-                .addFileArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_LONG_NAME, bamout);
+                .add(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_LONG_NAME, bamout);
         runCommandLine(mutect2Args, Mutect2.class.getSimpleName());
 
         final ArgumentsBuilder filterArgs = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(unfilteredVcf)
-                .addFileArgument(M2FiltersArgumentCollection.ARTIFACT_PRIOR_TABLE_NAME, priorTarGz)
+                .add(M2FiltersArgumentCollection.ARTIFACT_PRIOR_TABLE_NAME, priorTarGz)
                 .addOutput(filteredVcf);
 
         runCommandLine(filterArgs, FilterMutectCalls.class.getSimpleName());
@@ -148,8 +148,8 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
                 CollectF1R2Counts.class.getSimpleName()));
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, countsTarGz.getAbsolutePath())
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, priorsTarGz.getAbsolutePath());
+                .add(StandardArgumentDefinitions.INPUT_LONG_NAME, countsTarGz.getAbsolutePath())
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, priorsTarGz.getAbsolutePath());
 
         runCommandLine(args, LearnReadOrientationModel.class.getSimpleName());
 
@@ -200,14 +200,14 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
                 .addReference(b37Reference)
                 .addInput(new File(hapmapBamSnippet))
                 .addInterval(new SimpleInterval("20:24000000-26000000"))
-                .addFileArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_LONG_NAME, bamout)
+                .add(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_LONG_NAME, bamout)
                 .addOutput(unfilteredVcf);
         runCommandLine(mutect2Args, Mutect2.class.getSimpleName());
 
         final ArgumentsBuilder filterArgs = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(unfilteredVcf)
-                .addFileArgument(M2FiltersArgumentCollection.ARTIFACT_PRIOR_TABLE_NAME, priorTarGz)
+                .add(M2FiltersArgumentCollection.ARTIFACT_PRIOR_TABLE_NAME, priorTarGz)
                 .addOutput(filteredVcf);
 
         runCommandLine(filterArgs, FilterMutectCalls.class.getSimpleName());

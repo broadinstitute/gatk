@@ -29,10 +29,10 @@ public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsInte
         }
         final File outBam = GATKBaseTest.createTempFile("print_reads", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(inBam.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(inBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outBam.getCanonicalPath());
 
         this.runCommandLine(args.getArgsArray());
 
@@ -53,9 +53,9 @@ public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsInte
         final String outputPath = BucketUtils.getTempFilePath(outputPrefix, outputExtension);
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
-        argBuilder.addArgument("input", gcsInputPath)
-                .addArgument("output", outputPath)
-                .addBooleanArgument(GATKSparkTool.USE_NIO, true);
+        argBuilder.add("input", gcsInputPath)
+                .add("output", outputPath)
+                .add(GATKSparkTool.USE_NIO, true);
         runCommandLine(argBuilder);
 
         SamAssertionUtils.assertSamsEqual(IOUtils.getPath(outputPath), IOUtils.getPath(gcsInputPath), null);

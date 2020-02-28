@@ -20,16 +20,16 @@ public final class ExampleVariantWalkerSparkIntegrationTest extends CommandLineP
         Assert.assertTrue(out.delete(), "failed to perform necessary deletion during test setup");
         out.deleteOnExit();
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("-L 1:100-200");
+        args.addRaw("-L 1:100-200");
         // note that joining with reads is not currently supported
-        args.add("-V");
-        args.add(TEST_DATA_DIRECTORY + "example_variants_withSequenceDict.vcf");
-        args.add("-auxiliaryVariants");
-        args.add(TEST_DATA_DIRECTORY + "feature_data_source_test.vcf");
-        args.add("--output");
-        args.add(out.getAbsolutePath());
-        args.add("--reference");
-        args.add(hg19MiniReference);
+        args.addRaw("-V");
+        args.addRaw(TEST_DATA_DIRECTORY + "example_variants_withSequenceDict.vcf");
+        args.addRaw("-auxiliaryVariants");
+        args.addRaw(TEST_DATA_DIRECTORY + "feature_data_source_test.vcf");
+        args.addRaw("--output");
+        args.addRaw(out.getAbsolutePath());
+        args.addRaw("--reference");
+        args.addRaw(hg19MiniReference);
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_OUTPUT_DIRECTORY, "expected_ExampleVariantWalkerSparkIntegrationTest_output.txt");
         IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);

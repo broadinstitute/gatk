@@ -14,12 +14,12 @@ public final class CountBasesIntegrationTest extends CommandLineProgramTest {
     public void testCountBases(final String fileIn, final String referenceName) throws Exception {
         final File ORIG_BAM = new File(getTestDataDir(), fileIn);
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(ORIG_BAM.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(ORIG_BAM.getAbsolutePath());
         if (null != referenceName) {
             final File REF = new File(getTestDataDir(), referenceName);
-            args.add("-R");
-            args.add(REF.getAbsolutePath());
+            args.addRaw("-R");
+            args.addRaw(REF.getAbsolutePath());
         }
 
         final Object res = this.runCommandLine(args.getArgsArray());

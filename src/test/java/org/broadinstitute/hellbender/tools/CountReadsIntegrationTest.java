@@ -16,12 +16,12 @@ public final class CountReadsIntegrationTest extends CommandLineProgramTest {
     public void testCountReads(final String fileIn, final String referenceName) throws Exception {
         final File ORIG_BAM = new File(getTestDataDir(), fileIn);
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(ORIG_BAM.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(ORIG_BAM.getAbsolutePath());
         if (null != referenceName) {
             final File REF = new File(getTestDataDir(), referenceName);
-            args.add("-R");
-            args.add(REF.getAbsolutePath());
+            args.addRaw("-R");
+            args.addRaw(REF.getAbsolutePath());
         }
         final Object res = this.runCommandLine(args.getArgsArray());
         Assert.assertEquals(res, 8l);
@@ -72,14 +72,14 @@ public final class CountReadsIntegrationTest extends CommandLineProgramTest {
     private void countReads(final String interval_args, final String fileName, final String referenceName, final long count) {
         final File ORIG_BAM = new File(getTestDataDir(), fileName);
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(ORIG_BAM.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(ORIG_BAM.getAbsolutePath());
         if (null != referenceName) {
             final File REF = new File(getTestDataDir(), referenceName);
-            args.add("-R");
-            args.add(REF.getAbsolutePath());
+            args.addRaw("-R");
+            args.addRaw(REF.getAbsolutePath());
         }
-        args.add(interval_args);
+        args.addRaw(interval_args);
 
         final Object res = this.runCommandLine(args.getArgsArray());
         Assert.assertEquals(res, count);
@@ -96,7 +96,7 @@ public final class CountReadsIntegrationTest extends CommandLineProgramTest {
     public void testBogusArgs() throws Exception {
         //making sure that this blows up in a very specific way (UserException.CommandLineException) if we give bogus arguments
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--fred");
+        args.addRaw("--fred");
         this.runCommandLine(args.getArgsArray());
     }
 }

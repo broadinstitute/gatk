@@ -101,23 +101,23 @@ public class QualityScoreDistributionSparkIntegrationTest  extends CommandLinePr
         final File pdf = GATKBaseTest.createTempFile("test", ".pdf");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(unsortedBam.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outfile.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(unsortedBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outfile.getCanonicalPath());
         if (null != referenceName) {
             final File REF = new File(referenceName);
-            args.add("-R");
-            args.add(REF.getAbsolutePath());
+            args.addRaw("-R");
+            args.addRaw(REF.getAbsolutePath());
         }
         if (makePdf) {
-            args.add("--" + "chart");
-            args.add(pdf.getCanonicalPath());
+            args.addRaw("--" + "chart");
+            args.addRaw(pdf.getCanonicalPath());
         }
-        args.add("--" + "pfReadsOnly");
-        args.add(pfReadsOnly);
-        args.add("--" + "alignedReadsOnly");
-        args.add(alignedReadsOnly);
+        args.addRaw("--" + "pfReadsOnly");
+        args.addRaw(pfReadsOnly);
+        args.addRaw("--" + "alignedReadsOnly");
+        args.addRaw(alignedReadsOnly);
 
         this.runCommandLine(args.getArgsArray());
 

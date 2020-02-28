@@ -27,9 +27,9 @@ public final class BothStepsOfBQSRIntegrationTest extends CommandLineProgramTest
         final File bamOutWithoutIndels = applyBQSR(bamIn, interval, recalOutWithoutIndels, true);
 
         final ArgumentsBuilder args1 = new ArgumentsBuilder();
-        args1.addArgument("VALIDATION_STRINGENCY", ValidationStringency.SILENT.name());
-        args1.addPositionalArgument(bamOutWithIndels.getAbsolutePath());
-        args1.addPositionalArgument(bamOutWithoutIndels.getAbsolutePath());
+        args1.add("VALIDATION_STRINGENCY", ValidationStringency.SILENT.name());
+        args1.addRaw(bamOutWithIndels.getAbsolutePath());
+        args1.addRaw(bamOutWithoutIndels.getAbsolutePath());
         final Object result = new Main().instanceMain(makeCommandLineArgs(args1.getArgsList(), CompareBaseQualities.class.getSimpleName()));
         Assert.assertEquals(result, 0);
     }
@@ -38,8 +38,8 @@ public final class BothStepsOfBQSRIntegrationTest extends CommandLineProgramTest
         final File bamOut = GATKBaseTest.createTempFile("applyBQSR." + skipIndels, ".bam");
         final ArgumentsBuilder args1 = new ArgumentsBuilder();
         args1.addInput(bamIn);
-        args1.addFileArgument("bqsr", recalOut);
-        args1.addArgument("L", interval);
+        args1.add("bqsr", recalOut);
+        args1.add("L", interval);
         args1.addOutput(bamOut);
         new Main().instanceMain(makeCommandLineArgs(args1.getArgsList(), ApplyBQSR.class.getSimpleName()));
         return bamOut;
@@ -51,10 +51,10 @@ public final class BothStepsOfBQSRIntegrationTest extends CommandLineProgramTest
         final ArgumentsBuilder args1 = new ArgumentsBuilder();
         args1.addInput(bamIn);
         args1.addOutput(recalOut);
-        args1.addArgument("L", interval);
-        args1.addFileArgument("known-sites", new File(dbsnp_138_b37_20_21_vcf));
+        args1.add("L", interval);
+        args1.add("known-sites", new File(dbsnp_138_b37_20_21_vcf));
         args1.addReference(new File(b37_reference_20_21));
-        args1.addBooleanArgument("indels", !skipIndels);
+        args1.add("indels", !skipIndels);
         new Main().instanceMain(makeCommandLineArgs(args1.getArgsList(), BaseRecalibrator.class.getSimpleName()));
         return recalOut;
     }

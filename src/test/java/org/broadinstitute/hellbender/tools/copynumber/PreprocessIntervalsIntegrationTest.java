@@ -136,11 +136,11 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         final File outputFile = createTempFile("GATK-preprocess-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(PreprocessIntervals.BIN_LENGTH_LONG_NAME, Integer.toString(binLength))
-                .addArgument(PreprocessIntervals.PADDING_LONG_NAME, Integer.toString(paddingLength))
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(PreprocessIntervals.BIN_LENGTH_LONG_NAME, Integer.toString(binLength))
+                .add(PreprocessIntervals.PADDING_LONG_NAME, Integer.toString(paddingLength))
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
-        inputIntervals.forEach(i -> argsBuilder.addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, i.getContig() + ":" + i.getStart() + "-" + i.getEnd()));
+        inputIntervals.forEach(i -> argsBuilder.add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, i.getContig() + ":" + i.getStart() + "-" + i.getEnd()));
         runCommandLine(argsBuilder);
 
         final IntervalList binsResult = IntervalList.fromFile(outputFile);
@@ -155,10 +155,10 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         final File outputFile = createTempFile("preprocess-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(PreprocessIntervals.BIN_LENGTH_LONG_NAME, Integer.toString(binLength))
-                .addArgument(PreprocessIntervals.PADDING_LONG_NAME, Integer.toString(paddingLength))
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(PreprocessIntervals.BIN_LENGTH_LONG_NAME, Integer.toString(binLength))
+                .add(PreprocessIntervals.PADDING_LONG_NAME, Integer.toString(paddingLength))
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         final IntervalList binsResult = IntervalList.fromFile(outputFile);
@@ -176,8 +176,8 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         final File resultOutputFile = createTempFile("preprocess-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, IntervalSetRule.INTERSECTION.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, IntervalSetRule.INTERSECTION.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -187,8 +187,8 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         final File resultOutputFile = createTempFile("preprocess-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_EXCLUSION_PADDING_LONG_NAME,"1")
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_EXCLUSION_PADDING_LONG_NAME,"1")
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -198,8 +198,8 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         final File resultOutputFile = createTempFile("preprocess-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME,"1")
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME,"1")
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -209,8 +209,8 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         final File resultOutputFile = createTempFile("preprocess-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.ALL.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.ALL.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }

@@ -177,12 +177,12 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addReference(new File(reference))
                 .addOutput(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected : output);
         for (File input: inputs) {
-            args.addArgument("V", input.getAbsolutePath());
+            args.add("V", input.getAbsolutePath());
         }
 
         // Handling a difference in syntax between GATK3 and GATK4 wrt. annotation groups
         additionalArguments = additionalArguments.stream().map(a -> a.contains("Standard") ? a + "Annotation" : a).collect(Collectors.toList());
-        additionalArguments.forEach(args::add);
+        additionalArguments.forEach(args::addRaw);
 
         Utils.resetRandomGenerator();
         runCommandLine(args);
@@ -224,7 +224,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output);
         args.addVCF(getTestFile("gvcfExample1.vcf"));
         args.addVCF(getTestFile("gvcfExample2.vcf"));
-        args.add(" -L 20:69485-69509");
+        args.addRaw(" -L 20:69485-69509");
 
         runCommandLine(args);
 
@@ -254,10 +254,10 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(b37_reference_20_21))
                 .addOutput(output);
-        args.addArgument("variant",getToolTestDataDir()+"tetraploid-gvcf-1.vcf");
-        args.addArgument("variant",getToolTestDataDir()+"tetraploid-gvcf-2.vcf");
-        args.addArgument("variant",getToolTestDataDir()+"tetraploid-gvcf-3.vcf");
-        args.addArgument("intervals", getToolTestDataDir() + "tetraploid-gvcfs.interval_list");
+        args.add("variant",getToolTestDataDir()+"tetraploid-gvcf-1.vcf");
+        args.add("variant",getToolTestDataDir()+"tetraploid-gvcf-2.vcf");
+        args.add("variant",getToolTestDataDir()+"tetraploid-gvcf-3.vcf");
+        args.add("intervals", getToolTestDataDir() + "tetraploid-gvcfs.interval_list");
 
         runCommandLine(args);
 
@@ -277,7 +277,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output);
         args.addVCF(getTestFile("gvcfExample1.vcf"));
         args.addVCF(getTestFile("gvcfExample2.vcf"));
-        args.add(" -L 20:69512-69634");
+        args.addRaw(" -L 20:69512-69634");
 
         runCommandLine(args);
 
@@ -296,7 +296,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output);
         args.addVCF(getTestFile("gvcfExample1.vcf"));
         args.addVCF(getTestFile("gvcfExample2.vcf"));
-        args.add(" -L 1:69512-69634");
+        args.addRaw(" -L 1:69512-69634");
 
         runCommandLine(args);
 
@@ -315,7 +315,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output);
         args.addVCF(getTestFile("gvcfExample1.vcf"));
         args.addVCF(getTestFile("gvcfExample2.vcf"));
-        args.add(" -L 20:69511");
+        args.addRaw(" -L 20:69511");
 
         runCommandLine(args);
 
@@ -336,8 +336,8 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output);
         args.addVCF(getTestFile("gvcfExample1.vcf"));
         args.addVCF(getTestFile("gvcfExample2.vcf"));
-        args.add("--" + CombineGVCFs.IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL );
-        args.add(" -L 20:69635");
+        args.addRaw("--" + CombineGVCFs.IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL );
+        args.addRaw(" -L 20:69635");
 
         runCommandLine(args);
 
@@ -361,8 +361,8 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output);
         args.addVCF(getTestFile("gvcfExample1.vcf"));
         args.addVCF(getTestFile("gvcfExample2.vcf"));
-        args.add("--" + CombineGVCFs.IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL );
-        args.add(" -L 20:69772-69783");
+        args.addRaw("--" + CombineGVCFs.IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL );
+        args.addRaw(" -L 20:69772-69783");
 
         runCommandLine(args);
 
@@ -450,7 +450,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addReference(new File(b37Reference)).addOutput(output)
                 .addVCF(getTestFile("NA12878.MT.filtered.g.vcf"))
                 .addVCF(getTestFile("NA19240.MT.filtered.g.vcf"))
-                .addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+                .add(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
         runCommandLine(args);
 
         final List<VariantContext> actualVC = getVariantContexts(output);
@@ -502,7 +502,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addOutput(output);
         args.addVCF(getTestFile("twoSamples.MT.g.vcf"));
         args.addVCF(getTestFile("NA12891.MT.filtered.g.vcf"));
-        args.addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+        args.add(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
         runCommandLine(args);
 
         final File output2 = createTempFile("expected", ".vcf");
@@ -512,7 +512,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         args2.addVCF(getTestFile("NA12878.MT.filtered.g.vcf"));
         args2.addVCF(getTestFile("NA19240.MT.filtered.g.vcf"));
         args2.addVCF(getTestFile("NA12891.MT.filtered.g.vcf"));
-        args2.addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+        args2.add(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
         runCommandLine(args2);
 
         final List<VariantContext> expectedVC = getVariantContexts(output2);
@@ -530,8 +530,8 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addVCF(getTestFile("NA12878.MT.filtered.g.vcf"));
         args.addVCF(getTestFile("NA19240.MT.filtered.g.vcf"));
         args.addVCF(getTestFile("NA12891.MT.filtered.g.vcf"));
-        args.addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
-        args.addBooleanArgument(CombineGVCFs.DROP_SOMATIC_FILTERING_ANNOTATIONS_LONG_NAME, true);
+        args.add(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+        args.add(CombineGVCFs.DROP_SOMATIC_FILTERING_ANNOTATIONS_LONG_NAME, true);
         runCommandLine(args);
 
         final List<VariantContext> actualVCs = getVariantContexts(output);

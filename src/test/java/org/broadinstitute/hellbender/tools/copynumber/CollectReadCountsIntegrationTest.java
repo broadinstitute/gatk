@@ -37,9 +37,9 @@ public final class CollectReadCountsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("collect-read-counts-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(NA12878_BAM)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, IntervalSetRule.INTERSECTION.toString())
-                .addArgument(CollectReadCounts.FORMAT_LONG_NAME, CollectReadCounts.Format.TSV.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, IntervalSetRule.INTERSECTION.toString())
+                .add(CollectReadCounts.FORMAT_LONG_NAME, CollectReadCounts.Format.TSV.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -49,9 +49,9 @@ public final class CollectReadCountsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("collect-read-counts-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(NA12878_BAM)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_EXCLUSION_PADDING_LONG_NAME, "1")
-                .addArgument(CollectReadCounts.FORMAT_LONG_NAME, CollectReadCounts.Format.TSV.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_EXCLUSION_PADDING_LONG_NAME, "1")
+                .add(CollectReadCounts.FORMAT_LONG_NAME, CollectReadCounts.Format.TSV.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -61,9 +61,9 @@ public final class CollectReadCountsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("collect-read-counts-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(NA12878_BAM)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME, "1")
-                .addArgument(CollectReadCounts.FORMAT_LONG_NAME, CollectReadCounts.Format.TSV.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME, "1")
+                .add(CollectReadCounts.FORMAT_LONG_NAME, CollectReadCounts.Format.TSV.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -73,9 +73,9 @@ public final class CollectReadCountsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("collect-read-counts-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(NA12878_BAM)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.ALL.toString())
-                .addArgument(CollectReadCounts.FORMAT_LONG_NAME, CollectReadCounts.Format.TSV.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.ALL.toString())
+                .add(CollectReadCounts.FORMAT_LONG_NAME, CollectReadCounts.Format.TSV.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -85,9 +85,9 @@ public final class CollectReadCountsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("collect-read-counts-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(inputBAMFile)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
-                .addArgument(CollectReadCounts.FORMAT_LONG_NAME, CollectReadCounts.Format.TSV.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(CollectReadCounts.FORMAT_LONG_NAME, CollectReadCounts.Format.TSV.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
         final SimpleCountCollection expectedCounts = SimpleCountCollection.read(expectedOutputFile);
@@ -100,9 +100,9 @@ public final class CollectReadCountsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("collect-read-counts-test", ".hdf5");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(inputBAMFile)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
-                .addArgument(CollectReadCounts.FORMAT_LONG_NAME, CollectReadCounts.Format.HDF5.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(CollectReadCounts.FORMAT_LONG_NAME, CollectReadCounts.Format.HDF5.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
         final SimpleCountCollection expectedCounts = SimpleCountCollection.read(expectedOutputFile);

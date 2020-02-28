@@ -57,7 +57,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
     @Test(dataProvider = "discoverVariantsFromContigAlignmentsSparkIntegrationTest", groups = "sv")
     public void testDiscoverVariantsRunnableLocal(final DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTestArgs params) throws IOException {
 
-        final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
+        final List<String> args = Arrays.asList( new ArgumentsBuilder().addRaw(params.getCommandLine()).getArgsArray() );
         runCommandLine(args);
         final String newVCF = args.get(args.indexOf("-O") + 1) + "_sample_inv_del_ins.vcf";
         StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(newVCF,
@@ -69,7 +69,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
 
         MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
 
-            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
+            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().addRaw(params.getCommandLine()).getArgsArray() );
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
 
             int idx = 0;

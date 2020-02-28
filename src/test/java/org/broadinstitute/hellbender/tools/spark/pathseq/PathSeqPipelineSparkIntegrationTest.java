@@ -64,15 +64,15 @@ public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addInput(inputBamFile);
         args.addOutput(outputBamFile);
-        args.addFileArgument(PSScoreArgumentCollection.SCORES_OUTPUT_LONG_NAME, outputScoresFile);
-        args.addArgument(PSFilterArgumentCollection.KMER_FILE_PATH_LONG_NAME, kmerLibraryPath);
-        args.addArgument(PSFilterArgumentCollection.FILTER_BWA_IMAGE_LONG_NAME, filterImagePath);
-        args.addBooleanArgument(PSFilterArgumentCollection.IS_HOST_ALIGNED_LONG_NAME, isHostAligned);
-        args.addFileArgument(PSBwaArgumentCollection.MICROBE_BWA_IMAGE_LONG_NAME, pathogenBwaImage);
-        args.addFileArgument(PSBwaArgumentCollection.MICROBE_FASTA_LONG_NAME, pathogenFasta);
-        args.addFileArgument(PSScoreArgumentCollection.TAXONOMIC_DATABASE_LONG_NAME, taxonomyDatabase);
-        args.addFileArgument(PSFilterArgumentCollection.FILTER_METRICS_FILE_LONG_NAME, outputFilterMetricsFile);
-        args.addFileArgument(PSScoreArgumentCollection.SCORE_METRICS_FILE_LONG_NAME, outputScoreMetricsFile);
+        args.add(PSScoreArgumentCollection.SCORES_OUTPUT_LONG_NAME, outputScoresFile);
+        args.add(PSFilterArgumentCollection.KMER_FILE_PATH_LONG_NAME, kmerLibraryPath);
+        args.add(PSFilterArgumentCollection.FILTER_BWA_IMAGE_LONG_NAME, filterImagePath);
+        args.add(PSFilterArgumentCollection.IS_HOST_ALIGNED_LONG_NAME, isHostAligned);
+        args.add(PSBwaArgumentCollection.MICROBE_BWA_IMAGE_LONG_NAME, pathogenBwaImage);
+        args.add(PSBwaArgumentCollection.MICROBE_FASTA_LONG_NAME, pathogenFasta);
+        args.add(PSScoreArgumentCollection.TAXONOMIC_DATABASE_LONG_NAME, taxonomyDatabase);
+        args.add(PSFilterArgumentCollection.FILTER_METRICS_FILE_LONG_NAME, outputFilterMetricsFile);
+        args.add(PSScoreArgumentCollection.SCORE_METRICS_FILE_LONG_NAME, outputScoreMetricsFile);
         this.runCommandLine(args);
 
         SamAssertionUtils.assertEqualBamFiles(outputBamFile, expectedBamFile, true, ValidationStringency.STRICT);

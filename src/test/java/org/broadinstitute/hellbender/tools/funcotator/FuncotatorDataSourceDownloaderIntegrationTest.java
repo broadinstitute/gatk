@@ -152,11 +152,11 @@ public class FuncotatorDataSourceDownloaderIntegrationTest extends CommandLinePr
     void testDownloadRealDataSources(final String dsTypeArg, final boolean doOverwrite, final boolean doValidate, final boolean doExtract) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
-        arguments.addBooleanArgument(dsTypeArg, true);
-        arguments.addBooleanArgument(FuncotatorDataSourceDownloader.OVERWRITE_ARG_LONG_NAME, doOverwrite);
-        arguments.addBooleanArgument(FuncotatorDataSourceDownloader.VALIDATE_INTEGRITY_ARG_LONG_NAME, doValidate);
-        arguments.addBooleanArgument(FuncotatorDataSourceDownloader.EXTRACT_AFTER_DOWNLOAD, doExtract);
-        arguments.addArgument("verbosity", "INFO");
+        arguments.add(dsTypeArg, true);
+        arguments.add(FuncotatorDataSourceDownloader.OVERWRITE_ARG_LONG_NAME, doOverwrite);
+        arguments.add(FuncotatorDataSourceDownloader.VALIDATE_INTEGRITY_ARG_LONG_NAME, doValidate);
+        arguments.add(FuncotatorDataSourceDownloader.EXTRACT_AFTER_DOWNLOAD, doExtract);
+        arguments.add("verbosity", "INFO");
 
         runCommandLine(arguments);
 
@@ -177,14 +177,14 @@ public class FuncotatorDataSourceDownloaderIntegrationTest extends CommandLinePr
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
-        arguments.addArgument(FuncotatorDataSourceDownloader.TESTING_OVERRIDE_PATH_FOR_DATA_SOURCES_ARG, FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ);
-        arguments.addArgument(FuncotatorDataSourceDownloader.TESTING_OVERRIDE_PATH_FOR_DATA_SOURCES_SHA256_ARG, FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ_SHA256_FILE);
+        arguments.add(FuncotatorDataSourceDownloader.TESTING_OVERRIDE_PATH_FOR_DATA_SOURCES_ARG, FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ);
+        arguments.add(FuncotatorDataSourceDownloader.TESTING_OVERRIDE_PATH_FOR_DATA_SOURCES_SHA256_ARG, FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ_SHA256_FILE);
 
-        arguments.addArgument(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputDataSourcesPath.toFile().getAbsolutePath());
-        arguments.addBooleanArgument(FuncotatorDataSourceDownloader.OVERWRITE_ARG_LONG_NAME, doOverwrite);
-        arguments.addBooleanArgument(FuncotatorDataSourceDownloader.VALIDATE_INTEGRITY_ARG_LONG_NAME, doValidate);
-        arguments.addBooleanArgument(FuncotatorDataSourceDownloader.EXTRACT_AFTER_DOWNLOAD, doExtract);
-        arguments.addArgument("verbosity", "INFO");
+        arguments.add(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputDataSourcesPath.toFile().getAbsolutePath());
+        arguments.add(FuncotatorDataSourceDownloader.OVERWRITE_ARG_LONG_NAME, doOverwrite);
+        arguments.add(FuncotatorDataSourceDownloader.VALIDATE_INTEGRITY_ARG_LONG_NAME, doValidate);
+        arguments.add(FuncotatorDataSourceDownloader.EXTRACT_AFTER_DOWNLOAD, doExtract);
+        arguments.add("verbosity", "INFO");
 
         runCommandLine(arguments);
 

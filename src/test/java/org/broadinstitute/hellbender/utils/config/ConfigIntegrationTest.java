@@ -134,13 +134,13 @@ public class ConfigIntegrationTest extends CommandLineProgramTest {
             // Create some arguments for our command:
             final ArgumentsBuilder args = new ArgumentsBuilder();
 
-            args.addArgument(StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, configFilePath.toUri().toString());
-            args.addArgument(DummyGatkTool.SYSTEM_OUT_FILE_ARG_LONG_NAME, tmpSystemPropsFile.toString());
+            args.add(StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, configFilePath.toUri().toString());
+            args.add(DummyGatkTool.SYSTEM_OUT_FILE_ARG_LONG_NAME, tmpSystemPropsFile.toString());
             args.addOutput(tmpConfigPropsFile);
 
             // Add in our system properties to check:
             for ( final String sysProp : systemPropertiesToQuery.keySet() ) {
-                args.addArgument(DummyGatkTool.SYSTEM_VAR_ARG_LONG_NAME, sysProp);
+                args.add(DummyGatkTool.SYSTEM_VAR_ARG_LONG_NAME, sysProp);
             }
 
             // Run our command:

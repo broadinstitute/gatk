@@ -34,16 +34,16 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
     public void testSimplePileup(boolean useShuffle) throws Exception {
         final File out = createTempFile();
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(NA12878_20_21_WGS_bam);
-        args.add("--output");
-        args.add(out.getAbsolutePath());
-        args.add("--reference");
-        args.add(b37_reference_20_21);
-        args.add("-L 20:9999900-10000000");
+        args.addRaw("--input");
+        args.addRaw(NA12878_20_21_WGS_bam);
+        args.addRaw("--output");
+        args.addRaw(out.getAbsolutePath());
+        args.addRaw("--reference");
+        args.addRaw(b37_reference_20_21);
+        args.addRaw("-L 20:9999900-10000000");
         if (useShuffle) {
-            args.add("--shuffle");
-            args.add("--num-reducers").add("1");
+            args.addRaw("--shuffle");
+            args.addRaw("--num-reducers").addRaw("1");
         }
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedSimplePileup.txt");
@@ -54,17 +54,17 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
     public void testVerbosePileup(boolean useShuffle) throws Exception {
         final File out = createTempFile();
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(NA12878_20_21_WGS_bam);
-        args.add("--output");
-        args.add(out.getAbsolutePath());
-        args.add("--reference");
-        args.add(b37_reference_20_21);
-        args.add("-L 20:9999990-10000000");
-        args.add("-verbose");
+        args.addRaw("--input");
+        args.addRaw(NA12878_20_21_WGS_bam);
+        args.addRaw("--output");
+        args.addRaw(out.getAbsolutePath());
+        args.addRaw("--reference");
+        args.addRaw(b37_reference_20_21);
+        args.addRaw("-L 20:9999990-10000000");
+        args.addRaw("-verbose");
         if (useShuffle) {
-            args.add("--shuffle");
-            args.add("--num-reducers").add("1");
+            args.addRaw("--shuffle");
+            args.addRaw("--num-reducers").addRaw("1");
         }
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedVerbosePileup.txt");
@@ -75,17 +75,17 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
     public void testFeaturesPileup(boolean useShuffle) throws Exception {
         final File out = createTempFile();
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(NA12878_20_21_WGS_bam);
-        args.add("--output");
-        args.add(out.getAbsolutePath());
-        args.add("--reference");
-        args.add(b37_reference_20_21);
-        args.add("-L 20:10000092-10000112");
-        args.add("-metadata " + dbsnp_138_b37_20_21_vcf);
+        args.addRaw("--input");
+        args.addRaw(NA12878_20_21_WGS_bam);
+        args.addRaw("--output");
+        args.addRaw(out.getAbsolutePath());
+        args.addRaw("--reference");
+        args.addRaw(b37_reference_20_21);
+        args.addRaw("-L 20:10000092-10000112");
+        args.addRaw("-metadata " + dbsnp_138_b37_20_21_vcf);
         if (useShuffle) {
-            args.add("--shuffle");
-            args.add("--num-reducers").add("1");
+            args.addRaw("--shuffle");
+            args.addRaw("--num-reducers").addRaw("1");
         }
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedFeaturesPileup.txt");
@@ -96,17 +96,17 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
     public void testInsertLengthPileup(boolean useShuffle) throws Exception {
         final File out = createTempFile();
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(NA12878_20_21_WGS_bam);
-        args.add("--output");
-        args.add(out.getAbsolutePath());
-        args.add("--reference");
-        args.add(b37_reference_20_21);
-        args.add("-L 20:10000092-10000112");
-        args.add("--output-insert-length");
+        args.addRaw("--input");
+        args.addRaw(NA12878_20_21_WGS_bam);
+        args.addRaw("--output");
+        args.addRaw(out.getAbsolutePath());
+        args.addRaw("--reference");
+        args.addRaw(b37_reference_20_21);
+        args.addRaw("-L 20:10000092-10000112");
+        args.addRaw("--output-insert-length");
         if (useShuffle) {
-            args.add("--shuffle");
-            args.add("--num-reducers").add("1");
+            args.addRaw("--shuffle");
+            args.addRaw("--num-reducers").addRaw("1");
         }
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedInsertLengthPileup.txt");
@@ -129,17 +129,17 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
 
             final File out = createTempFile();
             final ArgumentsBuilder args = new ArgumentsBuilder();
-            args.add("--input");
-            args.add(NA12878_20_21_WGS_bam);
-            args.add("--output");
-            args.add(out.getAbsolutePath());
-            args.add("--reference");
-            args.add(b37_reference_20_21);
-            args.add("-L 20:10000092-10000112");
-            args.add("-metadata " + vcfPath.toString());
+            args.addRaw("--input");
+            args.addRaw(NA12878_20_21_WGS_bam);
+            args.addRaw("--output");
+            args.addRaw(out.getAbsolutePath());
+            args.addRaw("--reference");
+            args.addRaw(b37_reference_20_21);
+            args.addRaw("-L 20:10000092-10000112");
+            args.addRaw("-metadata " + vcfPath.toString());
             if (useShuffle) {
-                args.add("--shuffle");
-                args.add("--num-reducers").add("1");
+                args.addRaw("--shuffle");
+                args.addRaw("--num-reducers").addRaw("1");
             }
             this.runCommandLine(args.getArgsArray());
             File expected = new File(TEST_DATA_DIR, "expectedFeaturesPileup.txt");

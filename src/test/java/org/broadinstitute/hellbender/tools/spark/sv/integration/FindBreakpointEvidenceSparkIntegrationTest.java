@@ -120,7 +120,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
 
     @Test(dataProvider = "findBreakpointEvidenceSparkIntegrationTest", groups = "sv")
     public void testFindBreakpointRunnableLocal(final FindBreakpointEvidenceSparkIntegrationTestArgs params) throws IOException {
-        final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
+        final List<String> args = Arrays.asList( new ArgumentsBuilder().addRaw(params.getCommandLine()).getArgsArray() );
         runCommandLine(args);
 
         final File actualSAMfile = new File(params.outputDir, "assemblies.sam");
@@ -133,7 +133,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
 
         MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
 
-            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
+            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().addRaw(params.getCommandLine()).getArgsArray() );
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
 
             // copy local data to minicluster file system and update args

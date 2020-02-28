@@ -56,10 +56,10 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         final File tempVcf = createTempFile("tester", ".vcf");
         final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf");
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         runCommandLine(argsBuilder);
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY);
@@ -70,18 +70,18 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final boolean newExpectations = false;
         final String expectedVCFName = largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument("architecture", architecture1D)
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add("architecture", architecture1D)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         if (newExpectations) {
-            argsBuilder.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, expectedVCFName);
+            argsBuilder.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, expectedVCFName);
             runCommandLine(argsBuilder);
         } else {
             final File tempVcf = createTempFile("tester", ".vcf");
             final File expectedVcf = new File(expectedVCFName);
-            argsBuilder.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath());
+            argsBuilder.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath());
             runCommandLine(argsBuilder);
             assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY);
         }
@@ -92,11 +92,11 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final File tempVcf = createTempFile("tester", ".vcf");
         final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument("weights", weights1D)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add("weights", weights1D)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         runCommandLine(argsBuilder);
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY);
@@ -107,12 +107,12 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final File tempVcf = createTempFile("tester", ".vcf");
         final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument("weights", weights1D)
-                .addArgument("architecture", architecture1D)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add("weights", weights1D)
+                .add("architecture", architecture1D)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         runCommandLine(argsBuilder);
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY);
@@ -123,18 +123,18 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final boolean newExpectations = false;
         final String expectedVCFName = largeFileTestDir + "VQSR/expected/cnn_1d_contig20_1m_10m_expected.vcf";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, bigInputVCF)
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, inputIntervals)
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, bigInputVCF)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, inputIntervals)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         if (newExpectations) {
-            argsBuilder.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, expectedVCFName);
+            argsBuilder.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, expectedVCFName);
             runCommandLine(argsBuilder);
         } else {
             final File expectedVcf = new File(expectedVCFName);
             final File tempVcf = createTempFile("tester", ".vcf");
-            argsBuilder.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath());
+            argsBuilder.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath());
             runCommandLine(argsBuilder);
             assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY);
         }
@@ -145,12 +145,12 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final File tempVcf = createTempFile("tester", ".vcf");
         final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument("inference-batch-size", "8")
-                .addArgument("transfer-batch-size", "16")
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add("inference-batch-size", "8")
+                .add("transfer-batch-size", "16")
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
         runCommandLine(argsBuilder);
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY);
     }
@@ -161,10 +161,10 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final File tempVcf = createTempFile("tester", ".vcf");
         final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/chrM.vcf");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, edgeVcf)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, hg19MiniReference)
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, edgeVcf)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, hg19MiniReference)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         runCommandLine(argsBuilder);
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY);
@@ -182,14 +182,14 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final File tempVcf = createTempFile("tester", ".vcf");
         final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_2d_chr20_subset_expected.vcf");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
-                .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, inputBAM)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument("inference-batch-size", "2")
-                .addArgument("transfer-batch-size", "2")
-                .addArgument("tensor-type", tt.name())
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                .add(StandardArgumentDefinitions.INPUT_LONG_NAME, inputBAM)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add("inference-batch-size", "2")
+                .add("transfer-batch-size", "2")
+                .add("tensor-type", tt.name())
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         runCommandLine(argsBuilder);
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_2D_KEY);
@@ -205,22 +205,22 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         TensorType tt = TensorType.read_tensor;
         final String expectedVCFName = largeFileTestDir + "VQSR/expected/cnn_2d_chr20_subset_expected.vcf";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
-                .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, inputBAM)
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument("architecture", architecture2D)
-                .addArgument("tensor-type", tt.name())
-                .addArgument("inference-batch-size", "8")
-                .addArgument("transfer-batch-size", "8")
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                .add(StandardArgumentDefinitions.INPUT_LONG_NAME, inputBAM)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add("architecture", architecture2D)
+                .add("tensor-type", tt.name())
+                .add("inference-batch-size", "8")
+                .add("transfer-batch-size", "8")
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         if (newExpectations) {
-            argsBuilder.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, expectedVCFName);
+            argsBuilder.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, expectedVCFName);
             runCommandLine(argsBuilder);
         } else {
             final File tempVcf = createTempFile("tester", ".vcf");
             final File expectedVcf = new File(expectedVCFName);
-            argsBuilder.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath());
+            argsBuilder.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath());
             runCommandLine(argsBuilder);
             assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_2D_KEY);
         }
@@ -233,15 +233,15 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final File tempVcf = createTempFile("tester", ".vcf");
         final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_2d_chr20_subset_expected.vcf");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
-                .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, inputBAM)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument("weights", weights2D)
-                .addArgument("inference-batch-size", "4")
-                .addArgument("transfer-batch-size", "4")
-                .addArgument("tensor-type", tt.name())
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                .add(StandardArgumentDefinitions.INPUT_LONG_NAME, inputBAM)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add("weights", weights2D)
+                .add("inference-batch-size", "4")
+                .add("transfer-batch-size", "4")
+                .add("tensor-type", tt.name())
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         runCommandLine(argsBuilder);
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_2D_KEY);
@@ -254,16 +254,16 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final File tempVcf = createTempFile("tester", ".vcf");
         final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_2d_chr20_subset_expected.vcf");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
-                .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, inputBAM)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument("weights", weights2D)
-                .addArgument("architecture", architecture2D)
-                .addArgument("inference-batch-size", "4")
-                .addArgument("transfer-batch-size", "4")
-                .addArgument("tensor-type", tt.name())
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                .add(StandardArgumentDefinitions.INPUT_LONG_NAME, inputBAM)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add("weights", weights2D)
+                .add("architecture", architecture2D)
+                .add("inference-batch-size", "4")
+                .add("transfer-batch-size", "4")
+                .add("tensor-type", tt.name())
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         runCommandLine(argsBuilder);
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_2D_KEY);

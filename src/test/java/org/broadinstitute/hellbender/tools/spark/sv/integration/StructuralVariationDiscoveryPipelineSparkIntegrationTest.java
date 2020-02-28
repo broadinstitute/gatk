@@ -100,7 +100,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
     @Test(dataProvider = "svDiscoverPipelineSparkIntegrationTest", groups = "sv")
     public void testSVDiscoverPipelineRunnableLocal(final StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs params) throws IOException {
 
-        final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
+        final List<String> args = Arrays.asList( new ArgumentsBuilder().addRaw(params.getCommandLine()).getArgsArray() );
         runCommandLine(args);
 
         svDiscoveryVCFEquivalenceTest(
@@ -117,7 +117,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
 
         MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
 
-            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
+            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().addRaw(params.getCommandLine()).getArgsArray() );
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
 
             int idx = 0;

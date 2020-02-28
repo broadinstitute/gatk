@@ -25,8 +25,8 @@ public class FastaAlternateReferenceMakerIntegrationTest extends CommandLineProg
         final File out = createTempFile("test", "fasta");
         args.addVCF(getTestFile("NA12878.chr1_10mb_11mb.slx.indels.vcf"))
                 .addReference(new File(b37Reference))
-                .addArgument("L", "1:10,000,100-10,000,200")
-                .addArgument("L", "1:10,000,201-10,000,301")
+                .add("L", "1:10,000,100-10,000,200")
+                .add("L", "1:10,000,201-10,000,301")
                 .addOutput(out);
         runCommandLine(args);
         FastaTestUtils.assertFastaFilesContainTheSameSequence(out.toPath(), getTestFile("expected_alternate_reference_contiguous_same_contig.fasta").toPath());
@@ -40,8 +40,8 @@ public class FastaAlternateReferenceMakerIntegrationTest extends CommandLineProg
         final File out = createTempFile("test", "fasta");
         args.addVCF(getTestFile("NA12878.chr1_10mb_11mb.slx.indels.vcf"))
                 .addReference(new File(b37Reference))
-                .addArgument("L", "1:10,000,100-10,000,200")
-                .addArgument("L", "2:10,000,201-10,000,301")
+                .add("L", "1:10,000,100-10,000,200")
+                .add("L", "2:10,000,201-10,000,301")
                 .addOutput(out);
         runCommandLine(args);
         FastaTestUtils.assertFastaFilesContainTheSameSequence(out.toPath(), getTestFile("expected_alternate_reference_contiguous_diff_contig.fasta").toPath());
@@ -67,9 +67,9 @@ public class FastaAlternateReferenceMakerIntegrationTest extends CommandLineProg
         final File out = createTempFile("test", "fasta");
         args.addVCF(vcf)
                 .addReference(new File(b37Reference))
-                .addFileArgument(FastaAlternateReferenceMaker.SNP_MASK_LONG_NAME, mask)
-                .addArgument("L", "1:10,000,000-10,000,100")
-                .addBooleanArgument(FastaAlternateReferenceMaker.SNP_MASK_PRIORITY_LONG_NAME, priority)
+                .add(FastaAlternateReferenceMaker.SNP_MASK_LONG_NAME, mask)
+                .add("L", "1:10,000,000-10,000,100")
+                .add(FastaAlternateReferenceMaker.SNP_MASK_PRIORITY_LONG_NAME, priority)
                 .addOutput(out);
         runCommandLine(args);
         FastaTestUtils.assertFastaFilesContainTheSameSequence(out.toPath(), expected.toPath());
@@ -89,7 +89,7 @@ public class FastaAlternateReferenceMakerIntegrationTest extends CommandLineProg
             final File out = createTempFile("test", "fasta");
             args.addVCF(vcf)
                     .addReference(new File(b37Reference))
-                    .addArgument("L", "1:10,000,000-10,000,100")
+                    .add("L", "1:10,000,000-10,000,100")
                     .addOutput(out);
             runCommandLine(args);
             FastaTestUtils.assertFastaFilesContainTheSameSequence(out.toPath(), expected.toPath());
@@ -101,7 +101,7 @@ public class FastaAlternateReferenceMakerIntegrationTest extends CommandLineProg
         args.addVCF(iupacTestFile)
                 .addOutput( createTempFile("alternate", "fasta"))
                 .addReference(new File(b37Reference))
-                .addArgument(FastaAlternateReferenceMaker.USE_IUPAC_SAMPLE_LONG_NAME, "SAMPLE_DOESNT_EXIST");
+                .add(FastaAlternateReferenceMaker.USE_IUPAC_SAMPLE_LONG_NAME, "SAMPLE_DOESNT_EXIST");
         runCommandLine(args);
     }
 
@@ -112,8 +112,8 @@ public class FastaAlternateReferenceMakerIntegrationTest extends CommandLineProg
         args.addVCF(iupacTestFile)
                 .addOutput(out)
                 .addReference(new File(b37Reference))
-                .addArgument(FastaAlternateReferenceMaker.USE_IUPAC_SAMPLE_LONG_NAME, "NA12878")
-                .addArgument("L", "20:61050-66380");
+                .add(FastaAlternateReferenceMaker.USE_IUPAC_SAMPLE_LONG_NAME, "NA12878")
+                .add("L", "20:61050-66380");
 
         runCommandLine(args);
         FastaTestUtils.assertFastaFilesContainTheSameSequence(out.toPath(), getTestFile("expected_test_iupac.fasta").toPath());
@@ -126,7 +126,7 @@ public class FastaAlternateReferenceMakerIntegrationTest extends CommandLineProg
         args.addVCF(spanningDelTestFile)
                 .addOutput(out)
                 .addReference(new File(b37Reference))
-                .addArgument("L", "1:1273247");
+                .add("L", "1:1273247");
         runCommandLine(args);
         FastaTestUtils.assertFastaFilesContainTheSameSequence(out.toPath(), getTestFile("iupac_sample_NA3.fasta").toPath());
     }
@@ -147,8 +147,8 @@ public class FastaAlternateReferenceMakerIntegrationTest extends CommandLineProg
         args.addVCF(spanningDelTestFile)
                 .addOutput(out)
                 .addReference(new File(b37Reference))
-                .addArgument("L", "1:1273247")
-                .addArgument("use-iupac-sample", sample);
+                .add("L", "1:1273247")
+                .add("use-iupac-sample", sample);
         runCommandLine(args);
         FastaTestUtils.assertFastaFilesContainTheSameSequence(out.toPath(), expected.toPath());
     }

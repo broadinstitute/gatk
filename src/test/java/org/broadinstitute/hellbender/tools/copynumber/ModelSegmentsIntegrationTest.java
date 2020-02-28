@@ -44,11 +44,11 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
         assertOutputFiles(outputDir, outputPrefix, true, true);
     }
@@ -58,10 +58,10 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
         assertOutputFiles(outputDir, outputPrefix, true, false);
     }
@@ -71,10 +71,10 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
         assertOutputFiles(outputDir, outputPrefix, true, true);
     }
@@ -84,9 +84,9 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
         assertOutputFiles(outputDir, outputPrefix, true, false);
     }
@@ -96,9 +96,9 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
         assertOutputFiles(outputDir, outputPrefix, false, false);
     }
@@ -155,11 +155,11 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_WITH_SAMPLE_NAME_MISMATCH_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_WITH_SAMPLE_NAME_MISMATCH_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
     }
 
@@ -168,10 +168,10 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE_WITH_MISSING_SITES.getAbsolutePath())
+                .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE_WITH_MISSING_SITES.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
     }
 
@@ -180,11 +180,11 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, "Non-existent-file")
-                .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, "Non-existent-file")
+                .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
     }
 
@@ -193,11 +193,11 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, "Non-existent-file")
-                .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, "Non-existent-file")
+                .add(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
     }
 
@@ -206,11 +206,11 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, "Non-existent-file")
+                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, "Non-existent-file")
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
     }
 
@@ -219,10 +219,10 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
     }
 
@@ -231,9 +231,9 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
     }
 }

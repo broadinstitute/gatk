@@ -13,7 +13,7 @@ public class CountBasesInReferenceIntegrationTest extends CommandLineProgramTest
     public void testCountBasesInReferenceWithInterval(){
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(hg19MiniReference))
-                .addArgument("L", "1:5000-6000");
+                .add("L", "1:5000-6000");
         final CountBasesInReference walker = new CountBasesInReference();
         walker.instanceMain(args.getArgsArray());
         final long[] baseCounts = walker.baseCounts;

@@ -100,7 +100,7 @@ public class SvDiscoverFromLocalAssemblyContigAlignmentsSparkIntegrationTest ext
                                                   final String expectedComplexFilePath, final String expectedReInterpretationOneSegFilePath, final String expectedReInterPretationMultiSegFilePath,
                                                   final String expectedMergedSimpleFilePath) throws IOException {
 
-        final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
+        final List<String> args = Arrays.asList( new ArgumentsBuilder().addRaw(params.getCommandLine()).getArgsArray() );
         runCommandLine(args);
 
         final String outputDir = params.getOutputDir();

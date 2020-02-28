@@ -60,38 +60,38 @@ public final class CollectInsertSizeMetricsSparkIntegrationTest extends CommandL
         final ArgumentsBuilder args = new ArgumentsBuilder();
 
         // IO arguments
-        args.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
-        args.add(input.getAbsolutePath());
+        args.addRaw("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        args.addRaw(input.getAbsolutePath());
 
-        args.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        args.add(textOut.getAbsolutePath());
+        args.addRaw("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        args.addRaw(textOut.getAbsolutePath());
 
-        args.add("--produce-plot");
-        args.add("-" + "histogram-plot-file");
-        args.add(pdfOut.getAbsolutePath());
+        args.addRaw("--produce-plot");
+        args.addRaw("-" + "histogram-plot-file");
+        args.addRaw(pdfOut.getAbsolutePath());
 
         if (null != referenceName) {
             final File REF = new File(referenceName);
-            args.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
-            args.add(REF.getAbsolutePath());
+            args.addRaw("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
+            args.addRaw(REF.getAbsolutePath());
         }
 
         // some filter options
-        args.add("-DF");
-        args.add(ReadFilterLibrary.FirstOfPairReadFilter.class.getSimpleName());
-        args.add("-RF");
-        args.add(ReadFilterLibrary.SecondOfPairReadFilter.class.getSimpleName());
+        args.addRaw("-DF");
+        args.addRaw(ReadFilterLibrary.FirstOfPairReadFilter.class.getSimpleName());
+        args.addRaw("-RF");
+        args.addRaw(ReadFilterLibrary.SecondOfPairReadFilter.class.getSimpleName());
 
         if (allLevels) {
             // accumulation level options (all included for better test coverage)
-            args.add("-" + "LEVEL");
-            args.add(MetricAccumulationLevel.ALL_READS.toString());
-            args.add("-" + "LEVEL");
-            args.add(MetricAccumulationLevel.SAMPLE.toString());
-            args.add("-" + "LEVEL");
-            args.add(MetricAccumulationLevel.LIBRARY.toString());
-            args.add("-" + "LEVEL");
-            args.add(MetricAccumulationLevel.READ_GROUP.toString());
+            args.addRaw("-" + "LEVEL");
+            args.addRaw(MetricAccumulationLevel.ALL_READS.toString());
+            args.addRaw("-" + "LEVEL");
+            args.addRaw(MetricAccumulationLevel.SAMPLE.toString());
+            args.addRaw("-" + "LEVEL");
+            args.addRaw(MetricAccumulationLevel.LIBRARY.toString());
+            args.addRaw("-" + "LEVEL");
+            args.addRaw(MetricAccumulationLevel.READ_GROUP.toString());
         }
 
         this.runCommandLine(args.getArgsArray());

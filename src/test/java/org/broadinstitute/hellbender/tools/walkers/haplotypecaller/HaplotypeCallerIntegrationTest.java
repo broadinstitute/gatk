@@ -458,14 +458,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder().addInput(new File(inputFileName))
         .addReference(new File(referenceFileName))
         .addInterval(new SimpleInterval("20:10009880-10012631"))
-        .addBooleanArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false)
-        .addArgument(AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "2")
+        .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false)
+        .add(AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "2")
 
-        .addArgument("pairHMM", "AVX_LOGLESS_CACHING")
-        .addArgument("floor-blocks")
-        .addArgument("ERC", "GVCF")
+        .add("pairHMM", "AVX_LOGLESS_CACHING")
+        .addFlag("floor-blocks")
+        .add("ERC", "GVCF")
         .addOutput(output);
-        requestedGqBands.forEach(x -> args.addArgument("GQB",x));
+        requestedGqBands.forEach(x -> args.add("GQB",x));
         runCommandLine(args);
         
         final List<String> allGqBands = new ArrayList<>(requestedGqBands);
@@ -551,10 +551,10 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         argBuilder.addInput(new File(NA12878_20_21_WGS_bam));
         argBuilder.addReference(new File(b37_reference_20_21));
         argBuilder.addOutput(new File(vcfOutput.getAbsolutePath()));
-        argBuilder.addArgument("L", testInterval);
-        argBuilder.addArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_SHORT_NAME, bamOutput.toUri().toString());
-        argBuilder.addArgument("pairHMM", "AVX_LOGLESS_CACHING");
-        argBuilder.addArgument(AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME,2);
+        argBuilder.add("L", testInterval);
+        argBuilder.add(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_SHORT_NAME, bamOutput.toUri().toString());
+        argBuilder.add("pairHMM", "AVX_LOGLESS_CACHING");
+        argBuilder.add(AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME,2);
 
         runCommandLine(argBuilder.getArgsArray());
 
@@ -649,13 +649,13 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         argBuilder.addInput(new File(NA12878_20_21_WGS_bam));
         argBuilder.addReference(new File(b37_reference_20_21));
         argBuilder.addOutput(new File(vcfOutput.getAbsolutePath()));
-        argBuilder.addArgument("L", testInterval);
-        argBuilder.addArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_SHORT_NAME, bamOutput.getAbsolutePath());
-        argBuilder.addArgument("pairHMM", "AVX_LOGLESS_CACHING");
-        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME, createBamoutIndex);
-        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME, createBamoutMD5);
-        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, createVCFOutIndex);
-        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_MD5_LONG_NAME, createVCFOutMD5);
+        argBuilder.add("L", testInterval);
+        argBuilder.add(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_SHORT_NAME, bamOutput.getAbsolutePath());
+        argBuilder.add("pairHMM", "AVX_LOGLESS_CACHING");
+        argBuilder.add(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME, createBamoutIndex);
+        argBuilder.add(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME, createBamoutMD5);
+        argBuilder.add(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, createVCFOutIndex);
+        argBuilder.add(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_MD5_LONG_NAME, createVCFOutMD5);
 
         runCommandLine(argBuilder.getArgsArray());
 
@@ -1254,7 +1254,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 .addReference(hg38Reference)
                 .addInterval(new SimpleInterval(intervals))
                 .addOutput(outputContaminatedHomVarDeletions)
-                .addNumericArgument(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME, 50);
+                .add(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME, 50);
         runCommandLine(args);
 
         List<VariantContext> vcs = VariantContextTestUtils.getVariantContexts(outputContaminatedHomVarDeletions);

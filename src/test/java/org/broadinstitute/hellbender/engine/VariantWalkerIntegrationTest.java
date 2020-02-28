@@ -35,8 +35,8 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
         String moreArgs = "-L 1";
         final File ORIG_FILE = new File(getTestDataDir(), fileIn);
         ArgumentsBuilder ab = new ArgumentsBuilder();
-        ab.add("--variant " + ORIG_FILE.getAbsolutePath());
-        ab.add(moreArgs);
+        ab.addRaw("--variant " + ORIG_FILE.getAbsolutePath());
+        ab.addRaw(moreArgs);
         this.runCommandLine(ab.getArgsArray());
     }
 
@@ -46,8 +46,8 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
         String moreArgs = "-L 25";
         final File ORIG_FILE = new File(getTestDataDir(), fileIn);
         ArgumentsBuilder ab = new ArgumentsBuilder();
-        ab.add("--variant " + ORIG_FILE.getAbsolutePath());
-        ab.add(moreArgs);
+        ab.addRaw("--variant " + ORIG_FILE.getAbsolutePath());
+        ab.addRaw(moreArgs);
         this.runCommandLine(ab.getArgsArray());
     }
 
@@ -57,8 +57,8 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
         String moreArgs = "-L 1";
         final File ORIG_FILE = new File(getTestDataDir(), fileIn);
         ArgumentsBuilder ab = new ArgumentsBuilder();
-        ab.add("--variant " + ORIG_FILE.getAbsolutePath());
-        ab.add(moreArgs);
+        ab.addRaw("--variant " + ORIG_FILE.getAbsolutePath());
+        ab.addRaw(moreArgs);
         this.runCommandLine(ab.getArgsArray());
     }
 

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.markduplicates;
 
 import htsjdk.samtools.*;
-import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import org.apache.commons.io.FileUtils;
@@ -18,7 +17,6 @@ import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.testutils.testers.MarkDuplicatesSparkTester;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMetrics;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -26,14 +24,10 @@ import picard.sam.util.PhysicalLocationInt;
 import picard.sam.util.ReadNameParser;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * This class defines the individual test cases to run.  The actual running of the test is done
@@ -742,12 +736,12 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         metricsFile.deleteOnExit();
         final CommandLineProgram markDuplicates = getCommandLineProgramInstance();
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("-I");
-        args.add(sam.getAbsolutePath());
-        args.add("-O");
-        args.add(outputSam.getAbsolutePath());
-        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
-        args.add(metricsFile.getAbsolutePath());
+        args.addRaw("-I");
+        args.addRaw(sam.getAbsolutePath());
+        args.addRaw("-O");
+        args.addRaw(outputSam.getAbsolutePath());
+        args.addRaw("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        args.addRaw(metricsFile.getAbsolutePath());
         markDuplicates.instanceMain(args.getArgsArray());
         IntegrationTestSpec.assertEqualTextFiles(metricsFile, expectedMetrics, "#"); //this compares the values but not headers
 
@@ -808,13 +802,13 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         final File outputFile = createTempFile("markdups", ".bam");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("-"+ StandardArgumentDefinitions.INPUT_SHORT_NAME);
-        args.add(input.getPath());
-        args.add("-"+StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        args.add(outputFile.getAbsolutePath());
-        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
-        args.add(metricsFile.getAbsolutePath());
-        args.add(extraArgs);
+        args.addRaw("-"+ StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        args.addRaw(input.getPath());
+        args.addRaw("-"+StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        args.addRaw(outputFile.getAbsolutePath());
+        args.addRaw("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        args.addRaw(metricsFile.getAbsolutePath());
+        args.addRaw(extraArgs);
 
         final CommandLineProgram markDuplicates = getCommandLineProgramInstance();
 

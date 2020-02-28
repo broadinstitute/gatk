@@ -46,23 +46,23 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(b37_reference_20_21))
-                .addArgument("V", largeFileTestDir + "NA12878.prod.chr20snippet.g.vcf.gz")
-                .addArgument("rgq-threshold", "20")
-                .addArgument("L", "20:60001-1000000")
-                .addArgument("A", "Coverage")
-                .addArgument("A", "RMSMappingQuality")
-                .addArgument("A", "ReadPosRankSumTest")
-                .addArgument("A", "MappingQualityRankSumTest")
-                .addBooleanArgument("disable-tool-default-annotations", true)
+                .add("V", largeFileTestDir + "NA12878.prod.chr20snippet.g.vcf.gz")
+                .add("rgq-threshold", "20")
+                .add("L", "20:60001-1000000")
+                .add("A", "Coverage")
+                .add("A", "RMSMappingQuality")
+                .add("A", "ReadPosRankSumTest")
+                .add("A", "MappingQualityRankSumTest")
+                .add("disable-tool-default-annotations", true)
                 .addOutput(output);
         runCommandLine(args);
 
         final CommandLineProgramTester validator = ValidateVariants.class::getSimpleName;
         final ArgumentsBuilder args2 = new ArgumentsBuilder();
-        args2.addArgument("R", b37_reference_20_21);
-        args2.addArgument("V", output.getAbsolutePath());
-        args2.addArgument("L", "20:60001-1000000");
-        args2.add("-gvcf");
+        args2.add("R", b37_reference_20_21);
+        args2.add("V", output.getAbsolutePath());
+        args2.add("L", "20:60001-1000000");
+        args2.addRaw("-gvcf");
         validator.runCommandLine(args2);  //will throw a UserException if GVCF isn't contiguous
 
         try (final FeatureDataSource<VariantContext> actualVcs = new FeatureDataSource<>(output);
@@ -126,11 +126,11 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         //big test for as we ran for gnomADv3
         final File output = createTempFile("reblockedgvcf", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument("V", "src/test/resources/large/ReblockGVCF/spanDel.exome.chr20.vcf")
-                .addBooleanArgument("do-qual-approx", true)
-                .addBooleanArgument("drop-low-quals", true)
-                .addArgument("rgq-threshold", "10")
-                .addArgument("L", "chr20")
+        args.add("V", "src/test/resources/large/ReblockGVCF/spanDel.exome.chr20.vcf")
+                .add("do-qual-approx", true)
+                .add("drop-low-quals", true)
+                .add("rgq-threshold", "10")
+                .add("L", "chr20")
                 .addOutput(output);
         runCommandLine(args);
 
@@ -168,7 +168,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
     public void testMQHeadersAreUpdated() throws Exception {
         final File output = createTempFile("reblockedgvcf", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument("V", getToolTestDataDir() + "justHeader.g.vcf")
+        args.add("V", getToolTestDataDir() + "justHeader.g.vcf")
                 .addOutput(output);
         runCommandLine(args);
 

@@ -51,10 +51,10 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
         final String outputPath = BucketUtils.getTempFilePath(getGCPTestStaging(), ".bam");
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
-        argBuilder.addArgument("input", gcsInputPath)
-                .addArgument("output", outputPath)
+        argBuilder.add("input", gcsInputPath)
+                .add("output", outputPath)
                 //set the partition size to something small enough that we force multiple partitions to be written
-                .addArgument(GATKSparkTool.BAM_PARTITION_SIZE_LONG_NAME, String.valueOf(10*1024*1024));
+                .add(GATKSparkTool.BAM_PARTITION_SIZE_LONG_NAME, String.valueOf(10*1024*1024));
         DataprocTestUtils.launchGatkTool(PrintReadsSpark.class.getSimpleName(), argBuilder.getArgsList(), clusterName);
         final File expected = copyLocally(gcsInputPath, "expected");
         final File actual = copyLocally(outputPath, "actual");
@@ -84,8 +84,8 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
         final String outputPath = BucketUtils.getTempFilePath(getGCPTestStaging(), ".vcf");
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
-        argBuilder.addArgument("V", gcsInputPath)
-                .addArgument("output", outputPath);
+        argBuilder.add("V", gcsInputPath)
+                .add("output", outputPath);
         DataprocTestUtils.launchGatkTool(PrintVariantsSpark.class.getSimpleName(), argBuilder.getArgsList(), clusterName);
         final File expected = copyLocally(gcsInputPath, "expected");
         final File actual = copyLocally(outputPath, "actual");
@@ -108,9 +108,9 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
         final String metricsOut = BucketUtils.getTempFilePath(getGCPTestStaging(), ".metrics");
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
-        argBuilder.addArgument("I", gcsInputPath)
-                .addArgument("O", bamOut)
-                .addArgument("M", metricsOut);
+        argBuilder.add("I", gcsInputPath)
+                .add("O", bamOut)
+                .add("M", metricsOut);
 
         DataprocTestUtils.launchGatkTool(MarkDuplicatesSpark.class.getSimpleName(), argBuilder.getArgsList(), clusterName);
         final File actual = copyLocally(bamOut, "actual");

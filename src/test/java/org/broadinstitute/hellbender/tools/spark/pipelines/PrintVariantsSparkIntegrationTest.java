@@ -35,8 +35,8 @@ public final class PrintVariantsSparkIntegrationTest extends CommandLineProgramT
         final String outputPath = BucketUtils.getTempFilePath(outputPrefix, outputExtension);
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
-        argBuilder.addArgument("variant", gcsInputPath)
-            .addArgument("output", outputPath);
+        argBuilder.add("variant", gcsInputPath)
+            .add("output", outputPath);
         runCommandLine(argBuilder);
     }
 }

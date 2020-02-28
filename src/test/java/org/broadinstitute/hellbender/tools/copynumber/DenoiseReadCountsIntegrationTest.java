@@ -37,15 +37,15 @@ public final class DenoiseReadCountsIntegrationTest extends CommandLineProgramTe
                 for (final File ponFile : Arrays.asList(WGS_NO_GC_PON_FILE, WGS_DO_GC_PON_FILE, null)) {
                     for (final Integer numberOfEigenvalues : NUMBER_OF_EIGENVALUES_LIST) {
                         final ArgumentsBuilder arguments = new ArgumentsBuilder()
-                                .addFileArgument(StandardArgumentDefinitions.INPUT_SHORT_NAME, inputReadCountsFile);
+                                .add(StandardArgumentDefinitions.INPUT_SHORT_NAME, inputReadCountsFile);
                         if (annotatedIntervalsFile != null) {
-                            arguments.addFileArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
+                            arguments.add(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
                         }
                         if (ponFile != null) {
-                            arguments.addFileArgument(CopyNumberStandardArgument.COUNT_PANEL_OF_NORMALS_FILE_LONG_NAME, ponFile);
+                            arguments.add(CopyNumberStandardArgument.COUNT_PANEL_OF_NORMALS_FILE_LONG_NAME, ponFile);
                         }
                         if (numberOfEigenvalues != null) {
-                            arguments.addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, numberOfEigenvalues.toString());
+                            arguments.add(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, numberOfEigenvalues.toString());
                         }
                         data.add(Arrays.asList(arguments, ponFile == null || (numberOfEigenvalues != null && numberOfEigenvalues == 0)));    //set isStandardizedEqualsDenoised = true if no PoN or if number of eigenvalues is zero
                     }
@@ -65,8 +65,8 @@ public final class DenoiseReadCountsIntegrationTest extends CommandLineProgramTe
         final File standardizedCRFile = createTempFile("test", ".standardizedCR.tsv");
         final File denoisedCRFile = createTempFile("test", ".denoisedCR.tsv");
         final String[] arguments = argumentsBuilder
-                .addFileArgument(CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME, standardizedCRFile)
-                .addFileArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, denoisedCRFile)
+                .add(CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME, standardizedCRFile)
+                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, denoisedCRFile)
                 .getArgsArray();
         runCommandLine(arguments);
 

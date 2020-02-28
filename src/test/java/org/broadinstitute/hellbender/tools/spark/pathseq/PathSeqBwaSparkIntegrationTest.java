@@ -32,10 +32,10 @@ public class PathSeqBwaSparkIntegrationTest extends CommandLineProgramTest {
         final File pairedOutputBamFile = createTempFile("paired_output", ".bam");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addFileArgument(PathSeqBwaSpark.PAIRED_INPUT_LONG_NAME, inputBamFile);
-        args.addFileArgument(PathSeqBwaSpark.PAIRED_OUTPUT_LONG_NAME, pairedOutputBamFile);
-        args.addArgument(PSBwaArgumentCollection.MICROBE_BWA_IMAGE_LONG_NAME, IMAGE_PATH);
-        args.addArgument(PSBwaArgumentCollection.MICROBE_FASTA_LONG_NAME, REF_PATH);
+        args.add(PathSeqBwaSpark.PAIRED_INPUT_LONG_NAME, inputBamFile);
+        args.add(PathSeqBwaSpark.PAIRED_OUTPUT_LONG_NAME, pairedOutputBamFile);
+        args.add(PSBwaArgumentCollection.MICROBE_BWA_IMAGE_LONG_NAME, IMAGE_PATH);
+        args.add(PSBwaArgumentCollection.MICROBE_FASTA_LONG_NAME, REF_PATH);
         this.runCommandLine(args.getArgsArray());
         SamAssertionUtils.assertSamsEqual(pairedOutputBamFile, getTestFile(expectedBamFilename), ValidationStringency.LENIENT);
     }

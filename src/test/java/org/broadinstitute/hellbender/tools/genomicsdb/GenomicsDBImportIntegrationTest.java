@@ -310,10 +310,10 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         args.addReference(new File(reference))
                 .addOutput(output);
         for (String input: inputs) {
-            args.addArgument("V", input);
+            args.add("V", input);
         }
         intervals.forEach(args::addInterval);
-        Arrays.stream(extraArgs).forEach(args::add);
+        Arrays.stream(extraArgs).forEach(args::addRaw);
 
         Utils.resetRandomGenerator();
         new Main().instanceMain(makeCommandLineArgs(args.getArgsList(), "CombineGVCFs"));
@@ -491,18 +491,18 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                                    final boolean mergeIntervals, final boolean overwriteWorkspace, final boolean incremental) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         if (incremental) {
-            args.addArgument(GenomicsDBImport.INCREMENTAL_WORKSPACE_ARG_LONG_NAME, workspace);
+            args.add(GenomicsDBImport.INCREMENTAL_WORKSPACE_ARG_LONG_NAME, workspace);
         } else {
-            args.addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
+            args.add(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
         }
         intervals.forEach(args::addInterval);
-        vcfInputs.forEach(vcf -> args.addArgument("V", vcf));
-        args.addArgument("batch-size", String.valueOf(batchSize));
-        args.addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(threads));
-        args.addBooleanArgument(GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME, mergeIntervals);
-        args.addBooleanArgument(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, overwriteWorkspace);
+        vcfInputs.forEach(vcf -> args.add("V", vcf));
+        args.add("batch-size", String.valueOf(batchSize));
+        args.add(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(threads));
+        args.add(GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME, mergeIntervals);
+        args.add(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, overwriteWorkspace);
         if (useBufferSize) {
-            args.addArgument("genomicsdb-vcf-buffer-size", String.valueOf(bufferSizePerSample));
+            args.add("genomicsdb-vcf-buffer-size", String.valueOf(bufferSizePerSample));
         }
 
         runCommandLine(args);
@@ -598,33 +598,33 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         for( final Integer batchSize: batchSizes){
             // -V in order
             results.add(new Object[] {new ArgumentsBuilder()
-                    .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
+                    .add(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
                     .addVCF(new File(HG_00096))
                     .addVCF(new File(HG_00268))
                     .addVCF(new File(NA_19625))});
 
             // -V out of order
             results.add(new Object[] {new ArgumentsBuilder()
-                    .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
+                    .add(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
                     .addVCF(new File(HG_00268))
                     .addVCF(new File(NA_19625))
                     .addVCF(new File(HG_00096))});
 
             //in order sample map
             results.add(new Object[] {new ArgumentsBuilder()
-                    .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
-                    .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, createInOrderSampleMap())});
+                    .add(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
+                    .add(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, createInOrderSampleMap())});
 
             //out of order sample map
             results.add(new Object[] {new ArgumentsBuilder()
-                    .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
-                    .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap)});
+                    .add(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
+                    .add(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap)});
 
             //out of order sample map with multiple threads
             results.add(new Object[] {new ArgumentsBuilder()
-                    .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
-                    .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap)
-                    .addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, "2")});
+                    .add(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
+                    .add(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap)
+                    .add(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, "2")});
         }
         return results.iterator();
     }
@@ -639,10 +639,10 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         final String workspace = createTempDir("gendbtest").getAbsolutePath() + "/workspace";
 
         ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(2))
-                .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap)
+                .add(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(2))
+                .add(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap)
                 .addInterval(SMALLER_INTERVAL.get(0))
-                .addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
+                .add(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
 
         runCommandLine(args);
         checkJSONFilesAreWritten(workspace);
@@ -655,7 +655,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         final String workspace = createTempDir("gendbtest").getAbsolutePath() + "/workspace";
 
         args.addInterval(INTERVAL.get(0))
-            .addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
+            .add(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
 
         runCommandLine(args);
         checkJSONFilesAreWritten(workspace);
@@ -742,10 +742,10 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         final String workspace = createTempDir("workspace").getAbsolutePath();
         Files.delete(Paths.get(workspace));
         final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleMapFile.getAbsolutePath())
-                .addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, new File(workspace).getAbsolutePath())
-                .addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(threads))
-                .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
+                .add(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleMapFile.getAbsolutePath())
+                .add(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, new File(workspace).getAbsolutePath())
+                .add(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(threads))
+                .add(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
                 .addInterval(INTERVAL.get(0));
 
         runCommandLine(args);
@@ -801,9 +801,9 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     @Test(expectedExceptions = CommandLineException.class)
     public void testCantSpecifyVCFAndSampleNameFile(){
         final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, createInOrderSampleMap().getAbsolutePath())
-                .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, HG_00096)
-                .addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, createTempDir("workspace").getAbsolutePath())
+                .add(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, createInOrderSampleMap().getAbsolutePath())
+                .add(StandardArgumentDefinitions.VARIANT_LONG_NAME, HG_00096)
+                .add(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, createTempDir("workspace").getAbsolutePath())
                 .addInterval(INTERVAL.get(0));
         runCommandLine(args);
     }
@@ -811,8 +811,8 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     @Test(expectedExceptions = CommandLineException.MissingArgument.class)
     public void testRequireOneOfVCFOrSampleNameFile(){
         final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, createTempDir("workspace").getAbsolutePath())
-                .addArgument("L", "1:1-10");
+                .add(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, createTempDir("workspace").getAbsolutePath())
+                .add("L", "1:1-10");
 
         runCommandLine(args);
     }
@@ -1010,8 +1010,8 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private void createAndCheckIntervalListFromExistingWorkspace(final String workspace, final Boolean singleInterval) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         final String outputIntervalList = workspace + "interval_output";
-        args.addArgument(GenomicsDBImport.INCREMENTAL_WORKSPACE_ARG_LONG_NAME, workspace);
-        args.addArgument(GenomicsDBImport.INTERVAL_LIST_LONG_NAME, outputIntervalList);
+        args.add(GenomicsDBImport.INCREMENTAL_WORKSPACE_ARG_LONG_NAME, workspace);
+        args.add(GenomicsDBImport.INTERVAL_LIST_LONG_NAME, outputIntervalList);
 
         runCommandLine(args);
 

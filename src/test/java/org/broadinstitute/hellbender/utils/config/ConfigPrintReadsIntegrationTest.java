@@ -38,12 +38,12 @@ public class ConfigPrintReadsIntegrationTest extends CommandLineProgramTest  {
 
         // Create some arguments for our command:
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
-        args.add(configFilePath);
-        args.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
-        args.add(inputFile);
-        args.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        args.add(outputFile);
+        args.addRaw("--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
+        args.addRaw(configFilePath);
+        args.addRaw("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        args.addRaw(inputFile);
+        args.addRaw("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        args.addRaw(outputFile);
 
         // Run our command:
         runCommandLine(args.getArgsArray());

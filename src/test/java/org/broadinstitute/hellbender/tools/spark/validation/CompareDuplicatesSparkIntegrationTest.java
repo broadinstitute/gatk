@@ -51,12 +51,12 @@ public class CompareDuplicatesSparkIntegrationTest extends CommandLineProgramTes
         // These files are the same and should produce no diffs.
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(firstBam.getCanonicalPath());
-        args.add("--" + CompareDuplicatesSpark.INPUT_2_SHORT_NAME);
-        args.add(secondBam.getCanonicalPath());
-        args.add("--" + CompareDuplicatesSpark.THROW_ON_DIFF_LONG_NAME);
-        args.add("true");
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(firstBam.getCanonicalPath());
+        args.addRaw("--" + CompareDuplicatesSpark.INPUT_2_SHORT_NAME);
+        args.addRaw(secondBam.getCanonicalPath());
+        args.addRaw("--" + CompareDuplicatesSpark.THROW_ON_DIFF_LONG_NAME);
+        args.addRaw("true");
 
         this.runCommandLine(args.getArgsArray());
     }
@@ -65,12 +65,12 @@ public class CompareDuplicatesSparkIntegrationTest extends CommandLineProgramTes
     public void differentBamTest(File firstBam, File secondBam) throws Exception {
         // These files are not the same and should throw an exception
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(firstBam.getCanonicalPath());
-        args.add("--" + CompareDuplicatesSpark.INPUT_2_SHORT_NAME);
-        args.add(secondBam.getCanonicalPath());
-        args.add("--" + CompareDuplicatesSpark.THROW_ON_DIFF_LONG_NAME);
-        args.add("true");
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(firstBam.getCanonicalPath());
+        args.addRaw("--" + CompareDuplicatesSpark.INPUT_2_SHORT_NAME);
+        args.addRaw(secondBam.getCanonicalPath());
+        args.addRaw("--" + CompareDuplicatesSpark.THROW_ON_DIFF_LONG_NAME);
+        args.addRaw("true");
 
         this.runCommandLine(args.getArgsArray());
     }
@@ -86,14 +86,14 @@ public class CompareDuplicatesSparkIntegrationTest extends CommandLineProgramTes
         final File diffbam2 = createTempFile("differentBamTest2", ".bam");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(gatk4Bam.getCanonicalPath());
-        args.add("--" + CompareDuplicatesSpark.INPUT_2_SHORT_NAME);
-        args.add(dupfreeBam.getCanonicalPath());
-        args.add("-O");
-        args.add(diffbam1);
-        args.add("-O2");
-        args.add(diffbam2);
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(gatk4Bam.getCanonicalPath());
+        args.addRaw("--" + CompareDuplicatesSpark.INPUT_2_SHORT_NAME);
+        args.addRaw(dupfreeBam.getCanonicalPath());
+        args.addRaw("-O");
+        args.addRaw(diffbam1);
+        args.addRaw("-O2");
+        args.addRaw(diffbam2);
 
         this.runCommandLine(args.getArgsArray());
 
