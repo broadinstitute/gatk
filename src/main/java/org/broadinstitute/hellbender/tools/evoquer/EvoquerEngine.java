@@ -1314,8 +1314,7 @@ class EvoquerEngine {
                             "GROUP BY 1,2,3\n" +
                             ") ai\n" +
                             "LEFT JOIN ref_ad_info radi ON (ai.position = radi.position)\n" +
-                            "LEFT JOIN ref_sb_info rsbi ON (ai.position = rsbi.position)\n" +
-                            "ORDER BY 1,2,3\n";
+                            "LEFT JOIN ref_sb_info rsbi ON (ai.position = rsbi.position)\n";
 
             return query
                 .replaceAll("@vet", getFQVariantTable(interval))
