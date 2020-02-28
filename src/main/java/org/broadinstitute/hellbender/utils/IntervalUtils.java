@@ -330,7 +330,7 @@ public final class IntervalUtils {
         // as evidence that the user intended the String to be interpreted as a file.
         else if ( new File(arg).exists() ) {
             throw new UserException.CouldNotReadInputFile(arg, String.format("The file %s exists, but does not contain Features " +
-                    "(ie., is not in a supported Feature file format such as vcf, bcf, or bed), " +
+                    "(ie., is not in a supported Feature file format such as vcf, bcf, bed, or interval_list), " +
                     "and does not have one of the supported interval file extensions (" + GATK_INTERVAL_FILE_EXTENSIONS + "). " +
                     "Please rename your file with the appropriate extension. If %s is NOT supposed to be a file, " +
                     "please move or rename the file at location %s", arg, arg, new File(arg).getAbsolutePath()));
