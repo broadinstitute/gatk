@@ -38,7 +38,7 @@ public final class IndependentSampleGenotypesModel implements GenotypersModel {
 
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data, byte[] paddedReference, int offsetForRefIntoEvent) {
+    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingEngine;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
@@ -28,7 +29,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
     // We keep a fallback model in mind... this might want to be adjusted as implementation workds
     private final IndependentSampleGenotypesModel fallbackModel;
 
-    public DRAGENBQDGenotypesModel() { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY, true, true); }
+    public DRAGENBQDGenotypesModel(final boolean useBQDModel, final boolean useFRDModel) { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY, useBQDModel, useFRDModel); }
 
     /**
      *  Initialize model with given maximum allele count and ploidy for caching
@@ -53,7 +54,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
         // for right now, don't handle any deletions whatsoever
         // Also for right now lets not worry too much abotu alleles.
         if (FRDBQDUtils.containsInsertionOrDeletion(genotypingAlleles) || data.numberOfAlleles() > 3) {
-            return fallbackModel.calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent);
+            return fallbackModel.calculateLikelihoods(genotypingAlleles, data);
         }
 
         final AlleleListPermutation<A> permutation = data.permutation(genotypingAlleles);
@@ -63,10 +64,12 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
         final PloidyModel ploidyModel = data.ploidyModel();
         final List<GenotypeLikelihoods> genotypeLikelihoods = new ArrayList<>(sampleCount);
         final int alleleCount = genotypingAlleles.numberOfAlleles();
+        final int variantOffset = data.readLikelihoods().getSubsettedGenomicLoc().getStart() + HaplotypeCallerGenotypingEngine.ALLELE_EXTENSION;
+
 
 //        GenotypeLikelihoodCalculator likelihoodsCalculator = sampleCount > 0 ? getLikelihoodsCalculator(ploidyModel.samplePloidy(0), alleleCount) : null;
         GenotypeLikelihoodCalculatorDRAGEN likelihoodsCalculator = getLikelihoodsCalculator(ploidyModel.samplePloidy(0), alleleCount); //TODO this needs to change
-        for (int i = 0; i < sampleCount; i++) {
+        for (int sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
 
             ///////////////////////////////////////////////////////////////////////////
             ///// PREPROCESSING FOR BQD
@@ -74,44 +77,39 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             //TODO this will need ohmptimation, this is probably too much object creation for in here
 
             // Separating the reads by their strand and sorting them appropriately.
-            List<GATKRead> readsForSample = data.readLikelihoods().sampleEvidence(i);
-            List<GATKRead> hmmFilteredReadsForSample = data.readLikelihoods().filteredSampleEvidence(i);
+            List<GATKRead> readsForSample = data.readLikelihoods().sampleEvidence(sampleIndex);
+            List<GATKRead> hmmFilteredReadsForSample = data.readLikelihoods().filteredSampleEvidence(sampleIndex);
             // These objects are intended to store 3 things, the read, the inner (middle) int stores the offset into the read of the base in question, and the outer int stores the index of the read per sample
             List<Pair<Pair<GATKRead,Integer>,Integer>> strandForward = new ArrayList<>();
             List<Pair<Pair<GATKRead,Integer>,Integer>>  strandReverse = new ArrayList<>();
-            int variantOffset = data.readLikelihoods().getSubsettedGenomicLoc().getStart();
-            for (int j = 0; i < readsForSample.size(); i++) {
+            for (int j = 0; j < readsForSample.size(); j++) {
                 // TODO figure out what to do with overlapping deletions....
-                final Pair<Integer, Boolean> baseOffsetForRead = ReadUtils.getReadCoordinateForReferenceCoordinate(readsForSample.get(j), variantOffset);
+                final Pair<Integer, Boolean> baseOffsetForRead = ReadUtils.getReadCoordinateForReferenceCoordinate(readsForSample.get(j), variantOffset, true);
                 if (readsForSample.get(j).isReverseStrand()) {
                     strandReverse.add(Pair.of(
-                            Pair.of(readsForSample.get(j),baseOffsetForRead.getLeft()),
-                            j));
+                            Pair.of(readsForSample.get(j),baseOffsetForRead.getLeft()), j));
                 } else {
                     strandForward.add(Pair.of(
-                            Pair.of(readsForSample.get(j),baseOffsetForRead.getLeft()),
-                            j));
+                            Pair.of(readsForSample.get(j),baseOffsetForRead.getLeft()), j));
                 }
             }
             //TODO unsilly this
             //TODO marking this with -1s is silly and probably not the right answer
-            for (int j = 0; i < hmmFilteredReadsForSample.size(); i++) {
-                final Pair<Integer, Boolean> baseOffsetForRead = ReadUtils.getReadCoordinateForReferenceCoordinate(hmmFilteredReadsForSample.get(j), variantOffset);
+            for (int j = 0; j < hmmFilteredReadsForSample.size(); j++) {
+                final Pair<Integer, Boolean> baseOffsetForRead = ReadUtils.getReadCoordinateForReferenceCoordinate(hmmFilteredReadsForSample.get(j), variantOffset, true);
                 if (hmmFilteredReadsForSample.get(j).isReverseStrand()) {
                     strandReverse.add(Pair.of(
-                            Pair.of(hmmFilteredReadsForSample.get(j),baseOffsetForRead.getLeft()),
-                            -1));
+                            Pair.of(hmmFilteredReadsForSample.get(j),baseOffsetForRead.getLeft()), -1));
                 } else {
                     strandForward.add(Pair.of(
-                            Pair.of(hmmFilteredReadsForSample.get(j),baseOffsetForRead.getLeft()),
-                            -1));
+                            Pair.of(hmmFilteredReadsForSample.get(j),baseOffsetForRead.getLeft()), -1));
                 }
             }
             strandForward.sort(new FRDBQDUtils.ReadFeatherEndForwardComparitor());
             strandReverse.sort(new FRDBQDUtils.ReadFeatherEndRevereseComparitor());
 
             // Compute default liklihoods as normal (before we go ahead and alter the liklihoods for the call)
-            final int samplePloidy = ploidyModel.samplePloidy(i);
+            final int samplePloidy = ploidyModel.samplePloidy(sampleIndex);
 
             // get a new likelihoodsCalculator if this sample's ploidy differs from the previous sample's
             if (samplePloidy != likelihoodsCalculator.ploidy()) {
@@ -119,7 +117,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             }
 
             // this is the data array for the read liklihoods without any trouble
-            final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(i));
+            final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(sampleIndex));
             final double[] ployidyModelGenotypeLikelihoods = likelihoodsCalculator.rawGenotypeLikelihoods(sampleLikelihoods);
 
             System.out.println("Genotyping model results for alleles before being modified");
@@ -139,14 +137,14 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             System.out.println(Arrays.asList(BQDCallResults));
 
             if (computeFRD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
-                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment);
+//                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment);
             }
 
             System.out.println("Genotyping model results for genotypes given FRD results");
             System.out.println(Arrays.asList(FRDCallResults));
 
             //make synthesized likelihoods object (NOTE that we can do this since for invalid model GT fields we simply infinity out the result in the array)
-            for (int gt = 0; gt < ployidyModelGenotypeLikelihoods.length; i++) {
+            for (int gt = 0; gt < ployidyModelGenotypeLikelihoods.length; sampleIndex++) {
                 ployidyModelGenotypeLikelihoods[gt] = Math.min(ployidyModelGenotypeLikelihoods[gt], Math.min(BQDCallResults[gt], FRDCallResults[gt]));
             }
 

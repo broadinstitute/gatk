@@ -135,7 +135,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         referenceAlleleIndex = findReferenceAllele(alleles);
 
         evidenceIndexBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
-        filteredEvidenceBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
+        filteredEvidenceBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, new ArrayList<>(2)));
 
         setupIndexes(evidenceBySample, sampleCount, alleleCount);
 
@@ -157,7 +157,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         final int sampleCount = samples.numberOfSamples();
 
         this.evidenceIndexBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
-        this.filteredEvidenceBySampleIndex = filteredEvidenceBySampleIndex != null ? filteredEvidenceBySampleIndex : new ArrayList<>(Collections.nCopies(sampleCount, null));
+        this.filteredEvidenceBySampleIndex = filteredEvidenceBySampleIndex != null ? filteredEvidenceBySampleIndex : new ArrayList<>(Collections.nCopies(sampleCount, new ArrayList<>(2)));
 
         referenceAlleleIndex = findReferenceAllele(alleles);
         sampleMatrices = (LikelihoodMatrix<EVIDENCE,A>[]) new LikelihoodMatrix[sampleCount];
@@ -731,7 +731,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
 
         //TODO this is umomptimized, when i productionize this should be made to avoid stream api calls.
         for (int s = 0; s < sampleCount; s++) {
-            newFilteredEvidenceBySampleIndex.set(s, newFilteredEvidenceBySampleIndex.get(s).stream().filter(e -> e.overlaps(overlap)).collect(Collectors.toList()));
+            newFilteredEvidenceBySampleIndex.add(s, filteredEvidenceBySampleIndex.get(s).stream().filter(e -> e.overlaps(overlap)).collect(Collectors.toList()));
         }
 
         // Finally we create the new evidence-likelihood
@@ -740,6 +740,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
                 newFilteredEvidenceBySampleIndex,
                 newLikelihoodValues);
         result.isNaturalLog = isNaturalLog;
+        result.subsettedGenomicLoc = overlap;
         return result;
     }
 
@@ -1148,11 +1149,11 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         subsettedGenomicLoc = location;
     }
 
-    public SimpleInterval getSubsettedGenomicLoc() {
+    public Locatable getSubsettedGenomicLoc() {
         return subsettedGenomicLoc;
     }
 
-    SimpleInterval subsettedGenomicLoc = null;
+    Locatable subsettedGenomicLoc = null;
 
     protected double maximumLikelihoodOverAllAlleles(final int sampleIndex, final int evidenceIndex) {
         double result = Double.NEGATIVE_INFINITY;

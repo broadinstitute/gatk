@@ -65,7 +65,8 @@ public class FRDBQDUtils {
             int diffVal = (read1.getLeft().getLeft().getLength() - read1VariantCoordinate)
                     - (read2.getLeft().getLeft().getLength() - read2VariantCoordinate);
             if (diffVal == 0) {
-                diffVal = read1.getLeft().getLeft().getBaseQuality(read1VariantCoordinate) - read2.getLeft().getLeft().getBaseQuality(read2VariantCoordinate);
+                diffVal = (read1VariantCoordinate != -1 ? read1.getLeft().getLeft().getBaseQuality(read1VariantCoordinate) : 0)
+                        - (read2VariantCoordinate != -1 ? read2.getLeft().getLeft().getBaseQuality(read2VariantCoordinate) : 0);
             }
 
             return diffVal;
@@ -86,7 +87,8 @@ public class FRDBQDUtils {
             int diffVal = read1VariantCoordinate - read2VariantCoordinate;
             if (diffVal==0) {
                 //TODO verify this lines up with the sort in DRAGBQD
-                diffVal = read1.getLeft().getLeft().getBaseQuality(read1VariantCoordinate) - read2.getLeft().getLeft().getBaseQuality(read2VariantCoordinate);
+                diffVal = (read1VariantCoordinate != -1 ? read1.getLeft().getLeft().getBaseQuality(read1VariantCoordinate) : 0)
+                        - (read2VariantCoordinate != -1 ? read2.getLeft().getLeft().getBaseQuality(read2VariantCoordinate) : 0);
             }
             return diffVal;
         }

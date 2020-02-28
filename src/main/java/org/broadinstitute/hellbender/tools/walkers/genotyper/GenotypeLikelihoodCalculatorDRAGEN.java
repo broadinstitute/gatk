@@ -74,7 +74,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             //TODO how in the hell do i actaully calculate this offset correctly... blehhhhhhh
             //This is crufty, it just so happens that the index of the homozygous genotype corresponds to the maximum genotype count per field.
             //This should be pulled off as a calculator in some genotyping class.
-            final int indexForGT = calculators.genotypeCount(ploidy, gtAlleleIndex) - 1;
+            final int indexForGT = calculators.genotypeCount(ploidy, gtAlleleIndex + 1) - 1;
             double[] readLikelihoodsForGT = readLikelihoodsByGenotypeIndex[indexForGT];
 
             for(int errorAlleleIndex = 0; errorAlleleIndex < sampleLikelihoods.numberOfAlleles(); errorAlleleIndex++) {
@@ -109,7 +109,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
      *
      * This method works by combining the computed genotype scores for reads with the raw allele likelihoods scores for th
      *
-     * @param positionSortedReads  Reads pairs objects (Pair<Pair<read,basequalityforSNP>, sampleReadIndex>) objects sorted in the correct order for partitioning.
+     * @param positionSortedReads  Reads pairs objects (Pair<Pair<read,readBaseOffset>, sampleReadIndex>) objects sorted in the correct order for partitioning.
      *                             This means that the "error" reads in the partition are sorted by read cycle first in the provided list
      * @param homopolymerAdjustment  Penalty to be applied to reads based on the homopolymer run (this should be precomputed for the ref site in quesiton)
      * @param readLikelihoodsForGT  The array corresponding to the log_10 genotype scores for the genotype in question
@@ -129,6 +129,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         final double[] cumulative_homozygous_genotype_score = new double[positionSortedReads.size() + 1];
 
         int totalBaseQuality = 0;
+        int baseQualityDenominator = 0; // We track this seperately because not every read overlaps the SNP in quesiton due to padding.
         // Iterate over the reads and populate the cumulative arrays
         for (int i = 1; i < cumulative_prob_read_given_error_mode_f.length; i++) {
             int readIndex = positionSortedReads.get(i - 1).getRight();
@@ -141,8 +142,12 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                             + (1 - BQD_FIXED_DEFAULT_ALPHA) * readLikelihoodsForGT[readIndex]));
 
             // Populate the mean base quality array
-            totalBaseQuality += positionSortedReads.get(i).getLeft().getRight();
-            cumulative_mean_base_quality_phred_adjusted[i] = Math.max(0, ((1.0 * totalBaseQuality / i) * PHRED_SCALED_ADJUSTMENT_FOR_BQ_SCORE) - homopolymerAdjustment);
+            if (positionSortedReads.get(i).getLeft().getRight() != -1) {
+                totalBaseQuality += positionSortedReads.get(i).getLeft().getLeft().getBaseQuality(positionSortedReads.get(i).getLeft().getRight());
+                baseQualityDenominator++;
+            }
+            cumulative_mean_base_quality_phred_adjusted[i] = Math.max(0,
+                    ((1.0 * totalBaseQuality / (baseQualityDenominator==0 ? 1 : baseQualityDenominator)) * PHRED_SCALED_ADJUSTMENT_FOR_BQ_SCORE) - homopolymerAdjustment);
 
             // Calculate the cumulative genotype score
             //?????????????:?:?????> tODO check this one for what the scores look like, we may need to pull out of log space
@@ -189,8 +194,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 //            }
 //        }
 
-        for (genotypeIndex )
-
+//        for (genotypeIndex )
+        return null;
     }
 
 
