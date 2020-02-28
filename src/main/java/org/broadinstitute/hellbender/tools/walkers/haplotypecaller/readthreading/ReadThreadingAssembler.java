@@ -363,7 +363,7 @@ public final class ReadThreadingAssembler {
                     h.setGenomeLocation(activeRegionWindow);
                     returnHaplotypes.add(h);
                     if (resultSet != null) {
-                        resultSet.add(h);
+                        resultSet.add(h, assemblyResult);
                     }
 
                     if (debug) {

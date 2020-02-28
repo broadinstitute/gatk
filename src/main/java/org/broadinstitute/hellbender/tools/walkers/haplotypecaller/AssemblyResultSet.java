@@ -269,6 +269,7 @@ public final class AssemblyResultSet {
 
         if (haplotypes.contains(h)) {
             final AssemblyResult previousAr = assemblyResultByHaplotype.get(h);
+            kmerSizes.add(ar.getKmerSize());
             if (previousAr == null) {
                 assemblyResultByHaplotype.put(h, ar);
                 return true;
@@ -280,6 +281,7 @@ public final class AssemblyResultSet {
         } else {
             haplotypes.add(h);
             assemblyResultByHaplotype.put(h,ar);
+            kmerSizes.add(ar.getKmerSize());
             updateReferenceHaplotype(h);
             if (h.isNonReference()) {
                 variationPresent = true;
