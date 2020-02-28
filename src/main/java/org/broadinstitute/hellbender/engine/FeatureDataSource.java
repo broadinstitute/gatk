@@ -4,7 +4,9 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.*;
+import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -395,9 +397,11 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         try {
             final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
                     createExportConfiguration(workspace, callsetJson, vidmapJson, vcfHeader, genomicsDBOptions);
-            return new GenomicsDBFeatureReader<>(exportConfigurationBuilder,
-                    new GenomicsDBBCFCodec(),
-                    Optional.empty());
+            if (genomicsDBOptions.useVCFCodec()) {
+                return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new VCFCodec(), Optional.empty());
+            } else {
+                return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new BCF2Codec(), Optional.empty());
+            }
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);
         }

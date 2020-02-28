@@ -73,12 +73,12 @@ public abstract class VariantLocusWalker extends VariantWalkerBase {
         // This is the data source for the driving source of variants,
         // which uses a cache lookahead of getDrivingVariantCacheLookAheadBases()
         drivingVariants = new FeatureDataSource<>(drivingVariantsFeatureInput, getDrivingVariantCacheLookAheadBases(), VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                referenceArguments.getReferencePath());
+                getGenomicsDBOptions());
 
         // Also add the driving datasource to the feature manager so that it can be queried. Setting cache lookahead
         // to 0 to avoid caching. Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
         features.addToFeatureSources(0, drivingVariantsFeatureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                referenceArguments.getReferencePath());
+                getGenomicsDBOptions());
 
         // Note: the intervals for the driving variants are set in onStartup()
     }

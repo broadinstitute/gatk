@@ -14,12 +14,15 @@ import htsjdk.variant.vcf.*;
 
 import java.nio.file.Path;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.filters.*;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -420,6 +423,9 @@ public final class SelectVariants extends VariantWalker {
             doc="Suppress reference path in output for test result differencing")
     private boolean suppressReferencePath = false;
 
+    @ArgumentCollection
+    private GenomicsDBArgumentCollection genomicsdbArgs = new GenomicsDBArgumentCollection();
+
     private VariantContextWriter vcfWriter = null;
 
     private enum NumberAlleleRestriction {
@@ -450,6 +456,14 @@ public final class SelectVariants extends VariantWalker {
     private final List<Allele> diploidNoCallAlleles = GATKVariantContextUtils.noCallAlleles(2);
 
     private final Map<Integer, Integer> ploidyToNumberOfAlleles = new LinkedHashMap<Integer, Integer>();
+
+    @Override
+    protected GenomicsDBOptions getGenomicsDBOptions() {
+        if (genomicsDBOptions == null) {
+            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs);
+        }
+        return genomicsDBOptions;
+    }
 
     final private PriorityQueue<VariantContext> pendingVariants = new PriorityQueue<>(Comparator.comparingInt(VariantContext::getStart));
 
