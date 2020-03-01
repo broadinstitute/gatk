@@ -34,8 +34,9 @@ public class PileupReadErrorCorrector implements ReadErrorCorrector {
         this.header = header;
     }
 
-    public final List<GATKRead> correctReads(final Collection<GATKRead> originalRreads) {
-        final List<GATKRead> reads = originalRreads.stream().map(GATKRead::deepCopy).collect(Collectors.toList());
+    @Override
+    public final List<GATKRead> correctReads(final Collection<GATKRead> originalReads) {
+        final List<GATKRead> reads = originalReads.stream().map(GATKRead::deepCopy).collect(Collectors.toList());
 
         final Iterator<AlignmentContext> locusIterator = new LocusIteratorByState(reads.iterator(), DownsamplingMethod.NONE,
                 false, ReadUtils.getSamplesFromHeader(header), header, false);
@@ -64,6 +65,7 @@ public class PileupReadErrorCorrector implements ReadErrorCorrector {
                 }
             }
 
+            // TODO: skip if altQual buffer is empty?
             final double logOdds = Mutect2Engine.logLikelihoodRatio(refCount, altQualBuffer);
             // TODO: what if there is a good variant and an error?
             if (logOdds < logOddsThreshold) {
