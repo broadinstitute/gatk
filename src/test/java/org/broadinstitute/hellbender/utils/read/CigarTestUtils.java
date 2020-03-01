@@ -70,14 +70,13 @@ public final class CigarTestUtils {
             if (!coreElements.get(coreElements.size() - 1).getOperator().isAlignment()) {
                 coreElements.add(new CigarElement(rdn.nextInt(maximumElementLength) + 1, CigarOperator.M));
             }
-            final List<CigarElement> elements = new ArrayList<>();
+            final CigarBuilder elements = new CigarBuilder();
             if (leftHardClippingLength > 0) elements.add(new CigarElement(leftHardClippingLength, CigarOperator.H));
             if (leftSoftClippingLength > 0) elements.add(new CigarElement(leftSoftClippingLength, CigarOperator.S));
             elements.addAll(coreElements);
             if (rightSoftClippingLength > 0) elements.add(new CigarElement(rightSoftClippingLength, CigarOperator.S));
             if (rightHardClippingLength > 0) elements.add(new CigarElement(rightHardClippingLength, CigarOperator.H));
-            final Cigar cigar = CigarUtils.combineAdjacentCigarElements(new Cigar(elements));
-            result.add(cigar);
+            result.add(elements.make());
         }
         return result;
     }

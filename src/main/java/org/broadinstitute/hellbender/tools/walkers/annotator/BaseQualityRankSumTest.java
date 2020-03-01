@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -38,7 +39,7 @@ public final class BaseQualityRankSumTest extends RankSumTest implements Standar
     public static OptionalDouble getReadBaseQuality(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
 
-        final int readCoordinate = ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, refLoc, ReadUtils.ClippingTail.RIGHT_TAIL, true);
+        final int readCoordinate = ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, refLoc, ClippingTail.RIGHT_TAIL, true);
         return readCoordinate == ReadUtils.CLIPPING_GOAL_NOT_REACHED || readCoordinate < 0 || readCoordinate >= read.getLength() ? OptionalDouble.empty() : OptionalDouble.of(read.getBaseQuality(readCoordinate));
     }
 }

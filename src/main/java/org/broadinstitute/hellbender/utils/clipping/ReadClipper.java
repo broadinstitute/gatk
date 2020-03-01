@@ -7,6 +7,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -123,10 +124,6 @@ public class ReadClipper {
      * @return the read with the clipping applied (Could be an empty, unmapped read if the clip removed all bases)
      */
     public GATKRead clipRead(final ClippingRepresentation algorithm) {
-        return clipRead(algorithm, true);
-    }
-
-    private GATKRead clipRead(final ClippingRepresentation algorithm, boolean runAsserts) {
         Utils.nonNull(algorithm);
         if (ops == null) {
             return getRead();
@@ -142,7 +139,7 @@ public class ReadClipper {
                     fixedOperation = new ClippingOp(op.start, readLength - 1);
                 }
 
-                clippedRead = fixedOperation.apply(algorithm, clippedRead, runAsserts);
+                clippedRead = fixedOperation.apply(algorithm, clippedRead);
             }
         }
         wasClipped = true;
@@ -162,10 +159,10 @@ public class ReadClipper {
      * @return a new read, without the left tail (Could be an empty, unmapped read if the clip removed all bases).
      */
     private GATKRead hardClipByReferenceCoordinatesLeftTail(final int refStop) {
-        return clipByReferenceCoordinates(-1, refStop, ClippingRepresentation.HARDCLIP_BASES, true);
+        return clipByReferenceCoordinates(-1, refStop, ClippingRepresentation.HARDCLIP_BASES);
     }
     public static GATKRead hardClipByReferenceCoordinatesLeftTail(final GATKRead read, final int refStop) {
-        return (new ReadClipper(read)).clipByReferenceCoordinates(-1, refStop, ClippingRepresentation.HARDCLIP_BASES, true);
+        return (new ReadClipper(read)).clipByReferenceCoordinates(-1, refStop, ClippingRepresentation.HARDCLIP_BASES);
     }
 
     /**
@@ -176,32 +173,12 @@ public class ReadClipper {
      * @return a new read, without the right tail (Could be an empty, unmapped read if the clip removed all bases).
      */
     private GATKRead hardClipByReferenceCoordinatesRightTail(final int refStart) {
-        return clipByReferenceCoordinates(refStart, -1, ClippingRepresentation.HARDCLIP_BASES, true);
+        return clipByReferenceCoordinates(refStart, -1, ClippingRepresentation.HARDCLIP_BASES);
     }
+
     public static GATKRead hardClipByReferenceCoordinatesRightTail(final GATKRead read, final int refStart) {
-        return (new ReadClipper(read)).clipByReferenceCoordinates(refStart, -1, ClippingRepresentation.HARDCLIP_BASES, true);
+        return (new ReadClipper(read)).clipByReferenceCoordinates(refStart, -1, ClippingRepresentation.HARDCLIP_BASES);
     }
-
-    /**
-     * Hard clips a read using read coordinates.
-     *
-     * @param start the first base to clip (inclusive)
-     * @param stop the last base to clip (inclusive)
-     * @return a new read, without the clipped bases (Could return an empty, unmapped read)
-     */
-    private GATKRead hardClipByReadCoordinates(final int start, final int stop) {
-        if (read.isEmpty() || (start == 0 && stop == read.getLength() - 1)) {
-            return ReadUtils.emptyRead(read);
-        }
-
-        this.addOp(new ClippingOp(start, stop));
-        return clipRead(ClippingRepresentation.HARDCLIP_BASES);
-    }
-
-    public static GATKRead hardClipByReadCoordinates(final GATKRead read, final int start, final int stop) {
-        return (new ReadClipper(read)).hardClipByReadCoordinates(start, stop);
-    }
-
 
     /**
      * Hard clips both tails of a read.
@@ -216,7 +193,7 @@ public class ReadClipper {
         if (read.isEmpty() || left == right) {
             return ReadUtils.emptyRead(read);
         }
-        final GATKRead leftTailRead = clipByReferenceCoordinates(right, -1, ClippingRepresentation.HARDCLIP_BASES, true);
+        final GATKRead leftTailRead = clipByReferenceCoordinates(right, -1, ClippingRepresentation.HARDCLIP_BASES);
 
         // after clipping one tail, it is possible that the consequent hard clipping of adjacent deletions
         // make the left cut index no longer part of the read. In that case, clip the read entirely.
@@ -347,20 +324,6 @@ public class ReadClipper {
         return hardClipToRegion(read, refStart, refStop, start, stop);
     }
 
-    /**
-     * Hard clip the read to the variable region (from refStart to refStop) processing also the clipped bases
-     *
-     * @param read     the read to be clipped
-     * @param refStart the beginning of the variant region (inclusive)
-     * @param refStop  the end of the variant region (inclusive)
-     * @return the read hard clipped to the variant region (Could return an empty, unmapped read)
-     */
-    public static GATKRead hardClipToRegionIncludingClippedBases( final GATKRead read, final int refStart, final int refStop ) {
-        final int start = read.getUnclippedStart();
-        final int stop = start + CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, 0, read.numCigarElements()) - 1;
-        return hardClipToRegion(read, refStart, refStop, start, stop);
-    }
-
     private static GATKRead hardClipToRegion( final GATKRead read, final int refStart, final int refStop, final int alignmentStart, final int alignmentStop){
         // check if the read is contained in region
         if (alignmentStart <= refStop && alignmentStop >= refStart) {
@@ -399,32 +362,6 @@ public class ReadClipper {
     }
 
     /**
-     * Hard clips any leading insertions in the read. Only looks at the beginning of the read, not the end.
-     *
-     * @return a new read without leading insertions (Could return an empty, unmapped read)
-     */
-    private GATKRead hardClipLeadingInsertions() {
-        if (read.isEmpty()) {
-            return read;
-        }
-
-        for(final CigarElement cigarElement : read.getCigarElements()) {
-            if (cigarElement.getOperator() != CigarOperator.HARD_CLIP && cigarElement.getOperator() != CigarOperator.SOFT_CLIP &&
-                    cigarElement.getOperator() != CigarOperator.INSERTION) {
-                break;
-            }
-            else if (cigarElement.getOperator() == CigarOperator.INSERTION) {
-                this.addOp(new ClippingOp(0, cigarElement.getLength() - 1));
-            }
-        }
-        return clipRead(ClippingRepresentation.HARDCLIP_BASES);
-    }
-
-    public static GATKRead hardClipLeadingInsertions(final GATKRead read) {
-        return (new ReadClipper(read)).hardClipLeadingInsertions();
-    }
-
-    /**
      * Turns soft clipped bases into matches
      * @return a new read with every soft clip turned into a match
      */
@@ -448,7 +385,7 @@ public class ReadClipper {
     }
 
     protected GATKRead hardClipByReferenceCoordinates(final int refStart, final int refStop) {
-        return clipByReferenceCoordinates(refStart, refStop, ClippingRepresentation.HARDCLIP_BASES, true);
+        return clipByReferenceCoordinates(refStart, refStop, ClippingRepresentation.HARDCLIP_BASES);
     }
 
     /**
@@ -463,7 +400,7 @@ public class ReadClipper {
      * @param clippingOp clipping operation to be performed
      * @return a new read, without the clipped bases (May return empty, unclipped reads)
      */
-    protected GATKRead clipByReferenceCoordinates(final int refStart, final int refStop, ClippingRepresentation clippingOp, boolean runAsserts) {
+    protected GATKRead clipByReferenceCoordinates(final int refStart, final int refStop, ClippingRepresentation clippingOp) {
         if (read.isEmpty()) {
             return read;
         }
@@ -480,13 +417,13 @@ public class ReadClipper {
                 throw new GATKException("Only one of refStart or refStop must be < 0, not both (" + refStart + ", " + refStop + ")");
             }
             start = 0;
-            stop = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStop, ReadUtils.ClippingTail.LEFT_TAIL);
+            stop = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStop, ClippingTail.LEFT_TAIL);
         }
         else {
             if (refStop >= 0) {
                 throw new GATKException("Either refStart or refStop must be < 0 (" + refStart + ", " + refStop + ")");
             }
-            start = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStart, ReadUtils.ClippingTail.RIGHT_TAIL);
+            start = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStart, ClippingTail.RIGHT_TAIL);
             stop = read.getLength() - 1;
         }
 
@@ -503,7 +440,7 @@ public class ReadClipper {
         }
         this.addOp(new ClippingOp(start, stop));
 
-        final GATKRead clippedRead = clipRead(clippingOp, runAsserts);
+        final GATKRead clippedRead = clipRead(clippingOp);
         this.ops = null;
         return clippedRead;
     }
@@ -520,7 +457,7 @@ public class ReadClipper {
      */
     public static GATKRead softClipToRegionIncludingClippedBases( final GATKRead read, final int refStart, final int refStop ) {
         final int start = read.getUnclippedStart();
-        final int stop = start + CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, 0, read.numCigarElements()) - 1;
+        final int stop = start + CigarUtils.countRefBasesAndClips(read.getCigarElements(), 0, read.numCigarElements()) - 1;
 
         if (start <= refStop && stop >= refStart) {
             if (start < refStart && stop > refStop) {
@@ -582,7 +519,7 @@ public class ReadClipper {
      * @return a new read, with the soft clipped bases
      */
     protected GATKRead softClipByReferenceCoordinates(final int refStart, final int refStop) {
-        return clipByReferenceCoordinates(refStart, refStop, ClippingRepresentation.SOFTCLIP_BASES, true);
+        return clipByReferenceCoordinates(refStart, refStop, ClippingRepresentation.SOFTCLIP_BASES);
     }
 
 

@@ -413,7 +413,7 @@ public class ReferenceConfidenceModel {
                             nonRefLikelihood + MathUtils.log10(i));
         }
         if (isAlt && hqSoftClips != null && element.isNextToSoftClip()) {
-            hqSoftClips.add(AlignmentUtils.calcNumHighQualitySoftClips(element.getRead(), HQ_BASE_QUALITY_SOFTCLIP_THRESHOLD));
+            hqSoftClips.add(AlignmentUtils.countHighQualitySoftClips(element.getRead(), HQ_BASE_QUALITY_SOFTCLIP_THRESHOLD));
         }
     }
 

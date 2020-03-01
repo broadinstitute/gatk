@@ -320,11 +320,9 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
     @Test(dataProvider = "randomValidCigars", groups = "sv")
     public void testSoftClip(final Cigar cigar) {
         final Cigar actual = AlignmentInterval.softOrHardReclip(cigar, CigarOperator.S);
-        final Cigar expected = CigarUtils.combineAdjacentCigarElements(new Cigar(
-                cigar.getCigarElements().stream()
+        final Cigar expected = new CigarBuilder().addAll(cigar.getCigarElements().stream()
                         .map(ce -> ce.getOperator().isClipping() ? new CigarElement(ce.getLength(), CigarOperator.SOFT_CLIP) : ce)
-                        .collect(Collectors.toList())
-        ));
+                        .collect(Collectors.toList())).make();
 
         Assert.assertEquals(actual, expected);
     }
@@ -332,18 +330,17 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
     @Test(dataProvider = "randomValidCigars", groups = "sv")
     public void testHardClip(final Cigar cigar) {
         final Cigar actual = AlignmentInterval.softOrHardReclip(cigar, CigarOperator.H);
-        final Cigar expected = CigarUtils.combineAdjacentCigarElements(new Cigar(
-                cigar.getCigarElements().stream()
+        final Cigar expected = new CigarBuilder().addAll(cigar.getCigarElements().stream()
                         .map(ce -> ce.getOperator().isClipping() ? new CigarElement(ce.getLength(), CigarOperator.HARD_CLIP) : ce)
-                        .collect(Collectors.toList())
-        ));
+                        .collect(Collectors.toList())).make();
         Assert.assertEquals(actual, expected);
     }
 
     @DataProvider(name = "randomValidCigars")
     public static Object[][] randomValidCigars() {
         final List<Cigar> cigars = CigarTestUtils.randomValidCigars(new Random(13), 1000, 10, 100, new Cigar());
-        return cigars.stream().map(x -> new Object[] { x }).toArray(Object[][]::new);
+        return cigars.stream().filter(cigar -> cigar.getCigarElements().stream().anyMatch(el -> !el.getOperator().isClipping()))
+                .map(x -> new Object[] { x }).toArray(Object[][]::new);
     }
 
     @Test(groups = "sv", expectedExceptions = IllegalArgumentException.class)

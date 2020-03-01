@@ -4,13 +4,18 @@ import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.Predicate;
 
 public final class CigarUtils {
 
@@ -31,48 +36,6 @@ public final class CigarUtils {
     private CigarUtils(){}
 
     /**
-     * Combines equal adjacent elements of a Cigar object
-     *
-     * @param rawCigar the cigar object
-     * @return a combined cigar object
-     */
-    public static Cigar combineAdjacentCigarElements(final Cigar rawCigar) {
-        Utils.nonNull(rawCigar);
-        final Cigar combinedCigar = new Cigar();
-        CigarElement lastElement = null;
-        int lastElementLength = 0;
-        for (final CigarElement cigarElement : rawCigar.getCigarElements()) {
-            if (lastElement != null &&
-                    ((lastElement.getOperator() == cigarElement.getOperator()) ||
-                            (lastElement.getOperator() == CigarOperator.I && cigarElement.getOperator() == CigarOperator.D) ||
-                            (lastElement.getOperator() == CigarOperator.D && cigarElement.getOperator() == CigarOperator.I)))
-                lastElementLength += cigarElement.getLength();
-            else
-            {
-                if (lastElement != null)
-                    combinedCigar.add(new CigarElement(lastElementLength, lastElement.getOperator()));
-
-                lastElement = cigarElement;
-                lastElementLength = cigarElement.getLength();
-            }
-        }
-        if (lastElement != null) {
-            combinedCigar.add(new CigarElement(lastElementLength, lastElement.getOperator()));
-        }
-
-        return combinedCigar;
-    }
-
-    /**
-     * Checks whether the cigar has any element that is not H or S
-     * @return true the cigar has elements other than S or H, false otherwise.
-     */
-    public static boolean hasNonClippedBases(final Cigar cigar) {
-        return Utils.nonNull(cigar).getCigarElements().stream()
-                .anyMatch(el -> el.getOperator() != CigarOperator.SOFT_CLIP && el.getOperator() != CigarOperator.HARD_CLIP);
-    }
-
-    /**
      * Inverts the order of the operators in the cigar.
      * Eg 10M1D20M -> 20M1D10M
      */
@@ -89,62 +52,45 @@ public final class CigarUtils {
      * For example original position = 10. cigar: 2M3I2D1M. If you remove the 2M the new starting position is 12.
      * If you remove the 2M3I it is still 12. If you remove 2M3I2D (not reasonable cigar), you will get position 14.
      */
-    public static int countRefBasesBasedOnUnclippedAlignment(final GATKRead read, final int cigarStartIndex, final int cigarEndIndex){
-        if (read == null){
-            throw new IllegalArgumentException("null read");
-        }
-        final List<CigarElement> elems = read.getCigarElements();
-        if (cigarStartIndex < 0 || cigarEndIndex > elems.size() || cigarStartIndex > cigarEndIndex){
-            throw new IllegalArgumentException("invalid index:" + 0 + " -" + elems.size());
-        }
-        int result = 0;
-        for(int i = cigarStartIndex; i < cigarEndIndex; i++){
-            final CigarElement cigarElement = elems.get(i);
-            final CigarOperator operator = cigarElement.getOperator();
-            if (operator.consumesReferenceBases() || operator.isClipping()) {
-                result += cigarElement.getLength();
-            }
-        }
-        return result;
+    public static int countRefBasesAndClips(final List<CigarElement> elems, final int cigarStartIndex, final int cigarEndIndex){
+        return countRefBasesAndMaybeAlsoClips(elems, cigarStartIndex, cigarEndIndex, true, true);
     }
 
-    public static int countRefBasesIncludingSoftClips(final GATKRead read, final int cigarStartIndex, final int cigarEndIndex){
-        Utils.nonNull(read, "null read");
-        final List<CigarElement> elems = read.getCigarElements();
-        if (cigarStartIndex < 0 || cigarEndIndex > elems.size() || cigarStartIndex > cigarEndIndex){
-            throw new IllegalArgumentException("invalid index:" + 0 + " -" + elems.size());
-        }
+    public static int countRefBasesAndSoftClips(final List<CigarElement> elems, final int cigarStartIndex, final int cigarEndIndex){
+        return countRefBasesAndMaybeAlsoClips(elems, cigarStartIndex, cigarEndIndex, true, false);
+    }
+
+    private static int countRefBasesAndMaybeAlsoClips(final List<CigarElement> elems, final int cigarStartIndex, final int cigarEndIndex, final boolean includeSoftClips, final boolean includeHardClips) {
+        Utils.nonNull(elems);
+        Utils.validateArg(cigarStartIndex >= 0 && cigarEndIndex <= elems.size() && cigarStartIndex <= cigarEndIndex, () -> "invalid index:" + 0 + " -" + elems.size());
+
         int result = 0;
-        for(int i = cigarStartIndex; i < cigarEndIndex; i++){
-            final CigarElement cigarElement = elems.get(i);
-            final CigarOperator operator = cigarElement.getOperator();
-            if (operator.consumesReferenceBases() || operator == CigarOperator.S) {
-                result += cigarElement.getLength();
+        for (final CigarElement elem : elems.subList(cigarStartIndex, cigarEndIndex)) {
+            final CigarOperator op = elem.getOperator();
+            if (op.consumesReferenceBases() || (includeSoftClips && op == CigarOperator.SOFT_CLIP) || (includeHardClips && op == CigarOperator.HARD_CLIP)) {
+                result += elem.getLength();
             }
         }
+
         return result;
     }
 
     /**
-     * Removes all clipping operators from the cigar.
+     * Removes all clipping and padding operators from the cigar.
      */
-    public static Cigar trimReadToUnclippedBases(final Cigar cigar) {
+    public static Cigar removeClipsAndPadding(final Cigar cigar) {
         Utils.nonNull(cigar, "cigar is null");
         final List<CigarElement> elements = new ArrayList<>(cigar.numCigarElements());
         for ( final CigarElement ce : cigar.getCigarElements() ) {
-            if ( !isClipOperator(ce.getOperator()) ) {
+            if ( !isClipOrPaddingOperator(ce.getOperator()) ) {
                 elements.add(ce);
             }
         }
         return new Cigar(elements);
     }
 
-    private static boolean isClipOperator(final CigarOperator op) {
+    private static boolean isClipOrPaddingOperator(final CigarOperator op) {
         return op == CigarOperator.S || op == CigarOperator.H || op == CigarOperator.P;
-    }
-
-    private static boolean isClipOperator(final CigarElement el) {
-        return isClipOperator(el.getOperator());
     }
 
     /**
@@ -158,52 +104,24 @@ public final class CigarUtils {
      * then
      * cigar3 = leftClip2 + cigar1 + rightClip2
      */
-    public static Cigar reclipCigar(final Cigar cigar, final GATKRead read) {
-        Utils.nonNull(cigar, "cigar");
-        Utils.nonNull(read, "read");
+    public static Cigar reclipCigar(final Cigar coreCigar, final Cigar clippingCigar) {
+        Utils.nonNull(coreCigar);
+        Utils.nonNull(clippingCigar);
 
-        final List<CigarElement> elements = new ArrayList<>();
-        int i = 0;
-        final Cigar readCigar = read.getCigar();
-        final int n = readCigar.numCigarElements();
-        final List<CigarElement> readEls = readCigar.getCigarElements();
+        final List<CigarElement> result = new ArrayList<>();
 
-        //copy head clips
-        while ( i < n && isClipOperator(readEls.get(i)) ) {
-            elements.add(readEls.get(i));
-            i++;
-        }
+        boolean finishedLeftClip = false;
 
-        elements.addAll(cigar.getCigarElements());
-
-        //skip over non-clips
-        i++;
-        while ( i < n && !isClipOperator(readEls.get(i)) ) {
-            i++;
-        }
-
-        //copy tail clips
-        while ( i < n && isClipOperator(readEls.get(i)) ) {
-            elements.add(readEls.get(i));
-            i++;
-        }
-
-        return new Cigar(elements);
-    }
-
-    /**
-     * Returns whether the cigar has any N operators.
-     */
-    public static boolean containsNOperator(final Cigar cigar) {
-        Utils.nonNull(cigar);
-        //Note: reach the elements directly rather that calling getCigarElements because
-        // we want to avoid allocating a new unmodifiable list view (comes up in profiling of HaplotypeCaller)
-        for (int i = 0, n = cigar.numCigarElements(); i < n; i++) {
-            if (cigar.getCigarElement(i).getOperator() == CigarOperator.N){
-                return true;
+        for (final CigarElement element : clippingCigar) {
+            if (element.getOperator().isClipping()) {
+                result.add(element);
+            } else if (!finishedLeftClip) { // add all the core elements the first time we see a non-clipping operator
+                result.addAll(coreCigar.getCigarElements());
+                finishedLeftClip = true;
             }
         }
-        return false;
+
+        return new Cigar(result);
     }
 
     /**
@@ -228,15 +146,7 @@ public final class CigarUtils {
             return false;
         }
         final List<CigarElement> elems = c.getCigarElements();
-        if (hasConsecutiveIndels(elems)){
-            return false;
-        }
-        if (startsWithDeletionIgnoringClips(elems)){
-            return false;
-        }
-        //get a reverse view of the list and check deletions at the end
-        final List<CigarElement> reversedElems = Lists.reverse(elems);
-        return !startsWithDeletionIgnoringClips(reversedElems);
+        return !(hasConsecutiveIndels(elems) || startsOrEndsWithDeletionIgnoringClips(elems));
     }
 
     /**
@@ -258,17 +168,20 @@ public final class CigarUtils {
     /**
      * Checks if cigar starts with a deletion (ignoring any clips at the beginning).
      */
-    private static boolean startsWithDeletionIgnoringClips(final List<CigarElement> elems) {
-        final Iterator<CigarElement> iter = elems.iterator();
-        boolean isClip = true;
-        CigarOperator op = null;
-        while(iter.hasNext() && isClip) { //consume clips at the beginning
-            final CigarElement elem = iter.next();
-            op = elem.getOperator();
-            isClip = (op == CigarOperator.HARD_CLIP || op == CigarOperator.SOFT_CLIP);
+    private static boolean startsOrEndsWithDeletionIgnoringClips(final List<CigarElement> elems) {
+
+        for (final boolean leftSide : new boolean[] {true, false}) {
+            for (final CigarElement elem : leftSide ? elems : Lists.reverse(elems)) {
+                final CigarOperator op = elem.getOperator();
+                if (op == CigarOperator.DELETION) { //first non-clipping is deletion
+                    return true;
+                } else if (!op.isClipping()) {  // first non-clipping is non deletion
+                    break;
+                }
+            }
         }
-        //once all clips are consumed, is it a deletion or not?
-        return op == CigarOperator.DELETION;
+
+        return false;
     }
 
     /**
@@ -366,6 +279,31 @@ public final class CigarUtils {
                 .sum();
     }
 
+    private static int countClippedBases(final Cigar cigar, final ClippingTail tail, final boolean includeSoftClips, final boolean includeHardClips) {
+        Utils.nonNull(cigar);
+        Utils.nonNull(tail);
+
+        if (cigar.numCigarElements() == 0) {
+            return 0;
+        }
+
+        Utils.validate(includeHardClips || includeSoftClips, "no clips chosen");
+        final Predicate<CigarOperator> pred = !includeHardClips ? op -> op == CigarOperator.S :
+                (includeSoftClips ? op -> op.isClipping() : op -> op == CigarOperator.H);
+        int result = 0;
+        final Iterable<CigarElement> cigarElementsStartingWithClips = tail == ClippingTail.LEFT_TAIL ? cigar : Lists.reverse(cigar.getCigarElements());
+        for (final CigarElement elem : cigarElementsStartingWithClips) {
+            final CigarOperator operator = elem.getOperator();
+            if (!operator.isClipping()) {
+                return result;
+            } else if (pred.test(operator)) {
+                result += elem.getLength();
+            }
+        }
+
+        throw new IllegalArgumentException("Input cigar has a single clipped region that cannot be assigned unambiguously to the left or right of the read");
+    }
+
     /**
      * Total number of bases clipped on the left/head side of the cigar.
      *
@@ -374,19 +312,7 @@ public final class CigarUtils {
      * @return 0 or greater.
      */
     public static int countLeftClippedBases(final Cigar cigar) {
-        Utils.nonNull(cigar, "the input cigar cannot not be null");
-        if (cigar.numCigarElements() < 2) {
-            return 0;
-        } else {
-            int result = 0;
-            for (final CigarElement e : cigar) {
-                if (!e.getOperator().isClipping()) {
-                    return result;
-                }
-                result += e.getLength();
-            }
-            throw new IllegalArgumentException("the input cigar only contains clips!");
-        }
+        return countClippedBases(cigar, ClippingTail.LEFT_TAIL, true, true);
     }
 
     /**
@@ -397,14 +323,7 @@ public final class CigarUtils {
      * @return 0 or greater.
      */
     public static int countLeftHardClippedBases(final Cigar cigar) {
-        Utils.nonNull(cigar, "the input cigar cannot not be null");
-        if (cigar.numCigarElements() < 2) {
-            return 0;
-        } else if (cigar.getCigarElement(0).getOperator() != CigarOperator.H) {
-            return 0;
-        } else {
-            return cigar.getCigarElement(0).getLength();
-        }
+        return countClippedBases(cigar, ClippingTail.LEFT_TAIL, false, true);
     }
 
     /**
@@ -415,18 +334,7 @@ public final class CigarUtils {
      * @return 0 or greater.
      */
     public static int countRightHardClippedBases(final Cigar cigar) {
-        Utils.nonNull(cigar, "the input cigar cannot not be null");
-        if (cigar.numCigarElements() < 2) {
-            return 0;
-        } else {
-            final List<CigarElement> elements = cigar.getCigarElements();
-            int lastElementIndex;
-            if (elements.get(lastElementIndex = elements.size() - 1).getOperator() != CigarOperator.H) {
-                return 0;
-            } else {
-                return elements.get(lastElementIndex).getLength();
-            }
-        }
+        return countClippedBases(cigar, ClippingTail.RIGHT_TAIL, false, true);
     }
 
     /**
@@ -437,24 +345,7 @@ public final class CigarUtils {
      * @return 0 or greater.
      */
     public static int countRightClippedBases(final Cigar cigar) {
-        Utils.nonNull(cigar, "the input cigar cannot be null");
-        final List<CigarElement> elements = cigar.getCigarElements();
-        final int elementsCount = elements.size();
-        if (elementsCount < 2) {  // a single clipped element (that is already an "invalid" CIGAR) would be considered
-            return 0;        // a left-clip so it must have at least two elements before right clipping can be larger than 0.
-        } else {
-            int result = 0;
-            int i;
-            for (i = elementsCount - 1; i >= 0; --i) {
-                final CigarElement ce = elements.get(i);
-                if (!ce.getOperator().isClipping()) {
-                    return result;
-                } else {
-                    result += ce.getLength();
-                }
-            }
-            throw new IllegalArgumentException("the input cigar only have clipping operations");
-        }
+        return countClippedBases(cigar, ClippingTail.RIGHT_TAIL, true, true);
     }
 
     public static int countAlignedBases(final Cigar cigar ) {
@@ -462,5 +353,99 @@ public final class CigarUtils {
                 .filter(cigarElement -> cigarElement.getOperator().isAlignment())
                 .mapToInt(CigarElement::getLength)
                 .sum();
+    }
+
+    /**
+     * replace soft clips (S) with match (M) operators, normalizing the result by all the transformations of the {@link CigarBuilder} class:
+     * merging consecutive identical operators and removing zero-length elements.  For example 10S10M -> 20M and 10S10M10I10I -> 20M20I.
+     */
+    public static Cigar revertSoftClips(final Cigar originalCigar) {
+        final CigarBuilder builder = new CigarBuilder();
+        for (final CigarElement element : originalCigar.getCigarElements()) {
+            if (element.getOperator() == CigarOperator.SOFT_CLIP) {
+                builder.add(new CigarElement(element.getLength(), CigarOperator.MATCH_OR_MISMATCH));
+            } else {
+                builder.add(element);
+            }
+        }
+
+        return builder.make();
+    }
+
+    /**
+     * Given a cigar string, soft clip up to leftClipEnd and soft clip starting at rightClipBegin
+     * @param start initial index to clip within read bases, inclusive
+     * @param stop final index to clip within read bases exclusive
+     * @param clippingOperator      type of clipping -- must be either hard clip or soft clip
+     */
+    public static Cigar clipCigar(final Cigar cigar, final int start, final int stop, CigarOperator clippingOperator) {
+        Utils.validateArg(clippingOperator.isClipping(), "Not a clipping operator");
+        final boolean clipLeft = start == 0;
+
+        final CigarBuilder newCigar = new CigarBuilder();
+
+        int elementStart = 0;
+        for (final CigarElement element : cigar.getCigarElements()) {
+            final CigarOperator operator = element.getOperator();
+            // copy hard clips
+            if (operator == CigarOperator.HARD_CLIP) {
+                newCigar.add(new CigarElement(element.getLength(), element.getOperator()));
+                continue;
+            }
+            final int elementEnd = elementStart + (operator.consumesReadBases() ? element.getLength() : 0);
+
+            // element precedes start or follows end of clip, copy it to new cigar
+            if (elementEnd <= start || elementStart >= stop) {
+                // edge case: deletions at edge of clipping are meaningless and we skip them
+                if (operator.consumesReadBases() || (elementStart != start && elementStart != stop)) {
+                    newCigar.add(new CigarElement(element.getLength(), operator));
+                }
+            } else {    // otherwise, some or all of the element is soft-clipped
+                final int unclippedLength = clipLeft ? elementEnd - stop : start - elementStart;
+                final int clippedLength = element.getLength() - unclippedLength;
+
+                if (unclippedLength <= 0) { // totally clipped
+                    if (operator.consumesReadBases()) {
+                        newCigar.add(new CigarElement(element.getLength(), clippingOperator));
+                    }
+                } else if (clipLeft) {
+                    newCigar.add(new CigarElement(clippedLength, clippingOperator));
+                    newCigar.add(new CigarElement(unclippedLength, operator));
+                } else {
+                    newCigar.add(new CigarElement(unclippedLength, operator));
+                    newCigar.add(new CigarElement(clippedLength, clippingOperator));
+                }
+            }
+            elementStart = elementEnd;
+        }
+
+        return newCigar.make();
+    }
+
+    /**
+     * How many bases to the right does a read's alignment start shift given its cigar and the number of left soft clips
+     */
+    public static int alignmentStartShift(final Cigar cigar, final int numClipped) {
+        int refBasesClipped = 0;
+
+        int elementStart = 0;   // this and elementEnd are indices in the read's bases
+        for (final CigarElement element : cigar.getCigarElements()) {
+            final CigarOperator operator = element.getOperator();
+            // hard clips consume neither read bases nor reference bases and are irrelevant
+            if (operator == CigarOperator.HARD_CLIP) {
+                continue;
+            }
+            final int elementEnd = elementStart + (operator.consumesReadBases() ? element.getLength() : 0);
+
+            if (elementEnd <= numClipped) {  // totally within clipped span -- this includes deletions immediately following clipping
+                refBasesClipped += operator.consumesReferenceBases() ? element.getLength() : 0;
+            } else if (elementStart < numClipped) { // clip in middle of element, which means the element necessarily consumes read bases
+                final int clippedLength = numClipped - elementStart;
+                refBasesClipped += operator.consumesReferenceBases() ? clippedLength : 0;
+                break;
+            }
+            elementStart = elementEnd;
+        }
+        return refBasesClipped;
     }
 }

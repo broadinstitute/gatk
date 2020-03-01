@@ -258,7 +258,7 @@ public final class AlignmentUtils {
             return new ImmutablePair<>(bases, baseQualities);
         }
         else {
-            final int numberRefBasesIncludingSoftclips = CigarUtils.countRefBasesIncludingSoftClips(read, 0, numCigarElements);
+            final int numberRefBasesIncludingSoftclips = CigarUtils.countRefBasesAndSoftClips(read.getCigarElements(), 0, numCigarElements);
             final byte[] paddedBases = new byte[numberRefBasesIncludingSoftclips];
             final byte[] paddedBaseQualities = new byte[numberRefBasesIncludingSoftclips];
             int literalPos = 0;
@@ -287,46 +287,6 @@ public final class AlignmentUtils {
             }
             return new ImmutablePair<>(paddedBases, paddedBaseQualities);
         }
-    }
-
-    /**
-     * Get the number of bases at which refSeq and readSeq differ, given their alignment
-     *
-     * @param cigar the alignment of readSeq to refSeq
-     * @param refSeq the bases of the reference sequence
-     * @param readSeq the bases of the read sequence
-     * @return the number of bases that differ between refSeq and readSeq
-     */
-    @SuppressWarnings("fallthrough")
-    public static int calcNumDifferentBases(final Cigar cigar, final byte[] refSeq, final byte[] readSeq) {
-        int refIndex = 0, readIdx = 0, delta = 0;
-
-        for (final CigarElement ce : cigar.getCigarElements()) {
-            final int elementLength = ce.getLength();
-            switch (ce.getOperator()) {
-                case X:case EQ:case M:
-                    for (int j = 0; j < elementLength; j++, refIndex++, readIdx++)
-                        delta += refSeq[refIndex] != readSeq[readIdx] ? 1 : 0;
-                    break;
-                case I:
-                    delta += elementLength;
-                case S:
-                    readIdx += elementLength;
-                    break;
-                case D:
-                    delta += elementLength;
-                case N:
-                    refIndex += elementLength;
-                    break;
-                case H:
-                case P:
-                    break;
-                default:
-                    throw new GATKException("The " + ce.getOperator() + " cigar element is not currently supported");
-            }
-        }
-
-        return delta;
     }
 
     public static class MismatchCount {
@@ -501,33 +461,29 @@ public final class AlignmentUtils {
      * @param qualThreshold consider bases with quals > this value as high quality.  Must be >= 0
      * @return positive integer
      */
-    public static int calcNumHighQualitySoftClips( final GATKRead read, final byte qualThreshold ) {
-        if ( read == null ) throw new IllegalArgumentException("Read cannot be null");
-        if ( qualThreshold < 0 ) throw new IllegalArgumentException("Expected qualThreshold to be a positive byte but saw " + qualThreshold);
+    public static int countHighQualitySoftClips(final GATKRead read, final byte qualThreshold ) {
+        Utils.nonNull(read);
+        ParamUtils.isPositiveOrZero(qualThreshold, "Expected qualThreshold to be positive");
 
-        if ( read.getCigar() == null ) // the read is unmapped
+        final Cigar cigar = read.getCigar();
+        if ( cigar == null ) {  // the read is unmapped
             return 0;
-
-        final byte[] qual = read.getBaseQualities();
+        }
 
         int numHQSoftClips = 0;
         int alignPos = 0;
-        for ( final CigarElement ce : read.getCigarElements() ) {
-            final int elementLength = ce.getLength();
+        for ( final CigarElement elem : read.getCigarElements() ) {
+            final int elementLength = elem.getLength();
+            final CigarOperator operator = elem.getOperator();
 
-            switch( ce.getOperator() ) {
-                case S:
-                    for( int jjj = 0; jjj < elementLength; jjj++ ) {
-                        if( qual[alignPos++] > qualThreshold ) { numHQSoftClips++; }
+            if (operator == CigarOperator.SOFT_CLIP) {
+                for (int n = 0; n < elementLength; n++) {
+                    if( read.getBaseQuality(alignPos++) > qualThreshold ) {
+                        numHQSoftClips++;
                     }
-                    break;
-                case M: case I: case EQ: case X:
-                    alignPos += elementLength;
-                    break;
-                case H: case P: case D: case N:
-                    break;
-                default:
-                    throw new IllegalStateException("Unsupported cigar operator: " + ce.getOperator());
+                }
+            } else if (operator.consumesReadBases()) {
+                alignPos += elementLength;
             }
         }
 

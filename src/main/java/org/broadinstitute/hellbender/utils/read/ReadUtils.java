@@ -435,14 +435,6 @@ public final class ReadUtils {
         return result;
     }
 
-    /**
-     * A marker to tell which end of the read has been clipped
-     */
-    public enum ClippingTail {
-        LEFT_TAIL,
-        RIGHT_TAIL
-    }
-
     public static final int SAM_READ_PAIRED_FLAG = 0x1;
     public static final int SAM_PROPER_PAIR_FLAG = 0x2;
     public static final int SAM_READ_UNMAPPED_FLAG = 0x4;
