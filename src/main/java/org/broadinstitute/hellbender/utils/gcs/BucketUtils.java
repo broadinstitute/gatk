@@ -439,7 +439,7 @@ public final class BucketUtils {
      * @param bufferSizeMB buffer size in mb which the prefetcher should fetch ahead.
      * @param channel a channel that needs prefetching
      */
-    public static SeekableByteChannel addPrefetcher(int bufferSizeMB, SeekableByteChannel channel) {
+    public static SeekableByteChannel addPrefetcher(final int bufferSizeMB, final SeekableByteChannel channel) {
         try {
             return SeekableByteChannelPrefetcher.addPrefetcher(bufferSizeMB, channel);
         } catch (final IOException ex) {
@@ -448,11 +448,11 @@ public final class BucketUtils {
     }
 
     /**
-     * Creates a wrapping function which adds a prefetcher if the buffer size is > 0 if its <= 0 then this wrapper returns the
+     * Creates a wrapping function which adds a prefetcher if the buffer size is > 0 if it's <= 0 then this wrapper returns the
      * original channel.
      * @param cloudPrefetchBuffer the prefetcher buffer size in MB
      */
     public static Function<SeekableByteChannel, SeekableByteChannel> getPrefetchingWrapper(final int cloudPrefetchBuffer) {
-        return cloudPrefetchBuffer > 0 ? is -> addPrefetcher(cloudPrefetchBuffer, is) : Utils.identityFunction();
+        return cloudPrefetchBuffer > 0 ? rawChannel -> addPrefetcher(cloudPrefetchBuffer, rawChannel) : Utils.identityFunction();
     }
 }

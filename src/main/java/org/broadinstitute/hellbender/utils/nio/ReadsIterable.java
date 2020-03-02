@@ -35,7 +35,7 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
     private final boolean removeHeader = true;
 
     class ReadsIterator implements CloseableIterator<SAMRecord> {
-        private final static int BUFSIZE_MB = 200;
+        private final static int BUFFER_SIZE_MB = 200;
         private SamReader bam;
         private SAMRecordIterator query;
         private SAMRecord nextRecord = null;
@@ -47,8 +47,8 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
             SeekableStream indexInMemory = new ByteArraySeekableStream(indexData);
             // set high-level retries to deal with servers that might be temporarily overloaded
             // while we're reading a very long file from them.
-            SeekableByteChannel chan = BucketUtils.addPrefetcher( BUFSIZE_MB, Files.newByteChannel(fpath));
-            ChannelAsSeekableStream bamOverNIO = new ChannelAsSeekableStream(chan, path);
+            SeekableByteChannel channel = BucketUtils.addPrefetcher(BUFFER_SIZE_MB, Files.newByteChannel(fpath));
+            ChannelAsSeekableStream bamOverNIO = new ChannelAsSeekableStream(channel, path);
             bam = SamReaderFactory.makeDefault()
                     .validationStringency(ValidationStringency.LENIENT)
                     .enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES)
