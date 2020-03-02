@@ -86,13 +86,13 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     /**
      * Our intervals for traversal. If set, restricts full traversals initiated via {@link #iterator} to
      * return only Features overlapping this set of intervals. Does not affect individual queries
-     * initiated via {@link #query(SimpleInterval)} and/or {@link #queryAndPrefetch(SimpleInterval)}.
+     * initiated via {@link #query(SimpleInterval)} and/or {@link #queryAndPrefetch(Locatable)}.
      */
     private List<SimpleInterval> intervalsForTraversal;
 
     /**
      * Cache containing Features from recent queries initiated via {@link #query(SimpleInterval)} and/or
-     * {@link #queryAndPrefetch(SimpleInterval)}. This is guaranteed to start at the start position of the
+     * {@link #queryAndPrefetch(Locatable)}. This is guaranteed to start at the start position of the
      * most recent query, but will typically end well after the end of the most recent query. Designed to
      * improve performance of the common access pattern involving multiple queries across nearby intervals
      * with gradually increasing start positions.
@@ -434,7 +434,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
     /**
      * Restricts traversals of this data source via {@link #iterator} to only return Features that overlap the provided
-     * intervals. Calls to {@link #query(SimpleInterval)} and/or {@link #queryAndPrefetch(SimpleInterval)} are not
+     * intervals. Calls to {@link #query(SimpleInterval)} and/or {@link #queryAndPrefetch(Locatable)} are not
      * affected by these intervals.
      * <p>
      * Intervals MUST be non-overlapping and sorted in order of increasing start position, otherwise traversal
