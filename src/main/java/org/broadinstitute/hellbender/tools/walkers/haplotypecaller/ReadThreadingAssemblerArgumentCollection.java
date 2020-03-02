@@ -20,6 +20,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public static final double DEFAULT_PRUNING_LOG_ODDS_THRESHOLD = MathUtils.log10ToLog(1.0);
 
     public static final String ERROR_CORRECT_READS_LONG_NAME = "error-correct-reads";
+    public static final String PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME = "error-correction-log-odds";
 
     public static final String CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME = "capture-assembly-failure-bam";
     public static final String KMER_SIZE_LONG_NAME = "kmer-size";
@@ -173,6 +174,15 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     // Read Error Corrector Related Parameters
     //
     // ---------------------------------------------------------------------------------------------------------------
+
+    /**
+     * Enabling this argument may cause fundamental problems with the assembly graph itself.
+     */
+    @Hidden
+    @Argument(fullName = PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME, doc = "Log odds threshold for pileup error correction.  Off by default", optional = true)
+    public double pileupErrorCorrectionLogOdds = Double.NEGATIVE_INFINITY;
+
+
     /**
      * Enabling this argument may cause fundamental problems with the assembly graph itself.
      */
