@@ -22,9 +22,8 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
-
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -32,18 +31,23 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
+import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -221,9 +225,9 @@ public final class GatherVcfsCloud extends CommandLineProgram {
 
     private static FeatureReader<VariantContext> getReaderFromVCFUri(final Path variantPath, final int cloudPrefetchBuffer) {
         final String variantURI = variantPath.toUri().toString();
-        final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher
-                .addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
-        return AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), false, cloudWrapper, Function.identity());
+        return AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), false,
+                BucketUtils.getPrefetchingWrapper(cloudPrefetchBuffer),
+                Function.identity());
     }
 
     /** Validates that all headers contain the same set of genotyped samples and that files are in order by position of first record. */
@@ -371,8 +375,7 @@ public final class GatherVcfsCloud extends CommandLineProgram {
 
             for (final Path f : vcfs) {
                 log.info("Gathering " + f.toUri());
-                final Function<SeekableByteChannel, SeekableByteChannel> prefetcher = cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher
-                        .addPrefetcher(cloudPrefetchBuffer, is) : Function.identity();
+                final Function<SeekableByteChannel, SeekableByteChannel> prefetcher = BucketUtils.getPrefetchingWrapper(cloudPrefetchBuffer);
                 try (final SeekableStream in = SeekableStreamFactory.getInstance().getStreamFor(f.toUri().toString(), prefetcher)) {
                     // a) It's good to check that the end of the file is valid and b) we need to know if there's a terminator block and not copy it
                     final BlockCompressedInputStream.FileTermination term = BlockCompressedInputStream.checkTermination(f);

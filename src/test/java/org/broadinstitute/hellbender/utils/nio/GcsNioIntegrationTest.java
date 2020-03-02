@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender.utils.nio;
 
 import com.google.cloud.storage.StorageException;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.testng.annotations.Test;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -12,10 +16,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Random;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.GATKBaseTest;
-import org.testng.annotations.Test;
 
 /**
  * Test GCS access via the NIO APIs.
@@ -134,8 +134,7 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
     @Test(groups = {"bucket"})
     public void testCloseWhilePrefetching() throws Exception {
         final String large = getGCPTestInputPath() + largeFilePath;
-        SeekableByteChannel chan = new SeekableByteChannelPrefetcher(
-            Files.newByteChannel(Paths.get(URI.create(large))), 10*1024*1024);
+        SeekableByteChannel chan = BucketUtils.addPrefetcher(10, Files.newByteChannel(Paths.get(URI.create(large))));
         // read just 1 byte, get the prefetching going
         ByteBuffer one = ByteBuffer.allocate(1);
         chan.read(one);

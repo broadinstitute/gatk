@@ -2,20 +2,19 @@ package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.tribble.TribbleException;
-import htsjdk.tribble.readers.LineIterator;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
+import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFUtils;
-import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -31,29 +30,42 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.genomicsdb.GenomicsDBUtils;
 import org.genomicsdb.Constants;
+import org.genomicsdb.GenomicsDBUtils;
 import org.genomicsdb.importer.GenomicsDBImporter;
+import org.genomicsdb.model.BatchCompletionCallbackFunctionArgument;
 import org.genomicsdb.model.Coordinates;
 import org.genomicsdb.model.GenomicsDBCallsetsMapProto;
 import org.genomicsdb.model.GenomicsDBImportConfiguration;
 import org.genomicsdb.model.ImportConfig;
-import org.genomicsdb.model.BatchCompletionCallbackFunctionArgument;
 
-import java.io.IOException;
 import java.io.File;
-import java.nio.channels.SeekableByteChannel;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 
 /**
@@ -815,10 +827,10 @@ public final class GenomicsDBImport extends GATKTool {
      */
     private FeatureReader<VariantContext> getReaderFromPath(final Path variantPath) {
         final String variantURI = variantPath.toAbsolutePath().toUri().toString();
-        final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
-        final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity());
         try {
-            final FeatureReader<VariantContext> reader = AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), true, cloudWrapper, cloudIndexWrapper);
+            final FeatureReader<VariantContext> reader = AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), true,
+                    BucketUtils.getPrefetchingWrapper(cloudPrefetchBuffer),
+                    BucketUtils.getPrefetchingWrapper(cloudIndexPrefetchBuffer));
 
             /* Anonymous FeatureReader subclass that wraps returned iterators to ensure that the GVCFs do not
              * contain MNPs.
