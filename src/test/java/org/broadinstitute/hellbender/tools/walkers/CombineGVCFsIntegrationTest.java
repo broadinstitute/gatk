@@ -257,7 +257,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addArgument("variant",getToolTestDataDir()+"tetraploid-gvcf-1.vcf");
         args.addArgument("variant",getToolTestDataDir()+"tetraploid-gvcf-2.vcf");
         args.addArgument("variant",getToolTestDataDir()+"tetraploid-gvcf-3.vcf");
-        args.addArgument("intervals", getToolTestDataDir() + "tetraploid-gvcfs.intervals");
+        args.addArgument("intervals", getToolTestDataDir() + "tetraploid-gvcfs.interval_list");
 
         runCommandLine(args);
 

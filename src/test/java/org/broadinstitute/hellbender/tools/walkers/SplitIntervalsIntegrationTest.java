@@ -1,12 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.IntervalList;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import picard.util.IntervalList.IntervalListScatterMode;
@@ -151,7 +153,7 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
     }
 
     private static List<SimpleInterval> readIntervals(final File intervalsFile) {
-        return IntervalUtils.intervalFileToList(GLP, intervalsFile.getAbsolutePath()).stream().map(SimpleInterval::new).collect(Collectors.toList());
+        return Utils.stream(IntervalList.fromFile(intervalsFile)).map(SimpleInterval::new).collect(Collectors.toList());
     }
 
     private static void checkIntervalSizes(final int scatterCount, final File outputDir, final int expectedTotalLength, String extension) {
