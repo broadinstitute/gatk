@@ -39,7 +39,7 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
     public double downsamplingRate = 1.0;
 
     @Argument(fullName = "keep-only-simplex", doc = "Only keep the simplex duplicate sets", optional=true)
-    private boolean keepOnlySimplexSets = false; // TODO: default should be true by convention?
+    private boolean keepOnlySimplexSets = false; // TODO: default should be true by convention? TODO: What a stupid option!
 
     private static final int RANDOM_SEED = 142;
     private RandomGenerator rng;

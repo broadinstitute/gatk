@@ -29,6 +29,18 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
     private final String countScript = "/dsde/working/tsato/consensus/tp53/test/bams/count_MIs.sh";
 
     @Test
+    public void testForReal(){
+        final File out = new File("/Users/tsato/Downloads/downsampled.bam");
+        final String cloud = "gs://broad-dsde-methods-takuto/liquid-biopsy/NA12878/LBv1/rep2/baseline/NA12878_Broad_Liquid_Biopsy_Panel_v1_rep2.fgbio.groupByUmi.bam";
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument("R", hg19)
+                .addArgument("I", cloud)
+                .addArgument("O", out.getAbsolutePath())
+                .addArgument("DS", "0.5");
+        runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
+    }
+
+    @Test
     public void testSimplex() {
         final File out = new File("/dsde/working/tsato/consensus/tp53/test/tmp/simplex.bam");
         final String cloud = "gs://fc-secure-429c9379-aa5e-4884-8c35-7a5b947efc37/9bd19b02-cdcd-4454-b332-1277758b8d4b/GenerateDuplexConsensusBams/00a10a89-3dc0-48a4-bb16-f19c69b45b96/call-FGBioGroupReadsByUmi/D04_denovo_bloodbiopsy_2-5pct_rep2.fgbio.groupByUmi.bam";
