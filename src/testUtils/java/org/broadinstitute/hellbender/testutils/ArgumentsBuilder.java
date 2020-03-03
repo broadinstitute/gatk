@@ -14,8 +14,9 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Builder for command line argument lists
- * It will convert old style "Argument=Value" into new style "--Argument value" strings
+ * Builder for command line argument lists with lots of convenience methods for adding standard GATK arguments such as
+ * input, output, variants, reference, and intervals.
+ * 
  * Use this only in test code.
  */
 public final class ArgumentsBuilder {
