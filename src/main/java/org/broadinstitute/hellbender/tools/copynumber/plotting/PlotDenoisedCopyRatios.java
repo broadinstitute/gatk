@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Creates plots of denoised copy ratios.  The tool also generates various denoising metrics.
+ * Creates plots of standardized and denoised copy ratios.  The tool also generates various denoising metrics.
  *
  * <h3>Inputs</h3>
  *
@@ -52,9 +52,10 @@ import java.util.stream.Collectors;
  *
  * <ul>
  *     <li>
- *         Denoised-plot files.
- *         Two versions of a plot showing both the standardized and denoised copy ratios are output;
- *         the first covers the entire range of the copy ratios, while the second is limited to copy ratios within [0, 4].
+ *         Denoised-plot file.
+ *         A plot showing both the standardized and denoised copy ratios is output.
+ *         Copy ratios are only plotted up to the maximum value specified by the argument {@code maximum-copy-ratio}.
+ *         Point size can be specified by the argument {@code point-size-copy-ratio}.
  *     </li>
  *      <li>
  *         Median-absolute-deviation files.
@@ -112,6 +113,22 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
             optional = true
     )
     private int minContigLength = PlottingUtils.DEFAULT_MINIMUM_CONTIG_LENGTH;
+
+    @Argument(
+            doc = PlottingUtils.MAXIMUM_COPY_RATIO_DOC_STRING,
+            fullName =  PlottingUtils.MAXIMUM_COPY_RATIO_LONG_NAME,
+            minValue = 0,
+            optional = true
+    )
+    private double maxCopyRatio = PlottingUtils.DEFAULT_MAXIMUM_COPY_RATIO;
+
+    @Argument(
+            doc = PlottingUtils.POINT_SIZE_COPY_RATIO_DOC_STRING,
+            fullName =  PlottingUtils.POINT_SIZE_COPY_RATIO_LONG_NAME,
+            minValue = 0,
+            optional = true
+    )
+    private double pointSizeCopyRatio = PlottingUtils.DEFAULT_POINT_SIZE_COPY_RATIO;
 
     @Argument(
             doc = "Prefix for output filenames.",
@@ -183,7 +200,7 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
     private void writeDenoisingPlots(final String sampleName,
                                      final List<String> contigNames,
                                      final List<Integer> contigLengths) {
-        final String contigNamesArg = contigNames.stream().collect(Collectors.joining(PlottingUtils.CONTIG_DELIMITER));                            //names separated by delimiter
+        final String contigNamesArg = String.join(PlottingUtils.CONTIG_DELIMITER, contigNames); //names separated by delimiter
         final String contigLengthsArg = contigLengths.stream().map(Object::toString).collect(Collectors.joining(PlottingUtils.CONTIG_DELIMITER));  //names separated by delimiter
         final String outputDirArg = CopyNumberArgumentValidationUtils.addTrailingSlashIfNecessary(CopyNumberArgumentValidationUtils.getCanonicalPath(outputDir));
 
@@ -199,6 +216,8 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
                 "--denoised_copy_ratios_file=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputDenoisedCopyRatiosFile),
                 "--contig_names=" + contigNamesArg,
                 "--contig_lengths=" + contigLengthsArg,
+                "--maximum_copy_ratio=" + maxCopyRatio,
+                "--point_size_copy_ratio=" + pointSizeCopyRatio,
                 "--output_dir=" + outputDirArg,
                 "--output_prefix=" + outputPrefix);
         executor.exec();

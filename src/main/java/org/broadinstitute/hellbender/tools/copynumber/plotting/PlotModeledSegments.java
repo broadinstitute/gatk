@@ -67,6 +67,8 @@ import java.util.stream.Collectors;
  *         Modeled-segments-plot file.
  *         This shows the input denoised copy ratios and/or alternate-allele fractions as points, as well as box plots
  *         for the available posteriors in each segment.  The colors of the points alternate with the segmentation.
+ *         Copy ratios are only plotted up to the maximum value specified by the argument {@code maximum-copy-ratio}.
+ *         Point sizes can be specified by the arguments {@code point-size-copy-ratio} and {@code point-size-allele-fraction}.
  *     </li>
  * </ul>
  *
@@ -146,6 +148,30 @@ public final class PlotModeledSegments extends CommandLineProgram {
             optional = true
     )
     private int minContigLength = PlottingUtils.DEFAULT_MINIMUM_CONTIG_LENGTH;
+
+    @Argument(
+            doc = PlottingUtils.MAXIMUM_COPY_RATIO_DOC_STRING,
+            fullName =  PlottingUtils.MAXIMUM_COPY_RATIO_LONG_NAME,
+            minValue = 0,
+            optional = true
+    )
+    private double maxCopyRatio = PlottingUtils.DEFAULT_MAXIMUM_COPY_RATIO;
+
+    @Argument(
+            doc = PlottingUtils.POINT_SIZE_COPY_RATIO_DOC_STRING,
+            fullName =  PlottingUtils.POINT_SIZE_COPY_RATIO_LONG_NAME,
+            minValue = 0,
+            optional = true
+    )
+    private double pointSizeCopyRatio = PlottingUtils.DEFAULT_POINT_SIZE_COPY_RATIO;
+
+    @Argument(
+            doc = PlottingUtils.POINT_SIZE_ALLELE_FRACTION_DOC_STRING,
+            fullName =  PlottingUtils.POINT_SIZE_ALLELE_FRACTION_LONG_NAME,
+            minValue = 0,
+            optional = true
+    )
+    private double pointSizeAlleleFraction = PlottingUtils.DEFAULT_POINT_SIZE_ALLELE_FRACTION;
 
     @Argument(
             doc = "Prefix for output filenames.",
@@ -270,7 +296,7 @@ public final class PlotModeledSegments extends CommandLineProgram {
                                           final List<String> contigNames,
                                           final List<Integer> contigLengths,
                                           final File outputFile) {
-        final String contigNamesArg = contigNames.stream().collect(Collectors.joining(PlottingUtils.CONTIG_DELIMITER));                            //names separated by delimiter
+        final String contigNamesArg = String.join(PlottingUtils.CONTIG_DELIMITER, contigNames); //names separated by delimiter
         final String contigLengthsArg = contigLengths.stream().map(Object::toString).collect(Collectors.joining(PlottingUtils.CONTIG_DELIMITER));  //lengths separated by delimiter
         final RScriptExecutor executor = new RScriptExecutor();
 
@@ -285,6 +311,9 @@ public final class PlotModeledSegments extends CommandLineProgram {
                 "--modeled_segments_file=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputModeledSegmentsFile),
                 "--contig_names=" + contigNamesArg,
                 "--contig_lengths=" + contigLengthsArg,
+                "--maximum_copy_ratio=" + maxCopyRatio,
+                "--point_size_copy_ratio=" + pointSizeCopyRatio,
+                "--point_size_allele_fraction=" + pointSizeAlleleFraction,
                 "--output_file=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputFile));
         executor.exec();
     }
