@@ -503,4 +503,22 @@ public final class CigarUtilsUnitTest {
                                              final boolean walkBackwards, final int expectedReadWalkDist) {
         Assert.assertEquals(CigarUtils.computeAssociatedDistOnRead(cigar, startInclusiveOnRead, refWalkDist, walkBackwards), expectedReadWalkDist);
     }
+
+    @DataProvider(name = "convert_terminal_insertion_to_soft_clip")
+    public Object[][] convertTerminalInsertionToSoftClip() {
+        return new Object[][] {
+                {"70M", "70M"},
+                {"10I10M", "10S10M"},
+                {"10M10I", "10M10S"},
+                {"10S10I10M", "20S10M"},
+                {"10M5I10S", "10M15S"},
+                {"10M5I4M", "10M5I4M"},
+                {"1S2I3M4I5M6I7S", "3S3M4I5M13S"}
+        };
+    }
+
+    @Test(dataProvider = "convert_terminal_insertion_to_soft_clip")
+    public void testConvertTerminalIsnertionToSoftClip(final String input, final String expectedOutput) {
+        Assert.assertEquals(CigarUtils.convertTerminalInsertionToSoftClip(TextCigarCodec.decode(input)).toString(), expectedOutput);
+    }
 }

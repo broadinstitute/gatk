@@ -9,7 +9,6 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -326,7 +325,7 @@ public final class AlignmentInterval {
     static final void checkValidArgument(final Cigar cigar, final SimpleInterval referenceSpan,
                                          final int readStart, final int readEnd) {
 
-        final int softClippedBases = SvCigarUtils.convertTerminalInsertionToSoftClip(cigar).getCigarElements().stream().filter(ce -> ce.getOperator().equals(CigarOperator.S)).mapToInt(CigarElement::getLength).sum();
+        final int softClippedBases = CigarUtils.convertTerminalInsertionToSoftClip(cigar).getCigarElements().stream().filter(ce -> ce.getOperator().equals(CigarOperator.S)).mapToInt(CigarElement::getLength).sum();
         final int readLength = cigar.getReadLength() - softClippedBases;
         final int referenceLength = cigar.getReferenceLength();
         final boolean validState = referenceLength == referenceSpan.size() && readLength == (readEnd - readStart + 1);

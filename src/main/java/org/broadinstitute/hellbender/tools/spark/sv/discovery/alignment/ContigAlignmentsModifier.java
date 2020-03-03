@@ -6,7 +6,6 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.CigarBuilder;
@@ -276,7 +275,7 @@ public final class ContigAlignmentsModifier {
                                                                    final int sensitivity,
                                                                    final int unclippedContigLen) {
 
-        final Cigar cigar = SvCigarUtils.convertTerminalInsertionToSoftClip(oneRegion.cigarAlong5to3DirectionOfContig);
+        final Cigar cigar = CigarUtils.convertTerminalInsertionToSoftClip(oneRegion.cigarAlong5to3DirectionOfContig);
         if (cigar.numCigarElements() == 1) return new ArrayList<>( Collections.singletonList(oneRegion) );
 
         final List<AlignmentInterval> result = new ArrayList<>(3); // blunt guess
