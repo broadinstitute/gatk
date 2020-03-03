@@ -11,9 +11,12 @@ import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class DRAGENBQDGenotypesModel implements GenotypersModel {
     private static final int DEFAULT_CACHE_PLOIDY_CAPACITY = 10;
@@ -80,33 +83,36 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             List<GATKRead> readsForSample = data.readLikelihoods().sampleEvidence(sampleIndex);
             List<GATKRead> hmmFilteredReadsForSample = data.readLikelihoods().filteredSampleEvidence(sampleIndex);
             // These objects are intended to store 3 things, the read, the inner (middle) int stores the offset into the read of the base in question, and the outer int stores the index of the read per sample
-            List<Pair<Pair<GATKRead,Integer>,Integer>> strandForward = new ArrayList<>();
-            List<Pair<Pair<GATKRead,Integer>,Integer>>  strandReverse = new ArrayList<>();
+            List<DragenReadContainer> strandForward = new ArrayList<>();
+            List<DragenReadContainer>  strandReverse = new ArrayList<>();
+
+            ////TODO BIG GIANT TODO, THIS IS WRONG!!!! READS WITH INDELS ARE GOING TO BE SORTED INCORRECTLY HERE!!!!!!!!!!!! NEED TO ROLL MY OWN CLIPPING MANAGING CODE.......
             for (int j = 0; j < readsForSample.size(); j++) {
-                // TODO figure out what to do with overlapping deletions....
-                final Pair<Integer, Boolean> baseOffsetForRead = ReadUtils.getReadCoordinateForReferenceCoordinate(readsForSample.get(j), variantOffset, true);
-                if (readsForSample.get(j).isReverseStrand()) {
-                    strandReverse.add(Pair.of(
-                            Pair.of(readsForSample.get(j),baseOffsetForRead.getLeft()), j));
+                final GATKRead readForSample = readsForSample.get(j);
+                final Pair<Integer, Boolean> baseOffsetForRead = ReadUtils.getReadCoordinateForReferenceCoordinate(readForSample, variantOffset, true);
+                final int indexForSnp = readForSample.getBaseQualityCount() > baseOffsetForRead.getLeft() ?  baseOffsetForRead.getLeft() : -1;
+
+                if (readForSample.isReverseStrand()) {
+                    strandReverse.add(new DragenReadContainer(readForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(readForSample), j));
                 } else {
-                    strandForward.add(Pair.of(
-                            Pair.of(readsForSample.get(j),baseOffsetForRead.getLeft()), j));
+                    strandForward.add(new DragenReadContainer(readForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(readForSample), j));
                 }
             }
             //TODO unsilly this
             //TODO marking this with -1s is silly and probably not the right answer
             for (int j = 0; j < hmmFilteredReadsForSample.size(); j++) {
-                final Pair<Integer, Boolean> baseOffsetForRead = ReadUtils.getReadCoordinateForReferenceCoordinate(hmmFilteredReadsForSample.get(j), variantOffset, true);
-                if (hmmFilteredReadsForSample.get(j).isReverseStrand()) {
-                    strandReverse.add(Pair.of(
-                            Pair.of(hmmFilteredReadsForSample.get(j),baseOffsetForRead.getLeft()), -1));
+                final GATKRead filteredReadForSample = hmmFilteredReadsForSample.get(j);
+                final Pair<Integer, Boolean> baseOffsetForRead = ReadUtils.getReadCoordinateForReferenceCoordinate(filteredReadForSample, variantOffset, true);
+                final int indexForSnp = filteredReadForSample.getBaseQualityCount() > baseOffsetForRead.getLeft() ?  baseOffsetForRead.getLeft() : -1; //This is fixing a horrible off by one bug in the above method, this shoulld be fixed but I don't want to deal with the offtarget effects here
+
+                if (filteredReadForSample.isReverseStrand()) {
+                    strandReverse.add(new DragenReadContainer(filteredReadForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(filteredReadForSample), -1));
                 } else {
-                    strandForward.add(Pair.of(
-                            Pair.of(hmmFilteredReadsForSample.get(j),baseOffsetForRead.getLeft()), -1));
+                    strandForward.add(new DragenReadContainer(filteredReadForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(filteredReadForSample), -1));
                 }
             }
-            strandForward.sort(new FRDBQDUtils.ReadFeatherEndForwardComparitor());
-            strandReverse.sort(new FRDBQDUtils.ReadFeatherEndRevereseComparitor());
+            strandForward.sort(new ReadFeatherEndForwardComparitor());
+            strandReverse.sort(new ReadFeatherEndRevereseComparitor());
 
             // Compute default liklihoods as normal (before we go ahead and alter the liklihoods for the call)
             final int samplePloidy = ploidyModel.samplePloidy(sampleIndex);
@@ -121,7 +127,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             final double[] ployidyModelGenotypeLikelihoods = likelihoodsCalculator.rawGenotypeLikelihoods(sampleLikelihoods);
 
             System.out.println("Genotyping model results for alleles before being modified");
-            System.out.println(ployidyModelGenotypeLikelihoods.toString());
+            System.out.println(Arrays.toString(ployidyModelGenotypeLikelihoods));
 
             // TODO these must be instantiated as something real
             double[] BQDCallResults = null;
@@ -131,21 +137,24 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
                 double forwardHomopolymerAdjustment = FRDBQDUtils.computeForwardHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent);
                 double reverseHomopolymerAdjustment = FRDBQDUtils.computeReverseHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent);
                 BQDCallResults = likelihoodsCalculator.calculateBQDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment, calculators);
+                System.out.println("Genotyping model results for genotypes given BQD results");
+                System.out.println(Arrays.toString(BQDCallResults));
             }
-
-            System.out.println("Genotyping model results for genotypes given BQD results");
-            System.out.println(Arrays.asList(BQDCallResults));
 
             if (computeFRD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
 //                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment);
+                System.out.println("Genotyping model results for genotypes given FRD results");
+                System.out.println(Arrays.toString(FRDCallResults));
             }
 
-            System.out.println("Genotyping model results for genotypes given FRD results");
-            System.out.println(Arrays.asList(FRDCallResults));
-
             //make synthesized likelihoods object (NOTE that we can do this since for invalid model GT fields we simply infinity out the result in the array)
-            for (int gt = 0; gt < ployidyModelGenotypeLikelihoods.length; sampleIndex++) {
-                ployidyModelGenotypeLikelihoods[gt] = Math.min(ployidyModelGenotypeLikelihoods[gt], Math.min(BQDCallResults[gt], FRDCallResults[gt]));
+            for (int gt = 0; gt < ployidyModelGenotypeLikelihoods.length; gt++) {
+                if (computeBQD) {
+                    ployidyModelGenotypeLikelihoods[gt] = Math.max(ployidyModelGenotypeLikelihoods[gt], BQDCallResults[gt]);
+                }
+                if (computeFRD) {
+                    ployidyModelGenotypeLikelihoods[gt] = Math.max(ployidyModelGenotypeLikelihoods[gt], FRDCallResults[gt]);
+                }
             }
 
             // this is what the work actually is, after we have computed a few things
@@ -172,5 +181,88 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
     @Override
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(AlleleList<A> genotypingAlleles, GenotypingData<A> data) {
         return null;
+    }
+
+    /**
+     * This helper class is used to store the necessary data in order to sort a read based on its BQD "feather end"
+     */
+    static class DragenReadContainer {
+        final GATKRead underlyingRead;
+        final int offsetIntoReadForBaseQuality;
+        final int unclippedEnd;
+        final int indexInLikelihoodsObject;
+
+
+        public DragenReadContainer(final GATKRead underlyingRead, final int offsetIntoReadForBaseQuality, final int unclippedEnd, final int indexInLikelihoodsObject) {
+            this.underlyingRead = underlyingRead;
+            this.offsetIntoReadForBaseQuality = offsetIntoReadForBaseQuality;
+            this.unclippedEnd = unclippedEnd;
+            this.indexInLikelihoodsObject = indexInLikelihoodsObject;
+        }
+
+        public int getUnclippedPosition() {
+            return unclippedEnd;
+        }
+
+        public int getIndexInLikelihoodsObject() {
+            return indexInLikelihoodsObject;
+        }
+
+        public boolean hasValidBaseQuality() {
+            return offsetIntoReadForBaseQuality != -1;
+        }
+
+        public int getBaseQuality() {
+            return underlyingRead.getBaseQuality(offsetIntoReadForBaseQuality);
+        }
+    }
+
+    //MAJOR TODO THIS IS CURRENTLY BASED OFF OF THE REFERENCE UNCLIPPED START AND NOT THE BASES IN THE READ CONSEQUENTLY AT SITES WITH
+    //      TODO INDELS PRESENT WE ARE GOING TO BE LOOKING AT THE WRONG OFFSETS FOR THIS SORT... a minor issue but still...
+
+    // Orders the reads based on the number of bases there are to the left of the fatherEndComparisonLocation as aligned according to the cigar
+    // NOTE: here we compare the un-hardclipped edges for these reads as the model itself cares about the cycle count of the sequencer, and
+    //       importantly this saves us having the thread the original alignment of these reads to this level, since by this point we have trimmed
+    //       the reads twice, once to the active region with padding and again to the callable region within the active window and in both of these
+    //       cases we have deleted bases with hardclips.
+    public class ReadFeatherEndForwardComparitor implements Comparator<DragenReadContainer>, Serializable {
+        private static final long serialVersionUID = 1L;
+        /**
+         * Evaluate first the number of bases to the end of the read and follow that by the base quality
+         */
+        @Override
+        public int compare(final DragenReadContainer read1, final DragenReadContainer read2) {
+            //NOTE: here we want the reads to wind up in ascending order by unclipped position because the unclipped position should be on the left
+            int diffVal = read1.getUnclippedPosition() - read2.getUnclippedPosition();
+            if (diffVal == 0) {
+                diffVal = (read1.hasValidBaseQuality() ? read1.getBaseQuality() : 0)
+                        - (read2.hasValidBaseQuality() ? read2.getBaseQuality() : 0);
+            }
+            return diffVal;
+        }
+    }
+
+    // Orders the reads based on the number of bases in the read that occur before the fatherEndComparisonLocation as aligned according to the cigar
+    // NOTE: here we compare the un-hardclipped edges for these reads as the model itself cares about the cycle count of the sequencer, and
+    //       importantly this saves us having the thread the original alignment of these reads to this level, since by this point we have trimmed
+    //       the reads twice, once to the active region with padding and again to the callable region within the active window and in both of these
+    //       cases we have deleted bases with hardclips.
+    public class ReadFeatherEndRevereseComparitor implements Comparator<DragenReadContainer>, Serializable {
+        private static final long serialVersionUID = 1L;
+        /**
+         * Evaluate first the number of bases to the end of the read and follow that by the base quality
+         */
+        @Override
+        public int compare(final DragenReadContainer read1, final DragenReadContainer read2) {
+            //NOTE: here we want the reads to wind up in decending order by unclipped position because the unclipped position should be on the left
+            int diffVal = read2.getUnclippedPosition() - read1.getUnclippedPosition();
+            if (diffVal==0) {
+                //TODO verify this lines up with the sort in DRAGBQD
+                diffVal = (read1.hasValidBaseQuality() ? read1.getBaseQuality() : 0)
+                        - (read2.hasValidBaseQuality() ? read2.getBaseQuality() : 0);
+            }
+            return diffVal;
+        }
+
     }
 }

@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.utils.GenotypeUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -30,6 +30,9 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
     // Cache for enforcing the strictness of using the filled array with the correct likelihoods object
     private LikelihoodMatrix<?, ?> cachedLikelihoodsObject = null;
 
+    private final double cachedLog10Alpha;
+    private final double cachedLog10AlphaInverse;
+
     /**
      * Creates a new calculator providing its ploidy and number of genotyping alleles.
      */
@@ -39,6 +42,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         super(ploidy, alleleCount, alleleFirstGenotypeOffsetByPloidy, genotypeTableByPloidy);
         Utils.validateArg(ploidy > 0, () -> "ploidy must be at least 1 but was " + ploidy);
         // The number of possible components is limited by distinct allele count and ploidy.
+        cachedLog10Alpha = Math.log10(BQD_FIXED_DEFAULT_ALPHA);
+        cachedLog10AlphaInverse = Math.log10(1 - BQD_FIXED_DEFAULT_ALPHA);
     }
 
     /**
@@ -51,8 +56,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
      * @return
      */
     public <A extends Allele> double[] calculateBQDLikelihoods(final LikelihoodMatrix<GATKRead, A> sampleLikelihoods,
-                                                               final List<Pair<Pair<GATKRead,Integer>, Integer>> strandForward,
-                                                               final List<Pair<Pair<GATKRead,Integer>, Integer>> strandReverse,
+                                                               final List<DRAGENBQDGenotypesModel.DragenReadContainer> strandForward,
+                                                               final List<DRAGENBQDGenotypesModel.DragenReadContainer> strandReverse,
                                                                final double forwardHomopolymerAdjustment,
                                                                final double reverseHomopolymerAdjustment,
                                                                final GenotypeLikelihoodCalculators calculators) {
@@ -60,7 +65,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         // First we invalidate the cache
         Utils.validate(sampleLikelihoods == cachedLikelihoodsObject, "There was a mismatch between the sample stored by the genotyper and the one requesed for BQD, this will result in invalid genotyping");
         final double[] outputArray = new double[genotypeCount];
-        Arrays.fill(outputArray, Double.POSITIVE_INFINITY);
+        Arrays.fill(outputArray, Double.NEGATIVE_INFINITY);
 
         //TODO omptize me
         // TODO is this actually refAllele?
@@ -89,16 +94,14 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 final int offsetForReadLikelihoodGivenAlleleIndex = alleleDataSize * errorAlleleIndex + readCount;
 
                 // BQD scores by strand
-                double minScoreFoundForwardsStrand = computeBADModelForStrandData(strandForward, forwardHomopolymerAdjustment, readLikelihoodsForGT, offsetForReadLikelihoodGivenAlleleIndex);
-                double minScoreFoundReverseStrand = computeBADModelForStrandData(strandReverse, reverseHomopolymerAdjustment, readLikelihoodsForGT, offsetForReadLikelihoodGivenAlleleIndex);
+                double minScoreFoundForwardsStrand = computeBQDModelForStrandData(strandForward, forwardHomopolymerAdjustment, readLikelihoodsForGT, offsetForReadLikelihoodGivenAlleleIndex, true);
+                double minScoreFoundReverseStrand = computeBQDModelForStrandData(strandReverse, reverseHomopolymerAdjustment, readLikelihoodsForGT, offsetForReadLikelihoodGivenAlleleIndex, false);
 
-                double probability = Math.pow(10.0, (-1.0 * (minScoreFoundForwardsStrand + minScoreFoundReverseStrand)/10.0));
+                double modelScoreInLog10 = (minScoreFoundForwardsStrand + minScoreFoundReverseStrand)/-10.0;
                 //////
-                //TODO this is improtant, this is where the piror gets applied
-                //////
-                //double prior_adjusted_probability = probability * Math.pow(10.0, (-1.0 * (SNP_HOM_PRIOR)/10.0));
-                // TODO figure out how to mark this one down for debuggng in the future
-                outputArray[indexForGT] = Math.min(outputArray[indexForGT], probability);
+                // NOTE we have not applied the prior here, this is because that gets applied downstream to each genotype in the array.
+                // since the prior is applied evenly to the defualt and error models this should not change this selection here.
+                outputArray[indexForGT] = Math.max(outputArray[indexForGT], modelScoreInLog10);
             }
         }
         return outputArray;
@@ -116,50 +119,62 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
      * @param offsetForReadLikelihoodGivenAlleleIndex
      * @return phred scale liklihood for a BQD error mode for reads in the given direction according to the offsets requested
      */
-    private double computeBADModelForStrandData(final List<Pair<Pair<GATKRead, Integer>, Integer>> positionSortedReads,
-                                        final double homopolymerAdjustment,final  double[] readLikelihoodsForGT,
-                                        final int offsetForReadLikelihoodGivenAlleleIndex) {
+    private double computeBQDModelForStrandData(final List<DRAGENBQDGenotypesModel.DragenReadContainer> positionSortedReads,
+                                                final double homopolymerAdjustment, final  double[] readLikelihoodsForGT,
+                                                final int offsetForReadLikelihoodGivenAlleleIndex, final boolean forwards) {
         if (positionSortedReads.isEmpty()) {
             return 0.0; // TODO check up on this
         }
 
-        // Forwards strand tables
-        final double[] cumulative_prob_read_given_error_mode_f = new double[positionSortedReads.size() + 1];
+        // Forwards strand tables (all in phred space for the sake of conveient debugging with provided scripts)
+        final double[] cumulative_prob_read_given_error_mode_and_gt = new double[positionSortedReads.size() + 1];
         final double[] cumulative_mean_base_quality_phred_adjusted = new double[positionSortedReads.size() + 1];
         final double[] cumulative_homozygous_genotype_score = new double[positionSortedReads.size() + 1];
 
-        int totalBaseQuality = 0;
+        double totalBaseQuality = 0;
         int baseQualityDenominator = 0; // We track this seperately because not every read overlaps the SNP in quesiton due to padding.
         // Iterate over the reads and populate the cumulative arrays
-        for (int i = 1; i < cumulative_prob_read_given_error_mode_f.length; i++) {
-            int readIndex = positionSortedReads.get(i - 1).getRight();
+        for (int i = 1; i < cumulative_prob_read_given_error_mode_and_gt.length; i++) {
+            final DRAGENBQDGenotypesModel.DragenReadContainer container = positionSortedReads.get(i - 1);
+            final int readIndex = container.getIndexInLikelihoodsObject();
 
             // Populate the error probability array
-            //?????????????:?:?????> tODO check this one for what the scores look like, we may need to pull out of log space
-            cumulative_prob_read_given_error_mode_f[i] = -10.0 * ((cumulative_prob_read_given_error_mode_f[i - 1])/-10.0 +
-                    (readIndex == -1 ? 0.0 :
-                            (BQD_FIXED_DEFAULT_ALPHA * readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex])
-                            + (1 - BQD_FIXED_DEFAULT_ALPHA) * readLikelihoodsForGT[readIndex]));
+            double phredContributionForRead = readIndex == -1 ? 0.0 :
+                    -10*MathUtils.approximateLog10SumLog10(readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex] + cachedLog10Alpha,
+                            readLikelihoodsForGT[readIndex] + cachedLog10AlphaInverse);
+            cumulative_prob_read_given_error_mode_and_gt[i] = cumulative_homozygous_genotype_score[i-1] + phredContributionForRead;
 
             // Populate the mean base quality array
-            if (positionSortedReads.get(i).getLeft().getRight() != -1) {
-                totalBaseQuality += positionSortedReads.get(i).getLeft().getLeft().getBaseQuality(positionSortedReads.get(i).getLeft().getRight());
+            if (container.hasValidBaseQuality()) {
+                totalBaseQuality += container.getBaseQuality();
                 baseQualityDenominator++;
             }
             cumulative_mean_base_quality_phred_adjusted[i] = Math.max(0,
-                    ((1.0 * totalBaseQuality / (baseQualityDenominator==0 ? 1 : baseQualityDenominator)) * PHRED_SCALED_ADJUSTMENT_FOR_BQ_SCORE) - homopolymerAdjustment);
+                    ((totalBaseQuality / (baseQualityDenominator == 0 ? 1 : baseQualityDenominator)) * PHRED_SCALED_ADJUSTMENT_FOR_BQ_SCORE) - homopolymerAdjustment);
 
             // Calculate the cumulative genotype score
-            //?????????????:?:?????> tODO check this one for what the scores look like, we may need to pull out of log space
-            cumulative_homozygous_genotype_score[i] = cumulative_homozygous_genotype_score[i - 1] + -10 * readLikelihoodsForGT[readIndex];
+            cumulative_homozygous_genotype_score[i] = cumulative_homozygous_genotype_score[i - 1] +
+                    + (readIndex == -1 ? 0 : -10 * readLikelihoodsForGT[readIndex]);
         }
 
         // Now we find the best partitioning N for the forwards evaluation of the data
         double minScoreFound = Double.POSITIVE_INFINITY;
+        int nIndexUsed = 0;
         for (int n = 0; n < cumulative_mean_base_quality_phred_adjusted.length; n++) {
-            minScoreFound = Math.min(minScoreFound,
-                    cumulative_mean_base_quality_phred_adjusted[n] + cumulative_prob_read_given_error_mode_f[n] + cumulative_homozygous_genotype_score[n]);
+            final double bqdScore = cumulative_mean_base_quality_phred_adjusted[n] + cumulative_prob_read_given_error_mode_and_gt[n] + (cumulative_homozygous_genotype_score[cumulative_homozygous_genotype_score.length-1] - cumulative_homozygous_genotype_score[n]);
+//            System.out.println(String.format("n=%d: %.2f, cum_phred_bq=%.2f, cum_prob_r_Error=%.2f, prob_G_remaining=%.2f",
+//                    n, bqdScore, cumulative_mean_base_quality_phred_adjusted[n], cumulative_prob_read_given_error_mode_and_gt[n],
+//                    (cumulative_homozygous_genotype_score[cumulative_homozygous_genotype_score.length-1] - cumulative_homozygous_genotype_score[n])));
+            if (minScoreFound > bqdScore) {
+                minScoreFound = bqdScore;
+                nIndexUsed = n;
+            }
         }
+
+        // Debug output for the genotyper to see into the calculation itself
+        System.out.println(String.format("n%d=%2d, best_phred_score =%5.2f q_mean=%5.2f, alpha=%4.2f, Ph(E)=%4.2f;  ", forwards?1:0,
+                nIndexUsed, minScoreFound, cumulative_mean_base_quality_phred_adjusted[nIndexUsed],
+                BQD_FIXED_DEFAULT_ALPHA, cumulative_prob_read_given_error_mode_and_gt[nIndexUsed]));
 
         //TODO this will be where i put my debuglogging (if i had any)
         return minScoreFound;

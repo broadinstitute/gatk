@@ -273,7 +273,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      *   the array will be null.
      */
     public List<EVIDENCE> filteredSampleEvidence(final int sampleIndex) {
-        return Collections.unmodifiableList(evidenceBySampleIndex.get(sampleIndex));
+        return Collections.unmodifiableList(filteredEvidenceBySampleIndex.get(sampleIndex));
     }
 
     /**
