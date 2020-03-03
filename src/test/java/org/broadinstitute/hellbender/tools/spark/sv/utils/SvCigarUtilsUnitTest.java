@@ -50,60 +50,6 @@ public class SvCigarUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(SvCigarUtils.findIndexOfFirstNonClippingOperation(TextCigarCodec.decode("10M10D10S10H").getCigarElements(), false), 1);
     }
 
-    @DataProvider(name = "refWalkDistanceTestDataException")
-    private Object[][] createRefWalkDistanceTestDataException() {
-        final List<Object[]> data = new ArrayList<>(20);
-        data.add(new Object[]{TextCigarCodec.decode("50M10N101M"), 41, 10, 0});
-        data.add(new Object[]{TextCigarCodec.decode("50M10P101M"), 41, 10, 0});
-        final Cigar cigar = TextCigarCodec.decode("35H40S10M20I25M30D50M55S60H");
-        data.add(new Object[]{cigar, -1, 10, 0});
-        data.add(new Object[]{cigar, 0, 10, 0});
-        data.add(new Object[]{cigar, 41, -1, 0});
-        data.add(new Object[]{cigar, 41, 0, 0});
-        data.add(new Object[]{cigar, 1, 201, 0});
-        return data.toArray(new Object[data.size()][]);
-    }
-
-    @Test(dataProvider = "refWalkDistanceTestDataException", groups = "sv", expectedExceptions = IllegalArgumentException.class)
-    public void testRefWalkDistanceException(final Cigar cigar, final int startInclusive, final int distance,
-                                             final int expectedRefDist) {
-        Assert.assertEquals(SvCigarUtils.computeAssociatedDistOnRef(cigar, startInclusive, distance), expectedRefDist);
-    }
-
-    @DataProvider(name = "refWalkDistanceTestData")
-    private Object[][] createRefWalkDistanceTestData() {
-        final List<Object[]> data = new ArrayList<>(20);
-        final Cigar cigar = TextCigarCodec.decode("35H40S10M20I25M30D50M55S60H");
-
-        data.add(new Object[]{cigar, 1, 40, 0});
-        data.add(new Object[]{cigar, 1, 45, 5});
-        data.add(new Object[]{cigar, 41, 10, 10});
-        data.add(new Object[]{cigar, 41, 30, 10});
-        data.add(new Object[]{cigar, 41, 25, 10});
-        data.add(new Object[]{cigar, 41, 35, 15});
-        data.add(new Object[]{cigar, 41, 56, 66});
-        data.add(new Object[]{cigar, 41, 110, 115});
-        data.add(new Object[]{cigar, 1, 200, 115});
-        data.add(new Object[]{cigar, 61, 10, 0});
-        data.add(new Object[]{cigar, 61, 15, 5});
-        data.add(new Object[]{cigar, 45, 6, 6});
-        data.add(new Object[]{cigar, 45, 16, 6});
-        data.add(new Object[]{cigar, 45, 26, 6});
-        data.add(new Object[]{cigar, 45, 27, 7});
-        data.add(new Object[]{cigar, 45, 51, 31});
-        data.add(new Object[]{cigar, 45, 52, 62});
-
-        data.add(new Object[]{TextCigarCodec.decode("10M1I5M"), 5, 10, 9});
-        data.add(new Object[]{TextCigarCodec.decode("10M1D5M"), 5, 10, 11});
-
-        return data.toArray(new Object[data.size()][]);
-    }
-
-    @Test(dataProvider = "refWalkDistanceTestData", groups = "sv")
-    public void testRefWalkDistance(final Cigar cigar, final int startInclusive, final int distance, final int expectedRefDist) {
-        Assert.assertEquals(SvCigarUtils.computeAssociatedDistOnRef(cigar, startInclusive, distance), expectedRefDist);
-    }
-
     @DataProvider(name = "readWalkDistanceTestDataException")
     private Object[][] createReadWalkDistanceTestDataException() {
         final List<Object[]> data = new ArrayList<>(20);
