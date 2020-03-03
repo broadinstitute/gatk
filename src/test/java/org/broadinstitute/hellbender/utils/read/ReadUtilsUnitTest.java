@@ -194,22 +194,6 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testGetMaxReadLength() {
-        for( final int minLength : Arrays.asList( 5, 30, 50 ) ) {
-            for( final int maxLength : Arrays.asList( 50, 75, 100 ) ) {
-                final List<GATKRead> reads = new ArrayList<>();
-                for( int readLength = minLength; readLength <= maxLength; readLength++ ) {
-                    reads.add( ArtificialReadUtils.createRandomRead( readLength ) );
-                }
-                Assert.assertEquals(ReadUtils.getMaxReadLength(reads), maxLength, "max length does not match");
-            }
-        }
-
-        final List<GATKRead> reads = new LinkedList<>();
-        Assert.assertEquals(ReadUtils.getMaxReadLength(reads), 0, "Empty list should have max length of zero");
-    }
-
-    @Test
     public void testReadWithNsRefIndexInDeletion() throws FileNotFoundException {
         final SAMFileHeader header;
         try(final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference))) {

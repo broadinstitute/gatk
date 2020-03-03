@@ -930,21 +930,6 @@ public final class ReadUtils {
     }
 
     /**
-     * Calculate the maximum read length from the given list of reads.
-     * @param reads list of reads
-     * @return      non-negative integer
-     */
-    public static int getMaxReadLength( final List<GATKRead> reads ) {
-        if( reads == null ) { throw new IllegalArgumentException("Attempting to check a null list of reads."); }
-
-        int maxReadLength = 0;
-        for( final GATKRead read : reads ) {
-            maxReadLength = Math.max(maxReadLength, read.getLength());
-        }
-        return maxReadLength;
-    }
-
-    /**
      * Creates an "empty", unmapped read with the provided read's read group and mate
      * information, but empty (not-null) fields:
      *  - Cigar String
