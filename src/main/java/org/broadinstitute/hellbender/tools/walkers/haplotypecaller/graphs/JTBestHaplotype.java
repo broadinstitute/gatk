@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.JunctionTreeLinkedDeBruinGraph;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.JunctionTreeLinkedDeBruijnGraph;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -62,12 +62,12 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
     public boolean hasStoppingEvidence(final int weightThreshold) {
 
         // Traverse the non-empty trees until we find one with evidence over our threshold. If we ever find a symbolic end vertex then we stop.
-        for (JunctionTreeLinkedDeBruinGraph.ThreadingNode tree : junctionTreeManager.removeEmptyNodesAndReturnIterator()) {
+        for (JunctionTreeLinkedDeBruijnGraph.ThreadingNode tree : junctionTreeManager.removeEmptyNodesAndReturnIterator()) {
             int totalOut = getTotalOutForBranch(tree);
 
             // Are any of these vertexes symbolic stops?
             if (tree.getChildrenNodes().values().stream()
-                    .anyMatch(JunctionTreeLinkedDeBruinGraph.ThreadingNode::isSymbolicEnd)) {
+                    .anyMatch(JunctionTreeLinkedDeBruijnGraph.ThreadingNode::isSymbolicEnd)) {
                 return true;
             }
             if ( totalOut >= weightThreshold) {
@@ -80,13 +80,13 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
     }
 
     // Tally the total outgoing weight for a particular branch
-    private static int getTotalOutForBranch(final JunctionTreeLinkedDeBruinGraph.ThreadingNode eldestTree) {
+    private static int getTotalOutForBranch(final JunctionTreeLinkedDeBruijnGraph.ThreadingNode eldestTree) {
         return eldestTree == null ? 0 : eldestTree.getChildrenNodes().values().stream()
-                .mapToInt(JunctionTreeLinkedDeBruinGraph.ThreadingNode::getEvidenceCount).sum();
+                .mapToInt(JunctionTreeLinkedDeBruijnGraph.ThreadingNode::getEvidenceCount).sum();
     }
 
     // Helper method for marking trees as visited
-    public void markTreesAsVisited(final List<JunctionTreeLinkedDeBruinGraph.ThreadingTree> trees) {
+    public void markTreesAsVisited(final List<JunctionTreeLinkedDeBruijnGraph.ThreadingTree> trees) {
         junctionTreeManager.visitedTrees.addAll(trees);
     }
 
@@ -109,11 +109,11 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
     public List<JTBestHaplotype<V, E>> getApplicableNextEdgesBasedOnJunctionTrees(final List<E> chain, final Set<E> outgoingEdges, final int weightThreshold) {
         Set<MultiSampleEdge> edgesAccountedForByJunctionTrees = new HashSet<>(); // Since we check multiple junction trees for paths, keep track of which paths we have taken to adding duplicate paths to the graph
         List<JTBestHaplotype<V, E>> output = new ArrayList<>();
-        for ( JunctionTreeLinkedDeBruinGraph.ThreadingNode tree : junctionTreeManager.removeEmptyNodesAndReturnIterator()) {
+        for ( JunctionTreeLinkedDeBruijnGraph.ThreadingNode tree : junctionTreeManager.removeEmptyNodesAndReturnIterator()) {
             int totalOut = getTotalOutForBranch(tree);
 
             // If the total evidence emerging from a given branch
-            for (Map.Entry<MultiSampleEdge, JunctionTreeLinkedDeBruinGraph.ThreadingNode> childNode : tree.getChildrenNodes().entrySet()) {
+            for (Map.Entry<MultiSampleEdge, JunctionTreeLinkedDeBruijnGraph.ThreadingNode> childNode : tree.getChildrenNodes().entrySet()) {
                 if (!outgoingEdges.contains(childNode.getKey())) {
                     throw new GATKException("While constructing graph, there was an incongruity between a JunctionTree edge and the edge present on graph traversal");
                 }
@@ -122,7 +122,7 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
                 if (!childNode.getValue().isSymbolicEnd() && // ignore symbolic end branches, those are handled elsewhere
                         !edgesAccountedForByJunctionTrees.contains(childNode.getKey())) {
                     edgesAccountedForByJunctionTrees.add(childNode.getKey());
-                    JunctionTreeLinkedDeBruinGraph.ThreadingNode child = childNode.getValue();
+                    JunctionTreeLinkedDeBruijnGraph.ThreadingNode child = childNode.getValue();
                     List<E> chainCopy = new ArrayList<>(chain);
                     chainCopy.add((E) childNode.getKey());
                     output.add(new JTBestHaplotype<>(this, chainCopy, child.getEvidenceCount(), totalOut, true));
@@ -178,7 +178,7 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
      * Add a junction tree (corresponding to the current vertex for traversal, note that if a tree has already been visited by this path then it is ignored)
      * @param junctionTreeForNode Junction tree to add
      */
-    public void addJunctionTree(final JunctionTreeLinkedDeBruinGraph.ThreadingTree junctionTreeForNode) {
+    public void addJunctionTree(final JunctionTreeLinkedDeBruijnGraph.ThreadingTree junctionTreeForNode) {
         if (junctionTreeManager.addJunctionTree(junctionTreeForNode)) {
             decisionEdgesTakenSinceLastJunctionTreeEvidence = 0;
         }
@@ -198,8 +198,8 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
      * It also keeps track of the previously visited trees so we can save ourselves from double-counting evidence from a particular tree.
      */
     private class JunctionTreeManager {
-        Set<JunctionTreeLinkedDeBruinGraph.ThreadingTree> visitedTrees;
-        List<JunctionTreeLinkedDeBruinGraph.ThreadingNode> activeNodes;
+        Set<JunctionTreeLinkedDeBruijnGraph.ThreadingTree> visitedTrees;
+        List<JunctionTreeLinkedDeBruijnGraph.ThreadingNode> activeNodes;
 
         protected JunctionTreeManager() {
             visitedTrees = new HashSet<>();
@@ -214,7 +214,7 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         // Add a junction tree, ensuring that there is a valid tree in order to check.
         // NOTE: this method filters out empty trees or trees that have already been visited on this path
         // Return true if the tree was informative and was actually added
-        public boolean addJunctionTree(final JunctionTreeLinkedDeBruinGraph.ThreadingTree junctionTreeForNode) {
+        public boolean addJunctionTree(final JunctionTreeLinkedDeBruijnGraph.ThreadingTree junctionTreeForNode) {
             if (!visitedTrees.contains(junctionTreeForNode) && !junctionTreeForNode.getRootNode().hasNoEvidence()) {
                 visitedTrees.add(junctionTreeForNode);
                 activeNodes.add(junctionTreeForNode.getRootNode());
@@ -233,12 +233,12 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         }
 
         // Returns an iterable list of nodes that have sufficient data in the tree (performs pruning of empty nodes)
-        public Iterable<JunctionTreeLinkedDeBruinGraph.ThreadingNode> removeEmptyNodesAndReturnIterator() {
+        public Iterable<JunctionTreeLinkedDeBruijnGraph.ThreadingNode> removeEmptyNodesAndReturnIterator() {
             activeNodes = activeNodes.stream().filter(node -> getTotalOutForBranch(node) > 0).collect(Collectors.toList());
             return activeNodes;
         }
 
-        private JunctionTreeLinkedDeBruinGraph.ThreadingNode get(int i) {
+        private JunctionTreeLinkedDeBruijnGraph.ThreadingNode get(int i) {
             return activeNodes.get(i);
         }
 

@@ -126,15 +126,15 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public int maxUnprunedVariants = 100;
 
     /**
-     * Disables graph simplification into a seq graph, opts to construct a proper De Brujin graph with potential loops
+     * Disables graph simplification into a seq graph, opts to construct a proper De Bruijn graph with potential loops
      *
      * NOTE: --linked-de-bruijn-graph is currently an experimental feature that does not directly match with
      *        the regular HaplotypeCaller. Specifically the haplotype finding code does not perform correctly at complicated
      *        sites. Use this mode at your own risk.
      */
     @Hidden
-    @Argument(fullName= LINKED_DE_BRUIJN_GRAPH_LONG_NAME, doc = "If enabled, the Assembly Engine will construct a Linked De Brujin graph to recover better haplotypes", optional = true)
-    public boolean useLinkedDeBrujinGraph = false;
+    @Argument(fullName= LINKED_DE_BRUIJN_GRAPH_LONG_NAME, doc = "If enabled, the Assembly Engine will construct a Linked De Bruijn graph to recover better haplotypes", optional = true)
+    public boolean useLinkedDeBruijnGraph = false;
 
     /**
      * This is used to disable the recovery of paths that were dropped in the graph based on the junction trees. Disabling this
