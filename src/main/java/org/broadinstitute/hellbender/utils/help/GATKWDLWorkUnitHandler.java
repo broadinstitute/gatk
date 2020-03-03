@@ -7,6 +7,7 @@ import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DefaultDocWorkUnitHandler;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.HelpDoclet;
+import org.broadinstitute.hellbender.cmdline.RuntimeProperties;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKInputPath;
 import org.broadinstitute.hellbender.engine.GATKOutputPath;
@@ -219,7 +220,7 @@ public class GATKWDLWorkUnitHandler extends DefaultDocWorkUnitHandler {
                 final Type genericTypes[] = pType.getActualTypeArguments();
                 if (genericTypes.length != 1) {
                     throw new GATKException(String.format(
-                            "Generating WDL for tools with argumentss that have types that require multiple type parameters is not supported " +
+                            "Generating WDL for tools with arguments that have types that require multiple type parameters is not supported " +
                                     "(class %s for arg %s in %s has multiple type parameters).",
                             argumentClass,
                             argField.getName(),
@@ -237,7 +238,7 @@ public class GATKWDLWorkUnitHandler extends DefaultDocWorkUnitHandler {
                         if (genericTypes2.length != 1) {
                             throw new GATKException(String.format(
                                     "Generating WDL for tools with args with multiple type parameters is not supported " +
-                                            "(class %s for arg %s in %s has multiple type paramaters).",
+                                            "(class %s for arg %s in %s has multiple type parameters).",
                                     argumentClass,
                                     argField.getName(),
                                     argField.getDeclaringClass()));
@@ -288,7 +289,7 @@ public class GATKWDLWorkUnitHandler extends DefaultDocWorkUnitHandler {
                 wdlType = originalWDLType.replace(typeConversionPair.getKey(), typeConversionPair.getValue());
             }
         } else if (argumentClass.isEnum()) {
-            //TODO: we could emit structs for all the ENUM types into a shared/common WDL file ?
+            //NOTE: we could emit structs for all the ENUM types into a shared/common WDL file ?
             wdlType = originalWDLType.replace(argumentClass.getSimpleName(), "String");
         } else {
             throw new GATKException(
@@ -316,6 +317,16 @@ public class GATKWDLWorkUnitHandler extends DefaultDocWorkUnitHandler {
         if (picard.cmdline.CommandLineProgram.class.isAssignableFrom(toolClass)) {
             final CommandLineProgramProperties clpProperties = currentWorkUnit.getCommandLineProperties();
             currentWorkUnit.setProperty("picardsummary", clpProperties.summary());
+        }
+
+        final RuntimeProperties rtProperties = currentWorkUnit.getClazz().getAnnotation(RuntimeProperties.class);
+        if (rtProperties != null) {
+            final String memory = rtProperties.memory();
+            if (!memory.isEmpty()) {
+                final Map<String, String> runtimePropertiesMap = new HashMap<>();
+                runtimePropertiesMap.put("memory", memory);
+                currentWorkUnit.setProperty("runtimeProperties", runtimePropertiesMap);
+            }
         }
     }
 

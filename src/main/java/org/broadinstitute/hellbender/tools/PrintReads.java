@@ -85,7 +85,7 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
         programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
-@RuntimeProperties
+@RuntimeProperties(memory = "1GB")
 public final class PrintReads extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,

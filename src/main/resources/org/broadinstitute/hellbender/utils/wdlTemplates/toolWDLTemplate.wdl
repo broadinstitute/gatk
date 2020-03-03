@@ -80,6 +80,14 @@ task ${name}Task {
         <@callTaskCommand heading="Optional Common Arguments" argsToUse=arguments.common/>
   >>>
 
+  <#if runtimeProperties?? && runtimeProperties?size != 0>
+  runtime {
+      <#if runtimeProperties.memory != "">
+    memory: "${runtimeProperties.memory}"
+      </#if>
+  }
+  </#if>
+
   output {
     <@defineTaskOutputs heading="Task Outputs" outputs=RuntimeOutputs/>
   }

@@ -15,8 +15,6 @@ import java.util.Map;
 
 //TODO: handle companion files (index, ref index, dict)
 //TODO: generalize build.gradle womtool jar location
-//TODO: expand runtime properties
-
 //TODO: feature inputs with tags
 //TODO: Barclay: remove "--" from barclay args
 

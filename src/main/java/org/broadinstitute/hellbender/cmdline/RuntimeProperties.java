@@ -13,6 +13,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RuntimeProperties {
 
+    // NOTE: any new attributes added here should be propagated to the freemarker map in GATKWDLDoclet.addCustomBindings,
+    // and expanded as appropriate in the freemarker wdl template.
     /**
      * @return a WDL-compatible string specifying the runtime memory requirements for this tool
      */
