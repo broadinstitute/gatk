@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SBIIndexWriter;
 import htsjdk.samtools.SamFileHeaderMerger;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.FileExtensions;
@@ -80,6 +81,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     public static final String OUTPUT_SHARD_DIR_LONG_NAME = "output-shard-tmp-dir";
     public static final String CREATE_OUTPUT_BAM_SPLITTING_INDEX_LONG_NAME = "create-output-bam-splitting-index";
     public static final String USE_NIO = "use-nio";
+    public static final String SPLITTING_INDEX_GRANULARITY = "splitting-index-granularity";
 
     @ArgumentCollection
     public final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
@@ -134,6 +136,12 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     @Argument(fullName = CREATE_OUTPUT_BAM_SPLITTING_INDEX_LONG_NAME,
             doc = "If true, create a BAM splitting index (SBI) when writing a coordinate-sorted BAM file.", optional = true, common = true)
     public boolean createOutputBamSplittingIndex = ConfigFactory.getInstance().getGATKConfig().createOutputBamIndex();
+
+    @Argument(fullName = SPLITTING_INDEX_GRANULARITY,
+             doc = "Granularity to use when writing a splitting index, one entry will be put into the index every n reads where n is this granularity value. Smaller granularity results in a larger index with more available split points.",
+             optional = true, common = true,
+             minValue = 1)
+    public long splittingIndexGranularity = SBIIndexWriter.DEFAULT_GRANULARITY;
 
     @Argument(fullName = StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME,
             shortName = StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_SHORT_NAME,
@@ -366,7 +374,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             ReadsSparkSink.writeReads(ctx, outputFile,
                     hasReference() ? referenceArguments.getReferencePath().toAbsolutePath().toUri().toString() : null,
                     reads, header, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
-                    getRecommendedNumReducers(), shardedPartsDir, createOutputBamIndex, createOutputBamSplittingIndex, sortReadsToHeader);
+                    getRecommendedNumReducers(), shardedPartsDir, createOutputBamIndex, createOutputBamSplittingIndex, sortReadsToHeader, splittingIndexGranularity);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputFile,"writing failed", e);
         }
