@@ -1402,9 +1402,9 @@ public final class ReadUtils {
             if (cigarElements.isEmpty()) {
                 throw new IllegalArgumentException("the input read is mapped yet has an empty cigar");
             } else if (!read.isReverseStrand()) {
-                return getFirstAlignedBaseOffset(read) + 1 + CigarUtils.countLeftHardClippedBases(read.getCigar());
+                return getFirstAlignedBaseOffset(read) + 1 + CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL, CigarOperator.HARD_CLIP);
             } else {
-                return read.getLength() - getAfterLastAlignedBaseOffset(read) + 1 + CigarUtils.countRightHardClippedBases(read.getCigar());
+                return read.getLength() - getAfterLastAlignedBaseOffset(read) + 1 + CigarUtils.countClippedBases(read.getCigar(), ClippingTail.RIGHT_TAIL, CigarOperator.HARD_CLIP);
             }
         }
     }
@@ -1472,10 +1472,10 @@ public final class ReadUtils {
                 throw new IllegalArgumentException("the input read is mapped but the cigar is empty");
             } else if (!read.isReverseStrand()) {
                 final int offset = getAfterLastAlignedBaseOffset(read);
-                return offset + CigarUtils.countLeftHardClippedBases(read.getCigar());
+                return offset + CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL, CigarOperator.HARD_CLIP);
             } else {
                 final int offset = getFirstAlignedBaseOffset(read);
-                return read.getLength() - offset + CigarUtils.countRightHardClippedBases(read.getCigar());
+                return read.getLength() - offset + CigarUtils.countClippedBases(read.getCigar(), ClippingTail.RIGHT_TAIL, CigarOperator.HARD_CLIP);
             }
         }
     }

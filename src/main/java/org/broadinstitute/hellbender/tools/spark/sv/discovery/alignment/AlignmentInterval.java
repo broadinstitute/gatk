@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import scala.Tuple2;
@@ -152,8 +153,8 @@ public final class AlignmentInterval {
 
         this.referenceSpan = new SimpleInterval(referenceContig, start,
                 Math.max(start, cigar.getReferenceLength() + start - 1));
-        this.startInAssembledContig = 1 + CigarUtils.countLeftClippedBases(cigar);
-        this.endInAssembledContig = CigarUtils.countUnclippedReadBases(cigar) - CigarUtils.countRightClippedBases(cigar);
+        this.startInAssembledContig = 1 + CigarUtils.countClippedBases(cigar, ClippingTail.LEFT_TAIL);
+        this.endInAssembledContig = CigarUtils.countUnclippedReadBases(cigar) - CigarUtils.countClippedBases(cigar, ClippingTail.RIGHT_TAIL);
         this.mapQual = mappingQuality;
         this.mismatches = mismatches;
         this.alnScore = alignmentScore;

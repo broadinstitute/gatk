@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import scala.Tuple2;
 import scala.Tuple3;
 
@@ -63,10 +64,10 @@ public final class ContigAlignmentsModifier {
             newTigStart = originalContigStart;
             newTigEnd   = Math.min(originalContigEnd - clipLengthOnRead,
                                    SvCigarUtils.getUnclippedReadLength(newCigarAlong5to3DirectionOfContig) -
-                                           CigarUtils.countRightClippedBases(newCigarAlong5to3DirectionOfContig));
+                                           CigarUtils.countClippedBases(newCigarAlong5to3DirectionOfContig, ClippingTail.RIGHT_TAIL));
         } else {
             newTigStart = Math.max(originalContigStart + clipLengthOnRead,
-                                   CigarUtils.countLeftClippedBases(newCigarAlong5to3DirectionOfContig) + 1);
+                                   CigarUtils.countClippedBases(newCigarAlong5to3DirectionOfContig, ClippingTail.LEFT_TAIL) + 1);
             newTigEnd   = originalContigEnd;
         }
 

@@ -248,73 +248,52 @@ public final class CigarUtils {
                 .sum();
     }
 
-    private static int countClippedBases(final Cigar cigar, final ClippingTail tail, final boolean includeSoftClips, final boolean includeHardClips) {
-        Utils.nonNull(cigar);
-        Utils.nonNull(tail);
+    /**
+     * Count the number of soft- or hard- clipped bases from either the left or right end of a cigar
+     */
+    public static int countClippedBases(final Cigar cigar, final ClippingTail tail, final CigarOperator typeOfClip) {
+        Utils.validateArg(typeOfClip.isClipping(), "typeOfClip must be a clipping operator");
 
-        if (cigar.numCigarElements() == 0) {
+        final int size = cigar.numCigarElements();
+        if (size < 2) {
+            Utils.validateArg(size == 1 && !cigar.getFirstCigarElement().getOperator().isClipping(), "cigar is empty or completely clipped.");
             return 0;
         }
 
-        Utils.validate(includeHardClips || includeSoftClips, "no clips chosen");
-        final Predicate<CigarOperator> pred = !includeHardClips ? op -> op == CigarOperator.S :
-                (includeSoftClips ? op -> op.isClipping() : op -> op == CigarOperator.H);
         int result = 0;
-        final Iterable<CigarElement> cigarElementsStartingWithClips = tail == ClippingTail.LEFT_TAIL ? cigar : Lists.reverse(cigar.getCigarElements());
-        for (final CigarElement elem : cigarElementsStartingWithClips) {
-            final CigarOperator operator = elem.getOperator();
-            if (!operator.isClipping()) {
+
+        for (int n = 0; n < size; n++) {
+            final int index = (tail == ClippingTail.LEFT_TAIL ? n : size - n - 1);
+            final CigarElement element = cigar.getCigarElement(index);
+            if (!element.getOperator().isClipping()) {
                 return result;
-            } else if (pred.test(operator)) {
-                result += elem.getLength();
+            } else if (element.getOperator() == typeOfClip) {
+                result += element.getLength();
             }
         }
 
-        throw new IllegalArgumentException("Input cigar has a single clipped region that cannot be assigned unambiguously to the left or right of the read");
+        throw new IllegalArgumentException("Input cigar " + cigar + " is completely clipped.");
     }
 
     /**
-     * Total number of bases clipped on the left/head side of the cigar.
-     *
-     * @param cigar the input cigar.
-     * @throws IllegalArgumentException if {@code cigar} is {@code null}.
-     * @return 0 or greater.
+     * Count the number clipped bases (both soft and hard) from either the left or right end of a cigar
      */
-    public static int countLeftClippedBases(final Cigar cigar) {
-        return countClippedBases(cigar, ClippingTail.LEFT_TAIL, true, true);
+    public static int countClippedBases(final Cigar cigar, final ClippingTail tail) {
+        return countClippedBases(cigar, tail, CigarOperator.SOFT_CLIP) + countClippedBases(cigar, tail, CigarOperator.HARD_CLIP);
     }
 
     /**
-     * Returns the number of based hard-clipped to the left/head of the cigar.
-     *
-     * @param cigar the input cigar.
-     * @throws IllegalArgumentException if {@code cigar} is {@code null}.
-     * @return 0 or greater.
+     * Count the number of soft- and hard-clipped bases over both ends of a cigar
      */
-    public static int countLeftHardClippedBases(final Cigar cigar) {
-        return countClippedBases(cigar, ClippingTail.LEFT_TAIL, false, true);
+    public static int countClippedBases(final Cigar cigar, final CigarOperator clippingType) {
+        return countClippedBases(cigar, ClippingTail.LEFT_TAIL, clippingType) + countClippedBases(cigar, ClippingTail.RIGHT_TAIL, clippingType);
     }
 
     /**
-     * Returns the number of based hard-clipped to the right/tail of the cigar.
-     *
-     * @param cigar the input cigar.
-     * @throws IllegalArgumentException if {@code cigar} is {@code null}.
-     * @return 0 or greater.
+     * Count the number of clipped bases (both soft and hard) over both ends of a cigar
      */
-    public static int countRightHardClippedBases(final Cigar cigar) {
-        return countClippedBases(cigar, ClippingTail.RIGHT_TAIL, false, true);
-    }
-
-    /**
-     * Total number of bases clipped (soft or hard) on the right/tail side of the cigar.
-     *
-     * @param cigar the input cigar.
-     * @throws IllegalArgumentException if {@code cigar} is {@code null}
-     * @return 0 or greater.
-     */
-    public static int countRightClippedBases(final Cigar cigar) {
-        return countClippedBases(cigar, ClippingTail.RIGHT_TAIL, true, true);
+    public static int countClippedBases(final Cigar cigar) {
+        return countClippedBases(cigar, ClippingTail.LEFT_TAIL) + countClippedBases(cigar, ClippingTail.RIGHT_TAIL);
     }
 
     public static int countAlignedBases(final Cigar cigar ) {

@@ -729,14 +729,14 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "mappedGatkReadsData")
     public void testGetFirstAlignedBaseOffset(final GATKRead read) {
         final int actual = ReadUtils.getFirstAlignedBaseOffset(read);
-        final int expected = CigarUtils.countLeftClippedBases(read.getCigar()) - CigarUtils.countLeftHardClippedBases(read.getCigar());
+        final int expected = CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL) - CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL, CigarOperator.HARD_CLIP);
         Assert.assertEquals(actual, expected);
     }
 
     @Test(dataProvider = "mappedGatkReadsData")
     public void testGetAfterLastAlignedBaseOffset(final GATKRead read) {
         final int actual = ReadUtils.getAfterLastAlignedBaseOffset(read);
-        final int expected = read.getLength() - (CigarUtils.countRightClippedBases(read.getCigar()) - CigarUtils.countRightHardClippedBases(read.getCigar()));
+        final int expected = read.getLength() - (CigarUtils.countClippedBases(read.getCigar(), ClippingTail.RIGHT_TAIL) - CigarUtils.countClippedBases(read.getCigar(), ClippingTail.RIGHT_TAIL, CigarOperator.HARD_CLIP));
         Assert.assertEquals(actual, expected);
     }
 
@@ -744,8 +744,8 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     public void testGetFirstPositionAligned(final GATKRead read) {
         final int actual = ReadUtils.getFirstAlignedReadPosition(read);
         final int expected = (!read.isReverseStrand()
-                    ? CigarUtils.countLeftClippedBases(read.getCigar()) + 1
-                    : CigarUtils.countRightClippedBases(read.getCigar()) + 1);
+                    ? CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL) + 1
+                    : CigarUtils.countClippedBases(read.getCigar(), ClippingTail.RIGHT_TAIL) + 1);
         Assert.assertEquals(actual, expected);
     }
 
@@ -753,8 +753,8 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     public void testGetLastPositionAligned(final GATKRead read) {
         final int actual = ReadUtils.getLastAlignedReadPosition(read);
         final int expected = (!read.isReverseStrand()
-                ? CigarUtils.countUnclippedReadBases(read.getCigar()) - CigarUtils.countRightClippedBases(read.getCigar())
-                : CigarUtils.countUnclippedReadBases(read.getCigar()) - CigarUtils.countLeftClippedBases(read.getCigar()));
+                ? CigarUtils.countUnclippedReadBases(read.getCigar()) - CigarUtils.countClippedBases(read.getCigar(), ClippingTail.RIGHT_TAIL)
+                : CigarUtils.countUnclippedReadBases(read.getCigar()) - CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL));
         Assert.assertEquals(actual, expected);
     }
 
