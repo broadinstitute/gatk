@@ -11,6 +11,8 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemb
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -259,9 +261,9 @@ public class ContigAlignmentsModifierUnitTest extends GATKBaseTest {
     private static Iterable<AlignmentInterval> willThrowOnInvalidCigar(final Cigar cigar, final int readStart) throws GATKException {
         final AlignmentInterval detailsDoesnotMatter = new AlignmentInterval(
                 new SimpleInterval("1", 1, cigar.getReferenceLength()),
-                readStart, readStart+cigar.getReadLength()-SvCigarUtils.getNumSoftClippingBases(true, cigar.getCigarElements())-SvCigarUtils.getNumSoftClippingBases(false, cigar.getCigarElements()), cigar,
+                readStart, readStart+cigar.getReadLength() - CigarUtils.countClippedBases(cigar, CigarOperator.SOFT_CLIP), cigar,
                 true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        return ContigAlignmentsModifier.splitGappedAlignment(detailsDoesnotMatter, 1, cigar.getReadLength() + SvCigarUtils.getTotalHardClipping(cigar));
+        return ContigAlignmentsModifier.splitGappedAlignment(detailsDoesnotMatter, 1, cigar.getReadLength() + CigarUtils.countClippedBases(cigar, CigarOperator.HARD_CLIP));
     }
 
 
@@ -273,38 +275,38 @@ public class ContigAlignmentsModifierUnitTest extends GATKBaseTest {
         AlignmentInterval alignment = new AlignmentInterval(new SimpleInterval("1", 1, 10),
                 21, 30, cigar,
                 true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        ContigAlignmentsModifier.splitGappedAlignment(alignment, 1, cigar.getReadLength() + SvCigarUtils.getTotalHardClipping(cigar));
+        ContigAlignmentsModifier.splitGappedAlignment(alignment, 1, cigar.getReadLength() + CigarUtils.countClippedBases(cigar, CigarOperator.HARD_CLIP));
 
         cigar = TextCigarCodec.decode("10S10I10M");
         alignment = new AlignmentInterval(new SimpleInterval("1", 1, 10),
                 21, 30, cigar,
                 true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        ContigAlignmentsModifier.splitGappedAlignment(alignment, 1, cigar.getReadLength() + SvCigarUtils.getTotalHardClipping(cigar));
+        ContigAlignmentsModifier.splitGappedAlignment(alignment, 1, cigar.getReadLength() + CigarUtils.countClippedBases(cigar, CigarOperator.HARD_CLIP));
 
         cigar = TextCigarCodec.decode("10M10I10S");
         alignment = new AlignmentInterval(new SimpleInterval("1", 1, 10),
                 1, 10, cigar,
                 true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        ContigAlignmentsModifier.splitGappedAlignment(alignment, 1, cigar.getReadLength() + SvCigarUtils.getTotalHardClipping(cigar));
+        ContigAlignmentsModifier.splitGappedAlignment(alignment, 1, cigar.getReadLength() + CigarUtils.countClippedBases(cigar, CigarOperator.HARD_CLIP));
 
         cigar = TextCigarCodec.decode("10M10I10H");
         alignment = new AlignmentInterval(new SimpleInterval("1", 1, 10),
                 1, 10, cigar,
                 true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        ContigAlignmentsModifier.splitGappedAlignment(alignment, 1, cigar.getReadLength() + SvCigarUtils.getTotalHardClipping(cigar));
+        ContigAlignmentsModifier.splitGappedAlignment(alignment, 1, cigar.getReadLength() + CigarUtils.countClippedBases(cigar, CigarOperator.HARD_CLIP));
 
         // last two are valid
         cigar = TextCigarCodec.decode("10H10M10I10M10S");
         alignment = new AlignmentInterval(new SimpleInterval("1", 1, 20),
                 11, 40, cigar,
                 true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        ContigAlignmentsModifier.splitGappedAlignment(alignment, 1, cigar.getReadLength() + SvCigarUtils.getTotalHardClipping(cigar));
+        ContigAlignmentsModifier.splitGappedAlignment(alignment, 1, cigar.getReadLength() + CigarUtils.countClippedBases(cigar, CigarOperator.HARD_CLIP));
 
         cigar = TextCigarCodec.decode("10H10M10D10M10S");
         alignment = new AlignmentInterval(new SimpleInterval("1", 1, 30),
                 11, 30, cigar,
                 true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        ContigAlignmentsModifier.splitGappedAlignment(alignment, 1, cigar.getReadLength() + SvCigarUtils.getTotalHardClipping(cigar));
+        ContigAlignmentsModifier.splitGappedAlignment(alignment, 1, cigar.getReadLength() + CigarUtils.countClippedBases(cigar, CigarOperator.HARD_CLIP));
     }
 
     //==================================================================================================================

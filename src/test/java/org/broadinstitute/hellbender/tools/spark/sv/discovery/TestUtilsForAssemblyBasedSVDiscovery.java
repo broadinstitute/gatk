@@ -8,10 +8,10 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSpar
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import scala.Tuple2;
 
 import java.io.IOException;
@@ -90,8 +90,8 @@ public final class TestUtilsForAssemblyBasedSVDiscovery {
 
         final SimpleInterval refSpan = new SimpleInterval(chr, start, start - 1 + cigar.getReferenceLength());
         return new AlignmentInterval(refSpan,
-                SvCigarUtils.getNumClippedBases(true, readCigar) + 1,
-                SvCigarUtils.getUnclippedReadLength(readCigar) - SvCigarUtils.getNumClippedBases(false, readCigar),
+                CigarUtils.countClippedBases(readCigar, ClippingTail.LEFT_TAIL) + 1,
+                CigarUtils.countUnclippedReadBases(readCigar) - CigarUtils.countClippedBases(readCigar, ClippingTail.RIGHT_TAIL),
                 readCigar,
                 forwardStrand,
                 mapQual, numMismatch, alignerScore,

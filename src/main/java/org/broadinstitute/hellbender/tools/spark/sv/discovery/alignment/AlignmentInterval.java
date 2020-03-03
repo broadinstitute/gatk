@@ -283,7 +283,7 @@ public final class AlignmentInterval {
         this.cigarAlong5to3DirectionOfContig = forwardStrand ? TextCigarCodec.decode(alignment.getCigar())
                 : CigarUtils.invertCigar(TextCigarCodec.decode(alignment.getCigar()));
         Utils.validateArg(
-                cigarAlong5to3DirectionOfContig.getReadLength() + SvCigarUtils.getTotalHardClipping(cigarAlong5to3DirectionOfContig)
+                cigarAlong5to3DirectionOfContig.getReadLength() + CigarUtils.countClippedBases(cigarAlong5to3DirectionOfContig, CigarOperator.HARD_CLIP)
                         == unclippedContigLength,
                 "contig length provided in constructor and inferred length by computation are different: " +
                         unclippedContigLength + "\t" + alignment.toString());
@@ -382,13 +382,13 @@ public final class AlignmentInterval {
     }
 
     private static int getAlignmentStartInOriginalContig(final SAMRecord samRecord) {
-        return SvCigarUtils.getNumClippedBases(!samRecord.getReadNegativeStrandFlag(), samRecord.getCigar()) + 1;
+        return CigarUtils.countClippedBases(samRecord.getCigar(), samRecord.getReadNegativeStrandFlag() ? ClippingTail.RIGHT_TAIL : ClippingTail.LEFT_TAIL) + 1;
     }
 
     private static int getAlignmentEndInOriginalContig(final SAMRecord samRecord) {
         final Cigar cigar = samRecord.getCigar();
-        return cigar.getReadLength() + SvCigarUtils.getTotalHardClipping(cigar) -
-                SvCigarUtils.getNumClippedBases(samRecord.getReadNegativeStrandFlag(), cigar);
+        return cigar.getReadLength() + CigarUtils.countClippedBases(cigar, CigarOperator.HARD_CLIP) -
+                CigarUtils.countClippedBases(cigar, samRecord.getReadNegativeStrandFlag() ? ClippingTail.LEFT_TAIL : ClippingTail.RIGHT_TAIL);
     }
 
     AlignmentInterval(final Kryo kryo, final Input input) {
