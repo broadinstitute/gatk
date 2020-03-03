@@ -31,13 +31,6 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.A
 public class ContigAlignmentsModifierUnitTest extends GATKBaseTest {
 
     @Test(groups = "sv")
-    public void testCompactifyNeighboringSoftClippings() {
-        Assert.assertEquals(new Cigar(SvCigarUtils.compactifyNeighboringSoftClippings(TextCigarCodec.decode("1H2S3S4M5D6M7I8M9S10S11H")
-                        .getCigarElements())),
-                TextCigarCodec.decode("1H5S4M5D6M7I8M19S11H"));
-    }
-
-    @Test(groups = "sv")
     public void testGappedAlignmentBreaker_OneInsertion() {
 
         final Cigar cigar = TextCigarCodec.decode("56S27M15I32M21S");

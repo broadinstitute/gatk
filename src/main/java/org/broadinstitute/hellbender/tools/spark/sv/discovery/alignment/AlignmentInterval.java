@@ -326,7 +326,7 @@ public final class AlignmentInterval {
     static final void checkValidArgument(final Cigar cigar, final SimpleInterval referenceSpan,
                                          final int readStart, final int readEnd) {
 
-        final int softClippedBases = SvCigarUtils.checkCigarAndConvertTerminalInsertionToSoftClip(cigar).stream().filter(ce -> ce.getOperator().equals(CigarOperator.S)).mapToInt(CigarElement::getLength).sum();
+        final int softClippedBases = SvCigarUtils.convertTerminalInsertionToSoftClip(cigar).getCigarElements().stream().filter(ce -> ce.getOperator().equals(CigarOperator.S)).mapToInt(CigarElement::getLength).sum();
         final int readLength = cigar.getReadLength() - softClippedBases;
         final int referenceLength = cigar.getReferenceLength();
         final boolean validState = referenceLength == referenceSpan.size() && readLength == (readEnd - readStart + 1);
