@@ -2,20 +2,21 @@ package org.broadinstitute.hellbender.testutils;
 
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.StringUtils;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * Builder for command line argument lists
- * It will convert old style "Argument=Value" into new style "--Argument value" strings
+ * Builder for command line argument lists with lots of convenience methods for adding standard GATK arguments such as
+ * input, output, variants, reference, and intervals.
+ * 
  * Use this only in test code.
  */
 public final class ArgumentsBuilder {
@@ -26,9 +27,9 @@ public final class ArgumentsBuilder {
     public ArgumentsBuilder(Object[] args){
         for (Object arg: args){
             if (arg instanceof String){
-                this.add((String) arg);
+                addRaw((String) arg);
             } else {
-                this.add(arg);
+                addRaw(arg);
             }
         }
     }
@@ -36,190 +37,159 @@ public final class ArgumentsBuilder {
     /**
      * Add a string to the arguments list
      * Strings are processed specially, they are reformatted to match the new unix style arguments
+     *
+     * NOTE: In general this method should be avoided in favor of other methods that handle adding dashes.
      * @param arg A string representing one or more arguments
      * @return the ArgumentsBuilder
      */
-    public ArgumentsBuilder add(String arg){
+    public ArgumentsBuilder addRaw(String arg){
         List<String> chunks = Arrays.asList(StringUtils.split(arg.trim()));
         for (String chunk : chunks){
-            addRaw(chunk);
+            args.add(chunk);
         }
-        return this;
-    }
-
-    /**
-     * Add a string to the arguments list without processing the string itself.
-     * @param arg A string representing one or more arguments
-     * @return the ArgumentsBuilder
-     */
-    public ArgumentsBuilder addRaw(final String arg){
-        if(arg.contains("=")){
-            final String tmp = "--"+arg;
-            args.addAll(Arrays.asList(tmp.split("=")));
-        }
-        else{
-            args.add(arg);
-        }
-        return this;
-    }
-
-    /**
-     * add an input file argument {@link StandardArgumentDefinitions#INPUT_LONG_NAME}
-     */
-    public ArgumentsBuilder addInput(File input) {
-        addFileArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, input);
-        return this;
-    }
-
-    /**
-     * add an output file argument using {@link StandardArgumentDefinitions#OUTPUT_LONG_NAME}
-     */
-    public ArgumentsBuilder addOutput(File output) {
-        addFileArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, output);
-        return this;
-    }
-
-    /**
-     * add a reference file argument using {@link StandardArgumentDefinitions#REFERENCE_LONG_NAME}
-     */
-    public ArgumentsBuilder addReference(File reference){
-        addFileArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference);
-        return this;
-    }
-
-    /**
-     * add a reference file argument using {@link StandardArgumentDefinitions#REFERENCE_LONG_NAME}
-     */
-    public ArgumentsBuilder addReference(String reference){
-        addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference);
-        return this;
-    }
-
-
-    /**
-     * add a vcf file argument using {@link StandardArgumentDefinitions#VARIANT_LONG_NAME}
-     */
-    public ArgumentsBuilder addVCF(File fileIn) {
-        addFileArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, fileIn);
-        return this;
-    }
-
-    /**
-     * add an argument with a file as its parameter
-     */
-    public ArgumentsBuilder addFileArgument(String argumentName, File file){
-        Utils.nonNull(file);
-        Utils.nonNull(argumentName);
-        add("--" + argumentName);
-        add(file.getAbsolutePath());
-        return this;
-    }
-
-    /**
-     * add an argument with a boolean as its parameter
-     */
-    public ArgumentsBuilder addBooleanArgument(String argumentName, boolean yes){
-        Utils.nonNull(argumentName);
-        add("--" + argumentName);
-        add(yes);
-        return this;
-    }
-
-    /**
-     * add an argument with a number as its parameter
-     */
-    public ArgumentsBuilder addNumericArgument(String argumentName, final Number value){
-        Utils.nonNull(argumentName);
-        add("--" + argumentName);
-        add(String.valueOf(value));
-        return this;
-    }
-
-    /**
-     * add an argument with a given value to this builder
-     */
-    public ArgumentsBuilder addArgument(final String argumentName, final String argumentValue) {
-        Utils.nonNull(argumentValue);
-        Utils.nonNull(argumentName);
-        add("--" + argumentName);
-        add(argumentValue);
-        return this;
-    }
-
-    public ArgumentsBuilder addArgument(final String argumentName, final Object value) {
-        Utils.nonNull(argumentName);
-        add("--" + argumentName);
-        if (value != null) {
-            add(value);
-        }
-        return this;
-    }
-
-    /**
-     * add an argument with a given value to this builder
-     */
-    public ArgumentsBuilder addArgument(final String argumentName) {
-        Utils.nonNull(argumentName);
-        add("--" + argumentName);
-        return this;
-    }
-
-    public ArgumentsBuilder addInterval(Locatable interval){
-        Utils.nonNull(interval);
-        add("-L");
-        add(IntervalUtils.locatableToString(interval));
-        return this;
-    }
-
-    public ArgumentsBuilder addIntervalFile(final File interval){
-        return addFileArgument("L", interval);
-    }
-
-    public ArgumentsBuilder addMask(final File mask){
-        return addFileArgument(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, mask);
-    }
-
-    /**
-     * Add an argument with a given value to this builder without splitting the value string into multiple arguments at whitespace.
-     * This is specifically to allow arguments with values that contain whitespace.
-     */
-    public ArgumentsBuilder addArgumentWithValueThatIncludesWhitespace(final String argumentName, final String argumentValue) {
-        Utils.nonNull(argumentValue);
-        Utils.nonNull(argumentName);
-        add("--" + argumentName);
-        addRaw(argumentValue);
-        return this;
-    }
-
-    /**
-     * add a positional argument to this builder
-     */
-    public ArgumentsBuilder addPositionalArgument(final String argumentName) {
-        Utils.nonNull(argumentName);
-        add(argumentName);
         return this;
     }
 
     /**
      * Add any object's string representation to the arguments list
      */
-    public ArgumentsBuilder add(Object arg) {
-        this.args.add(arg.toString());
+    public ArgumentsBuilder addRaw(Object arg) {
+        args.add(arg.toString());
         return this;
+    }
+
+    // ARGUMENT/VALUE METHODS
+
+    /**
+     * add an argument with a given value to this builder.
+     *
+     * This is the fundamental add method that others invoke.  It adds dashes to the argument name.
+     */
+    public ArgumentsBuilder add(final String argumentName, final String argumentValue) {
+        Utils.nonNull(argumentValue);
+        Utils.nonNull(argumentName);
+        addRaw("--" + argumentName);
+        addRaw(argumentValue);
+        return this;
+    }
+
+    public ArgumentsBuilder add(final String argumentName, final File file){
+        Utils.nonNull(file);
+        return add(argumentName, file.getAbsolutePath());
+    }
+
+    public ArgumentsBuilder add(final String argumentName, final Path path){
+        Utils.nonNull(path);
+        return add(argumentName, path.toString());
+    }
+
+    public ArgumentsBuilder add(final String argumentName, final boolean yes){
+        return add(argumentName, String.valueOf(yes));
+    }
+
+    public ArgumentsBuilder add(final String argumentName, final Number value){
+        Utils.nonNull(value);
+        return add(argumentName, value.toString());
+    }
+
+    // CONVENIENCE METHODS WITH BUILT-IN STANDARD ARGUMENTS
+
+    // INPUT
+
+    public ArgumentsBuilder addInput(final File input) {
+        return add(StandardArgumentDefinitions.INPUT_LONG_NAME, input);
+    }
+
+    public ArgumentsBuilder addInput(final String input) {
+        return add(StandardArgumentDefinitions.INPUT_LONG_NAME, input);
+    }
+
+    public ArgumentsBuilder addInput(final Path input) {
+        return add(StandardArgumentDefinitions.INPUT_LONG_NAME, input);
+    }
+
+    // OUTPUT
+
+    public ArgumentsBuilder addOutput(final File output) {
+        return add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, output);
+    }
+
+    public ArgumentsBuilder addOutput(final String output) {
+        return add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, output);
+    }
+
+    public ArgumentsBuilder addOutput(final Path output) {
+        return add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, output.toString());
+    }
+
+    // REFERENCE
+
+    public ArgumentsBuilder addReference(final File reference){
+        return add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference);
+    }
+
+    public ArgumentsBuilder addReference(final String reference){
+        return add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference);
+    }
+
+    public ArgumentsBuilder addReference(final Path reference){
+        return add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference.toString());
+    }
+
+    // VCF
+
+    public ArgumentsBuilder addVCF(final File vcf) {
+        return add(StandardArgumentDefinitions.VARIANT_LONG_NAME, vcf);
+    }
+
+    public ArgumentsBuilder addVCF(final String vcf) {
+        return add(StandardArgumentDefinitions.VARIANT_LONG_NAME, vcf);
+    }
+
+    public ArgumentsBuilder addVCF(final Path vcf) {
+        return add(StandardArgumentDefinitions.VARIANT_LONG_NAME, vcf);
+    }
+
+    //FLAG
+
+    public ArgumentsBuilder addFlag(final String argumentName) {
+        Utils.nonNull(argumentName);
+        return addRaw("--" + argumentName);
+    }
+
+    // INTERVALS
+
+    public ArgumentsBuilder addInterval(final String interval){
+        Utils.nonNull(interval);
+        return add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, interval);
+    }
+
+    public ArgumentsBuilder addInterval(final Locatable interval){
+        Utils.nonNull(interval);
+        return add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, IntervalUtils.locatableToString(interval));
+    }
+
+    public ArgumentsBuilder addIntervals(final File interval){
+        Utils.nonNull(interval);
+        return add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, interval);
+    }
+
+    public ArgumentsBuilder addMask(final File mask){
+        return add(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, mask);
     }
 
     /**
      * @return the arguments as List
      */
     public List<String> getArgsList(){
-        return this.args;
+        return args;
     }
 
     /**
      * @return the arguments as String[]
      */
     public String[] getArgsArray(){
-        return this.args.toArray(new String[this.args.size()]);
+        return args.toArray(new String[this.args.size()]);
     }
 
 

@@ -43,7 +43,7 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
             String args =
                     "--" + ParallelCopyGCSDirectoryIntoHDFSSpark.INPUT_GCS_PATH_LONG_NAME + " " + gcpInputPath +
                             " --" + ParallelCopyGCSDirectoryIntoHDFSSpark.OUTPUT_HDFS_DIRECTORY_LONG_NAME + " " + tempPath;
-            ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
+            ArgumentsBuilder ab = new ArgumentsBuilder().addRaw(args);
             IntegrationTestSpec spec = new IntegrationTestSpec(
                     ab.getString(),
                     Collections.emptyList());
@@ -104,7 +104,7 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
                     "--" + ParallelCopyGCSDirectoryIntoHDFSSpark.INPUT_GCS_PATH_LONG_NAME + " " + gcpInputPath +
                             (glob == null ? "" : " --" + ParallelCopyGCSDirectoryIntoHDFSSpark.INPUT_GLOB + " " + glob) +
                             " --" + ParallelCopyGCSDirectoryIntoHDFSSpark.OUTPUT_HDFS_DIRECTORY_LONG_NAME + " " + tempPath;
-            ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
+            ArgumentsBuilder ab = new ArgumentsBuilder().addRaw(args);
             IntegrationTestSpec spec = new IntegrationTestSpec(
                     ab.getString(),
                     Collections.emptyList());

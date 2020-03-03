@@ -55,17 +55,17 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputFile = File.createTempFile("funcotatesegs_simple", ".seg");
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
-        arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
-        arguments.add(SIMPLE_TEST_FILE);
-        arguments.add("--" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
-        arguments.add(FuncotatorArgumentDefinitions.OutputFormatType.SEG);
-        arguments.add("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
-        arguments.add(b37Reference);
-        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        arguments.add(outputFile.getAbsolutePath());
-        arguments.add("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
-        arguments.add(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersion.hg19.toString());
-        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
+        arguments.addRaw("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
+        arguments.addRaw(SIMPLE_TEST_FILE);
+        arguments.addRaw("--" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
+        arguments.addRaw(FuncotatorArgumentDefinitions.OutputFormatType.SEG);
+        arguments.addRaw("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
+        arguments.addRaw(b37Reference);
+        arguments.addRaw("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.addRaw(outputFile.getAbsolutePath());
+        arguments.addRaw("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
+        arguments.addRaw(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersion.hg19.toString());
+        arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
 
         runCommandLine(arguments);
 
@@ -134,17 +134,17 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputFile = File.createTempFile("funcotatesegs_simple_cntn4", ".seg");
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
-        arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
-        arguments.add(SIMPLE_TEST_CNTN4_FILE);
-        arguments.add("--" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
-        arguments.add(FuncotatorArgumentDefinitions.OutputFormatType.SEG);
-        arguments.add("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
-        arguments.add(b37Reference);
-        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        arguments.add(outputFile.getAbsolutePath());
-        arguments.add("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
-        arguments.add(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersion.hg19.toString());
-        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_CNTN4_DIR);
+        arguments.addRaw("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
+        arguments.addRaw(SIMPLE_TEST_CNTN4_FILE);
+        arguments.addRaw("--" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
+        arguments.addRaw(FuncotatorArgumentDefinitions.OutputFormatType.SEG);
+        arguments.addRaw("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
+        arguments.addRaw(b37Reference);
+        arguments.addRaw("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.addRaw(outputFile.getAbsolutePath());
+        arguments.addRaw("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
+        arguments.addRaw(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersion.hg19.toString());
+        arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_CNTN4_DIR);
 
         runCommandLine(arguments);
 
@@ -211,17 +211,17 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputFile = File.createTempFile("funcotatesegs_gatk_called", ".seg");
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
-        arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
-        arguments.add(TEST_GATK_FILE_B37);
-        arguments.add("--" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
-        arguments.add(FuncotatorArgumentDefinitions.OutputFormatType.SEG);
-        arguments.add("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
-        arguments.add(b37Reference);
-        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        arguments.add(outputFile.getAbsolutePath());
-        arguments.add("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
-        arguments.add("hg19");
-        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_CNTN4_DIR);
+        arguments.addRaw("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
+        arguments.addRaw(TEST_GATK_FILE_B37);
+        arguments.addRaw("--" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
+        arguments.addRaw(FuncotatorArgumentDefinitions.OutputFormatType.SEG);
+        arguments.addRaw("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
+        arguments.addRaw(b37Reference);
+        arguments.addRaw("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.addRaw(outputFile.getAbsolutePath());
+        arguments.addRaw("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
+        arguments.addRaw("hg19");
+        arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_CNTN4_DIR);
 
         runCommandLine(arguments);
 
@@ -278,17 +278,17 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputFile = File.createTempFile("funcotatesegs_gatk_called", ".seg");
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
-        arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
-        arguments.add(TEST_GATK_EMPTY_FILE_B37);
-        arguments.add("--" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
-        arguments.add(FuncotatorArgumentDefinitions.OutputFormatType.SEG);
-        arguments.add("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
-        arguments.add(b37Reference);
-        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        arguments.add(outputFile.getAbsolutePath());
-        arguments.add("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
-        arguments.add("hg19");
-        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_CNTN4_DIR);
+        arguments.addRaw("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
+        arguments.addRaw(TEST_GATK_EMPTY_FILE_B37);
+        arguments.addRaw("--" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
+        arguments.addRaw(FuncotatorArgumentDefinitions.OutputFormatType.SEG);
+        arguments.addRaw("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
+        arguments.addRaw(b37Reference);
+        arguments.addRaw("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.addRaw(outputFile.getAbsolutePath());
+        arguments.addRaw("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
+        arguments.addRaw("hg19");
+        arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_CNTN4_DIR);
 
         runCommandLine(arguments);
 
@@ -322,17 +322,17 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputFile = File.createTempFile("funcotatehg38segs_gatk_called", ".seg");
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
-        arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
-        arguments.add(CALLED_CR_GATK_HG38_FILE);
-        arguments.add("--" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
-        arguments.add(FuncotatorArgumentDefinitions.OutputFormatType.SEG);
-        arguments.add("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
-        arguments.add(hg38Reference);
-        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        arguments.add(outputFile.getAbsolutePath());
-        arguments.add("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
-        arguments.add("hg38");
-        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER);
+        arguments.addRaw("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
+        arguments.addRaw(CALLED_CR_GATK_HG38_FILE);
+        arguments.addRaw("--" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
+        arguments.addRaw(FuncotatorArgumentDefinitions.OutputFormatType.SEG);
+        arguments.addRaw("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
+        arguments.addRaw(hg38Reference);
+        arguments.addRaw("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.addRaw(outputFile.getAbsolutePath());
+        arguments.addRaw("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
+        arguments.addRaw("hg38");
+        arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER);
 
         runCommandLine(arguments);
 
@@ -352,17 +352,17 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
         final File outputFile = File.createTempFile("funcotatehg38segs_gatk_modeled_segs", ".seg");
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
-        arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
-        arguments.add(MODEL_SEGMENTS_FINAL_GATK_HG38_FILE);
-        arguments.add("--" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
-        arguments.add(FuncotatorArgumentDefinitions.OutputFormatType.SEG);
-        arguments.add("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
-        arguments.add(hg38Reference);
-        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        arguments.add(outputFile.getAbsolutePath());
-        arguments.add("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
-        arguments.add("hg38");
-        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER);
+        arguments.addRaw("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
+        arguments.addRaw(MODEL_SEGMENTS_FINAL_GATK_HG38_FILE);
+        arguments.addRaw("--" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
+        arguments.addRaw(FuncotatorArgumentDefinitions.OutputFormatType.SEG);
+        arguments.addRaw("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
+        arguments.addRaw(hg38Reference);
+        arguments.addRaw("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.addRaw(outputFile.getAbsolutePath());
+        arguments.addRaw("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
+        arguments.addRaw("hg38");
+        arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER);
 
         runCommandLine(arguments);
 

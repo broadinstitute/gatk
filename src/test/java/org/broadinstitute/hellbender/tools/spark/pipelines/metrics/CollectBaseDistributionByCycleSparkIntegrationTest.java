@@ -56,22 +56,22 @@ public final class CollectBaseDistributionByCycleSparkIntegrationTest extends Co
         final File pdf = GATKBaseTest.createTempFile("test", ".pdf");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("-" + "I");
-        args.add(unsortedBam.getCanonicalPath());
-        args.add("-" + "O");
-        args.add(outfile.getCanonicalPath());
+        args.addRaw("-" + "I");
+        args.addRaw(unsortedBam.getCanonicalPath());
+        args.addRaw("-" + "O");
+        args.addRaw(outfile.getCanonicalPath());
         if (makePdf) {
-            args.add("--" + "chart");
-            args.add(pdf.getCanonicalPath());
+            args.addRaw("--" + "chart");
+            args.addRaw(pdf.getCanonicalPath());
         }
         if (reference != null){
-            args.add("-" + "R");
-            args.add(reference.getCanonicalPath());
+            args.addRaw("-" + "R");
+            args.addRaw(reference.getCanonicalPath());
         }
-        args.add("--" + "pf-reads-only");
-        args.add(pfReadsOnly);
-        args.add("--" + "aligned-reads-only");
-        args.add(alignedReadsOnly);
+        args.addRaw("--" + "pf-reads-only");
+        args.addRaw(pfReadsOnly);
+        args.addRaw("--" + "aligned-reads-only");
+        args.addRaw(alignedReadsOnly);
 
         this.runCommandLine(args.getArgsArray());
 

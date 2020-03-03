@@ -37,7 +37,7 @@ public class CreateHadoopBamSplittingIndexIntegrationTest extends CommandLinePro
         splittingIndex.delete();
         Assert.assertFalse(splittingIndex.exists());
         final ArgumentsBuilder args = getInputAndOutputArgs(bam, splittingIndex)
-           .add("--"+ CreateHadoopBamSplittingIndex.SPLITTING_INDEX_GRANULARITY_LONG_NAME).add("1");
+           .addRaw("--"+ CreateHadoopBamSplittingIndex.SPLITTING_INDEX_GRANULARITY_LONG_NAME).addRaw("1");
         this.runCommandLine(args);
         assertIndexIsNotEmpty(splittingIndex);
 
@@ -57,7 +57,7 @@ public class CreateHadoopBamSplittingIndexIntegrationTest extends CommandLinePro
     @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
     public void testNegativeGranularity(){
         final ArgumentsBuilder args = getInputAndOutputArgs(SORTED_BAM, getTempIndexFile())
-            .add("--"+ CreateHadoopBamSplittingIndex.SPLITTING_INDEX_GRANULARITY_LONG_NAME).add(-10);
+            .addRaw("--"+ CreateHadoopBamSplittingIndex.SPLITTING_INDEX_GRANULARITY_LONG_NAME).addRaw(-10);
         this.runCommandLine(args);
     }
 
@@ -98,7 +98,7 @@ public class CreateHadoopBamSplittingIndexIntegrationTest extends CommandLinePro
 
         final File splittingIndexWithBai = getTempIndexFile();
         final ArgumentsBuilder splittingAndBaiArgs = getInputAndOutputArgs(SORTED_BAM, splittingIndexWithBai)
-                .add("--"+ CreateHadoopBamSplittingIndex.CREATE_BAI_LONG_NAME);
+                .addRaw("--"+ CreateHadoopBamSplittingIndex.CREATE_BAI_LONG_NAME);
         this.runCommandLine(splittingAndBaiArgs);
         assertIndexIsNotEmpty(splittingIndexWithBai);
 
@@ -117,7 +117,7 @@ public class CreateHadoopBamSplittingIndexIntegrationTest extends CommandLinePro
         final File baiIndex = IOUtils.replaceExtension(splittingIndex, FileExtensions.BAI_INDEX);
         Assert.assertFalse(baiIndex.exists());
         final ArgumentsBuilder args = getInputAndOutputArgs(SORTED_BAM, splittingIndex)
-                .add("--" + CreateHadoopBamSplittingIndex.CREATE_BAI_LONG_NAME);
+                .addRaw("--" + CreateHadoopBamSplittingIndex.CREATE_BAI_LONG_NAME);
         this.runCommandLine(args);
         Assert.assertTrue(baiIndex.exists());
     }
@@ -125,7 +125,7 @@ public class CreateHadoopBamSplittingIndexIntegrationTest extends CommandLinePro
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testCantCreateBaiForUnsortedFile(){
         final ArgumentsBuilder args = getInputAndOutputArgs(UNSORTED_BAM, getTempIndexFile())
-                .add("--"+ CreateHadoopBamSplittingIndex.CREATE_BAI_LONG_NAME);
+                .addRaw("--"+ CreateHadoopBamSplittingIndex.CREATE_BAI_LONG_NAME);
         this.runCommandLine(args);
     }
 

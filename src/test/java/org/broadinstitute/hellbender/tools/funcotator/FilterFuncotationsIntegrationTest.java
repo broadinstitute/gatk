@@ -63,9 +63,9 @@ public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
         final File tmpOut = createTempFile(vcfName + ".filtered", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addFileArgument(StandardArgumentDefinitions.VARIANT_SHORT_NAME, TEST_DATA_DIR.resolve(vcfName).toFile())
-                .addArgument("ref-version", ref.name())
-                .addArgument("allele-frequency-data-source", afDataSource.name())
+                .add(StandardArgumentDefinitions.VARIANT_SHORT_NAME, TEST_DATA_DIR.resolve(vcfName).toFile())
+                .add("ref-version", ref.name())
+                .add("allele-frequency-data-source", afDataSource.name())
                 .addOutput(tmpOut);
 
         runCommandLine(args.getArgsArray());

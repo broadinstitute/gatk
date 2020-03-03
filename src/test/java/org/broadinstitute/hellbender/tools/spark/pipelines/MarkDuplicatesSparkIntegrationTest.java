@@ -120,17 +120,17 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         ArgumentsBuilder args = new ArgumentsBuilder();
         for (File input : inputFiles) {
-            args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
+            args.add(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
         }
-        args.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addFlag(StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
         File outputFile = createTempFile("markdups", ".bam");
         outputFile.delete();
-        args.add(outputFile.getAbsolutePath());
+        args.addRaw(outputFile.getAbsolutePath());
 
-        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        args.addRaw("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         File metricsFile = createTempFile("markdups_metrics", ".txt");
-        args.add(metricsFile.getAbsolutePath());
+        args.addRaw(metricsFile.getAbsolutePath());
 
         runCommandLine(args.getArgsArray());
 
@@ -207,20 +207,20 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         ArgumentsBuilder args = new ArgumentsBuilder();
         for (File input : inputFiles) {
-            args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
+            args.add(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
         }
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
         File outputFile = createTempFile("markdups", ".bam");
         outputFile.delete();
-        args.add(outputFile.getAbsolutePath());
+        args.addRaw(outputFile.getAbsolutePath());
 
-        args.add("--" + StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        args.addRaw("--" + StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         File metricsFile = createTempFile("markdups_metrics", ".txt");
-        args.add(metricsFile.getAbsolutePath());
+        args.addRaw(metricsFile.getAbsolutePath());
 
-        args.add("--" + MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME);
-        args.add(MarkDuplicates.DuplicateTaggingPolicy.OpticalOnly);
+        args.addRaw("--" + MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME);
+        args.addRaw(MarkDuplicates.DuplicateTaggingPolicy.OpticalOnly);
 
         runCommandLine(args.getArgsArray());
 
@@ -272,20 +272,20 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         ArgumentsBuilder args = new ArgumentsBuilder();
         for (File input : inputFiles) {
-            args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
+            args.add(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
         }
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
         File outputFile = createTempFile("markdups", ".bam");
         outputFile.delete();
-        args.add(outputFile.getAbsolutePath());
+        args.addRaw(outputFile.getAbsolutePath());
 
-        args.add("--" + StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        args.addRaw("--" + StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         File metricsFile = createTempFile("markdups_metrics", ".txt");
-        args.add(metricsFile.getAbsolutePath());
+        args.addRaw(metricsFile.getAbsolutePath());
 
-        args.add("--" + MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME);
-        args.add(MarkDuplicates.DuplicateTaggingPolicy.All);
+        args.addRaw("--" + MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME);
+        args.addRaw(MarkDuplicates.DuplicateTaggingPolicy.All);
 
         runCommandLine(args.getArgsArray());
 
@@ -344,19 +344,19 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         ArgumentsBuilder args = new ArgumentsBuilder();
         for (File input : inputFiles) {
-            args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
+            args.add(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
         }
-        args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
         File outputFile = createTempFile("markdups", ".bam");
         outputFile.delete();
-        args.add(outputFile.getAbsolutePath());
+        args.addRaw(outputFile.getAbsolutePath());
 
-        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        args.addRaw("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         File metricsFile = createTempFile("markdups_metrics", ".txt");
-        args.add(metricsFile.getAbsolutePath());
+        args.addRaw(metricsFile.getAbsolutePath());
 
-        args.add("--"+MarkDuplicatesSparkArgumentCollection.REMOVE_ALL_DUPLICATE_READS);
+        args.addRaw("--"+MarkDuplicatesSparkArgumentCollection.REMOVE_ALL_DUPLICATE_READS);
 
         runCommandLine(args.getArgsArray());
 
@@ -399,19 +399,19 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         ArgumentsBuilder args = new ArgumentsBuilder();
         for (File input : inputFiles) {
-            args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
+            args.add(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
         }
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
         File outputFile = createTempFile("markdups", ".bam");
         outputFile.delete();
-        args.add(outputFile.getAbsolutePath());
+        args.addRaw(outputFile.getAbsolutePath());
 
-        args.add("--" + StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        args.addRaw("--" + StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         File metricsFile = createTempFile("markdups_metrics", ".txt");
-        args.add(metricsFile.getAbsolutePath());
+        args.addRaw(metricsFile.getAbsolutePath());
 
-        args.add("--" + MarkDuplicatesSparkArgumentCollection.REMOVE_SEQUENCING_DUPLICATE_READS);
+        args.addRaw("--" + MarkDuplicatesSparkArgumentCollection.REMOVE_SEQUENCING_DUPLICATE_READS);
 
         runCommandLine(args.getArgsArray());
 
@@ -490,7 +490,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         args.addOutput(output);
         args.addInput(new File(TEST_DATA_DIR,"optical_dupes.bam"));
         args.addInput(new File(TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.noDups.bam"));
-        args.addArgument(MarkDuplicatesSpark.ALLOW_MULTIPLE_SORT_ORDERS_IN_INPUT_ARG);
+        args.addFlag(MarkDuplicatesSpark.ALLOW_MULTIPLE_SORT_ORDERS_IN_INPUT_ARG);
         runCommandLine(args);
     }
 
@@ -501,7 +501,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         args.addOutput(output);
         args.addInput(new File(TEST_DATA_DIR,"optical_dupes.queryname.bam"));
         args.addInput(new File(TEST_DATA_DIR,"optical_dupes.unsorted.querygrouped.sam"));
-        args.addArgument(MarkDuplicatesSpark.TREAT_UNSORTED_AS_ORDERED);
+        args.addFlag(MarkDuplicatesSpark.TREAT_UNSORTED_AS_ORDERED);
         runCommandLine(args);
     }
 }

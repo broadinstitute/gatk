@@ -104,7 +104,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
 
     @Test(dataProvider = "BQSRTest", groups = "spark")
     public void testBQSRSpark(BQSRTest params) throws IOException {
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
+        ArgumentsBuilder ab = new ArgumentsBuilder().addRaw(params.getCommandLine());
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 Arrays.asList(params.expectedFileName));
@@ -141,7 +141,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
 
     @Test(dataProvider = "BQSRCloudTest", groups = {"bucket", "spark"})
     public void testBQSRSparkCloud(final BQSRTest params) throws IOException {
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
+        ArgumentsBuilder ab = new ArgumentsBuilder().addRaw(params.getCommandLine());
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 Arrays.asList(params.expectedFileName));
@@ -169,7 +169,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     // TODO: re-enable once ReadsSparkSource natively supports files in GCS buckets
     @Test(dataProvider = "BQSRTestBucket", groups = {"spark", "bucket"}, enabled = false)
     public void testBQSRBucket(BQSRTest params) throws IOException {
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
+        ArgumentsBuilder ab = new ArgumentsBuilder().addRaw(params.getCommandLine());
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 Arrays.asList(params.expectedFileName));

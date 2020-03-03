@@ -110,7 +110,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
                         " --" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME + " " + resourceDir + "HiSeq.20mb.1RG.table.gz " +
                         params.args +
                         " -O %s";
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
+        ArgumentsBuilder ab = new ArgumentsBuilder().addRaw(args);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 Arrays.asList(params.expectedFile));
@@ -136,7 +136,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
                 " --" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME + " " + resourceDir + "HiSeq.1mb.1RG.highMaxCycle.table.gz" +
                 "" +
                 " -O " + createTempFile("ignore",".bam");
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
+        ArgumentsBuilder ab = new ArgumentsBuilder().addRaw(args);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString() ,
                 Arrays.<String>asList());
@@ -148,7 +148,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
         String args =  " -I " + hiSeqBam +
                 " --" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME + " " + resourceDir + "HiSeq.1mb.1RG.lowMaxCycle.table.gz" +
                 " -O /dev/null";
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
+        ArgumentsBuilder ab = new ArgumentsBuilder().addRaw(args);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 0,

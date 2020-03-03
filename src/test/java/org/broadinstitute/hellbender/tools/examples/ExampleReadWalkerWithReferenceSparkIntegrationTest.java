@@ -18,12 +18,12 @@ public final class ExampleReadWalkerWithReferenceSparkIntegrationTest extends Co
         out.delete();
         out.deleteOnExit();
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(TEST_DATA_DIRECTORY + "reads_data_source_test1.bam");
-        args.add("--output");
-        args.add(out.getAbsolutePath());
-        args.add("--reference");
-        args.add(hg19MiniReference);
+        args.addRaw("--input");
+        args.addRaw(TEST_DATA_DIRECTORY + "reads_data_source_test1.bam");
+        args.addRaw("--output");
+        args.addRaw(out.getAbsolutePath());
+        args.addRaw("--reference");
+        args.addRaw(hg19MiniReference);
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_OUTPUT_DIRECTORY, "expected_ExampleReadWalkerWithReferenceIntegrationTest_output.txt");
         IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);

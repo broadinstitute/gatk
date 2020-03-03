@@ -36,7 +36,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -131,8 +130,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final List<File> normals = normal.isPresent() ? Collections.singletonList(normal.get()) : Collections.emptyList();
         runMutect2(Collections.singletonList(tumor), normals, unfilteredVcf, CHROMOSOME_20, b37Reference, Optional.of(GNOMAD),
-                args -> args.addMask(mask).addFileArgument(M2ArgumentCollection.F1R2_TAR_GZ_NAME, f1r2Counts),
-                        args -> errorCorrectReads ? args.addNumericArgument(ReadThreadingAssemblerArgumentCollection.PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME, 3.0) : args
+                args -> args.addMask(mask).add(M2ArgumentCollection.F1R2_TAR_GZ_NAME, f1r2Counts),
+                        args -> errorCorrectReads ? args.add(ReadThreadingAssemblerArgumentCollection.PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME, 3.0) : args
         );
 
         // verify that alleles contained in likelihoods matrix but dropped from somatic calls do not show up in annotations
@@ -156,7 +155,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         for (final boolean runOrientationFilter : new boolean[] { true, false}) {
 
             runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference,
-                    args -> runOrientationFilter ? args.addFileArgument(M2FiltersArgumentCollection.ARTIFACT_PRIOR_TABLE_NAME, orientationModel) : args);
+                    args -> runOrientationFilter ? args.add(M2FiltersArgumentCollection.ARTIFACT_PRIOR_TABLE_NAME, orientationModel) : args);
 
             final File concordanceSummary = createTempFile("concordance", ".txt");
             runConcordance(truth, filteredVcf,concordanceSummary, CHROMOSOME_20, mask);
@@ -184,8 +183,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference,
-                args -> args.addFileArgument(M2FiltersArgumentCollection.TUMOR_SEGMENTATION_LONG_NAME, segments),
-                args -> args.addFileArgument(M2FiltersArgumentCollection.CONTAMINATION_TABLE_LONG_NAME, contamination));
+                args -> args.add(M2FiltersArgumentCollection.TUMOR_SEGMENTATION_LONG_NAME, segments),
+                args -> args.add(M2FiltersArgumentCollection.CONTAMINATION_TABLE_LONG_NAME, contamination));
 
         final long numPassVariants = VariantContextTestUtils.streamVcf(filteredVcf)
                 .filter(vc -> vc.getFilters().isEmpty()).count();
@@ -240,7 +239,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         runMutect2(tumor, normal, ponVcf, CHROMOSOME_20, b37Reference, Optional.empty());
         runMutect2(tumor, normal, unfilteredVcf, CHROMOSOME_20, b37Reference, Optional.empty(),
-                args -> args.addFileArgument(M2ArgumentCollection.PANEL_OF_NORMALS_LONG_NAME, ponVcf));
+                args -> args.add(M2ArgumentCollection.PANEL_OF_NORMALS_LONG_NAME, ponVcf));
         runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference);
 
         final long numVariants = VariantContextTestUtils.streamVcf(filteredVcf)
@@ -301,8 +300,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final File outputVcf = createTempFile("unfiltered", ".vcf");
 
             runMutect2(bam, outputVcf, "20:10019000-10022000", b37Reference, Optional.empty(),
-                    args -> args.addNumericArgument(M2ArgumentCollection.EMISSION_LOG_SHORT_NAME, 15),
-                    args -> args.addNumericArgument(AssemblyBasedCallerArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, maxMnpDistance));
+                    args -> args.add(M2ArgumentCollection.EMISSION_LOG_SHORT_NAME, 15),
+                    args -> args.add(AssemblyBasedCallerArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, maxMnpDistance));
 
             // note that for testing HaplotypeCaller GVCF mode we will always have the symbolic <NON REF> allele
             final Map<Integer, List<String>> alleles = VariantContextTestUtils.streamVcf(outputVcf)
@@ -357,9 +356,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final File forceCalls = new File(toolsTestDir, "mutect/gga_mode.vcf");
 
             runMutect2(tumor, unfilteredVcf, "20:9998500-10010000", b37Reference, Optional.empty(),
-                    args -> args.addFileArgument(AssemblyBasedCallerArgumentCollection.FORCE_CALL_ALLELES_LONG_NAME, forceCalls),
-                    args -> args.addNumericArgument(ReadThreadingAssemblerArgumentCollection.KMER_SIZE_LONG_NAME, kmerSize),
-                    args -> args.addBooleanArgument(ReadThreadingAssemblerArgumentCollection.DONT_INCREASE_KMER_SIZE_LONG_NAME, true));
+                    args -> args.add(AssemblyBasedCallerArgumentCollection.FORCE_CALL_ALLELES_LONG_NAME, forceCalls),
+                    args -> args.add(ReadThreadingAssemblerArgumentCollection.KMER_SIZE_LONG_NAME, kmerSize),
+                    args -> args.add(ReadThreadingAssemblerArgumentCollection.DONT_INCREASE_KMER_SIZE_LONG_NAME, true));
 
             final Map<Integer, List<Allele>> altAllelesByPosition = VariantContextTestUtils.streamVcf(unfilteredVcf)
                     .collect(Collectors.toMap(VariantContext::getStart, VariantContext::getAlternateAlleles));
@@ -380,7 +379,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File forceCalls = new File(toolsTestDir, "mutect/gga_mode_2.vcf");
 
         runMutect2(DREAM_3_TUMOR, unfilteredVcf, "20:1119000-1120000", b37Reference, Optional.empty(),
-                args -> args.addFileArgument(AssemblyBasedCallerArgumentCollection.FORCE_CALL_ALLELES_LONG_NAME, forceCalls));
+                args -> args.add(AssemblyBasedCallerArgumentCollection.FORCE_CALL_ALLELES_LONG_NAME, forceCalls));
     }
 
     // make sure we have fixed a bug where germline resources with AF=. throw errors
@@ -402,7 +401,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final File contaminationTable = pct == 0 ? NO_CONTAMINATION_TABLE :
                     (pct == 5 ? FIVE_PCT_CONTAMINATION_TABLE : TEN_PCT_CONTAMINATION_TABLE);
             runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference,
-                    args -> args.addFileArgument(M2FiltersArgumentCollection.CONTAMINATION_TABLE_LONG_NAME, contaminationTable));
+                    args -> args.add(M2FiltersArgumentCollection.CONTAMINATION_TABLE_LONG_NAME, contaminationTable));
 
             return VariantContextTestUtils.streamVcf(filteredVcf).collect(Collectors.toSet());
         }));
@@ -491,7 +490,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
 
         runMutect2(NA12878_MITO_BAM, unfilteredVcf, "chrM:1-1000", MITO_REF.getAbsolutePath(), Optional.empty(),
-                args -> args.addBooleanArgument(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true));
+                args -> args.add(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true));
 
         final List<VariantContext> variants = VariantContextTestUtils.streamVcf(unfilteredVcf).collect(Collectors.toList());
         final List<String> variantKeys = variants.stream().map(Mutect2IntegrationTest::keyForVariant).collect(Collectors.toList());
@@ -536,10 +535,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         // vcf sequence dicts don't match ref
         runFilterMutectCalls(unfiltered, filteredVcf, MITO_REF.getAbsolutePath(),
-                args -> args.addBooleanArgument(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true),
-                args -> args.addBooleanArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true),
-                args -> args.addNumericArgument(M2FiltersArgumentCollection.MIN_AF_LONG_NAME, minAlleleFraction),
-                args -> args.addNumericArgument(M2FiltersArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, autosomalCoverage),
+                args -> args.add(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true),
+                args -> args.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true),
+                args -> args.add(M2FiltersArgumentCollection.MIN_AF_LONG_NAME, minAlleleFraction),
+                args -> args.add(M2FiltersArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, autosomalCoverage),
                 args -> {
                     intervals.stream().map(SimpleInterval::new).forEach(args::addInterval);
                     return args;
@@ -565,10 +564,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final double minAF = 0.01;
 
         runMutect2(NA12878_MITO_BAM, standardVcf, "chrM:1-1000", MITO_REF.getAbsolutePath(), Optional.empty(),
-                args -> args.addArgument(AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString()),
-                args -> args.addNumericArgument(M2ArgumentCollection.MINIMUM_ALLELE_FRACTION_LONG_NAME, minAF),
-                args -> args.addNumericArgument(M2ArgumentCollection.LOD_BAND_LONG_NAME, -2.0),
-                args -> args.addNumericArgument(M2ArgumentCollection.LOD_BAND_LONG_NAME, 0.0));
+                args -> args.add(AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString()),
+                args -> args.add(M2ArgumentCollection.MINIMUM_ALLELE_FRACTION_LONG_NAME, minAF),
+                args -> args.add(M2ArgumentCollection.LOD_BAND_LONG_NAME, -2.0),
+                args -> args.add(M2ArgumentCollection.LOD_BAND_LONG_NAME, 0.0));
 
         //check ref conf-specific headers are output
         final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(standardVcf.getAbsolutePath());
@@ -592,17 +591,17 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(keyForVariant(variants.get(0)).contains("*, [<NON_REF>]"));
 
         final ArgumentsBuilder validateVariantsArgs = new ArgumentsBuilder()
-                .addArgument("R", MITO_REF.getAbsolutePath())
-                .addArgument("V", standardVcf.getAbsolutePath())
-                .addArgument("L", IntervalUtils.locatableToString(new SimpleInterval("chrM:1-1000")))
-                .add("-gvcf");
+                .add("R", MITO_REF.getAbsolutePath())
+                .add("V", standardVcf.getAbsolutePath())
+                .add("L", IntervalUtils.locatableToString(new SimpleInterval("chrM:1-1000")))
+                .addRaw("-gvcf");
         runCommandLine(validateVariantsArgs, ValidateVariants.class.getSimpleName());
 
         runMutect2(NA12878_MITO_BAM, unthresholded, "chrM:1-1000", MITO_REF.getAbsolutePath(), Optional.empty(),
-                args -> args.addArgument(AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString()),
-                args -> args.addNumericArgument(M2ArgumentCollection.MINIMUM_ALLELE_FRACTION_LONG_NAME, 0.00),
-                args -> args.addNumericArgument(M2ArgumentCollection.LOD_BAND_LONG_NAME, -2.0),
-                args -> args.addNumericArgument(M2ArgumentCollection.LOD_BAND_LONG_NAME, 0.0));
+                args -> args.add(AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString()),
+                args -> args.add(M2ArgumentCollection.MINIMUM_ALLELE_FRACTION_LONG_NAME, 0.00),
+                args -> args.add(M2ArgumentCollection.LOD_BAND_LONG_NAME, -2.0),
+                args -> args.add(M2ArgumentCollection.LOD_BAND_LONG_NAME, 0.0));
 
         final Pair<VCFHeader, List<VariantContext>> result_noThreshold = VariantContextTestUtils.readEntireVCFIntoMemory(unthresholded.getAbsolutePath());
 
@@ -678,7 +677,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
 
         runMutect2(DEEP_MITO_BAM, unfilteredVcf, "chrM:1-1018", MITO_REF.getAbsolutePath(), Optional.empty(),
-                args -> args.addNumericArgument(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME, 300));
+                args -> args.add(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME, 300));
 
         final List<VariantContext> variants = VariantContextTestUtils.streamVcf(unfilteredVcf).collect(Collectors.toList());
 
@@ -716,7 +715,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File bamout = createTempFile("bamout", ".bam");
 
         runMutect2(DREAM_1_TUMOR, outputVcf, "20:10000000-13000000", b37Reference, Optional.empty(),
-                args -> args.addFileArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_LONG_NAME, bamout));
+                args -> args.add(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_LONG_NAME, bamout));
         Assert.assertTrue(bamout.exists());
     }
 
@@ -755,10 +754,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         normals.forEach(normal -> {
             args.addInput(normal);
-            args.addArgument(M2ArgumentCollection.NORMAL_SAMPLE_LONG_NAME, getSampleName(normal));
+            args.add(M2ArgumentCollection.NORMAL_SAMPLE_LONG_NAME, getSampleName(normal));
         });
 
-        gnomad.ifPresent(g -> args.addFileArgument(M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, g));
+        gnomad.ifPresent(g -> args.add(M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, g));
 
         args.addInterval(new SimpleInterval(interval));
 
@@ -802,11 +801,11 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
     private void runConcordance(final File truth, final File eval, final File summary, final String interval, final File mask) {
         final ArgumentsBuilder concordanceArgs = new ArgumentsBuilder()
-                .addFileArgument(Concordance.TRUTH_VARIANTS_LONG_NAME, truth)
-                .addFileArgument(Concordance.EVAL_VARIANTS_LONG_NAME, eval)
+                .add(Concordance.TRUTH_VARIANTS_LONG_NAME, truth)
+                .add(Concordance.EVAL_VARIANTS_LONG_NAME, eval)
                 .addInterval(new SimpleInterval(interval))
-                .addFileArgument(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, mask)
-                .addFileArgument(Concordance.SUMMARY_LONG_NAME, summary);
+                .add(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, mask)
+                .add(Concordance.SUMMARY_LONG_NAME, summary);
         runCommandLine(concordanceArgs, Concordance.class.getSimpleName());
     }
 

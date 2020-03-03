@@ -20,11 +20,11 @@ public class EvaluateInfoFieldConcordanceIntegrationTest extends CommandLineProg
                                                 double indelMean, double indelSTD) throws Exception {
         final Path summary = createTempPath("summary", ".txt");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, inputVcf1)
-                .addArgument(AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, inputVcf2)
-                .addArgument("eval-info-key", evalKey)
-                .addArgument("truth-info-key", truthKey)
-                .addArgument(EvaluateInfoFieldConcordance.SUMMARY_LONG_NAME, summary.toString());
+        argsBuilder.add(AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, inputVcf1)
+                .add(AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, inputVcf2)
+                .add("eval-info-key", evalKey)
+                .add("truth-info-key", truthKey)
+                .add(EvaluateInfoFieldConcordance.SUMMARY_LONG_NAME, summary.toString());
         runCommandLine(argsBuilder);
 
         try(InfoConcordanceRecord.InfoConcordanceReader

@@ -36,8 +36,8 @@ public class CompareIntervalListsIntegrationTest extends CommandLineProgramTest 
     public void testCompareIntervals(File left, File right, boolean expectedMatch) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(hg19MiniReference))
-                .addFileArgument("L", left)
-                .addFileArgument("L2", right);
+                .add("L", left)
+                .add("L2", right);
 
         if(expectedMatch) {
             runCommandLine(args);

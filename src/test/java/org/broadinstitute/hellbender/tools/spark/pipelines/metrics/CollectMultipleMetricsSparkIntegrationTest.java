@@ -56,11 +56,11 @@ public final class CollectMultipleMetricsSparkIntegrationTest extends CommandLin
         String outBase = setupMultipleCollector(args, fileName, referenceName);
 
         // for now, run the only two conforming collectors that we have
-        args.add("--collectors" );
-        args.add("CollectInsertSizeMetrics" );
+        args.addRaw("--collectors" );
+        args.addRaw("CollectInsertSizeMetrics" );
 
-        args.add("--collectors" );
-        args.add("CollectQualityYieldMetrics" );
+        args.addRaw("--collectors" );
+        args.addRaw("CollectQualityYieldMetrics" );
 
         this.runCommandLine(args.getArgsArray());
 
@@ -82,18 +82,18 @@ public final class CollectMultipleMetricsSparkIntegrationTest extends CommandLin
         String outBase = outDir.getAbsolutePath() + "/collectMultiSparkMetrics";
 
         // IO arguments
-        args.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
-        args.add(input.getAbsolutePath());
+        args.addRaw("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        args.addRaw(input.getAbsolutePath());
 
         // The output arg specifies only the basename from which output file(s)
         // will derived
-        args.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        args.add(outBase);
+        args.addRaw("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        args.addRaw(outBase);
 
         if (null != referenceName) {
             final File REF = new File(referenceName);
-            args.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
-            args.add(REF.getAbsolutePath());
+            args.addRaw("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
+            args.addRaw(REF.getAbsolutePath());
         }
 
         return outBase;

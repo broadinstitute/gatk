@@ -819,8 +819,8 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         final File output = createTempFile("annotations", "txt");
         final File configFile = new File(packageRootTestDir + "cmdline/GATKPlugin/changePluginPackages.properties");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument(ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME, TestReadFilter.class.getSimpleName())
-                .addFileArgument(StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, configFile)
+        args.add(ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME, TestReadFilter.class.getSimpleName())
+                .add(StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, configFile)
                 .addOutput(output);
         runToolInNewJVM("TestReadFiltersTool", args);
         Assert.assertEquals(Files.readAllLines(output.toPath()), Arrays.asList(WellformedReadFilter.class.getSimpleName(), TestReadFilter.class.getSimpleName()));

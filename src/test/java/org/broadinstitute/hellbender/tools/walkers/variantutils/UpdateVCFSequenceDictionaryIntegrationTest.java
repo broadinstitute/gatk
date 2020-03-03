@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.tribble.TribbleException;
 import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
@@ -158,16 +157,16 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
             argBuilder.addReference(inputReferenceFile);
         }
         if (inputSourceFile != null) {
-            argBuilder.addFileArgument(UpdateVCFSequenceDictionary.DICTIONARY_ARGUMENT_NAME, inputSourceFile);
+            argBuilder.add(UpdateVCFSequenceDictionary.DICTIONARY_ARGUMENT_NAME, inputSourceFile);
         }
         if (replace) {
-            argBuilder.addArgument(UpdateVCFSequenceDictionary.REPLACE_ARGUMENT_NAME, Boolean.toString(replace));
+            argBuilder.add(UpdateVCFSequenceDictionary.REPLACE_ARGUMENT_NAME, Boolean.toString(replace));
         }
         if (disableSequenceDictionaryValidation) {
-            argBuilder.addArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, Boolean.toString(disableSequenceDictionaryValidation));
+            argBuilder.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, Boolean.toString(disableSequenceDictionaryValidation));
         }
         if (masterSequenceDictionary != null) {
-            argBuilder.addArgument(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, masterSequenceDictionary);
+            argBuilder.add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, masterSequenceDictionary);
         }
 
         File outFile = createTempFile("updateSequenceDictionary", ".vcf.gz");

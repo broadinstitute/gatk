@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark;
 
 import htsjdk.samtools.*;
-import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.BaseTest;
@@ -69,22 +67,22 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
         args.addOutput(output);
 
         if (outputByReadGroup) {
-            args.addPositionalArgument("--"+RevertSamSpark.OUTPUT_BY_READGROUP_LONG_NAME);
+            args.addRaw("--"+RevertSamSpark.OUTPUT_BY_READGROUP_LONG_NAME);
         }
         if (so != null) {
-            args.addArgument("sort-order",so.name()); //TODO decide on sort order outputing
+            args.add("sort-order",so.name()); //TODO decide on sort order outputing
         }
         if (!removeAlignmentInfo) {
-            args.addPositionalArgument("--"+RevertSamSpark.KEEP_ALIGNMENT_INFORMATION);
+            args.addRaw("--"+RevertSamSpark.KEEP_ALIGNMENT_INFORMATION);
         }
         if (sample != null) {
-            args.addArgument("sample-alias",sample);
+            args.add("sample-alias",sample);
         }
         if (library != null) {
-            args.addArgument("library-name",library);
+            args.add("library-name",library);
         }
         for (final String attr : attributesToClear) {
-            args.addArgument("attributes-to-clear",attr);
+            args.add("attributes-to-clear",attr);
         }
 
         runCommandLine(args);
@@ -256,10 +254,10 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
         args.addInput(sampleLibraryOverrideSam);
         args.addOutput(output);
         if (sample != null) {
-            args.addArgument(RevertSamSpark.SAMPLE_ALIAS_ARG,sample);
+            args.add(RevertSamSpark.SAMPLE_ALIAS_ARG,sample);
         }
         if (library != null) {
-            args.addArgument(RevertSamSpark.LIBRARY_NAME_ARG,library);
+            args.add(RevertSamSpark.LIBRARY_NAME_ARG,library);
         }
         runCommandLine(args);
     }

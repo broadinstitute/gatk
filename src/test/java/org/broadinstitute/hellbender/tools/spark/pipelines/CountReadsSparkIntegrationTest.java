@@ -88,7 +88,7 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
         final File outputFile = createTempFile("count_reads_spark","count");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.addInput(ORIG_BAM);
-        args.add(interval_args);
+        args.addRaw(interval_args);
         args.addOutput(outputFile);
 
         this.runCommandLine(args.getArgsArray());

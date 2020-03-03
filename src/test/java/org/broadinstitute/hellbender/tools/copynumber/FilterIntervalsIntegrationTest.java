@@ -129,17 +129,17 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
                                            final List<Integer> expectedIndices) {
         final File outputFile = createTempFile("filter-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, intervalsFile.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile.getAbsolutePath())
-                .addArgument(FilterIntervals.MINIMUM_GC_CONTENT_LONG_NAME, Double.toString(minimumGCContent))
-                .addArgument(FilterIntervals.MAXIMUM_GC_CONTENT_LONG_NAME, Double.toString(maximumGCContent))
-                .addArgument(FilterIntervals.MINIMUM_MAPPABILITY_LONG_NAME, Double.toString(minimumMappability))
-                .addArgument(FilterIntervals.MAXIMUM_MAPPABILITY_LONG_NAME, Double.toString(maximumMappability))
-                .addArgument(FilterIntervals.MINIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME, Double.toString(minimumSegmentalDuplicationContent))
-                .addArgument(FilterIntervals.MAXIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME, Double.toString(maximumSegmentalDuplicationContent))
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, intervalsFile.getAbsolutePath())
+                .add(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile.getAbsolutePath())
+                .add(FilterIntervals.MINIMUM_GC_CONTENT_LONG_NAME, Double.toString(minimumGCContent))
+                .add(FilterIntervals.MAXIMUM_GC_CONTENT_LONG_NAME, Double.toString(maximumGCContent))
+                .add(FilterIntervals.MINIMUM_MAPPABILITY_LONG_NAME, Double.toString(minimumMappability))
+                .add(FilterIntervals.MAXIMUM_MAPPABILITY_LONG_NAME, Double.toString(maximumMappability))
+                .add(FilterIntervals.MINIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME, Double.toString(minimumSegmentalDuplicationContent))
+                .add(FilterIntervals.MAXIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME, Double.toString(maximumSegmentalDuplicationContent))
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
-        excludedIntervals.forEach(i -> argsBuilder.addArgument(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, i));
+        excludedIntervals.forEach(i -> argsBuilder.add(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, i));
         runCommandLine(argsBuilder);
         final IntervalList result = IntervalList.fromFile(outputFile);
         final IntervalList all = IntervalList.fromFile(intervalsFile);
@@ -219,13 +219,13 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
                                       final List<Integer> expectedIndices) {
         final File outputFile = createTempFile("filter-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, intervalsFile.getAbsolutePath())
-                .addArgument(FilterIntervals.LOW_COUNT_FILTER_COUNT_THRESHOLD_LONG_NAME, Integer.toString(lowCountFilterCountThreshold))
-                .addArgument(FilterIntervals.LOW_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME, Double.toString(lowCountFilterPercentageOfSamples))
-                .addArgument(FilterIntervals.EXTREME_COUNT_FILTER_MINIMUM_PERCENTILE_LONG_NAME, Double.toString(extremeCountFilterMinimumPercentile))
-                .addArgument(FilterIntervals.EXTREME_COUNT_FILTER_MAXIMUM_PERCENTILE_LONG_NAME, Double.toString(extremeCountFilterMaximumPercentile))
-                .addArgument(FilterIntervals.EXTREME_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME, Double.toString(extremeCountFilterPercentageOfSamples))
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, intervalsFile.getAbsolutePath())
+                .add(FilterIntervals.LOW_COUNT_FILTER_COUNT_THRESHOLD_LONG_NAME, Integer.toString(lowCountFilterCountThreshold))
+                .add(FilterIntervals.LOW_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME, Double.toString(lowCountFilterPercentageOfSamples))
+                .add(FilterIntervals.EXTREME_COUNT_FILTER_MINIMUM_PERCENTILE_LONG_NAME, Double.toString(extremeCountFilterMinimumPercentile))
+                .add(FilterIntervals.EXTREME_COUNT_FILTER_MAXIMUM_PERCENTILE_LONG_NAME, Double.toString(extremeCountFilterMaximumPercentile))
+                .add(FilterIntervals.EXTREME_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME, Double.toString(extremeCountFilterPercentageOfSamples))
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
         countFiles.forEach(argsBuilder::addInput);
         runCommandLine(argsBuilder);
@@ -331,22 +331,22 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
                                final List<Integer> expectedIndices) {
         final File outputFile = createTempFile("filter-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, intervalsFile.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile.getAbsolutePath())
-                .addArgument(FilterIntervals.MINIMUM_GC_CONTENT_LONG_NAME, Double.toString(minimumGCContent))
-                .addArgument(FilterIntervals.MAXIMUM_GC_CONTENT_LONG_NAME, Double.toString(maximumGCContent))
-                .addArgument(FilterIntervals.MINIMUM_MAPPABILITY_LONG_NAME, Double.toString(minimumMappability))
-                .addArgument(FilterIntervals.MAXIMUM_MAPPABILITY_LONG_NAME, Double.toString(maximumMappability))
-                .addArgument(FilterIntervals.MINIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME, Double.toString(minimumSegmentalDuplicationContent))
-                .addArgument(FilterIntervals.MAXIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME, Double.toString(maximumSegmentalDuplicationContent))
-                .addArgument(FilterIntervals.LOW_COUNT_FILTER_COUNT_THRESHOLD_LONG_NAME, Integer.toString(lowCountFilterCountThreshold))
-                .addArgument(FilterIntervals.LOW_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME, Double.toString(lowCountFilterPercentageOfSamples))
-                .addArgument(FilterIntervals.EXTREME_COUNT_FILTER_MINIMUM_PERCENTILE_LONG_NAME, Double.toString(extremeCountFilterMinimumPercentile))
-                .addArgument(FilterIntervals.EXTREME_COUNT_FILTER_MAXIMUM_PERCENTILE_LONG_NAME, Double.toString(extremeCountFilterMaximumPercentile))
-                .addArgument(FilterIntervals.EXTREME_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME, Double.toString(extremeCountFilterPercentageOfSamples))
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, intervalsFile.getAbsolutePath())
+                .add(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile.getAbsolutePath())
+                .add(FilterIntervals.MINIMUM_GC_CONTENT_LONG_NAME, Double.toString(minimumGCContent))
+                .add(FilterIntervals.MAXIMUM_GC_CONTENT_LONG_NAME, Double.toString(maximumGCContent))
+                .add(FilterIntervals.MINIMUM_MAPPABILITY_LONG_NAME, Double.toString(minimumMappability))
+                .add(FilterIntervals.MAXIMUM_MAPPABILITY_LONG_NAME, Double.toString(maximumMappability))
+                .add(FilterIntervals.MINIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME, Double.toString(minimumSegmentalDuplicationContent))
+                .add(FilterIntervals.MAXIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME, Double.toString(maximumSegmentalDuplicationContent))
+                .add(FilterIntervals.LOW_COUNT_FILTER_COUNT_THRESHOLD_LONG_NAME, Integer.toString(lowCountFilterCountThreshold))
+                .add(FilterIntervals.LOW_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME, Double.toString(lowCountFilterPercentageOfSamples))
+                .add(FilterIntervals.EXTREME_COUNT_FILTER_MINIMUM_PERCENTILE_LONG_NAME, Double.toString(extremeCountFilterMinimumPercentile))
+                .add(FilterIntervals.EXTREME_COUNT_FILTER_MAXIMUM_PERCENTILE_LONG_NAME, Double.toString(extremeCountFilterMaximumPercentile))
+                .add(FilterIntervals.EXTREME_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME, Double.toString(extremeCountFilterPercentageOfSamples))
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
-        excludedIntervals.forEach(i -> argsBuilder.addArgument(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, i));
+        excludedIntervals.forEach(i -> argsBuilder.add(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, i));
         countFiles.forEach(argsBuilder::addInput);
         runCommandLine(argsBuilder);
         final IntervalList result = IntervalList.fromFile(outputFile);

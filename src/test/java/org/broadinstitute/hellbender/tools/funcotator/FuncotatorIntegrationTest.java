@@ -228,12 +228,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // ================================================================================
         // Annotation Defaults:
         for ( final String manualAnnotation : getManualAnnotations() ) {
-            arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, manualAnnotation);
+            arguments.add(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, manualAnnotation);
         }
         // ================================================================================
         // Annotation Overrides:
         for ( final String annotationOverride : getAnnotationOverrides() ) {
-            arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME, annotationOverride);
+            arguments.add(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME, annotationOverride);
         }
     }
 
@@ -268,15 +268,15 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addVCF(new File(variantFileName));
         arguments.addOutput(outputFile);
         arguments.addReference(new File(referenceFileName));
-        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, dataSourcesPath);
-        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, refVer);
-        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
-        arguments.addArgument("verbosity", "INFO");
-        excludedFields.forEach(ef -> arguments.addArgument(FuncotatorArgumentDefinitions.EXCLUSION_FIELDS_LONG_NAME, ef));
+        arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, dataSourcesPath);
+        arguments.add(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, refVer);
+        arguments.add(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
+        arguments.add("verbosity", "INFO");
+        excludedFields.forEach(ef -> arguments.add(FuncotatorArgumentDefinitions.EXCLUSION_FIELDS_LONG_NAME, ef));
 
         if ( !shouldValidateSeqDicts ) {
             // Disable the sequence dictionary check for the tests:
-            arguments.addBooleanArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);
+            arguments.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);
         }
 
         return arguments;
@@ -698,12 +698,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 false);
 
         // Transcript selection:
-        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.BEST_EFFECT.toString());
-        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME, transcriptIdFile.toString());
+        arguments.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.BEST_EFFECT.toString());
+        arguments.add(FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME, transcriptIdFile.toString());
 
         // Annotation Defaults and Overrides:
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "GARBAGEDAY:SPUMONI");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME, "Oreganno_Build:BUILDED_GOOD_REAL_BIG");
+        arguments.add(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "GARBAGEDAY:SPUMONI");
+        arguments.add(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME, "Oreganno_Build:BUILDED_GOOD_REAL_BIG");
 
         // Run the beast:
         runCommandLine(arguments);
@@ -736,7 +736,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 false);
 
         // We need this argument since we are testing on a subset of b37
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 
@@ -775,7 +775,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 false);
 
         // We need this argument since we are testing on a subset of b37
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         // Add our manual annotations to the arguments:
         addManualAnnotationsToArguments(arguments);
@@ -854,7 +854,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 false);
 
         // We need this argument since we are testing on a subset of b37
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 
@@ -883,7 +883,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 outputFormatType,
                 false);
 
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 
@@ -945,7 +945,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 FuncotatorArgumentDefinitions.OutputFormatType.VCF,
                 false);
 
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 
@@ -985,7 +985,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 FuncotatorArgumentDefinitions.OutputFormatType.VCF,
                 false);
 
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 
@@ -1111,12 +1111,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 vcfOutputFormatType,
                 false);
 
-        argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, false);
-        argumentsVcf.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+        argumentsVcf.add(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, false);
+        argumentsVcf.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
 
         if ( forceB37Hg19Conversion ) {
             // We need this argument since we are testing on a subset of b37
-            argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+            argumentsVcf.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
         }
 
         runCommandLine(argumentsVcf);
@@ -1137,12 +1137,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 mafOutputFormatType,
                 false);
 
-        argumentsMaf.addBooleanArgument(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, false);
-        argumentsMaf.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+        argumentsMaf.add(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, false);
+        argumentsMaf.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
 
         if ( forceB37Hg19Conversion ) {
             // We need this argument since we are testing on a subset of b37
-            argumentsMaf.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+            argumentsMaf.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
         }
 
         runCommandLine(argumentsMaf);
@@ -1310,7 +1310,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 false);
 
         // We need this argument since we are testing on a subset of b37
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 
@@ -1447,12 +1447,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 FuncotatorArgumentDefinitions.OutputFormatType.MAF,
                 false);
 
-        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+        arguments.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
 
-        excludedFields.forEach(f -> arguments.addArgument(FuncotatorArgumentDefinitions.EXCLUSION_FIELDS_LONG_NAME, f));
+        excludedFields.forEach(f -> arguments.add(FuncotatorArgumentDefinitions.EXCLUSION_FIELDS_LONG_NAME, f));
 
         // Disable the sequence dictionary check for the tests:
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 
@@ -1486,10 +1486,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 outputFormatType,
                 false);
 
-        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+        arguments.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
 
         // We need this argument since we are testing on a subset of b37
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 
@@ -1539,8 +1539,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 outputFormatType,
                 false);
 
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
-        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
 
         runCommandLine(arguments);
 
@@ -1595,8 +1595,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 outputFormatType,
                 false);
 
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
-        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
 
         runCommandLine(arguments);
 
@@ -1649,8 +1649,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 outputFormatType,
                 false);
 
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
-        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
 
         runCommandLine(arguments);
     }
@@ -1674,7 +1674,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 outputFormatType,
                 true);
 
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
     }
@@ -1690,11 +1690,11 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addVCF(new File(EMPTY_VCF));
         arguments.addOutput(outputFile);
         arguments.addReference(new File(b37Chr3Ref));
-        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
-        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
-        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
-        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
-        arguments.addBooleanArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);
+        arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
+        arguments.add(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
+        arguments.add(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
+        arguments.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+        arguments.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);
         runCommandLine(arguments);
 
         final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
@@ -1722,11 +1722,11 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addVCF(new File(MAF_DBSNP_TEST));
         arguments.addOutput(outputFile);
         arguments.addReference(new File(b37Chr3Ref));
-        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, PIK3CA_DBSNP_DS);
-        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
-        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
-        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
-        arguments.addBooleanArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);
+        arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, PIK3CA_DBSNP_DS);
+        arguments.add(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
+        arguments.add(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
+        arguments.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+        arguments.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);
         runCommandLine(arguments);
 
         final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(outputFile.toPath(), null);

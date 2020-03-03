@@ -23,10 +23,10 @@ public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest 
         final File secondBam = new File(resourceDir, "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add(firstBam.getCanonicalPath());
-        args.add(secondBam.getCanonicalPath());
-        args.add("--throw-on-diff true");
-        args.add("--VALIDATION_STRINGENCY SILENT");
+        args.addRaw(firstBam.getCanonicalPath());
+        args.addRaw(secondBam.getCanonicalPath());
+        args.addRaw("--throw-on-diff true");
+        args.addRaw("--VALIDATION_STRINGENCY SILENT");
         final Object result = this.runCommandLine(args);
         Assert.assertEquals(result, 0);
     }
@@ -57,18 +57,18 @@ public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest 
         final String resourceDir = getTestDataDir() + "/validation/";
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add(firstBam.getCanonicalPath());
-        args.add(secondBam.getCanonicalPath());
-        args.add("--" + "O");
-        args.add(outFile.getCanonicalPath());
+        args.addRaw(firstBam.getCanonicalPath());
+        args.addRaw(secondBam.getCanonicalPath());
+        args.addRaw("--" + "O");
+        args.addRaw(outFile.getCanonicalPath());
         if (null != referenceFile) {
-            args.add("-R");
-            args.add(referenceFile.getAbsolutePath());
+            args.addRaw("-R");
+            args.addRaw(referenceFile.getAbsolutePath());
         }
         if (staticQuantizationQuals != null && !staticQuantizationQuals.isEmpty()){
             for (int sq : staticQuantizationQuals){
-                args.add("--" + CompareBaseQualities.STATIC_QUANTIZED_QUALS_LONG_NAME);
-                args.add(sq);
+                args.addRaw("--" + CompareBaseQualities.STATIC_QUANTIZED_QUALS_LONG_NAME);
+                args.addRaw(sq);
             }
         }
 

@@ -63,10 +63,10 @@ public class GatherPileupSummariesIntegrationTest extends CommandLineProgramTest
         final File combinedPileupSummary = createTempFile("combined", "tsv");
         final File[] files = directory.toFile().listFiles();
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, FULL_HG19_DICT);
-        args.addArgument(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, combinedPileupSummary.getAbsolutePath());
+        args.add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, FULL_HG19_DICT);
+        args.add(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, combinedPileupSummary.getAbsolutePath());
         Arrays.stream(files).forEach(f -> {
-            args.addArgument(StandardArgumentDefinitions.INPUT_SHORT_NAME, f.getAbsolutePath());
+            args.add(StandardArgumentDefinitions.INPUT_SHORT_NAME, f.getAbsolutePath());
         });
 
         runCommandLine(args.getArgsList(), GatherPileupSummaries.class.getSimpleName());
@@ -108,10 +108,10 @@ public class GatherPileupSummariesIntegrationTest extends CommandLineProgramTest
         final File combinedPileupSummary = createTempFile("combined", "tsv");
         final File[] pileupSummaries = pileupSummaryDir.listFiles();
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, FULL_HG19_DICT);
-        args.addArgument(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, combinedPileupSummary.getAbsolutePath());
+        args.add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, FULL_HG19_DICT);
+        args.add(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, combinedPileupSummary.getAbsolutePath());
         Arrays.stream(pileupSummaries).forEach(f ->
-                args.addArgument(StandardArgumentDefinitions.INPUT_SHORT_NAME, f.getAbsolutePath()));
+                args.add(StandardArgumentDefinitions.INPUT_SHORT_NAME, f.getAbsolutePath()));
 
         runCommandLine(args.getArgsList(), GatherPileupSummaries.class.getSimpleName());
 

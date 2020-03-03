@@ -234,14 +234,14 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
                      final int expectedNumberOfEigenvalues) {
         final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
-                .addArgument(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE))
-                .addArgument(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE))
-                .addArgument(CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(EXTREME_SAMPLE_MEDIAN_PERCENTILE))
-                .addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, Integer.toString(NUMBER_OF_EIGENVALUES_REQUESTED))
+                .add(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
+                .add(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE))
+                .add(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE))
+                .add(CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(EXTREME_SAMPLE_MEDIAN_PERCENTILE))
+                .add(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, Integer.toString(NUMBER_OF_EIGENVALUES_REQUESTED))
                 .addOutput(resultOutputFile);
         if (annotatedIntervalsFile != null) {
-            argsBuilder.addFileArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
+            argsBuilder.add(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
         }
         inputFiles.forEach(argsBuilder::addInput);
         runCommandLine(argsBuilder);
@@ -254,14 +254,14 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
                                  final int expectedNumberOfEigenvalues) {   //ignored in this test
         final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
-                .addArgument(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE))
-                .addArgument(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE))
-                .addArgument(CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(EXTREME_SAMPLE_MEDIAN_PERCENTILE))
-                .addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, Integer.toString(NUMBER_OF_EIGENVALUES_REQUESTED))
+                .add(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
+                .add(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE))
+                .add(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE))
+                .add(CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(EXTREME_SAMPLE_MEDIAN_PERCENTILE))
+                .add(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, Integer.toString(NUMBER_OF_EIGENVALUES_REQUESTED))
                 .addOutput(resultOutputFile);
         if (annotatedIntervalsFile != null) {
-            argsBuilder.addFileArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
+            argsBuilder.add(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
         }
         argsBuilder.addInput(inputFiles.get(NUM_BAD_SAMPLES_WITH_TOO_MANY_ZEROS));  //use only first good sample
         runCommandLine(argsBuilder);                                                //just check that we can build the panel; no other assertions checked
@@ -273,14 +273,14 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
                                      final int expectedNumberOfEigenvalues) {   //ignored in this test
         final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
-                .addArgument(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE))
-                .addArgument(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE))
-                .addArgument(CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(EXTREME_SAMPLE_MEDIAN_PERCENTILE))
-                .addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, "0")
+                .add(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
+                .add(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE))
+                .add(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE))
+                .add(CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(EXTREME_SAMPLE_MEDIAN_PERCENTILE))
+                .add(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, "0")
                 .addOutput(resultOutputFile);
         if (annotatedIntervalsFile != null) {
-            argsBuilder.addFileArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
+            argsBuilder.add(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
         }
         inputFiles.forEach(argsBuilder::addInput);
         runCommandLine(argsBuilder);

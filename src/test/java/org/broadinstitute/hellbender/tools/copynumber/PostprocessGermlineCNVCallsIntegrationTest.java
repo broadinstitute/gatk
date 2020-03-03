@@ -74,30 +74,30 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
                                         final List<String> allosomalContigs,
                                         final int refAutosomalCopyNumber) {
         final ArgumentsBuilder argumentsBuilder = new ArgumentsBuilder();
-        argumentsBuilder.addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE,
+        argumentsBuilder.add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE,
                 "false");
 
-        argumentsBuilder.addArgument(PostprocessGermlineCNVCalls.SAMPLE_INDEX_LONG_NAME,
+        argumentsBuilder.add(PostprocessGermlineCNVCalls.SAMPLE_INDEX_LONG_NAME,
                 String.valueOf(sampleIndex));
-        callShards.forEach(callDir -> argumentsBuilder.addArgument(
+        callShards.forEach(callDir -> argumentsBuilder.add(
                 PostprocessGermlineCNVCalls.CALLS_SHARD_PATH_LONG_NAME, callDir));
-        argumentsBuilder.addArgument(PostprocessGermlineCNVCalls.OUTPUT_INTERVALS_VCF_LONG_NAME,
+        argumentsBuilder.add(PostprocessGermlineCNVCalls.OUTPUT_INTERVALS_VCF_LONG_NAME,
                 intervalsOutputVCF.getAbsolutePath());
-        allosomalContigs.forEach(contig -> argumentsBuilder.addArgument(
+        allosomalContigs.forEach(contig -> argumentsBuilder.add(
                 PostprocessGermlineCNVCalls.ALLOSOMAL_CONTIG_LONG_NAME, contig));
-        argumentsBuilder.addArgument(PostprocessGermlineCNVCalls.AUTOSOMAL_REF_COPY_NUMBER_LONG_NAME,
+        argumentsBuilder.add(PostprocessGermlineCNVCalls.AUTOSOMAL_REF_COPY_NUMBER_LONG_NAME,
                 String.valueOf(refAutosomalCopyNumber));
 
         /* add required arguments for segments VCF creation */
-        argumentsBuilder.addArgument(PostprocessGermlineCNVCalls.CONTIG_PLOIDY_CALLS_LONG_NAME,
+        argumentsBuilder.add(PostprocessGermlineCNVCalls.CONTIG_PLOIDY_CALLS_LONG_NAME,
                 PLOIDY_CALLS);
-        modelShards.forEach(modelDir -> argumentsBuilder.addArgument(
+        modelShards.forEach(modelDir -> argumentsBuilder.add(
                 PostprocessGermlineCNVCalls.MODEL_SHARD_PATH_LONG_NAME, modelDir));
-        argumentsBuilder.addArgument(PostprocessGermlineCNVCalls.OUTPUT_SEGMENTS_VCF_LONG_NAME,
+        argumentsBuilder.add(PostprocessGermlineCNVCalls.OUTPUT_SEGMENTS_VCF_LONG_NAME,
                 segmentsOutputVCF.getAbsolutePath());
 
         /* add denoised copy ratio output file path */
-        argumentsBuilder.addArgument(PostprocessGermlineCNVCalls.OUTPUT_DENOISED_COPY_RATIOS_LONG_NAME,
+        argumentsBuilder.add(PostprocessGermlineCNVCalls.OUTPUT_DENOISED_COPY_RATIOS_LONG_NAME,
                 denoisedCopyRatiosOutput.getAbsolutePath());
 
         runCommandLine(argumentsBuilder.getArgsList());

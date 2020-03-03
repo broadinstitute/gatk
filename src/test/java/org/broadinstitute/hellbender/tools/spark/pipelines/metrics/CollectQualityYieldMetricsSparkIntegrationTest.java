@@ -45,17 +45,17 @@ public final class CollectQualityYieldMetricsSparkIntegrationTest extends Comman
         final File expectedFile = new File(TEST_DATA_DIR, outName);   //file created using picard 1.130
         final File outfile = GATKBaseTest.createTempFile("testCollectQualityYield", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--I");
-        args.add(input.getCanonicalPath());
-        args.add("--O");
-        args.add(outfile.getCanonicalPath());
+        args.addRaw("--I");
+        args.addRaw(input.getCanonicalPath());
+        args.addRaw("--O");
+        args.addRaw(outfile.getCanonicalPath());
         if (null != referenceName) {
             final File REF = new File(referenceName);
-            args.add("--R");
-            args.add(REF.getAbsolutePath());
+            args.addRaw("--R");
+            args.addRaw(REF.getAbsolutePath());
         }
-        args.add("-OQ");
-        args.add(String.valueOf(useOQ));
+        args.addRaw("-OQ");
+        args.addRaw(String.valueOf(useOQ));
 
         runCommandLine(args.getArgsList());
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");

@@ -14,7 +14,6 @@ import java.util.Arrays;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Stream;
 
 public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTest {
     private static final String trancheVCF = largeFileTestDir + "VQSR/g94982_20_1m_10m_python_2dcnn.vcf.gz";
@@ -99,12 +98,12 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
     public void runTrancheFiltering(final List<String> resources, final List<String> extraArgs,
                                     final String expectedOutput) throws IOException {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument("info-key", "MIX_SMALL_2D_W_DROPOUT")
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false")
-                .add(StringUtils.join(extraArgs.toArray(), " "));
-       resources.stream().forEach(r -> argsBuilder.addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, r));
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
+                .add("info-key", "MIX_SMALL_2D_W_DROPOUT")
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false")
+                .addRaw(StringUtils.join(extraArgs.toArray(), " "));
+       resources.stream().forEach(r -> argsBuilder.add(StandardArgumentDefinitions.RESOURCE_LONG_NAME, r));
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(argsBuilder.toString(),
                 Arrays.asList(expectedOutput));
@@ -114,11 +113,11 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
         @Test(dataProvider = "getBadResourceCombos", expectedExceptions = UserException.BadInput.class)
         public void runTrancheFilteringOnBadInputs(final String inputVcf, final String resourceVcf) {
             final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-            argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcf)
-                    .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, resourceVcf)
-                    .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                    .addArgument("info-key", "MIX_SMALL_2D_W_DROPOUT")
-                    .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+            argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcf)
+                    .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME, resourceVcf)
+                    .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
+                    .add("info-key", "MIX_SMALL_2D_W_DROPOUT")
+                    .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
             runCommandLine(argsBuilder);
         }
@@ -126,11 +125,11 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
     @Test(dataProvider = "getGoodResourceCombos")
     public void runTrancheFilteringOnGoodInputs(final String inputVcf, final String resourceVcf) {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcf)
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, resourceVcf)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument("info-key", "MIX_SMALL_2D_W_DROPOUT")
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcf)
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME, resourceVcf)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
+                .add("info-key", "MIX_SMALL_2D_W_DROPOUT")
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         runCommandLine(argsBuilder);
     }

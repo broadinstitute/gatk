@@ -135,13 +135,13 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
         final ArgumentsBuilder args = new ArgumentsBuilder();
         final File fixed = createTempFile("fixed_", ".vcf");
         args.addVCF(shuffled)
-                .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleMap)
-                .addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(readerThreads))
-                .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
-                .addBooleanArgument(FixCallSetSampleOrdering.SKIP_PROMPT_LONG_NAME, true)
+                .add(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleMap)
+                .add(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(readerThreads))
+                .add(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
+                .add(FixCallSetSampleOrdering.SKIP_PROMPT_LONG_NAME, true)
                 .addOutput(fixed);
         if ( gvcfToHeaderSampleMapFile != null ) {
-            args.addFileArgument("gvcf-to-header-sample-map-file", gvcfToHeaderSampleMapFile);
+            args.add("gvcf-to-header-sample-map-file", gvcfToHeaderSampleMapFile);
         }
         
         runCommandLine(args);
@@ -177,13 +177,13 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
         final ArgumentsBuilder args = new ArgumentsBuilder();
         final File fixed = createTempFile("fixed_", ".vcf");
         args.addVCF(shuffled)
-                .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleMap)
-                .addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(readerThreads))
-                .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
-                .addBooleanArgument(FixCallSetSampleOrdering.SKIP_PROMPT_LONG_NAME, true)
+                .add(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleMap)
+                .add(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(readerThreads))
+                .add(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
+                .add(FixCallSetSampleOrdering.SKIP_PROMPT_LONG_NAME, true)
                 .addOutput(fixed);
         if ( gvcfToHeaderSampleMapFile != null ) {
-            args.addFileArgument("gvcf-to-header-sample-map-file", gvcfToHeaderSampleMapFile);
+            args.add("gvcf-to-header-sample-map-file", gvcfToHeaderSampleMapFile);
         }
 
         runCommandLine(args);

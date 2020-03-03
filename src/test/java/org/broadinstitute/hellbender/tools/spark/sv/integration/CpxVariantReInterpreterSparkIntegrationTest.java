@@ -59,7 +59,7 @@ public class CpxVariantReInterpreterSparkIntegrationTest extends CommandLineProg
 
     @Test(groups = "sv", dataProvider = "forCpxVariantReInterpreterSparkIntegrationTest")
     public void testRunLocal(final CpxVariantReInterpreterSparkIntegrationTestArgs params) throws Exception {
-        final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
+        final List<String> args = Arrays.asList( new ArgumentsBuilder().addRaw(params.getCommandLine()).getArgsArray() );
         runCommandLine(args);
 
         final String actualVCFForOneSegmentCalls = params.outputDir + "/" + outPrefix + "_1_seg.vcf";
@@ -72,7 +72,7 @@ public class CpxVariantReInterpreterSparkIntegrationTest extends CommandLineProg
     public void testRunHDFS(final CpxVariantReInterpreterSparkIntegrationTestArgs params) throws Exception {
         MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
 
-            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
+            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().addRaw(params.getCommandLine()).getArgsArray() );
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
 
             int idx = 0;

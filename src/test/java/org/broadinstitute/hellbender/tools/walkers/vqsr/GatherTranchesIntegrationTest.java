@@ -24,11 +24,11 @@ public class GatherTranchesIntegrationTest extends CommandLineProgramTest {
         final File recal_original = new File(testDir + "expected/snpTranches.gathered.txt");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(recal1.getAbsolutePath());
-        args.add("--input");
-        args.add(recal2.getAbsolutePath());
-        args.addArgument("mode", "SNP");
+        args.addRaw("--input");
+        args.addRaw(recal1.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(recal2.getAbsolutePath());
+        args.add("mode", "SNP");
 
         final File outFile = GATKBaseTest.createTempFile("gatheredTranches", ".txt");
         args.addOutput(outFile);
@@ -45,11 +45,11 @@ public class GatherTranchesIntegrationTest extends CommandLineProgramTest {
         final File recal_original = new File(testDir + "expected/indels.gathered.tranches");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(tranches1.getAbsolutePath());
-        args.add("--input");
-        args.add(tranches2.getAbsolutePath());
-        args.addArgument("mode", "INDEL");
+        args.addRaw("--input");
+        args.addRaw(tranches1.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(tranches2.getAbsolutePath());
+        args.add("mode", "INDEL");
 
         final File outFile = GATKBaseTest.createTempFile("gatheredTranches", ".txt");
         args.addOutput(outFile);

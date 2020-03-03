@@ -168,13 +168,13 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
         final File outFile = createTempFile("testUnmappedReadInclusion", ".bam");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("-I"); args.add(input.getAbsolutePath());
-        args.add("-O"); args.add(outFile.getAbsolutePath());
+        args.addRaw("-I"); args.addRaw(input.getAbsolutePath());
+        args.addRaw("-O"); args.addRaw(outFile.getAbsolutePath());
         for ( final String intervalString : intervalStrings ) {
-            args.add("-L"); args.add(intervalString);
+            args.addRaw("-L"); args.addRaw(intervalString);
         }
         if ( reference != null ) {
-            args.add("-R"); args.add(reference);
+            args.addRaw("-R"); args.addRaw(reference);
         }
 
         runCommandLine(args);
@@ -268,13 +268,13 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
         final File outFile = createTempFile("testReadFilter", extOut);
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("-I"); args.add(new File(TEST_DATA_DIR, input).getAbsolutePath());
-        args.add("-O"); args.add(outFile.getAbsolutePath());
+        args.addRaw("-I"); args.addRaw(new File(TEST_DATA_DIR, input).getAbsolutePath());
+        args.addRaw("-O"); args.addRaw(outFile.getAbsolutePath());
         if ( reference != null ) {
-            args.add("-R"); args.add(new File(TEST_DATA_DIR, reference).getAbsolutePath());
+            args.addRaw("-R"); args.addRaw(new File(TEST_DATA_DIR, reference).getAbsolutePath());
         }
         for (final String filter : inputArgs) {
-            args.add(filter);
+            args.addRaw(filter);
         }
 
         runCommandLine(args);
@@ -301,12 +301,12 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
         final File outCram = GATKBaseTest.createTempFile("print_reads_bad_reference", ".cram");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(inCram.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outCram.getCanonicalPath());
-        args.add("-R");
-        args.add(GATKBaseTest.getSafeNonExistentFile("Nonexistent.fasta").getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(inCram.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outCram.getCanonicalPath());
+        args.addRaw("-R");
+        args.addRaw(GATKBaseTest.getSafeNonExistentFile("Nonexistent.fasta").getCanonicalPath());
 
         runCommandLine(args.getArgsArray());
     }
@@ -335,8 +335,8 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
         final String outputPath = BucketUtils.getTempFilePath(outputPrefix, outputExtension);
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
-        argBuilder.addArgument("input", gcsInputPath)
-                .addArgument("output", outputPath);
+        argBuilder.add("input", gcsInputPath)
+                .add("output", outputPath);
         runCommandLine(argBuilder);
     }
 
@@ -346,11 +346,11 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
         final File expectedBam = new File(getTestDataDir(), "print_reads.sorted.chr1_1.bam");
         final File outBam = GATKBaseTest.createTempFile("print_reads", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(inBam.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outBam.getCanonicalPath());
-        args.add("-L chr7:1-100 -XL chr7:2-100");
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(inBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outBam.getCanonicalPath());
+        args.addRaw("-L chr7:1-100 -XL chr7:2-100");
 
         this.runCommandLine(args.getArgsArray());
 
@@ -363,12 +363,12 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
         final File inRef = new File(getTestDataDir(), "print_reads.chr1only.fasta");
         final File outBam = GATKBaseTest.createTempFile("print_reads", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(inCram.getCanonicalPath());
-        args.add("-R");
-        args.add(inRef.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(inCram.getCanonicalPath());
+        args.addRaw("-R");
+        args.addRaw(inRef.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outBam.getCanonicalPath());
 
         this.runCommandLine(args.getArgsArray());
     }
@@ -381,10 +381,10 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
         }
         final File outBam = GATKBaseTest.createTempFile("print_reads", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(inBam.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(inBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outBam.getCanonicalPath());
 
         this.runCommandLine(args.getArgsArray());
 
@@ -397,10 +397,10 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
         final File outBam = GATKBaseTest.createTempFile("print_reads_testReadFiltering", ".bam");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(samWithOneMalformedRead.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(samWithOneMalformedRead.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outBam.getCanonicalPath());
 
         runCommandLine(args.getArgsArray());
         SamAssertionUtils.assertSamsEqual(outBam, new File(getTestDataDir(), "expected.print_reads_one_malformed_read.bam"));

@@ -80,14 +80,14 @@ public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest 
     public void testASEReadCounterMultipleContexts() {
         ArgumentsBuilder args = new ArgumentsBuilder();
 
-        args.add("-R");
-        args.add(b37_reference_20_21);
-        args.add("-I");
-        args.add(largeFileTestDir + "NA12878.RNAseq.bam");
-        args.add("-V");
-        args.add(aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.MultiContext.vcf");
-        args.add("-O");
-        args.add(GATKBaseTest.createTempFile("testMultipleContexts", ".csv"));
+        args.addRaw("-R");
+        args.addRaw(b37_reference_20_21);
+        args.addRaw("-I");
+        args.addRaw(largeFileTestDir + "NA12878.RNAseq.bam");
+        args.addRaw("-V");
+        args.addRaw(aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.MultiContext.vcf");
+        args.addRaw("-O");
+        args.addRaw(GATKBaseTest.createTempFile("testMultipleContexts", ".csv"));
 
         runCommandLine(args);
     }
@@ -96,14 +96,14 @@ public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest 
     public void testASEReadCounterNonRefAllele() {
         ArgumentsBuilder args = new ArgumentsBuilder();
 
-        args.add("-R");
-        args.add(b37_reference_20_21);
-        args.add("-I");
-        args.add(largeFileTestDir + "NA12878.RNAseq.bam");
-        args.add("-V");
-        args.add(aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.NON_REF.vcf");
-        args.add("-O");
-        args.add(GATKBaseTest.createTempFile("testMultipleContexts", ".csv"));
+        args.addRaw("-R");
+        args.addRaw(b37_reference_20_21);
+        args.addRaw("-I");
+        args.addRaw(largeFileTestDir + "NA12878.RNAseq.bam");
+        args.addRaw("-V");
+        args.addRaw(aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.NON_REF.vcf");
+        args.addRaw("-O");
+        args.addRaw(GATKBaseTest.createTempFile("testMultipleContexts", ".csv"));
 
         runCommandLine(args);
     }
@@ -112,14 +112,14 @@ public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest 
     public void testASEReadCounterWarnings() {
         ArgumentsBuilder args = new ArgumentsBuilder();
 
-        args.add("-R");
-        args.add(b37_reference_20_21);
-        args.add("-I");
-        args.add(largeFileTestDir + "NA12878.RNAseq.bam");
-        args.add("-V");
-        args.add(aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.warnings.vcf");
-        args.add("-O");
-        args.add(GATKBaseTest.createTempFile("testMultipleContexts", ".csv"));
+        args.addRaw("-R");
+        args.addRaw(b37_reference_20_21);
+        args.addRaw("-I");
+        args.addRaw(largeFileTestDir + "NA12878.RNAseq.bam");
+        args.addRaw("-V");
+        args.addRaw(aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.warnings.vcf");
+        args.addRaw("-O");
+        args.addRaw(GATKBaseTest.createTempFile("testMultipleContexts", ".csv"));
 
         runCommandLine(args);
     }

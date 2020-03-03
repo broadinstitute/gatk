@@ -31,7 +31,7 @@ public class FastaReferenceMakerIntegrationTest extends CommandLineProgramTest {
         final File out = BaseTest.createTempFile("subset", ".fasta");
         args.addReference(new File(b37Reference))
                 .addOutput(out);
-        intervals.forEach(interval -> args.addArgument("L", interval));
+        intervals.forEach(interval -> args.add("L", interval));
         runCommandLine(args);
 
         FastaTestUtils.assertFastaFilesContainTheSameSequence(out.toPath(), expected.toPath());
@@ -52,7 +52,7 @@ public class FastaReferenceMakerIntegrationTest extends CommandLineProgramTest {
         final File hg19mini = new File(hg19MiniReference);
         args.addReference(hg19mini)
                 .addOutput(out)
-                .addArgument(FastaReferenceMaker.LINE_WIDTH_LONG_NAME, String.valueOf(basesPerLine));
+                .add(FastaReferenceMaker.LINE_WIDTH_LONG_NAME, String.valueOf(basesPerLine));
 
         runCommandLine(args);
 

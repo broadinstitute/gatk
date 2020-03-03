@@ -69,14 +69,14 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
                 .addOutput(mutect2AnnotatedVcf)
                 .addReference(reference)
                 .addInterval(new SimpleInterval("20", 50_000_000, 52_000_000))
-                .addBooleanArgument(StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, true);
+                .add(StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, true);
 
         final ArgumentsBuilder mutect2ArgsWithoutAnnotations = new ArgumentsBuilder()
                 .addInput(bam)
                 .addOutput(mutect2UnannotatedVcf)
                 .addReference(reference)
                 .addInterval(new SimpleInterval("20", 50_000_000, 52_000_000))
-                .addBooleanArgument(StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS, true);
+                .add(StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS, true);
 
         new Main().instanceMain(makeCommandLineArgs(mutect2Args.getArgsList(), Mutect2.class.getSimpleName()));
 
@@ -88,7 +88,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
                 .addVCF(mutect2UnannotatedVcf)
                 .addReference(reference)
                 .addOutput(reannotatedVcf)
-                .addBooleanArgument(StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, true);
+                .add(StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, true);
 
         runCommandLine(args.getArgsArray());
 
@@ -178,7 +178,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsForOneComp = new ArgumentsBuilder()
                 .addVCF(inputVCF)
                 .addOutput(outputVCF)
-                .addFileArgument(StandardArgumentDefinitions.COMPARISON_LONG_NAME + ":" + FOO, compVcf);
+                .add(StandardArgumentDefinitions.COMPARISON_LONG_NAME + ":" + FOO, compVcf);
 
         runCommandLine(argsForOneComp.getArgsList());
 
@@ -188,7 +188,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
 
         // add the input as a comp -- every site should get this annotation
         final ArgumentsBuilder argsForTwoComps = new ArgumentsBuilder(argsForOneComp.getArgsArray())
-                .addFileArgument(StandardArgumentDefinitions.COMPARISON_LONG_NAME + ":" + FOO2, inputVCF);
+                .add(StandardArgumentDefinitions.COMPARISON_LONG_NAME + ":" + FOO2, inputVCF);
 
         runCommandLine(argsForTwoComps.getArgsList());
 
@@ -218,7 +218,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(inputVCF)
                 .addOutput(outputVCF)
-                .addArgument(DbsnpArgumentCollection.DBSNP_LONG_NAME, dbsnp_138_b37_20_21_vcf);
+                .add(DbsnpArgumentCollection.DBSNP_LONG_NAME, dbsnp_138_b37_20_21_vcf);
 
         runCommandLine(args.getArgsList());
 
@@ -262,11 +262,11 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final String[] baseArgs = new ArgumentsBuilder()
                 .addVCF(inputVCF)
                 .addOutput(outputVCF)
-                .addFileArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":" + FOO, resourceVcf)
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":" + FOO, resourceVcf)
                 .getArgsArray();
 
         // test the --expression foo.FILTER annotation
-        final ArgumentsBuilder filterArgs = new ArgumentsBuilder(baseArgs).addArgument(VariantAnnotator.EXPRESSION_LONG_NAME, FOO_FILTER);
+        final ArgumentsBuilder filterArgs = new ArgumentsBuilder(baseArgs).add(VariantAnnotator.EXPRESSION_LONG_NAME, FOO_FILTER);
         runCommandLine(filterArgs.getArgsList());
         for (final VariantContext outputVC : VariantContextTestUtils.getVariantContexts(outputVCF)) {
             final VariantContext resourceVariant = resourceVariantsByStart.get(outputVC.getStart());
@@ -279,7 +279,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         }
 
         // test the --expression foo.ID annotation
-        final ArgumentsBuilder idArgs = new ArgumentsBuilder(baseArgs).addArgument(VariantAnnotator.EXPRESSION_LONG_NAME, FOO_ID);
+        final ArgumentsBuilder idArgs = new ArgumentsBuilder(baseArgs).add(VariantAnnotator.EXPRESSION_LONG_NAME, FOO_ID);
         runCommandLine(idArgs.getArgsList());
         for (final VariantContext outputVC : VariantContextTestUtils.getVariantContexts(outputVCF)) {
             final VariantContext resourceVariant = resourceVariantsByStart.get(outputVC.getStart());
@@ -292,7 +292,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         }
 
         // test the --expression foo.AC annotation as an example of a resource INFO field that can be array-valued
-        final ArgumentsBuilder infoArgs = new ArgumentsBuilder(baseArgs).addArgument(VariantAnnotator.EXPRESSION_LONG_NAME, FOO_AC);
+        final ArgumentsBuilder infoArgs = new ArgumentsBuilder(baseArgs).add(VariantAnnotator.EXPRESSION_LONG_NAME, FOO_AC);
         runCommandLine(infoArgs.getArgsList());
         for (final VariantContext outputVC : VariantContextTestUtils.getVariantContexts(outputVCF)) {
             final VariantContext resourceVariant = resourceVariantsByStartAndAlleles.get(keyForVariant(outputVC));
@@ -313,7 +313,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(inputVCF)
                 .addOutput(outputVCF)
-                .addBooleanArgument(StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, true)
+                .add(StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, true)
                 .addInterval(new SimpleInterval("20", 1, 1));
 
         runCommandLine(args.getArgsList());
@@ -328,8 +328,8 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(inputVCF)
                 .addOutput(outputVCF)
-                .addArgument(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, PossibleDeNovo.class.getSimpleName())
-                .addFileArgument(StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, pedigree);
+                .add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, PossibleDeNovo.class.getSimpleName())
+                .add(StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, pedigree);
 
         runCommandLine(args.getArgsList());
 

@@ -653,10 +653,10 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
 
         ArgumentsBuilder argBuilder= new ArgumentsBuilder();
         argBuilder.addReference(new File(b37_reference_20_21));
-        argBuilder.addArgument("eval", getTestFilePath("validationReportEval.noGenotypes.vcf"));
-        argBuilder.addArgument(StandardArgumentDefinitions.COMPARISON_SHORT_NAME, getTestFilePath("validationReportComp.noGenotypes.vcf"));
+        argBuilder.add("eval", getTestFilePath("validationReportEval.noGenotypes.vcf"));
+        argBuilder.add(StandardArgumentDefinitions.COMPARISON_SHORT_NAME, getTestFilePath("validationReportComp.noGenotypes.vcf"));
         argBuilder.addInterval(new SimpleInterval("20"));
-        argBuilder.addArgument("EV", "PrintMissingComp");
+        argBuilder.add("EV", "PrintMissingComp");
         argBuilder.addOutput(outputFile);
 
         runCommandLine(argBuilder);
@@ -670,9 +670,9 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         final String vcf = getTestFilePath("/CEU.trio.callsForVE.vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addOutput( createTempFile("out",".stuff"))
-                .addArgument("eval", vcf)
-                .addArgument("do-not-use-all-standard-modules")
-                .addArgument("EV", countVariants);
+                .add("eval", vcf)
+                .addFlag("do-not-use-all-standard-modules")
+                .add("EV", countVariants);
 
         runCommandLine(args);
     }

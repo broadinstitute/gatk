@@ -259,11 +259,11 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
-                .addArgument("V", genomicsDBUri)
+                .add("V", genomicsDBUri)
                 .addOutput(output);
         intervals.forEach(args::addInterval);
-        args.add("--" + GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME);
-        args.add("--only-output-calls-starting-in-intervals");  //note that this will restrict calls to just the specified intervals
+        args.addRaw("--" + GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME);
+        args.addRaw("--only-output-calls-starting-in-intervals");  //note that this will restrict calls to just the specified intervals
 
         Utils.resetRandomGenerator();
         runCommandLine(args);
@@ -318,7 +318,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final File inputWithOldArgument = getTestFile( "combined.single.sample.pipeline.gatk3.vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(b37_reference_20_21))
-                .addArgument("V", inputWithOldArgument.getAbsolutePath())
+                .add("V", inputWithOldArgument.getAbsolutePath())
                 .addOutput(output);
 
         // This is expected to fail because RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT is not specified to allow old format MQ calculations.
@@ -342,11 +342,11 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
-                .addArgument("V", input)
-                .addArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT)
+                .add("V", input)
+                .addFlag(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT)
                 .addOutput(output);
 
-        additionalArguments.forEach(args::add);
+        additionalArguments.forEach(args::addRaw);
 
         Utils.resetRandomGenerator();
         runCommandLine(args);
@@ -369,7 +369,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addVCF(getTestFile(BASE_PAIR_GVCF))
                 .addOutput(output)
                 .addReference(new File(b37_reference_20_21))
-                .addArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, "true");
+                .add(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, "true");
 
         runCommandLine(args);
         Assert.assertTrue(index.exists());
@@ -381,10 +381,10 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addVCF(getTestFile("leadingDeletion.g.vcf"))
                 .addReference(new File(b37_reference_20_21))
                 .addOutput( createTempFile("tmp",".vcf"))
-                .addBooleanArgument(GenotypeGVCFs.ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME, true);
+                .add(GenotypeGVCFs.ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME, true);
 
         Assert.assertThrows(CommandLineException.MissingArgument.class, () -> runCommandLine(args));
-        args.addArgument("L", "20:69512-69513");
+        args.add("L", "20:69512-69513");
         runCommandLine(args);
     }
 
@@ -401,7 +401,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addVCF(getTestFile("threeSamples.MT.g.vcf"))
                 .addReference(new File(b37Reference))
                 .addOutput(output)
-                .addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+                .add(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
         runCommandLine(args);
 
         //compared with the combined GVCF, this output should have called GTs and no alts with LODs less than TLOD_THRESHOLD
@@ -468,8 +468,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addVCF(new File(getToolTestDataDir() + "../CombineGVCFs/twoSamples.MT.g.vcf"))
                 .addReference(new File(b37Reference))
                 .addOutput(output)
-                .addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true)
-                .addArgument("max-alternate-alleles", "2")
+                .add(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true)
+                .add("max-alternate-alleles", "2")
                 .addInterval(new SimpleInterval("MT:73"));
         runCommandLine(args);
 
@@ -487,11 +487,11 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addVCF(new File(ALLELE_SPECIFIC_DIRECTORY, "NA12878.AS.chr20snippet.g.vcf"))
                 .addReference(new File(b37Reference))
                 .addOutput(output)
-                .addBooleanArgument("keep-combined", true)
-                .addArgument("A", "ClippingRankSumTest")
-                .addArgument("G", "AS_StandardAnnotation")
-                .addArgument("G", "StandardAnnotation")
-                .addBooleanArgument("allow-old-rms-mapping-quality-annotation-data", true);
+                .add("keep-combined", true)
+                .add("A", "ClippingRankSumTest")
+                .add("G", "AS_StandardAnnotation")
+                .add("G", "StandardAnnotation")
+                .add("allow-old-rms-mapping-quality-annotation-data", true);
         runCommandLine(args);
 
         List<VariantContext> results = VariantContextTestUtils.getVariantContexts(output);
@@ -527,9 +527,9 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsWithoutForceCalling = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
-                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20")
+                .add(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20")
                 .addInterval(new SimpleInterval("20", 10000000, 10010000))
-                .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
+                .add(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
                 .addOutput(output1);
 
         Utils.resetRandomGenerator();
@@ -545,9 +545,9 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsWithForceCalling = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
-                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10000100")
+                .add(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10000100")
                 .addInterval(new SimpleInterval("20", 10000000, 10010000))
-                .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
+                .add(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
                 .addOutput(output2);
 
         Utils.resetRandomGenerator();
@@ -574,7 +574,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsWithoutForceSpecificSites = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
-                .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
+                .add(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
                 .addOutput(output1);
 
         Utils.resetRandomGenerator();
@@ -589,11 +589,11 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsWithSpecificSites = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
-                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10433049")
-                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10433197")
-                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10433312")
-                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10684106")
-                .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
+                .add(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10433049")
+                .add(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10433197")
+                .add(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10433312")
+                .add(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10684106")
+                .add(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
                 .addOutput(output2);
 
         Utils.resetRandomGenerator();
@@ -634,7 +634,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(b37Reference)
                 .addVCF(input)
-                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20")
+                .add(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20")
                 .addInterval(new SimpleInterval("20", 69511, 69515))
                 .addOutput(output);
 

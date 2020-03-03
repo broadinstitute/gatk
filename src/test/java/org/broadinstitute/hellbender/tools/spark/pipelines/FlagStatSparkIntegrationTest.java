@@ -36,14 +36,14 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
         ArgumentsBuilder args = new ArgumentsBuilder();
 
         args.addInput(getTestFile("flag_stat.bam"));
-        args.add("-L"); args.add("chr1");
-        args.add("-L"); args.add("chr2");
-        args.add("-L"); args.add("chr3");
-        args.add("-L"); args.add("chr4");
-        args.add("-L"); args.add("chr5");
-        args.add("-L"); args.add("chr6");
-        args.add("-L"); args.add("chr7");
-        args.add("-L"); args.add("chr8");
+        args.addRaw("-L"); args.addRaw("chr1");
+        args.addRaw("-L"); args.addRaw("chr2");
+        args.addRaw("-L"); args.addRaw("chr3");
+        args.addRaw("-L"); args.addRaw("chr4");
+        args.addRaw("-L"); args.addRaw("chr5");
+        args.addRaw("-L"); args.addRaw("chr6");
+        args.addRaw("-L"); args.addRaw("chr7");
+        args.addRaw("-L"); args.addRaw("chr8");
         File outputFile = createTempFile("flagStatTest", ".txt");
         args.addOutput(outputFile);
 
@@ -59,7 +59,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
         ArgumentsBuilder args = new ArgumentsBuilder();
 
         args.addInput(getTestFile("flag_stat.bam"));
-        args.add("-L chr7:1-100 -XL chr7:2-100");
+        args.addRaw("-L chr7:1-100 -XL chr7:2-100");
         File outputFile = createTempFile("flagStatTest.chr1_1", ".txt");
         args.addOutput(outputFile);
 

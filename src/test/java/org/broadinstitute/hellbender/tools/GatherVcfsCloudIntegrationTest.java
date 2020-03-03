@@ -63,7 +63,7 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
         final ArgumentsBuilder args = new ArgumentsBuilder();
         inputs.forEach(args::addInput);
         args.addOutput(output)
-                .addArgument(GatherVcfsCloud.GATHER_TYPE_LONG_NAME, gatherType.toString());
+                .add(GatherVcfsCloud.GATHER_TYPE_LONG_NAME, gatherType.toString());
         runCommandLine(args);
 
         try (final AbstractFeatureReader<VariantContext, ?> actualReader = AbstractFeatureReader.getFeatureReader(output.getAbsolutePath(), null, new VCFCodec(), false, Function.identity(), Function.identity());
@@ -135,10 +135,10 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
             shards.forEach(args::addInput);
 
             args.addOutput(output)
-                    .addArgument(StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, "0")
-                    .addArgument(GatherVcfsCloud.GATHER_TYPE_LONG_NAME, GatherVcfsCloud.GatherType.BLOCK.toString())
-                    .addBooleanArgument(GatherVcfsCloud.IGNORE_SAFETY_CHECKS_LONG_NAME, true) // much faster this way
-                    .addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, false);
+                    .add(StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, "0")
+                    .add(GatherVcfsCloud.GATHER_TYPE_LONG_NAME, GatherVcfsCloud.GatherType.BLOCK.toString())
+                    .add(GatherVcfsCloud.IGNORE_SAFETY_CHECKS_LONG_NAME, true) // much faster this way
+                    .add(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, false);
             runCommandLine(args);
 
             try (final FeatureDataSource<VariantContext> outputDataSource = new FeatureDataSource<>(output)) {
@@ -207,7 +207,7 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
     public void testBlockCopyFailsIfNonBGZipped(){
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addOutput(createTempFile("output","vcf.gz"))
-                .addArgument(GatherVcfsCloud.GATHER_TYPE_LONG_NAME, GatherVcfsCloud.GatherType.BLOCK.toString())
+                .add(GatherVcfsCloud.GATHER_TYPE_LONG_NAME, GatherVcfsCloud.GatherType.BLOCK.toString())
                 .addInput(TINY_HG_19_VCF);
         runCommandLine(args);
     }

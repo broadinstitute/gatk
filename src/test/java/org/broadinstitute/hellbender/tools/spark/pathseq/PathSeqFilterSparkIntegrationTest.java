@@ -71,18 +71,18 @@ public class PathSeqFilterSparkIntegrationTest extends CommandLineProgramTest {
         final File outputMetricsFile = createTempFile("metrics", ".txt");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addBooleanArgument(PSFilterArgumentCollection.IS_HOST_ALIGNED_LONG_NAME, isHostAligned);
-        args.addBooleanArgument(PSFilterArgumentCollection.SKIP_FILTERS_LONG_NAME, skipFilters);
-        args.addBooleanArgument(PSFilterArgumentCollection.FILTER_DUPLICATES_LONG_NAME, filterDuplicates);
+        args.add(PSFilterArgumentCollection.IS_HOST_ALIGNED_LONG_NAME, isHostAligned);
+        args.add(PSFilterArgumentCollection.SKIP_FILTERS_LONG_NAME, skipFilters);
+        args.add(PSFilterArgumentCollection.FILTER_DUPLICATES_LONG_NAME, filterDuplicates);
         args.addInput(inputBamFile);
-        args.addFileArgument(PathSeqFilterSpark.PAIRED_OUTPUT_LONG_NAME, outputPairedBamFile);
-        args.addFileArgument(PathSeqFilterSpark.UNPAIRED_OUTPUT_LONG_NAME, outputUnpairedBamFile);
-        args.addFileArgument(PSFilterArgumentCollection.FILTER_METRICS_FILE_LONG_NAME, outputMetricsFile);
+        args.add(PathSeqFilterSpark.PAIRED_OUTPUT_LONG_NAME, outputPairedBamFile);
+        args.add(PathSeqFilterSpark.UNPAIRED_OUTPUT_LONG_NAME, outputUnpairedBamFile);
+        args.add(PSFilterArgumentCollection.FILTER_METRICS_FILE_LONG_NAME, outputMetricsFile);
         if (useKmerFilter) {
-            args.addFileArgument(PSFilterArgumentCollection.KMER_FILE_PATH_LONG_NAME, new File(libraryPath));
+            args.add(PSFilterArgumentCollection.KMER_FILE_PATH_LONG_NAME, new File(libraryPath));
         }
         if (useBwaFilter) {
-            args.addFileArgument(PSFilterArgumentCollection.FILTER_BWA_IMAGE_LONG_NAME, new File(imagePath));
+            args.add(PSFilterArgumentCollection.FILTER_BWA_IMAGE_LONG_NAME, new File(imagePath));
         }
 
         this.runCommandLine(args.getArgsArray());

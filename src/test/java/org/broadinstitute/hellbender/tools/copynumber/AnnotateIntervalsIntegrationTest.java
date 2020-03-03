@@ -97,8 +97,8 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File outputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         final AnnotatedIntervalCollection result = new AnnotatedIntervalCollection(outputFile);
@@ -114,9 +114,9 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File outputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addFileArgument(AnnotateIntervals.MAPPABILITY_TRACK_PATH_LONG_NAME, MAPPABILITY_TRACK_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(AnnotateIntervals.MAPPABILITY_TRACK_PATH_LONG_NAME, MAPPABILITY_TRACK_FILE)
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         final AnnotatedIntervalCollection result = new AnnotatedIntervalCollection(outputFile);
@@ -134,9 +134,9 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File outputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addFileArgument(AnnotateIntervals.SEGMENTAL_DUPLICATION_TRACK_PATH_LONG_NAME, SEGMENTAL_DUPLICATION_TRACK_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(AnnotateIntervals.SEGMENTAL_DUPLICATION_TRACK_PATH_LONG_NAME, SEGMENTAL_DUPLICATION_TRACK_FILE)
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         final AnnotatedIntervalCollection result = new AnnotatedIntervalCollection(outputFile);
@@ -154,10 +154,10 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File outputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addFileArgument(AnnotateIntervals.MAPPABILITY_TRACK_PATH_LONG_NAME, MAPPABILITY_TRACK_FILE)
-                .addFileArgument(AnnotateIntervals.SEGMENTAL_DUPLICATION_TRACK_PATH_LONG_NAME, SEGMENTAL_DUPLICATION_TRACK_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(AnnotateIntervals.MAPPABILITY_TRACK_PATH_LONG_NAME, MAPPABILITY_TRACK_FILE)
+                .add(AnnotateIntervals.SEGMENTAL_DUPLICATION_TRACK_PATH_LONG_NAME, SEGMENTAL_DUPLICATION_TRACK_FILE)
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         final AnnotatedIntervalCollection result = new AnnotatedIntervalCollection(outputFile);
@@ -171,9 +171,9 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File outputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addFileArgument(AnnotateIntervals.SEGMENTAL_DUPLICATION_TRACK_PATH_LONG_NAME, SEGMENTAL_DUPLICATION_WITH_OVERLAPS_TRACK_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(AnnotateIntervals.SEGMENTAL_DUPLICATION_TRACK_PATH_LONG_NAME, SEGMENTAL_DUPLICATION_WITH_OVERLAPS_TRACK_FILE)
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
     }
@@ -183,8 +183,8 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, IntervalSetRule.INTERSECTION.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, IntervalSetRule.INTERSECTION.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -194,8 +194,8 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_EXCLUSION_PADDING_LONG_NAME,"1")
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_EXCLUSION_PADDING_LONG_NAME,"1")
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -205,8 +205,8 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME,"1")
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME,"1")
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -216,8 +216,8 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.ALL.toString())
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.ALL.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }

@@ -103,7 +103,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(testFile)
                 .addOutput(output)
-                .addArgument(StandardArgumentDefinitions.SAMPLE_NAME_SHORT_NAME, "SAMPLE_01");
+                .add(StandardArgumentDefinitions.SAMPLE_NAME_SHORT_NAME, "SAMPLE_01");
 
         runCommandLine(args);
 
@@ -119,8 +119,8 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(testFile)
                 .addOutput(output)
-                .addArgument(StandardArgumentDefinitions.SAMPLE_NAME_SHORT_NAME, "SAMPLE_01")
-                .addArgument("set-filtered-gt-to-nocall");
+                .add(StandardArgumentDefinitions.SAMPLE_NAME_SHORT_NAME, "SAMPLE_01")
+                .addFlag("set-filtered-gt-to-nocall");
 
         runCommandLine(args);
 

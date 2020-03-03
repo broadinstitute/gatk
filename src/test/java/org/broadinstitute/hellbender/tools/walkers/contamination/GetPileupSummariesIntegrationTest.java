@@ -23,9 +23,9 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addInput(NA12878)
                 .addVCF(new File(thousandGenomes))
-                .addIntervalFile(new File(thousandGenomes))
+                .addIntervals(new File(thousandGenomes))
                 .addOutput(output)
-                .addNumericArgument(GetPileupSummaries.MAX_SITE_AF_SHORT_NAME, 0.9);
+                .add(GetPileupSummaries.MAX_SITE_AF_SHORT_NAME, 0.9);
 
         runCommandLine(args);
 
@@ -73,7 +73,7 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addInput(NA12878)
                 .addVCF(vcfWithoutAF)
-                .addIntervalFile(vcfWithoutAF)
+                .addIntervals(vcfWithoutAF)
                 .addOutput(output);
 
         runCommandLine(args);

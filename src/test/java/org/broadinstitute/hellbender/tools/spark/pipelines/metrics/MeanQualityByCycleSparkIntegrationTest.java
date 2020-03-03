@@ -42,16 +42,16 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         outfile.deleteOnExit();
         pdf.deleteOnExit();
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(input.getAbsolutePath());
-        args.add("--output");
-        args.add(outfile.getAbsolutePath());
-        args.add("--chart");
-        args.add(pdf.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(input.getAbsolutePath());
+        args.addRaw("--output");
+        args.addRaw(outfile.getAbsolutePath());
+        args.addRaw("--chart");
+        args.addRaw(pdf.getAbsolutePath());
         if (null != referenceName) {
             final File REF = new File(referenceName);
-            args.add("-R");
-            args.add(REF.getAbsolutePath());
+            args.addRaw("-R");
+            args.addRaw(REF.getAbsolutePath());
         }
 
         runCommandLine(args.getArgsArray());
@@ -74,10 +74,10 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         final File expectedFile = new File(TEST_DATA_DIR, "meanqualbycycle.txt");
         final File outfile = GATKBaseTest.createTempFile("testMeanQualityByCycle", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(unsortedBam.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outfile.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(unsortedBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outfile.getCanonicalPath());
         this.runCommandLine(args.getArgsArray());
 
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
@@ -91,10 +91,10 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         final File expectedFile = new File(TEST_DATA_DIR, "meanqualbycycle.txt");
         final File outfile = GATKBaseTest.createTempFile("testMeanQualityByCycleADAM", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(adamFile.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outfile.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(adamFile.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outfile.getCanonicalPath());
         this.runCommandLine(args.getArgsArray());
 
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
@@ -107,12 +107,12 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         final File expectedFile = new File(TEST_DATA_DIR, "pfFailBam.pf.txt");
         final File outfile = GATKBaseTest.createTempFile("pfFailBam.pf.", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(unsortedBam.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outfile.getCanonicalPath());
-        args.add("--" + "pfReadsOnly");
-        args.add("false");
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(unsortedBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outfile.getCanonicalPath());
+        args.addRaw("--" + "pfReadsOnly");
+        args.addRaw("false");
         this.runCommandLine(args.getArgsArray());
 
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
@@ -125,12 +125,12 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         final File expectedFile = new File(TEST_DATA_DIR, "pfFailBam.pfOnly.txt");
         final File outfile = GATKBaseTest.createTempFile("pfFailBam.pf.", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(unsortedBam.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outfile.getCanonicalPath());
-        args.add("--" + "pfReadsOnly");
-        args.add("true");
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(unsortedBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outfile.getCanonicalPath());
+        args.addRaw("--" + "pfReadsOnly");
+        args.addRaw("true");
         this.runCommandLine(args.getArgsArray());
 
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
@@ -143,12 +143,12 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         final File expectedFile = new File(TEST_DATA_DIR, "unmappedBam.ALIGNED_READS_ONLY_false.txt");
         final File outfile = GATKBaseTest.createTempFile("unmappedBam.ALIGNED_READS_ONLY_false.", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(unsortedBam.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outfile.getCanonicalPath());
-        args.add("--" + "alignedReadsOnly");
-        args.add("false");
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(unsortedBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outfile.getCanonicalPath());
+        args.addRaw("--" + "alignedReadsOnly");
+        args.addRaw("false");
         this.runCommandLine(args.getArgsArray());
 
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
@@ -161,12 +161,12 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         final File expectedFile = new File(TEST_DATA_DIR, "unmappedBam.ALIGNED_READS_ONLY_true.txt");
         final File outfile = GATKBaseTest.createTempFile("unmappedBam.ALIGNED_READS_ONLY_true.", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(unsortedBam.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outfile.getCanonicalPath());
-        args.add("--" + "alignedReadsOnly");
-        args.add("true");
+        args.addRaw("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.addRaw(unsortedBam.getCanonicalPath());
+        args.addRaw("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addRaw(outfile.getCanonicalPath());
+        args.addRaw("--" + "alignedReadsOnly");
+        args.addRaw("true");
         this.runCommandLine(args.getArgsArray());
 
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");

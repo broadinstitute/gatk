@@ -26,20 +26,20 @@ public final class GatherBQSRReportsIntegrationTest extends CommandLineProgramTe
         final File recal_original = new File(testDir + "HiSeq.1mb.1RG.noSG.table");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(recal1.getAbsolutePath());
-        args.add("--input");
-        args.add(recal2.getAbsolutePath());
-        args.add("--input");
-        args.add(recal3.getAbsolutePath());
-        args.add("--input");
-        args.add(recal4.getAbsolutePath());
-        args.add("--input");
-        args.add(recal5.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(recal1.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(recal2.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(recal3.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(recal4.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(recal5.getAbsolutePath());
 
         final File outFile = GATKBaseTest.createTempFile("bqsr.", "table");
-        args.add("-O");
-        args.add(outFile.getAbsolutePath());
+        args.addRaw("-O");
+        args.addRaw(outFile.getAbsolutePath());
         final Object res = this.runCommandLine(args.getArgsArray());
         Assert.assertEquals(res, 0);
         IntegrationTestSpec.assertEqualTextFiles(outFile, recal_original);
@@ -58,14 +58,14 @@ public final class GatherBQSRReportsIntegrationTest extends CommandLineProgramTe
         final File chr2021_combined = new File(testDir + "gatk4_combined.tbl.gz");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(chr20.getAbsolutePath());
-        args.add("--input");
-        args.add(chr21.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(chr20.getAbsolutePath());
+        args.addRaw("--input");
+        args.addRaw(chr21.getAbsolutePath());
 
         final File outFile = GATKBaseTest.createTempFile("bqsr2021.", "table");
-        args.add("-O");
-        args.add(outFile.getAbsolutePath());
+        args.addRaw("-O");
+        args.addRaw(outFile.getAbsolutePath());
         final Object res = this.runCommandLine(args.getArgsArray());
         Assert.assertEquals(res, 0);
         IntegrationTestSpec.assertEqualTextFiles(outFile, chr2021_combined);

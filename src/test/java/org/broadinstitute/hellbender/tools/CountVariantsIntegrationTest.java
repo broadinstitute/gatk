@@ -20,7 +20,7 @@ public final class CountVariantsIntegrationTest extends CommandLineProgramTest {
     public void testCountVariants(final File fileIn, final String moreArgs, final long expectedCount) throws Exception {
         final ArgumentsBuilder ab = new ArgumentsBuilder();
         ab.addVCF(fileIn);
-        ab.add(moreArgs);
+        ab.addRaw(moreArgs);
         final Object res = runCommandLine(ab.getArgsArray());
         Assert.assertEquals(res, expectedCount);
     }

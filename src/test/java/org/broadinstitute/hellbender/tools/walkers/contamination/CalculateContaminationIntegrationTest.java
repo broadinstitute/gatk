@@ -91,7 +91,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addInput(psTable)
                 .addOutput(contaminationTable)
-                .addFileArgument(CalculateContamination.TUMOR_SEGMENTATION_SHORT_NAME, segmentationsTable);
+                .add(CalculateContamination.TUMOR_SEGMENTATION_SHORT_NAME, segmentationsTable);
 
         runCommandLine(args);
 
@@ -144,7 +144,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addInput(contaminated)
-                .addFileArgument(CalculateContamination.MATCHED_NORMAL_SHORT_NAME, normal)
+                .add(CalculateContamination.MATCHED_NORMAL_SHORT_NAME, normal)
                 .addOutput(contaminationTable);
 
         runCommandLine(args);

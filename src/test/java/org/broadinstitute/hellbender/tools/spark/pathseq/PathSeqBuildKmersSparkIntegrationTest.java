@@ -36,7 +36,7 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
             Assert.fail();
         }
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addFileArgument(PathSeqBuildKmers.REFERENCE_LONG_NAME, ref);
+        args.add(PathSeqBuildKmers.REFERENCE_LONG_NAME, ref);
         args.addOutput(output);
         this.runCommandLine(args.getArgsArray());
 
@@ -62,8 +62,8 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
             Assert.fail();
         }
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addFileArgument(PathSeqBuildKmers.REFERENCE_LONG_NAME, ref);
-        args.addArgument(PathSeqBuildKmers.BLOOM_FILTER_FALSE_POSITIVE_P_LONG_NAME, Double.toString(BLOOM_FPP));
+        args.add(PathSeqBuildKmers.REFERENCE_LONG_NAME, ref);
+        args.add(PathSeqBuildKmers.BLOOM_FILTER_FALSE_POSITIVE_P_LONG_NAME, Double.toString(BLOOM_FPP));
         args.addOutput(output);
         this.runCommandLine(args.getArgsArray());
 
@@ -100,8 +100,8 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
             Assert.fail();
         }
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addFileArgument(PathSeqBuildKmers.REFERENCE_LONG_NAME, ref);
-        args.addArgument(PathSeqBuildKmers.KMER_MASK_LONG_NAME, "4,15");
+        args.add(PathSeqBuildKmers.REFERENCE_LONG_NAME, ref);
+        args.add(PathSeqBuildKmers.KMER_MASK_LONG_NAME, "4,15");
         args.addOutput(output);
         this.runCommandLine(args.getArgsArray());
 
@@ -135,8 +135,8 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
         final File ref = new File(hg19MiniReference);
         final File output = createTempFile("test", ".hss");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addFileArgument(PathSeqBuildKmers.REFERENCE_LONG_NAME, ref);
-        args.addArgument(argName, argVal);
+        args.add(PathSeqBuildKmers.REFERENCE_LONG_NAME, ref);
+        args.add(argName, argVal);
         args.addOutput(output);
         this.runCommandLine(args.getArgsArray());
     }

@@ -26,13 +26,13 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
     @Test(groups = {"python"}, dependsOnMethods = {"makeTempDirectories"})
     public void testGenerateReferenceTensors() {
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("CNNVariantWriteTensors")
-                .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument("truth-vcf", truthVCF)
-                .addArgument("truth-bed", truthBED)
-                .addArgument("tensor-type", TensorType.reference.name())
-                .addArgument("output-tensor-dir", referenceTensorDir.toString());
+        args.addRaw("CNNVariantWriteTensors")
+                .add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add("truth-vcf", truthVCF)
+                .add("truth-bed", truthBED)
+                .add("tensor-type", TensorType.reference.name())
+                .add("output-tensor-dir", referenceTensorDir.toString());
 
         new Main().instanceMain(args.getArgsArray());
     }
@@ -41,16 +41,16 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
     public void testGenerateReadTensors() {
         final String bamFile = largeFileTestDir + "VQSR/g94982_b37_chr20_1m_8m_bamout.bam";
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("CNNVariantWriteTensors")
-                .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument("truth-vcf", truthVCF)
-                .addArgument("truth-bed", truthBED)
-                .addArgument("bam-file", bamFile)
-                .addArgument("max-tensors", "4000")
-                .addArgument("tensor-type", TensorType.read_tensor.name())
-                .addArgument("output-tensor-dir", readTensorDir.toString())
-                .addArgument("channels-last", "true");
+        args.addRaw("CNNVariantWriteTensors")
+                .add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add("truth-vcf", truthVCF)
+                .add("truth-bed", truthBED)
+                .add("bam-file", bamFile)
+                .add("max-tensors", "4000")
+                .add("tensor-type", TensorType.read_tensor.name())
+                .add("output-tensor-dir", readTensorDir.toString())
+                .add("channels-last", "true");
 
         new Main().instanceMain(args.getArgsArray());
     }
@@ -58,13 +58,13 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
     @Test(groups = {"python"}, dependsOnMethods = {"testGenerateReferenceTensors"})
     public void testTrainingReferenceModel() {
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("CNNVariantTrain")
-                .addArgument("input-tensor-dir", referenceTensorDir.toString()+"/")
-                .addArgument("tensor-type", TensorType.reference.name())
-                .addArgument("epochs", "1")
-                .addArgument("training-steps", "30")
-                .addArgument("model-name", "test_reference_model")
-                .addArgument("output-dir", referenceTensorDir.toString()+"/");
+        args.addRaw("CNNVariantTrain")
+                .add("input-tensor-dir", referenceTensorDir.toString()+"/")
+                .add("tensor-type", TensorType.reference.name())
+                .add("epochs", "1")
+                .add("training-steps", "30")
+                .add("model-name", "test_reference_model")
+                .add("output-dir", referenceTensorDir.toString()+"/");
 
         new Main().instanceMain(args.getArgsArray());
     }
@@ -73,15 +73,15 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
     @Test(enabled=false, groups = {"python"}, dependsOnMethods = {"testGenerateReadTensors"})
     public void testTrainingReadModel() {
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("CNNVariantTrain")
-                .addArgument("input-tensor-dir", readTensorDir.toString()+"/")
-                .addArgument("tensor-type", TensorType.read_tensor.name())
-                .addArgument("epochs", "1")
-                .addArgument("training-steps", "5")
-                .addArgument("validation-steps", "2")
-                .addArgument("model-name", "test_read_tensor_model")
-                .addArgument("output-dir", readTensorDir.toString()+"/")
-                .addArgument("channels-last", "true");
+        args.addRaw("CNNVariantTrain")
+                .add("input-tensor-dir", readTensorDir.toString()+"/")
+                .add("tensor-type", TensorType.read_tensor.name())
+                .add("epochs", "1")
+                .add("training-steps", "5")
+                .add("validation-steps", "2")
+                .add("model-name", "test_read_tensor_model")
+                .add("output-dir", readTensorDir.toString()+"/")
+                .add("channels-last", "true");
 
         new Main().instanceMain(args.getArgsArray());
     }
@@ -93,14 +93,14 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
         final String indelTruthVCF = largeFileTestDir + "VQSR/giab_chr20_1m_10m.vcf.gz";
         final File outputVCF = createTempFile("variant_tranches_output", "vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("FilterVariantTranches")
-                .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, outputVCF.getAbsolutePath())
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
-                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
-                .addArgument("snp-tranche", "99.9")
-                .addArgument("indel-tranche", "99.0")
-                .addArgument("info-key", "VQSLOD");
+        args.addRaw("FilterVariantTranches")
+                .add(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, outputVCF.getAbsolutePath())
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
+                .add("snp-tranche", "99.9")
+                .add("indel-tranche", "99.0")
+                .add("info-key", "VQSLOD");
 
         new Main().instanceMain(args.getArgsArray());
     }

@@ -686,8 +686,8 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         final File output = createTempFile("annotations", "txt");
         final File configFile = new File(packageRootTestDir + "cmdline/GATKPlugin/changePluginPackages.properties");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, TestAnnotation.class.getSimpleName())
-                .addFileArgument(StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, configFile)
+        args.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, TestAnnotation.class.getSimpleName())
+                .add(StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, configFile)
                 .addOutput(output);
         runToolInNewJVM("TestAnnotationsTool", args);
         Assert.assertEquals(Files.readAllLines(output.toPath()), Collections.singletonList(TestAnnotation.class.getSimpleName()));

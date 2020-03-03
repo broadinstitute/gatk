@@ -113,13 +113,13 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
-        .addArgument("V", input)
-        .addArgument("output-db", outputDatabase.getAbsolutePath())
-        .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        .add("V", input)
+        .add("output-db", outputDatabase.getAbsolutePath())
+        .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
         args.addOutput(output);
         intervals.forEach(args::addInterval);
 
-        additionalArguments.forEach(args::add);
+        additionalArguments.forEach(args::addRaw);
 
         runCommandLine(args);
     }
@@ -132,12 +132,12 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(hg38Reference))
-                .addArgument("V", input)
-                .addArgument("L", "chr20:10000000-10030000")
-                .addBooleanArgument("only-output-calls-starting-in-intervals", true)
-                .addBooleanArgument("keep-all-sites", true)
+                .add("V", input)
+                .add("L", "chr20:10000000-10030000")
+                .add("only-output-calls-starting-in-intervals", true)
+                .add("keep-all-sites", true)
                 .addOutput(output)
-                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
         runCommandLine(args);
 
         //should have same variants as input with low QUAL variants marked with a monomorphic filter
