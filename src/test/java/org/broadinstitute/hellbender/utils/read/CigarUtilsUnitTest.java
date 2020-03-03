@@ -20,31 +20,6 @@ import java.util.stream.Stream;
 
 public final class CigarUtilsUnitTest {
 
-    @DataProvider(name = "testData_reclipCigar")
-    public Iterator<Object[]> testData_reclipCigar(final Method testMethod) {
-        final String[][] TEST_CIGARS = {
-                {"10M", "10M", "10M"},
-                {"10M", "1H1M1H", "1H10M1H"},
-                {"10M", "1S1M1S", "1S10M1S"},
-                {"10M", "1S1M1H", "1S10M1H"},
-                {"10M", "1H1M1S", "1H10M1S"},
-                {"10M", "1H1S1M1S1H", "1H1S10M1S1H"},
-                {"10M", "1H1S1M1I1M1S1H", "1H1S10M1S1H"},
-        };
-        final List<Object[]> result = new LinkedList<>();
-        Collections.addAll(result, TEST_CIGARS);
-        return result.iterator();
-    }
-
-    @Test(dataProvider = "testData_reclipCigar")
-    public void testReclipCigar(final String cigarStrIn1, final String cigarStrIn2, final String expectedCigarStrOut){
-        final Cigar cigarIn = TextCigarCodec.decode(cigarStrIn1);
-        final Cigar cigarOut = CigarUtils.reclipCigar(cigarIn, TextCigarCodec.decode(cigarStrIn2));
-        final String actualCigarStrOut = TextCigarCodec.encode(cigarOut);
-        Assert.assertEquals(actualCigarStrOut, expectedCigarStrOut);
-    }
-
-
     @DataProvider(name = "testData_invertCigar")
     public Iterator<Object[]> testData_invertCigar(final Method testMethod) {
         final String[][] TEST_CIGARS = {

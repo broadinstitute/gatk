@@ -94,37 +94,6 @@ public final class CigarUtils {
     }
 
     /**
-     * Given a cigar1 and a read with cigar2,
-     * this method creates cigar3 such that it has flanking clip operators from cigar2
-     * and it has all operators from cigar1 in the middle.
-     *
-     * In other words if:
-     * cigar2 = leftClip2 + noclips2 + rightClip2
-     *
-     * then
-     * cigar3 = leftClip2 + cigar1 + rightClip2
-     */
-    public static Cigar reclipCigar(final Cigar coreCigar, final Cigar clippingCigar) {
-        Utils.nonNull(coreCigar);
-        Utils.nonNull(clippingCigar);
-
-        final List<CigarElement> result = new ArrayList<>();
-
-        boolean finishedLeftClip = false;
-
-        for (final CigarElement element : clippingCigar) {
-            if (element.getOperator().isClipping()) {
-                result.add(element);
-            } else if (!finishedLeftClip) { // add all the core elements the first time we see a non-clipping operator
-                result.addAll(coreCigar.getCigarElements());
-                finishedLeftClip = true;
-            }
-        }
-
-        return new Cigar(result);
-    }
-
-    /**
      * Returns whether the list has any N operators.
      */
     public static boolean containsNOperator(final List<CigarElement> cigarElements) {
