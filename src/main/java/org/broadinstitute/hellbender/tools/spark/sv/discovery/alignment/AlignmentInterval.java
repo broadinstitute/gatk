@@ -654,12 +654,12 @@ public final class AlignmentInterval {
             int walkDistOnReadFromStart = 0;
             if ( distOnRefForStart != 0 ) {
                 final int startPosOnRead = startInAssembledContig - hardClipOffset; // utility method requests no hard clipped counted
-                walkDistOnReadFromStart = SvCigarUtils.computeAssociatedDistOnRead(cigarAlong5to3DirectionOfContig, startPosOnRead, distOnRefForStart, false);
+                walkDistOnReadFromStart = CigarUtils.computeAssociatedDistOnRead(cigarAlong5to3DirectionOfContig, startPosOnRead, distOnRefForStart, false);
             }
             int walkDistOnReadFromEnd = 0;
             if ( distOnRefForEnd != 0 ) {
                 final int startPosOnRead = endInAssembledContig - hardClipOffset; // utility method requests no hard clipped counted
-                walkDistOnReadFromEnd = SvCigarUtils.computeAssociatedDistOnRead(cigarAlong5to3DirectionOfContig, startPosOnRead, distOnRefForEnd, true);
+                walkDistOnReadFromEnd = CigarUtils.computeAssociatedDistOnRead(cigarAlong5to3DirectionOfContig, startPosOnRead, distOnRefForEnd, true);
             }
 
             start = startInAssembledContig + walkDistOnReadFromStart;

@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.utils.read;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.TextCigarCodec;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
@@ -395,5 +397,79 @@ public final class CigarUtils {
             elementStart = elementEnd;
         }
         return refBasesClipped;
+    }
+
+    /**
+     * Computes the corresponding distance needs to be walked on the read, given the Cigar and distance walked on the reference.
+     * @param cigarAlong5To3DirOfRead   cigar along the 5-3 direction of read (when read is mapped to reverse strand, bwa mem output cigar should be inverted)
+     * @param startInclusiveOnRead      start position (1-based) on the read (note it should not count the hard clipped bases, as usual)
+     * @param distOnRef                 distance to walk on the reference
+     * @param walkBackward              whether to walk backwards along the read or not
+     * @return                          corresponding walk distance on read (always positive)
+     * @throws IllegalArgumentException if input cigar contains padding operation or 'N', or
+     *                                  either of {@code startInclusiveOnRead} or distance is non-positive, or
+     *                                  {@code startInclusiveOnRead} is larger than read length, or
+     *                                  requested reference walk distance is longer than the total read bases in cigar, or
+     *                                  computed read walk distance would "walk off" the read
+     */
+    @VisibleForTesting
+    public static int computeAssociatedDistOnRead(final Cigar cigarAlong5To3DirOfRead, final int startInclusiveOnRead,
+                                                  final int distOnRef, final boolean walkBackward) {
+
+        Utils.validateArg(distOnRef > 0 && startInclusiveOnRead > 0,
+                "start position (" + startInclusiveOnRead + ") or distance (" + distOnRef + ") is non-positive.");
+
+        final List<CigarElement> cigarElementsInOrderOfWalkingDir = (walkBackward ? invertCigar(cigarAlong5To3DirOfRead): cigarAlong5To3DirOfRead).getCigarElements();
+        Utils.validateArg(cigarElementsInOrderOfWalkingDir.stream().noneMatch(ce -> ce.getOperator().isPadding() || ce.getOperator().equals(CigarOperator.N)),
+                "cigar contains padding, which is currently unsupported; cigar: " + TextCigarCodec.encode(cigarAlong5To3DirOfRead));
+        final int readUnclippedLength = countUnclippedReadBases(cigarAlong5To3DirOfRead);
+        Utils.validateArg(readUnclippedLength >= startInclusiveOnRead,
+                "given start location on read (" + startInclusiveOnRead + ") is higher than read unclipped length (" + readUnclippedLength+ "), cigar: " + TextCigarCodec.encode(cigarAlong5To3DirOfRead));
+        final int totalRefLen = cigarElementsInOrderOfWalkingDir.stream().mapToInt(ce -> ce.getOperator().consumesReferenceBases() ? ce.getLength() : 0).sum();
+        Utils.validateArg(totalRefLen >= distOnRef,
+                "given walking distance on reference (" + distOnRef + ") would be longer than the total number (" +
+                        + totalRefLen + ") of reference bases spanned by the cigar, indicated by cigar " + TextCigarCodec.encode(cigarAlong5To3DirOfRead));
+
+        final int readLength = cigarElementsInOrderOfWalkingDir.stream().mapToInt(ce -> ce.getOperator().consumesReadBases() ? ce.getLength() : 0).sum();
+        final int effectiveReadStartInclusive = walkBackward ? readLength - startInclusiveOnRead + 1 : startInclusiveOnRead;
+        // skip first several elements that give accumulated readBasesConsumed below startInclusiveOnRead
+        int idx = 0;
+        int readBasesConsumed = 0;
+        CigarElement currEle = cigarElementsInOrderOfWalkingDir.get(idx);
+        while (readBasesConsumed + (currEle.getOperator().consumesReadBases() ? currEle.getLength() : 0) < effectiveReadStartInclusive) {
+            readBasesConsumed += currEle.getOperator().consumesReadBases() ? currEle.getLength() : 0;
+            currEle = cigarElementsInOrderOfWalkingDir.get(++idx);
+        }
+
+        // when we reach here, we have skipped just enough read bases to start counting ref bases or, currEle would lead us to such state
+        int readWalkDist = 0;
+        int refWalked = 0;
+        while (idx != cigarElementsInOrderOfWalkingDir.size()) {
+            currEle = cigarElementsInOrderOfWalkingDir.get(idx);
+            final int skip = Math.max(0, effectiveReadStartInclusive - readBasesConsumed - 1);
+            final int effectiveLen = currEle.getLength() - skip;
+
+            if (currEle.getOperator().consumesReferenceBases()) {
+                if (refWalked + effectiveLen < distOnRef) { // hasn't walked enough yet on reference
+                    refWalked += effectiveLen;
+                    readWalkDist += currEle.getOperator().consumesReadBases() ? effectiveLen : 0;
+                    readBasesConsumed += currEle.getOperator().consumesReadBases() ? currEle.getLength() : 0;
+                } else { // would be walked enough on reference
+                    readWalkDist += currEle.getOperator().consumesReadBases() ? distOnRef - refWalked : 0;
+                    refWalked = distOnRef;
+                    break;
+                }
+            } else {
+                readWalkDist += currEle.getOperator().consumesReadBases() ? effectiveLen : 0;
+                readBasesConsumed += currEle.getOperator().consumesReadBases() ? currEle.getLength() : 0;
+            }
+            ++idx;
+        }
+
+        if (refWalked < distOnRef)
+            throw new IllegalArgumentException("Computed walk distance (start: " + startInclusiveOnRead + ", distOnRef: " +
+                    distOnRef + ") on read beyond read length (" + readLength +") with cigar " + TextCigarCodec.encode(cigarAlong5To3DirOfRead));
+
+        return readWalkDist;
     }
 }
