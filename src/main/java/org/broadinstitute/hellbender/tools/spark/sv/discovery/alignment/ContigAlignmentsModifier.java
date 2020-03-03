@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import scala.Tuple2;
@@ -168,11 +169,7 @@ public final class ContigAlignmentsModifier {
         }
 
         if (clipFrom3PrimeEnd) Collections.reverse(newMiddleSection);
-        final Cigar newCigar = constructNewCigar(leftClippings, newMiddleSection, rightClippings);
-        if (newCigar.getCigarElements().isEmpty()) {
-            throw new GATKException("Logic error: new cigar after the clipping is empty, with:\n" + messageWhenErred);
-        }
-        SvCigarUtils.validateCigar(newCigar.getCigarElements());
+        final Cigar newCigar = new CigarBuilder().addAll(leftClippings).addAll(newMiddleSection).addAll(rightClippings).make();
 
         final SimpleInterval newRefSpan;
         if (clipFrom3PrimeEnd == input.forwardStrand) {
@@ -221,13 +218,6 @@ public final class ContigAlignmentsModifier {
             throw new GATKException("Logic error: cigar elements corresponding to alignment block is empty. " + input.toPackedString());
 
         return new Tuple3<>(left, middle, right);
-    }
-
-    private static Cigar constructNewCigar(final List<CigarElement> left, final List<CigarElement> middle, final List<CigarElement> right) {
-        final Cigar cigar = new Cigar(left);
-        middle.forEach(cigar::add);
-        right.forEach(cigar::add);
-        return new Cigar(SvCigarUtils.compactifyNeighboringSoftClippings(cigar.getCigarElements()));
     }
 
     public enum AlnModType {

@@ -18,49 +18,6 @@ import java.util.List;
 public final class SvCigarUtils {
 
     /**
-     * Checks input list of cigar operations for:
-     * <ul>
-     *     <li>empty input list;</li>
-     *     <li>there must be at least one alignment operation in the list;</li>
-     *     <li>deletion operation cannot neighbor clipping operations;</li>
-     * </ul>
-     */
-    @VisibleForTesting
-    public static void validateCigar(final List<CigarElement> cigarElements) {
-        Utils.validateArg(!cigarElements.isEmpty(), "Cannot parse empty list cigarElements");
-        Utils.validateArg(cigarElements.stream().anyMatch(ele -> ele.getOperator().isAlignment()),
-                "No alignment found in the input list of cigar operations: " + cigarElements.toString());
-
-        int idx = findIndexOfFirstNonClippingOperation(cigarElements, true);
-        Utils.validateArg(idx==0 || cigarElements.get(idx).getOperator()!=CigarOperator.D,
-                "Unexpected CIGAR format with deletion neighboring clipping; cigar elements are: " + cigarElements.toString());
-        idx = findIndexOfFirstNonClippingOperation(cigarElements, false);
-        Utils.validateArg(idx==cigarElements.size()-1 || cigarElements.get(idx).getOperator()!=CigarOperator.D,
-                "Unexpected CIGAR format with deletion neighboring clipping; cigar elements are: " + cigarElements.toString());
-    }
-
-    /**
-     * Returns the index of the first non-clipping operation into the input {@code cigarElements}.
-     * @param cigarElements          input list of operations to be scanned through
-     * @param fromStartInsteadOfEnd  either from the start of the list or from the end of the list
-     */
-    @VisibleForTesting
-    public static int findIndexOfFirstNonClippingOperation(final List<CigarElement> cigarElements, final boolean fromStartInsteadOfEnd) {
-        int idx = 0;
-        final int step;
-        if (fromStartInsteadOfEnd) {
-            step = 1;
-        } else {
-            idx = cigarElements.size()-1;
-            step = -1;
-        }
-        while(cigarElements.get(idx).getOperator().isClipping()){
-            idx += step;
-        }
-        return idx;
-    }
-
-    /**
      * Checks the input CIGAR for assumption that operator 'D' is not immediately adjacent to clipping operators.
      * Then convert the 'I' CigarElement, if it is at either end (terminal) of the input cigar, to a corresponding 'S' operator.
      * Note that we allow CIGAR of the format '10H10S10I10M', but disallows the format if after the conversion the cigar turns into a giant clip,
@@ -77,7 +34,6 @@ public final class SvCigarUtils {
         if (cigar.numCigarElements()<2 ) return cigar.getCigarElements();
 
         final List<CigarElement> cigarElements = new ArrayList<>(cigar.getCigarElements());
-        validateCigar(cigarElements);
 
         final List<CigarElement> convertedList = convertInsToSoftClipFromOneEnd(cigarElements, true);
         return convertInsToSoftClipFromOneEnd(convertedList, false);
