@@ -80,7 +80,7 @@ public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsInte
         Path sbiPath = outBamPath.resolveSibling(outBamPath.getFileName().toString() +  ".sbi");
         args.addInput(getTestFile( "abam.bam"))
                 .addOutput(outBam)
-                .addArgument((GATKSparkTool.SPLITTING_INDEX_GRANULARITY), granularity);
+                .add((GATKSparkTool.SPLITTING_INDEX_GRANULARITY), granularity);
 
         runCommandLine(args);
         SBIIndex load = SBIIndex.load(sbiPath);
