@@ -9,11 +9,9 @@ import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 
 /**
@@ -36,10 +34,8 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
         final List<Double> refQuals = new ArrayList<>();
         final List<Double> altQuals = new ArrayList<>();
 
-        final int refLoc = vc.getStart();
-
         if( likelihoods != null) {
-            fillQualsFromLikelihood(vc, likelihoods, refQuals, altQuals, refLoc);
+            fillQualsFromLikelihood(vc, likelihoods, refQuals, altQuals);
         }
 
 
@@ -60,12 +56,12 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
         }
     }
 
-    protected void fillQualsFromLikelihood(VariantContext vc, AlleleLikelihoods<GATKRead, Allele> likelihoods, List<Double> refQuals, List<Double> altQuals, int refLoc) {
+    protected void fillQualsFromLikelihood(VariantContext vc, AlleleLikelihoods<GATKRead, Allele> likelihoods, List<Double> refQuals, List<Double> altQuals) {
         for (final AlleleLikelihoods<GATKRead, Allele>.BestAllele bestAllele : likelihoods.bestAllelesBreakingTies()) {
             final GATKRead read = bestAllele.evidence;
             final Allele allele = bestAllele.allele;
-            if (bestAllele.isInformative() && isUsableRead(read, refLoc)) {
-                final OptionalDouble value = getElementForRead(read, refLoc, bestAllele);
+            if (bestAllele.isInformative() && isUsableRead(read, vc)) {
+                final OptionalDouble value = getElementForRead(read, vc, bestAllele);
                 // Bypass read if the clipping goal is not reached or the refloc is inside a spanning deletion
                 if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ) {
                     if (allele.isReference()) {
@@ -82,31 +78,31 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
      * Get the element for the given read at the given reference position
      *
      * @param read     the read
-     * @param refLoc   the reference position
+     * @param vc       the variant to be annotated
      * @param bestAllele the most likely allele for this read
      * @return a Double representing the element to be used in the rank sum test, or null if it should not be used
      */
-    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc, final AlleleLikelihoods<GATKRead, Allele>.BestAllele bestAllele) {
-        return getElementForRead(read, refLoc);
+    protected OptionalDouble getElementForRead(final GATKRead read, final VariantContext vc, final AlleleLikelihoods<GATKRead, Allele>.BestAllele bestAllele) {
+        return getElementForRead(read, vc);
     }
 
     /**
      * Get the element for the given read at the given reference position
      *
      * @param read     the read
-     * @param refLoc   the reference position
+     * @param vc       the variant to be annotated
      * @return an OptionalDouble representing the element to be used in the rank sum test, empty if it should not be used
      */
-    protected abstract OptionalDouble getElementForRead(final GATKRead read, final int refLoc);
+    protected abstract OptionalDouble getElementForRead(final GATKRead read, final VariantContext vc);
 
     /**
      * Can the read be used in comparative tests between ref / alt bases?
      *
      * @param read   the read to consider
-     * @param refLoc the reference location
+     * @param vc    the variant to be annotated
      * @return true if this read is meaningful for comparison, false otherwise
      */
-    protected boolean isUsableRead(final GATKRead read, final int refLoc) {
+    protected boolean isUsableRead(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     }

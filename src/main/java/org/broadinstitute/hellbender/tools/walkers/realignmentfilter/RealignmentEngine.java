@@ -8,6 +8,7 @@ import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
@@ -38,11 +39,15 @@ public class RealignmentEngine {
     public static boolean supportsVariant(final GATKRead read, final VariantContext vc, int indelStartTolerance) {
         final byte[] readBases = read.getBasesNoCopy();
 
-        final int variantPositionInRead = ReadUtils.getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(),
-                vc.getStart(), ClippingTail.RIGHT_TAIL, true);
-        if ( variantPositionInRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED || AlignmentUtils.isInsideDeletion(read.getCigar(), variantPositionInRead)) {
+        final Pair<Integer, CigarOperator> offsetAndOperatorInRead = ReadUtils.getReadCoordinateForReferenceCoordinate(read, vc.getStart());
+
+        if ( offsetAndOperatorInRead.getLeft() == ReadUtils.CLIPPING_GOAL_NOT_REACHED) {
+            return false;
+        } else if (vc.isSNP() && offsetAndOperatorInRead.getRight() == CigarOperator.DELETION) {
             return false;
         }
+
+        final int variantPositionInRead = offsetAndOperatorInRead.getLeft();
 
         for (final Allele allele : vc.getAlternateAlleles()) {
             final int referenceLength = vc.getReference().length();

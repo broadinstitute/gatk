@@ -5,6 +5,7 @@ import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.*;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
@@ -193,38 +194,56 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
         }
     }
 
+    @DataProvider(name = "readCoordinateForReferenceCoordinate")
+    public Object[][] readCoordinateForReferenceCoordinate() throws Exception {
+        return new Object[][] {
+                {"10M", 1, 1, 0, CigarOperator.M},
+                {"10M", 5, 5, 0, CigarOperator.M},
+                {"10M", 1, 10, 9, CigarOperator.M},
+                {"10M", 1, 5, 4, CigarOperator.M},
+                {"10M", 1, 0, ReadUtils.CLIPPING_GOAL_NOT_REACHED, null},
+                {"10M", 1, 11, ReadUtils.CLIPPING_GOAL_NOT_REACHED, null},
+
+                {"5M5D5M", 1, 1, 0, CigarOperator.M},
+                {"5M5D5M", 1, 5, 4, CigarOperator.M},
+                {"5M5D5M", 1, 6, 5, CigarOperator.D},
+                {"5M5D5M", 1, 10, 5, CigarOperator.D},
+                {"5M5D5M", 1, 11, 5, CigarOperator.M},
+                {"5M5D5M", 1, 15, 9, CigarOperator.M},
+                {"5M5D5M", 1, 16, ReadUtils.CLIPPING_GOAL_NOT_REACHED, null},
+
+                {"5M5I5M", 1, 1, 0, CigarOperator.M},
+                {"5M5I5M", 1, 5, 4, CigarOperator.M},
+                {"5M5I5M", 1, 6, 10, CigarOperator.M},
+                {"5M5I5M", 1, 10, 14, CigarOperator.M},
+                {"5M5I5M", 1, 11, ReadUtils.CLIPPING_GOAL_NOT_REACHED, null}
+        };
+    }
+
+    @Test(dataProvider = "readCoordinateForReferenceCoordinate")
+    public void testGetReadCoordinateForReferenceCoordinate(final String cigar, final int start, final int refCoord, final int expected, final CigarOperator op) {
+        final Pair<Integer, CigarOperator> result = ReadUtils.getReadCoordinateForReferenceCoordinate(start, TextCigarCodec.decode(cigar), refCoord);
+        Assert.assertEquals(result.getLeft().intValue(), expected);
+        Assert.assertEquals(result.getRight(), op);
+    }
+
     @Test
-    public void testReadWithNsRefIndexInDeletion() throws FileNotFoundException {
+    public void testReadWithNsRefIndexInDeletion( ) throws FileNotFoundException {
         final SAMFileHeader header;
         try(final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference))) {
              header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
         }
         final int readLength = 76;
 
-        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 8975, readLength);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 100, readLength);
         read.setBases(Utils.dupBytes((byte) 'A', readLength));
         read.setBaseQualities(Utils.dupBytes((byte)30, readLength));
-        read.setCigar("3M414N1D73M");
+        read.setCigar("3M100N1D73M");
 
-        final int result = ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, 9392, ClippingTail.LEFT_TAIL);
-        Assert.assertEquals(result, 2);
-    }
-
-    @Test
-    public void testReadWithNsRefAfterDeletion() throws IOException {
-        try(final ReferenceSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference))) {
-            final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
-            final int readLength = 76;
-
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 8975, readLength);
-            read.setBases(Utils.dupBytes((byte) 'A', readLength));
-            read.setBaseQualities(Utils.dupBytes((byte) 30, readLength));
-            read.setCigar("3M414N1D73M");
-
-            final int result = ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, 9393,
-                                                                                              ClippingTail.LEFT_TAIL);
-            Assert.assertEquals(result, 3);
-        }
+        Assert.assertEquals(ReadUtils.getReadCoordinateForReferenceCoordinate(read, 102).getLeft().intValue(), 2);
+        Assert.assertEquals(ReadUtils.getReadCoordinateForReferenceCoordinate(read, 103).getLeft().intValue(), 3);  // the first N base
+        Assert.assertEquals(ReadUtils.getReadCoordinateForReferenceCoordinate(read, 202).getLeft().intValue(), 3);  // the last N base
+        Assert.assertEquals(ReadUtils.getReadCoordinateForReferenceCoordinate(read, 203).getLeft().intValue(), 3);  // the first D base
     }
 
     @DataProvider(name = "HasWellDefinedFragmentSizeData")

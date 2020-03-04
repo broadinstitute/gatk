@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
@@ -33,7 +34,7 @@ public final class ClippingRankSumTest extends RankSumTest {
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.CLIPPING_RANK_SUM_KEY); }
 
     @Override
-    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
+    protected OptionalDouble getElementForRead(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
         return OptionalDouble.of(AlignmentUtils.getNumHardClippedBases(read));
     }

@@ -666,204 +666,71 @@ public final class ReadUtils {
         return softEnd;
     }
 
-    public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(final GATKRead read, final int refCoord, final ClippingTail tail) {
-        return getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, refCoord, tail, false);
+    /**
+     * Find the index within a read's bases corresponding to a given position in the reference, along with the cigar operator of
+     * the element containing that base.  If the reference coordinate occurs within a deletion, the first index after the deletion is returned.
+     * Note that this treats soft-clipped bases as if they align with the reference, which is useful for hard-clipping reads with soft clips.
+     *
+     * @param alignmentStart        The soft start of the read on the reference
+     * @param cigar                 The read's cigar
+     * @param refCoord              The target reference coordinate
+     * @return                      If the reference coordinate occurs before the read start or after the read end {@code CLIPPING_GOAL_NOT_REACHED};
+     *                              if the reference coordinate falls within an alignment block of the read's cigar, the corresponding read coordinate;
+     *                              if the reference coordinate falls within a deletion, the first read coordinate after the deletion.  Note: if the last cigar element is
+     *                              a deletion (which isn't meaningful), it returns {@code CLIPPING_GOAL_NOT_REACHED}.
+     */
+    public static Pair<Integer, CigarOperator> getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord) {
+        if (refCoord < alignmentStart) {
+            return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, null);
+        }
+        int firstReadPosOfElement = 0;              //inclusive
+        int firstRefPosOfElement = alignmentStart;  //inclusive
+        int lastReadPosOfElement = 0;               //exclusive
+        int lastRefPosOfElement = alignmentStart;   //exclusive
+
+        // advance forward through all the cigar elements until we bracket the reference coordinate
+        for (final CigarElement element : cigar) {
+            final CigarOperator operator = element.getOperator();
+            firstReadPosOfElement = lastReadPosOfElement;
+            firstRefPosOfElement = lastRefPosOfElement;
+            lastReadPosOfElement += operator.consumesReadBases() ? element.getLength() : 0;
+            lastRefPosOfElement += operator.consumesReferenceBases() || operator == CigarOperator.S ? element.getLength() : 0;
+
+            if (firstRefPosOfElement <= refCoord && refCoord < lastRefPosOfElement) {   // refCoord falls within this cigar element
+                final int readPosAtRefCoord = firstReadPosOfElement + (operator.consumesReadBases() ? ( refCoord - firstRefPosOfElement) : 0);
+                return Pair.of(readPosAtRefCoord, operator);
+            }
+        }
+        return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, null);
     }
 
-    public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(final GATKRead read, final int refCoord, final ClippingTail tail, final boolean allowGoalNotReached) {
-        final int leftmostSafeVariantPosition = Math.max(read.getSoftStart(), refCoord);
-        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), leftmostSafeVariantPosition, tail, allowGoalNotReached);
-    }
 
     /**
-     * Pre-processes the results of {@link #getReadCoordinateForReferenceCoordinate(int, Cigar, int, boolean)} to take care of
-     * two corner cases:
-     *
-     * 1. If clipping the right tail (end of the read) getReadCoordinateForReferenceCoordinate and fall inside
-     * a deletion return the base after the deletion. If clipping the left tail (beginning of the read) it
-     * doesn't matter because it already returns the previous base by default.
-     *
-     * 2. If clipping the left tail (beginning of the read) getReadCoordinateForReferenceCoordinate and the
-     * read starts with an insertion, and you're requesting the first read based coordinate, it will skip
-     * the leading insertion (because it has the same reference coordinate as the following base).
-     *
-     * @return the read coordinate corresponding to the requested reference coordinate for clipping.
+     * Returns the read coordinate corresponding to the requested reference coordinate -- or the read coordinate immediately preceding
+     * a deletion in which the reference coordinate falls -- along with the cigar operator in which the reference coordinate occurs.
      */
-    public static int getReadCoordinateForReferenceCoordinate(final GATKRead read, final int refCoord, final ClippingTail tail) {
-        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord, tail, false);
+    public static Pair<Integer, CigarOperator> getReadCoordinateForReferenceCoordinate(final GATKRead read, final int refCoord) {
+        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord);
     }
 
-    /**
-     * Returns the read coordinate corresponding to the requested reference coordinate.
-     *
-     * WARNING: if the requested reference coordinate happens to fall inside or just before a deletion (or skipped region) in the read, this function
-     * will return the last read base before the deletion (or skipped region). This function returns a
-     * Pair(int readCoord, boolean fallsInsideOrJustBeforeDeletionOrSkippedRegion) so you can choose which readCoordinate to use when faced with
-     * a deletion (or skipped region).
-     *
-     * SUGGESTION: Use getReadCoordinateForReferenceCoordinate(GATKSAMRecord, int, ClippingTail) instead to get a
-     * pre-processed result according to normal clipping needs. Or you can use this function and tailor the
-     * behavior to your needs.
-     *
-     * @param read
-     * @param refCoord the requested reference coordinate
-     * @param allowGoalNotReached if true, will return a pair of CLIPPING_GOAL_NOT_REACHED and false a refCoord that doesn't exist on the read is requested, otherwise an exception will be thrown
-     * @return the read coordinate corresponding to the requested reference coordinate. (see warning!)
-     */
-    public static Pair<Integer, Boolean> getReadCoordinateForReferenceCoordinate(GATKRead read, int refCoord, boolean allowGoalNotReached) {
-        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord, allowGoalNotReached);
+    public static Optional<Byte> getReadBaseAtReferenceCoordinate(final GATKRead read, final int refCoord) {
+        if (refCoord < read.getStart() || read.getEnd() < refCoord) {
+            return Optional.empty();
+        }
+        final Pair<Integer, CigarOperator> offsetAndOperator = getReadCoordinateForReferenceCoordinate(read, refCoord);
+        return (offsetAndOperator.getLeft() != CLIPPING_GOAL_NOT_REACHED && offsetAndOperator.getRight().consumesReadBases()) ?
+                Optional.of(read.getBase(offsetAndOperator.getLeft())) : Optional.empty();
     }
 
-    /**
-     * Returns the read coordinate corresponding to the requested reference coordinate for a given alignmentStart/Cigar combination.
-     *
-     * WARNING: if the requested reference coordinate happens to fall inside or just before a deletion (or skipped region) in the read, this function
-     * will return the last read base before the deletion (or skipped region). This function returns a
-     * Pair(int readCoord, boolean fallsInsideOrJustBeforeDeletionOrSkippedRegion) so you can choose which readCoordinate to use when faced with
-     * a deletion (or skipped region).
-     *
-     * SUGGESTION: Use getReadCoordinateForReferenceCoordinate(GATKSAMRecord, int, ClippingTail) instead to get a
-     * pre-processed result according to normal clipping needs. Or you can use this function and tailor the
-     * behavior to your needs.
-     *
-     * @param alignmentStart alignment start of the cigar to the reference
-     * @param cigar cigar with which to compute the offset
-     * @param refCoord the requested reference coordinate
-     * @param tail controls whether the the preceding or following base of a deletion/insertion is returned
-     * @param allowGoalNotReached if true, will return a pair of CLIPPING_GOAL_NOT_REACHED and false a refCoord that doesn't exist on the read is requested, otherwise an exception will be thrown
-     * @return the read coordinate corresponding to the requested reference coordinate. (see warning!)
-     */
-    public static int getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord, final ClippingTail tail, final boolean allowGoalNotReached) {
-        final Pair<Integer, Boolean> result = getReadCoordinateForReferenceCoordinate(alignmentStart, cigar, refCoord, allowGoalNotReached);
-        int readCoord = result.getLeft();
-
-        // Corner case one: clipping the right tail and falls on deletion, move to the next
-        // read coordinate. It is not a problem for the left tail because the default answer
-        // from getReadCoordinateForReferenceCoordinate is to give the previous read coordinate.
-        if (result.getRight() && tail == ClippingTail.RIGHT_TAIL) {
-            readCoord++;
+    public static Optional<Byte> getReadBaseQualityAtReferenceCoordinate(final GATKRead read, final int refCoord) {
+        if (refCoord < read.getStart() || read.getEnd() < refCoord) {
+            return Optional.empty();
         }
-
-        // clipping the left tail and first base is insertion, go to the next read coordinate
-        // with the same reference coordinate. Advance to the next cigar element, or to the
-        // end of the read if there is no next element.
-        final CigarElement firstElementIsInsertion = readStartsWithInsertion(cigar);
-        if (readCoord == 0 && tail == ClippingTail.LEFT_TAIL && firstElementIsInsertion != null) {
-            readCoord = Math.min(firstElementIsInsertion.getLength(), cigar.getReadLength() - 1);
-        }
-
-        return readCoord;
+        final Pair<Integer, CigarOperator> offsetAndOperator = getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord);
+        return (offsetAndOperator.getRight() != null && offsetAndOperator.getRight().consumesReadBases()) ?
+                Optional.of(read.getBaseQuality(offsetAndOperator.getLeft())) : Optional.empty();
     }
 
-    private static Pair<Integer, Boolean> getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord, final boolean allowGoalNotReached) {
-        int readBases = 0;
-        int refBases = 0;
-        boolean fallsInsideDeletionOrSkippedRegion = false;
-        boolean endJustBeforeDeletionOrSkippedRegion = false;
-        boolean fallsInsideOrJustBeforeDeletionOrSkippedRegion = false;
-
-        final int goal = refCoord - alignmentStart;  // The goal is to move this many reference bases
-        if (goal < 0) {
-            if (allowGoalNotReached) {
-                return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, false);
-            } else {
-                throw new GATKException(String.format("Somehow the requested coordinate is not covered by the read. Too many deletions? alignment Start: %d, Cigar: %s, refCoord: %s ",
-                        alignmentStart, cigar.toString(), refCoord));
-            }
-        }
-        boolean goalReached = refBases == goal;
-
-        final Iterator<CigarElement> cigarElementIterator = cigar.getCigarElements().iterator();
-        while (!goalReached && cigarElementIterator.hasNext()) {
-            final CigarElement cigarElement = cigarElementIterator.next();
-            int shift = 0;
-
-            if (cigarElement.getOperator().consumesReferenceBases() || cigarElement.getOperator() == CigarOperator.SOFT_CLIP) {
-                if (refBases + cigarElement.getLength() < goal) {
-                    shift = cigarElement.getLength();
-                } else {
-                    shift = goal - refBases;
-                }
-
-                refBases += shift;
-            }
-            goalReached = refBases == goal;
-
-            if (!goalReached && cigarElement.getOperator().consumesReadBases()) {
-                readBases += cigarElement.getLength();
-            }
-
-            if (goalReached) {
-                // Is this base's reference position within this cigar element? Or did we use it all?
-                final boolean endsWithinCigar = shift < cigarElement.getLength();
-
-                // If it isn't, we need to check the next one. There should *ALWAYS* be a next one
-                // since we checked if the goal coordinate is within the read length, so this is just a sanity check.
-                if (!endsWithinCigar && !cigarElementIterator.hasNext()) {
-                    if (allowGoalNotReached) {
-                        return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, false);
-                    } else {
-                        throw new GATKException(String.format("Reference coordinate corresponds to a non-existent base in the read. This should never happen -- check read with alignment start: %s  and cigar: %s", alignmentStart, cigar));
-                    }
-                }
-
-                CigarElement nextCigarElement = null;
-
-                // if we end inside the current cigar element, we just have to check if it is a deletion (or skipped region)
-                if (endsWithinCigar) {
-                    fallsInsideDeletionOrSkippedRegion = (cigarElement.getOperator() == CigarOperator.DELETION || cigarElement.getOperator() == CigarOperator.SKIPPED_REGION);
-                }// if we end outside the current cigar element, we need to check if the next element is an insertion, deletion or skipped region.
-                else {
-                    nextCigarElement = cigarElementIterator.next();
-
-                    // if it's an insertion, we need to clip the whole insertion before looking at the next element
-                    if (nextCigarElement.getOperator() == CigarOperator.INSERTION) {
-                        readBases += nextCigarElement.getLength();
-                        if (!cigarElementIterator.hasNext()) {
-                            if (allowGoalNotReached) {
-                                return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, false);
-                            } else {
-                                throw new GATKException(String.format("Reference coordinate corresponds to a non-existent base in the read. This should never happen -- check read with alignment start: %s  and cigar: %s", alignmentStart, cigar));
-                            }
-                        }
-
-                        nextCigarElement = cigarElementIterator.next();
-                    }
-
-                    // if it's a deletion (or skipped region), we will pass the information on to be handled downstream.
-                    endJustBeforeDeletionOrSkippedRegion = (nextCigarElement.getOperator() == CigarOperator.DELETION || nextCigarElement.getOperator() == CigarOperator.SKIPPED_REGION);
-                }
-
-                fallsInsideOrJustBeforeDeletionOrSkippedRegion = endJustBeforeDeletionOrSkippedRegion || fallsInsideDeletionOrSkippedRegion;
-
-                // If we reached our goal outside a deletion (or skipped region), add the shift
-                if (!fallsInsideOrJustBeforeDeletionOrSkippedRegion && cigarElement.getOperator().consumesReadBases()) {
-                    readBases += shift;
-                }// If we reached our goal just before a deletion (or skipped region) we need
-                    // to add the shift of the current cigar element but go back to it's last element to return the last
-                    // base before the deletion (or skipped region) (see warning in function contracts)
-                else if (endJustBeforeDeletionOrSkippedRegion && cigarElement.getOperator().consumesReadBases()) {
-                    readBases += shift - 1;
-                }// If we reached our goal inside a deletion (or skipped region), or just between a deletion and a skipped region,
-                    // then we must backtrack to the last base before the deletion (or skipped region)
-                else if (fallsInsideDeletionOrSkippedRegion ||
-                        (endJustBeforeDeletionOrSkippedRegion && nextCigarElement.getOperator().equals(CigarOperator.N)) ||
-                        (endJustBeforeDeletionOrSkippedRegion && nextCigarElement.getOperator().equals(CigarOperator.D))) {
-                    readBases--;
-                }
-            }
-        }
-
-        if (!goalReached) {
-            if (allowGoalNotReached) {
-                return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, false);
-            } else {
-                throw new GATKException("Somehow the requested coordinate is not covered by the read. Alignment " + alignmentStart + " | " + cigar);
-            }
-        }
-
-        return Pair.of(readBases, fallsInsideOrJustBeforeDeletionOrSkippedRegion);
-    }
 
     /**
      * Is a base inside a read?
@@ -874,35 +741,6 @@ public final class ReadUtils {
      */
     public static boolean isInsideRead(final GATKRead read, final int referenceCoordinate) {
         return referenceCoordinate >= read.getStart() && referenceCoordinate <= read.getEnd();
-    }
-
-    /**
-     * @see #readStartsWithInsertion(Cigar, boolean) with ignoreClipOps set to true
-     */
-    public static CigarElement readStartsWithInsertion(final Cigar cigarForRead) {
-        return readStartsWithInsertion(cigarForRead, true);
-    }
-
-    public static CigarElement readStartsWithInsertion(final Cigar cigarForRead, final boolean ignoreSoftClipOps) {
-        return readStartsWithInsertion(cigarForRead.getCigarElements(), ignoreSoftClipOps);
-    }
-
-    /**
-     * Checks if a read starts with an insertion.
-     *
-     * @param cigarElementsForRead    the CIGAR to evaluate
-     * @param ignoreSoftClipOps   should we ignore S operators when evaluating whether an I operator is at the beginning?  Note that H operators are always ignored.
-     * @return the element if it's a leading insertion or null otherwise
-     */
-    public static CigarElement readStartsWithInsertion(final List<CigarElement> cigarElementsForRead, final boolean ignoreSoftClipOps) {
-        for ( final CigarElement cigarElement : cigarElementsForRead ) {
-            if ( cigarElement.getOperator() == CigarOperator.INSERTION ) {
-                return cigarElement;
-            } else if ( cigarElement.getOperator() != CigarOperator.HARD_CLIP && ( !ignoreSoftClipOps || cigarElement.getOperator() != CigarOperator.SOFT_CLIP) ) {
-                break;
-            }
-        }
-        return null;
     }
 
     /**

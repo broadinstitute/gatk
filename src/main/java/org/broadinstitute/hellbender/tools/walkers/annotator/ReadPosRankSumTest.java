@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
@@ -39,26 +41,31 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.READ_POS_RANK_SUM_KEY); }
 
     @Override
-    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
-        return getReadPosition(read, refLoc);
+    protected OptionalDouble getElementForRead(final GATKRead read, final VariantContext vc) {
+        return getReadPosition(read, vc);
     }
 
     @Override
-    public boolean isUsableRead(final GATKRead read, final int refLoc) {
+    public boolean isUsableRead(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
-        return super.isUsableRead(read, refLoc) && read.getSoftEnd() >= refLoc;
+        // we use vc.getEnd() + 1 in case of a leading indel -- if this isn't relevant getReadPosition will return empty
+        return super.isUsableRead(read, vc) && read.getSoftStart() <= vc.getEnd() + 1 && read.getSoftEnd() >= vc.getStart();
     }
 
-    public static OptionalDouble getReadPosition(final GATKRead read, final int refLoc) {
+    public static OptionalDouble getReadPosition(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
-        final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refLoc, ClippingTail.RIGHT_TAIL, true);
-        if ( offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
-            return OptionalDouble.empty();
+
+        // edge case: if a read starts with an insertion then the variant context's end is the reference base BEFORE the read start,
+        // which appears like no overlap
+        if (read.getStart() == vc.getEnd() + 1 && read.getCigarElements().stream().map(CigarElement::getOperator)
+                .filter(o -> !o.isClipping()).findFirst().orElse(null) == CigarOperator.INSERTION) {
+            return OptionalDouble.of(0);
         }
 
-        // If the offset inside a deletion, it does not lie on a read.
-        if ( AlignmentUtils.isInsideDeletion(read.getCigar(), offset) ) {
-            return OptionalDouble.of(INVALID_ELEMENT_FROM_READ);
+        final Pair<Integer, CigarOperator> offset = ReadUtils.getReadCoordinateForReferenceCoordinate(read, vc.getStart());
+
+        if (offset.getLeft() == ReadUtils.CLIPPING_GOAL_NOT_REACHED) {
+            return OptionalDouble.empty();
         }
 
         // hard clips at this point in the code are perfectly good bases that were clipped to make the read fit the assembly region
@@ -68,17 +75,9 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
         final int leadingHardClips = firstElement.getOperator() == CigarOperator.HARD_CLIP ? firstElement.getLength() : 0;
         final int trailingHardClips = lastElement.getOperator() == CigarOperator.HARD_CLIP ? lastElement.getLength() : 0;
 
-        if (offset >= cigar.getReadLength()) {
-            return OptionalDouble.empty();
-        }
-        int readPos = leadingHardClips + AlignmentUtils.calcAlignmentByteArrayOffset(read.getCigar(), offset, false, 0, 0);
-        final int numAlignedBases = AlignmentUtils.getNumAlignedBasesCountingSoftClips( read );
-        final int numOriginalBases = numAlignedBases + leadingHardClips + trailingHardClips;
 
-        //After the middle of the read, we compute the postion from the end of the read.
-        if (readPos > numOriginalBases / 2) {
-            readPos = numOriginalBases - (readPos + 1);
-        }
-        return OptionalDouble.of(readPos);
+        final int leftDistance = leadingHardClips + offset.getLeft();
+        final int rightDistance = read.getLength() - 1 - offset.getLeft() + trailingHardClips;
+        return OptionalDouble.of(Math.min(leftDistance, rightDistance));
     }
 }

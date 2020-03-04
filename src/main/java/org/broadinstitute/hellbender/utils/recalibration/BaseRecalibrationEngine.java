@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
+import htsjdk.samtools.CigarOperator;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -327,7 +329,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         return skip;
     }
 
-    protected boolean[] calculateKnownSites( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
+    protected static boolean[] calculateKnownSites( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
         final int readLength = read.getLength();
         final boolean[] knownSitesArray = new boolean[readLength];//initializes to all false
         final Cigar cigar = read.getCigar();
@@ -338,15 +340,14 @@ public final class BaseRecalibrationEngine implements Serializable {
                 // knownSite is outside clipping window for the read, ignore
                 continue;
             }
-            int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(softStart, cigar, knownSite.getStart(), ClippingTail.LEFT_TAIL, true);
-            if( featureStartOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
-                featureStartOnRead = 0;
+            final Pair<Integer, CigarOperator> featureStartAndOperatorOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(read, knownSite.getStart());
+            int featureStartOnRead = featureStartAndOperatorOnRead.getLeft() == ReadUtils.CLIPPING_GOAL_NOT_REACHED ? 0 : featureStartAndOperatorOnRead.getLeft();
+            if (featureStartAndOperatorOnRead.getRight() == CigarOperator.DELETION) {
+                featureStartOnRead--;
             }
 
-            int featureEndOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(softStart, cigar, knownSite.getEnd(), ClippingTail.LEFT_TAIL, true);
-            if( featureEndOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
-                featureEndOnRead = readLength;
-            }
+            final Pair<Integer, CigarOperator> featureEndAndOperatorOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(read, knownSite.getEnd());
+            int featureEndOnRead = featureEndAndOperatorOnRead.getLeft() == ReadUtils.CLIPPING_GOAL_NOT_REACHED ? readLength : featureEndAndOperatorOnRead.getLeft();
 
             if( featureStartOnRead > readLength ) {
                 featureStartOnRead = featureEndOnRead = readLength;

@@ -69,7 +69,7 @@ public class AS_ReadPosRankSumTestUnitTest extends ReducibleAnnotationBaseTest {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(cigar);
         read.setMappingQuality(mappingQuality);
         read.setPosition("1", start);
-        Assert.assertEquals(as_readPosRankSumTest.isUsableRead(read, refLoc), isUsable);
+        Assert.assertEquals(as_readPosRankSumTest.isUsableRead(read, makeVC(refLoc)), isUsable);
     }
 
     @Test

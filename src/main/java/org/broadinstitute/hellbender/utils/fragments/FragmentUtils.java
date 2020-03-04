@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.fragments;
 
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.QualityUtil;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -44,8 +45,21 @@ public final class FragmentUtils {
             return;
         }
 
-        final Pair<Integer, Boolean> offset = ReadUtils.getReadCoordinateForReferenceCoordinate(firstRead, secondRead.getStart(), false);
-        final int firstReadStop = (offset.getRight() ? offset.getLeft() + 1 : offset.getLeft());
+        // the offset and cigar operator in the first read at the start of the left read
+        final Pair<Integer, CigarOperator> offsetAndOperator = ReadUtils.getReadCoordinateForReferenceCoordinate(firstRead, secondRead.getStart());
+        final CigarOperator operator = offsetAndOperator.getRight();
+        final int offset = offsetAndOperator.getLeft();
+        if (offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED) { // no overlap
+            return;
+        }
+
+
+        // TODO: we should be careful about the case where {@code operator} is a deletion; that is, when the second read start falls in a deletion of the first read
+        // TODO: however, the issue is bigger than simply getting the start correctly, because the code below assumes that all bases of both reads are aligned in their overlap.
+        // TODO: Any indel that occurs in one read and not the other will spoil things.  Really, the correct thing to do is a Smith-Waterman (or other) alignment of the reads
+        // TODO: in their overlap and correct the double-counting for all aligned bases.
+        // TODO: a cheaper solution would be to cap all quals in the overlap region by half of the PCR qual.
+        final int firstReadStop = offset;
         final int numOverlappingBases = Math.min(firstRead.getLength() - firstReadStop, secondRead.getLength());
 
         final byte[] firstReadBases = firstRead.getBases();

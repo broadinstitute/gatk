@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.base.Strings;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.variant.variantcontext.*;
@@ -325,13 +326,13 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         final GATKRead readCache = ArtificialReadUtils.createArtificialRead(readBases.getBytes(), quals, cigar);
 
         for ( int i = 0; i < readBases.getBytes().length; i++ ) {
-            final Pair<Integer, Boolean> readCoordinateForReferenceCoordinate = ReadUtils.getReadCoordinateForReferenceCoordinate(readCache, readCache.getStart() + i, true);
+            final Pair<Integer, CigarOperator> readCoordinateForReferenceCoordinate = ReadUtils.getReadCoordinateForReferenceCoordinate(readCache, readCache.getStart() + i);
 
-            if (!readCoordinateForReferenceCoordinate.getValue() && readCoordinateForReferenceCoordinate.getKey() != -1) {
+            if (readCoordinateForReferenceCoordinate.getRight() != null && readCoordinateForReferenceCoordinate.getRight().consumesReadBases()) {
                 final GATKRead readNoCache = ArtificialReadUtils.createArtificialRead(readBases.getBytes(), quals, cigar);
                 final SimpleInterval loc = new SimpleInterval("20", i + 1 + readStartIntoRef, i + 1 + readStartIntoRef);
-                final ReadPileup pileupCache = new ReadPileup(loc, Collections.singletonList(readCache), readCoordinateForReferenceCoordinate.getKey());
-                final ReadPileup pileupNoCache = new ReadPileup(loc, Collections.singletonList(readNoCache), ReadUtils.getReadCoordinateForReferenceCoordinate(readNoCache, readNoCache.getStart() + i, false).getKey());
+                final ReadPileup pileupCache = new ReadPileup(loc, Collections.singletonList(readCache), readCoordinateForReferenceCoordinate.getLeft());
+                final ReadPileup pileupNoCache = new ReadPileup(loc, Collections.singletonList(readNoCache), ReadUtils.getReadCoordinateForReferenceCoordinate(readNoCache, readNoCache.getStart() + i).getKey());
                 final int actualCache = model.calcNReadsWithNoPlausibleIndelsReads(pileupCache, i + readStartIntoRef, ref.getBytes(), maxIndelSize);
                 final int actualNoCache = model.calcNReadsWithNoPlausibleIndelsReads(pileupNoCache, i + readStartIntoRef, ref.getBytes(), maxIndelSize);
                 Assert.assertEquals(actualCache, (int)expected.get(i), "cached result failed at position " + i);

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.clipping;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -417,14 +418,24 @@ public class ReadClipper {
                 throw new GATKException("Only one of refStart or refStop must be < 0, not both (" + refStart + ", " + refStop + ")");
             }
             start = 0;
-            stop = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStop, ClippingTail.LEFT_TAIL);
+
+            final Pair<Integer, CigarOperator> stopPosAndOperator = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStop);
+
+            // if the refStop falls in a deletion, the above method returns the position after the deletion.  Since the stop we return here
+            // is inclusive, we decrement the stop to avoid overclipping by one base.  As a result we do not clip the deletion, which is fine.
+            stop = stopPosAndOperator.getLeft() - (stopPosAndOperator.getRight().consumesReadBases() ? 0 : 1);
         }
         else {
             if (refStop >= 0) {
                 throw new GATKException("Either refStart or refStop must be < 0 (" + refStart + ", " + refStop + ")");
             }
-            start = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStart, ClippingTail.RIGHT_TAIL);
+            // unlike the above case where we clip the start fo the read, here we clip the end and returning the base to the right of a deletion avoids overclipping
+            start = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStart).getLeft();
             stop = read.getLength() - 1;
+        }
+
+        if (start == ReadUtils.CLIPPING_GOAL_NOT_REACHED || stop == ReadUtils.CLIPPING_GOAL_NOT_REACHED) {
+            return read;
         }
 
         if (start < 0 || stop > read.getLength() - 1) {

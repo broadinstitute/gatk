@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ReadPosRankSumTest;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -71,13 +72,14 @@ public class AS_ReadPosRankSumTest extends AS_RankSumTest implements AS_Standard
     }
 
     @Override
-    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
-        return ReadPosRankSumTest.getReadPosition(read, refLoc);
+    protected OptionalDouble getElementForRead(final GATKRead read, final VariantContext vc) {
+        return ReadPosRankSumTest.getReadPosition(read, vc);
     }
 
     @Override
-    public boolean isUsableRead(final GATKRead read, final int refLoc) {
+    public boolean isUsableRead(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
-        return super.isUsableRead(read, refLoc) && read.getSoftEnd() >= refLoc;
+        // we use vc.getEnd() + 1 in case of a leading indel -- if this isn't relevant getReadPosition will return empty
+        return super.isUsableRead(read, vc) && read.getSoftStart() <= vc.getEnd() + 1 && read.getSoftEnd() >= vc.getStart();
     }
 }

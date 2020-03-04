@@ -40,10 +40,8 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         final List<Double> refQuals = new ArrayList<>();
         final List<Double> altQuals = new ArrayList<>();
 
-        final int refLoc = vc.getStart();
-
         if( likelihoods != null) {
-            fillQualsFromLikelihood(vc, likelihoods, refQuals, altQuals, refLoc);
+            fillQualsFromLikelihood(vc, likelihoods, refQuals, altQuals);
         }
 
         if ( refQuals.isEmpty() && altQuals.isEmpty() ) {
@@ -153,12 +151,10 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
             return;
         }
 
-        final int refLoc = vc.getStart();
-
         final Map<Allele, CompressedDataList<Integer>> perAlleleValues = myData.getAttributeMap();
         for ( final AlleleLikelihoods<GATKRead, Allele>.BestAllele bestAllele : likelihoods.bestAllelesBreakingTies() ) {
-            if (bestAllele.isInformative() && isUsableRead(bestAllele.evidence, refLoc)) {
-                final OptionalDouble value = getElementForRead(bestAllele.evidence, refLoc, bestAllele);
+            if (bestAllele.isInformative() && isUsableRead(bestAllele.evidence, vc)) {
+                final OptionalDouble value = getElementForRead(bestAllele.evidence, vc, bestAllele);
                 if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ && perAlleleValues.containsKey(bestAllele.allele)) {
                     perAlleleValues.get(bestAllele.allele).add((int) value.getAsDouble());
                 }
