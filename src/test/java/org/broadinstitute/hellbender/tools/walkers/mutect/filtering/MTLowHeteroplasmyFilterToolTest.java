@@ -23,8 +23,8 @@ public class MTLowHeteroplasmyFilterToolTest extends CommandLineProgramTest {
         final File outputFile = createTempFile("low-het-test", ".vcf");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(MITO_REF.getAbsolutePath())
-                .addArgument(StandardArgumentDefinitions.VARIANT_SHORT_NAME, NA12878_MITO_FILTERED_VCF.getAbsolutePath())
-                .addArgument(MTLowHeteroplasmyFilterTool.MIN_LOW_HET_SITES_LONG_NAME, 0)
+                .add(StandardArgumentDefinitions.VARIANT_SHORT_NAME, NA12878_MITO_FILTERED_VCF.getAbsolutePath())
+                .add(MTLowHeteroplasmyFilterTool.MIN_LOW_HET_SITES_LONG_NAME, 0)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         Set<VariantContext> variants = VariantContextTestUtils.streamVcf(outputFile)
@@ -37,7 +37,7 @@ public class MTLowHeteroplasmyFilterToolTest extends CommandLineProgramTest {
         final File outputFile = createTempFile("no-low-het-test", ".vcf");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(MITO_REF.getAbsolutePath())
-                .addArgument(StandardArgumentDefinitions.VARIANT_SHORT_NAME, NA12878_MITO_FILTERED_VCF.getAbsolutePath())
+                .add(StandardArgumentDefinitions.VARIANT_SHORT_NAME, NA12878_MITO_FILTERED_VCF.getAbsolutePath())
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         Assert.assertTrue(VariantContextTestUtils.streamVcf(outputFile)

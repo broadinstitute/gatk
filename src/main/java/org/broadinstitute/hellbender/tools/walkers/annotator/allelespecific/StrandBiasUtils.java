@@ -45,7 +45,7 @@ public class StrandBiasUtils {
 
     }
 
-    protected static String encode(List<Integer> alleleValues) {
+    public static String encode(List<Integer> alleleValues) {
         return String.join(",", alleleValues.stream().map(i -> i.toString()).collect(Collectors.toList()));
     }
 
