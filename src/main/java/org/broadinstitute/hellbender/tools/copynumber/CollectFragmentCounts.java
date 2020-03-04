@@ -11,6 +11,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.util.CoordMath;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.OverlapDetector;
@@ -20,6 +21,7 @@ import htsjdk.tribble.gff.Gff3Feature;
 import htsjdk.tribble.gff.Gff3FeatureImpl;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.spark.sql.catalyst.expressions.In;
 import org.apache.spark.sql.catalyst.expressions.Sin;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -39,6 +41,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Simple
 
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -164,7 +167,7 @@ public final class CollectFragmentCounts extends ReadWalker {
         readFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
         readFilters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
         readFilters.add(ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE);
-        readFilters.add(new InwardFragmentsFilter());
+        //readFilters.add(new InwardFragmentsFilter());
         readFilters.add(ReadFilterLibrary.PRIMARY_LINE);
         readFilters.add(new NotMultiMappingReadFilter());
         //readFilters.add(new GoodPairReadFilter());
@@ -250,16 +253,16 @@ public final class CollectFragmentCounts extends ReadWalker {
         );
     }
 
-    private List<SimpleInterval> getAlignmentIntervals(final GATKRead read) {
+    private List<Interval> getAlignmentIntervals(final GATKRead read) {
 
         if (spliced) {
             final SAMFileHeader intervalHeader = new SAMFileHeader(getMasterSequenceDictionary());
+            //need to set sortOrder to coordinate in order to avoid inefficient IntervalList.getUniqueIntervals recreating header later
             intervalHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-            final IntervalList alignmentIntervals = new IntervalList(intervalHeader);
+            //final IntervalList alignmentIntervals = new IntervalList(intervalHeader);
+            final List<Interval> alignmentIntervals = new ArrayList<>();
             final SAMRecord rec = read.convertToSAMRecord(getHeaderForReads());
-            if(SAMUtils.getMateCigar(rec) == null) {
-                throw new GATKException("Mate cigar must be present if using spliced reads");
-            }
+
             final List<AlignmentBlock> readAlignmentBlocks = rec.getAlignmentBlocks();
 
             for( final AlignmentBlock block : readAlignmentBlocks) {
@@ -268,6 +271,9 @@ public final class CollectFragmentCounts extends ReadWalker {
 
             boolean overlapsMate = false;
             if (inGoodPair(read)) {
+                if(SAMUtils.getMateCigar(rec) == null) {
+                    throw new GATKException("Mate cigar must be present if using spliced reads");
+                }
                 final List<AlignmentBlock> mateAlignmentBlocks = SAMUtils.getMateAlignmentBlocks(rec);
                 for( final AlignmentBlock block : mateAlignmentBlocks) {
                     final Interval alignmentBlockInterval = new Interval(read.getMateContig(), block.getReferenceStart(), block.getReferenceStart()+block.getLength());
@@ -279,12 +285,21 @@ public final class CollectFragmentCounts extends ReadWalker {
                 }
             }
             if (overlapsMate) {
-                //alignmentIntervals.unique();
-                return IntervalList.getUniqueIntervals(alignmentIntervals, true).stream().map(i -> new SimpleInterval(i.getContig(), i.getStart(), i.getEnd())).collect(Collectors.toList());
+                //sort and merge
+                Collections.sort(alignmentIntervals);
+                final IntervalList.IntervalMergerIterator mergeringIterator = new IntervalList.IntervalMergerIterator(alignmentIntervals.iterator(), true, true, false);
+                final List<Interval> merged = new ArrayList<>();
+                while (mergeringIterator.hasNext()) {
+                    merged.add(mergeringIterator.next());
+                }
+                return merged;
+            } else {
+                Collections.sort(alignmentIntervals);
+                return alignmentIntervals;
             }
-            return alignmentIntervals.getIntervals().stream().map(i -> new SimpleInterval(i.getContig(), i.getStart(), i.getEnd())).collect(Collectors.toList());
         } else {
-            return Arrays.asList(getReadInterval(read));
+            final SimpleInterval fragmentInterval = getReadInterval(read);
+            return Arrays.asList(new Interval(fragmentInterval.getContig(), fragmentInterval.getStart(), fragmentInterval.getEnd()));
         }
 
 
@@ -292,12 +307,8 @@ public final class CollectFragmentCounts extends ReadWalker {
 
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
-
         if ((!spliced || !read.isReverseStrand() || !inGoodPair(read))) {
-            if (read.getName().equals("HJWYCDSXX190619:4:2502:16269:12540")) {
-                System.out.println();
-            }
-            final List<SimpleInterval> alignmentIntervals = getAlignmentIntervals(read);
+            final List<Interval> alignmentIntervals = getAlignmentIntervals(read);
 
             //List<Gff3Feature> features = featureContext.getValues(gffFile);
             Set<Pair<FeatureCoverage, Gff3BaseData>> features ;
@@ -311,8 +322,14 @@ public final class CollectFragmentCounts extends ReadWalker {
 
 
 
-            final int basesOnReference = alignmentIntervals.stream().map(SimpleInterval::getLengthOnReference).reduce(0, Integer::sum);
+            final int basesOnReference = alignmentIntervals.stream().map(Interval::getLengthOnReference).reduce(0, Integer::sum);
             final Map<FeatureCoverage, Set<Gff3BaseData>> overlapsByGroupingFeatures = new LinkedHashMap<>();
+            //count how many bases in alignmentIntervals are not covered by any feature
+            final List<Interval> overlappingIntervals = features.stream().map(p -> new Interval (p.getRight().getContig(), p.getRight().getStart(), p.getRight().getEnd())).collect(Collectors.toList());
+
+            final int uncoveredBases = countUncoveredBases(alignmentIntervals, overlappingIntervals);
+
+
             for (final Pair<FeatureCoverage, Gff3BaseData> feature : features) {
                 final Set<Gff3BaseData> overlappingFeatures = overlapsByGroupingFeatures.computeIfAbsent(feature.getLeft(), b -> new HashSet<>());
                 overlappingFeatures.add(feature.getRight());
@@ -327,7 +344,6 @@ public final class CollectFragmentCounts extends ReadWalker {
             for (final Map.Entry<FeatureCoverage, Set<Gff3BaseData>> overlapsByGroupingFeature : overlapsByGroupingFeatures.entrySet()) {
                 final FeatureCoverage featureCoverage = overlapsByGroupingFeature.getKey();
                 final boolean isSense = !featureCoverage.isStranded || featureCoverage.baseData.getStrand() == fragmentStrand;
-
                 float maxCounts = (float)1.0/(float)nGroupingFeaturesCovered;
 //                float maxCounts = 0;
 //                for (final Gff3BaseData overlapBaseData : overlapsByGroupingFeature.getValue()) {
@@ -351,6 +367,52 @@ public final class CollectFragmentCounts extends ReadWalker {
                 }
             }
         }
+    }
+
+    private int countUncoveredBases(final List<Interval> countingIntervals, final List<Interval> coveringIntervals) {
+        if (coveringIntervals.isEmpty()) {
+            return (int)Interval.countBases(countingIntervals);
+        }
+        //make sure sorted
+        Collections.sort(countingIntervals);
+        Collections.sort(coveringIntervals);
+
+        Iterator<Interval> countingIntervalsIterator = countingIntervals.iterator();
+        Iterator<Interval> coveringIntervalsIterator = coveringIntervals.iterator();
+
+        int uncoveredBases = 0;
+        Interval currentCoveringInterval = coveringIntervalsIterator.next();
+        while (countingIntervalsIterator.hasNext()) {
+            final Interval currentCountingInterval = countingIntervalsIterator.next();
+            int currentIntervalCoveredUntil = currentCountingInterval.getStart(); //we will move through the currentCountingInterval
+            //get to correct contig, or last covering interval
+            while (!currentCoveringInterval.getContig().equals(currentCountingInterval.getContig()) && coveringIntervalsIterator.hasNext()) {
+                 currentCoveringInterval = coveringIntervalsIterator.next();
+            }
+
+            //seek until end of currentCoveringInterval is at or past currentCountingIntervalPos
+            while (currentCoveringInterval.getContig().equals(currentCountingInterval.getContig()) && currentCoveringInterval.getEnd() < currentIntervalCoveredUntil && coveringIntervalsIterator.hasNext()) {
+                currentCoveringInterval = coveringIntervalsIterator.next();
+            }
+
+            //if currentCoveringInterval start is past end of currentCountingInterval, continue
+            if (!currentCoveringInterval.getContig().equals(currentCountingInterval.getContig()) || currentCoveringInterval.getStart() > currentCountingInterval.getEnd()) {
+                continue;
+            }
+
+            if (currentCoveringInterval.getStart() > currentIntervalCoveredUntil) {
+                uncoveredBases += currentCoveringInterval.getStart() - currentIntervalCoveredUntil;
+            }
+
+            if (currentIntervalCoveredUntil <= currentCoveringInterval.getEnd()) {
+                currentIntervalCoveredUntil = currentCoveringInterval.getEnd() + 1;
+            }
+
+            if (currentIntervalCoveredUntil > )
+
+
+        }
+
     }
 
     @Override
