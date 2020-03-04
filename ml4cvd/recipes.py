@@ -3,15 +3,19 @@
 # Imports
 import os
 import csv
+import h5py
 import copy
 import logging
 import numpy as np
+import pandas as pd
 from functools import reduce
+from operator import itemgetter
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
+from ml4cvd.TensorMap import Interpretation
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
@@ -21,7 +25,7 @@ from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_ge
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps
+from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map, make_variational_multimodal_multitask_model
 
 
@@ -36,6 +40,8 @@ def run(args):
                           args.max_sample_id, args.min_values)
         elif 'tensorize_pngs' == args.mode:
             write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id)
+        elif 'explore' == args.mode:
+            explore(args)
         elif 'train' == args.mode:
             train_multimodal_multitask(args)
         elif 'test' == args.mode:
@@ -66,6 +72,8 @@ def run(args):
             plot_histograms_of_tensors_in_pdf(args.id, args.tensors, args.output_folder, args.max_samples)
         elif 'plot_heatmap' == args.mode:
             plot_heatmap_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
+        elif 'plot_partners_ecgs' == args.mode:
+            plot_partners_ecgs(args)
         elif 'tabulate_correlations' == args.mode:
             tabulate_correlations_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
         elif 'train_shallow' == args.mode:
@@ -99,6 +107,265 @@ def run(args):
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
 
 
+def _init_dict_of_tensors(tmaps: list) -> dict:
+    # Iterate through tmaps and initialize dict in which to store
+    # tensors, error types, and fpath
+    dict_of_tensors = defaultdict(dict)
+    for tm in tmaps:
+        if tm.channel_map:
+            for cm in tm.channel_map:
+                dict_of_tensors[tm.name].update({(tm.name, cm): list()})
+        else:
+            dict_of_tensors[tm.name].update({f"{tm.name}": list()})
+        dict_of_tensors[tm.name].update({f"error_type_{tm.name}": list()})
+        dict_of_tensors[tm.name].update({"fpath": list()})
+    return dict_of_tensors
+
+
+def _tensors_to_df(args):
+    generators = test_train_valid_tensor_generators(**args.__dict__)
+    tmaps = [tm for tm in args.tensor_maps_in]
+    list_of_tensor_dicts: List[Dict] = []
+    dependents = {}
+    for gen in generators:
+        data_len = len(gen.path_iters[0].paths)
+        for i, path in enumerate(gen.path_iters[0].paths):
+            if (i+1) % 500 == 0:
+                logging.info(f"{gen.name} - Parsing {i}/{data_len} ({i/data_len*100:.1f}%) done")
+            tensor_dict = _init_dict_of_tensors(tmaps)
+            try:
+                with h5py.File(path, "r") as hd5:
+                    # Iterate through each tmap
+                    for tm in tmaps:
+                        error_type = ""
+                        try:
+                            tensor = tm.tensor_from_file(tm, hd5, dependents)
+                            tensor = tm.postprocess_tensor(tensor, augment=False)
+                            
+                            # If tensor is a scaler, isolate the value in the array;
+                            # otherwise, retain the value as array
+                            if tm.shape[0] == 1:
+                                tensor = tensor.item()
+                           
+                            # Append tensor to dict
+                            if tm.channel_map:
+                                for cm in tm.channel_map:
+                                    tensor_dict[tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
+                            else:
+                                tensor_dict[tm.name][tm.name] = tensor
+                        except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+                            # Could not obtain tensor, so append nans
+                            if tm.channel_map:
+                                for cm in tm.channel_map:
+                                    tensor_dict[tm.name][(tm.name, cm)] = np.nan
+                            else:
+                                # TODO figure out the np.full stuff
+                                tensor_dict[tm.name][tm.name] = np.full(tm.shape, np.nan)[0]
+
+                            # Save  error type to more readable string
+                            error_type = type(e).__name__
+
+                        # Save error type, fpath, and generator name (set)
+                        tensor_dict[tm.name][f"error_type_{tm.name}"] = error_type
+                        tensor_dict[tm.name]["fpath"] = path
+                        tensor_dict[tm.name]["generator"] = gen.name
+            except OSError as e:
+                logging.info(f"OSError {e}")
+
+            # Append list of dicts with tensor_dict
+            list_of_tensor_dicts.append(tensor_dict)
+
+    # Now we have a list of dicts where each dict has {tmaps:values} and
+    # each HD5 -> one dict in the list
+    # Next, convert list of dicts -> dataframe
+    df = pd.DataFrame()
+
+    for tm in tmaps:
+        # Isolate all {tmap:values} from the list of dicts for this tmap
+        list_of_tmap_dicts = list(map(itemgetter(tm.name), list_of_tensor_dicts))
+
+        # Convert this tmap-specific list of dicts into dict of lists
+        dict_of_tmap_lists = {k: [d[k] for d in list_of_tmap_dicts]
+                                 for k in list_of_tmap_dicts[0]}
+
+        # Convert list of dicts into dataframe and concatenate to big df
+        df = pd.concat([df, pd.DataFrame(dict_of_tmap_lists)], axis=1)
+
+    # Remove duplicate columns: error_types, fpath
+    df = df.loc[:, ~df.columns.duplicated()]
+
+    # Remove "_worker" from "generator" values
+    df["generator"].replace("_worker", "", regex=True, inplace=True)
+
+    # Rearrange df columns so fpath and generator are at the end
+    cols = [col for col in df if col not in ["fpath", "generator"]] \
+           + ["fpath", "generator"]
+    df = df[cols]
+
+    # Cast dtype of some columns to string. Note this is necessary; although a
+    # df (or pd.series) of floats will have the type "float", a df of strings
+    # assumes a dtype of "object". Casting to dtype "string" will confer performnace
+    # improvements in future versions of Pandas
+    df["fpath"] = df["fpath"].astype("string")
+    df["generator"] = df["generator"].astype("string")
+
+    # Iterate through tensor (and channel) maps and cast Pandas dtype to string
+    if Interpretation.LANGUAGE in [tm.interpretation for tm in tmaps]:
+        for tm in [tm for tm in args.tensor_maps_in if tm.interpretation is Interpretation.LANGUAGE]: 
+            if tm.channel_map:
+                for cm in tm.channel_map:
+                    key = (tm.name, cm)
+                    df[key] = df[key].astype("string")
+            else:
+                key = tm.name
+                df[key] = df[key].astype("string")
+    logging.info(f"Extracted {len(tmaps)} tmaps from {df.shape[0]} hd5 files into DataFrame")
+    return df
+
+
+def explore(args):
+    args.num_workers = 0
+    tmaps = args.tensor_maps_in
+    fpath_prefix = "summary_stats"
+
+    if any([len(tm.shape) != 1 for tm in tmaps]):
+        raise ValueError("Explore only works for 1D tensor maps, but len(tm.shape) returned a value other than 1.")
+
+    # Iterate through tensors, get tmaps, and save to dataframe
+    df = _tensors_to_df(args)
+    
+    # Save dataframe to CSV
+    fpath = os.path.join(args.output_folder, args.id, "tensors_all_union.csv")
+    df.to_csv(fpath, index=False)
+    fpath = os.path.join(args.output_folder, args.id, "tensors_all_intersect.csv")
+    df.dropna().to_csv(fpath, index=False)
+    logging.info(f"Saved dataframe of tensors (union and intersect) to {fpath}")
+
+    #fpath = os.path.join(args.output_folder, args.id, "tensors_all_union.csv")
+    #logging.info(f"Loading {fpath} to Pandas DataFrame")
+    #df = pd.read_csv(fpath, keep_default_na=False)
+    #logging.info(f"Loaded {fpath} to Pandas DataFrame")
+
+    # Check if any tmaps are categorical
+    if Interpretation.CATEGORICAL in [tm.interpretation for tm in tmaps]:
+
+        # Iterate through 1) df, 2) df without NaN-containing rows (intersect)
+        for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
+            for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.CATEGORICAL]:
+                counts = []
+                counts_missing = []
+                if tm.channel_map:
+                    for cm in tm.channel_map:
+                        key = (tm.name, cm)
+                        counts.append(df_cur[key].sum())
+                        counts_missing.append(df_cur[key].isna().sum())
+                else:
+                    key = tm.name
+                    counts.append(df_cur[key].sum())
+                    counts_missing.append(df_cur[key].isna().sum())
+
+                # Append list with missing counts
+                counts.append(counts_missing[0])
+
+                # Append list with total counts
+                counts.append(sum(counts))
+
+                # Create list of row names
+                cm_names = [cm for cm in tm.channel_map] + [f"missing", f"total"]
+
+                # Transform list into dataframe indexed by channel maps
+                df_stats = pd.DataFrame(counts, index=cm_names, columns=["counts"])
+
+                # Add new column: percent of all counts
+                df_stats["fraction_of_total"] = df_stats["counts"] / df_stats.loc[f"total"]["counts"]
+
+                # Save parent dataframe to CSV on disk
+                fpath = os.path.join(args.output_folder, args.id, 
+                            f"{fpath_prefix}_{Interpretation.CATEGORICAL}_{tm.name}_{df_str}.csv")
+                df_stats.to_csv(fpath)
+                logging.info(f"Saved summary stats of {Interpretation.CATEGORICAL} {tm.name} tmaps to {fpath}")
+
+    # Check if any tmaps are continuous
+    if Interpretation.CONTINUOUS in [tm.interpretation for tm in tmaps]:
+
+        # Iterate through 1) df, 2) df without NaN-containing rows (intersect)
+        for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
+            df_stats = pd.DataFrame()
+            if df_cur.empty:
+                logging.info(f"{df_str} of tensors results in empty dataframe. Skipping calculations of {Interpretation.CONTINUOUS} summary statistics")
+            else:
+                for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.CONTINUOUS]:
+                    if tm.channel_map:
+                        for cm in tm.channel_map:
+                            stats = dict()
+                            key = (tm.name, cm)
+                            stats["min"] = df_cur[key].min()
+                            stats["max"] = df_cur[key].max()
+                            stats["mean"] = df_cur[key].mean()
+                            stats["median"] = df_cur[key].median()
+                            stats["mode"] = df_cur[key].mode()[0]
+                            stats["variance"] = df_cur[key].var()
+                            stats["count"] = df_cur[key].count()
+                            stats["missing"] = df_cur[key].isna().sum()
+                            stats["total"] = len(df_cur[key])
+                            stats["missing_fraction"] = stats["missing"] / stats["total"]
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
+                    else:
+                        stats = dict()
+                        key = tm.name
+                        stats["min"] = df_cur[key].min()
+                        stats["max"] = df_cur[key].max()
+                        stats["mean"] = df_cur[key].mean()
+                        stats["median"] = df_cur[key].median()
+                        stats["mode"] = df_cur[key].mode()[0]
+                        stats["variance"] = df_cur[key].var()
+                        stats["count"] = df_cur[key].count()
+                        stats["missing"] = df_cur[key].isna().sum()
+                        stats["total"] = len(df_cur[key])
+                        stats["missing_fraction"] = stats["missing"] / stats["total"]
+                        df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[key])])
+                
+                # Save parent dataframe to CSV on disk
+                fpath = os.path.join(args.output_folder, args.id,
+                            f"{fpath_prefix}_{Interpretation.CONTINUOUS}_{df_str}.csv")
+                df_stats.to_csv(fpath)
+                logging.info(f"Saved summary stats of {Interpretation.CONTINUOUS} tmaps to {fpath}")
+
+    # Check if any tmaps are language (strings)
+    if Interpretation.LANGUAGE in [tm.interpretation for tm in tmaps]:
+        for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
+            df_stats = pd.DataFrame()
+            if df_cur.empty:
+                logging.info(f"{df_str} of tensors results in empty dataframe. Skipping calculations of {Interpretation.LANGUAGE} summary statistics")
+            else:
+                for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.LANGUAGE]:
+                    if tm.channel_map:
+                        for cm in tm.channel_map:
+                            stats = dict()
+                            key = (tm.name, cm)
+                            stats["count"] = df_cur[key].count()
+                            stats["count_unique"] = len(df_cur[key].value_counts())
+                            stats["missing"] = df_cur[key].isna().sum()
+                            stats["total"] = len(df_cur[key])
+                            stats["missing_fraction"] = stats["missing"] / stats["total"]
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
+                    else:
+                        stats = dict()
+                        key = tm.name
+                        stats["count"] = df_cur[key].count()
+                        stats["count_unique"] = len(df_cur[key].value_counts())
+                        stats["missing"] = df_cur[key].isna().sum()
+                        stats["total"] = len(df_cur[key])
+                        stats["missing_fraction"] = stats["missing"] / stats["total"]
+                        df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[tm.name])])
+
+                # Save parent dataframe to CSV on disk
+                fpath = os.path.join(args.output_folder, args.id,
+                            f"{fpath_prefix}_{Interpretation.LANGUAGE}_{df_str}.csv")
+                df_stats.to_csv(fpath)
+                logging.info(f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}")
+
+
 def train_multimodal_multitask(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     if args.variational:  # TODO: Save the encoders and decoders
@@ -125,7 +392,7 @@ def test_multimodal_multitask(args):
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.alpha)
-  
+
 
 def test_multimodal_scalar_tasks(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
