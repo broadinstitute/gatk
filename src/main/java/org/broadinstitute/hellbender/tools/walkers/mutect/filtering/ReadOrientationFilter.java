@@ -39,8 +39,7 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
     public ErrorType errorType() { return ErrorType.ARTIFACT; }
 
     public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-
-        if (! vc.isSNP()){
+        if (!vc.isSNP() && !vc.isMNP()){
             return 0;
         }
 
@@ -75,7 +74,7 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
     double artifactProbability(final ReferenceContext referenceContext, final VariantContext vc, final Genotype g) {
         // As of June 2018, genotype is hom ref iff we have the normal sample, but this may change in the future
         // TODO: handle MNVs
-        if (g.isHomRef() || !vc.isSNP() ){
+        if (g.isHomRef() || (!vc.isSNP() && !vc.isMNP()) ){
             return 0;
         } else if (!artifactPriorCollections.containsKey(g.getSampleName())) {
             return 0;
@@ -86,6 +85,10 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
         final Allele altAllele = vc.getAlternateAllele(indexOfMaxTumorLod);
         final Nucleotide altBase = Nucleotide.valueOf(altAllele.toString());
 
+        return artifactProbability(referenceContext, vc, g, indexOfMaxTumorLod, altBase);
+    }
+
+    private double artifactProbability(final ReferenceContext referenceContext, final VariantContext vc, final Genotype g, final int indexOfMaxTumorLod, final Nucleotide altBase) {
         final String refContext = referenceContext.getKmerAround(vc.getStart(), F1R2FilterConstants.REF_CONTEXT_PADDING);
         if (refContext ==  null || refContext.contains("N")){
             return 0;
