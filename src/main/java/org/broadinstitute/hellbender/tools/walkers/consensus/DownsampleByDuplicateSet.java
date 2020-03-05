@@ -47,7 +47,6 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
     private static int numReads;
     private SAMFileGATKReadWriter outputWriter;
 
-
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
@@ -60,7 +59,7 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
         if (filterThisSet(duplicateSet)){
             return;
         }
-        if (rng.nextDouble() > downsamplingRate){
+        if (rng.nextDouble() < downsamplingRate){
             // TODO: test that the order is preserved
             duplicateSet.getReads().forEach(r -> outputWriter.addRead(r));
             numReads += duplicateSet.getReads().size();
@@ -79,7 +78,8 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
     private boolean filterThisSet(final DuplicateSet duplicateSet){
         final List<String> molecularIDs = duplicateSet.getReads().stream().map(r -> r.getAttributeAsString(DuplicateSet.FGBIO_MOLECULAR_IDENTIFIER_TAG))
                 .distinct().collect(Collectors.toList());
-        Utils.validate(0 < molecularIDs.size() && molecularIDs.size() <= 2, "Invalid molecularIDs: " + molecularIDs);
+
+        Utils.validate(INITIAL_MOLECULAR_ID <= molecularIDs.size() && molecularIDs.size() <= 2, "Invalid molecularIDs: " + molecularIDs);
         return keepOnlySimplexSets && molecularIDs.size() == 2;
     }
 }

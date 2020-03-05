@@ -13,7 +13,7 @@ import java.util.List;
 public class DuplicateSet {
     public static final String FGBIO_MOLECULAR_IDENTIFIER_TAG = "MI";
     public static final String FGBIO_MI_TAG_DELIMITER = "/";
-    private int moleculeId = -1;
+    private int moleculeId = -1; // TODO: extract an ID class.
     private UMI umi;
     private String contig;
     private int fragmentStart = -1;
@@ -52,6 +52,10 @@ public class DuplicateSet {
 
     public void setMoleduleId(GATKRead read){
         moleculeId = getMoleculeID(read);
+    }
+
+    public void setMoleduleId(int id){
+        moleculeId = id;
     }
 
     private static int getMoleculeID(final GATKRead read) {
@@ -95,6 +99,10 @@ public class DuplicateSet {
         Utils.validate(SimpleInterval.isValid(contig, fragmentStart, fragmentEnd), "Invalid duplicate set interval: " + new SimpleInterval(contig, fragmentStart, fragmentEnd));
         return new SimpleInterval(contig, fragmentStart, fragmentEnd);
 
+    }
+
+    public boolean hasValidInterval(){
+        return SimpleInterval.isValid(contig, fragmentStart, fragmentEnd);
     }
 
 }

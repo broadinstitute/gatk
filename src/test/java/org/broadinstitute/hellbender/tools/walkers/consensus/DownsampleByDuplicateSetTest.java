@@ -1,8 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.consensus;
 
+import htsjdk.samtools.SamReader;
+import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.iterators.SamReaderQueryingIterator;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -13,10 +19,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -31,7 +34,7 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
     @Test
     public void testForReal(){
         final File out = new File("/Users/tsato/Downloads/downsampled.bam");
-        final String cloud = "gs://broad-dsde-methods-takuto/liquid-biopsy/NA12878/LBv1/rep2/baseline/NA12878_Broad_Liquid_Biopsy_Panel_v1_rep2.fgbio.groupByUmi.bam";
+        final String cloud = "gs://broad-dsde-methods/cromwell-execution-39/SpikeinNA12878/99a73fe8-b4fa-40d2-a866-0c95dc56162c/call-GroupCoffee/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.bam";
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addArgument("R", hg19)
                 .addArgument("I", cloud)
@@ -41,78 +44,44 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testSimplex() {
-        final File out = new File("/dsde/working/tsato/consensus/tp53/test/tmp/simplex.bam");
-        final String cloud = "gs://fc-secure-429c9379-aa5e-4884-8c35-7a5b947efc37/9bd19b02-cdcd-4454-b332-1277758b8d4b/GenerateDuplexConsensusBams/00a10a89-3dc0-48a4-bb16-f19c69b45b96/call-FGBioGroupReadsByUmi/D04_denovo_bloodbiopsy_2-5pct_rep2.fgbio.groupByUmi.bam";
+    public void testDownsampleFraction(){
+        // final File out = createTempFile("downsampled", "bam");
+        final File out = new File("/dsde/working/tsato/gatk/test.bam");
+        for (double downsampleRate : Arrays.asList(0.1, 0.3, 0.5)){
+            final ArgumentsBuilder args = new ArgumentsBuilder()
+                    .addArgument("R", hg19)
+                    .addArgument("I", medium)
+                    .addArgument("DS", Double.toString(downsampleRate))
+                    .addArgument("O", out.getAbsolutePath());
+            runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
 
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument("R", hg19)
-                .addArgument("I", cloud)
-                .addArgument("keep-only-simplex", "true")
-                .addArgument("O", out.getAbsolutePath());
-        runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
-    }
+            final ReadsDataSource originalBam = new ReadsDataSource(Paths.get(medium));
+            final int originalMoleculeCount = countDuplicateSets(originalBam);
 
-    @Test
-    public void testTemp() {
-        final File out = new File("/dsde/working/tsato/consensus/tp53/test/tmp/test.bam");
-        final String cloud = "gs://broad-dsde-methods/cromwell-execution-39/SpikeinNA12878/d6425c0d-4282-4a7b-bee9-f59134e500aa/call-GroupCoffee/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.bam";
+            final ReadsDataSource downsampledBam = new ReadsDataSource(Paths.get(out.getAbsolutePath()));
+            final int downsampledMoleculeCount = countDuplicateSets(downsampledBam);
 
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument("R", hg19)
-                .addArgument("I", cloud)
-                .addArgument("DS", "0.5")
-                .addArgument("O", out.getAbsolutePath());
-        runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
-    }
-
-    @Test
-    public void test(){
-        final File out = new File("/dsde/working/tsato/consensus/tp53/test/tmp/test.bam");
-        final File countTableBefore = createTempFile("before", "csv");
-        runProcess(new ProcessController(), new String[]{ countScript, medium, countTableBefore.getAbsolutePath()});
-        final String cloud = "gs://broad-dsde-methods/cromwell-execution-39/SpikeinNA12878/d6425c0d-4282-4a7b-bee9-f59134e500aa/call-GroupCoffee/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.bam";
-
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument("R", hg19)
-                .addArgument("I", medium)
-                .addArgument("DS", "0.5")
-                .addArgument("O", out.getAbsolutePath());
-        runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
-
-        final File countTableAfter = createTempFile("after", "csv");
-        runProcess(new ProcessController(), new String[]{ countScript, out.getAbsolutePath(), countTableAfter.getAbsolutePath()});
-
-
-        final List<Integer> idCountBefore = new ArrayList<>();
-        final Map<Integer, Integer> idCountMap = new TreeMap<>();
-
-        // IO code so unwieldly!
-        try (Stream<String> stream = Files.lines(Paths.get(countTableBefore.getAbsolutePath()))) {
-            stream.forEach(line -> {
-                final String[] str = line.split(",");
-                idCountBefore.add(Integer.parseInt(str[1]));
-            });
-        } catch (IOException e) {
-            throw new UserException("", e);
+            final int noise = 10; // TODO: Can I do better?
+            Assert.assertTrue(Math.abs(downsampleRate * originalMoleculeCount - downsampledMoleculeCount) < noise);
         }
 
-        try (Stream<String> stream = Files.lines(Paths.get(countTableAfter.getAbsolutePath()))) {
-            stream.forEach(line -> {
-                final String[] str = line.split(",");
-                idCountMap.put(Integer.parseInt(str[0]), Integer.parseInt(str[1]));
-            });
-        } catch (IOException e) {
-            throw new UserException("", e);
-        }
+    }
 
-        for (Map.Entry<Integer, Integer> entry : idCountMap.entrySet()){
-            final int id = entry.getKey();
-            final int count = entry.getValue();
-            if (count > 0){
-                Assert.assertEquals(count, (int) idCountBefore.get(id)); // why do I need to cast here?
+    private int countDuplicateSets(final ReadsDataSource readsDataSource){
+        int count = 0;
+        String currentMolecularId = ""; // Note we are duplex aware: 12/A different from 12/B
+        final Iterator<GATKRead> iterator = readsDataSource.iterator();
+        while (iterator.hasNext()){
+            final GATKRead read = iterator.next();
+            final String molecularID = read.getAttributeAsString("MI");
+            if (!molecularID.equals(currentMolecularId)){
+                count++;
+                currentMolecularId = molecularID;
             }
         }
+
+        return count;
     }
+
 
 }
