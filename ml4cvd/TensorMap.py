@@ -16,7 +16,8 @@ import h5py
 import numpy as np
 from tensorflow.keras import Model
 
-from ml4cvd.defines import StorageType, EPS, JOIN_CHAR, STOP_CHAR
+from ml4cvd.defines import StorageType, JOIN_CHAR, STOP_CHAR
+from ml4cvd.normalizer import Normalizer, Standardize, ZeroMeanStd1
 from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
@@ -43,6 +44,20 @@ class Interpretation(Enum):
     def __str__(self):
         """class Interpretation.FLOAT_ARRAY becomes float_array"""
         return str.lower(super().__str__().split('.')[1])
+
+
+def _convert_old_normalization(normalization: Optional[Dict]) -> Optional[Normalizer]:
+    """
+    For backward compatibility. New TensorMaps should use a Normalizer.
+    """
+    if normalization is None:
+        return
+    if 'mean' in normalization and 'std' in normalization:
+        return Standardize(mean=normalization['mean'], std=normalization['std'])
+    if 'zero_mean_std1' in normalization:
+        return ZeroMeanStd1()
+    else:
+        raise NotImplementedError(f'Cannot convert {normalization}')
 
 
 class TensorMap(object):
@@ -73,7 +88,7 @@ class TensorMap(object):
                  storage_type: Optional[StorageType] = None,
                  dependent_map: Optional[str] = None,
                  augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
-                 normalization: Optional[Dict[str, Any]] = None,  # TODO what type is this really?
+                 normalization: Optional[Normalizer] = None,
                  annotation_units: Optional[int] = 32,
                  tensor_from_file: Optional[Callable] = None,
                  discretization_bounds: Optional[List[float]] = None,
@@ -120,7 +135,7 @@ class TensorMap(object):
         self.channel_map = channel_map
         self.storage_type = storage_type
         self.augmentations = augmentations
-        self.normalization = normalization
+        self.normalization = normalization if isinstance(normalization, Normalizer) else _convert_old_normalization(normalization)
         self.dependent_map = dependent_map
         self.annotation_units = annotation_units
         self.tensor_from_file = tensor_from_file
@@ -248,16 +263,7 @@ class TensorMap(object):
     def normalize(self, np_tensor):
         if self.normalization is None:
             return np_tensor
-        elif 'zero_mean_std1' in self.normalization:
-            np_tensor -= np.mean(np_tensor)
-            np_tensor /= np.std(np_tensor) + EPS
-            return np_tensor
-        elif 'mean' in self.normalization and 'std' in self.normalization:
-            np_tensor -= self.normalization['mean']
-            np_tensor /= (self.normalization['std'] + EPS)
-            return np_tensor
-        else:
-            raise ValueError(f'No way to normalize Tensor Map named:{self.name}')
+        return self.normalization.normalize(np_tensor)
 
     def discretize(self, np_tensor):
         if not self.is_discretized():
@@ -274,14 +280,7 @@ class TensorMap(object):
     def rescale(self, np_tensor):
         if self.normalization is None:
             return np_tensor
-        elif 'mean' in self.normalization and 'std' in self.normalization:
-            np_tensor = np.array(np_tensor) * self.normalization['std']
-            np_tensor = np.array(np_tensor) + self.normalization['mean']
-            return np_tensor
-        elif 'zero_mean_std1' in self.normalization:
-            return self.zero_mean_std1(np_tensor)
-        else:
-            return np_tensor
+        return self.normalization.un_normalize(np_tensor)
 
     def apply_augmentations(self, tensor: np.ndarray, augment: bool) -> np.ndarray:
         if augment and self.augmentations is not None:
