@@ -27,7 +27,7 @@ public abstract class Mutect2AlleleFilter extends Mutect2Filter {
     private static <T> LinkedHashMap<Allele, List<T>> combineDataByAllele(final LinkedHashMap<Allele, List<T>> dataByAllele, final VariantContext vc, Predicate<Genotype> preconditions, Function<Genotype, List<T>> getData, final Mutect2FilteringEngine filteringEngine) {
 
         // pull all the allele specific data out of each genotype (that passes preconditions) and add it to the list for the allele
-        vc.getGenotypes().stream().filter(preconditions).filter(filteringEngine::isTumor)
+        vc.getGenotypes().stream().filter(preconditions)
                 .forEach(g -> {
                     Iterator<T> alleleDataIterator = getData.apply(g).iterator();
                     Iterator<List<T>> dataByAlleleIterator = dataByAllele.values().iterator();

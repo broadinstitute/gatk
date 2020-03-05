@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreading
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.NuMTFilterTool;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.ReadOrientationFilter;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.LearnReadOrientationModel;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
@@ -77,6 +78,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final File NA12878_MITO_BAM = new File(toolsTestDir, "mutect/mito/NA12878.bam");
     private static final File NA12878_MITO_VCF = new File(toolsTestDir, "mutect/mito/unfiltered-with-assb.vcf");
     private static final File NA12878_MITO_GVCF = new File(toolsTestDir, "mitochondria/NA12878.MT.g.vcf");
+    private static final File NA12878_MITO_INITIAL_FILTERED_VCF = new File(toolsTestDir, "mutect/mito/initialFiltered.vcf");
+    private static final File NA12878_MITO_INITIAL_FILTERED_GVCF = new File(toolsTestDir, "mitochondria/initialFiltered.gvcf");
     private static final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
     private static final File DEEP_MITO_BAM = new File(largeFileTestDir, "mutect/highDPMTsnippet.bam");
     private static final String DEEP_MITO_SAMPLE_NAME = "mixture";
@@ -511,9 +514,80 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "vcfsForFiltering")
     public Object[][] vcfsForFiltering() {
         return new Object[][]{
-                {NA12878_MITO_VCF, 0.5, 30, Collections.emptyList(), Arrays.asList(
+                {NA12878_MITO_VCF, 0.5, Collections.emptyList(), Arrays.asList(
                         ImmutableSet.of(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME),
-                        ImmutableSet.of(GATKVCFConstants.CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME),
+                        Collections.emptySet(),
+                        ImmutableSet.of( GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME,
+                                GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME),
+                        Collections.emptySet(),
+                        Collections.emptySet(),
+                        ImmutableSet.of(GATKVCFConstants.DUPLICATED_EVIDENCE_FILTER_NAME),
+                        ImmutableSet.of(GATKVCFConstants.FAIL)),
+                        Arrays.asList(
+                                Arrays.asList(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME), // strand_bias, strict_stand
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD),
+                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME), // weak_evidence, low_allele_frac
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME), // .|weak_evidence, strand_bias, low_allele_frac|strand_bias, strict_strand, low_allele_frac
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD),  // .
+                                Arrays.asList(GATKVCFConstants.DUPLICATED_EVIDENCE_FILTER_NAME), // duplicate
+                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME) // weak_evidence, strand_bias, strict_stand|low_allele_frac
+
+                        )},
+                {NA12878_MITO_GVCF, .0009, Arrays.asList("MT:1", "MT:37", "MT:40", "MT:152", "MT:157"), Arrays.asList(
+                        Collections.emptySet(),
+                        ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME),
+                        ImmutableSet.of(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME,GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME),
+                        Collections.emptySet(),
+                        ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.CONTAMINATION_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME,
+                                GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.READ_POSITION_FILTER_NAME, GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME)),
+                        Arrays.asList(
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD), //".",
+                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //"weak_evidence, base_qual, strand_bias|.",
+                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), // "weak_evidence, strict_strand, strand_bias|.",
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|weak_evidence, base_qual, strand_bias, low_allele_frac|.",
+                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.CONTAMINATION_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.READ_POSITION_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD) // "weak_evidence, base_qual, map_qual, contamination, strand_artifact, position, low_allele_frac|."
+                        )}
+        };
+    }
+
+    @Test(dataProvider = "vcfsForFiltering")
+    public void testFilterMitochondria(File unfiltered, final double minAlleleFraction, final List<String> intervals, List<Set<String>> expectedFilters, List<List<String>> expectedASFilters)  {
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        // vcf sequence dicts don't match ref
+        runFilterMutectCalls(unfiltered, filteredVcf, MITO_REF.getAbsolutePath(),
+                args -> args.add(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true),
+                args -> args.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true),
+                args -> args.add(M2FiltersArgumentCollection.MIN_AF_LONG_NAME, minAlleleFraction),
+                args -> args.add(M2FiltersArgumentCollection.MIN_READS_ON_EACH_STRAND_LONG_NAME, 1),
+                args -> args.add(M2FiltersArgumentCollection.UNIQUE_ALT_READ_COUNT_LONG_NAME, 2),
+                args -> {
+                    intervals.stream().map(SimpleInterval::new).forEach(args::addInterval);
+                    return args;
+                });
+
+        final List<Set<String>> actualFilters = VariantContextTestUtils.streamVcf(filteredVcf)
+                .map(VariantContext::getFilters).collect(Collectors.toList());
+
+        final List<List<String>> actualASFilters = VariantContextTestUtils.streamVcf(filteredVcf)
+                .map(vc -> AnnotationUtils.decodeAnyASListWithRawDelim(vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, ""))).collect(Collectors.toList());
+        Assert.assertEquals(actualASFilters, expectedASFilters);
+
+        Assert.assertEquals(actualFilters.size(), expectedFilters.size());
+        for (int n = 0; n < actualFilters.size(); n++) {
+            Assert.assertTrue(actualFilters.get(n).containsAll(expectedFilters.get(n)), "Actual filters missing some expected filters: " + SetUtils.difference(expectedFilters.get(n), actualFilters.get(n)));
+            Assert.assertTrue(expectedFilters.get(n).containsAll(actualFilters.get(n)), "Expected filters missing some actual filters: " + SetUtils.difference(actualFilters.get(n), expectedFilters.get(n)));
+        }
+
+        Assert.assertEquals(actualFilters, expectedFilters);
+    }
+
+    @DataProvider(name = "vcfsForNuMTFiltering")
+    public Object[][] vcfsForNuMTFiltering() {
+        return new Object[][]{
+                {NA12878_MITO_INITIAL_FILTERED_VCF, 30, Collections.emptyList(), Arrays.asList(
+                        ImmutableSet.of(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME),
+                        Collections.emptySet(),
                         ImmutableSet.of( GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME,
                                 GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME,
                                 GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME),
@@ -523,51 +597,46 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         ImmutableSet.of(GATKVCFConstants.FAIL)),
                         Arrays.asList(
                                 Arrays.asList(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME), // strand_bias, strict_stand
-                                Arrays.asList(GATKVCFConstants.CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME), // numt_chimera
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD), // .
                                 Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", "  + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // weak_evidence, low_allele_frac, possible_numt
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|weak_evidence, strand_bias, low_allele_frac, possible_numt|strand_bias, strict_strand, low_allele_frac, possible_numt
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD),  // .
                                 Arrays.asList(GATKVCFConstants.DUPLICATED_EVIDENCE_FILTER_NAME), // duplicate
                                 Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME) // weak_evidence, strand_bias, strict_stand|low_allele_frac, possible_numt
 
-                        )},
-                {NA12878_MITO_GVCF, .0009, 0.5, Arrays.asList("MT:1", "MT:37", "MT:40", "MT:152", "MT:157"), Arrays.asList(
-                        Collections.emptySet(),
-                        ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME),
-                        ImmutableSet.of(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME,GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME),
-                        Collections.emptySet(),
-                        ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.CONTAMINATION_FILTER_NAME,
-                                GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME,
-                                GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.READ_POSITION_FILTER_NAME, GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME)),
-                        Arrays.asList(
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD), //".",
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //"weak_evidence, base_qual, strand_bias|.",
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), // "weak_evidence, strict_strand, strand_bias, possible_numt|.",
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|weak_evidence, base_qual, strand_bias, low_allele_frac|.",
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.CONTAMINATION_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.READ_POSITION_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD) // "weak_evidence, base_qual, map_qual, contamination, strand_artifact, position, low_allele_frac, possible_numt|."
                         )}
+//                {NA12878_MITO_GVCF, 0.5, Arrays.asList("MT:1", "MT:37", "MT:40", "MT:152", "MT:157"), Arrays.asList(
+//                        Collections.emptySet(),
+//                        Collections.emptySet(),
+//                        Collections.emptySet(),
+//                        Collections.emptySet(),
+//                        ImmutableSet.of(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME)),
+//                        Arrays.asList(
+//                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD), //".",
+//                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.EMPTY_INFO_FIELD), //"weak_evidence, base_qual, strand_bias|.",
+//                                Arrays.asList(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), // "possible_numt|.",
+//                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.EMPTY_INFO_FIELD, VCFConstants.EMPTY_INFO_FIELD), //".|weak_evidence, base_qual, strand_bias, low_allele_frac|.",
+//                                Arrays.asList(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD) // "possible_numt|."
+//                        )}
         };
     }
 
-    @Test(dataProvider = "vcfsForFiltering")
-    public void testFilterMitochondria(File unfiltered, final double minAlleleFraction, final double autosomalCoverage, final List<String> intervals, List<Set<String>> expectedFilters, List<List<String>> expectedASFilters)  {
+    @Test(dataProvider = "vcfsForNuMTFiltering")
+    public void testNuMTFilterMitochondria(File initialFilters, final double autosomalCoverage, final List<String> intervals, List<Set<String>> expectedFilters, List<List<String>> expectedASFilters)  {
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
-        // vcf sequence dicts don't match ref
-        runFilterMutectCalls(unfiltered, filteredVcf, MITO_REF.getAbsolutePath(),
-                args -> args.add(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true),
-                args -> args.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true),
-                args -> args.add(M2FiltersArgumentCollection.MIN_AF_LONG_NAME, minAlleleFraction),
-                args -> args.add(M2FiltersArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, autosomalCoverage),
-                args -> args.add(M2FiltersArgumentCollection.MAX_NUMT_COPIES_IN_AUTOSOME_LONG_NAME, 4.0),
-                args -> args.add(M2FiltersArgumentCollection.MIN_READS_ON_EACH_STRAND_LONG_NAME, 1),
-                args -> args.add(M2FiltersArgumentCollection.UNIQUE_ALT_READ_COUNT_LONG_NAME, 2),
-                args -> {
-                    intervals.stream().map(SimpleInterval::new).forEach(args::addInterval);
-                    return args;
-                });
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(initialFilters)
+                .addOutput(filteredVcf)
+                .addReference(MITO_REF.getAbsolutePath())
+                .add(NuMTFilterTool.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, autosomalCoverage)
+                .add(NuMTFilterTool.MAX_NUMT_COPIES_IN_AUTOSOME_LONG_NAME, 4.0);
 
-        // add tests for DUPLICATE
+        intervals.stream().map(SimpleInterval::new).forEach(args::addInterval);
+
+        // vcf sequence dicts don't match ref
+        runCommandLine(args, NuMTFilterTool.class.getSimpleName());
+
         final List<Set<String>> actualFilters = VariantContextTestUtils.streamVcf(filteredVcf)
                 .map(VariantContext::getFilters).collect(Collectors.toList());
 

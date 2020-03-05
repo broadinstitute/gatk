@@ -24,7 +24,7 @@ public class MTLowHeteroplasmyFilterToolTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(MITO_REF.getAbsolutePath())
                 .add(StandardArgumentDefinitions.VARIANT_SHORT_NAME, NA12878_MITO_FILTERED_VCF.getAbsolutePath())
-                .add(MTLowHeteroplasmyFilterTool.MIN_LOW_HET_SITES_LONG_NAME, 0)
+                .add(MTLowHeteroplasmyFilterTool.MAX_ALLOWED_LOW_HETS_LONG_NAME, 0)
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         Set<VariantContext> variants = VariantContextTestUtils.streamVcf(outputFile)

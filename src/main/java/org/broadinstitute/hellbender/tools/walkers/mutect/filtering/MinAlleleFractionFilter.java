@@ -28,7 +28,7 @@ public class MinAlleleFractionFilter extends HardAlleleFilter {
 
     @Override
     public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        LinkedHashMap<Allele, List<Double>> dataByAllele = getAltDataByAllele(vc, g -> g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY), this::getAltData, filteringEngine);
+        LinkedHashMap<Allele, List<Double>> dataByAllele = getAltDataByAllele(vc, g -> g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY) && filteringEngine.isTumor(g), this::getAltData, filteringEngine);
         return dataByAllele.entrySet().stream()
                 .filter(entry -> !vc.getReference().equals(entry.getKey()))
                 .map(entry -> entry.getValue().stream().max(Double::compare).orElse(1.0) < minAf).collect(Collectors.toList());

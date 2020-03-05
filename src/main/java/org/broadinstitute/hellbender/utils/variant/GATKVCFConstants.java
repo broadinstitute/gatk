@@ -164,7 +164,7 @@ public final class GATKVCFConstants {
     public final static String CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME =       "numt_chimera"; //mitochondria
     public final static String ALLELE_FRACTION_FILTER_NAME =                   "low_allele_frac";
     public static final String POSSIBLE_NUMT_FILTER_NAME =                     "possible_numt";
-    public static final String LOW_HET_FILTER_NAME =                           "mt_low_het";
+    public static final String LOW_HET_FILTER_NAME =                           "mt_many_low_hets";
     public static final String FAIL =                                           "FAIL";
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(VCFConstants.PASSES_FILTERS_v4, POLYMERASE_SLIPPAGE,

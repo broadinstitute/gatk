@@ -12,13 +12,11 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.TwoPassVariantWalker;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -31,7 +29,7 @@ import java.util.stream.Collectors;
 )
 public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
 
-    public static final String MIN_LOW_HET_SITES_LONG_NAME = "min-low-het-sites";
+    public static final String MAX_ALLOWED_LOW_HETS_LONG_NAME = "max-allowed-low-hets";
     public static final String LOW_HET_THRESHOLD_LONG_NAME = "low-het-threshold";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -39,10 +37,10 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
             doc = "Output VCF file")
     private String outputVcf = null;
 
-    @Argument(fullName = MIN_LOW_HET_SITES_LONG_NAME,
-            doc = "Number of low het sites allowed to pass other filters before filtering out all low het sites. Default is 5",
+    @Argument(fullName = MAX_ALLOWED_LOW_HETS_LONG_NAME,
+            doc = "Number of low het sites allowed to pass other filters before filtering out all low het sites. Default is 3",
             optional=true)
-    private int minLowHetSites = 3;
+    private int maxAllowedLowHets = 3;
 
     @Argument(fullName = LOW_HET_THRESHOLD_LONG_NAME,
             doc = "Threshold for determining a low heteroplasmy site. Default is 0.1",
@@ -72,7 +70,7 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
 
     @Override
     protected void afterFirstPass() {
-        failedLowHet = unfilteredLowHetSites > minLowHetSites;
+        failedLowHet = unfilteredLowHetSites > maxAllowedLowHets;
     }
 
     @Override
