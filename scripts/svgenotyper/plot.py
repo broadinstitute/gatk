@@ -229,11 +229,11 @@ def plot_genotype_ternary_diagrams(vcf_path: str, out_path: str):
         for k in range(len(gq_cutoffs)):
             if gt.shape[0] > 0:
                 gt_freq_k = gt_freq.copy()
-                cutoff_locs = gq.max(axis=1) < gq_cutoffs[k]
+                cutoff_locs = gq.min(axis=1) < gq_cutoffs[k]
                 gt_freq_k[cutoff_locs, :] = 0
             else:
                 gt_freq_k = np.zeros(np.shape([]))
-            label = "{:s}, maxGQ>{:d}".format(svtype, gq_cutoffs[k])
+            label = "{:s}, minGQ>{:d}".format(svtype, gq_cutoffs[k])
             _draw_ternary(gt_freq_k, axis=axes[k, i], label=label)
     plt.tight_layout()
     plt.savefig(out_path)

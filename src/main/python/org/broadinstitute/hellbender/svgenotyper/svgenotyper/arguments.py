@@ -4,6 +4,7 @@ import argparse
 Parse command line arguments.
 """
 
+
 def parse_args_train():
     parser = argparse.ArgumentParser()
 
@@ -43,7 +44,6 @@ def parse_args_train():
 
     print('Arguments are', args)
     return args
-
 
 
 def parse_args_infer():
