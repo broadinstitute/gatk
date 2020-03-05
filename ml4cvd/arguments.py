@@ -135,7 +135,7 @@ def parse_args():
     parser.add_argument('--batch_size', default=16, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
     parser.add_argument('--valid_ratio', default=0.2, type=float, help='Rate of training tensors to save for validation must be in [0.0, 1.0].')
     parser.add_argument('--test_ratio', default=0.1, type=float, help='Rate of training tensors to save for testing [0.0, 1.0].')
-    parser.add_argument('--test_modulo', default=10, type=int,
+    parser.add_argument('--test_modulo', default=0, type=int,
                         help='Sample IDs modulo this number will be reserved for testing. Set to 1 to only reserve test_ratio for testing.')
     parser.add_argument('--test_steps', default=32, type=int, help='Number of batches to use for testing.')
     parser.add_argument('--training_steps', default=400, type=int, help='Number of training batches to examine in an epoch.')
