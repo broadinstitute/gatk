@@ -34,7 +34,6 @@ public final class DRAGENMappingQualityReadTransformer implements ReadTransforme
     }
 
     //TODO figure out how to prevent multiple mappings of a read....
-    //Changes bases with qualities lower than BASE_QUALITY_THRESHOLD to 'N'
     @Override
     public GATKRead apply( final GATKRead read ) {
         if (read.hasAttribute(EXTENDED_MAPPING_QUALITY_READ_TAG)) {

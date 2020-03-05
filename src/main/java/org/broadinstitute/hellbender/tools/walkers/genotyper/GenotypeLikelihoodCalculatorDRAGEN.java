@@ -67,8 +67,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         final double[] outputArray = new double[genotypeCount];
         Arrays.fill(outputArray, Double.NEGATIVE_INFINITY);
 
-        //TODO omptize me
-        // TODO is this actually refAllele?
+
         final Allele refAllele = sampleLikelihoods.getAllele(0);
 
         //Determine the size of an allele page for the readsLikelihoodsByAlleleFrequency table
@@ -127,22 +126,41 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         }
 
         // Forwards strand tables (all in phred space for the sake of conveient debugging with provided scripts)
-        final double[] cumulative_prob_read_given_error_mode_and_gt = new double[positionSortedReads.size() + 1];
+        final double[] cumulative_p_R_for_E = new double[positionSortedReads.size() + 1];
         final double[] cumulative_mean_base_quality_phred_adjusted = new double[positionSortedReads.size() + 1];
-        final double[] cumulative_homozygous_genotype_score = new double[positionSortedReads.size() + 1];
+        final double[] cumulative_P_GT = new double[positionSortedReads.size() + 1];
 
         double totalBaseQuality = 0;
         int baseQualityDenominator = 0; // We track this seperately because not every read overlaps the SNP in quesiton due to padding.
         // Iterate over the reads and populate the cumulative arrays
-        for (int i = 1; i < cumulative_prob_read_given_error_mode_and_gt.length; i++) {
+        for (int i = 1; i < cumulative_p_R_for_E.length; i++) {
             final DRAGENBQDGenotypesModel.DragenReadContainer container = positionSortedReads.get(i - 1);
             final int readIndex = container.getIndexInLikelihoodsObject();
 
-            // Populate the error probability array
-            double phredContributionForRead = readIndex == -1 ? 0.0 :
-                    -10*MathUtils.approximateLog10SumLog10(readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex] + cachedLog10Alpha,
-                            readLikelihoodsForGT[readIndex] + cachedLog10AlphaInverse);
-            cumulative_prob_read_given_error_mode_and_gt[i] = cumulative_homozygous_genotype_score[i-1] + phredContributionForRead;
+            // Retrieve the homozygous genotype score and the error allele scores for the read in question
+            final double homozygousGenotypeContribution;
+            final double errorAlleleContribution;
+            if (readIndex != -1) {
+                homozygousGenotypeContribution = readLikelihoodsForGT[readIndex] - MathUtils.log10(2);
+                errorAlleleContribution = readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex];
+            } else {
+                // If read index == -1 then we are evaluating a read that was rejected by the HMM and therefore doesn't have genotype scores
+                homozygousGenotypeContribution = 0;
+                errorAlleleContribution = 0;
+            }
+
+            System.out.println("read index:"+readIndex+" ihomGT:"+-10*homozygousGenotypeContribution+"  errorAlleleContribution:"+-10*errorAlleleContribution + " difference in phred: "+ -10*(errorAlleleContribution - homozygousGenotypeContribution));
+
+            // Populate the error probability array in phred space
+            // Calculation: Alpha * P(r|E_allele) + (1 - Alpha) * P(r | G_homozygousGT))
+            double phredContributionForRead = (homozygousGenotypeContribution==0 && errorAlleleContribution==0) ? 0 : -10 *
+                    MathUtils.approximateLog10SumLog10(errorAlleleContribution + cachedLog10Alpha,
+                                                       homozygousGenotypeContribution + cachedLog10AlphaInverse);
+            cumulative_p_R_for_E[i] = cumulative_p_R_for_E[i-1] + phredContributionForRead;
+
+            // Populate the cumulative genotype contribution array with the score for this read
+            // Calculation: (P(r | G_A1) + P(r | G_A2)) / 2
+            cumulative_P_GT[i] = cumulative_P_GT[i - 1] + -10 * homozygousGenotypeContribution;
 
             // Populate the mean base quality array
             if (container.hasValidBaseQuality()) {
@@ -151,20 +169,18 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             }
             cumulative_mean_base_quality_phred_adjusted[i] = Math.max(0,
                     ((totalBaseQuality / (baseQualityDenominator == 0 ? 1 : baseQualityDenominator)) * PHRED_SCALED_ADJUSTMENT_FOR_BQ_SCORE) - homopolymerAdjustment);
-
-            // Calculate the cumulative genotype score
-            cumulative_homozygous_genotype_score[i] = cumulative_homozygous_genotype_score[i - 1] +
-                    + (readIndex == -1 ? 0 : -10 * readLikelihoodsForGT[readIndex]);
         }
 
         // Now we find the best partitioning N for the forwards evaluation of the data
         double minScoreFound = Double.POSITIVE_INFINITY;
         int nIndexUsed = 0;
+        double lastProbE=0;
+        double lastGQQual=0;
         for (int n = 0; n < cumulative_mean_base_quality_phred_adjusted.length; n++) {
-            final double bqdScore = cumulative_mean_base_quality_phred_adjusted[n] + cumulative_prob_read_given_error_mode_and_gt[n] + (cumulative_homozygous_genotype_score[cumulative_homozygous_genotype_score.length-1] - cumulative_homozygous_genotype_score[n]);
-//            System.out.println(String.format("n=%d: %.2f, cum_phred_bq=%.2f, cum_prob_r_Error=%.2f, prob_G_remaining=%.2f",
-//                    n, bqdScore, cumulative_mean_base_quality_phred_adjusted[n], cumulative_prob_read_given_error_mode_and_gt[n],
-//                    (cumulative_homozygous_genotype_score[cumulative_homozygous_genotype_score.length-1] - cumulative_homozygous_genotype_score[n])));
+            final double bqdScore = cumulative_mean_base_quality_phred_adjusted[n] + cumulative_p_R_for_E[n] + (cumulative_P_GT[cumulative_P_GT.length-1] - cumulative_P_GT[n]);
+            System.out.println(String.format("n=%d: %.2f, cum_phred_bq=%.2f, cum_prob_r_Error=%.2f, prob_G_remaining=%.2f",
+                    n, bqdScore, cumulative_mean_base_quality_phred_adjusted[n], cumulative_p_R_for_E[n],
+                    (cumulative_P_GT[cumulative_P_GT.length-1] - cumulative_P_GT[n])));
             if (minScoreFound > bqdScore) {
                 minScoreFound = bqdScore;
                 nIndexUsed = n;
@@ -174,7 +190,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         // Debug output for the genotyper to see into the calculation itself
         System.out.println(String.format("n%d=%2d, best_phred_score =%5.2f q_mean=%5.2f, alpha=%4.2f, Ph(E)=%4.2f;  ", forwards?1:0,
                 nIndexUsed, minScoreFound, cumulative_mean_base_quality_phred_adjusted[nIndexUsed],
-                BQD_FIXED_DEFAULT_ALPHA, cumulative_prob_read_given_error_mode_and_gt[nIndexUsed]));
+                BQD_FIXED_DEFAULT_ALPHA, cumulative_p_R_for_E[nIndexUsed]));
 
         //TODO this will be where i put my debuglogging (if i had any)
         return minScoreFound;

@@ -26,10 +26,10 @@ public class FRDBQDUtils {
      * @param offsetForRefIntoEvent offset of the base upon which to make a call
      */
     public static double computeForwardHomopolymerAdjustment(final byte[] paddedReference, final int offsetForRefIntoEvent) {
-        byte hBase = paddedReference[offsetForRefIntoEvent];
         int length = 1;
-        while(length < 5) {
-            if (hBase != paddedReference[offsetForRefIntoEvent + length]) {
+        byte hBase = paddedReference[offsetForRefIntoEvent - length];
+        while(length < 4) {
+            if (hBase != paddedReference[offsetForRefIntoEvent - length]) {
                 length--;
                 break;
             }
@@ -38,10 +38,10 @@ public class FRDBQDUtils {
         return 5.0 * length;
     }
     public static double computeReverseHomopolymerAdjustment(final byte[] paddedReference, final int offsetForRefIntoEvent) {
-        final byte hBase = paddedReference[offsetForRefIntoEvent];
         int length = 1;
+        final byte hBase = paddedReference[offsetForRefIntoEvent + length];
         while (length < 5) {
-            if (hBase != paddedReference[offsetForRefIntoEvent - length]) {
+            if (hBase != paddedReference[offsetForRefIntoEvent + length]) {
                 length--;
                 break;
             }

@@ -273,6 +273,9 @@ public class GenotypeLikelihoodCalculator {
     /**
      * Calculates the likelihood component of each read on each genotype.
      *
+     * NOTE: this is not actually the read likelihood component for each genotype, it is the sum of the log read likelihoods components
+     *       for each genotype without having been normalized by the the denominator of the ploidy, that happens in the final step
+     *
      * @param readLikelihoodComponentsByAlleleCount [a][f][r] likelihood stratified by allele <i>a</i>, frequency in genotype <i>f</i> and
      *                                              read <i>r</i>.
      * @param readCount number of reads in {@code readLikelihoodComponentsByAlleleCount}.

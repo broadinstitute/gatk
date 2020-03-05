@@ -140,7 +140,6 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
                 System.out.println("Genotyping model results for genotypes given BQD results");
                 System.out.println(Arrays.toString(BQDCallResults));
             }
-
             if (computeFRD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
 //                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment);
                 System.out.println("Genotyping model results for genotypes given FRD results");
@@ -187,7 +186,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
      * This helper class is used to store the necessary data in order to sort a read based on its BQD "feather end"
      */
     static class DragenReadContainer {
-        final GATKRead underlyingRead;
+        final public GATKRead underlyingRead;
         final int offsetIntoReadForBaseQuality;
         final int unclippedEnd;
         final int indexInLikelihoodsObject;
@@ -214,6 +213,11 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 
         public int getBaseQuality() {
             return underlyingRead.getBaseQuality(offsetIntoReadForBaseQuality);
+        }
+
+        @Override
+        public String toString() {
+            return "Read: "+underlyingRead.toString()+" index: "+indexInLikelihoodsObject+" at unclipped end: "+unclippedEnd+" with base quality "+(hasValidBaseQuality() ? getBaseQuality() : -1);
         }
     }
 

@@ -362,6 +362,27 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in GVCF mode is < 99% (" +  concordance + ")");
     }
 
+    @Test
+    public void testBQDOnThisFileInDebugger() {
+        final File output = createTempFile("test", ".vcf");
+
+        final String[] args = {
+                "-I", "/Users/emeryj/hellbender/DRAGENMatlab/frdbqd/example/SRA056922_hs37d5_xmapq.bam",
+                "--bam-output", "SRABAMOUTPUT.bamout.bqd.bam",
+                "--output", output.getAbsolutePath(),
+                "--intervals", "1:102130523",
+                "--interval-padding", "500",
+                "--transform-dragen-mapping-quality",
+                "--reference", "/Users/emeryj/hellbender/references/human_g1k_v37.fasta",
+                "--disable-read-filter", "MappingQualityAvailableReadFilter",
+                "--min-base-quality-score", "1"
+        };
+        runCommandLine(args);
+
+        System.out.println("foo");
+    }
+
+
     @Test(dataProvider="HaplotypeCallerTestInputs", enabled=false) //disabled after reference confidence change in #5172
     public void testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
