@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.codecs.gencode;
+package org.broadinstitute.hellbender.utils.codecs.gtf;
 
 import htsjdk.tribble.annotation.Strand;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -21,6 +21,12 @@ final public class GencodeGtfFeatureBaseData {
      * Normally it is a line number indicating the position in the original data file of this feature.
      */
     public int                                     featureOrderNumber      = GencodeGtfFeature.NO_FEATURE_ORDER;
+
+    /**
+     * The source file type from which the data in this {@link GencodeGtfFeatureBaseData} originated.
+     * This should always correspond to a value returned by {@link AbstractGtfCodec#getGtfFileType()}.
+     */
+    public String gtfSourceFileType;
 
     /**
      * Location of this feature on the genome.
@@ -77,6 +83,7 @@ final public class GencodeGtfFeatureBaseData {
     public GencodeGtfFeatureBaseData() {}
 
     public GencodeGtfFeatureBaseData(
+            final String gtfSourceFileType,
             final int featureOrderNumber,
             final String chromosomeName,
             final GencodeGtfFeature.AnnotationSource annotationSource,
@@ -99,6 +106,7 @@ final public class GencodeGtfFeatureBaseData {
             final List<GencodeGtfFeature.OptionalField<?>> optionalFields,
             final String anonymousOptionalFields
     ) {
+        this.gtfSourceFileType = gtfSourceFileType;
         this.featureOrderNumber = featureOrderNumber;
 
         this.genomicPosition = new SimpleInterval(chromosomeName, genomicStartLocation, genomicEndLocation);
@@ -143,6 +151,7 @@ final public class GencodeGtfFeatureBaseData {
             final GencodeGtfFeatureBaseData thatBaseData = (GencodeGtfFeatureBaseData) that;
 
             isEqual =
+                    Objects.equals(gtfSourceFileType,       thatBaseData.gtfSourceFileType)         &&
                     Objects.equals(featureOrderNumber,      thatBaseData.featureOrderNumber)        &&
                     Objects.equals(genomicPosition,         thatBaseData.genomicPosition)           &&
                     Objects.equals(annotationSource,        thatBaseData.annotationSource)          &&
@@ -170,6 +179,7 @@ final public class GencodeGtfFeatureBaseData {
     @Override
     public int hashCode() {
         int result = featureOrderNumber;
+        result = 31 * result + (gtfSourceFileType != null ? gtfSourceFileType.hashCode() : 0);
         result = 31 * result + (genomicPosition != null ? genomicPosition.hashCode() : 0);
         result = 31 * result + (annotationSource != null ? annotationSource.hashCode() : 0);
         result = 31 * result + (featureType != null ? featureType.hashCode() : 0);

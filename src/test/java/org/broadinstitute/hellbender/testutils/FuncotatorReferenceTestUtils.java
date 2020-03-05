@@ -29,18 +29,27 @@ public class FuncotatorReferenceTestUtils {
     private static Lazy<String> b37Chr2Ref;
     private static Lazy<String> hg38Chr3Ref;
 
+    private static Lazy<String> eColiRef;
+
     static {
         hg19Chr3Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME)));
         hg19Chr19Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME)));
         b37Chr3Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_3_REFERENCE_FILE_NAME)));
         b37Chr2Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_2_REFERENCE_FILE_NAME)));
         hg38Chr3Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG38_3_REFERENCE_FILE_NAME)));
+
+        eColiRef = new Lazy<>(createPassthroughInitializer(new File(FuncotatorTestConstants.ECOLI_REFERENCE_FILE_NAME)));
     }
 
     private static Supplier<String> createInitializer(final File fastaTarGz) {
         return () -> FuncotatorReferenceTestUtils.extractFastaTarGzToTemp(fastaTarGz,
                 org.broadinstitute.hellbender.utils.io.IOUtils.createTempDir("funcotatorTmpFolder").toPath());
     }
+
+    private static Supplier<String> createPassthroughInitializer(final File fastaFile) {
+        return () -> fastaFile.toPath().toString();
+    }
+
     /**
      * Extract a fasta tar.gz (should include only one fasta, the index, and a dict).  Though this is not enforced.
      *
@@ -97,6 +106,13 @@ public class FuncotatorReferenceTestUtils {
      */
     public static String retrieveHg19Chr19Ref() {
         return hg19Chr19Ref.get();
+    }
+
+    /**
+     * @return a path (as String) to the E coli reference.  ("ASM584v2")
+     */
+    public static String retrieveEcoliReference() {
+        return eColiRef.get();
     }
 
     /**

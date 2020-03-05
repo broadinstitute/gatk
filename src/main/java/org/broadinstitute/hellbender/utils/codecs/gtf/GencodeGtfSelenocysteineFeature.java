@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.codecs.gencode;
+package org.broadinstitute.hellbender.utils.codecs.gtf;
 
 /**
  * A Gencode GTF Feature representing a selenocysteine.
@@ -11,12 +11,12 @@ package org.broadinstitute.hellbender.utils.codecs.gencode;
  */
 final public class GencodeGtfSelenocysteineFeature extends GencodeGtfFeature {
 
-    private GencodeGtfSelenocysteineFeature(final String[] gtfFields) {
-        super(gtfFields);
+    private GencodeGtfSelenocysteineFeature(final String[] gtfFields, final String gtfFileType) {
+        super(gtfFields, gtfFileType);
     }
 
-    public static GencodeGtfFeature create(final String[] gtfFields) {
-        return new GencodeGtfSelenocysteineFeature(gtfFields);
+    public static GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+        return new GencodeGtfSelenocysteineFeature(gtfFields, gtfFileType);
     }
 
     private GencodeGtfSelenocysteineFeature(final GencodeGtfFeatureBaseData baseData) {

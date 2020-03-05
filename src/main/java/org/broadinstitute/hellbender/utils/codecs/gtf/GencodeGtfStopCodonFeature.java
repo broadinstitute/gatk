@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.codecs.gencode;
+package org.broadinstitute.hellbender.utils.codecs.gtf;
 
 /**
  * A Gencode GTF Feature representing a stop codon.
@@ -11,12 +11,12 @@ package org.broadinstitute.hellbender.utils.codecs.gencode;
  */
 final public class GencodeGtfStopCodonFeature extends GencodeGtfFeature {
 
-    private GencodeGtfStopCodonFeature(final String[] gtfFields) {
-        super(gtfFields);
+    private GencodeGtfStopCodonFeature(final String[] gtfFields, final String gtfFileType) {
+        super(gtfFields, gtfFileType);
     }
 
-    public static GencodeGtfFeature create(final String[] gtfFields) {
-        return new GencodeGtfStopCodonFeature(gtfFields);
+    public static GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+        return new GencodeGtfStopCodonFeature(gtfFields, gtfFileType);
     }
 
     private GencodeGtfStopCodonFeature(final GencodeGtfFeatureBaseData baseData) {

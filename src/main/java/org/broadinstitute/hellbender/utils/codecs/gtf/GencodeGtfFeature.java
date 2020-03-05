@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.codecs.gencode;
+package org.broadinstitute.hellbender.utils.codecs.gtf;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
@@ -71,14 +71,17 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
     private static final Pattern NUMBER_PATTERN                 = Pattern.compile("\\d\\d*");
 
     private String ucscGenomeVersion =  null;
-    private final GencodeGtfFeatureBaseData baseData;
+    @VisibleForTesting
+    final GencodeGtfFeatureBaseData baseData;
 
     // ================================================================================================
 
     /**
      * Populate this GencodeGtfFeature with the given data.
+     * @param gtfFields {@link String[]} containing an ordered list of fields to use to populate this {@link GencodeGtfFeature}.
+     * @param gtfFileType A {@link String} containing the file type of the GTF data that created this {@link GencodeGtfFeature}.
      */
-    protected GencodeGtfFeature(final String[] gtfFields) {
+    protected GencodeGtfFeature(final String[] gtfFields, final String gtfFileType) {
 
         Utils.validateArg(gtfFields.length == NUM_FIELDS, "Unexpected number of fields: " + gtfFields.length + " != " + NUM_FIELDS);
 
@@ -94,6 +97,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         catch (final NumberFormatException ex) {
             throw new UserException.MalformedFile("Cannot read integer value for start/end position!");
         }
+
+        baseData.gtfSourceFileType       = gtfFileType;
 
         baseData.annotationSource        = AnnotationSource.valueOf( gtfFields[ANNOTATION_SOURCE_INDEX] );
         baseData.featureType             = GencodeGtfFeature.FeatureType.getEnum( gtfFields[FEATURE_TYPE_INDEX].toLowerCase() );
@@ -143,6 +148,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                 case "gene_type":
                     baseData.geneType = GeneTranscriptType.getEnum(fieldValue);
                     break;
+                // For ENSEMBL GTF files:
+                case "gene_biotype":
+                    baseData.geneType = GeneTranscriptType.getEnum(fieldValue);
+                    break;
                 case "gene_status":
                     baseData.geneStatus = GeneTranscriptStatus.valueOf(fieldValue);
                     break;
@@ -150,6 +159,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     baseData.geneName = fieldValue;
                     break;
                 case "transcript_type":
+                    baseData.transcriptType = GeneTranscriptType.getEnum(fieldValue);
+                    break;
+                case "transcript_biotype":
                     baseData.transcriptType = GeneTranscriptType.getEnum(fieldValue);
                     break;
                 case "transcript_status":
@@ -270,19 +282,21 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
     /**
      * Create a {@link GencodeGtfFeature} based on a line from a Gencode GTF File.
      * @param gtfLine A line from a Gencode GTF File to convert into a {@link GencodeGtfFeature} object.
+     * @param gtfFileType A {@link String} containing the file type of the GTF data that created this {@link GencodeGtfFeature}.
      * @return The {@link GencodeGtfFeature} representing the information in {@code gtfLine}
      */
-    public static GencodeGtfFeature create(final String gtfLine) {
+    public static GencodeGtfFeature create(final String gtfLine, final String gtfFileType) {
         Utils.nonNull(gtfLine);
-        return create(gtfLine.split(FIELD_DELIMITER));
+        return create(gtfLine.split(FIELD_DELIMITER), gtfFileType);
     }
 
     /**
      * Create a {@link GencodeGtfFeature} based on a line from a Gencode GTF File.
      * @param gtfFields A line from a Gencode GTF File split on the {@link #FIELD_DELIMITER} character.
+     * @param gtfFileType A {@link String} containing the file type of the GTF data that created this {@link GencodeGtfFeature}.
      * @return The {@link GencodeGtfFeature} representing the information in {@code gtfLine}
      */
-    public static GencodeGtfFeature create(final String[] gtfFields) {
+    public static GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
         Utils.nonNull(gtfFields);
 
         // Ensure that the input data are superficially well-formed:
@@ -291,12 +305,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     " - Given: " + gtfFields.length + " Expected: " + GencodeGtfCodec.NUM_COLUMNS);
         }
 
-
-
         final FeatureType featureType = FeatureType.getEnum( gtfFields[FEATURE_TYPE_INDEX] );
 
         // Return our feature:
-        return featureType.create(gtfFields);
+        return featureType.create(gtfFields, gtfFileType);
     }
 
     // ================================================================================================
@@ -448,6 +460,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
     }
 
     // ================================================================================================
+
+    public String getGtfSourceFileType() { return baseData.gtfSourceFileType; }
 
     public String getUcscGenomeVersion() {
         return ucscGenomeVersion;
@@ -710,7 +724,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      */
     public enum AnnotationSource {
         ENSEMBL,
-        HAVANA
+        HAVANA,
+        ena // From ENSEMBLE GTFs
     }
 
     /**
@@ -725,64 +740,64 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
                 return GencodeGtfGeneFeature.create(baseData);
             }
-            public GencodeGtfFeature create(final String[] gtfFields) {
-                return GencodeGtfGeneFeature.create(gtfFields);
+            public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+                return GencodeGtfGeneFeature.create(gtfFields, gtfFileType);
             }
         },
         TRANSCRIPT("transcript"){
             public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
                 return GencodeGtfTranscriptFeature.create(baseData);
             }
-            public GencodeGtfFeature create(final String[] gtfFields) {
-                return GencodeGtfTranscriptFeature.create(gtfFields);
+            public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+                return GencodeGtfTranscriptFeature.create(gtfFields, gtfFileType);
             }
         },
         SELENOCYSTEINE("Selenocysteine"){
             public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
                 return GencodeGtfSelenocysteineFeature.create(baseData);
             }
-            public GencodeGtfFeature create(final String[] gtfFields) {
-                return GencodeGtfSelenocysteineFeature.create(gtfFields);
+            public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+                return GencodeGtfSelenocysteineFeature.create(gtfFields, gtfFileType);
             }
         },
         EXON("exon"){
             public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
                 return GencodeGtfExonFeature.create(baseData);
             }
-            public GencodeGtfFeature create(final String[] gtfFields) {
-                return GencodeGtfExonFeature.create(gtfFields);
+            public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+                return GencodeGtfExonFeature.create(gtfFields, gtfFileType);
             }
         },
         CDS("CDS"){
             public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
                 return GencodeGtfCDSFeature.create(baseData);
             }
-            public GencodeGtfFeature create(final String[] gtfFields) {
-                return GencodeGtfCDSFeature.create(gtfFields);
+            public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+                return GencodeGtfCDSFeature.create(gtfFields, gtfFileType);
             }
         },
         START_CODON("start_codon"){
             public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
                 return GencodeGtfStartCodonFeature.create(baseData);
             }
-            public GencodeGtfFeature create(final String[] gtfFields) {
-                return GencodeGtfStartCodonFeature.create(gtfFields);
+            public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+                return GencodeGtfStartCodonFeature.create(gtfFields, gtfFileType);
             }
         },
         STOP_CODON("stop_codon"){
             public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
                 return GencodeGtfStopCodonFeature.create(baseData);
             }
-            public GencodeGtfFeature create(final String[] gtfFields) {
-                return GencodeGtfStopCodonFeature.create(gtfFields);
+            public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+                return GencodeGtfStopCodonFeature.create(gtfFields, gtfFileType);
             }
         },
         UTR("UTR"){
             public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
                 return GencodeGtfUTRFeature.create(baseData);
             }
-            public GencodeGtfFeature create(final String[] gtfFields) {
-                return GencodeGtfUTRFeature.create(gtfFields);
+            public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+                return GencodeGtfUTRFeature.create(gtfFields, gtfFileType);
             }
         };
 
@@ -815,9 +830,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /**
          * Create a {@link GencodeGtfFeature} of this type given {@code gtfFields}
          * @param gtfFields The data to use to create a {@link GencodeGtfFeature}
+         * @param gtfFileType A {@link String} containing the file type of the GTF data that created this {@link GencodeGtfFeature}.
          * @return The {@link GencodeGtfFeature} represented by the given {@code gtfFields}
          */
-        abstract public GencodeGtfFeature create(final String[] gtfFields);
+        abstract public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType);
     }
 
     /**
@@ -892,12 +908,17 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         MIRNA("miRNA"),
         MISC_RNA("misc_RNA"),
         RRNA("rRNA"),
+
         SCRNA("scRNA"),
         SNRNA("snRNA"),
         SNORNA("snoRNA"),
         RIBOZYME("ribozyme"),
         SRNA("sRNA"),
         SCARNA("scaRNA"),
+
+        // ENSEMBL-Specific values:
+        TRNA("tRNA"),
+        TMRNA("tmRNA"),
 
         // Non-coding RNA predicted to be pseudogene by the Ensembl pipeline
         MT_TRNA_PSEUDOGENE("Mt_tRNA_pseudogene"),
@@ -1008,12 +1029,30 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             return serialized;
         }
 
+        private static final Map<String, String> SPECIAL_CASE_STRING_VALUE_MAP = createSpecialCaseMap();
+
         public static GeneTranscriptType getEnum(final String s) {
-            final String lowerS = s.toLowerCase();
+            String lowerS = s.toLowerCase();
+
+            // Handle special cases:
+            lowerS = SPECIAL_CASE_STRING_VALUE_MAP.getOrDefault(lowerS, lowerS);
+
             if ( VALUE_MAP.containsKey(lowerS) ){
                 return VALUE_MAP.get(lowerS);
             }
             throw new IllegalArgumentException("Unexpected value: " + s);
+        }
+
+        /**
+         * Create a special case map for alternate field names for known {@link GeneTranscriptType}s.
+         */
+        private static Map<String, String> createSpecialCaseMap() {
+            final Map<String, String> map = new HashMap<>();
+
+            // From ENSEMBLE GTF files:
+            map.put("ncrna", "non_coding");
+
+            return map;
         }
 
     }
@@ -1107,7 +1146,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** shares an identical CDS but has alternative 3' UTR with respect to a reference variant. */
         ALTERNATIVE_5_UTR("alternative_5_UTR"),
 
-        /** Please note that the ordering of the APPRIS_* tags is also used in sorting here.  Do not re-order. */
+        // --------------------------------------------------------------------------------------------------------
+        // Please note that the ordering of the APPRIS_* tags is also used in sorting here.  Do not re-order!
+        // --------------------------------------------------------------------------------------------------------
         /** Transcript expected to code for the main functional isoform based on a range of protein features (APPRIS pipeline). */
         APPRIS_PRINCIPAL("appris_principal"),
 

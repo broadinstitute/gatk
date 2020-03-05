@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.codecs.gencode;
+package org.broadinstitute.hellbender.utils.codecs.gtf;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,12 +15,12 @@ import java.util.Objects;
  */
 final public class GencodeGtfGeneFeature extends GencodeGtfFeature {
 
-    private GencodeGtfGeneFeature(final String[] gtfFields) {
-        super(gtfFields);
+    private GencodeGtfGeneFeature(final String[] gtfFields, final String gtfFileType) {
+        super(gtfFields, gtfFileType);
     }
 
-    public static GencodeGtfFeature create(final String[] gtfFields) {
-        return new GencodeGtfGeneFeature(gtfFields);
+    public static GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+        return new GencodeGtfGeneFeature(gtfFields, gtfFileType);
     }
 
     private GencodeGtfGeneFeature(final GencodeGtfFeatureBaseData baseData) {

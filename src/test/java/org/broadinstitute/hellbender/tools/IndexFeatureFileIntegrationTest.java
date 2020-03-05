@@ -9,13 +9,14 @@ import htsjdk.tribble.index.tabix.TabixIndex;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.codecs.gtf.EnsemblGtfCodec;
+import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -23,10 +24,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
 public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTest {
+
+    final File ENSEMBL_GTF_TEST_FILE = new File(largeFileTestDir + "funcotator/ecoli_ds/gencode/ASM584v2/Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.44.gtf");
 
     @Test
     public void testVCFIndex() {
@@ -410,4 +414,80 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         Assert.assertTrue(output.length() > 0);
     }
 
+    @Test
+    public void testEnsemblGtfIndex() {
+        final File outName = createTempFile("Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.44.gtf.", ".idx");
+
+        final String[] args = {
+                "-I" ,  ENSEMBL_GTF_TEST_FILE.getAbsolutePath(),
+                "-O" ,  outName.getAbsolutePath()
+        };
+        final Object res = this.runCommandLine(args);
+        Assert.assertEquals(res, outName.getAbsolutePath());
+
+        final Index index = IndexFactory.loadIndex(res.toString());
+        Assert.assertTrue(index instanceof LinearIndex);
+        Assert.assertEquals(index.getSequenceNames(), Collections.singletonList("Chromosome"));
+        checkIndex(index, Collections.singletonList("Chromosome"));
+    }
+
+    @DataProvider
+    Object[][] provideForTestEnsemblGtfIndexQuery() {
+        return new Object[][] {
+                {
+                        new SimpleInterval("Chromosome", 3019160, 3020500),
+                        1,
+                        new SimpleInterval[] {new SimpleInterval("Chromosome", 3019161, 3020489)},
+                        new String[] {"b2879"},
+                        new String[] {"ssnA"},
+                },
+                {
+                        new SimpleInterval("Chromosome", 3286269, 3288786),
+                        4,
+                        new SimpleInterval[] {
+                                new SimpleInterval("Chromosome", 3285478, 3286269),
+                                new SimpleInterval("Chromosome", 3286270, 3287025),
+                                new SimpleInterval("Chromosome", 3287426, 3288010),
+                                new SimpleInterval("Chromosome", 3288090, 3288785),
+                        },
+                        new String[] {
+                                "b3140",
+                                "b3141",
+                                "b3142",
+                                "b3143",
+                        },
+                        new String[] {
+                                "agaD",
+                                "agaI",
+                                "yraH",
+                                "yraI",
+                        },
+                }
+        };
+    }
+
+    @Test(dataProvider = "provideForTestEnsemblGtfIndexQuery")
+    public void testEnsemblGtfIndexQuery(final SimpleInterval interval,
+                                         final Integer expectedNumResults,
+                                         final SimpleInterval[] expectedFeatureIntervals,
+                                         final String[] expectedGeneIds,
+                                         final String[] expectedGeneNames) {
+        // Test that we can query the file:
+        try (final FeatureDataSource<GencodeGtfFeature> featureReader = new FeatureDataSource<>(ENSEMBL_GTF_TEST_FILE)) {
+            final List<GencodeGtfFeature> features = featureReader.queryAndPrefetch(interval);
+
+            Assert.assertEquals(features.size(), expectedNumResults.intValue());
+
+            for ( int i = 0; i < expectedNumResults; ++i ) {
+                final GencodeGtfFeature feature = features.get(i);
+                Assert.assertEquals(feature.getGtfSourceFileType(), EnsemblGtfCodec.GTF_FILE_TYPE_STRING);
+                Assert.assertEquals(feature.getChromosomeName(), expectedFeatureIntervals[ i ].getContig());
+                Assert.assertEquals(feature.getStart(), expectedFeatureIntervals[ i ].getStart());
+                Assert.assertEquals(feature.getEnd(), expectedFeatureIntervals[ i ].getEnd());
+
+                Assert.assertEquals(feature.getGeneId(), expectedGeneIds[ i ]);
+                Assert.assertEquals(feature.getGeneName(), expectedGeneNames[ i ]);
+            }
+        }
+    }
 }

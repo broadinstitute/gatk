@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.codecs.gencode;
+package org.broadinstitute.hellbender.utils.codecs.gtf;
 
 /**
  * A Gencode GTF Feature representing an untranslated region.
@@ -11,12 +11,12 @@ package org.broadinstitute.hellbender.utils.codecs.gencode;
  */
 final public class GencodeGtfUTRFeature extends GencodeGtfFeature {
 
-    private GencodeGtfUTRFeature(final String[] gtfFields) {
-        super(gtfFields);
+    private GencodeGtfUTRFeature(final String[] gtfFields, final String gtfFileType) {
+        super(gtfFields, gtfFileType);
     }
 
-    public static GencodeGtfFeature create(final String[] gtfFields) {
-        return new GencodeGtfUTRFeature(gtfFields);
+    public static GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+        return new GencodeGtfUTRFeature(gtfFields, gtfFileType);
     }
 
     private GencodeGtfUTRFeature(final GencodeGtfFeatureBaseData baseData) {

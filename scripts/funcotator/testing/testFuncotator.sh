@@ -239,7 +239,7 @@ else
     ${GATKDIR}/gradlew test \
       --tests org.broadinstitute.hellbender.tools.funcotator* \
       --tests org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable* \
-      --tests org.broadinstitute.hellbender.utils.codecs.gencode* \
+      --tests org.broadinstitute.hellbender.utils.codecs.gtf* \
       --tests org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.SimpleAnnotatedIntervalWriterUnitTest* \
       --tests org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollectionUnitTest* \
 			--stacktrace > >(tee -a FUNCOTATOR.unitTest.stdout.log) 2> >(tee -a FUNCOTATOR.unitTest.stderr.log >&2)

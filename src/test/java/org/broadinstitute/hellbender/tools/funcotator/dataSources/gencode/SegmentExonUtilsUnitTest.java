@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.segment.SegmentExonOverlaps;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.segment.SegmentExonUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfGeneFeature;
+import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfGeneFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;

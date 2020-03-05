@@ -20,7 +20,7 @@ import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.codecs.gencode.*;
+import org.broadinstitute.hellbender.utils.codecs.gtf.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.testng.Assert;
@@ -239,7 +239,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     }
 
     private GencodeGtfFeatureBaseData createGtfBaseDataForTestIs5Prime(final SimpleInterval interval) {
-        return new GencodeGtfFeatureBaseData(
+        return new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 
                 1,
                 interval.getContig(),
                 GencodeGtfFeature.AnnotationSource.ENSEMBL,
@@ -677,14 +677,14 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // Create the GencodeGtfFeature:
         GencodeGtfFeatureBaseData data;
 
-        data = new GencodeGtfFeatureBaseData(1, variantInterval.getContig(), GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 1, variantInterval.getContig(), GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
                 variantInterval.getStart()-2000, variantInterval.getEnd()+2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", null, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED, null, null);
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(data);
 
         // ======================
 
-        data = new GencodeGtfFeatureBaseData(2, variantInterval.getContig(), GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 2, variantInterval.getContig(), GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 variantInterval.getStart()-1000, variantInterval.getEnd()+1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),

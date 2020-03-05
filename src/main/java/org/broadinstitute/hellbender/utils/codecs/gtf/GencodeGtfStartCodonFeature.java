@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.codecs.gencode;
+package org.broadinstitute.hellbender.utils.codecs.gtf;
 
 /**
  * A Gencode GTF Feature representing a start codon.
@@ -11,12 +11,12 @@ package org.broadinstitute.hellbender.utils.codecs.gencode;
  */
 final public class GencodeGtfStartCodonFeature extends GencodeGtfFeature {
 
-    private GencodeGtfStartCodonFeature(final String[] gtfFields) {
-        super(gtfFields);
+    private GencodeGtfStartCodonFeature(final String[] gtfFields, final String gtfFileType) {
+        super(gtfFields, gtfFileType);
     }
 
-    public static GencodeGtfFeature create(final String[] gtfFields) {
-        return new GencodeGtfStartCodonFeature(gtfFields);
+    public static GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+        return new GencodeGtfStartCodonFeature(gtfFields, gtfFileType);
     }
 
     private GencodeGtfStartCodonFeature(final GencodeGtfFeatureBaseData baseData) {

@@ -64,7 +64,7 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
         arguments.addRaw("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.addRaw(outputFile.getAbsolutePath());
         arguments.addRaw("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
-        arguments.addRaw(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersion.hg19.toString());
+        arguments.addRaw(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersionHg19);
         arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
 
         runCommandLine(arguments);
@@ -143,7 +143,7 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
         arguments.addRaw("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.addRaw(outputFile.getAbsolutePath());
         arguments.addRaw("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
-        arguments.addRaw(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersion.hg19.toString());
+        arguments.addRaw(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersionHg19);
         arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_CNTN4_DIR);
 
         runCommandLine(arguments);

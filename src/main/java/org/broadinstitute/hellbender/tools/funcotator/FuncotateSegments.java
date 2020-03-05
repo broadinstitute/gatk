@@ -130,7 +130,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
         // Initialize all of our data sources:
         // Sort data sources to make them process in the same order each time:
         funcotatorArgs.dataSourceDirectories.sort(Comparator.naturalOrder());
-        final Map<Path, Properties> configData = DataSourceUtils.getAndValidateDataSourcesFromPaths(funcotatorArgs.referenceVersion.toString(), funcotatorArgs.dataSourceDirectories);
+        final Map<Path, Properties> configData = DataSourceUtils.getAndValidateDataSourcesFromPaths(funcotatorArgs.referenceVersion, funcotatorArgs.dataSourceDirectories);
 
         // Create the data sources from the input:
         // This will also create and register the FeatureInputs (created by the Data Sources)
@@ -223,7 +223,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
 
     @Override
     protected <T extends Feature> SimpleInterval makeFeatureInterval(final T feature) {
-        if (funcotatorArgs.referenceVersion.equals(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersion.hg19)) {
+        if (funcotatorArgs.referenceVersion.equals(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersionHg19)) {
             return new SimpleInterval(FuncotatorUtils.convertB37ContigToHg19Contig(feature.getContig()), feature.getStart(), feature.getEnd());
         } else {
             return new SimpleInterval(feature);

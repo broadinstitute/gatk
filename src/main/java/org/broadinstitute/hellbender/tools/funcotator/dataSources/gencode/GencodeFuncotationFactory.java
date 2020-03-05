@@ -29,7 +29,7 @@ import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMet
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.codecs.gencode.*;
+import org.broadinstitute.hellbender.utils.codecs.gtf.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.NioFileCopierWithProgressMeter;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -46,7 +46,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature.FeatureTag.*;
+import static org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.FeatureTag.*;
 
 /**
  * A factory to create {@link GencodeFuncotation}s.
@@ -783,9 +783,17 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      */
     private List<GencodeFuncotation> createFuncotationsHelper(final VariantContext variant, final Allele altAllele, final GencodeGtfGeneFeature gtfFeature, final ReferenceContext reference) {
 
-        final List<GencodeGtfTranscriptFeature> basicTranscripts = retrieveBasicTranscripts(gtfFeature);
+        final List<GencodeGtfTranscriptFeature> transcriptList;
 
-        return createFuncotationsHelper(variant, altAllele, reference, basicTranscripts);
+        // Only get basic transcripts if we're using data from Gencode:
+        if ( gtfFeature.getGtfSourceFileType().equals(GencodeGtfCodec.GTF_FILE_TYPE_STRING) ) {
+            transcriptList = retrieveBasicTranscripts(gtfFeature);
+        }
+        else {
+            transcriptList = gtfFeature.getTranscripts();
+        }
+
+        return createFuncotationsHelper(variant, altAllele, reference, transcriptList);
     }
 
     private static List<GencodeGtfTranscriptFeature> retrieveBasicTranscripts(final GencodeGtfGeneFeature gtfFeature) {
@@ -2172,8 +2180,14 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                  .setAnnotationTranscript(transcript.getTranscriptId());
 
          // Check for the optional non-serialized values for sorting:
-         // NOTE: This is kind of a kludge:
-         gencodeFuncotationBuilder.setLocusLevel( Integer.valueOf(transcript.getLocusLevel().toString()) );
+         // NOTE: For ENSEMBL gtf files, this field is optional.
+         // NOTE 2: This is kind of a kludge:
+         if ( transcript.getLocusLevel() == null ) {
+             gencodeFuncotationBuilder.setLocusLevel(0);
+         }
+         else {
+             gencodeFuncotationBuilder.setLocusLevel(Integer.valueOf(transcript.getLocusLevel().toString()));
+         }
 
         // Check for existence of Appris Rank and set it:
          gencodeFuncotationBuilder.setApprisRank( getApprisRank( transcript ) );
@@ -2650,7 +2664,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     /**
      * Get the Appris Rank from the given {@link GencodeGtfGeneFeature}.
-     * Appris ranks are specified as annotations using {@link org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature.FeatureTag}s.
+     * Appris ranks are specified as annotations using {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.FeatureTag}s.
      * @param gtfFeature The {@link GencodeGtfTranscriptFeature} from which to get the Appris Rank.
      * @return The highest Appris Rank found in the given {@code gtfFeature}; if no Appris Rank exists, {@code null}.
      */
@@ -2678,11 +2692,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Converts a given {@link org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature.GeneTranscriptType} to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
+     * Converts a given {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.GeneTranscriptType} to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
      * Assumes the given {@code type} is not {@link GencodeGtfFeature.GeneTranscriptType#PROTEIN_CODING}.
      * If no type can be assessed, returns {@code null}.
-     * @param type A {@link org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature.GeneTranscriptType} to convert to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
-     * @return A {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} representing the given {@link org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature.GeneTranscriptType}, or {@code null}.
+     * @param type A {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.GeneTranscriptType} to convert to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
+     * @return A {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} representing the given {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.GeneTranscriptType}, or {@code null}.
      */
     private static GencodeFuncotation.VariantClassification convertGeneTranscriptTypeToVariantClassification (final GencodeGtfFeature.GeneTranscriptType type ) {
 

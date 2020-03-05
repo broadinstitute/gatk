@@ -86,6 +86,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final String PIK3CA_DBSNP_DS          = toolsTestDir + "funcotator" + File.separator + "small_pik3ca_dbsnp_ds";
     private static final String MAF_DBSNP_TEST           = toolsTestDir + "funcotator" + File.separator + "maf_dbsnp_test_input.vcf";
 
+    // E coli data sources:
+    private static final String DS_ECOLI_DIR             = largeFileTestDir + "funcotator" + File.separator + "ecoli_ds" + File.separator;
+    private static final String E_COLI_EXPECTED_OUT      = largeFileTestDir + "funcotator" + File.separator + "e_coli.MG1655.expected_output.vcf";
+
     // Non-locatable funcotation file:
     private static final String NON_LOCATABLE_FUNCOTATED_INPUT_VCF = toolsTestDir + "funcotator" + File.separator + "non_locatable_proof_input.vcf";
 
@@ -104,6 +108,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static String hg19Chr3Ref;
     private static String hg19Chr19Ref;
 
+    private static String eColiRef;
+
     static {
         // This is intentionally set here so that output can be examined in the case of running full scale tests.
         if (!enableFullScaleValidationTest ) {
@@ -120,6 +126,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         b37Chr2Ref = FuncotatorReferenceTestUtils.retrieveB37Chr2Ref();
         hg19Chr3Ref = FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref();
         hg19Chr19Ref = FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref();
+        eColiRef = FuncotatorReferenceTestUtils.retrieveEcoliReference();
     }
 
     //==================================================================================================================
@@ -641,20 +648,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
             if ( outputFormatType == FuncotatorArgumentDefinitions.OutputFormatType.VCF ) {
                 // Get the actual data:
-                final Pair<VCFHeader, List<VariantContext>> actualVcfInfo               = VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
-                final List<VariantContext>                  actualVariantContexts       = actualVcfInfo.getRight();
-                final VCFHeader                             actualVcfHeader             = actualVcfInfo.getLeft();
-                final VCFInfoHeaderLine                     actualFuncotationHeaderLine = actualVcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
-
-                // Get the expected data:
-                final Pair<VCFHeader, List<VariantContext>> expectedVcfInfo               = VariantContextTestUtils.readEntireVCFIntoMemory(new File(typeCorrectedExpectedOutPath).getAbsolutePath());
-                final List<VariantContext>                  expectedVariantContexts       = expectedVcfInfo.getRight();
-                final VCFHeader                             expectedVcfHeader             = expectedVcfInfo.getLeft();
-                final VCFInfoHeaderLine                     expectedFuncotationHeaderLine = expectedVcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
-
-                // Check that they're equal:
-                Assert.assertEquals(actualFuncotationHeaderLine, expectedFuncotationHeaderLine);
-                VariantContextTestUtils.assertEqualVariants(actualVariantContexts, expectedVariantContexts);
+                assertEqualVariantFiles(outputFile, typeCorrectedExpectedOutPath);
             }
             else {
                 try {
@@ -1680,6 +1674,43 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testEColiFuncotations() {
+        final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.VCF;
+        final File outputFile = getOutputFile(outputFormatType);
+
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+
+        arguments.addVCF(new File(FuncotatorTestConstants.ECOLI_VCF_FILE_NAME));
+        arguments.addOutput(outputFile);
+        arguments.addReference(new File(eColiRef));
+        arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_ECOLI_DIR);
+        arguments.add(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_ECOLI);
+        arguments.add(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
+        arguments.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+        runCommandLine(arguments);
+        assertEqualVariantFiles(outputFile, E_COLI_EXPECTED_OUT);
+
+    }
+
+    private void assertEqualVariantFiles(final File outputFile, final String eColiExpectedOut) {
+        // Get the actual data:
+        final Pair<VCFHeader, List<VariantContext>> actualVcfInfo               = VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
+        final List<VariantContext>                  actualVariantContexts       = actualVcfInfo.getRight();
+        final VCFHeader                             actualVcfHeader             = actualVcfInfo.getLeft();
+        final VCFInfoHeaderLine                     actualFuncotationHeaderLine = actualVcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
+
+        // Get the expected data:
+        final Pair<VCFHeader, List<VariantContext>> expectedVcfInfo               = VariantContextTestUtils.readEntireVCFIntoMemory(new File(eColiExpectedOut).getAbsolutePath());
+        final List<VariantContext>                  expectedVariantContexts       = expectedVcfInfo.getRight();
+        final VCFHeader                             expectedVcfHeader             = expectedVcfInfo.getLeft();
+        final VCFInfoHeaderLine                     expectedFuncotationHeaderLine = expectedVcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
+
+        // Check that they're equal:
+        Assert.assertEquals(actualFuncotationHeaderLine, expectedFuncotationHeaderLine);
+        VariantContextTestUtils.assertEqualVariants(actualVariantContexts, expectedVariantContexts);
+    }
+
+    @Test
     public void testNoVariantsProduceMaf() {
         // Make sure that a MAF is actually produced (not a blank file).  Testing https://github.com/broadinstitute/gatk/issues/4937
         final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.MAF;
@@ -1700,8 +1731,6 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
         Assert.assertEquals(maf.getRecords().size(),  0);
         assertCustomFieldsArePresent(maf);
-
-
     }
 
     private void assertCustomFieldsArePresent(final AnnotatedIntervalCollection maf) {

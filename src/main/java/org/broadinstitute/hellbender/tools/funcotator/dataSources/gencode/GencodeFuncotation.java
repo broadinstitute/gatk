@@ -7,8 +7,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
-import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
-import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfGeneFeature;
+import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
+import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfGeneFeature;
 
 import java.util.Arrays;
 import java.util.LinkedHashSet;
