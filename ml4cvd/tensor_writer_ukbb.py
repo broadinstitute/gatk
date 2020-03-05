@@ -18,7 +18,7 @@ import traceback
 from functools import partial
 from itertools import product
 from collections import Counter, defaultdict
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 
 import h5py
 import imageio
@@ -203,6 +203,37 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_s
     for k in stats:
         if sample_header in k and stats[k] == 50:
             continue
+        logging.info(f'{k} has {stats[k]}')
+
+
+def write_tensors_from_ecg_pngs(tensors, png_path, min_sample_id, max_sample_id, name='ecg_segmented', png_postfix='.png.mask.png', path_prefix='ecg_rest'):
+    stats = Counter()
+    for png_file in os.listdir(png_path):
+        sample_id = png_file.split('.')[0]
+        offset_seconds = float(png_file.split('_')[-1].replace(png_postfix, ''))
+        if not min_sample_id <= int(sample_id) < max_sample_id:
+            continue
+
+        png = imageio.imread(os.path.join(png_path, png_file))
+        stats[f'png shape {png.shape}'] += 1
+        ecg_1d_segmentation = png[0, :, 0]
+        logging.info(f' ecg1d segmentation unique: {np.unique(ecg_1d_segmentation)} \nstart {ecg_1d_segmentation[:60]} ')
+        stats[f'ecg_1d_segmentation shape {ecg_1d_segmentation.shape}'] += 1
+        tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
+        if not os.path.exists(os.path.dirname(tensor_file)):
+            os.makedirs(os.path.dirname(tensor_file))
+        with h5py.File(tensor_file, 'a') as hd5:
+            tp = tensor_path(path_prefix, name)
+            if tp in hd5:
+                tensor_dataset = first_dataset_at_path(hd5, tp)
+                tensor_dataset[:] = ecg_1d_segmentation
+                tensor_dataset.attrs['offset_seconds'] = offset_seconds
+                stats['updated'] += 1
+            else:
+                create_tensor_in_hd5(hd5, path_prefix, name, ecg_1d_segmentation, stats, attributes={'offset_seconds': offset_seconds})
+                stats['created'] += 1
+
+    for k in stats:
         logging.info(f'{k} has {stats[k]}')
 
 
@@ -692,7 +723,7 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
 
 
 def create_tensor_in_hd5(hd5: h5py.File, path_prefix: str, name: str, value, stats: Optional[Counter] = None, date: Optional[datetime.datetime] = None,
-                         storage_type: Optional[StorageType] = None):
+                         storage_type: Optional[StorageType] = None, attributes: Optional[Dict[str, Any]] = None):
     hd5_path = tensor_path(path_prefix, name)
     if hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
@@ -710,6 +741,10 @@ def create_tensor_in_hd5(hd5: h5py.File, path_prefix: str, name: str, value, sta
         raise NotImplementedError(f'{storage_type} cannot be automatically written yet')  # TODO: Add categorical, etc.
     if date is not None:
         d.attrs['date'] = time.mktime(date.timetuple())
+    if attributes is not None:
+        for k in attributes:
+            d.attrs[k] = attributes[k]
+
 
 
 def tensor_path(path_prefix: str, name: str) -> str:

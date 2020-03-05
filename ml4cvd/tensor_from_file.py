@@ -12,10 +12,10 @@ import vtk.util.numpy_support
 from tensorflow.keras.utils import to_categorical
 
 from ml4cvd.metrics import weighted_crossentropy
-from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
+from ml4cvd.tensor_writer_ukbb import tensor_path
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
-from ml4cvd.defines import StorageType, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, EPS
-from ml4cvd.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
+from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import StorageType, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 
 
@@ -669,6 +669,48 @@ TMAPS['ecg_rest_lvh_sokolow_lyon'] = TensorMap('sokolow_lyon_lvh', Interpretatio
 TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', Interpretation.CATEGORICAL, path_prefix='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
                                           channel_map={'no_cornell_lvh': 0, 'Cornell LVH': 1},
                                           loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
+
+
+def _ecg_rest_to_segment(population_normalize=None, hertz=500, random_offset_seconds=0):
+    def ecg_rest_section_to_segment(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        segmented = tm.dependent_map.hd5_first_dataset_in_group(hd5, tm.dependent_map.hd5_key_guess())
+        offset_seconds = float(segmented.attrs['offset_seconds'])
+        random_offset_samples = 0
+        if random_offset_seconds > 0:
+            random_offset_begin = np.random.uniform(random_offset_seconds)
+            offset_seconds += random_offset_begin
+            random_offset_samples = int(random_offset_begin * hertz)
+        offset_begin = int(offset_seconds * hertz)
+        segment_index = np.array(segmented[random_offset_samples:random_offset_samples+tm.dependent_map.shape[0]], dtype=np.float32)
+        dependents[tm.dependent_map] = to_categorical(segment_index, tm.dependent_map.shape[-1])
+        for k in hd5[tm.path_prefix]:
+            if k in tm.channel_map:
+                tensor[:, tm.channel_map[k]] = np.array(hd5[tm.path_prefix][k], dtype=np.float32)[offset_begin:offset_begin+tm.shape[0]]
+        if population_normalize is None:
+            tm.normalization = {'zero_mean_std1': 1.0}
+        else:
+            tensor /= population_normalize
+        return tensor
+    return ecg_rest_section_to_segment
+
+
+TMAPS['ecg_segmented'] = TensorMap('ecg_segmented', Interpretation.CATEGORICAL, shape=(1224, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
+                                   cacheable=False, channel_map=ECG_SEGMENTED_CHANNEL_MAP)
+TMAPS['ecg_section_to_segment'] = TensorMap('ecg_section_to_segment', shape=(1224, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented'],
+                                            channel_map=ECG_REST_LEADS, tensor_from_file=_ecg_rest_to_segment())
+TMAPS['ecg_section_to_segment_warp'] = TensorMap('ecg_section_to_segment', shape=(1224, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented'],
+                                                 cacheable=False, channel_map=ECG_REST_LEADS, tensor_from_file=_ecg_rest_to_segment(),
+                                                 augmentations=[_warp_ecg])
+
+TMAPS['ecg_segmented_second'] = TensorMap('ecg_segmented', Interpretation.CATEGORICAL, shape=(496, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
+                                          cacheable=False, channel_map=ECG_SEGMENTED_CHANNEL_MAP)
+TMAPS['ecg_second_to_segment'] = TensorMap('ecg_second_to_segment', shape=(496, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented_second'],
+                                           cacheable=False, channel_map=ECG_REST_LEADS, tensor_from_file=_ecg_rest_to_segment(random_offset_seconds=1.5))
+TMAPS['ecg_second_to_segment_warp'] = TensorMap('ecg_second_to_segment', shape=(496, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented_second'],
+                                                cacheable=False, channel_map=ECG_REST_LEADS, tensor_from_file=_ecg_rest_to_segment(random_offset_seconds=1.5),
+                                                augmentations=[_warp_ecg])
+
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), path_prefix='ukb_brain_mri/float_array/',
                                                          tensor_from_file=normalized_first_date, normalization={'zero_mean_std1': True})

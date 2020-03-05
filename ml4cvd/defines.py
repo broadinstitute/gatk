@@ -64,6 +64,7 @@ ECG_REST_MEDIAN_LEADS = {'median_I': 0, 'median_II': 1, 'median_III': 2, 'median
                          'median_V4': 6, 'median_V5': 7, 'median_V6': 8, 'median_aVF': 9, 'median_aVL': 10, 'median_aVR': 11}
 ECG_REST_AMP_LEADS = {'I': 0, 'II': 1, 'III': 2, 'aVR': 3, 'aVL': 4, 'aVF': 5,
                       'V1': 6, 'V2': 7, 'V3': 8, 'V4': 9, 'V5': 10, 'V6': 11}
+ECG_SEGMENTED_CHANNEL_MAP = {'unknown': 0, 'TP_segment': 1, 'P_wave': 2, 'PQ_segment': 3, 'QRS_complex': 4, 'ST_segment': 5, 'T_wave': 6, 'U_wave': 7}
 
 ECG_BIKE_LEADS = {"I": 0, "2": 1, "3": 2}
 ECG_BIKE_MEDIAN_SIZE = (5500, len(ECG_BIKE_LEADS))
