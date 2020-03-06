@@ -1,5 +1,5 @@
 # stage 1 for constructing the GATK zip
-FROM broadinstitute/gatk:gatkbase-2.3.0 AS gradleBuild
+FROM mwalker174/gatk:gatkbase-2.2.0-cuda-9.2 AS gradleBuild
 LABEL stage=gatkIntermediateBuildImage
 
 RUN ls .
