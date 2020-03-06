@@ -146,7 +146,12 @@ public abstract class ProgressMeter<T> {
         this.millisecondsBetweenUpdates = (long)(secondsBetweenUpdates*(double)MILLISECONDS_PER_SECOND);
         Utils.validate(millisecondsBetweenUpdates > 0, "millisecondsBetweenUpdates must be > 0");
 
-        this.scheduler = Executors.newScheduledThreadPool(1,
+        this.scheduler = getScheduler();
+    }
+
+    @VisibleForTesting
+    protected ScheduledExecutorService getScheduler() {
+        return Executors.newScheduledThreadPool(1,
                 new ThreadFactoryBuilder().setDaemon(true).setNameFormat("Progress Meter").build());
     }
 
@@ -252,11 +257,16 @@ public abstract class ProgressMeter<T> {
      * Output traversal statistics to the logger.
      */
     private synchronized void printProgress() {
+        logger.info(getProgressMessage());
+    }
+
+    @VisibleForTesting
+    protected synchronized String getProgressMessage() {
         currentTimeMs = getTime();
         lastPrintTimeMs = currentTimeMs;
         ++numLoggerUpdates;
-        logger.info(String.format("%20s  %15.1f  %20d  %15.1f",
-                                  formatRecord(currentRecord), elapsedTimeInMinutes(), numRecordsProcessed, processingRate()));
+        return String.format("%20s  %15.1f  %20d  %15.1f",
+                formatRecord(currentRecord), elapsedTimeInMinutes(), numRecordsProcessed, processingRate());
     }
 
     /**
@@ -277,17 +287,6 @@ public abstract class ProgressMeter<T> {
     @VisibleForTesting
     double elapsedTimeInMinutes() {
         return (currentTimeMs - startTimeMs) / (double)MILLISECONDS_PER_MINUTE;
-    }
-
-    /**
-     * @return the number of seconds that have elapsed since our last progress output to the logger
-     *
-     * This is only accurate at set polling intervals and should not be
-     * called directly except in tests.
-     */
-    @VisibleForTesting
-    double secondsSinceLastPrint() {
-        return (currentTimeMs - lastPrintTimeMs) / (double)MILLISECONDS_PER_SECOND;
     }
 
     /**

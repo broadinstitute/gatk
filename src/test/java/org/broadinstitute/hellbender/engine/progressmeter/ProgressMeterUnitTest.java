@@ -4,9 +4,12 @@ import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.util.concurrent.ScheduledExecutorService;
 
 public class ProgressMeterUnitTest extends GATKBaseTest {
 
@@ -66,6 +69,15 @@ public class ProgressMeterUnitTest extends GATKBaseTest {
     public void testCantStopBeforeStart() {
         ProgressMeter<Locatable> pm = new LocatableProgressMeter();
         pm.stop();
+    }
+
+
+    @Test
+    public void testMockedProgressMeter(){
+        ScheduledExecutorService mockScheduler = Mockito.mock(ScheduledExecutorService.class);
+        LocatableProgressMeter mockProgress = Mockito.mock(LocatableProgressMeter.class);
+        Mockito.when(mockProgress.getScheduler()).then()
+
     }
 
     @Test
