@@ -47,4 +47,12 @@ public abstract class DuplicateSetWalker extends ReadWalker {
 
     public abstract void apply(DuplicateSet duplicateSet, ReferenceContext referenceContext, FeatureContext featureContext );
 
+    @Override
+    public void postProcess(){
+        if (currentDuplicateSet.getReads().size() > 0){
+            apply(currentDuplicateSet,
+                    new ReferenceContext(reference, currentDuplicateSet.getDuplicateSetInterval()),
+                    new FeatureContext(features, currentDuplicateSet.getDuplicateSetInterval()));
+        }
+    }
 }

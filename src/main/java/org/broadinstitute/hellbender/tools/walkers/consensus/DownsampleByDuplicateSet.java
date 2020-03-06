@@ -76,6 +76,9 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
     }
 
     private boolean filterThisSet(final DuplicateSet duplicateSet){
+        if (duplicateSet.getMoleculeId() == -1){
+            return true;
+        }
         final List<String> molecularIDs = duplicateSet.getReads().stream().map(r -> r.getAttributeAsString(DuplicateSet.FGBIO_MOLECULAR_IDENTIFIER_TAG))
                 .distinct().collect(Collectors.toList());
 

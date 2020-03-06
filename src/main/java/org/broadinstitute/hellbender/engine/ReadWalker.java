@@ -99,7 +99,7 @@ public abstract class ReadWalker extends WalkerBase {
 
                     progressMeter.update(readInterval);
                 });
-
+        postProcess();
         logger.info(countedFilter.getSummaryLine());
     }
 
@@ -155,6 +155,10 @@ public abstract class ReadWalker extends WalkerBase {
     protected final void onShutdown() {
         // Overridden only to make final so that concrete tool implementations don't override
         super.onShutdown();
+    }
+
+    public void postProcess(){
+        return;
     }
 
     public GATKRead peekFirstRead(){

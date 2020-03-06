@@ -44,6 +44,29 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testDownsampleMaintainsCounts(){
+         final File out = new File("/dsde/working/tsato/gatk/test.bam");
+        final double downsampleRate = 1.0;
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument("R", hg19)
+                .addArgument("I", medium)
+                .addArgument("DS", Double.toString(downsampleRate))
+                .addArgument("O", out.getAbsolutePath());
+        runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
+
+        final ReadsDataSource originalBam = new ReadsDataSource(Paths.get(medium));
+        final Map<String, MutableInt> originalMoleculeCounts = molecularIDsAndCounts(originalBam);
+
+        final ReadsDataSource downsampledBam = new ReadsDataSource(Paths.get(out.getAbsolutePath()));
+        final Map<String, MutableInt> downsampledMoleculeCounts = molecularIDsAndCounts(downsampledBam);
+
+        for (Map.Entry<String, MutableInt> originalIDAndCount : originalMoleculeCounts.entrySet()){
+            final String originalID = originalIDAndCount.getKey();
+            final int originalCount = originalIDAndCount.getValue().intValue();
+            Assert.assertTrue(originalCount == downsampledMoleculeCounts.get(originalID).intValue());
+        }
+    }
+    @Test
     public void testDownsampleFraction(){
         // final File out = createTempFile("downsampled", "bam");
         final File out = new File("/dsde/working/tsato/gatk/test.bam");
@@ -64,7 +87,6 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
             final int noise = 10; // TODO: Can I do better?
             Assert.assertTrue(Math.abs(downsampleRate * originalMoleculeCount - downsampledMoleculeCount) < noise);
         }
-
     }
 
     private int countDuplicateSets(final ReadsDataSource readsDataSource){
@@ -81,6 +103,22 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
         }
 
         return count;
+    }
+
+    private Map<String, MutableInt> molecularIDsAndCounts(final ReadsDataSource readsDataSource){
+        final Map<String, MutableInt> map = new TreeMap<>();
+        final Iterator<GATKRead> iterator = readsDataSource.iterator();
+        while (iterator.hasNext()){
+            final GATKRead read = iterator.next();
+            final String molecularID = read.getAttributeAsString("MI"); // Note we are duplex aware: 12/A different from 12/B
+            if (map.containsKey(molecularID)){
+                map.get(molecularID).increment();
+            } else {
+                map.put(molecularID, new MutableInt(0));
+            }
+        }
+
+        return map;
     }
 
 

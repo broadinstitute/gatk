@@ -29,6 +29,7 @@ public class DuplicateSet {
     public DuplicateSet(final GATKRead read){
         reads = new ArrayList<>();
         init(read);
+        reads.add(read);
     }
 
     public void init(GATKRead read){
@@ -96,9 +97,7 @@ public class DuplicateSet {
     public int getMoleculeId() { return moleculeId; }
 
     public SimpleInterval getDuplicateSetInterval(){
-        Utils.validate(SimpleInterval.isValid(contig, fragmentStart, fragmentEnd), "Invalid duplicate set interval: " + new SimpleInterval(contig, fragmentStart, fragmentEnd));
         return new SimpleInterval(contig, fragmentStart, fragmentEnd);
-
     }
 
     public boolean hasValidInterval(){
