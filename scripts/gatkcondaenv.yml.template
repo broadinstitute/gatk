@@ -1,5 +1,9 @@
 # $condaEnvDescription
 #
+# NOTE: When the changing dependencies or the dependency versions in this file, check to see if the
+# "supportedPythonPackages" DataProvider used by the testGATKPythonEnvironmentPackagePresent test in
+# PythonEnvironmentIntegrationTest needs to be updated to reflect the new dependency or version.
+#
 name: $condaEnvName
 channels:
 - defaults
