@@ -150,7 +150,7 @@ public final class ReadsSparkSink {
         });
         HtsjdkReadsRdd htsjdkReadsRdd = new HtsjdkReadsRdd(header, sortedReadsWithHeader);
         HtsjdkReadsRddStorage.makeDefault(ctx)
-                .referenceSourcePath(referencePath)
+                .referenceSourcePath(referencePath == null ? null : referencePath.toString())
                 .sbiIndexGranularity(sbiIndexGranularity)
                 .write(htsjdkReadsRdd, outputFile, writeOptions);
     }
