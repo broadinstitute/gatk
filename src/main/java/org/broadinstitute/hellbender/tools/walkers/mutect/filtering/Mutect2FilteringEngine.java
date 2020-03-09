@@ -197,7 +197,7 @@ public class Mutect2FilteringEngine {
         ListIterator<String> mergedFilterStringByAllele = distinctFiltersByAllele.stream().map(AnnotationUtils::encodeStringList).collect(Collectors.toList()).listIterator();
 
         List<String> orderedASFilterStrings = vc.getAlternateAlleles().stream().map(allele -> allele.isSymbolic() ?
-                VCFConstants.EMPTY_INFO_FIELD : mergedFilterStringByAllele.next()).collect(Collectors.toList());
+                GATKVCFConstants.SITE_LEVEL_FILTERS : mergedFilterStringByAllele.next()).collect(Collectors.toList());
         String finalAttrString = AnnotationUtils.encodeAnyASListWithRawDelim(orderedASFilterStrings);
 
         vcb.putAttributes(Collections.singletonMap(GATKVCFConstants.AS_FILTER_STATUS_KEY, finalAttrString));
@@ -206,7 +206,7 @@ public class Mutect2FilteringEngine {
         // compute site-only filters
         // from allele specific filters
          alleleStatusByFilter.stream().forEachOrdered(alleleStatusForFilter -> {
-            if (!alleleStatusForFilter.isEmpty() && alleleStatusForFilter.stream().distinct().count() == 1 && !alleleStatusForFilter.contains(VCFConstants.PASSES_FILTERS_v4)) {
+            if (!alleleStatusForFilter.isEmpty() && alleleStatusForFilter.stream().distinct().count() == 1 && !alleleStatusForFilter.contains(GATKVCFConstants.SITE_LEVEL_FILTERS)) {
                 siteFiltersWithErrorProb.put(alleleStatusForFilter.get(0), 1.0);
             }
         });
@@ -231,7 +231,7 @@ public class Mutect2FilteringEngine {
         if (siteFiltersWithErrorProb.isEmpty() && !distinctFiltersByAllele.stream().allMatch(List::isEmpty)) {
             List<List<String>> filtersNonSymbolicAlleles =  GATKVariantContextUtils.removeDataForSymbolicAltAlleles(vc, distinctFiltersByAllele);
             // if any allele passed, don't fail the site
-            if (!filtersNonSymbolicAlleles.stream().anyMatch(filterList -> filterList.contains(VCFConstants.EMPTY_INFO_FIELD))) {
+            if (!filtersNonSymbolicAlleles.stream().anyMatch(filterList -> filterList.contains(GATKVCFConstants.SITE_LEVEL_FILTERS))) {
                 // we know the allele level filters exceeded their threshold - so set this prob to 1
                 siteFiltersWithErrorProb.put(GATKVCFConstants.FAIL, 1.0);
             }
@@ -250,30 +250,32 @@ public class Mutect2FilteringEngine {
     }
 
     /**
-     * Creates a list of the string names of all the filters that apply to the allele, or the string . if it passed all filters
+     * Creates a list of the string names of all the filters that apply to the allele, or the string "SITE" if it passed all allele filters
      * @param filtersForAllele all the filters applied to the allele
-     * @return list of filter names that apply to the allele or .
+     * @return list of filter names that apply to the allele or SITE
      */
     private List<String> getDistinctFiltersForAllele(final List<String> filtersForAllele) {
         final List<String> results = filtersForAllele.stream().distinct().collect(Collectors.toList());
-        results.remove(VCFConstants.PASSES_FILTERS_v4);
+        if (results.size() > 1 && results.contains(GATKVCFConstants.SITE_LEVEL_FILTERS)) {
+            results.remove(GATKVCFConstants.SITE_LEVEL_FILTERS);
+        }
         if (results.isEmpty()) {
-            results.add(VCFConstants.EMPTY_INFO_FIELD);
+            results.add(GATKVCFConstants.SITE_LEVEL_FILTERS);
         }
         return results;
     }
 
     /**
      * For each allele, determine whether the filter should be applied and return either the
-     * filter name or PASS. We use PASS as a place holder because the results are per alt allele.
+     * filter name or SITE. We use PASS as a place holder because the results are per alt allele.
      * @param probabilities the probabilities computed by the filter for the alleles
      * @param errorThreshold the theshold to use to determine whether filter applies
      * @param filterName the name of the filter being evaluated
-     * @return List of filtername or "PASS" for each allele
+     * @return List of filtername or "SITE" for each allele
      */
     private List<String> addFilterStrings(final List<Double> probabilities, final double errorThreshold, final String filterName) {
         return probabilities.stream().map(value -> value > errorThreshold ?
-                        filterName : VCFConstants.PASSES_FILTERS_v4).collect(Collectors.toList());
+                        filterName : GATKVCFConstants.SITE_LEVEL_FILTERS).collect(Collectors.toList());
     }
 
     public static double roundFinitePrecisionErrors(final double probability) {

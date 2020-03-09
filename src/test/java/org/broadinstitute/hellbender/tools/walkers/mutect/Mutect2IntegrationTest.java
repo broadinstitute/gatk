@@ -524,10 +524,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         ImmutableSet.of(GATKVCFConstants.FAIL)),
                         Arrays.asList(
                                 Arrays.asList(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME), // strand_bias, strict_stand
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD),
+                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS), // SITE
                                 Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME), // weak_evidence, low_allele_frac
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME), // .|weak_evidence, strand_bias, low_allele_frac|strand_bias, strict_strand, low_allele_frac
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD),  // .
+                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME), // SITE|weak_evidence, strand_bias, low_allele_frac|strand_bias, strict_strand, low_allele_frac
+                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS),  // SITE
                                 Arrays.asList(GATKVCFConstants.DUPLICATED_EVIDENCE_FILTER_NAME), // duplicate
                                 Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME) // weak_evidence, strand_bias, strict_stand|low_allele_frac
 
@@ -540,11 +540,11 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.CONTAMINATION_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME,
                                 GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.READ_POSITION_FILTER_NAME, GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME)),
                         Arrays.asList(
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD), //".",
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //"weak_evidence, base_qual, strand_bias|.",
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), // "weak_evidence, strict_strand, strand_bias|.",
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|weak_evidence, base_qual, strand_bias, low_allele_frac|.",
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.CONTAMINATION_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.READ_POSITION_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD) // "weak_evidence, base_qual, map_qual, contamination, strand_artifact, position, low_allele_frac|."
+                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS), // SITE,
+                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS), //"weak_evidence, base_qual, strand_bias|SITE",
+                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS), // "weak_evidence, strict_strand, strand_bias|SITE",
+                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS), //".|weak_evidence, base_qual, strand_bias, low_allele_frac|SITE",
+                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.CONTAMINATION_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.READ_POSITION_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS) // "weak_evidence, base_qual, map_qual, contamination, strand_artifact, position, low_allele_frac|SITE"
                         )}
         };
     }
@@ -596,10 +596,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         ImmutableSet.of(GATKVCFConstants.FAIL)),
                         Arrays.asList(
                                 Arrays.asList(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME), // strand_bias, strict_stand
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD), // .
+                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS), // SITE
                                 Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", "  + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // weak_evidence, low_allele_frac, possible_numt
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|weak_evidence, strand_bias, low_allele_frac, possible_numt|strand_bias, strict_strand, low_allele_frac, possible_numt
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD),  // .
+                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // SITE|weak_evidence, strand_bias, low_allele_frac, possible_numt|strand_bias, strict_strand, low_allele_frac, possible_numt
+                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS),  // SITE
                                 Arrays.asList(GATKVCFConstants.DUPLICATED_EVIDENCE_FILTER_NAME), // duplicate
                                 Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME) // weak_evidence, strand_bias, strict_stand|low_allele_frac, possible_numt
 
@@ -611,11 +611,11 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 //                        Collections.emptySet(),
 //                        ImmutableSet.of(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME)),
 //                        Arrays.asList(
-//                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD), //".",
-//                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.EMPTY_INFO_FIELD), //"weak_evidence, base_qual, strand_bias|.",
-//                                Arrays.asList(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), // "possible_numt|.",
-//                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.EMPTY_INFO_FIELD, VCFConstants.EMPTY_INFO_FIELD), //".|weak_evidence, base_qual, strand_bias, low_allele_frac|.",
-//                                Arrays.asList(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD) // "possible_numt|."
+//                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS), //".",
+//                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.SITE_LEVEL_FILTERS), //"weak_evidence, base_qual, strand_bias|.",
+//                                Arrays.asList(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS), // "possible_numt|.",
+//                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.SITE_LEVEL_FILTERS), //".|weak_evidence, base_qual, strand_bias, low_allele_frac|.",
+//                                Arrays.asList(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS) // "possible_numt|."
 //                        )}
         };
     }

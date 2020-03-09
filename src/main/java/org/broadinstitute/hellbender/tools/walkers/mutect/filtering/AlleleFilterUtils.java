@@ -41,7 +41,7 @@ public class AlleleFilterUtils {
     }
 
     public static List<String> addFilter(List<String> currentFilters, String newFilter) {
-        if (currentFilters.size() == 1 && currentFilters.contains(VCFConstants.PASSES_FILTERS_v4)) {
+        if (currentFilters.size() == 1 && currentFilters.contains(GATKVCFConstants.SITE_LEVEL_FILTERS)) {
             return Collections.singletonList(newFilter);
         } else {
             List<String> updated = new ArrayList<>();

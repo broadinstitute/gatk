@@ -166,6 +166,8 @@ public final class GATKVCFConstants {
     public static final String POSSIBLE_NUMT_FILTER_NAME =                     "possible_numt";
     public static final String LOW_HET_FILTER_NAME =                           "mt_many_low_hets";
     public static final String FAIL =                                           "FAIL";
+    public static final String SITE_LEVEL_FILTERS =                             "SITE";
+
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(VCFConstants.PASSES_FILTERS_v4, POLYMERASE_SLIPPAGE,
             PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_EVIDENCE_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
