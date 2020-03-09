@@ -139,7 +139,7 @@ public class ShiftFasta extends GATKTool {
 
     @Override
     public Object onTraversalSuccess(){
-        // TODO write shift back file
+        // TODO is this right?
         return null;
     }
 
@@ -150,6 +150,12 @@ public class ShiftFasta extends GATKTool {
             if( refWriter != null ) {
                 refWriter.close();
             }
+        } catch (IllegalStateException e){
+            //sink this
+        } catch (IOException e) {
+            throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
+        }
+        try{
             if (chainFileWriter != null) {
                 chainFileWriter.close();
             }
