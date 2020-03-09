@@ -19,7 +19,7 @@ public class MTLowHeteroplasmyFilterToolTest extends CommandLineProgramTest {
 
     @Test
     public void testLowHetVariantsFiltered() {
-        final Set<Integer> low_het_sites = new HashSet<>(Arrays.asList(301, 302));
+        final Set<Integer> low_het_sites = new HashSet<>(Arrays.asList(302, 301));
         final File outputFile = createTempFile("low-het-test", ".vcf");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(MITO_REF.getAbsolutePath())
@@ -29,7 +29,8 @@ public class MTLowHeteroplasmyFilterToolTest extends CommandLineProgramTest {
         runCommandLine(argsBuilder);
         Set<VariantContext> variants = VariantContextTestUtils.streamVcf(outputFile)
                 .filter(vcf -> vcf.getFilters().contains(GATKVCFConstants.LOW_HET_FILTER_NAME)).collect(Collectors.toSet());
-        Assert.assertEquals(variants.stream().map(var -> var.getStart()).collect(Collectors.toList()), low_het_sites, "exprected these sites to have " + GATKVCFConstants.LOW_HET_FILTER_NAME + " filter.");
+        Set<Integer> actual_sites = variants.stream().map(var -> var.getStart()).collect(Collectors.toSet());
+        Assert.assertEquals(actual_sites, low_het_sites, "exprected these sites " + actual_sites + " to have " + GATKVCFConstants.LOW_HET_FILTER_NAME + " filter.");
     }
 
     @Test
