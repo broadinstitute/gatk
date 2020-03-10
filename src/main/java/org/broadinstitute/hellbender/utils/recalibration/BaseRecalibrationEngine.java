@@ -21,7 +21,6 @@ import org.broadinstitute.hellbender.utils.baq.BAQ;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
-import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
@@ -340,14 +339,14 @@ public final class BaseRecalibrationEngine implements Serializable {
                 // knownSite is outside clipping window for the read, ignore
                 continue;
             }
-            final Pair<Integer, CigarOperator> featureStartAndOperatorOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(read, knownSite.getStart());
-            int featureStartOnRead = featureStartAndOperatorOnRead.getLeft() == ReadUtils.CLIPPING_GOAL_NOT_REACHED ? 0 : featureStartAndOperatorOnRead.getLeft();
+            final Pair<Integer, CigarOperator> featureStartAndOperatorOnRead = ReadUtils.getReadIndexForReferenceCoordinate(read, knownSite.getStart());
+            int featureStartOnRead = featureStartAndOperatorOnRead.getLeft() == ReadUtils.READ_INDEX_NOT_FOUND ? 0 : featureStartAndOperatorOnRead.getLeft();
             if (featureStartAndOperatorOnRead.getRight() == CigarOperator.DELETION) {
                 featureStartOnRead--;
             }
 
-            final Pair<Integer, CigarOperator> featureEndAndOperatorOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(read, knownSite.getEnd());
-            int featureEndOnRead = featureEndAndOperatorOnRead.getLeft() == ReadUtils.CLIPPING_GOAL_NOT_REACHED ? readLength : featureEndAndOperatorOnRead.getLeft();
+            final Pair<Integer, CigarOperator> featureEndAndOperatorOnRead = ReadUtils.getReadIndexForReferenceCoordinate(read, knownSite.getEnd());
+            int featureEndOnRead = featureEndAndOperatorOnRead.getLeft() == ReadUtils.READ_INDEX_NOT_FOUND ? readLength : featureEndAndOperatorOnRead.getLeft();
 
             if( featureStartOnRead > readLength ) {
                 featureStartOnRead = featureEndOnRead = readLength;

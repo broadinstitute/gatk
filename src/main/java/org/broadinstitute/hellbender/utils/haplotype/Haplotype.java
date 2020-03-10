@@ -197,10 +197,10 @@ public final class Haplotype extends Allele {
 
     public Haplotype insertAllele( final Allele refAllele, final Allele altAllele, final int refInsertLocation, final int genomicInsertLocation ) {
         // refInsertLocation is in ref haplotype offset coordinates NOT genomic coordinates
-        final Pair<Integer, CigarOperator> haplotypeInsertLocationAndOperator = ReadUtils.getReadCoordinateForReferenceCoordinate(alignmentStartHapwrtRef, cigar, refInsertLocation);
+        final Pair<Integer, CigarOperator> haplotypeInsertLocationAndOperator = ReadUtils.getReadIndexForReferenceCoordinate(alignmentStartHapwrtRef, cigar, refInsertLocation);
 
         // can't insert outside the haplotype or into a deletion
-        if( haplotypeInsertLocationAndOperator.getLeft() == ReadUtils.CLIPPING_GOAL_NOT_REACHED || !haplotypeInsertLocationAndOperator.getRight().consumesReadBases() ) {
+        if( haplotypeInsertLocationAndOperator.getLeft() == ReadUtils.READ_INDEX_NOT_FOUND || !haplotypeInsertLocationAndOperator.getRight().consumesReadBases() ) {
             return null;
         }
         final int haplotypeInsertLocation = haplotypeInsertLocationAndOperator.getLeft();

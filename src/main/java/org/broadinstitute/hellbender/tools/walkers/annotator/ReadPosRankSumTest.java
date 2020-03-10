@@ -8,8 +8,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
-import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -62,9 +60,9 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
             return OptionalDouble.of(0);
         }
 
-        final Pair<Integer, CigarOperator> offset = ReadUtils.getReadCoordinateForReferenceCoordinate(read, vc.getStart());
+        final Pair<Integer, CigarOperator> offset = ReadUtils.getReadIndexForReferenceCoordinate(read, vc.getStart());
 
-        if (offset.getLeft() == ReadUtils.CLIPPING_GOAL_NOT_REACHED) {
+        if (offset.getLeft() == ReadUtils.READ_INDEX_NOT_FOUND) {
             return OptionalDouble.empty();
         }
 

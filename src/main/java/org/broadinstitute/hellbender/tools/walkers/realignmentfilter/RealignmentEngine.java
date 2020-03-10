@@ -14,8 +14,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
-import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -39,9 +37,9 @@ public class RealignmentEngine {
     public static boolean supportsVariant(final GATKRead read, final VariantContext vc, int indelStartTolerance) {
         final byte[] readBases = read.getBasesNoCopy();
 
-        final Pair<Integer, CigarOperator> offsetAndOperatorInRead = ReadUtils.getReadCoordinateForReferenceCoordinate(read, vc.getStart());
+        final Pair<Integer, CigarOperator> offsetAndOperatorInRead = ReadUtils.getReadIndexForReferenceCoordinate(read, vc.getStart());
 
-        if ( offsetAndOperatorInRead.getLeft() == ReadUtils.CLIPPING_GOAL_NOT_REACHED) {
+        if ( offsetAndOperatorInRead.getLeft() == ReadUtils.READ_INDEX_NOT_FOUND) {
             return false;
         } else if (vc.isSNP() && offsetAndOperatorInRead.getRight() == CigarOperator.DELETION) {
             return false;

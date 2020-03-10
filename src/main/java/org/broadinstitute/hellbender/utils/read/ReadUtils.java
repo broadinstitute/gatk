@@ -46,7 +46,7 @@ public final class ReadUtils {
     public static final String BQSR_BASE_INSERTION_QUALITIES = "BI";                // base qualities for insertions
     public static final String BQSR_BASE_DELETION_QUALITIES = "BD";                 // base qualities for deletions
 
-    public static final int CLIPPING_GOAL_NOT_REACHED = -1;
+    public static final int READ_INDEX_NOT_FOUND = -1;
     private static final int DEFAULT_ADAPTOR_SIZE = 100;
 
     public static final String ORIGINAL_BASE_QUALITIES_TAG = SAMTag.OQ.name();
@@ -667,7 +667,7 @@ public final class ReadUtils {
     }
 
     /**
-     * Find the index within a read's bases corresponding to a given position in the reference, along with the cigar operator of
+     * Find the 0-based index within a read base array corresponding to a given 1-based position in the reference, along with the cigar operator of
      * the element containing that base.  If the reference coordinate occurs within a deletion, the first index after the deletion is returned.
      * Note that this treats soft-clipped bases as if they align with the reference, which is useful for hard-clipping reads with soft clips.
      *
@@ -679,9 +679,9 @@ public final class ReadUtils {
      *                              if the reference coordinate falls within a deletion, the first read coordinate after the deletion.  Note: if the last cigar element is
      *                              a deletion (which isn't meaningful), it returns {@code CLIPPING_GOAL_NOT_REACHED}.
      */
-    public static Pair<Integer, CigarOperator> getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord) {
+    public static Pair<Integer, CigarOperator> getReadIndexForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord) {
         if (refCoord < alignmentStart) {
-            return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, null);
+            return new MutablePair<>(READ_INDEX_NOT_FOUND, null);
         }
         int firstReadPosOfElement = 0;              //inclusive
         int firstRefPosOfElement = alignmentStart;  //inclusive
@@ -701,24 +701,24 @@ public final class ReadUtils {
                 return Pair.of(readPosAtRefCoord, operator);
             }
         }
-        return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, null);
+        return new MutablePair<>(READ_INDEX_NOT_FOUND, null);
     }
 
 
     /**
-     * Returns the read coordinate corresponding to the requested reference coordinate -- or the read coordinate immediately preceding
+     * Returns the index within the read's bases array corresponding to the requested reference coordinate -- or the read coordinate immediately preceding
      * a deletion in which the reference coordinate falls -- along with the cigar operator in which the reference coordinate occurs.
      */
-    public static Pair<Integer, CigarOperator> getReadCoordinateForReferenceCoordinate(final GATKRead read, final int refCoord) {
-        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord);
+    public static Pair<Integer, CigarOperator> getReadIndexForReferenceCoordinate(final GATKRead read, final int refCoord) {
+        return getReadIndexForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord);
     }
 
     public static Optional<Byte> getReadBaseAtReferenceCoordinate(final GATKRead read, final int refCoord) {
         if (refCoord < read.getStart() || read.getEnd() < refCoord) {
             return Optional.empty();
         }
-        final Pair<Integer, CigarOperator> offsetAndOperator = getReadCoordinateForReferenceCoordinate(read, refCoord);
-        return (offsetAndOperator.getLeft() != CLIPPING_GOAL_NOT_REACHED && offsetAndOperator.getRight().consumesReadBases()) ?
+        final Pair<Integer, CigarOperator> offsetAndOperator = getReadIndexForReferenceCoordinate(read, refCoord);
+        return (offsetAndOperator.getLeft() != READ_INDEX_NOT_FOUND && offsetAndOperator.getRight().consumesReadBases()) ?
                 Optional.of(read.getBase(offsetAndOperator.getLeft())) : Optional.empty();
     }
 
@@ -726,7 +726,7 @@ public final class ReadUtils {
         if (refCoord < read.getStart() || read.getEnd() < refCoord) {
             return Optional.empty();
         }
-        final Pair<Integer, CigarOperator> offsetAndOperator = getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord);
+        final Pair<Integer, CigarOperator> offsetAndOperator = getReadIndexForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord);
         return (offsetAndOperator.getRight() != null && offsetAndOperator.getRight().consumesReadBases()) ?
                 Optional.of(read.getBaseQuality(offsetAndOperator.getLeft())) : Optional.empty();
     }

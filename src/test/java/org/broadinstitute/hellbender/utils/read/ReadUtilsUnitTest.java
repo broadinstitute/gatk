@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.read;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.*;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -24,7 +23,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -201,8 +199,8 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
                 {"10M", 5, 5, 0, CigarOperator.M},
                 {"10M", 1, 10, 9, CigarOperator.M},
                 {"10M", 1, 5, 4, CigarOperator.M},
-                {"10M", 1, 0, ReadUtils.CLIPPING_GOAL_NOT_REACHED, null},
-                {"10M", 1, 11, ReadUtils.CLIPPING_GOAL_NOT_REACHED, null},
+                {"10M", 1, 0, ReadUtils.READ_INDEX_NOT_FOUND, null},
+                {"10M", 1, 11, ReadUtils.READ_INDEX_NOT_FOUND, null},
 
                 {"5M5D5M", 1, 1, 0, CigarOperator.M},
                 {"5M5D5M", 1, 5, 4, CigarOperator.M},
@@ -210,19 +208,19 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
                 {"5M5D5M", 1, 10, 5, CigarOperator.D},
                 {"5M5D5M", 1, 11, 5, CigarOperator.M},
                 {"5M5D5M", 1, 15, 9, CigarOperator.M},
-                {"5M5D5M", 1, 16, ReadUtils.CLIPPING_GOAL_NOT_REACHED, null},
+                {"5M5D5M", 1, 16, ReadUtils.READ_INDEX_NOT_FOUND, null},
 
                 {"5M5I5M", 1, 1, 0, CigarOperator.M},
                 {"5M5I5M", 1, 5, 4, CigarOperator.M},
                 {"5M5I5M", 1, 6, 10, CigarOperator.M},
                 {"5M5I5M", 1, 10, 14, CigarOperator.M},
-                {"5M5I5M", 1, 11, ReadUtils.CLIPPING_GOAL_NOT_REACHED, null}
+                {"5M5I5M", 1, 11, ReadUtils.READ_INDEX_NOT_FOUND, null}
         };
     }
 
     @Test(dataProvider = "readCoordinateForReferenceCoordinate")
     public void testGetReadCoordinateForReferenceCoordinate(final String cigar, final int start, final int refCoord, final int expected, final CigarOperator op) {
-        final Pair<Integer, CigarOperator> result = ReadUtils.getReadCoordinateForReferenceCoordinate(start, TextCigarCodec.decode(cigar), refCoord);
+        final Pair<Integer, CigarOperator> result = ReadUtils.getReadIndexForReferenceCoordinate(start, TextCigarCodec.decode(cigar), refCoord);
         Assert.assertEquals(result.getLeft().intValue(), expected);
         Assert.assertEquals(result.getRight(), op);
     }
@@ -240,10 +238,10 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
         read.setBaseQualities(Utils.dupBytes((byte)30, readLength));
         read.setCigar("3M100N1D73M");
 
-        Assert.assertEquals(ReadUtils.getReadCoordinateForReferenceCoordinate(read, 102).getLeft().intValue(), 2);
-        Assert.assertEquals(ReadUtils.getReadCoordinateForReferenceCoordinate(read, 103).getLeft().intValue(), 3);  // the first N base
-        Assert.assertEquals(ReadUtils.getReadCoordinateForReferenceCoordinate(read, 202).getLeft().intValue(), 3);  // the last N base
-        Assert.assertEquals(ReadUtils.getReadCoordinateForReferenceCoordinate(read, 203).getLeft().intValue(), 3);  // the first D base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 102).getLeft().intValue(), 2);
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 103).getLeft().intValue(), 3);  // the first N base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 202).getLeft().intValue(), 3);  // the last N base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 203).getLeft().intValue(), 3);  // the first D base
     }
 
     @DataProvider(name = "HasWellDefinedFragmentSizeData")

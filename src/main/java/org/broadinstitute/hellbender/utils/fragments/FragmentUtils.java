@@ -7,8 +7,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.OptionalInt;
 
 public final class FragmentUtils {
@@ -46,10 +44,10 @@ public final class FragmentUtils {
         }
 
         // the offset and cigar operator in the first read at the start of the left read
-        final Pair<Integer, CigarOperator> offsetAndOperator = ReadUtils.getReadCoordinateForReferenceCoordinate(firstRead, secondRead.getStart());
+        final Pair<Integer, CigarOperator> offsetAndOperator = ReadUtils.getReadIndexForReferenceCoordinate(firstRead, secondRead.getStart());
         final CigarOperator operator = offsetAndOperator.getRight();
         final int offset = offsetAndOperator.getLeft();
-        if (offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED) { // no overlap
+        if (offset == ReadUtils.READ_INDEX_NOT_FOUND) { // no overlap
             return;
         }
 
