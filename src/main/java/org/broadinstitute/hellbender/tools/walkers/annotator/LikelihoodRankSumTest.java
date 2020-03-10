@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
@@ -31,7 +32,7 @@ public final class LikelihoodRankSumTest extends RankSumTest {
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.LIKELIHOOD_RANK_SUM_KEY); }
 
     @Override
-    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc, final AlleleLikelihoods<GATKRead, Allele>.BestAllele bestAllele) {
+    protected OptionalDouble getElementForRead(final GATKRead read, final VariantContext vc, final AlleleLikelihoods<GATKRead, Allele>.BestAllele bestAllele) {
         Utils.nonNull(read, "read is null");
         Utils.nonNull(bestAllele, "mostLikelyAllele is null");
         if ( ! bestAllele.isInformative() ) {
@@ -41,7 +42,7 @@ public final class LikelihoodRankSumTest extends RankSumTest {
     }
     
     @Override
-    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
+    protected OptionalDouble getElementForRead(final GATKRead read, final VariantContext vc) {
         // todo its possible this should throw, as This method should never have been called as getElementForRead(read,refloc,mostLikelyAllele) was overriden
         return OptionalDouble.empty();
     }

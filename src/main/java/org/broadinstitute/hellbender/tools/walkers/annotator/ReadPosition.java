@@ -53,7 +53,7 @@ public class ReadPosition extends PerAlleleAnnotation implements StandardMutectA
         if (vc.getStart() < read.getStart() || read.getEnd() < vc.getStart()) {
             return OptionalInt.empty();
         }
-        final OptionalDouble valueAsDouble = ReadPosRankSumTest.getReadPosition(read, vc.getStart());
+        final OptionalDouble valueAsDouble = ReadPosRankSumTest.getReadPosition(read, vc);
         return valueAsDouble.isPresent() ? OptionalInt.of((int) valueAsDouble.getAsDouble()) : OptionalInt.empty();
     }
 }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQualityRankSumTest;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
@@ -74,12 +75,12 @@ public class AS_BaseQualityRankSumTest extends AS_RankSumTest implements AS_Stan
      * Get the element for the given read at the given reference position
      *
      * @param read     the read
-     * @param refLoc   the reference position
+     * @param vc        the variant to be annotated
      * @return a Double representing the element to be used in the rank sum test, or null if it should not be used
      */
     @Override
-    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
-        return BaseQualityRankSumTest.getReadBaseQuality(read, refLoc);
+    protected OptionalDouble getElementForRead(final GATKRead read, final VariantContext vc) {
+        return BaseQualityRankSumTest.getReadBaseQuality(read, vc);
     }
 
 }

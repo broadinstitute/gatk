@@ -28,6 +28,7 @@ public final class ReadPosRankSumTestUnitTest extends GATKBaseTest {
 
     private static final Allele REF = Allele.create("T", true);
     private static final Allele ALT = Allele.create("A", false);
+    private static final Allele ALT_INSERTION = Allele.create("TTTTT", false);
 
     private VariantContext makeVC(final long position) {
         final double[] genotypeLikelihoods1 = {30,0,190};
@@ -77,7 +78,7 @@ public final class ReadPosRankSumTestUnitTest extends GATKBaseTest {
         final String zScoreStr = String.format("%.3f", zScore);
         Assert.assertEquals(annotate.get(key), zScoreStr);
         
-        final long positionEnd = 8L;  //past middle
+        final long positionEnd = 9L;  //past middle
         final VariantContext vcEnd= makeVC(positionEnd);
 
         //Note: past the middle of the read we compute the position from the end.
@@ -116,7 +117,7 @@ public final class ReadPosRankSumTestUnitTest extends GATKBaseTest {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(cigar);
         read.setMappingQuality(mappingQuality);
         read.setPosition(CONTIG, start);
-        Assert.assertEquals(readPosRankSumTest.isUsableRead(read, refLoc), isUsable);
+        Assert.assertEquals(readPosRankSumTest.isUsableRead(read, makeVC(refLoc)), isUsable);
     }
 
     //Basic aligned read
@@ -183,90 +184,29 @@ public final class ReadPosRankSumTestUnitTest extends GATKBaseTest {
         final byte [] bases_lowQualBothEnds = {'A', 'A', 'A', 'A', 'A', 'A', 'G', 'C', 'T', 'G', 'A', 'A', 'A', 'A', 'A', 'A'};
         final byte [] quals_lowQualBothEnds = { 2, 2, 2, 2, 2, 2, 30, 15, 25, 30, 2, 2, 2, 2, 2, 2};
         lowQualBothEnds = ArtificialReadUtils.createArtificialRead(bases_lowQualBothEnds, quals_lowQualBothEnds, "2S12M2S");
-
     }
 
-    @DataProvider(name = "makeGetFinalVariantReadPositionTestReads")
-    public Object[][] makeFinalPosTestReads() {
-        final List<Object[]> tests = new ArrayList<>();
-        tests.add(new Object[] {allMatch, 10, 10});
-        tests.add(new Object[] {allMatch, 140, 10});
-        tests.add(new Object[] {twoIndels, 10, 10});
-        tests.add(new Object[] {twoIndels, 140, 10});
-        tests.add(new Object[] {hardClipStart, 20, 20});
-        tests.add(new Object[] {hardClipStart, 110, 6});  //this is what the code produces as-is
-        tests.add(new Object[] {softClipStart, 10, 10});
-        tests.add(new Object[] {softClipStart, 140, 10});
-        tests.add(new Object[] {lowQualTail, 3, 0});
-        tests.add(new Object[] {lowQualTail, 2, 2});
-        tests.add(new Object[] {lowQualClippedTail, 3, 0});
-        tests.add(new Object[] {lowQualClippedTail, 2, 2});
-        tests.add(new Object[] {lowQualStart, 7, -4});   //this is what the code produces as-is, but should be 1
-        tests.add(new Object[] {lowQualStart, 8, -5}); //this is what the code produces as-is, but should be 1
-        tests.add(new Object[] {lowQualBothEnds, 7, -4});   //this is what the code produces as-is, but should be 1
-        tests.add(new Object[] {lowQualBothEnds, 8, -5});    //this is what the code produces as-is, but should be 1
-        return tests.toArray(new Object[][]{});
+    @Test
+    public void testLeadingInsertion(){
+        final int start = 100;
+        final VariantContext vc = new VariantContextBuilder().alleles(Arrays.asList(REF, ALT_INSERTION)).chr(CONTIG).start(start-1).stop(start-1).make();
+
+        final Cigar cigar = TextCigarCodec.decode("10I10M");
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(cigar);
+
+        read.setPosition("CONTIG", start);
+
+        Assert.assertEquals(ReadPosRankSumTest.getReadPosition(read, vc).getAsDouble(), 0.0);
     }
 
-    @Test(dataProvider = "makeGetFinalVariantReadPositionTestReads")
-    public void testGetFinalVariantReadPosition(GATKRead read, int variantPosition, int expected) throws Exception {
-        Assert.assertEquals(ReadPosRankSumTest.getFinalVariantReadPosition(read, variantPosition), expected);
-    }
+    @Test
+    public void testSNPBetweenTwoDeletions(){
+        final Cigar cigar = TextCigarCodec.decode("10M10D1M10D10M");
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(cigar);
+        final int start = 100;
+        read.setPosition("CONTIG", start);
 
-    @DataProvider(name = "getNumClippedBasesAtStartTestReads")
-    public Object[][] numClipStart() {
-        final List<Object[]> tests = new ArrayList<>();
-        tests.add(new Object[] {allMatch, 0});
-        tests.add(new Object[] {twoIndels, 0});
-        tests.add(new Object[] {softClipStart, 0});
-        tests.add(new Object[] {hardClipStart, 17});
-        tests.add(new Object[] {lowQualTail, 0});
-        tests.add(new Object[] {lowQualClippedTail, 0});
-        tests.add(new Object[] {lowQualStart, 6});
-        tests.add(new Object[] {lowQualBothEnds, 6});
-        return tests.toArray(new Object[][]{});
-    }
-
-    @Test(dataProvider = "getNumClippedBasesAtStartTestReads")
-    public void testGetNumClippedBasesAtStart(GATKRead read, int expected) throws Exception {
-        Assert.assertEquals(ReadPosRankSumTest.getNumClippedBasesAtStart(read),expected);
-    }
-
-    @DataProvider(name = "getNumAlignedBasesTestReads")
-    public Object[][] numAligned() {
-        final List<Object[]> tests = new ArrayList<>();
-        tests.add(new Object[] {allMatch, 151});
-        tests.add(new Object[] {twoIndels, 151});
-        tests.add(new Object[] {softClipStart, 151});
-        tests.add(new Object[] {hardClipStart, 117});  //This is what the code produces, but it's wrong
-        tests.add(new Object[] {lowQualTail, 4});
-        tests.add(new Object[] {lowQualClippedTail, 4});
-        tests.add(new Object[] {lowQualStart, 4});
-        tests.add(new Object[] {lowQualBothEnds, 4});
-        return tests.toArray(new Object[][]{});
-    }
-
-    @Test(dataProvider = "getNumAlignedBasesTestReads")
-    public void testGetNumAlignedBases(GATKRead read, int expected) throws Exception {
-        Assert.assertEquals(ReadPosRankSumTest.getNumAlignedBases(read),expected);
-    }
-
-    @DataProvider(name = "getNumClippedBasesAtEndTestReads")
-    public Object[][] numClipEnd() {
-        final List<Object[]> tests = new ArrayList<>();
-        tests.add(new Object[] {allMatch, 0});
-        tests.add(new Object[] {twoIndels, 0});
-        tests.add(new Object[] {softClipStart, 0});
-        tests.add(new Object[] {hardClipStart, 0});
-        tests.add(new Object[] {lowQualTail, 6});
-        tests.add(new Object[] {lowQualClippedTail, 6});
-        tests.add(new Object[] {lowQualStart, 0});
-        tests.add(new Object[] {lowQualBothEnds, 6});
-        return tests.toArray(new Object[][]{});
-    }
-
-    @Test(dataProvider = "getNumClippedBasesAtEndTestReads")
-    public void testGetNumClippedBasesAtEnd(GATKRead read, int expected) throws Exception {
-        Assert.assertEquals(ReadPosRankSumTest.getNumClippedBasesAtEnd(read), expected);
+        Assert.assertEquals(ReadPosRankSumTest.getReadPosition(read, makeVC(start + 20)).getAsDouble(), 10.0);
+        Assert.assertEquals(ReadPosRankSumTest.getReadPosition(read, makeVC(start + 19)).getAsDouble(), 10.0);
     }
 }

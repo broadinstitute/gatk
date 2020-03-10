@@ -55,6 +55,8 @@ public final class BaseQualityRankSumTestUnitTest {
         final int[] refBaseQuals = {50, 60};
         final List<GATKRead> refReads = Arrays.stream(refBaseQuals).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
         final List<GATKRead> altReads = Arrays.stream(altBaseQuals).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
+        refReads.forEach(read -> read.setPosition("1", 10));
+        altReads.forEach(read -> read.setPosition("1", 10));
         final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods(SAMPLE_1, refReads, altReads, -100.0, -100.0, REF, ALT);
 

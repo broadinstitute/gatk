@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
-import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -78,7 +77,7 @@ public final class OrientationBiasReadCounts extends GenotypeAnnotation implemen
                 .collect(Collectors.toMap(a -> a, a -> new MutableInt(0)));
 
         Utils.stream(likelihoods.bestAllelesBreakingTies(g.getSampleName()))
-                .filter(ba -> ba.isInformative() && isUsableRead(ba.evidence) && getReadBaseQuality(ba.evidence, vc.getStart()).orElse(0) >= MINIMUM_BASE_QUALITY)
+                .filter(ba -> ba.isInformative() && isUsableRead(ba.evidence) && BaseQualityRankSumTest.getReadBaseQuality(ba.evidence, vc).orElse(0) >= MINIMUM_BASE_QUALITY)
                 .forEach(ba -> (ReadUtils.isF2R1(ba.evidence) ? f2r1Counts : f1r2Counts).get(ba.allele).increment());
 
         final int[] f1r2 = vc.getAlleles().stream().mapToInt(a -> f1r2Counts.get(a).intValue()).toArray();
@@ -170,9 +169,4 @@ public final class OrientationBiasReadCounts extends GenotypeAnnotation implemen
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     }
 
-    private static OptionalDouble getReadBaseQuality(final GATKRead read, final int refLoc) {
-        Utils.nonNull(read);
-        final int readCoord = ReadUtils.getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refLoc, ClippingTail.RIGHT_TAIL, true);
-        return readCoord < 0 || readCoord >= read.getLength() ? OptionalDouble.empty() : OptionalDouble.of(read.getBaseQuality(readCoord));
-    }
 }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
@@ -68,7 +69,7 @@ public class AS_MappingQualityRankSumTest extends AS_RankSumTest implements AS_S
     }
 
     @Override
-    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
+    protected OptionalDouble getElementForRead(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
         return OptionalDouble.of(read.getMappingQuality());
     }

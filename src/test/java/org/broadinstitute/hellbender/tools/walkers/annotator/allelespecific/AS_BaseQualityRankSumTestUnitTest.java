@@ -68,6 +68,9 @@ public class AS_BaseQualityRankSumTestUnitTest extends ReducibleAnnotationBaseTe
         final List<GATKRead> refReads = Arrays.stream(refBaseQuals).mapToObj(i -> BaseQualityRankSumTestUnitTest.makeRead(i)).collect(Collectors.toList());
         final List<GATKRead> alt1Reads = Arrays.stream(alt1BaseQuals).mapToObj(i -> BaseQualityRankSumTestUnitTest.makeRead(i)).collect(Collectors.toList());
         final List<GATKRead> alt2Reads = Arrays.stream(alt2BaseQuals).mapToObj(i -> BaseQualityRankSumTestUnitTest.makeRead(i)).collect(Collectors.toList());
+        refReads.forEach(read -> read.setPosition("1", 10));
+        alt1Reads.forEach(read -> read.setPosition("1", 10));
+        alt2Reads.forEach(read -> read.setPosition("1", 10));
         final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeTriAllelicLikelihoods(SAMPLE_1, refReads, alt1Reads, alt2Reads, new ArrayList<GATKRead>(), -100.0, -100.0, -100,0, REF, ALT1, ALT2);
 
