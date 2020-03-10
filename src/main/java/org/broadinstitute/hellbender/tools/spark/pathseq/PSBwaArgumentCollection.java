@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.engine.GATKInputPath;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 
 import java.io.Serializable;
 
@@ -27,7 +27,7 @@ public final class PSBwaArgumentCollection implements Serializable {
     @Argument(doc = "Reference corresponding to the microbe reference image file",
             fullName = MICROBE_FASTA_LONG_NAME,
             shortName = MICROBE_FASTA_SHORT_NAME)
-    public GATKInputPath referencePath;
+    public GATKPathSpecifier referencePath;
 
     /**
      * This parameter controls the sensitivity of the BWA-MEM aligner. Smaller values result in more alignments at the
