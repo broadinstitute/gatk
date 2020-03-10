@@ -90,7 +90,7 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
                         maxCallableImpreciseVariantDeletionSize,
                         localLogger);
 
-        VariantContextTestUtils.assertEqualVariants(impreciseVariants, expectedVariants);
+        VariantContextTestUtils.DEPRECATED_assertEqualVariants_DEPRECATED(impreciseVariants, expectedVariants);
     }
 
 }

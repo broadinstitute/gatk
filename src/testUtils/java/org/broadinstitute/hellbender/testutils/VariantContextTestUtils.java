@@ -2,16 +2,14 @@ package org.broadinstitute.hellbender.testutils;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.collections.IteratorUtils;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
@@ -28,13 +26,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 
-// This should be:
-//import org.apache.logging.log4j.LogManager;
-//import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -44,6 +35,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static org.broadinstitute.hellbender.utils.variant.VariantContextGetters.attributeToList;
+
 
 public final class VariantContextTestUtils {
     private VariantContextTestUtils() {}
@@ -106,6 +98,25 @@ public final class VariantContextTestUtils {
         }
     }
 
+    private static boolean checkAttributeEquals(final String key, final Object actual, final Object expected) {
+        boolean passed = true;
+
+        final Object notationCorrectedActual = normalizeScientificNotation(actual);
+        final Object notationCorrectedExpected = normalizeScientificNotation(expected);
+        if (notationCorrectedExpected instanceof Double && notationCorrectedActual instanceof Double) {
+            // must be very tolerant because doubles are being rounded to 2 sig figs
+            passed = BaseTest.equalsDoubleSmart((Double) notationCorrectedActual, (Double) notationCorrectedExpected, 1e-2, "Attribute " + key) && passed;
+        } else if (actual instanceof Integer || expected instanceof Integer) {
+            Object actualNormalized = normalizeToInteger(actual);
+            Object expectedNormalized = normalizeToInteger(expected);
+            passed = checkFieldEquals(actualNormalized, expectedNormalized) && passed;
+        } else {
+            passed = checkFieldEquals(notationCorrectedActual, notationCorrectedExpected) && passed;
+        }
+
+        return passed;
+    }
+
     /**
      * Attempt to convert a String containing a signed integer (no separators) to an integer. If the attribute is not
      * a String, or does not contain an integer, the original object is returned.
@@ -146,7 +157,7 @@ public final class VariantContextTestUtils {
                     return Arrays.stream(split).map(
                             s -> {return Arrays.stream(s.split(",",-1))
                                     .map(d -> {if (d.equals("")) return d;
-                                    else return Double.toString(Double.parseDouble(d));})
+                                               else return Double.toString(Double.parseDouble(d));})
                                     .collect(Collectors.joining(","));})
                             .collect(Collectors.joining("|"));
                 } else {
@@ -297,37 +308,25 @@ public final class VariantContextTestUtils {
     }
 
     public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected) {
-        assertGenotypesAreEqual(actual, expected, Collections.emptyList());
+        assertGenotypesAreEqual(actual, expected, Collections.emptySet(), Collections.emptyList());
     }
 
     public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected, final List<String> extendedAttributesToIgnore) {
-        Assert.assertEquals(actual.getSampleName(), expected.getSampleName(), "Genotype names");
-        Assert.assertTrue(CollectionUtils.isEqualCollection(actual.getAlleles(), expected.getAlleles()), "Genotype alleles");
-        Assert.assertEquals(actual.getGenotypeString(false), expected.getGenotypeString(false), "Genotype string");
-        Assert.assertEquals(actual.getType(), expected.getType(), "Genotype type");
+        assertGenotypesAreEqual(actual, expected, Collections.emptySet(), extendedAttributesToIgnore);
+    }
 
-        // filters are the same
-        Assert.assertEquals(actual.getFilters(), expected.getFilters(), "Genotype fields");
-        Assert.assertEquals(actual.isFiltered(), expected.isFiltered(), "Genotype isFiltered");
+    public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected, final Set<GenotypeAttributeEnum> attributesToIgnore,
+                                               final List<String> extendedAttributesToIgnore){
+        GenotypeComparisonResults results = new GenotypeComparison.Builder(actual, expected)
+                .addExtendedAttributesToIgnore(extendedAttributesToIgnore)
+                .addAttributesToIgnore(attributesToIgnore)
+                .build()
+                .getResults();
 
-        // inline attributes
-        Assert.assertEquals(actual.hasDP(), expected.hasDP(), "Genotype hasDP");
-        Assert.assertEquals(actual.getDP(), expected.getDP(), "Genotype dp");
-        Assert.assertEquals(actual.hasAD(), expected.hasAD(), "Genotype hasAD");
-        Assert.assertEquals(actual.getAD(), expected.getAD(), "Genotype AD");
-        Assert.assertEquals(actual.hasGQ(), expected.hasGQ(), "Genotype hasGQ");
-        Assert.assertEquals(actual.getGQ(), expected.getGQ(), "Genotype gq");
-        Assert.assertEquals(actual.hasPL(), expected.hasPL(), "Genotype hasPL: " + actual.toString());
-        Assert.assertEquals(actual.getPL(), expected.getPL(), "Genotype PL");
-
-        Assert.assertEquals(actual.hasLikelihoods(), expected.hasLikelihoods(), "Genotype haslikelihoods");
-        Assert.assertEquals(actual.getLikelihoodsString(), expected.getLikelihoodsString(), "Genotype getlikelihoodsString");
-        Assert.assertEquals(actual.getLikelihoods(), expected.getLikelihoods(), "Genotype getLikelihoods");
-
-        Assert.assertEquals(actual.getGQ(), expected.getGQ(), "Genotype phredScaledQual");
-        assertAttributesEquals(filterIgnoredAttributes(actual.getExtendedAttributes(), extendedAttributesToIgnore), filterIgnoredAttributes(expected.getExtendedAttributes(), extendedAttributesToIgnore));
-        Assert.assertEquals(actual.isPhased(), expected.isPhased(), "Genotype isPhased");
-        Assert.assertEquals(actual.getPloidy(), expected.getPloidy(), "Genotype getPloidy");
+        if(!results.isMatch()){
+            logger.error(results.getResultStringConcise());
+            throw new AssertionError("Genotype comparison failed");
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -377,6 +376,78 @@ public final class VariantContextTestUtils {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    static List<String> checkAttributesEquals(final Map<String, Object> actual, final Map<String, Object> expected, final boolean ignoreActualExtraAttributes) {
+        final Set<String> expectedKeys = new LinkedHashSet<>(expected.keySet());
+        final List<String> errorKeys = new LinkedList<>();
+
+        for ( final Map.Entry<String, Object> act : actual.entrySet() ) {
+            final Object actualValue = act.getValue();
+            if ( expected.containsKey(act.getKey()) && expected.get(act.getKey()) != null ) {
+                final Object expectedValue = expected.get(act.getKey());
+                if (expectedValue instanceof List && actualValue instanceof List) {
+                    // both values are lists, compare element b element
+                    List<Object> expectedList = (List<Object>) expectedValue;
+                    List<Object> actualList = (List<Object>) actualValue;
+                    if(actualList.size() != expectedList.size()){
+                        errorKeys.add(act.getKey());
+                    }
+                    else{
+                        for (int i = 0; i < expectedList.size(); i++) {
+                            if(!checkAttributeEquals(act.getKey(), actualList.get(i), expectedList.get(i))){
+                                errorKeys.add(act.getKey());
+                                break;
+                            }
+                        }
+                    }
+                } else if (expectedValue instanceof List) {
+                    // expected is a List but actual is not; normalize to String and compare
+                    if(!(actualValue instanceof String)) {
+                        errorKeys.add(act.getKey());
+                    }
+                    else{
+                        final String expectedString = ((List<Object>) expectedValue).stream().map(v -> v.toString()).collect(Collectors.joining(","));
+                        if(!checkAttributeEquals(act.getKey(), actualValue, expectedString)) {
+                            errorKeys.add(act.getKey());
+                        }
+                    }
+                }
+                else if (actualValue instanceof List) {
+                    // actual is a List but expected is not; normalize to String and compare
+                    if(!(expectedValue instanceof String)) {
+                        errorKeys.add(act.getKey());
+                    }
+                    else{
+                        final String actualString = ((List<Object>) actualValue).stream().map(v -> v.toString()).collect(Collectors.joining(","));
+                        if(!checkAttributeEquals(act.getKey(), actualString, expectedValue)) {
+                            errorKeys.add(act.getKey());
+                        }
+                    }
+                } else {
+                    if(!checkAttributeEquals(act.getKey(), actualValue, expectedValue)){
+                        errorKeys.add(act.getKey());
+                    }
+                }
+            }
+            //Don't add keys that are in actual but not expected to error keys if specified
+            else if(!ignoreActualExtraAttributes){
+                errorKeys.add(act.getKey());
+            }
+            expectedKeys.remove(act.getKey());
+        }
+
+        // now expectedKeys contains only the keys found in expected but not in actual,
+        // and they must all be null
+        for ( final String missingExpected : expectedKeys ) {
+            final Object value = expected.get(missingExpected);
+            if(!isMissing(value)){
+                errorKeys.add(missingExpected);
+            }
+        }
+
+        return errorKeys;
+    }
+
     private static boolean isMissing(final Object value) {
         if ( value == null ) { return true; }
         else if ( value.equals(VCFConstants.MISSING_VALUE_v4) ) { return true; }
@@ -398,7 +469,7 @@ public final class VariantContextTestUtils {
      * context that correspond to the same variants in the same order.
      * Compares VariantContext by comparing toStringDecodeGenotypes
      */
-    public static void assertEqualVariants(final List<VariantContext> v1, final List<VariantContext> v2) {
+    public static void DEPRECATED_assertEqualVariants_DEPRECATED(final List<VariantContext> v1, final List<VariantContext> v2) {
         Utils.nonNull(v1, "v1");
         Utils.nonNull(v2, "v2");
         if (v1.size() != v2.size()){
@@ -409,7 +480,7 @@ public final class VariantContextTestUtils {
         int numFailed = 0;
 
         for (int i = 0; i < v1.size(); i++) {
-            if (! v1.get(i).toStringDecodeGenotypes().equals(v2.get(i).toStringDecodeGenotypes())){
+            if (! getNoSourceRepresentativeString(v1.get(i)).equals(getNoSourceRepresentativeString(v2.get(i)))) {
                 logger.error("Variant Comparison Error: different element (compared by toStringDecodeGenotypes) " + i + ":\n" + v1.get(i) + "\n" + v2.get(i));
                 passed = false;
                 ++numFailed;
@@ -420,33 +491,50 @@ public final class VariantContextTestUtils {
         }
     }
 
-    /**
-     * VariantContext comparison function for testing
-     * @param actual    vc derived from running test command
-     * @param expected  vc we're hoping to get
-     * @param attributesToIgnore    attributes (INFO or FORMAT) that may or may not exist in actual or expected
-     * @param attributesWithJitter  attributes (INFO or FORMAT) that should existing in actual and expected, but may not match in value
-     */
-    public static void assertVariantContextsAreEqual(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore, List<String> attributesWithJitter) {
-        Assert.assertNotNull(actual, "VariantContext expected not null");
-        Assert.assertEquals(actual.getContig(), expected.getContig(), "chr");
-        Assert.assertEquals(actual.getStart(), expected.getStart(), "start");
-        Assert.assertEquals(actual.getEnd(), expected.getEnd(), "end");
-        Assert.assertEquals(actual.getID(), expected.getID(), "id");
-        Assert.assertEquals(actual.getAlleles(), expected.getAlleles(), "alleles for " + expected + " vs " + actual);
-        Assert.assertTrue(checkIgnoredAttributesExist(expected.getAttributes(), actual.getAttributes(), attributesWithJitter));
-        final List<String> attributesToFilter = new ArrayList<>(attributesToIgnore);
-        attributesToFilter.addAll(attributesWithJitter);
-        assertAttributesEquals(filterIgnoredAttributes(actual.getAttributes(), attributesToFilter),
-                               filterIgnoredAttributes(expected.getAttributes(), attributesToFilter));
+    private static String getNoSourceRepresentativeString( final VariantContext vc ) {
+        return String.format("[VC @ %s Q%s of type=%s alleles=%s attr=%s GT=%s filters=%s",
+                vc.getContig() + ":" + (vc.getStart() - vc.getEnd() == 0 ? vc.getStart() : vc.getStart() + "-" + vc.getEnd()),
+                vc.hasLog10PError() ? String.format("%.2f", vc.getPhredScaledQual()) : ".",
+                vc.getType(),
+                ParsingUtils.sortList(vc.getAlleles()),
+                ParsingUtils.sortedString(vc.getAttributes()),
+                vc.getGenotypes(),
+                String.join(",", vc.getCommonInfo().getFilters()));
+    }
 
-        Assert.assertEquals(actual.filtersWereApplied(), expected.filtersWereApplied(), "filtersWereApplied");
-        Assert.assertEquals(actual.isFiltered(), expected.isFiltered(), "isFiltered");
-        Assert.assertEquals(actual.getFilters(), expected.getFilters(), "filters");
-        BaseTest.assertEqualsDoubleSmart(actual.getPhredScaledQual(), expected.getPhredScaledQual());
+    public static void assertVariantContextsAreEqual(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore, final List<String> attributesWithJitter){
+        VariantContextComparisonResults results = new VariantContextComparison.Builder(actual, expected)
+                .useDefaultConfiguration()
+                .addVariantContextExtendedAttributesToIgnore(attributesToIgnore)
+                .addVariantContextExtendedAttributesWithJitter(attributesWithJitter)
+                .addGenotypeExtendedAttributesToIgnore(attributesToIgnore)
+                .build()
+                .getResults();
 
-        //right now no FORMAT attributes have jitter
-        assertVariantContextsHaveSameGenotypes(actual, expected, attributesToIgnore);
+        if(!results.isMatch()){
+            logger.error(results.getResultStringVerbose());
+            throw new AssertionError("Variant comparison failed");
+        }
+    }
+
+    public static void assertVariantContextsAreEqual(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore) {
+        assertVariantContextsAreEqual(actual, expected, attributesToIgnore, Collections.<String>emptyList());
+    }
+
+
+
+    public static boolean checkFieldEquals(final Object actual, final Object expected){
+        if ( (actual == null) && (expected == null) ) {
+            return true;
+        }
+        if(actual == null || expected == null){
+            return false;
+        }
+        //Can't use equals for arrays because that will just compare memory addresses
+        if(actual instanceof int[] && expected instanceof int[]){
+            return Arrays.equals((int[])actual, (int[])expected);
+        }
+        return expected.equals(actual);
     }
 
     @VisibleForTesting
@@ -460,8 +548,18 @@ public final class VariantContextTestUtils {
                 .collect(Collectors.toList()).isEmpty();
     }
 
+    public static List<String> checkAttributesExist(final Map<String,Object> expectedAttributes,
+                                                    final Map<String,Object> actualAttributes,
+                                                    final List<String> attributesToCheck){
+        List<String> expectedIgnoredAttributes = attributesToCheck.stream()
+                .filter(p -> expectedAttributes.keySet().contains(p) && p != null)
+                .collect(Collectors.toList());
+        return expectedIgnoredAttributes.stream().filter(p -> p != null && !actualAttributes.keySet().contains(p))
+                .collect(Collectors.toList());
+    }
 
-    private static Map<String, Object> filterIgnoredAttributes(final Map<String,Object> attributes, final List<String> attributesToIgnore) {
+
+    static Map<String, Object> filterIgnoredAttributes(final Map<String,Object> attributes, final List<String> attributesToIgnore) {
         return attributes.entrySet().stream()
                 .filter(p -> !attributesToIgnore.contains(p.getKey()) && p.getValue() != null)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));

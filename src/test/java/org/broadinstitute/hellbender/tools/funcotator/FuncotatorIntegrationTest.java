@@ -1707,7 +1707,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         // Check that they're equal:
         Assert.assertEquals(actualFuncotationHeaderLine, expectedFuncotationHeaderLine);
-        VariantContextTestUtils.assertEqualVariants(actualVariantContexts, expectedVariantContexts);
+        VariantContextTestUtils.DEPRECATED_assertEqualVariants_DEPRECATED(actualVariantContexts, expectedVariantContexts);
     }
 
     @Test

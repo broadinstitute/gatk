@@ -5,11 +5,12 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
+import org.broadinstitute.hellbender.testutils.PileupIntegrationTestUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
+import java.nio.file.Paths;
 
 /**
  * Integration tests for {@link PileupSpark}.
@@ -23,16 +24,9 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         return new Object[][] { { false }, { true } };
     }
 
-    private File createTempFile() throws IOException {
-        final File out = File.createTempFile("out", ".txt");
-        out.delete();
-        out.deleteOnExit();
-        return out;
-    }
-
     @Test(dataProvider = "shuffle")
     public void testSimplePileup(boolean useShuffle) throws Exception {
-        final File out = createTempFile();
+        final File out = PileupIntegrationTestUtils.createTempFile();
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addRaw("--input");
         args.addRaw(NA12878_20_21_WGS_bam);
@@ -52,7 +46,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "shuffle")
     public void testVerbosePileup(boolean useShuffle) throws Exception {
-        final File out = createTempFile();
+        final File out = PileupIntegrationTestUtils.createTempFile();
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addRaw("--input");
         args.addRaw(NA12878_20_21_WGS_bam);
@@ -73,7 +67,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "shuffle")
     public void testFeaturesPileup(boolean useShuffle) throws Exception {
-        final File out = createTempFile();
+        final File out = PileupIntegrationTestUtils.createTempFile();
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addRaw("--input");
         args.addRaw(NA12878_20_21_WGS_bam);
@@ -88,13 +82,14 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
             args.addRaw("--num-reducers").addRaw("1");
         }
         this.runCommandLine(args.getArgsArray());
-        File expected = new File(TEST_DATA_DIR, "expectedFeaturesPileup.txt");
+        File expected = PileupIntegrationTestUtils.createFeaturesPileupTestFile(Paths.get(dbsnp_138_b37_20_21_vcf).toAbsolutePath().toString(),
+                TEST_DATA_DIR + "/expectedFeaturesPileupTemplate.txt");
         IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
     }
 
     @Test(dataProvider = "shuffle")
     public void testInsertLengthPileup(boolean useShuffle) throws Exception {
-        final File out = createTempFile();
+        final File out = PileupIntegrationTestUtils.createTempFile();
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addRaw("--input");
         args.addRaw(NA12878_20_21_WGS_bam);
@@ -127,7 +122,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
             cluster.getFileSystem().copyFromLocalFile(new Path(dbsnp_138_b37_20_21_vcf), vcfPath);
             cluster.getFileSystem().copyFromLocalFile(new Path(dbsnp_138_b37_20_21_vcf + ".idx"), idxPath);
 
-            final File out = createTempFile();
+            final File out = PileupIntegrationTestUtils.createTempFile();
             final ArgumentsBuilder args = new ArgumentsBuilder();
             args.addRaw("--input");
             args.addRaw(NA12878_20_21_WGS_bam);
@@ -142,7 +137,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
                 args.addRaw("--num-reducers").addRaw("1");
             }
             this.runCommandLine(args.getArgsArray());
-            File expected = new File(TEST_DATA_DIR, "expectedFeaturesPileup.txt");
+            File expected = PileupIntegrationTestUtils.createFeaturesPileupTestFile(vcfPath.toString(), TEST_DATA_DIR + "/expectedFeaturesPileupTemplate.txt");
             IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
 
         });

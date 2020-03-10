@@ -190,7 +190,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         JavaRDD<VariantContext> variants2 = variantsSparkSource.getParallelVariantContexts(outputPath, null);
         final List<VariantContext> writtenVariants = variants2.collect();
 
-        VariantContextTestUtils.assertEqualVariants(readVariants(vcf), writtenVariants);
+        VariantContextTestUtils.DEPRECATED_assertEqualVariants_DEPRECATED(readVariants(vcf), writtenVariants);
     }
 
     private VCFHeader getHeader(String vcf) throws IOException {
