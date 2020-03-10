@@ -44,6 +44,15 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
     private static final Logger logger = LogManager.getLogger(GencodeGtfFeature.class);
 
+    // ===========================================================================
+
+
+    public static final String ANNOTATION_SOURCE_ENSEMBL = "ENSEMBL";
+    public static final String ANNOTATION_SOURCE_HAVANA = "HAVANA";
+    public static String ANNOTATION_SOURCE_ENA = "ena";
+
+    // ===========================================================================
+
     // Metadata fields:
 
     private static final String FIELD_DELIMITER                 = "\t";
@@ -100,7 +109,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         baseData.gtfSourceFileType       = gtfFileType;
 
-        baseData.annotationSource        = AnnotationSource.valueOf( gtfFields[ANNOTATION_SOURCE_INDEX] );
+        baseData.annotationSource        = gtfFields[ANNOTATION_SOURCE_INDEX];
         baseData.featureType             = GencodeGtfFeature.FeatureType.getEnum( gtfFields[FEATURE_TYPE_INDEX].toLowerCase() );
         baseData.genomicStrand           = convertStringToStrand( gtfFields[GENOMIC_STRAND_INDEX] );
         baseData.genomicPhase            = GenomicPhase.getEnum( gtfFields[GENOMIC_PHASE_INDEX] );
@@ -479,7 +488,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         return baseData.genomicPosition.getContig();
     }
 
-    public AnnotationSource getAnnotationSource() {
+    public String getAnnotationSource() {
         return baseData.annotationSource;
     }
 

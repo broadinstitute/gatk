@@ -28,10 +28,10 @@ public class AbstractGtfCodecUnitTest extends GATKBaseTest {
         final EnsemblGtfCodec ensemblGtfCodec = new EnsemblGtfCodec();
 
         return new Object[][] {
-                {gencodeGtfCodec, prependCommentToArrayElements(new String[] {"LINE_1", "LINE_2", "LINE_3", "LINE_4", "LINE_5"}, gencodeGtfCodec.getLineComment()), 0, "LINE_1", true},
-                {gencodeGtfCodec, prependCommentToArrayElements(new String[] {"LINE_1", "LINE_2", "LINE_3", "LINE_4", "LINE_5"}, gencodeGtfCodec.getLineComment()), 0, "LINE_2", false},
-                {ensemblGtfCodec, prependCommentToArrayElements(new String[] {"LINE_1", "LINE_2", "LINE_3", "LINE_4", "LINE_5"}, ensemblGtfCodec.getLineComment()), 0, "LINE_1", true},
-                {ensemblGtfCodec, prependCommentToArrayElements(new String[] {"LINE_1", "LINE_2", "LINE_3", "LINE_4", "LINE_5"}, ensemblGtfCodec.getLineComment()), 0, "LINE_2", false},
+                {gencodeGtfCodec, prependCommentToArrayElements(new String[] {"LINE_1", "LINE_2", "LINE_3", "LINE_4", "LINE_5"}, gencodeGtfCodec.getDefaultLineComment()), 0, "LINE_1", true},
+                {gencodeGtfCodec, prependCommentToArrayElements(new String[] {"LINE_1", "LINE_2", "LINE_3", "LINE_4", "LINE_5"}, gencodeGtfCodec.getDefaultLineComment()), 0, "LINE_2", false},
+                {ensemblGtfCodec, prependCommentToArrayElements(new String[] {"LINE_1", "LINE_2", "LINE_3", "LINE_4", "LINE_5"}, ensemblGtfCodec.getDefaultLineComment()), 0, "LINE_1", true},
+                {ensemblGtfCodec, prependCommentToArrayElements(new String[] {"LINE_1", "LINE_2", "LINE_3", "LINE_4", "LINE_5"}, ensemblGtfCodec.getDefaultLineComment()), 0, "LINE_2", false},
         };
     }
 
@@ -47,8 +47,8 @@ public class AbstractGtfCodecUnitTest extends GATKBaseTest {
         final EnsemblGtfCodec ensemblGtfCodec = new EnsemblGtfCodec();
 
         return new Object[][] {
-                {gencodeGtfCodec, prependCommentToArrayElements(new String[] {"LINE_1", "LINE_2", "LINE_3", "LINE_4", "LINE_5"}, gencodeGtfCodec.getLineComment()), 0, "LINE_2"},
-                {ensemblGtfCodec, prependCommentToArrayElements(new String[] {"LINE_1", "LINE_2", "LINE_3", "LINE_4", "LINE_5"}, ensemblGtfCodec.getLineComment()), 0, "LINE_2"},
+                {gencodeGtfCodec, prependCommentToArrayElements(new String[] {"LINE_1", "LINE_2", "LINE_3", "LINE_4", "LINE_5"}, gencodeGtfCodec.getDefaultLineComment()), 0, "LINE_2"},
+                {ensemblGtfCodec, prependCommentToArrayElements(new String[] {"LINE_1", "LINE_2", "LINE_3", "LINE_4", "LINE_5"}, ensemblGtfCodec.getDefaultLineComment()), 0, "LINE_2"},
         };
     }
 

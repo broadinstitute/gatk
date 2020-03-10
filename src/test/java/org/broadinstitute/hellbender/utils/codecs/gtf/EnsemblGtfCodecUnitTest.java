@@ -37,7 +37,7 @@ public class EnsemblGtfCodecUnitTest extends GATKBaseTest {
 
         GencodeGtfFeatureBaseData data;
 
-        data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.AnnotationSource.ena, GencodeGtfFeature.FeatureType.GENE,
+        data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.ANNOTATION_SOURCE_ENA, GencodeGtfFeature.FeatureType.GENE,
                 geneStart, geneEnd, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, geneId, null, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, geneName, null, null, null, -1, null, null,
                 null,
@@ -45,7 +45,7 @@ public class EnsemblGtfCodecUnitTest extends GATKBaseTest {
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(data);
         gene.setUcscGenomeVersion(ECOLI_UCSC_GENOME_VERSION);
 
-        data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.AnnotationSource.ena, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.ANNOTATION_SOURCE_ENA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 geneStart, geneEnd, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, geneId, transcriptId, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, geneName, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, transcriptName, -1, null, null,
                 null,
@@ -54,7 +54,7 @@ public class EnsemblGtfCodecUnitTest extends GATKBaseTest {
         final GencodeGtfTranscriptFeature transcript = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
         transcript.setUcscGenomeVersion(ECOLI_UCSC_GENOME_VERSION);
 
-        data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.AnnotationSource.ena, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.ANNOTATION_SOURCE_ENA, GencodeGtfFeature.FeatureType.EXON,
                 geneStart, geneEnd, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, geneId, transcriptId, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, geneName, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, transcriptName, 1, exonId, null,
                 null,
@@ -63,7 +63,7 @@ public class EnsemblGtfCodecUnitTest extends GATKBaseTest {
         final GencodeGtfExonFeature exon = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
         exon.setUcscGenomeVersion(ECOLI_UCSC_GENOME_VERSION);
 
-        data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.AnnotationSource.ena, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.ANNOTATION_SOURCE_ENA, GencodeGtfFeature.FeatureType.CDS,
                 cdsStart, cdsEnd, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, geneId, transcriptId, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, geneName, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, transcriptName, 1, null, null,
                 Collections.singletonList(new GencodeGtfFeature.OptionalField<>("protein_id", transcriptId)),
@@ -72,7 +72,7 @@ public class EnsemblGtfCodecUnitTest extends GATKBaseTest {
         final GencodeGtfCDSFeature cds = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
         cds.setUcscGenomeVersion(ECOLI_UCSC_GENOME_VERSION);
 
-        data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.AnnotationSource.ena, GencodeGtfFeature.FeatureType.START_CODON,
+        data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.ANNOTATION_SOURCE_ENA, GencodeGtfFeature.FeatureType.START_CODON,
                 cdsStart, cdsStart+2, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, geneId, transcriptId, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, geneName, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, transcriptName, 1, null, null,
                 null,
@@ -81,7 +81,7 @@ public class EnsemblGtfCodecUnitTest extends GATKBaseTest {
         final GencodeGtfStartCodonFeature startCodon = (GencodeGtfStartCodonFeature) GencodeGtfFeature.create(data);
         startCodon.setUcscGenomeVersion(ECOLI_UCSC_GENOME_VERSION);
 
-        data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum, ECOLI_CONTIG_NAME, GencodeGtfFeature.AnnotationSource.ena, GencodeGtfFeature.FeatureType.STOP_CODON,
+        data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum, ECOLI_CONTIG_NAME, GencodeGtfFeature.ANNOTATION_SOURCE_ENA, GencodeGtfFeature.FeatureType.STOP_CODON,
                 cdsEnd+1, cdsEnd+3, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, geneId, transcriptId, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, geneName, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, transcriptName, 1, null, null,
                 null,
@@ -158,63 +158,13 @@ public class EnsemblGtfCodecUnitTest extends GATKBaseTest {
     public Object[][] headerProvider() {
         return new Object[][] {
 
-                { new ArrayList<String>(), false },                             // Wrong length header
+                { new ArrayList<String>(), true },                        // No header is a valid Ensembl option.
                 { Arrays.asList( "",
                         "",
                         "",
                         "",
                         ""  ),
-                        false },                                // Bad content
-                { Arrays.asList( "##descr",
-                        "##provider: GENCODE",
-                        "##contact: gencode-help@sanger.ac.uk",
-                        "##format: gtf",
-                        "##date: 2017-04-08" ),
-                        false },                                // Bad header - description
-                { Arrays.asList( "##description: THIS IS A SAMPLE",
-                        "##provider: GARBAGEDAY",
-                        "##contact: gencode-help@sanger.ac.uk",
-                        "##format: gtf",
-                        "##date: 2017-04-08" ),
-                        false },                                // Bad header - provider
-                { Arrays.asList( "##description: THIS IS A SAMPLE",
-                        "##provider: GENCODE",
-                        "##contact: gencode@NORTHPOLE.pl",
-                        "##format: gtf",
-                        "##date: 2017-04-08" ),
-                        false },                                // Bad header - contact
-                { Arrays.asList( "##description: THIS IS A SAMPLE",
-                        "##provider: GENCODE",
-                        "##contact: SANTACLAUSE@sanger.ac.uk",
-                        "##format: gtf",
-                        "##date: 2017-04-08" ),
-                        false },                                // Bad header - contact
-                { Arrays.asList( "##description: THIS IS A SAMPLE",
-                        "##provider: GENCODE",
-                        "##contact: gencode-help@sanger.ac.uk",
-                        "##format: dumpy",
-                        "##date: 2017-04-08" ),
-                        false },                                // Bad header - format
-                { Arrays.asList( "##description: THIS IS A SAMPLE",
-                        "##provider: GENCODE",
-                        "##contact: gencode-help@sanger.ac.uk",
-                        "##format: gtf",
-                        "##doom: ID Software" ),
-                        false },                                // Bad header - date
-                { Arrays.asList( "##description: evidence-based annotation of the human genome (GRCh37), version 19 (Ensembl 74)",
-                        "##provider: GENCODE",
-                        "##contact: gencode@sanger.ac.uk",
-                        "##format: gtf",
-                        "##date: 2014-07-25" ),
-                        false },                                // Good GENCODE Header, but BAD ENSEMBL header!
-                { Arrays.asList( "##description: evidence-based annotation of the human genome (GRCh38), version 26 (Ensembl 88)",
-                        "##provider: GENCODE",
-                        "##contact: gencode-help@sanger.ac.uk",
-                        "##format: gtf",
-                        "##date: 2014-07-25" ),
-                        false },                                 // Good GENCODE Header, but BAD ENSEMBL header!
-
-                // -------------
+                        false },                                          // Bad Ensembl header - no lines commented out.
 
                 { Arrays.asList( "#!genome-build ASM584v2",
                         "#!genome-version ASM584v2",
@@ -222,44 +172,31 @@ public class EnsemblGtfCodecUnitTest extends GATKBaseTest {
                         "#!genome-build-accession GCA_000005845.2",
                         "#!genebuild-last-updated 2014-08" ),
                         true },                                           // Good Ensembl GTF Header!
+                { Arrays.asList( "##genome-build ASM584v2",
+                        "##genome-version ASM584v2",
+                        "##genome-date 2014-08",
+                        "##genome-build-accession GCA_000005845.2",
+                        "##genebuild-last-updated 2014-08" ),
+                        true },                                           // Good Ensembl Header - alternate comments
 
-                { Arrays.asList( "ASM584v2",
-                        "#!genome-version ASM584v2",
+                { Arrays.asList( "##genome-build ASM584v2",
+                        "##genome-version ASM584v2",
                         "#!genome-date 2014-08",
-                        "#!genome-build-accession GCA_000005845.2",
+                        "##genome-build-accession GCA_000005845.2",
                         "#!genebuild-last-updated 2014-08" ),
-                        false },                                           // Bad header - genome-build
-                { Arrays.asList( "#!genome-build ASM584v2",
-                        "ASM584v2",
-                        "#!genome-date 2014-08",
-                        "#!genome-build-accession GCA_000005845.2",
+                        true },                                           // Good Ensembl GTF Header - mixed comments
+                { Arrays.asList( "##genome-build ASM584v2",
+                        "##genome-version ASM584v2",
+                        "genome-date 2014-08",
+                        "##genome-build-accession GCA_000005845.2",
+                        "##genebuild-last-updated 2014-08" ),
+                        false },                                           // Bad Ensembl Header - not all lines commented.
+                { Arrays.asList( "##genome-build ASM584v2",
+                        "#!genome-version ASM584v2",
+                        "genome-date 2014-08",
+                        "##genome-build-accession GCA_000005845.2",
                         "#!genebuild-last-updated 2014-08" ),
-                        false },                                           // Bad header - genome-version
-                { Arrays.asList( "#!genome-build ASM584v2",
-                        "#!genome-version ASM584v2",
-                        "#2014-08",
-                        "#!genome-build-accession GCA_000005845.2",
-                        "#!genebuild-last-updated 2014-08" ),
-                        false },                                           // Bad header - genome-date
-                { Arrays.asList( "#!genome-build ASM584v2",
-                        "#!genome-version ASM584v2",
-                        "#!genome-date 2014-08",
-                        "#GCA_000005845.2",
-                        "#!genebuild-last-updated 2014-08" ),
-                        false },                                           // Bad header - genome-build-accession
-                { Arrays.asList( "#!genome-build ASM584v2",
-                        "#!genome-version ASM584v2",
-                        "#!genome-date 2014-08",
-                        "#!genome-build-accession GCA_000005845.2",
-                        "#2014-08" ),
-                        false },                                           // Bad header - genebuild-last-updated
-
-                { Arrays.asList( "#!genome-build ASM584v2",
-                        "#!genome-version ASM584v2",
-                        "#!genome-date 2014-08",
-                        "#!genome-build-accession GCA_000005845.2"),
-                        false },                                           // Bad Ensembl GTF Header - not enough lines!
-
+                        false },                                           // Bad Ensembl Header - not all lines commented.
         };
     }
 

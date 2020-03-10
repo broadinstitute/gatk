@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFeature, LineIterator> {
 
@@ -29,11 +30,13 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
 
     //==================================================================================================================
     // Private/Protected Static Members:
-    static final int HEADER_NUM_LINES = 5;
     static final String FIELD_DELIMITER = "\t";
 
     static final int NUM_COLUMNS = 9;
     static final int FEATURE_TYPE_FIELD_INDEX = 2;
+
+    // A number much larger than the number of header lines we expect (to future proof):
+    static final int MAX_NUM_HEADER_LINES_TO_CHECK = 100;
 
     //==================================================================================================================
     // Private Members:
@@ -50,7 +53,6 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
 
     @Override
     public boolean canDecode(final String inputFilePath) {
-
         boolean canDecode;
         try {
             // Simple file and name checks to start with:
@@ -63,15 +65,23 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
                 // Crack open the file and look at the top of it:
                 try ( final BufferedReader br = new BufferedReader(new InputStreamReader(Files.newInputStream(p))) ) {
 
-                    // TThe first HEADER_NUM_LINES compose the header of a valid GTF File:
-                    final List<String> headerLines = new ArrayList<>(HEADER_NUM_LINES);
+                    // The first few lines compose the header of a valid GTF File:
+                    final List<String> headerLines = new ArrayList<>(MAX_NUM_HEADER_LINES_TO_CHECK);
 
-                    for (int i = 0; i < HEADER_NUM_LINES; ++i) {
+                    // Only check a few lines at the top:
+                    for (int i = 0; i < MAX_NUM_HEADER_LINES_TO_CHECK; ++i) {
                         final String line = br.readLine();
                         if ( line == null ) {
                             break;
                         }
-                        headerLines.add( line );
+
+                        // When lines are no longer commented we're done with the header:
+                        if ( isLineCommented(line) ) {
+                            headerLines.add(line);
+                        }
+                        else {
+                            break;
+                        }
                     }
 
                     // Validate our header:
@@ -113,7 +123,7 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
             // We must assume we can get header lines.
             // If we get a header line, we return null.
             // This allows indexing to work.
-            if ( line.startsWith(getLineComment()) ) {
+            if ( isLineCommented(line) ) {
                 lineIterator.next();
                 return null;
             }
@@ -271,7 +281,7 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
      * @param exonStore {@link List} of {@link GencodeGtfExonFeature}s to insert into corresponding {@link GencodeGtfTranscriptFeature} {@code transcript}
      * @param leafFeatureStore {@link List} of {@link GencodeGtfFeature}s to insert into corresponding {@link GencodeGtfExonFeature} objects in {@code exonStore}
      */
-    static void aggregateRecordsIntoGeneFeature(final GencodeGtfGeneFeature gene,
+    private static void aggregateRecordsIntoGeneFeature(final GencodeGtfGeneFeature gene,
                                                 final GencodeGtfTranscriptFeature transcript,
                                                 final List< GencodeGtfExonFeature > exonStore,
                                                 final List< GencodeGtfFeature > leafFeatureStore ) {
@@ -351,7 +361,7 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
      * @param feature {@link GencodeGtfFeature} to validate.
      * @return {@code true} IFF the given {@code feature} / {@code versionNumber} combination is valid.  {@code false} otherwise.
      */
-    boolean validateFeature(final GencodeGtfFeature feature) {
+    private boolean validateFeature(final GencodeGtfFeature feature) {
         return validateBaseGtfFeatureFields(feature) && validateFeatureSubtype(feature);
     }
 
@@ -361,7 +371,7 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
      * @param feature A {@link GencodeGtfFeature} to validate.
      * @return True if {@code feature} contains all required base GTF fields.
      */
-    static boolean validateBaseGtfFeatureFields(final GencodeGtfFeature feature) {
+    private static boolean validateBaseGtfFeatureFields(final GencodeGtfFeature feature) {
 
         if ( feature == null ) {
             return false;
@@ -402,9 +412,7 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
             if (feature.getExonNumber() == GencodeGtfFeature.NO_EXON_NUMBER) {
                 return false;
             }
-            if (feature.getExonId() == null) {
-                return false;
-            }
+            return feature.getExonId() != null;
         }
 
         return true;
@@ -416,7 +424,7 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
      * @param line {@link String} containing one line of a GTF file to split.
      * @return A {@link String[]} with each entry containing a field from the GTF line.
      */
-    String[] splitGtfLine(final String line) {
+    private String[] splitGtfLine(final String line) {
         // Split the line into different GTF Fields
         // Note that we're using -1 as the limit so that empty tokens will still be counted
         // (as opposed to discarded).
@@ -436,24 +444,15 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
      * @param reader {@link LineIterator} a reader pointing at the top of a GTF file.
      */
     void ingestHeaderLines(final LineIterator reader) {
-        int numHeaderLinesRead = 0;
         while ( reader.hasNext() ) {
             final String line = reader.peek();
 
             // The file will start with commented out lines.
             // Grab them until there are no more commented out lines.
-            if ( line.startsWith(getLineComment()) ) {
-
-                // Sanity check for if a file has too many commented out lines at the top:
-                if (numHeaderLinesRead > HEADER_NUM_LINES) {
-                    throw new UserException.MalformedFile(
-                            "File header is longer than expected: " + numHeaderLinesRead + " > " + HEADER_NUM_LINES
-                    );
-                }
+            if ( isLineCommented(line) ) {
 
                 getHeader().add(line);
                 reader.next();
-                ++numHeaderLinesRead;
             }
             else {
                 break;
@@ -463,6 +462,7 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
 
     /**
      * Checks that the given header line number starts with the given text.
+     * Uses {@link #getAllLineComments()} to check for comments at the line starts.
      * @param header A {@link List<String>} containing a header to validate.
      * @param lineNum Line number in the header to check.
      * @param startingText {@link String} containing text that the line should start with
@@ -474,6 +474,7 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
 
     /**
      * Checks that the given header line number starts with the given text.
+     * Uses {@link #getAllLineComments()} to check for comments at the line starts.
      * @param header A {@link List<String>} containing a header to validate.
      * @param lineNum Line number in the header to check.
      * @param startingText {@link String} containing text that the line should start with
@@ -481,17 +482,43 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
      * @return {@code true} IFF the header line number {@code lineNum} starts with {@code startingText}; {@code false} otherwise.
      */
     boolean checkHeaderLineStartsWith(final List<String> header, final int lineNum, final String startingText, final boolean throwIfInvalid ) {
-        if ( !header.get(lineNum).startsWith(getLineComment() + startingText) ) {
+        boolean foundGoodLine = false;
+        for ( final String commentPrefix : getAllLineComments() ) {
+            if ( header.get(lineNum).startsWith(commentPrefix + startingText) ) {
+                foundGoodLine = true;
+                break;
+            }
+        }
+
+        if (!foundGoodLine) {
             if ( throwIfInvalid ) {
                 throw new UserException.MalformedFile(
-                        getGtfFileType() + " GTF Header line " + (lineNum+1) + " does not contain expected information (" +
-                                getLineComment() + startingText + "): " + header.get(lineNum));
+                        getGtfFileType() + " GTF Header line " + (lineNum + 1) + " does not contain expected information (" +
+                                getDefaultLineComment() + startingText + "): " + header.get(lineNum));
             }
             else {
                 return false;
             }
         }
+
         return true;
+    }
+
+    /**
+     * Checks whether the given line is commented out or not.
+     * @param line A {@link String} representing a line in the GTF file.
+     * @return {@code true} iff the line starts with a comment delimiter.  {@code false} otherwise.
+     */
+    boolean isLineCommented(final String line) {
+        boolean isCommented = false;
+        for ( final String commentPrefix : getAllLineComments() ) {
+            if ( line.startsWith(commentPrefix) ) {
+                isCommented = true;
+                break;
+            }
+        }
+
+        return isCommented;
     }
 
     /** @return The current line number for this {@link AbstractGtfCodec}. */
@@ -510,9 +537,14 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
     abstract List<String> getHeader();
 
     /**
-     * @return The {@link String} a line begins with to indicate that line is commented out.
+     * @return The default {@link String} a line begins with to indicate that line is commented out.
      */
-    abstract String getLineComment();
+    abstract String getDefaultLineComment();
+
+    /**
+     * @return A {@link Set<String>} containing all possible line prefixes that indicate the line is commented out.
+     */
+    abstract Set<String> getAllLineComments();
 
     /**
      * @return The type of GTF file in this {@link AbstractGtfCodec}.
