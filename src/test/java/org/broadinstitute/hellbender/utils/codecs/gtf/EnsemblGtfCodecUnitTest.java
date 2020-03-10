@@ -132,17 +132,17 @@ public class EnsemblGtfCodecUnitTest extends GATKBaseTest {
                 { "gencode.v26.primary_assembly.annotation.gtf", testResourceDir, false},    // File does not exist
                 { "gencode.v26.long_noncoding_RNAs.gtf"        , testResourceDir, false},    // File does not exist
 
-                { "gencode.invalid_short_header.gtf"           , testResourceDir, false},    // File exists, has invalid header
-                { "gencode.invalid_malformed_header.gtf"       , testResourceDir, false},    // File exists, has invalid header
-                { "gencode.invalid_malformed_header_desc.gtf"  , testResourceDir, false},    // File exists, has invalid header
-                { "gencode.invalid_malformed_header_prov.gtf"  , testResourceDir, false},    // File exists, has invalid header
-                { "gencode.invalid_malformed_header_cont.gtf"  , testResourceDir, false},    // File exists, has invalid header
-                { "gencode.invalid_malformed_header_form.gtf"  , testResourceDir, false},    // File exists, has invalid header
-                { "gencode.invalid_malformed_header_date.gtf"  , testResourceDir, false},    // File exists, has invalid header
+                { "gencode.invalid_short_header.gtf"           , testResourceDir, true},    // File exists, ENSEMBL doesn't care about headers
+                { "gencode.invalid_malformed_header.gtf"       , testResourceDir, true},    // File exists, ENSEMBL doesn't care about headers
+                { "gencode.invalid_malformed_header_desc.gtf"  , testResourceDir, true},    // File exists, ENSEMBL doesn't care about headers
+                { "gencode.invalid_malformed_header_prov.gtf"  , testResourceDir, true},    // File exists, ENSEMBL doesn't care about headers
+                { "gencode.invalid_malformed_header_cont.gtf"  , testResourceDir, true},    // File exists, ENSEMBL doesn't care about headers
+                { "gencode.invalid_malformed_header_form.gtf"  , testResourceDir, true},    // File exists, ENSEMBL doesn't care about headers
+                { "gencode.invalid_malformed_header_date.gtf"  , testResourceDir, true},    // File exists, ENSEMBL doesn't care about headers
 
-                { "gencode.valid1.gtf"                           , testResourceDir, false},   // Not an Ensembl GTF file
-                { "gencode.valid_gencode_file2.gtf"              , testResourceDir, false},   // Not an Ensembl GTF file
-                { "gencode.and.this.is.a.valid.one.too.table.gtf", testResourceDir, false},   // Not an Ensembl GTF file
+                { "gencode.valid1.gtf"                           , testResourceDir, false},   // GENCODE GTF File - ENSEMBL will refuse to parse
+                { "gencode.valid_gencode_file2.gtf"              , testResourceDir, false},   // GENCODE GTF File - ENSEMBL will refuse to parse
+                { "gencode.and.this.is.a.valid.one.too.table.gtf", testResourceDir, false},   // GENCODE GTF File - ENSEMBL will refuse to parse
 
                 { "Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.44.gtf", eColiTestDir, true},   // Name doesn't start with 'gencode'
         };
