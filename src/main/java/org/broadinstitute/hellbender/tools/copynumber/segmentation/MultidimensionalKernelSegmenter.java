@@ -119,7 +119,7 @@ public final class MultidimensionalKernelSegmenter {
      *                                      to the kernel K_CR for copy-ratio data;
      *                                      the total kernel is K_CR + S * K_AF
      */
-    public MultidimensionalSegmentCollection findSegmentation(final int maxNumChangepointsPerChromosome,
+    public MultidimensionalSegmentCollection findSegmentation(final int maxNumSegmentsPerChromosome,
                                                               final double kernelVarianceCopyRatio,
                                                               final double kernelVarianceAlleleFraction,
                                                               final double kernelScalingAlleleFraction,
@@ -127,7 +127,7 @@ public final class MultidimensionalKernelSegmenter {
                                                               final List<Integer> windowSizes,
                                                               final double numChangepointsPenaltyLinearFactor,
                                                               final double numChangepointsPenaltyLogLinearFactor) {
-        ParamUtils.isPositiveOrZero(maxNumChangepointsPerChromosome, "Maximum number of changepoints must be non-negative.");
+        ParamUtils.isPositive(maxNumSegmentsPerChromosome, "Maximum number of segments must be positive.");
         ParamUtils.isPositiveOrZero(kernelVarianceCopyRatio, "Variance of copy-ratio Gaussian kernel must be non-negative (if zero, a linear kernel will be used).");
         ParamUtils.isPositiveOrZero(kernelVarianceAlleleFraction, "Variance of allele-fraction Gaussian kernel must be non-negative (if zero, a linear kernel will be used).");
         ParamUtils.isPositiveOrZero(kernelScalingAlleleFraction, "Scaling of allele-fraction Gaussian kernel must be non-negative.");
@@ -138,6 +138,8 @@ public final class MultidimensionalKernelSegmenter {
                 "Linear factor for the penalty on the number of changepoints per chromosome must be non-negative.");
         ParamUtils.isPositiveOrZero(numChangepointsPenaltyLogLinearFactor,
                 "Log-linear factor for the penalty on the number of changepoints per chromosome must be non-negative.");
+
+        final int maxNumChangepointsPerChromosome = maxNumSegmentsPerChromosome - 1;
 
         final BiFunction<MultidimensionalPoint, MultidimensionalPoint, Double> kernel = constructKernel(
                 kernelVarianceCopyRatio, kernelVarianceAlleleFraction, kernelScalingAlleleFraction);
