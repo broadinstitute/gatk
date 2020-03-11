@@ -1042,8 +1042,8 @@ public final class AlignmentUtils {
      * Trim cigar down to one that starts at start base in the cigar and extends to (inclusive) end base
      *
      * @param cigar a non-null Cigar to trim down
-     * @param start Where should we start keeping bases in the cigar?  The first position is 0
-     * @param end Where should we stop keeping bases in the cigar?  The maximum value is cigar.getLength()
+     * @param start Where should we start keeping bases in the cigar (inclusive)?  The first position is 0
+     * @param end Where should we stop keeping bases in the cigar (inclusive)?  The maximum value is cigar.getLength() - 1
      * @return a new Cigar containing == start - end + 1 reads
      */
     public static Cigar trimCigarByBases(final Cigar cigar, final int start, final int end) {
@@ -1064,8 +1064,8 @@ public final class AlignmentUtils {
      * Workhorse for trimCigarByBases and trimCigarByReference
      *
      * @param cigar a non-null Cigar to trim down
-     * @param start Where should we start keeping bases in the cigar?  The first position is 0
-     * @param end Where should we stop keeping bases in the cigar?  The maximum value is cigar.getLength()
+     * @param start Where should we start keeping bases in the cigar (inclusive)?  The first position is 0
+     * @param end Where should we stop keeping bases in the cigar (inclusive)?  The maximum value is cigar.getLength() - 1
      * @param byReference should start and end be interpreted as position in the reference or the read to trim to/from?
      * @return a non-null cigar
      */
@@ -1073,42 +1073,23 @@ public final class AlignmentUtils {
     private static Cigar trimCigar(final Cigar cigar, final int start, final int end, final boolean byReference) {
         final CigarBuilder newElements = new CigarBuilder();
 
-        int pos = 0;
+        int elementStart;   // inclusive
+        int elementEnd = 0;         // exclusive -- start of next element
         for ( final CigarElement elt : cigar.getCigarElements() ) {
-            if ( pos > end && (byReference || elt.getOperator() != CigarOperator.D) ) break;
+            elementStart = elementEnd;
+            elementEnd = elementStart + (byReference ? lengthOnReference(elt) : lengthOnRead(elt));
 
-            if (elt.getOperator() == CigarOperator.DELETION && pos >= start && !byReference) {  // consumes ref but not read
-                newElements.add(elt);
-            } else if (
-            switch ( elt.getOperator() ) {
-                case D:
-
-                    // otherwise fall through to the next case
-                case EQ: case M: case X:
-                    final int overlapLength = overlapLength(pos, start, end, elt);
-                    newElements.add(new CigarElement(overlapLength, elt.getOperator());
-                    pos += overlapLength;
-                    break;
-                case S: case I:
-                    if ( byReference ) {
-                        if ( pos >= start )
-                            newElements.add(elt);
-                    } else {
-                        final int overlapLength = overlapLength(pos, start, end, elt);
-                        newElements.add(new CigarElement(overlapLength, elt.getOperator());
-                        pos += overlapLength;
-                    }
-                    break;
-                default:
-                    throw new IllegalStateException("Cannot handle " + elt);
+            if (elementEnd <= start) {
+                continue;
+            } else if (elementStart > end) {
+                break;
             }
+
+            final int overlapLength = Math.min(end + 1, elementEnd) - Math.max(start, elementStart);
+            newElements.add(new CigarElement(overlapLength, elt.getOperator()));
         }
 
         return newElements.make();
-    }
-
-    private static int overlapLength(int pos, final int start, final int end, final CigarElement elt) {
-        return Math.min(pos + elt.getLength() - 1, end) - Math.max(pos, start) + 1;
     }
 
     /**
