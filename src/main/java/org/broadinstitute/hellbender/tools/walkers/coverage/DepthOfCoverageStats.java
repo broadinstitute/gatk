@@ -1,28 +1,3 @@
-/*
-* Copyright 2012-2016 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
 package org.broadinstitute.hellbender.tools.walkers.coverage;
 
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -30,7 +5,7 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import java.util.*;
 
 /**
- * A class for storing summarized
+ * A class for storing summarized coverage statistics for DepthOfCoverage.
  */
 public class DepthOfCoverageStats {
 
@@ -61,8 +36,8 @@ public class DepthOfCoverageStats {
     /**
      *
      * @param leftEndpoints Array of the left endpoints for desired coverage bins to track. See {@link}
-     * @param includeDeletions
-     * @param dontComputeLocusTable
+     * @param includeDeletions whether to count deletions at a site as coverage in the total
+     * @param dontComputeLocusTable if true then skip calculations for per-locus output tables
      */
     public DepthOfCoverageStats(int[] leftEndpoints, boolean includeDeletions, boolean dontComputeLocusTable) {
         this.binLeftEndpoints = leftEndpoints;
@@ -77,17 +52,19 @@ public class DepthOfCoverageStats {
         }
     }
 
-    // Adds to granularHistogramBySample a per-locus histogram for
+    // Adds to granularHistogramBySample a per-locus histogram for the given sample to track
     void initializeSample(String sample) {
         if ( granularHistogramBySample.containsKey(sample) ) {
             return;
         }
+        // Note: we add 1 here because bin left endpoints has values for ever bin except for the first one (which covers everything below the defined lower bound)
         granularHistogramBySample.put(sample, new long[this.binLeftEndpoints.length+1]);
         totalCoverages.put(sample,0L);
     }
 
-    // Create the per-locus
+    // Create the per-locus coverage counting arrays and histogram
     void initializeLocusCounts() {
+        // Note: we add 1 here because bin left endpoints has values for ever bin except for the first one (which covers everything below the defined lower bound)
         locusCoverageCounts = new long[granularHistogramBySample.size()][binLeftEndpoints.length+1];
         locusHistogram = new int[binLeftEndpoints.length+1];
         tabulateLocusCounts = true;
@@ -98,17 +75,17 @@ public class DepthOfCoverageStats {
     ////////////////////////////////////////////////////////////////////////////////////
 
     private void updateDepths(Map<String, Integer> depthBySample) {
-        int b;
+        int coverageThresholdIndex;
         for ( String sample : granularHistogramBySample.keySet() ) {
             if ( depthBySample.containsKey(sample) ) {
-                b = updateSample(sample,depthBySample.get(sample));
+                coverageThresholdIndex = updateSample(sample,depthBySample.get(sample));
                 totalLocusDepth += depthBySample.get(sample);
             } else {
-                b = updateSample(sample,0);
+                coverageThresholdIndex = updateSample(sample,0);
             }
 
             if ( tabulateLocusCounts ) {
-                for ( int i = 0; i <= b; i ++ ) {
+                for ( int i = 0; i <= coverageThresholdIndex; i ++ ) {
                     locusHistogram[i]++;
                 }
             }
@@ -125,14 +102,12 @@ public class DepthOfCoverageStats {
             this.updateDepths(new HashMap<>(1));
             return;
         }
-        // todo -- do we want to do anything special regarding base count or deletion statistics?
-        HashMap<String,Integer> depthBySample = new HashMap<String,Integer>();
-        // todo -- needs fixing with advent of new baseutils functionality using ENUMS and handling N,D
+        final HashMap<String,Integer> depthBySample = new HashMap<String,Integer>();
         for ( String s : countsBySample.keySet() ) {
             int total = 0;
             int[] counts = countsBySample.get(s);
             for ( byte base : BaseUtils.BASES_EXTENDED ) {
-                if ( includeDeletions || ! ( base == BaseUtils.Base.D.base) ) { // note basesAreEqual assigns TRUE to (N,D) as both have simple index -1
+                if ( includeDeletions || base != BaseUtils.Base.D.base ) { // note basesAreEqual assigns TRUE to (N,D) as both have simple index -1
                     total += counts[BaseUtils.extendedBaseToBaseIndex(base)];
                 }
             }
@@ -142,7 +117,8 @@ public class DepthOfCoverageStats {
         this.updateDepths(depthBySample);
     }
 
-    private int updateSample(String sample, int depth) {
+    // returns the index of the last bin that the given depth exceeds the left endpoint of
+    private int updateSample(final String sample, final int depth) {
         totalCoverages.put(sample,totalCoverages.get(sample)+depth);
 
         long[] granularBins = granularHistogramBySample.get(sample);
@@ -215,14 +191,17 @@ public class DepthOfCoverageStats {
     // ACCESSOR METHODS
     ////////////////////////////////////////////////////////////////////////////////////
 
+    // Return the per-sample histograms of depths
     public Map<String,long[]> getHistograms() {
         return granularHistogramBySample;
     }
 
+    // Return array with the counts of number of bases with >=X samples at >=Y coverage
     public long[][] getLocusCounts() {
         return locusCoverageCounts;
     }
 
+    // Return the key used to interpret the histogram bin edges
     public int[] getEndpoints() {
         return binLeftEndpoints;
     }
@@ -236,10 +215,12 @@ public class DepthOfCoverageStats {
         return means;
     }
 
+    // Returns the total coverage (sum of coverage at each base) per sample
     public Map<String,Long> getTotals() {
         return totalCoverages;
     }
 
+    // Returns the number of loci counted
     public long getTotalLoci() {
         return nLoci;
     }
@@ -251,16 +232,18 @@ public class DepthOfCoverageStats {
         return granularHistogramBySample.keySet();
     }
 
+    // Returns the mean of coverage for all loci seen
     public double getTotalMeanCoverage() {
         return ( (double) totalDepthOfCoverage )/ ( (double) nLoci );
     }
 
+    // Returns the total coverage across all samples (sum of coverage at each base)
     public long getTotalCoverage() {
         return totalDepthOfCoverage;
     }
 
     /**
-     * Return a list of the counts
+     * Return a list of the cumulative depth counts as a perportion of total number of loci
      * @param sample
      * @return
      */

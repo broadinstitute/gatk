@@ -38,7 +38,7 @@ public class VcfOutputRenderer extends OutputRenderer {
     public static final String FIELD_DELIMITER = "|";
 
     /**
-     * The delimiter for the `Other Transcript` field within the Funcotation annotation in the VCF.
+     * The delimiter for the `Other RefSeqTranscript` field within the Funcotation annotation in the VCF.
      */
     public static final String OTHER_TRANSCRIPT_DELIMITER = "/";
 

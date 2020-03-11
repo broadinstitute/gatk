@@ -19,7 +19,7 @@ public final class RuntimeUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testGetToolkitName(){
         final String toolkitName = RuntimeUtils.getToolkitName(Main.class);
-        // test that it's one of the valid outcomes of getToolkitName, tests in intellij don't necessarily build the correct manifest but the docker tests might\
+        // test that it's one of the valid outcomes of getToolkitName, tests in intellij don't necessarily buildAndWriteLine the correct manifest but the docker tests might\
         Assert.assertTrue(toolkitName.equals("The Genome Analysis Toolkit (GATK)") || toolkitName.equals("org.broadinstitute.hellbender"));
     }
 }

@@ -190,7 +190,7 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
                 segment_num_probes
                 segment_mean
                 segment_call
-                build
+                buildAndWriteLine
                 sample
                  */
 

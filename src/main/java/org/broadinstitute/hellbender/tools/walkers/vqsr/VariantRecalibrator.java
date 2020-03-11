@@ -281,7 +281,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
     /**
      * This argument is intended to be used in a more complicated VQSR scheme meant for very large WGS callsets that
      * require a prohibitive amount of memory for classic VQSR. Given that training data is downsampled once it exceeds
-     * --max-num-training-data, reading in additional data to build the model only serves to consume resources. However,
+     * --max-num-training-data, reading in additional data to buildAndWriteLine the model only serves to consume resources. However,
      * with this argument the output recal file will also be downsampled. The recommended VQSR procedure when using this
      * argument is to run VariantRecalibrator once with sampling and designate an --output-model file. Then
      * VariantRecalibrator can be run a second time scattered using the -scatterTranches argument and that file as an
@@ -343,17 +343,17 @@ public class VariantRecalibrator extends MultiVariantWalker {
     /**
      * The statistical model being built by this tool may fail due to simple statistical sampling
      * issues. Rather than dying immediately when the initial model fails, this argument allows the
-     * tool to restart with a different random seed and try to build the model again. The first
+     * tool to restart with a different random seed and try to buildAndWriteLine the model again. The first
      * successfully built model will be kept.
      *
      * Note that the most common underlying cause of model building failure is that there is insufficient data to
-     * build a really robust model. This argument provides a workaround for that issue but it is
+     * buildAndWriteLine a really robust model. This argument provides a workaround for that issue but it is
      * preferable to provide this tool with more data (typically by including more samples or more territory)
      * in order to generate a more robust model.
      */
     @Advanced
     @Argument(fullName="max-attempts",
-            doc="Number of attempts to build a model before failing",
+            doc="Number of attempts to buildAndWriteLine a model before failing",
             optional=true)
     @VisibleForTesting
     protected int max_attempts = 1;

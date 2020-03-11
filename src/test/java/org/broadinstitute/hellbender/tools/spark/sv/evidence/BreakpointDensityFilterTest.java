@@ -115,7 +115,7 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
 
     @Test(groups = "sv")
     public void testCrossPartitionEvidence() {
-        // build evidence for partition 0
+        // buildAndWriteLine evidence for partition 0
         final List<BreakpointEvidence> evidenceList0 = new ArrayList<>();
         // a valid cluster in the 1st fragment
         evidenceList0.add(makeEvidence(1));

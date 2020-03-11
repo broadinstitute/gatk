@@ -45,7 +45,7 @@ public class DocumentationGenerationIntegrationTest extends CommandLineProgramTe
                 "-settings-dir", "src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates",
                 "-d", docTestTarget.getAbsolutePath(), // directory must exist
                 "-output-file-extension", "html",
-                "-build-timestamp", "2016/11/11 11:11:11",
+                "-buildAndWriteLine-timestamp", "2016/11/11 11:11:11",
                 "-absolute-version", "1.1-111",
                 "-cp", System.getProperty("java.class.path"),
                 "-verbose"

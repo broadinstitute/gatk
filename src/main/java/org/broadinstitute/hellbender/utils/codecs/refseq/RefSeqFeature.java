@@ -6,12 +6,14 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
- * the ref seq feature
+ * The ref seq feature. See how to generate these here: https://gatkforums.broadinstitute.org/gatk/discussion/1329/where-can-i-get-a-gene-list-in-refseq-format
  */
-public class RefSeqFeature implements Transcript, Feature {
+//TODO if there is cause to use this class for any purpose other than DepthOfCoverage then we should port remaining functionality from GATK3
+public class RefSeqFeature implements RefSeqTranscript, Feature {
 
     private String transcript_id;
     private int strand;
@@ -49,86 +51,19 @@ public class RefSeqFeature implements Transcript, Feature {
     /** Genomic location of the n-th exon; throws an exception if n is out of bounds */
     public SimpleInterval getExonLocation(int n) {
         if ( n >= exons.size() || n < 0 ) {
-            throw new GATKException("Index out-of-bounds. Transcript has " + exons.size() +" exons; requested: "+n);
+            throw new GATKException("Index out-of-bounds. RefSeqTranscript has " + exons.size() +" exons; requested: "+n);
         }
         return exons.get(n);
     }
 
     /** Returns the list of all exons in this transcript, as genomic intervals */
-    public List<SimpleInterval> getExons() { return exons; }
+    public List<SimpleInterval> getExons() { return Collections.unmodifiableList(exons); }
 
-//    /** Returns all exons falling ::entirely:: inside an interval **/
-//    public List<SimpleInterval> getExonsInInterval( GenomeLoc interval ) {
-//        List<SimpleInterval> relevantExons = new ArrayList<>(exons.size());
-//        for ( SimpleInterval exon : getExons() ) {
-//            if (IntervalUtils.containsP(interval, exon) ) {
-//                relevantExons.add(exon);
-//            }
-//        }
-//
-//        return relevantExons;
-//    }
-//
-//    /** convenience method; returns the numbers of the exons in the interval **/
-//    public List<Integer> getExonNumbersInInterval( Locatable interval ) {
-//        List<Integer> numbers = new ArrayList<Integer>();
-//        int iNo = 0;
-//        for ( Locatable exon : getExons() ) {
-//            if ( IntervalUtils.containsP(interval, exon) ) {
-//                numbers.add(iNo);
-//            }
-//            iNo++;
-//        }
-//
-//        return numbers;
-//    }
-
+    /** Returns a uniquified name of the Gene and TranscriptID*/
     public String getTranscriptUniqueGeneName() {
         return String.format("%s(%s)",getGeneName(),getTranscriptId());
     }
 
-//    ArrayList<GenomeLoc> exonInRefOrderCache = null;
-
-//    public Integer getSortedOverlapInteger(GenomeLoc position) {
-//        int exonNo = -1;
-//        ArrayList<GenomeLoc> exonsInReferenceOrder = exonInRefOrderCache != null ? exonInRefOrderCache : new ArrayList<GenomeLoc>(exons);
-//        if ( exonInRefOrderCache == null ) {
-//            Collections.sort(exonsInReferenceOrder);
-//        }
-//        exonInRefOrderCache = exonsInReferenceOrder;
-//        for ( GenomeLoc exon : exonsInReferenceOrder ) {
-//            if ( exon.overlapsP(position) ) {
-//                return ++exonNo;
-//            }
-//            ++exonNo;
-//        }
-//
-//        return -1;
-//    }
-
-//    public GenomeLoc getSortedExonLoc(int offset) {
-//        ArrayList<GenomeLoc> exonsInReferenceOrder = exonInRefOrderCache != null ? exonInRefOrderCache : new ArrayList<GenomeLoc>(exons);
-//        if ( exonInRefOrderCache == null ) {
-//            Collections.sort(exonsInReferenceOrder);
-//        }
-//        exonInRefOrderCache = exonsInReferenceOrder;
-//        return exonsInReferenceOrder.get(offset);
-//    }
-
-//    /** Returns true if the specified interval 'that' overlaps with the full genomic interval of this transcript */
-//    public boolean overlapsP (Locatable that) {
-//        return IntervalUtils.overlaps(this, that);
-//    }
-//
-//    /** Returns true if the specified interval 'that' overlaps with the coding genomic interval of this transcript.
-//     * NOTE: since "coding interval" is still a single genomic interval, it will not contain UTRs of the outermost exons,
-//     * but it will still contain introns and/or exons internal to this genomic locus that are not spliced into this transcript.
-//     * @see #overlapsExonP
-//     */
-//    public boolean overlapsCodingP (Locatable that) {
-//        return transcript_coding_interval.overlapsP(that);
-//    }
-//
     /**
      * Returns a count of the total number of reference bases spanned by gene summary. Will total the length of the exons or
      * if absent, the lengthOnReference for the gene itself.
@@ -143,7 +78,11 @@ public class RefSeqFeature implements Transcript, Feature {
         return exons.stream().mapToInt(Locatable::getLengthOnReference).sum();
     }
 
-    /** Returns true if the specified interval 'that' overlaps with any of the exons actually spliced into this transcript */
+    /**
+     * Returns true if the specified interval 'that' overlaps with any of the exons actually spliced into this transcript.
+     *
+     * NOTE: this is is checking that the locatable is entirely contained within at least one exon.
+     * */
     @Override
     public boolean contains(Locatable that) {
         if (exons.isEmpty()) {

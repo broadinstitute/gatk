@@ -144,24 +144,8 @@ public abstract class LocusWalker extends WalkerBase {
      */
     @Override
     public void traverse() {
-        final SAMFileHeader header = getHeaderForReads();
-        // get the samples from the read groups
-        final Set<String> samples = header.getReadGroups().stream()
-                                          .map(SAMReadGroupRecord::getSample)
-                                          .collect(Collectors.toSet());
         final CountingReadFilter countedFilter = makeReadFilter();
-        // get the filter and transformed iterator
-        final Iterator<GATKRead> readIterator = getTransformedReadStream(countedFilter).iterator();
-
-        final AlignmentContextIteratorBuilder alignmentContextIteratorBuilder = new AlignmentContextIteratorBuilder();
-        alignmentContextIteratorBuilder.setDownsamplingInfo(getDownsamplingInfo());
-        alignmentContextIteratorBuilder.setEmitEmptyLoci(emitEmptyLoci());
-        alignmentContextIteratorBuilder.setKeepUniqueReadListInLibs(keepUniqueReadListInLibs());
-        alignmentContextIteratorBuilder.setIncludeNs(includeNs());
-
-        final Iterator<AlignmentContext> iterator = alignmentContextIteratorBuilder.build(
-                readIterator, header, userIntervals, getBestAvailableSequenceDictionary(),
-                hasReference());
+        final Iterator<AlignmentContext> iterator = getAlignmentContextIterator(countedFilter);
 
         // iterate over each alignment, and apply the function
         iterator.forEachRemaining(alignmentContext -> {
@@ -171,6 +155,32 @@ public abstract class LocusWalker extends WalkerBase {
                 }
             );
         logger.info(countedFilter.getSummaryLine());
+    }
+
+    /**
+     * Helper method that returns an AlignmentContext Iterator object based on the provided parameters.
+     *
+     * This is intended to make it easier for traversals that extend LocusWalker to maintain consistent configuration
+     * code as this class.
+     */
+    final Iterator<AlignmentContext> getAlignmentContextIterator(final CountingReadFilter readFilterToUse) {
+        final SAMFileHeader header = getHeaderForReads();
+        // get the samples from the read groups
+        final Set<String> samples = header.getReadGroups().stream()
+                                          .map(SAMReadGroupRecord::getSample)
+                                          .collect(Collectors.toSet());
+        // get the filter and transformed iterator
+        final Iterator<GATKRead> readIterator = getTransformedReadStream(readFilterToUse).iterator();
+
+        final AlignmentContextIteratorBuilder alignmentContextIteratorBuilder = new AlignmentContextIteratorBuilder();
+        alignmentContextIteratorBuilder.setDownsamplingInfo(getDownsamplingInfo());
+        alignmentContextIteratorBuilder.setEmitEmptyLoci(emitEmptyLoci());
+        alignmentContextIteratorBuilder.setKeepUniqueReadListInLibs(keepUniqueReadListInLibs());
+        alignmentContextIteratorBuilder.setIncludeNs(includeNs());
+
+        return alignmentContextIteratorBuilder.build(
+                readIterator, header, userIntervals, getBestAvailableSequenceDictionary(),
+                hasReference());
     }
 
     /**

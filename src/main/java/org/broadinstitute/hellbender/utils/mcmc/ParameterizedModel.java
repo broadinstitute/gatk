@@ -38,7 +38,7 @@ public final class ParameterizedModel<V1 extends Enum<V1> & ParameterEnum, S1 ex
      *                            .
      *                            .
      *                            .addParameterSampler(SAMPLER_N, TYPE_N.class)
-     *                            .build()
+     *                            .buildAndWriteLine()
      *
      * See GibbsSamplerSingleGaussianUnitTest and GibbsSamplerCopyRatioUnitTest for examples of use.
      * @param <V2>  type of the ParameterEnum

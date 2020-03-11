@@ -80,8 +80,8 @@ public class GencodeFuncotationBuilder {
     }
 
     /**
-     * Set the NCBI build in the {@link GencodeFuncotation}.
-     * @param ncbiBuild The NCBI build for the {@link GencodeFuncotation}.
+     * Set the NCBI buildAndWriteLine in the {@link GencodeFuncotation}.
+     * @param ncbiBuild The NCBI buildAndWriteLine for the {@link GencodeFuncotation}.
      * @return {@code this} {@link GencodeFuncotationBuilder}
      */
     public GencodeFuncotationBuilder setNcbiBuild(final String ncbiBuild) {
@@ -150,7 +150,7 @@ public class GencodeFuncotationBuilder {
     }
 
     /**
-     * Set the Transcript ID in the {@link GencodeFuncotation}.
+     * Set the RefSeqTranscript ID in the {@link GencodeFuncotation}.
      * @param transcriptId The {@link String} containing the transcript ID for the {@link GencodeFuncotation}.
      * @return {@code this} {@link GencodeFuncotationBuilder}
      */
@@ -180,7 +180,7 @@ public class GencodeFuncotationBuilder {
     }
 
     /**
-     * Set the list of other Transcript IDs in the {@link GencodeFuncotation}.
+     * Set the list of other RefSeqTranscript IDs in the {@link GencodeFuncotation}.
      * @param transcripts The {@link List} of {@link String}s containing the transcript IDs for the other transcripts for the {@link GencodeFuncotation}.
      * @return {@code this} {@link GencodeFuncotationBuilder}
      */
@@ -270,8 +270,8 @@ public class GencodeFuncotationBuilder {
     }
 
     /**
-     * Set the Transcript Length {@link Integer} in the {@link GencodeFuncotation}.
-     * @param transcriptLength The {@link Integer} containing the Transcript Length for the {@link GencodeFuncotation}.
+     * Set the RefSeqTranscript Length {@link Integer} in the {@link GencodeFuncotation}.
+     * @param transcriptLength The {@link Integer} containing the RefSeqTranscript Length for the {@link GencodeFuncotation}.
      * @return {@code this} {@link GencodeFuncotationBuilder}
      */
     public GencodeFuncotationBuilder setTranscriptLength( final Integer transcriptLength ) {

@@ -51,7 +51,7 @@ if [ "$#" -ge 6 ] && [ "$6" == "saveIntermediateFiles" ]; then
     SAVE_INTERMEDIATE_FILES="true"
 fi
 
-GATK4_JAR="${GATK_HOME}/build/install/gatk/bin/gatk"
+GATK4_JAR="${GATK_HOME}/buildAndWriteLine/install/gatk/bin/gatk"
 
 TMP_FILE=${1%.bam}
 FILE_WO_EXTENSION=${TMP_FILE##*/}

@@ -210,7 +210,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     @Override
     /**
      * {@inheritDoc}
-     * For each {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation}, the Transcript ID or Gene Name (Hugo Symbol)
+     * For each {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation}, the RefSeqTranscript ID or Gene Name (Hugo Symbol)
      * is checked for a match against the key of any annotation in {@link SimpleKeyXsvFuncotationFactory#annotationMap}.
      * If a match is found, an {@link TableFuncotation} is added to the list to be returned.
      */
@@ -397,8 +397,8 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         GENE_NAME,
 
         /**
-         * The key specified is a Transcript ID which will be used to match and annotate a {@link VariantContext}.
-         * All given {@link VariantContext}s matching the Transcript ID will be annotated with that row's data.
+         * The key specified is a RefSeqTranscript ID which will be used to match and annotate a {@link VariantContext}.
+         * All given {@link VariantContext}s matching the RefSeqTranscript ID will be annotated with that row's data.
          */
         TRANSCRIPT_ID
     }

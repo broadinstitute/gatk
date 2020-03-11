@@ -115,9 +115,9 @@ public final class SVDDenoisingUtils {
         Utils.validateArg(numEigensamples <= panelOfNormals.getNumEigensamples(),
                 "Number of eigensamples to use for denoising is greater than the number available in the panel of normals.");
 
-        logger.info("Validating sample intervals against original intervals used to build panel of normals...");
+        logger.info("Validating sample intervals against original intervals used to buildAndWriteLine panel of normals...");
         Utils.validateArg(panelOfNormals.getOriginalIntervals().equals(readCounts.getIntervals()),
-                "Sample intervals must be identical to the original intervals used to build the panel of normals.");
+                "Sample intervals must be identical to the original intervals used to buildAndWriteLine the panel of normals.");
 
         logger.info("Preprocessing and standardizing sample read counts...");
         final RealMatrix standardizedCopyRatioValues = preprocessAndStandardizeSample(panelOfNormals, readCounts.getCounts());

@@ -131,7 +131,7 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
     }
 
     /**
-     * Extends the current vertex chain by one, making sure to build junction tree objects at each node with out-degree > 1.
+     * Extends the current vertex chain by one, making sure to buildAndWriteLine junction tree objects at each node with out-degree > 1.
      *
      * If a node has an in-degree > 1, then it has a junction tree added to the previous node.
      *

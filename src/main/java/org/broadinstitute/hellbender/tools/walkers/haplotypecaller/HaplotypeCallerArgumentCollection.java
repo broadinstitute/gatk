@@ -120,7 +120,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public boolean disableOptimizations = false;
 
     @Hidden
-    @Argument(fullName = "keep-rg", doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)
+    @Argument(fullName = "keep-rg", doc = "Only use reads from this read group when making calls (but use all reads to buildAndWriteLine the assembly)", optional = true)
     public String keepRG = null;
 
     /**

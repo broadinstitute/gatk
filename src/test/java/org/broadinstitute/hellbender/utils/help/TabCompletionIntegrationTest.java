@@ -52,7 +52,7 @@ public class TabCompletionIntegrationTest extends CommandLineProgramTest {
                 "-output-file-extension", "sh",
                 "-index-file-extension", "sh",
                 "-absolute-version", "0.0-001",
-                "-build-timestamp", new SimpleDateFormat("dd-mm-yyyy hh:mm:ss").format( new Date() ),
+                "-buildAndWriteLine-timestamp", new SimpleDateFormat("dd-mm-yyyy hh:mm:ss").format( new Date() ),
 
                 "-caller-script-name", "gatk",
 

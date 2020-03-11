@@ -5,8 +5,6 @@ import htsjdk.tribble.Feature;
 import htsjdk.tribble.TribbleException;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -24,13 +22,8 @@ import java.util.ArrayList;
  * Instructions for generating a RefSeq file for use with the RefSeq codec can be found on the documentation guide here
  * <a href="http://www.broadinstitute.org/gatk/guide/article?id=1329">http://www.broadinstitute.org/gatk/guide/article?id=1329</a>
  * </p>
- * <h2> Usage </h2>
- * The RefSeq Rod can be bound as any other rod, and is specified by REFSEQ, for example
- * <pre>
- * -refSeqBinding:REFSEQ /path/to/refSeq.txt
- * </pre>
  *
- * You will need to consult individual walkers for the binding name ("refSeqBinding", above)
+ * You will need to consult individual walkers for the argument name
  *
  * <h2>File format example</h2>
  * If you want to define your own file for use, the format is (tab delimited):
@@ -50,12 +43,24 @@ public class RefSeqCodec extends AsciiFeatureCodec<RefSeqFeature>{
 
     // codec file extension
     protected static final String FILE_EXT = "refseq";
-    public static final String HEADER_LINE_CHAR = "#";
-    public static final String LINE_DELIMETER = "\t";
-    /**
-     * The parser to use when resolving genome-wide locations.
-     */
+    public static final String COMMENT_LINE_CHARACTER = "#";
+    public static final String LINE_DELIMITER = "\t";
+    public static final int MINIMUM_LINE_FIELD_COUNT = 16;
     private boolean zero_coding_length_user_warned = false;
+
+    // Indexes for interpreting lines:
+    public static final int TRANSCRIPT_ID_INDEX = 1;
+    public static final int CONTIG_INDEX = 2;
+    public static final int STRAND_INDEX = 3;
+    public static final int INTERVAL_LEFT_BOUND_INDEX = 4;
+    public static final int INTERVAL_RIGHT_BOUND_INDEX = 5;
+    public static final int CODING_START_INDEX = 6;
+    public static final int CODING_STOP_INDEX = 7;
+    public static final int EXON_STARTS_INDEX = 9;
+    public static final int EXON_STOPS_INDEX = 10;
+    public static final int GENE_NAME_INDEX = 12;
+    public static final int EXON_FRAMES_INDEX = 15;
+
 
     public RefSeqCodec() {
         super(RefSeqFeature.class);
@@ -64,16 +69,16 @@ public class RefSeqCodec extends AsciiFeatureCodec<RefSeqFeature>{
     @Override
     public Feature decodeLoc(final LineIterator lineIterator) {
         final String line = lineIterator.next();
-        if (line.startsWith(HEADER_LINE_CHAR)){
+        if (line.startsWith(COMMENT_LINE_CHARACTER)){
             return null;
         }
-        String fields[] = line.split(LINE_DELIMETER);
-        if (fields.length < 3){
-            throw new TribbleException("RefSeq (decodeLoc) : Unable to parse line -> " + line + ", we expected at least 3 columns, we saw " + fields.length);
+        final String fields[] = line.split(LINE_DELIMITER);
+        if (fields.length < MINIMUM_LINE_FIELD_COUNT){
+            throw new TribbleException("RefSeq (decodeLoc) : Unable to parse line -> " + line + ", we expected at least 16 columns, we saw " + fields.length);
         }
-        String contig_name = fields[2];
+        final String contig_name = fields[CONTIG_INDEX];
         try {
-            return new RefSeqFeature(new SimpleInterval(contig_name, Integer.parseInt(fields[4])+1, Integer.parseInt(fields[5])));
+            return new RefSeqFeature(new SimpleInterval(contig_name, Integer.parseInt(fields[INTERVAL_LEFT_BOUND_INDEX])+1, Integer.parseInt(fields[INTERVAL_RIGHT_BOUND_INDEX])));
         //TODO maybe except for malformed simple intervals? Genome locs had that
         } catch ( NumberFormatException e ) {
             throw new UserException.MalformedFile("Could not parse location from line: " + line);
@@ -83,31 +88,31 @@ public class RefSeqCodec extends AsciiFeatureCodec<RefSeqFeature>{
     /** Fills this object from a text line in RefSeq (UCSC) text dump file */
     @Override
     public RefSeqFeature decode(String line) {
-        if (line.startsWith(HEADER_LINE_CHAR)) {
+        if (line.startsWith(COMMENT_LINE_CHARACTER)) {
             return null;
         }
-        String fields[] = line.split(LINE_DELIMETER);
+        String fields[] = line.split(LINE_DELIMITER);
 
         // we reference postion 15 in the split array below, make sure we have at least that many columns
-        if (fields.length < 16) {
+        if (fields.length < MINIMUM_LINE_FIELD_COUNT) {
             throw new TribbleException("RefSeq (decode) : Unable to parse line -> " + line + ", we expected at least 16 columns, we saw " + fields.length);
         }
-        String contig_name = fields[2];
-        RefSeqFeature feature = new RefSeqFeature(new SimpleInterval(contig_name, Integer.parseInt(fields[4])+1, Integer.parseInt(fields[5])));
+        String contig_name = fields[CONTIG_INDEX];
+        RefSeqFeature feature = new RefSeqFeature(new SimpleInterval(contig_name, Integer.parseInt(fields[INTERVAL_LEFT_BOUND_INDEX])+1, Integer.parseInt(fields[INTERVAL_RIGHT_BOUND_INDEX])));
 
-        feature.setTranscript_id(fields[1]);
-        if ( fields[3].length()==1 && fields[3].charAt(0)=='+') {
+        feature.setTranscript_id(fields[TRANSCRIPT_ID_INDEX]);
+        if ( fields[STRAND_INDEX].length()==1 && fields[STRAND_INDEX].charAt(0)=='+') {
             feature.setStrand(1);
 
-        } else if ( fields[3].length()==1 && fields[3].charAt(0)=='-') {
+        } else if ( fields[STRAND_INDEX].length()==1 && fields[STRAND_INDEX].charAt(0)=='-') {
             feature.setStrand(-1);
 
         } else {
-            throw new UserException.MalformedFile("Expected strand symbol (+/-), found: "+fields[3] + " for line=" + line);
+            throw new UserException.MalformedFile("Expected strand symbol (+/-), found: "+fields[STRAND_INDEX] + " for line=" + line);
         }
 
-        int coding_start = Integer.parseInt(fields[6])+1;
-        int coding_stop = Integer.parseInt(fields[7]);
+        int coding_start = Integer.parseInt(fields[CODING_START_INDEX])+1;
+        int coding_stop = Integer.parseInt(fields[CODING_STOP_INDEX]);
 
         if ( coding_start > coding_stop ) {
             if ( ! zero_coding_length_user_warned ) {
@@ -118,12 +123,12 @@ public class RefSeqCodec extends AsciiFeatureCodec<RefSeqFeature>{
             return null;
         }
 
-        feature.setTranscript_interval(new SimpleInterval(contig_name, Integer.parseInt(fields[4])+1, Integer.parseInt(fields[5])));
+        feature.setTranscript_interval(new SimpleInterval(contig_name, Integer.parseInt(fields[INTERVAL_LEFT_BOUND_INDEX])+1, Integer.parseInt(fields[INTERVAL_RIGHT_BOUND_INDEX])));
         feature.setTranscript_coding_interval(new SimpleInterval(contig_name, coding_start, coding_stop));
-        feature.setGene_name(fields[12]);
-        String[] exon_starts = fields[9].split(",");
-        String[] exon_stops = fields[10].split(",");
-        String[] eframes = fields[15].split(",");
+        feature.setGene_name(fields[GENE_NAME_INDEX]);
+        String[] exon_starts = fields[EXON_STARTS_INDEX].split(",");
+        String[] exon_stops = fields[EXON_STOPS_INDEX].split(",");
+        String[] eframes = fields[EXON_FRAMES_INDEX].split(",");
 
         if ( exon_starts.length != exon_stops.length ) {
             throw new UserException.MalformedFile("Data format error: numbers of exon start and stop positions differ for line=" + line);
@@ -137,6 +142,7 @@ public class RefSeqCodec extends AsciiFeatureCodec<RefSeqFeature>{
         ArrayList<Integer> exon_frames = new ArrayList<Integer>(eframes.length);
 
         for ( int i = 0 ; i < exon_starts.length  ; i++ ) {
+            // NOTE, we add 1 here to account for represention issues in the exon counts
             exons.add(new SimpleInterval(contig_name, Integer.parseInt(exon_starts[i])+1, Integer.parseInt(exon_stops[i]) ) );
             exon_frames.add(Integer.decode(eframes[i]));
         }

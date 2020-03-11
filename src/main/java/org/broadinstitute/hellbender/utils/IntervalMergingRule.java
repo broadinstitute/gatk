@@ -5,6 +5,5 @@ package org.broadinstitute.hellbender.utils;
  */
 public enum IntervalMergingRule {
     ALL, // we merge both overlapping intervals and abutting intervals
-    OVERLAPPING_ONLY, // We merge intervals that are overlapping, but NOT ones that only abut each other
-    NONE // Don't perform any interval merging at all. This will likely cause problems for the traversal and this is not recommended
+    OVERLAPPING_ONLY // We merge intervals that are overlapping, but NOT ones that only abut each other
 }

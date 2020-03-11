@@ -166,7 +166,7 @@ import java.util.*;
  *         preprocessing_script = getOreganno.py
  *
  *         # Supported types:
- *         # simpleXSV    -- Arbitrary separated value table (e.g. CSV), keyed off Gene Name OR Transcript ID
+ *         # simpleXSV    -- Arbitrary separated value table (e.g. CSV), keyed off Gene Name OR RefSeqTranscript ID
  *         # locatableXSV -- Arbitrary separated value table (e.g. CSV), keyed off a genome location
  *         # gencode      -- Custom datasource class for GENCODE
  *         # cosmic       -- Custom datasource class for COSMIC
@@ -178,7 +178,7 @@ import java.util.*;
  *         gencode_fasta_path =
  *
  *         # Required field for GENCODE files.
- *         # NCBI build version (either hg19 or hg38):
+ *         # NCBI buildAndWriteLine version (either hg19 or hg38):
  *         ncbi_build_version =
  *
  *         # Required field for simpleXSV files.

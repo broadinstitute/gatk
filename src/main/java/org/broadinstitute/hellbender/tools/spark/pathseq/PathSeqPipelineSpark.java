@@ -59,7 +59,7 @@ import java.util.List;
  * for a standard microbial set are available in the
  * <a href="https://software.broadinstitute.org/gatk/download/bundle">GATK Resource Bundle</a>.</p>
  *
- * <p>To build custom references, users must provide FASTA files of the host and pathogen sequences. Tools are included to
+ * <p>To buildAndWriteLine custom references, users must provide FASTA files of the host and pathogen sequences. Tools are included to
  * generate the necessary files: the host k-mer database (PathSeqBuildKmers), BWA-MEM index image files of the host and
  * pathogen references (BwaMemIndexImageCreator), and a taxonomic tree of the pathogen reference (PathSeqBuildReferenceTaxonomy).</p>
  *

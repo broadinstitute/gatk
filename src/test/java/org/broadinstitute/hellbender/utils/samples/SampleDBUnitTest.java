@@ -145,13 +145,13 @@ public class SampleDBUnitTest extends GATKBaseTest {
 
     @Test
     public void loadAndMergeConsistentData() {
-        // build a temporary DB and get the resulting sample to use for test result comparison
+        // buildAndWriteLine a temporary DB and get the resulting sample to use for test result comparison
         SampleDBBuilder tempDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
         tempDBBuilder = tempDBBuilder.addSamplesFromPedigreeStrings(Arrays.asList(testPEDStringConsistent));
         SampleDB tempFinalDB = tempDBBuilder.getFinalSampleDB();
         Sample baseKidSample = tempFinalDB.getSample("kid");
 
-        // build a sample DB and then merge in the consistent test string
+        // buildAndWriteLine a sample DB and then merge in the consistent test string
         builder = new SampleDBBuilder(PedigreeValidationType.STRICT);
         builder.addSamplesFromPedigreeFiles(Arrays.asList(testPED));
         builder.addSamplesFromPedigreeStrings(Arrays.asList(testPEDStringConsistent));

@@ -174,7 +174,7 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
 
     /**
      * Creates a {@link List} of {@link Funcotation} for the given {@code variant}, {@code referenceContext}, {@code featureContext}, and {@code gencodeFuncotations}.
-     * For some Data Sources knowledge of Gene Name or Transcript ID is required for annotation.
+     * For some Data Sources knowledge of Gene Name or RefSeqTranscript ID is required for annotation.
      * Accounts for override values passed into the constructor as well.
      * @param variant {@link VariantContext} to annotate.  Never {@code null}.
      * @param referenceContext {@link ReferenceContext} corresponding to the given {@code variant}.  Never {@code null}.
@@ -337,7 +337,7 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
 
     /**
      * Creates a {@link List} of {@link Funcotation} for the given {@code variant}, {@code referenceContext}, {@code featureContext}, and {@code gencodeFuncotations}.
-     * For some Data Sources knowledge of Gene Name or Transcript ID is required for annotation.
+     * For some Data Sources knowledge of Gene Name or RefSeqTranscript ID is required for annotation.
      * @param variant {@link VariantContext} to annotate.
      * @param referenceContext {@link ReferenceContext} corresponding to the given {@code variant}.
      * @param featureList {@link List} of {@link Feature} corresponding to the given {@code variant}.

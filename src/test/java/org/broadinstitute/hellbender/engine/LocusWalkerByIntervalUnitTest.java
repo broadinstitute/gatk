@@ -20,9 +20,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * @author Daniel Gomez-Sanchez (magicDGS)
- */
 public class LocusWalkerByIntervalUnitTest extends CommandLineProgramTest {
 
     @CommandLineProgramProperties(
@@ -49,8 +46,8 @@ public class LocusWalkerByIntervalUnitTest extends CommandLineProgramTest {
         }
 
         @Override
-        public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext, Set<Locatable> activeInterval) {
-            for (Locatable l : activeInterval) {
+        public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext, Set<Locatable> activeIntervals) {
+            for (Locatable l : activeIntervals) {
                 overlapBases.put(l, overlapBases.get(l) + 1);
             }
         }
@@ -97,10 +94,26 @@ public class LocusWalkerByIntervalUnitTest extends CommandLineProgramTest {
                 {Arrays.asList("20:1000-2000", "21:3001-4000"),
                         new Locatable[]{new SimpleInterval("20:1000-2500"), new SimpleInterval("20:100-500") , new SimpleInterval("21:100-500")},
                         new int[]{1001, 0, 0}},
-
                 {Arrays.asList("20:1000-2000", "20:3001-4000"),
                         new Locatable[]{ArtificialReadUtils.createHeaderlessSamBackedRead("foo", "20", 1000, 500), VariantContextTestUtils.makeHomRef("20", 1300, 20, 1700), new SimpleInterval("20:1500-3500")},
                         new int[]{500, 401 , 1001}},
+
+
+                {Arrays.asList("20:1000-2000"),
+                        new Locatable[]{new SimpleInterval("20:1100-1250")},
+                        new int[]{151}},
+                {Arrays.asList("20:1000-2000"),
+                        new Locatable[]{new SimpleInterval("20:500-1200")},
+                        new int[]{201}},
+                {Arrays.asList("20:1000-2000"),
+                        new Locatable[]{new SimpleInterval("20:1550-2200")},
+                        new int[]{451}},
+                {Arrays.asList("20:1000-2000"),
+                        new Locatable[]{new SimpleInterval("20:400-500")},
+                        new int[]{0}},
+                {Arrays.asList("20:1000-2000"),
+                        new Locatable[]{new SimpleInterval("20:2500-2600")},
+                        new int[]{0}},
         };
     }
 
@@ -124,6 +137,13 @@ public class LocusWalkerByIntervalUnitTest extends CommandLineProgramTest {
         // Assert that each of the overlapping was called in apply the expected number of itmes
         for (int i = 0; i < locatablesToQuery.length; i++) {
             Assert.assertEquals((int)tool.overlapBases.get(locatablesToQuery[i]), expectedApplyCounts[i]);
+            if (expectedApplyCounts[i] > 0) {
+                Assert.assertTrue(tool.wasOpened.get(locatablesToQuery[i]));
+                Assert.assertTrue(tool.wasClosed.get(locatablesToQuery[i]));
+            } else {
+                Assert.assertFalse(tool.wasOpened.get(locatablesToQuery[i]));
+                Assert.assertFalse(tool.wasClosed.get(locatablesToQuery[i]));
+            }
         }
 
     }

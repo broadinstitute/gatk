@@ -237,7 +237,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
                         new VCFInfoHeaderLine("Num_Probes",1, VCFHeaderLineType.Integer, "Number of probes/targets/bins overlapping the segment."),
                         new VCFInfoHeaderLine("Segment_Call",1, VCFHeaderLineType.String, "Segment call (whether the segment is amplified, deleted, etc)."),
                         new VCFInfoHeaderLine("Sample",1, VCFHeaderLineType.String, "Sample name for the segment."),
-                        new VCFInfoHeaderLine("build",1, VCFHeaderLineType.String, "Genome build (e.g. 'hg19' or 'hg38').")
+                        new VCFInfoHeaderLine("build",1, VCFHeaderLineType.String, "Genome buildAndWriteLine (e.g. 'hg19' or 'hg38').")
                 )
         );
     }

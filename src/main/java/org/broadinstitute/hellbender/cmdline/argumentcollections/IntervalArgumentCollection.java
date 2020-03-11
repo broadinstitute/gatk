@@ -237,8 +237,8 @@ public abstract class IntervalArgumentCollection implements Serializable {
             intervals.remove(GenomeLoc.UNMAPPED);
         }
 
-            return new TraversalParameters(IntervalUtils.convertGenomeLocsToSimpleIntervals(intervals.toList()), traverseUnmapped);
-        }
+        return new TraversalParameters(IntervalUtils.convertGenomeLocsToSimpleIntervals(intervals.toList()), traverseUnmapped);
+    }
 
 
     /**

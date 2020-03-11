@@ -10,60 +10,43 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentContextIteratorBuilder;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * An implementation of {@link LocusWalker} that supports arbitrary side locus side inputs as a track.
+ * An implementation of {@link LocusWalker} that supports arbitrary interval side inputs.
  *
  * The class works as follows: Before traversal {@link #getIntervalObjectsToQueryOver()} will be called to generate a global
  * list of Locatable that will be stored in memory for the duration of the traversal. For each site {@link #apply(AlignmentContext, ReferenceContext, FeatureContext, Set)}} will be called
  * with a set consisting of all the provided overlapping intervals. The first time any Locus overlaps with the traversal
- * {@link #onIntervalStart(Locatable)} will be called once. Once an Locatable has been passed by the traversal {@link #onIntervalEnd(Locatable)}
- * will be called once. Otherwise See {@link LocusWalker} for general implementation details.
+ * {@link #onIntervalStart(Locatable)} will be called once. Once a the traversal locus no longer overlaps a Locatable, {@link #onIntervalEnd(Locatable)}
+ * will be called once to perform any necessary post-processing. Otherwise See {@link LocusWalker} for general implementation details.
  *
- * NOTE: If there are Loctables provided by {@link #getIntervalObjectsToQueryOver()} that are never covered by the traversal of
- * the tool, {@link #onIntervalStart(Locatable)} and {@link #onIntervalEnd(Locatable)} will not be called.
+ * NOTE: If there are Locatables provided by {@link #getIntervalObjectsToQueryOver()} that are never covered by the traversal of
+ * the tool, {@link #onIntervalStart(Locatable)} and {@link #onIntervalEnd(Locatable)} will not be called on those intervals.
  */
 public abstract class LocusWalkerByInterval extends LocusWalker {
 
     private OverlapDetector<Locatable> intervalsToTrack = null;
-    private Set<Locatable> previousIntervals = new HashSet<>();
+    private Set<Locatable> previousIntervals = new LinkedHashSet<>();
 
     /**
      * Implementation of locus-based traversal.
-     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
      *
-     * The default implementation iterates over all positions in the reference covered by reads (filtered and transformed)
-     * for all samples in the read groups, using the downsampling method provided by {@link #getDownsamplingInfo()}
-     * and including deletions only if {@link #includeDeletions()} returns {@code true}.
+     * This implementation behaves similarly to {@link LocusWalker#traverse()} in that it iterates over all positions in the reference
+     * covered by filtered and transformed reads including deletions only if {@link #includeDeletions()} returns {@code true}.
+     *
+     * This method also keeps track of interval objects provided by {@link #getIntervalObjectsToQueryOver()} and constructs a
+     * global overlaps detector for all of the intervals which is used by the {@link #apply(AlignmentContext, ReferenceContext, FeatureContext)}
+     * method to track which locatable still have active hooks. This method also makes sure to close out the list of previous intervals
+     * when traversal has completed so that writers can be populated.
      */
     @Override
     public void traverse() {
-        final SAMFileHeader header = getHeaderForReads();
-        // get the samples from the read groups
-        final Set<String> samples = header.getReadGroups().stream()
-                .map(SAMReadGroupRecord::getSample)
-                .collect(Collectors.toSet());
         final CountingReadFilter countedFilter = makeReadFilter();
-        // get the filter and transformed iterator
-        final Iterator<GATKRead> readIterator = getTransformedReadStream(countedFilter).iterator();
+        final Iterator<AlignmentContext> iterator = getAlignmentContextIterator(countedFilter);
 
         intervalsToTrack = OverlapDetector.create(getIntervalObjectsToQueryOver());
-
-        final AlignmentContextIteratorBuilder alignmentContextIteratorBuilder = new AlignmentContextIteratorBuilder();
-        alignmentContextIteratorBuilder.setDownsamplingInfo(getDownsamplingInfo());
-        alignmentContextIteratorBuilder.setEmitEmptyLoci(emitEmptyLoci());
-        alignmentContextIteratorBuilder.setIncludeDeletions(includeDeletions());
-        alignmentContextIteratorBuilder.setKeepUniqueReadListInLibs(keepUniqueReadListInLibs());
-        alignmentContextIteratorBuilder.setIncludeNs(includeNs());
-
-        final Iterator<AlignmentContext> iterator = alignmentContextIteratorBuilder.build(
-                readIterator, header, userIntervals, getBestAvailableSequenceDictionary(),
-                hasReference());
 
         // iterate over each alignment, and apply the function
         iterator.forEachRemaining(alignmentContext -> {
@@ -79,15 +62,15 @@ public abstract class LocusWalkerByInterval extends LocusWalker {
     }
 
     @Override
-    // A locusWalkerByIntervalRequires intervals be specified
+    // A locusWalkerByInterval requires intervals be specified
     public final boolean requiresIntervals() {
         return true;
     }
 
     /**
-     * Tool specified list of Locatable objects (which have been read into memory) that will have overlaps queried at each locus
+     * Tool-specified list of Locatable objects (which have been read into memory) that will have overlaps queried at each locus
      *
-     * @return A list of Locatable Objects that will be queried over each genomic location
+     * @return A list of Locatable Objects that will be checked for overlap with each genomic location we traverse
      */
     public abstract List<Locatable> getIntervalObjectsToQueryOver();
 
@@ -112,8 +95,7 @@ public abstract class LocusWalkerByInterval extends LocusWalker {
 
     /**
      * Process an individual AlignmentContext (with optional contextual information). Must be implemented by tool authors.
-     * Note that apply() may be called multiple times for the same reference coordinate in the even that there are multiple
-     * intervals overlapping the same region. In this case activeInterval will point to the associated interval context.
+     * Will provide a set of all intervals overlapping the given locus.
      *
      * @param alignmentContext current alignment context
      * @param referenceContext Reference bases spanning the current locus. Will be an empty, but non-null, context object
@@ -123,19 +105,19 @@ public abstract class LocusWalkerByInterval extends LocusWalker {
      * @param featureContext Features spanning the current locus. Will be an empty, but non-null, context object
      *                       if there is no backing source of Feature data (in which case all queries on it will return an
      *                       empty List).
-     * @param activeInterval Locatables from the provided set spanning the current locus.
+     * @param activeIntervals Locatables from the set provided by getIntervalObjectsToQueryOver() spanning the current locus.
      */
-    public abstract void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext, Set<Locatable> activeInterval);
+    public abstract void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext, Set<Locatable> activeIntervals);
 
     /**
      * Perform any initialization needed the first time a provided interval is seen.
      *
-     * @param activeInterval Locatable provided to the walker to be initialized
+     * @param activeInterval Locatable an interval from the set provided by getIntervalObjectsToQueryOver() to the walker to be initialized
      */
     public abstract void onIntervalStart(Locatable activeInterval);
 
     /**
-     * Perform any closing operations needed once the provided interval has been passed by the tool
+     * Perform any closing operations needed once the provided getIntervalObjectsToQueryOver() interval has been passed by the tool
      *
      * NOTE: This will only ever be called on an interval that has been covered by {@link #onIntervalStart(Locatable)}
      *

@@ -422,7 +422,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
             throw new IllegalStateException("recoverDanglingHeads requires the graph be already built");
         }
 
-        // we need to build a list of dangling heads because that process can modify the graph (and otherwise generate
+        // we need to buildAndWriteLine a list of dangling heads because that process can modify the graph (and otherwise generate
         // a ConcurrentModificationException if we do it while iterating over the vertexes)
         final Collection<MultiDeBruijnVertex> danglingHeads = vertexSet().stream()
                 .filter(v -> inDegreeOf(v) == 0 && !isRefSource(v))

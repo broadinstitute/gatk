@@ -344,8 +344,8 @@ public final class FuncotatorEngine implements AutoCloseable {
      * Processes the given {@link Set} into a list of transcript IDs.
      * This is necessary because the command-line input argument is overloaded to be either a file containing transcript
      * IDs (1 per line) OR as a list of transcript IDs.
-     * @param rawTranscriptSet {@link Set} of {@link String}s from which to create a list of Transcript IDs.  If of size 1, will try to open as a file.
-     * @return A {@link Set} of {@link String} contianing Transcript IDs in which the user is interested.
+     * @param rawTranscriptSet {@link Set} of {@link String}s from which to create a list of RefSeqTranscript IDs.  If of size 1, will try to open as a file.
+     * @return A {@link Set} of {@link String} contianing RefSeqTranscript IDs in which the user is interested.
      */
     public static Set<String> processTranscriptList(final Set<String> rawTranscriptSet) {
         if ( rawTranscriptSet.size() == 1 ) {
@@ -362,7 +362,7 @@ public final class FuncotatorEngine implements AutoCloseable {
                     transcriptIdSet.add(line);
                     line = bufferedReader.readLine();
                 }
-                logger.info("Transcript parsing complete.");
+                logger.info("RefSeqTranscript parsing complete.");
 
                 return transcriptIdSet;
             }

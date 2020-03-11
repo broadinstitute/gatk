@@ -86,7 +86,7 @@ public class FuncotatorTestUtils {
      *  {@code null} is not recommended, but this method will not throw an exception.
      *
      * @param hugoSymbol gene name, such as PIK3CA or TEST_GENE
-     * @param ncbiBuild Associated build.  Typically, "hg38" or "hg19"
+     * @param ncbiBuild Associated buildAndWriteLine.  Typically, "hg38" or "hg19"
      * @param chromosome Contig name.  Please note that this method will not enforce the value here.
      * @param start Must be greater than zero.  No other checks provided.  For example, this method will not check whether a chromosome is of an appropriate length for this value.
      * @param end Must be greater than zero.  No other checks provided.  For example, this method will not check whether a chromosome is of an appropriate length for this value.
@@ -96,7 +96,7 @@ public class FuncotatorTestUtils {
      * @param refAllele reference allele
      * @param tumorSeqAllele2 alternate allele
      * @param genomeChange Genome change string.  This method will not check validity.
-     * @param annotationTranscript Transcript ID to use.  If you wish to fake a no transcript gencode funcotation, use {@link org.broadinstitute.hellbender.tools.funcotator.FuncotationMap#NO_TRANSCRIPT_AVAILABLE_KEY}
+     * @param annotationTranscript RefSeqTranscript ID to use.  If you wish to fake a no transcript gencode funcotation, use {@link org.broadinstitute.hellbender.tools.funcotator.FuncotationMap#NO_TRANSCRIPT_AVAILABLE_KEY}
      * @param transcriptStrand This method will not check validity against the annotation transcript.
      * @param transcriptExon 1-based exon number.  In the Funcotator main code, this field takes into account coding direction, so exon 1 will be at the highest genomic position on a negative strand.
      *                       This method will not check validity of the specified value.  Must be >= 1.
@@ -135,9 +135,9 @@ public class FuncotatorTestUtils {
 
         ParamUtils.isPositive(start, "Start position is 1-based and must be greater that zero.");
         ParamUtils.isPositive(end, "End position is 1-based and must be greater that zero.");
-        ParamUtils.isPositive(transcriptExon, "Transcript exon is a 1-based index.");
-        ParamUtils.isPositive(transcriptStartPos, "Transcript start position is a 1-based index.");
-        ParamUtils.isPositive(transcriptEndPos, "Transcript end position is a 1-based index.");
+        ParamUtils.isPositive(transcriptExon, "RefSeqTranscript exon is a 1-based index.");
+        ParamUtils.isPositive(transcriptStartPos, "RefSeqTranscript start position is a 1-based index.");
+        ParamUtils.isPositive(transcriptEndPos, "RefSeqTranscript end position is a 1-based index.");
         ParamUtils.inRange(gcContent, 0.0, 1.0, "GC Content must be between 0.0 and 1.0.");
 
         final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();

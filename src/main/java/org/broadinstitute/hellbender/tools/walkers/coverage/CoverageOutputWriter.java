@@ -5,7 +5,6 @@ import com.opencsv.CSVWriter;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -22,12 +21,12 @@ import java.util.*;
 /**
  * This is a class for managing the output formatting/files for DepthOfCoverage.
  *
- * Output for {@link DepthOfCoverage} can be organized as a combination Partition, Aggrigation, and OutputType, with this writer
+ * Output for {@link DepthOfCoverage} can be organized as a combination Partition, Aggregation, and OutputType, with this writer
  * storing an internal list of streams to which to write output organized by {@link DoCOutputType} objects. Generally
  * speaking there are three patterns that this writer is responsible for managing:
  *
  *  1. writePerLocusDepthSummary() - This should be called over every locus and is responsible for producing the locus
- *                                   coverage output table summarizing the coverage (and possibly base counts) for each
+ *                                   coverage output table summarizing the coverage (and possibly base counts)
  *                                   for every partition type x relevant samples. This takes as input the output from
  *                                   {@link CoverageUtils#getBaseCountsByPartition}
  *
@@ -37,37 +36,42 @@ import java.util.*;
  *                                        and "_interval_statistics" files for each partition.
  *
  *  2b. writePerGeneDepthInformation() - Similarly to 2a, this should be called once per gene in the interval traversal and
- *                                       it takes the same gen-interval coverage summary as 2a. TODO Note that this may not always cover the gene at hand because of reasons
+ *                                       it takes the same gene-interval coverage summary as 2a.
+ *                                       NOTE: This may not actually be called in function for every gene if the provided traversal
+ *                                             intervals for the tool do not actually cover any bases for the gene in quesion. If
+ *                                             this is the case then the gene will be passed over. //TODO in the future this should be changed to emit empty coverage counts for untraversed genes.
  *
  *  3. writeTraversalCumulativeCoverage() - This method takes a {@link DepthOfCoveragePartitionedDataStore} object that should correspond
  *                                         to the partitioned counts for every base traversed by DepthOfCoverage aggregated.
  *                                         This method is responsible for outputting the "_cumulative_coverage_counts",
- *                                         "_cumulative_coverage_proportions", "_statistics", and "_summary" file writing.
+ *                                         "_cumulative_coverage_proportions", "_statistics", and "_summary" files.
  *
  */
 public class CoverageOutputWriter implements Closeable {
-    static final List<String> CUMULATIVE_SUMMARY_OUTPUT_LINES = Collections.unmodifiableList(Arrays.asList("sample_id","total","mean","granular_third_quartile","granular_median","granular_first_quartile"));
+    static final List<String> CUMULATIVE_SUMMARY_OUTPUT_LINES = Collections.unmodifiableList(Arrays.asList("sample_id", "total", "mean", "granular_third_quartile", "granular_median", "granular_first_quartile"));
+    private static final char TSV_SEPARATOR = '\t';
+    private static final char CSV_SEPARATOR = ',';
 
     private final EnumSet<DoCOutputType.Partition> partitions;
     private final boolean includeGeneOutput;
     private final boolean omitIntervals;
+    private List<String> summaryHeaderSampleSuffixes;
     private boolean printBaseCounts;
     private Map<DoCOutputType, SimpleCSVWriterWrapperWithHeader> outputs;
     private DEPTH_OF_COVERAGE_OUTPUT_FORMAT outputFormat;
     private boolean omitDepthOutput;
     private List<Integer> coverageThresholds;
-
     final static DecimalFormat DOUBLE_FORMAT = new DecimalFormat("0.00");
 
     public enum DEPTH_OF_COVERAGE_OUTPUT_FORMAT {
         TABLE,
-//        RTABLE,
         CSV
     }
 
+
     /**
      * Creates a CoverageOutputWriter for managing all of the output files for DepthOfCoverage.
-     *
+     * <p>
      * This object holds on to output writers for each of the tables and ensures, among other things, that the data are
      * written into the correct table corresponding to each data output call. This class is also responsible for generating
      * the data needed to format some output lines for DepthOfCoverage. This means that for most datatypes, DepthOfCoverage
@@ -75,49 +79,53 @@ public class CoverageOutputWriter implements Closeable {
      * the necessary summary data therin. Furthermore this class understands how to write CSV/TSV files, which all DoC output
      * files approximately follow.
      *
-     * @param outputFormat
-     * @param partitions
-     * @param outputBaseName
-     * @param includeGeneOutput
-     * @param printBaseCounts
-     * @param omitDepthOutput
-     * @param omitIntervals
-     * @param omitSampleSummary
-     * @param omitLocusTable
+     * @param outputFormat               type of table (CSV/TSV) to output results as
+     * @param partitionsToCover          partitioning for the data (eg sample, library, etc...) that will be computed in paralell
+     * @param outputBaseName             base file path for the output tables (will be prepended to the output suffix and .tsv or .csv)
+     * @param includeGeneOutputPerSample whether to produce an output sink for gene partition data
+     * @param printBaseCounts            whether to summarize per-nucleotide counts at each locus
+     * @param omitDepthOutput            if true will not generate locus output files
+     * @param omitIntervals              if true then will generate "_interval_summary" output files
+     * @param omitSampleSummary          if true then will not generate "_statistics" and "_summary" output sinks
+     * @param omitLocusTable             if true will not generate "_cumulative_coverage_counts" or "_cumulative_coverage_proportions"
+     * @param coverageThresholds         Threshold coverage level to use for reporting.
      * @throws IOException
      */
     public CoverageOutputWriter(final DEPTH_OF_COVERAGE_OUTPUT_FORMAT outputFormat,
-                                final EnumSet<DoCOutputType.Partition> partitions,
+                                final EnumSet<DoCOutputType.Partition> partitionsToCover,
                                 final String outputBaseName,
-                                final boolean includeGeneOutput,
+                                final boolean includeGeneOutputPerSample,
                                 final boolean printBaseCounts,
                                 final boolean omitDepthOutput,
                                 final boolean omitIntervals,
                                 final boolean omitSampleSummary,
-                                final boolean omitLocusTable)  throws IOException{
+                                final boolean omitLocusTable,
+                                final List<Integer> coverageThresholds) throws IOException {
         this.outputFormat = outputFormat;
-        this.partitions = partitions;
-        this.includeGeneOutput = includeGeneOutput;
+        this.partitions = partitionsToCover;
+        this.includeGeneOutput = includeGeneOutputPerSample;
         this.omitIntervals = omitIntervals;
         this.printBaseCounts = printBaseCounts;
         this.omitDepthOutput = omitDepthOutput;
+        this.coverageThresholds = coverageThresholds;
+        this.summaryHeaderSampleSuffixes = getSampleSuffixes(coverageThresholds);
 
         char separator;
         if (outputFormat == DEPTH_OF_COVERAGE_OUTPUT_FORMAT.CSV) {
-            separator = ',';
+            separator = CSV_SEPARATOR;
         } else {
-            separator = '\t';
+            separator = TSV_SEPARATOR;
         }
 
         outputs = new HashMap<>();
-        if(!omitDepthOutput) {
+        if (!omitDepthOutput) {
             // Create a depth summary output sink
             DoCOutputType depthSummaryByLocus = new DoCOutputType(null, DoCOutputType.Aggregation.locus, DoCOutputType.FileType.summary);
             outputs.put(depthSummaryByLocus, getOutputStream(outputBaseName, depthSummaryByLocus, separator));
         }
 
-        if(!omitIntervals) {
-            for(DoCOutputType.Partition partition: partitions) {
+        if (!omitIntervals) {
+            for (DoCOutputType.Partition partition : partitionsToCover) {
                 // Create an interval summary output sink
                 DoCOutputType intervalSummaryBypartition = new DoCOutputType(partition, DoCOutputType.Aggregation.interval, DoCOutputType.FileType.summary);
                 outputs.put(intervalSummaryBypartition, getOutputStream(outputBaseName, intervalSummaryBypartition, separator));
@@ -128,14 +136,15 @@ public class CoverageOutputWriter implements Closeable {
             }
         }
 
-        if(includeGeneOutput && partitions.contains(DoCOutputType.Partition.sample)) {
+        // The gene output summary is computed on a per-sample bases and is related to the per-sample output tables. Thus we require sample partitioning be present.
+        if (canWriteGeneOutput()) {
             // Create a special output sink for gene data if provided
             DoCOutputType geneSummaryOut = new DoCOutputType(DoCOutputType.Partition.sample, DoCOutputType.Aggregation.gene, DoCOutputType.FileType.summary);
             outputs.put(geneSummaryOut, getOutputStream(outputBaseName, geneSummaryOut, separator));
         }
 
-        if(!omitSampleSummary) {
-            for(DoCOutputType.Partition partition: partitions) {
+        if (!omitSampleSummary) {
+            for (DoCOutputType.Partition partition : partitionsToCover) {
                 // Create a cumulative coverage summary output sink
                 DoCOutputType cumulativeSummaryOut = new DoCOutputType(partition, DoCOutputType.Aggregation.cumulative, DoCOutputType.FileType.summary);
                 outputs.put(cumulativeSummaryOut, getOutputStream(outputBaseName, cumulativeSummaryOut, separator));
@@ -146,8 +155,8 @@ public class CoverageOutputWriter implements Closeable {
             }
         }
 
-        if(!omitLocusTable) {
-            for(DoCOutputType.Partition partition: partitions) {
+        if (!omitLocusTable) {
+            for (DoCOutputType.Partition partition : partitionsToCover) {
                 // Create a cumulative coverage counts output sink
                 DoCOutputType cumulativeCoverageCountsOut = new DoCOutputType(partition, DoCOutputType.Aggregation.cumulative, DoCOutputType.FileType.coverage_counts);
                 outputs.put(cumulativeCoverageCountsOut, getOutputStream(outputBaseName, cumulativeCoverageCountsOut, separator));
@@ -159,6 +168,11 @@ public class CoverageOutputWriter implements Closeable {
         }
     }
 
+    // A helper method that determines if we should be handling gene output information.
+    private boolean canWriteGeneOutput() {
+        return includeGeneOutput && partitions.contains(DoCOutputType.Partition.sample);
+    }
+
     // Helper method to generate an output stream given a DoCOutputType Object and the base name
     private static SimpleCSVWriterWrapperWithHeader getOutputStream(String outputBaseName, DoCOutputType depthSummaryByLocus, char separator) throws IOException {
         return new SimpleCSVWriterWrapperWithHeader(new OutputStreamWriter(Files.newOutputStream((IOUtils.getPath(depthSummaryByLocus.getFilePath(outputBaseName))))), separator);
@@ -168,22 +182,19 @@ public class CoverageOutputWriter implements Closeable {
      * Initialize and write the output headers for the output streams that need to be continuously updated during traversal.
      *
      * @param sortedSamplesByPartition global map of partitionType to sorted list of samples associated with that partition
-     * @param coverageThresholds Threshold coverage level to use for reporting.
      */
-    public void writeCoverageOutputHeaders(final Map<DoCOutputType.Partition, List<String>> sortedSamplesByPartition, final List<Integer> coverageThresholds) {
-        this.coverageThresholds = coverageThresholds;
-
-        if ( ! omitDepthOutput ) { // print header
+    public void writeCoverageOutputHeaders(final Map<DoCOutputType.Partition, List<String>> sortedSamplesByPartition) {
+        if (!omitDepthOutput) { // print header
             writePerLocusDepthOutputSummaryHeader(sortedSamplesByPartition);
         }
 
         // write
-        if ( includeGeneOutput && partitions.contains(DoCOutputType.Partition.sample) ) {
+        if (canWriteGeneOutput()) {
             final SimpleCSVWriterWrapperWithHeader geneSummaryOut = getCorrectOutputWriter(DoCOutputType.Partition.sample, DoCOutputType.Aggregation.gene, DoCOutputType.FileType.summary);
             geneSummaryOut.addHeaderLine(getIntervalSummaryHeader("Gene", sortedSamplesByPartition.get(DoCOutputType.Partition.sample)));
         }
 
-        if(!omitIntervals) {
+        if (!omitIntervals) {
             for (DoCOutputType.Partition partition : partitions) {
                 final SimpleCSVWriterWrapperWithHeader intervalSummaryOut = getCorrectOutputWriter(partition, DoCOutputType.Aggregation.interval, DoCOutputType.FileType.summary);
                 intervalSummaryOut.addHeaderLine(getIntervalSummaryHeader("Target", sortedSamplesByPartition.get(partition)));
@@ -197,18 +208,18 @@ public class CoverageOutputWriter implements Closeable {
      *
      * @param identifiersByType global map of partitions to a sorted list of their samples
      */
-    private void writePerLocusDepthOutputSummaryHeader(final Map<DoCOutputType.Partition,List<String>> identifiersByType) {
+    private void writePerLocusDepthOutputSummaryHeader(final Map<DoCOutputType.Partition, List<String>> identifiersByType) {
         SimpleCSVWriterWrapperWithHeader out = getCorrectOutputWriter(null, DoCOutputType.Aggregation.locus, DoCOutputType.FileType.summary);
         List<String> columns = Lists.newArrayList("Locus", "Total_Depth");
-        for (DoCOutputType.Partition type : partitions ) {
-            columns.add("Average_Depth_"+type.toString());
+        for (DoCOutputType.Partition type : partitions) {
+            columns.add("Average_Depth_" + type.toString());
         }
 
-        for (DoCOutputType.Partition type : partitions ) {
+        for (DoCOutputType.Partition type : partitions) {
             for (String s : identifiersByType.get(type)) {
-                columns.add("Depth_for_"+s);
+                columns.add("Depth_for_" + s);
                 if (printBaseCounts) {
-                    columns.add(s+"_base_counts");
+                    columns.add(s + "_base_counts");
                 }
             }
         }
@@ -216,9 +227,9 @@ public class CoverageOutputWriter implements Closeable {
     }
 
     private SimpleCSVWriterWrapperWithHeader getCorrectOutputWriter(DoCOutputType.Partition partition, DoCOutputType.Aggregation aggregation, DoCOutputType.FileType fileType) {
-        DoCOutputType outputType = new DoCOutputType(partition,aggregation,fileType);
-        if(!outputs.containsKey(outputType)) {
-            throw new UserException(String.format("Unable to find appropriate stream for partition = %s, aggregation = %s, file type = %s", partition, aggregation, fileType));
+        DoCOutputType outputType = new DoCOutputType(partition, aggregation, fileType);
+        if (!outputs.containsKey(outputType)) {
+            throw new GATKException(String.format("Unable to find appropriate stream for partition = %s, aggregation = %s, file type = %s", partition, aggregation, fileType));
         }
         return outputs.get(outputType);
     }
@@ -230,37 +241,38 @@ public class CoverageOutputWriter implements Closeable {
 
     /**
      * Writes a summary of the given per-locus data out to the main output track. Output data for any given sample may
-     * optionally contain a summary of which bases were present in the pileup at that site which will consits of a 4
+     * optionally contain a summary of which bases were present in the pileup at that site which will consist of a 4
      * element list in the format 'A:0 C:0 T:0 G:0 N:0'.
-     *
+     * <p>
      * This writer is responsible for determining the total depth at the site by polling one of the output tracks and using
      * that value to calculate the mean per-sample coverage for each partitioning. These depth summary columns as well as
-     * the locus site are present in the frist lines of the locusSummary output.
+     * the locus site are present in the first lines of the locusSummary output.
      *
-     * @param locus The site corresponding to the data that will be written out
+     * @param locus                The site corresponding to the data that will be written out
      * @param countsBySampleByType A map of partition to sample and finally to 4 element array of bases. This output is
-     *                             expected to be produced by {@link CoverageUtils#getBaseCountsByPartition(AlignmentContext, int, int, byte, byte, CoverageUtils.CountPileupType, Collection, SAMFileHeader)}
-     * @param identifiersByType A global map of sorted samples in each partition, to be used for ordering.
-     * @param includeDeletions Whether or not to include deletions in the summary line
+     *                             expected to be produced by {@link CoverageUtils#getBaseCountsByPartition(AlignmentContext, byte, byte, CoverageUtils.CountPileupType, Collection, SAMFileHeader)}
+     * @param identifiersByType    A global map of sorted samples in each partition, to be used for ordering.
+     *                             NOTE: this map should remain unchanged between every call of this method or correct output is not guarinteed.
+     * @param includeDeletions     Whether or not to include deletions in the summary line
      */
-    public void writePerLocusDepthSummary(SimpleInterval locus, Map<DoCOutputType.Partition, Map<String,int[]>> countsBySampleByType,
-                                          Map<DoCOutputType.Partition,List<String>> identifiersByType, boolean includeDeletions) {
+    public void writePerLocusDepthSummary(final SimpleInterval locus, final Map<DoCOutputType.Partition, Map<String, int[]>> countsBySampleByType,
+                                          final Map<DoCOutputType.Partition, List<String>> identifiersByType, final boolean includeDeletions) {
 
         SimpleCSVWriterWrapperWithHeader lineWriter = getCorrectOutputWriter(null, DoCOutputType.Aggregation.locus, DoCOutputType.FileType.summary);
         SimpleCSVWriterWrapperWithHeader.SimpleCSVWriterLineBuilder lineBuilder = lineWriter.getNewLineBuilder();
 
-        // get the depths per sample and build up the output string while tabulating total and average coverage
+        // get the depths per sample and buildAndWriteLine up the output string while tabulating total and average coverage
         int tDepth = 0;
         boolean depthCounted = false;
-        for (DoCOutputType.Partition type : partitions ) {
-            Map<String,int[]> countsByID = countsBySampleByType.get(type);
-            for ( String sample : identifiersByType.get(type) ) {
-                long dp = (countsByID != null && countsByID.keySet().contains(sample)) ? MathUtils.sum(countsByID.get(sample)) : 0 ;
-                lineBuilder.setColumn("Depth_for_"+sample, Long.toString(dp));
-                if ( printBaseCounts ) {
-                    lineBuilder.setColumn(sample+"_base_counts",getBaseCountsString(countsByID != null ? countsByID.get(sample) : null , includeDeletions));
+        for (DoCOutputType.Partition type : partitions) {
+            Map<String, int[]> countsByID = countsBySampleByType.get(type);
+            for (String sample : identifiersByType.get(type)) {
+                long dp = (countsByID != null && countsByID.keySet().contains(sample)) ? MathUtils.sum(countsByID.get(sample)) : 0;
+                lineBuilder.setColumn("Depth_for_" + sample, Long.toString(dp));
+                if (printBaseCounts) {
+                    lineBuilder.setColumn(sample + "_base_counts", getBaseCountsString(countsByID != null ? countsByID.get(sample) : null, includeDeletions));
                 }
-                if ( ! depthCounted ) {
+                if (!depthCounted) {
                     tDepth += dp;
                 }
             }
@@ -268,19 +280,19 @@ public class CoverageOutputWriter implements Closeable {
         }
 
         // Add the total depth and summary information to the line
-        lineBuilder.setColumn(0,locus.getContig()+":"+locus.getStart()).setColumn(1,Integer.toString(tDepth));
-        for (DoCOutputType.Partition type : partitions ) { //Note that this is a deterministic traversal since the underlying set is an EnumSet
-            lineBuilder.setColumn("Average_Depth_"+type.toString(), String.format("%.2f",(double) tDepth / identifiersByType.get(type).size()));
+        lineBuilder.setColumn(0, locus.getContig() + ":" + locus.getStart()).setColumn(1, Integer.toString(tDepth));
+        for (DoCOutputType.Partition type : partitions) { //Note that this is a deterministic traversal since the underlying set is an EnumSet
+            lineBuilder.setColumn("Average_Depth_" + type.toString(), String.format("%.2f", (double) tDepth / identifiersByType.get(type).size()));
         }
-        lineBuilder.build();
+        lineBuilder.buildAndWriteLine();
     }
 
     /**
      * Method that should be called once per-partition at the end of each coverage interval. This method is responsible
      * for extending the per-interval depth summary information for each sample.
      *
-     * @param partition Partition corresponding to the data to be written
-     * @param interval interval spanned by the input data
+     * @param partition     Partition corresponding to the data to be written
+     * @param interval      interval spanned by the input data
      * @param intervalStats statistics for coverage overlapped by the interval
      * @param sortedSamples sorted list of samples for this partition
      */
@@ -290,10 +302,9 @@ public class CoverageOutputWriter implements Closeable {
     }
 
     /**
-     * Write summary information for a gene. This method should be called for each gene in the coverage input that gets
-     * completed.
+     * Write summary information for a gene. This method should be called for each gene in the coverage input that has been passed in coverage.
      *
-     * @param gene gene corresponding to the coverage statistics
+     * @param gene          gene corresponding to the coverage statistics
      * @param intervalStats statistics for coverage overlapped by the gene (may or may not be dropped by exons)
      * @param sortedSamples sorted list of samples for this partition
      */
@@ -307,8 +318,8 @@ public class CoverageOutputWriter implements Closeable {
      * been updated for every locus across the traversal intervals.
      *
      * @param coverageProfilesForEntireTraversal DepthOfCoveragePartitionedDataStore object corresponding to the entire tool traversal.
-     * @param partition Partition corresponding to the data to be written
-     * @param sortedSampleLists sorted list of samples for this partition
+     * @param partition                          Partition corresponding to the data to be written
+     * @param sortedSampleLists                  sorted list of samples for this partition
      */
     public void writePerLocusCumulativeCoverageMetrics(final DepthOfCoveragePartitionedDataStore coverageProfilesForEntireTraversal, final DoCOutputType.Partition partition,
                                                        final List<String> sortedSampleLists) {
@@ -322,8 +333,8 @@ public class CoverageOutputWriter implements Closeable {
      * been updated for every locus across the traversal intervals.
      *
      * @param coverageProfilesForEntireTraversal DepthOfCoveragePartitionedDataStore object corresponding to the entire tool traversal.
-     * @param partition Partition corresponding to the data to be written
-     * @param sortedSamples sorted list of samples for this partition
+     * @param partition                          Partition corresponding to the data to be written
+     * @param sortedSamples                      sorted list of samples for this partition
      */
     public void writeCumulativeOutputSummaryFiles(final DepthOfCoveragePartitionedDataStore coverageProfilesForEntireTraversal, final DoCOutputType.Partition partition, final List<String> sortedSamples) {
         outputPerSampleCumulativeStatisticsForPartition(getCorrectOutputWriter(partition, DoCOutputType.Aggregation.cumulative, DoCOutputType.FileType.statistics), coverageProfilesForEntireTraversal.getCoverageByAggregationType(partition), sortedSamples);
@@ -335,9 +346,9 @@ public class CoverageOutputWriter implements Closeable {
      * {@link CoverageUtils#updateTargetTable(int[][], DepthOfCoverageStats)} called on it exactly once for each interval
      * summarized in this traversal.
      *
-     * @param partition Partition corresponding to the data to be written
+     * @param partition                Partition corresponding to the data to be written
      * @param nTargetsByAvgCvgBySample Target sample coverage histogram for the given partition to be written out
-     * @param binEndpoints Bins endpoints used in the construction of of the provided histogram
+     * @param binEndpoints             Bins endpoints used in the construction of of the provided histogram
      */
     public void writeOutputIntervalStatistics(final DoCOutputType.Partition partition, final int[][] nTargetsByAvgCvgBySample, final int[] binEndpoints) {
         SimpleCSVWriterWrapperWithHeader output = getCorrectOutputWriter(partition, DoCOutputType.Aggregation.interval, DoCOutputType.FileType.statistics);
@@ -353,18 +364,18 @@ public class CoverageOutputWriter implements Closeable {
      * A line of PARTITION_coverage_counts stores a count of the number of loci traversed that had at least X coverage according to the
      * coverage histogram defined in the header. PARTITION_coverage_proportions corresponds to the same data except presented as a
      * percentage relative to the total number of loci traversed by the tool.
-     *
+     * <p>
      * How the table is structured:
-     *  Number_of_sources, (for each histogram left endpoint X) +[gte_x]
-     *
+     * Number_of_sources, (for each histogram left endpoint X) +[gte_x]
+     * <p>
      * Whereas a row may be recorded as follows:
-     *  At_least_N_samples,13,4,4,4,3,1,1,1,0,etc...
+     * At_least_N_samples,13,4,4,4,3,1,1,1,0,etc...
      *
-     * @param countsOutput SimpleCSVWriterWrapperWithHeader object to write the cumulative coverage counts into
+     * @param countsOutput      SimpleCSVWriterWrapperWithHeader object to write the cumulative coverage counts into
      * @param proportionsOutput SimpleCSVWriterWrapperWithHeader object to write the count proportions into
-     * @param stats DepthOfCoverageStats object corresponding to the partitioning in partitionType
-     * @param partitionType partitioning this output data corresponds to
-     * @param sortedSampleList sorted list of sample names for ordering
+     * @param stats             DepthOfCoverageStats object corresponding to the partitioning in partitionType
+     * @param partitionType     partitioning this output data corresponds to
+     * @param sortedSampleList  sorted list of sample names for ordering
      */
     private void outputPerLocusCumulativeSummaryAndStatistics(SimpleCSVWriterWrapperWithHeader countsOutput, SimpleCSVWriterWrapperWithHeader proportionsOutput,
                                                               DepthOfCoverageStats stats, DoCOutputType.Partition partitionType, List<String> sortedSampleList) {
@@ -378,36 +389,31 @@ public class CoverageOutputWriter implements Closeable {
 
         List<String> headerLines = Lists.newArrayList(partitionType == DoCOutputType.Partition.readgroup ? "read_group" : partitionType.toString(), "gte_0");
 
-//                if ( printSampleColumnHeader ) {
-//            // mhanna 22 Aug 2010 - Deliberately force this header replacement to make sure integration tests pass.
-//            // TODO: Update integration tests and get rid of this.
-//            header.append(partitionType == DoCOutputType.Partition.readgroup ? "read_group" : partitionType.toString());
-//        }
-        for ( int d : endpoints ) {
-            headerLines.add("gte_"+d);
+        for (int d : endpoints) {
+            headerLines.add("gte_" + d);
         }
 
         countsOutput.addHeaderLine(headerLines);
         proportionsOutput.addHeaderLine(headerLines);
 
         // Fill out the lines of the table to the writer based on the source tables
-        for ( int row = 0; row < samples; row ++ ) {
+        for (int row = 0; row < samples; row++) {
             SimpleCSVWriterWrapperWithHeader.SimpleCSVWriterLineBuilder lineBuilder = countsOutput.getNewLineBuilder();
-            lineBuilder.setColumn(0, "NSamples_"+String.format("%d", row+1));
-            for ( int col = 0; col < baseCoverageCumDist[0].length; col++ ) {
-                lineBuilder.setColumn(col+1, Long.toString(baseCoverageCumDist[row][col]));
+            lineBuilder.setColumn(0, "NSamples_" + String.format("%d", row + 1));
+            for (int col = 0; col < baseCoverageCumDist[0].length; col++) {
+                lineBuilder.setColumn(col + 1, Long.toString(baseCoverageCumDist[row][col]));
             }
-            lineBuilder.build();
+            lineBuilder.buildAndWriteLine();
         }
 
-        for ( String sample : sortedSampleList ) {
+        for (String sample : sortedSampleList) {
             SimpleCSVWriterWrapperWithHeader.SimpleCSVWriterLineBuilder lineBuilder = proportionsOutput.getNewLineBuilder();
             lineBuilder.setColumn(0, sample);
             double[] coverageDistribution = stats.getCoverageProportions(sample);
-            for ( int bin = 0; bin < coverageDistribution.length; bin ++ ) {
-                lineBuilder.setColumn(bin+1, String.format("%.2f",coverageDistribution[bin]));
+            for (int bin = 0; bin < coverageDistribution.length; bin++) {
+                lineBuilder.setColumn(bin + 1, String.format("%.2f", coverageDistribution[bin]));
             }
-            lineBuilder.build();
+            lineBuilder.buildAndWriteLine();
         }
     }
 
@@ -415,7 +421,7 @@ public class CoverageOutputWriter implements Closeable {
      * Constructs the header for locus summary type files. Note these output files take the form:
      * title, total_coverage, average_coverage, (for each sample) +[sample_total_cvg, sample_mean_cvg, sample_granular_Q1, sample_granular_median, sample_granular_Q3]
      *
-     * @param title Locus type to store
+     * @param title      Locus type to store
      * @param allSamples Samples associated with this partition in sorted order
      * @return String corresponding to the interval summary file columns in order
      */
@@ -423,27 +429,25 @@ public class CoverageOutputWriter implements Closeable {
         List<String> summaryHeader = Lists.newArrayList(title, "total_coverage", "average_coverage");
 
         for (String sample : allSamples) {
-            for (String suffix : getSampleSuffixes()) {
-                summaryHeader.add(sample+suffix);
+            for (String suffix : summaryHeaderSampleSuffixes) {
+                summaryHeader.add(sample + suffix);
             }
         }
         return summaryHeader;
     }
 
     // Sample suffixes that correspond to columns in the locus summary header
-    private List<String> summaryHeaderSampleSuffixes = null;
-    private List<String> getSampleSuffixes() {
-        if (summaryHeaderSampleSuffixes == null) {
-            summaryHeaderSampleSuffixes = Lists.newArrayList("_total_cvg", "_mean_cvg", "_granular_Q1", "_granular_median", "_granular_Q3");
-            for(int thresh : coverageThresholds) {
-                summaryHeaderSampleSuffixes.add("_%_above_" + thresh);
-            }
+    private List<String> getSampleSuffixes(final List<Integer> coverageThresholds) {
+        final List<String> tmp = Lists.newArrayList("_total_cvg", "_mean_cvg", "_granular_Q1", "_granular_median", "_granular_Q3");
+        for (int thresh : coverageThresholds) {
+            tmp.add("_%_above_" + thresh);
         }
-        return summaryHeaderSampleSuffixes;
+        return Collections.unmodifiableList(tmp);
     }
 
+
     /**
-     * Constructs the interval summary line, which consists of:
+     * Constructs the interval (typically gene) summary line, which consists of:
      * - A locus and the total/average coverage across all loci covered by that interval
      * - The total/average coverage for each sample in the partition at that locus
      * - The median, 1st, and 3rd quartile locus coverage statistics for each sample
@@ -454,35 +458,35 @@ public class CoverageOutputWriter implements Closeable {
 
         lineBuilder.setColumn(0, locusName)
                 .setColumn("total_coverage", Long.toString(stats.getTotalCoverage()))
-                .setColumn("average_coverage", String.format("%.2f",stats.getTotalMeanCoverage()));
+                .setColumn("average_coverage", String.format("%.2f", stats.getTotalMeanCoverage()));
 
         // each sample is in the order +[sample_total_cvg, sample_mean_cvg, sample_granular_Q1, sample_granular_median, sample_granular_Q3] so we set colums accordingly
-        for ( String s : sortedSamples ) {
-            int sIdx = outputWriter.getIndexForColumn(s+"_total_cvg");
-            int median = CoverageUtils.getQuantile(stats.getHistograms().get(s),0.5);
-            int q1 = CoverageUtils.getQuantile(stats.getHistograms().get(s),0.25);
-            int q3 = CoverageUtils.getQuantile(stats.getHistograms().get(s),0.75);
+        for (String s : sortedSamples) {
+            int sIdx = outputWriter.getIndexForColumn(s + "_total_cvg");
+            int median = CoverageUtils.getQuantile(stats.getHistograms().get(s), 0.5);
+            int q1 = CoverageUtils.getQuantile(stats.getHistograms().get(s), 0.25);
+            int q3 = CoverageUtils.getQuantile(stats.getHistograms().get(s), 0.75);
             lineBuilder.setColumn(sIdx, Long.toString(stats.getTotals().get(s)))
-                    .setColumn(sIdx+1, String.format("%.2f", stats.getMeans().get(s)))
-                    .setColumn(sIdx+2, formatBin(bins, q1))
-                    .setColumn(sIdx+3, formatBin(bins, median))
-                    .setColumn(sIdx+4, formatBin(bins, q3));
+                    .setColumn(sIdx + 1, String.format("%.2f", stats.getMeans().get(s)))
+                    .setColumn(sIdx + 2, formatBin(bins, q1))
+                    .setColumn(sIdx + 3, formatBin(bins, median))
+                    .setColumn(sIdx + 4, formatBin(bins, q3));
 
-            for ( int thresh : coverageThresholds ) {
-                lineBuilder.setColumn(s+"_%_above_"+thresh, String.format("%.1f",CoverageUtils.getPctBasesAbove(stats.getHistograms().get(s),stats.value2bin(thresh))));
+            for (int thresh : coverageThresholds) {
+                lineBuilder.setColumn(s + "_%_above_" + thresh, String.format("%.1f", CoverageUtils.getPctBasesAbove(stats.getHistograms().get(s), stats.value2bin(thresh))));
             }
         }
-        lineBuilder.build();
+        lineBuilder.buildAndWriteLine();
     }
 
     /**
      * Writes the "PARTITION_statistics" file. This file is a histogram of the total coverage in each sample at each locus.
-     *
+     * <p>
      * The lines are organized as follows:
      * Source_of_reads, (for each histogram bin) +[from_X_to_Y]
      *
-     * @param output Output writer to write into
-     * @param stats DepthOfCoverageStats object constructed for this partition
+     * @param output        Output writer to write into
+     * @param stats         DepthOfCoverageStats object constructed for this partition
      * @param sortedSamples Sorted list of all samples, to be used for ordering the output
      */
     private void outputPerSampleCumulativeStatisticsForPartition(final SimpleCSVWriterWrapperWithHeader output, final DepthOfCoverageStats stats, final List<String> sortedSamples) {
@@ -491,57 +495,56 @@ public class CoverageOutputWriter implements Closeable {
         // Construct the header for the histogram output
         List<String> headerColumns = Lists.newArrayList("Source_of_reads");
 
-        headerColumns.add("from_0_to_"+leftEnds[0]+")");
-        for ( int i = 1; i < leftEnds.length; i++ ) {
-            headerColumns.add("from_"+leftEnds[i - 1]+"_to_"+leftEnds[i]+")");
+        headerColumns.add("from_0_to_" + leftEnds[0] + ")");
+        for (int i = 1; i < leftEnds.length; i++) {
+            headerColumns.add("from_" + leftEnds[i - 1] + "_to_" + leftEnds[i] + ")");
         }
-        headerColumns.add("from_"+leftEnds[leftEnds.length-1]+"_to_inf");
+        headerColumns.add("from_" + leftEnds[leftEnds.length - 1] + "_to_inf");
         output.addHeaderLine(headerColumns);
 
         // Print out the histogram for every line
-        Map<String,long[]> histograms = stats.getHistograms();
-        for ( String sample : sortedSamples ) {
+        Map<String, long[]> histograms = stats.getHistograms();
+        for (String sample : sortedSamples) {
             SimpleCSVWriterWrapperWithHeader.SimpleCSVWriterLineBuilder lineBuilder = output.getNewLineBuilder();
-            lineBuilder.setColumn("Source_of_reads", "sample_"+sample);
+            lineBuilder.setColumn("Source_of_reads", "sample_" + sample);
             long[] histForSample = histograms.get(sample);
-            for ( int i = 0; i < histForSample.length; i++ ) {
+            for (int i = 0; i < histForSample.length; i++) {
                 lineBuilder.setColumn(i + 1, Long.toString(histForSample[i])); // +1 on the index here because the histogram starts at index 1
             }
-            lineBuilder.build();
+            lineBuilder.buildAndWriteLine();
         }
     }
 
     /**
-     *
-     * @param output Output writer to write into
-     * @param stats DepthOfCoverageStats object constructed for this partition
+     * @param output        Output writer to write into
+     * @param stats         DepthOfCoverageStats object constructed for this partition
      * @param sortedSamples Sorted list of all samples, to be used for ordering the output
      */
     private void outputCumulativeSummaryForPartition(final SimpleCSVWriterWrapperWithHeader output, final DepthOfCoverageStats stats, final List<String> sortedSamples) {
         List<String> headerLines = Lists.newArrayList(CUMULATIVE_SUMMARY_OUTPUT_LINES);
 
-        for ( int thresh : coverageThresholds ) {
-            headerLines.add("%_bases_above_"+thresh);
+        for (int thresh : coverageThresholds) {
+            headerLines.add("%_bases_above_" + thresh);
         }
         output.addHeaderLine(headerLines);
 
-        Map<String,long[]> histograms = stats.getHistograms();
-        Map<String,Double> means = stats.getMeans();
-        Map<String,Long> totals = stats.getTotals();
+        Map<String, long[]> histograms = stats.getHistograms();
+        Map<String, Double> means = stats.getMeans();
+        Map<String, Long> totals = stats.getTotals();
         int[] leftEnds = stats.getEndpoints();
 
         // Write out a line for each sample
-        for ( String sample : sortedSamples ) {
+        for (String sample : sortedSamples) {
             SimpleCSVWriterWrapperWithHeader.SimpleCSVWriterLineBuilder lineBuilder = output.getNewLineBuilder();
 
             long[] histogram = histograms.get(sample);
-            int median = CoverageUtils.getQuantile(histogram,0.5);
-            int q1 = CoverageUtils.getQuantile(histogram,0.25);
-            int q3 = CoverageUtils.getQuantile(histogram,0.75);
+            int median = CoverageUtils.getQuantile(histogram, 0.5);
+            int q1 = CoverageUtils.getQuantile(histogram, 0.25);
+            int q3 = CoverageUtils.getQuantile(histogram, 0.75);
             // if any of these are larger than the higest bin, put the median as in the largest bin
-            median =  median == histogram.length-1 ? histogram.length-2 : median;
-            q1 = q1 == histogram.length-1 ? histogram.length-2 : q1;
-            q3 = q3 == histogram.length-1 ? histogram.length-2 : q3;
+            median = median == histogram.length - 1 ? histogram.length - 2 : median;
+            q1 = q1 == histogram.length - 1 ? histogram.length - 2 : q1;
+            q3 = q3 == histogram.length - 1 ? histogram.length - 2 : q3;
 
             lineBuilder.setColumn(0, sample)
                     .setColumn(1, Long.toString(totals.get(sample)))
@@ -550,11 +553,11 @@ public class CoverageOutputWriter implements Closeable {
                     .setColumn(4, Integer.toString(leftEnds[median]))
                     .setColumn(5, Integer.toString(leftEnds[q1]));
 
-            for ( int thresh : coverageThresholds ) {
-                lineBuilder.setColumn("%_bases_above_"+thresh, String.format("%.1f", CoverageUtils.getPctBasesAbove(histogram,stats.value2bin(thresh))));
+            for (int thresh : coverageThresholds) {
+                lineBuilder.setColumn("%_bases_above_" + thresh, String.format("%.1f", CoverageUtils.getPctBasesAbove(histogram, stats.value2bin(thresh))));
             }
 
-            lineBuilder.build();
+            lineBuilder.buildAndWriteLine();
         }
 
         // Write out one final line corresponding to the total coverage
@@ -562,73 +565,76 @@ public class CoverageOutputWriter implements Closeable {
         lineBuilder.setColumn(0, "Total")
                 .setColumn(1, Long.toString(stats.getTotalCoverage()))
                 .setColumn(2, DOUBLE_FORMAT.format(stats.getTotalMeanCoverage()))
-                .fill("N/A").build();
+                .fill("N/A").buildAndWriteLine();
     }
 
     /**
      * Produces the "PARTITION_interval_statistics" table, in which each row of the table corresponds to a count of the number of samples,
      * and each column tracks how many of the specified intervals had at least the given histogram value median depth across their spans.
-     *
+     * <p>
      * How the table is structured:
-     *  Number_of_sources, (for each histogram left endpoint X) +[depth>=x]
+     * Number_of_sources, (for each histogram left endpoint X) +[depth>=x]
      * for example:
-     *  Number_of_sources, depth>=0, depth>=1, depth>=2, depth>=3, depth>=4, depth>=5, depth>=6...
-     *
+     * Number_of_sources, depth>=0, depth>=1, depth>=2, depth>=3, depth>=4, depth>=5, depth>=6...
+     * <p>
      * Whereas a row may be recorded as follows:
-     *  At_least_N_samples,13,4,4,4,3,1,1,1,0,etc...
+     * At_least_N_samples,13,4,4,4,3,1,1,1,0,etc...
      * Assuming this example corresponds to the example header, this row can be interpreted to mean that across all
      * the interval targets provided to the tool, 4 of them had a median depth of at least one base in N or more of the
      * samples in this partition.
-     *
+     * <p>
      * See {@link CoverageUtils#updateTargetTable(int[][], DepthOfCoverageStats)} for more details as to how the table is constructed.
      *
-     * @param output Writer to output the table into
+     * @param output        Writer to output the table into
      * @param intervalTable Interval table object to summarize
-     * @param cutoffs histogram bin left endpoints
+     * @param cutoffs       histogram bin left endpoints
      */
     private void printIntervalTable(SimpleCSVWriterWrapperWithHeader output, int[][] intervalTable, int[] cutoffs) {
-        //String colHeader = outputFormat.equals("rtable") ? "" : "Number_of_sources";
         List<String> columns = Lists.newArrayList("Number_of_sources", "depth>=0");
-        for ( int col = 0; col < intervalTable[0].length-1; col ++ ) {
-            columns.add("depth>="+cutoffs[col]);
+        for (int col = 0; col < intervalTable[0].length - 1; col++) {
+            columns.add("depth>=" + cutoffs[col]);
         }
         output.addHeaderLine(columns);
 
         // Fill out the lines of the table to the writer based on the source tables
-        for ( int row = 0; row < intervalTable.length; row ++ ) {
+        for (int row = 0; row < intervalTable.length; row++) {
             SimpleCSVWriterWrapperWithHeader.SimpleCSVWriterLineBuilder lineBuilder = output.getNewLineBuilder();
-            lineBuilder.setColumn(0, "At_least_"+String.format("%d", row + 1)+"_samples");
-            for ( int col = 0; col < intervalTable[0].length; col++ ) {
-                lineBuilder.setColumn(col+1, Integer.toString(intervalTable[row][col]));
+            lineBuilder.setColumn(0, "At_least_" + String.format("%d", row + 1) + "_samples");
+            for (int col = 0; col < intervalTable[0].length; col++) {
+                lineBuilder.setColumn(col + 1, Integer.toString(intervalTable[row][col]));
             }
-            lineBuilder.build();
+            lineBuilder.buildAndWriteLine();
         }
     }
 
     private String formatBin(int[] bins, int quartile) {
-        if ( quartile >= bins.length ) {
-            return String.format(">%d",bins[bins.length-1]);
-        } else if ( quartile < 0 ) {
-            return String.format("<%d",bins[0]);
+        if (quartile >= bins.length) {
+            return String.format(">%d", bins[bins.length - 1]);
+        } else if (quartile < 0) {
+            return String.format("<%d", bins[0]);
         } else {
-            return String.format("%d",bins[quartile]);
+            return String.format("%d", bins[quartile]);
         }
     }
 
-    // Creates the output string for base counts
+    /**
+     * @param counts           per-nucleotide base counts for a locus, will fill in 0s if the list is null due to empty samples/sites
+     * @param includeDeletions whether to include "D:##" in the output string
+     * @return writer string for base counts
+     */
     private String getBaseCountsString(int[] counts, boolean includeDeletions) {
-        if ( counts == null ) {
+        if (counts == null) {
             counts = new int[6];
         }
         StringBuilder s = new StringBuilder();
         int nbases = 0;
-        for ( byte b : BaseUtils.BASES_EXTENDED ) {
+        for (byte b : BaseUtils.BASES_EXTENDED) {
             nbases++;
-            if ( includeDeletions || b != BaseUtils.Base.D.base ) {
-                s.append((char)b);
+            if (includeDeletions || b != BaseUtils.Base.D.base) {
+                s.append((char) b);
                 s.append(":");
                 s.append(counts[BaseUtils.extendedBaseToBaseIndex(b)]);
-                if ( nbases < 6 ) {
+                if (nbases < 6) {
                     s.append(" ");
                 }
             }
@@ -647,151 +653,152 @@ public class CoverageOutputWriter implements Closeable {
             throw new GATKException("Error closing output files:", e);
         }
     }
-}
 
-
-/**
- * A simple helper class wrapper around CSVWriter that has the ingrained concept of a header line with indexed fields
- *
- * Why didn't I use a tableWriter here? Who really holds the patent on the wheel anyway?
- */
-class SimpleCSVWriterWrapperWithHeader implements Closeable {
-    private int expectedColumns;
-    private Map<String, Integer> headerMap = null;
-    private CSVWriter outputWriter;
-
-    // The current incomplete line in the writer.
-    private SimpleCSVWriterLineBuilder currentLine = null;
-
-    public SimpleCSVWriterWrapperWithHeader(Writer writer, char separator) {
-        outputWriter = new CSVWriter(writer, separator);
-    }
 
     /**
-     * Provides a header line to the CSV output file. Note that this will throw an exception if all header lines
-     * are not unique as it attempts to create an index for the provided header lines for convenience when building
-     * rows of the CSV.
-     *
-     * @param columns Ordered list of header lines to be built into the CSV
+     * A simple helper class wrapper around CSVWriter that has the ingrained concept of a header line with indexed fields
+     * <p>
+     * Why didn't I use a tableWriter here? Who really holds the patent on the wheel anyway?
      */
-    public void addHeaderLine(List<String> columns) {
-        if (headerMap != null) {
-            throw new GATKException("Should not be adding multiple header lines to a file");
-        }
-        outputWriter.writeNext(columns.toArray(new String[0]), false);
-        expectedColumns = columns.size();
+    static class SimpleCSVWriterWrapperWithHeader implements Closeable {
+        private int expectedColumns;
+        private Map<String, Integer> headerMap = null;
+        private CSVWriter outputWriter;
 
-        // Create the mapping between header and column
-        headerMap = new HashMap<>();
-        for (int i = 0; i < columns.size(); i++) {
-            Utils.nonNull(columns.get(i));
-            if (headerMap.putIfAbsent(columns.get(i), i) != null) {
-                throw new GATKException("Only allow unique column headings");
+        // The current incomplete line in the writer.
+        private SimpleCSVWriterLineBuilder currentLine = null;
+
+        private SimpleCSVWriterWrapperWithHeader(Writer writer, char separator) {
+            outputWriter = new CSVWriter(writer, separator);
+        }
+
+        /**
+         * Provides a header line to the CSV output file. Note that this will throw an exception if all header lines
+         * are not unique as it attempts to create an index for the provided header lines for convenience when building
+         * rows of the CSV.
+         *
+         * @param columns Ordered list of header lines to be built into the CSV
+         */
+        private void addHeaderLine(final List<String> columns) {
+            if (headerMap != null) {
+                throw new GATKException("Should not be adding multiple header lines to a file");
             }
-        }
-    }
+            outputWriter.writeNext(columns.toArray(new String[0]), false);
+            expectedColumns = columns.size();
 
-    private void writeLine(String[] line) {
-        outputWriter.writeNext(line, false);
-        currentLine = null;
-    }
-
-    /**
-     * Builds a new SimpleCSVWriterLineBuilder and writes out the previous line if it exists.
-     *
-     * @return a blank SimpleCSVWriterLineBuilder to allow for defining the next line
-     */
-    public SimpleCSVWriterLineBuilder getNewLineBuilder() {
-        if (headerMap == null) {
-            throw new GATKException("Cannot construct line without first setting the header line");
-        }
-        if (currentLine != null) {
-            currentLine.build();
-        }
-        currentLine = new SimpleCSVWriterLineBuilder(this, expectedColumns);
-        return currentLine;
-    }
-
-    /**
-     * @param column header line to get index for
-     * @return zero based index corresponding to that header string, throws an exception if the headerline doesn't exist
-     */
-    public Integer getIndexForColumn(String column) {
-        Utils.nonNull(headerMap, "Cannot request column index if the header has not been specified");
-        Integer index = headerMap.get(column);
-        Utils.nonNull(index, "Requested column "+column+" does not exist in the provided header");
-        return index;
-    }
-
-    @Override
-    public void close() throws IOException {
-        if (currentLine != null) {
-            currentLine.build();
-        }
-        outputWriter.close();
-    }
-
-    /**
-     * Helper to allow for incremental construction of a body line using either indexes or column headings
-     *
-     * Calling build() will cause the line to be written out into the underlying CSV writer in its current state. Doing
-     * so will result in a validation call where an exception will be thrown if any columns of the current line have
-     * not been defined. fill() can be used to provide a default value for undefined columns.
-     */
-    public class SimpleCSVWriterLineBuilder {
-        SimpleCSVWriterWrapperWithHeader thisBuilder;
-        String[] lineToBuild;
-        boolean hasBuilt = false;
-
-        SimpleCSVWriterLineBuilder(SimpleCSVWriterWrapperWithHeader me, int lineLength) {
-            thisBuilder = me;
-            lineToBuild = new String[lineLength];
-        }
-
-        /**
-         * @param index Column index to be set
-         * @param value Value to be placed into the line
-         */
-        public SimpleCSVWriterLineBuilder setColumn(final int index, final String value) {
-            checkAlteration();
-            lineToBuild[index] = value;
-            return this;
-        }
-
-        /**
-         * @param heading Column heading to be set
-         * @param value Value to be placed into the line
-         */
-        public SimpleCSVWriterLineBuilder setColumn(final String heading, final String value) {
-            int index = thisBuilder.getIndexForColumn(heading);
-            return setColumn(index, value);
-        }
-
-        /**
-         * Fills in every empty column of the pending line with the provided value
-         */
-        public SimpleCSVWriterLineBuilder fill(final String filling) {
-            checkAlteration();
-            for (int i = 0; i < lineToBuild.length; i++) {
-                if (lineToBuild[i] == null) {
-                    lineToBuild[i] = filling;
+            // Create the mapping between header and column
+            headerMap = new HashMap<>();
+            for (int i = 0; i < columns.size(); i++) {
+                final String columnHeading = columns.get(i);
+                Utils.nonNull(columnHeading);
+                if (headerMap.putIfAbsent(columnHeading, i) != null)  {
+                    throw new GATKException("Only allow unique column headings");
                 }
             }
-            return this;
+        }
+
+        private void writeLine(String[] line) {
+            outputWriter.writeNext(line, false);
+            currentLine = null;
         }
 
         /**
-         * Constructs the line and writes it out to the output
+         * Builds a new SimpleCSVWriterLineBuilder and writes out the previous line if it exists.
+         *
+         * @return a blank SimpleCSVWriterLineBuilder to allow for defining the next line
          */
-        public void build() {
-            Utils.validate(!Arrays.stream(lineToBuild).anyMatch(Objects::isNull), "Attempted to construct an incomplete line, make sure all columns are filled");
-            thisBuilder.writeLine(lineToBuild);
-            hasBuilt = true;
+        private SimpleCSVWriterLineBuilder getNewLineBuilder() {
+            if (headerMap == null) {
+                throw new GATKException("Cannot construct line without first setting the header line");
+            }
+            if (currentLine != null) {
+                currentLine.buildAndWriteLine();
+            }
+            currentLine = new SimpleCSVWriterLineBuilder(this, expectedColumns);
+            return currentLine;
         }
 
-        // Throw an exception if we try to alter an already written out line
-        private void checkAlteration() {
-            Utils.validate(!hasBuilt, "Cannot make alterations to an already written out CSV line");
+        /**
+         * @param column header line to get index for
+         * @return zero based index corresponding to that header string, throws an exception if the headerline doesn't exist
+         */
+        private int getIndexForColumn(String column) {
+            Utils.nonNull(headerMap, "Cannot request column index if the header has not been specified");
+            int index = headerMap.get(column);
+            Utils.nonNull(index, "Requested column " + column + " does not exist in the provided header");
+            return index;
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (currentLine != null) {
+                currentLine.buildAndWriteLine();
+            }
+            outputWriter.close();
+        }
+
+        /**
+         * Helper to allow for incremental construction of a body line using either indexes or column headings
+         * <p>
+         * Calling buildAndWriteLine() will cause the line to be written out into the underlying CSV writer in its current state. Doing
+         * so will result in a validation call where an exception will be thrown if any columns of the current line have
+         * not been defined. fill() can be used to provide a default value for undefined columns.
+         */
+        private static class SimpleCSVWriterLineBuilder {
+            SimpleCSVWriterWrapperWithHeader thisBuilder;
+            String[] lineToBuild;
+            boolean hasBuilt = false;
+
+            SimpleCSVWriterLineBuilder(SimpleCSVWriterWrapperWithHeader me, int lineLength) {
+                thisBuilder = me;
+                lineToBuild = new String[lineLength];
+            }
+
+            /**
+             * @param index Column index to be set
+             * @param value Value to be placed into the line
+             */
+            private SimpleCSVWriterLineBuilder setColumn(final int index, final String value) {
+                checkAlteration();
+                lineToBuild[index] = value;
+                return this;
+            }
+
+            /**
+             * @param heading Column heading to be set
+             * @param value   Value to be placed into the line
+             */
+            private SimpleCSVWriterLineBuilder setColumn(final String heading, final String value) {
+                int index = thisBuilder.getIndexForColumn(heading);
+                return setColumn(index, value);
+            }
+
+            /**
+             * Fills in every empty column of the pending line with the provided value
+             */
+            private SimpleCSVWriterLineBuilder fill(final String filling) {
+                checkAlteration();
+                for (int i = 0; i < lineToBuild.length; i++) {
+                    if (lineToBuild[i] == null) {
+                        lineToBuild[i] = filling;
+                    }
+                }
+                return this;
+            }
+
+            /**
+             * Constructs the line and writes it out to the output
+             */
+            private void buildAndWriteLine() {
+                Utils.validate(!Arrays.stream(lineToBuild).anyMatch(Objects::isNull), "Attempted to construct an incomplete line, make sure all columns are filled");
+                thisBuilder.writeLine(lineToBuild);
+                hasBuilt = true;
+            }
+
+            // Throw an exception if we try to alter an already written out line
+            private void checkAlteration() {
+                Utils.validate(!hasBuilt, "Cannot make alterations to an already written out CSV line");
+            }
         }
     }
 }

@@ -1,9 +1,10 @@
 package org.broadinstitute.hellbender.utils.codecs.refseq;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class RefSeqCodecUnitTest {
+public class RefSeqCodecUnitTest extends GATKBaseTest {
 
     @Test
     public void testCanDecode() {

@@ -28,11 +28,13 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
         return null;
     }
 
+    // Files were taken from GATK3 outputs being run with equivalent arguments
     private File getExpectedDataDir() {
         return getTestFile( "expected/");
     }
 
     @Test
+    // Baseline test asserting that histogram window boundaries work and that coverage counts are correct when all base quality scores are included.
     public void testBaseOutputNoFiltering() throws IOException {
         final String expectedBaseName = "depthofcoveragenofiltering";
         final File baseOutputFile = createTempDir("depthofcoveragenofiltering");
@@ -41,7 +43,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
         String cmd = "-R "+hg38Reference+" " +
                 "-I "+largeFileTestDir + "multiSampleSubsetted.bam " +
                 "-L "+ getTestFile("artificial.target_region.interval_list ")+
-                "--min-base-quality 0 -dels --print-base-counts -pt readgroup -pt sample -pt platform -pt library --output-format CSV -ct 10 -ct 15 -ct 20 -ct 25";
+                "--min-base-quality 0 --include-deletions --print-base-counts -pt readgroup -pt sample -pt platform -pt library --output-format CSV --summary-coverage-threshold 10 --summary-coverage-threshold 15 --summary-coverage-threshold 20 --summary-coverage-threshold 25";
         cmd += " -O "+output.getAbsolutePath();
         runCommandLine(cmd.split(" "));
 
@@ -55,7 +57,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
     public void testCoverageBehaviorWhenProvidedNoIntervalFile() throws IOException {
         final String expectedBaseName = "testCoverageBehaviorWhenProvidedNoIntervalFile";
         final File baseOutputFile = createTempDir("testCoverageBehaviorWhenProvidedNoIntervalFile");
-        final File output = IOUtils.createTempFileInDirectory( "testNoCoverageDueToFiltering", ".csv", baseOutputFile);
+        final File output = IOUtils.createTempFileInDirectory( "testCoverageBehaviorWhenProvidedNoIntervalFile", ".csv", baseOutputFile);
 
         String cmd = "-R "+hg38Reference+" " +
         "-I "+largeFileTestDir+"multiSampleSubsetted.bam"+
@@ -67,7 +69,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    // Coverage drops to nothing because '--max-base-quality 4' is set, resuling in very poor output coverage
+    // Coverage drops to nothing because '--max-base-quality 4' is set, resulting in very poor output coverage
     public void testNoCoverageDueToFiltering() throws IOException {
         final String expectedBaseName = "depthofcoveragenwithiltering";
         final File baseOutputFile = createTempDir("testNoCoverageDueToFiltering");
@@ -76,7 +78,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
         String cmd = "-R "+hg38Reference+" " +
                 "-I "+largeFileTestDir + "multiSampleSubsetted.bam " +
                 "-L "+ getTestFile("artificial.target_region.interval_list ")+
-                "--min-base-quality 5 --max-base-quality 4 -dels --print-base-counts -pt readgroup -pt sample -pt library -pt platform --output-format CSV";
+                "--min-base-quality 5 --max-base-quality 4 --include-deletions --print-base-counts -pt readgroup -pt sample -pt library -pt platform --output-format CSV";
         cmd += " -O "+output.getAbsolutePath();
         runCommandLine(cmd.split(" "));
 
@@ -87,17 +89,17 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
 
     @Test
     // NOTE, the gene list file was not generated with GATK3 due to different gene list merging behavior
-    public void testGeneListDataAllCovered() throws IOException {
+    public void testGeneListAllGenesCompletelyCoveredByIntervals() throws IOException {
         final String expectedBaseName = "testGeneListDataAllCovered";
-        final File baseOutputFile = createTempDir("testNoCoverageDueToFiltering");
-        final File output = IOUtils.createTempFileInDirectory( "testNoCoverageDueToFiltering", ".csv", baseOutputFile);
+        final File baseOutputFile = createTempDir("testGeneListAllGenesCompletelyCoveredByIntervals");
+        final File output = IOUtils.createTempFileInDirectory( "testGeneListAllGenesCompletelyCoveredByIntervals", ".csv", baseOutputFile);
         output.delete();
 
         String[] cmd = new String[]{ "-R",hg38Reference,
                 "-I",largeFileTestDir+"multiSampleSubsetted.bam",
                 "-L",getTestFile("artificial.gene_target.interval_list").getAbsolutePath(),
                 "--calculate-coverage-over-genes",getTestFile("refGene_CDK11B.refseq").getAbsolutePath(),
-                "--min-base-quality","0","-dels","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-statistics",
+                "--min-base-quality","0","--include-deletions","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-statistics",
                 "-O",output.getAbsolutePath()};
         runCommandLine(cmd);
 
@@ -107,6 +109,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    // This is asserting that the new locus overlapping behavior works without merging
     public void testIntervalListOverlappingUniqueBehavior() throws IOException {
         final String expectedBaseName = "testIntervalListOverlappingUniqueBehavior"; //interval_summary files were not generated with gatk3 as they behave by interval merging
         final File baseOutputFile = createTempDir("testNoCoverageDueToFiltering");
@@ -143,7 +146,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
                 "-I",largeFileTestDir+"multiSampleSubsetted.bam",
                 "-L", "chr1:1656275-1677440", // this should only completely span two of the genes in the list
                 "--calculate-coverage-over-genes",getTestFile("refGene_CDK11B.refseq").getAbsolutePath(),
-                "--min-base-quality","0","-dels","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-statistics","--omit-genes-not-entirely-covered-by-traversal",
+                "--min-base-quality","0","--include-deletions","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-statistics","--omit-genes-not-entirely-covered-by-traversal",
                 "-O",output.getAbsolutePath()};
         runCommandLine(cmd);
 
@@ -168,7 +171,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
                 "-I",largeFileTestDir+"multiSampleSubsetted.bam",
                 "-L", "chr1:1656275-1666275", "-L", "chr1:1666280-1677440", // this has a gap that aligns with introns for both genes
                 "--calculate-coverage-over-genes",getTestFile("refGene_CDK11B.refseq").getAbsolutePath(),
-                "--min-base-quality","0","-dels","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-statistics","--omit-genes-not-entirely-covered-by-traversal",
+                "--min-base-quality","0","--include-deletions","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-statistics","--omit-genes-not-entirely-covered-by-traversal",
                 "-O",output.getAbsolutePath()};
         runCommandLine(cmd);
 

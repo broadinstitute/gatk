@@ -128,7 +128,7 @@ public class SimpleXSVWriter implements Closeable {
     /**
      * Helper to allow for incremental construction of a body line using either indexes or column headings
      * <p>
-     * Calling build() will cause the line to be written out into the underlying CSV writer in its current state. Doing
+     * Calling buildAndWriteLine() will cause the line to be written out into the underlying CSV writer in its current state. Doing
      * so will result in a validation call where an exception will be thrown if any columns of the current line have
      * not been defined. fill() can be used to provide a default value for undefined columns.
      */

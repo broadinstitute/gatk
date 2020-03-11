@@ -75,7 +75,7 @@ public final class RecalibrationArgumentCollection implements Serializable {
 
     /**
      * BQSR generates a quantization table for quick quantization later by subsequent tools. BQSR does not quantize the base qualities, this is done by the engine with the -qq or -bqsr options.
-     * This parameter tells BQSR the number of levels of quantization to use to build the quantization table.
+     * This parameter tells BQSR the number of levels of quantization to use to buildAndWriteLine the quantization table.
      */
     @Argument(fullName = "quantizing-levels", optional = true, doc = "number of distinct quality scores in the quantized output")
     public int QUANTIZING_LEVELS = 16;

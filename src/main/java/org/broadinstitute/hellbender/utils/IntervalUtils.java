@@ -917,8 +917,6 @@ public final class IntervalUtils {
     public static List<GenomeLoc> mergeIntervalLocations(final List<GenomeLoc> raw, final IntervalMergingRule rule) {
         if (raw.size() <= 1) {
             return Collections.unmodifiableList(raw);
-        } else if (rule == IntervalMergingRule.NONE) {
-            return Collections.unmodifiableList(raw);
         } else {
             final ArrayList<GenomeLoc> merged = new ArrayList<>();
             final Iterator<GenomeLoc> it = raw.iterator();

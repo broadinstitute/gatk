@@ -1,28 +1,3 @@
-/*
-* Copyright 2012-2016 Broad Institute, Inc.
-*
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-*
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
 package org.broadinstitute.hellbender.tools.walkers.coverage;
 
 import htsjdk.samtools.SAMFileHeader;
@@ -41,7 +16,9 @@ import java.util.*;
 /**
  * Utility classes to be used for DepthOfCoverage tool
  */
-public class CoverageUtils {
+class CoverageUtils {
+    // private constructor to prevent instantiation
+    private CoverageUtils() {}
 
     public enum CountPileupType {
         /**
@@ -58,7 +35,15 @@ public class CoverageUtils {
         COUNT_FRAGMENTS_REQUIRE_SAME_BASE
     }
 
-    public static String getTypeID(SAMReadGroupRecord rg, DoCOutputType.Partition type ) {
+    /**
+     * Method takes a ReadGroup record and a partition type and returns the appropriate summary string for displaying in output tables.
+     * Since each partition type has its own pattern for separating out readgroups this method is intended to handle all of the
+     * processing for regroups so that outputs can be properly partitioned in all cases.
+     *
+     * @param rg readGroupRecord to be processed.
+     * @param type partition type to generate read group string for.
+     */
+    public static String getTypeID(final SAMReadGroupRecord rg, final DoCOutputType.Partition type ) {
         switch (type) {
             case sample:
                 return rg.getSample();
@@ -77,41 +62,42 @@ public class CoverageUtils {
             case sample_by_platform_by_center:
                 return rg.getSample()+"_pl_"+rg.getPlatform()+"_cn_"+rg.getSequencingCenter();
             default:
-                throw new GATKException(String.format("Invalid aggrigation type %s", type));
+                throw new GATKException(String.format("Invalid aggregation type %s", type));
         }
     }
 
     /**
-     * Returns the counts of bases from reads with maxMapQ > MAPQ > minMapQ and maxBaseQ > base quality > minBaseQ in the context
+     * Returns the counts of bases from reads with maxMapQ >= MAPQ >= minMapQ and maxBaseQ >= base quality >= minBaseQ in the context
      * as an array of ints, indexed by the index fields of BaseUtils. These counts are computed seperately for each combination of
      * {@link DoCOutputType.Partition} and then by sampleID.
      *
      * @param context Alignment context to compute base counts over
      * @param minBaseQ minimum base quality for read to be counted towards depth
      * @param maxBaseQ maximum base quality for read to be counted towards depth
-     * @param countType
-     * @param types
-     * @param header
+     * @param countType flag for controlling whether to count fragments or independent reads (currently only COUNT_READS is supported)
+     * @param types partitions over which to copy count information across
+     * @param header header to collect read group associations from
      * @return
      */
     public static Map<DoCOutputType.Partition,Map<String,int[]>>
-                    getBaseCountsByPartition(final AlignmentContext context, final byte minBaseQ, final byte maxBaseQ, final CountPileupType countType, final Collection<DoCOutputType.Partition> types, final SAMFileHeader header) {
+                    getBaseCountsByPartition(final AlignmentContext context, final byte minBaseQ, final byte maxBaseQ,
+                                             final CountPileupType countType, final Collection<DoCOutputType.Partition> types, final SAMFileHeader header) {
 
         final Map<DoCOutputType.Partition,Map<String,int[]>> countsByIDByType = new HashMap<>();
         final Map<SAMReadGroupRecord,int[]> countsByRG = getBaseCountsByReadGroup(context, minBaseQ, maxBaseQ, countType, header);
         for (DoCOutputType.Partition t : types ) {
-            // iterate through the read group counts and build the type associations
-            for ( Map.Entry<SAMReadGroupRecord,int[]> readGroupCountEntry : countsByRG.entrySet() ) {
-                String typeID = getTypeID(readGroupCountEntry.getKey(),t);
+            // iterate through the read group counts and buildAndWriteLine the type associations
+            for ( Map.Entry<SAMReadGroupRecord, int[]> readGroupCountEntry : countsByRG.entrySet() ) {
+                String typeID = getTypeID(readGroupCountEntry.getKey(), t);
 
                 if ( ! countsByIDByType.keySet().contains(t) ) {
-                    countsByIDByType.put(t,new HashMap<>());
+                    countsByIDByType.put(t, new HashMap<>());
                 }
 
                 if ( ! countsByIDByType.get(t).keySet().contains(typeID) ) {
-                    countsByIDByType.get(t).put(typeID,readGroupCountEntry.getValue().clone());
+                    countsByIDByType.get(t).put(typeID, readGroupCountEntry.getValue().clone());
                 } else {
-                    addCounts(countsByIDByType.get(t).get(typeID),readGroupCountEntry.getValue());
+                    addCounts(countsByIDByType.get(t).get(typeID), readGroupCountEntry.getValue());
                 }
             }
         }
@@ -136,26 +122,26 @@ public class CoverageUtils {
         Map<SAMReadGroupRecord, int[]> countsByRG = new HashMap<>();
 
         Map<String, int[]> countsByRGName = new HashMap<>();
-        Map<String, SAMReadGroupRecord> RGByName = new HashMap<String, SAMReadGroupRecord>();
+        Map<String, SAMReadGroupRecord> RGByName = new HashMap<>();
 
-        List<PileupElement> countPileup = new LinkedList<>();
+        List<PileupElement> countPileup = new ArrayList<>(context.getBasePileup().size());
 
         switch (countType) {
 
             case COUNT_READS:
                 for (PileupElement read : context.getBasePileup()) {
-                    if (filterElementFromCount(read, minBaseQ, maxBaseQ)) {
+                    if (elementWithinQualRange(read, minBaseQ, maxBaseQ)) {
                         countPileup.add(read);
                     }
                 }
                 break;
 
-            // TODO see reconcile FragmentUtils.create() and its various idiosyncrasies to reenable this feature
+            // TODO see reconcile FragmentUtils.create() and its various idiosyncrasies to re-enable this feature see https://github.com/broadinstitute/gatk/issues/6491
             case COUNT_FRAGMENTS: // ignore base identities and put in FIRST base that passes filters:
-                throw new GATKException("Fragment based counting is currently unsupported");
+                throw new UnsupportedOperationException("Fragment based counting is currently unsupported");
 
             case COUNT_FRAGMENTS_REQUIRE_SAME_BASE:
-                throw new GATKException("Fragment based counting is currently unsupported");
+                throw new UnsupportedOperationException("Fragment based counting is currently unsupported");
 
             default:
                 throw new UserException("Must use valid CountPileupType");
@@ -185,7 +171,7 @@ public class CoverageUtils {
     }
 
     // Applies the provided mapping and base quality filters to the provided read
-    private static boolean filterElementFromCount(final PileupElement e, final byte minBaseQ, final byte maxBaseQ) {
+    private static boolean elementWithinQualRange(final PileupElement e, final byte minBaseQ, final byte maxBaseQ) {
         return ( e.getQual() >= minBaseQ && e.getQual() <= maxBaseQ || e.isDeletion() );
     }
 
@@ -198,7 +184,7 @@ public class CoverageUtils {
             try {
                 counts[BaseUtils.simpleBaseToBaseIndex(e.getBase())]++;
             } catch (ArrayIndexOutOfBoundsException exc) {
-                throw new GATKException("Expected a simple base, but actually received"+(char)e.getBase());
+                throw new UserException("Expected a simple base, but actually received"+(char)e.getBase());
             }
         }
     }
@@ -208,7 +194,7 @@ public class CoverageUtils {
      *
      * Returns the coverage "leftEndpoints" which correspond to the lowest value inclusive to be included in the given
      * histogram bins. This method will attempt to distribute the bins between the specified values based a logarithmic
-     * distribution?
+     * distribution.
      *
      * @param lower lower bound of the second bin in the histogram (the first bin includes everything below this value)
      * @param upper lower bound of the last bin in the histogram (the last bin will correspond to everything over this value)

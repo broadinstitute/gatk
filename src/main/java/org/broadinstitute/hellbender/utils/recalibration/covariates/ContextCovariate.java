@@ -156,7 +156,7 @@ public final class ContextCovariate implements Covariate {
     /**
      * calculates the context of a base independent of the covariate mode (mismatch, insertion or deletion)
      *
-     * @param bases       the bases in the read to build the context from
+     * @param bases       the bases in the read to buildAndWriteLine the context from
      * @param contextSize context size to use building the context
      * @param mask        mask for pulling out just the context bits
      */

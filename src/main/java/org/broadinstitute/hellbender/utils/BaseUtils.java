@@ -143,7 +143,7 @@ public final class BaseUtils {
     }
 
     /**
-     * Converts a base including extended bases to a base index
+     * Converts a base including extended bases (ATCG + D and N bases) to a base index
      *
      * @param base [AaCcGgTtDdNn]
      * @return 0, 1, 2, 3, 4, or -1 if the base can't be understood

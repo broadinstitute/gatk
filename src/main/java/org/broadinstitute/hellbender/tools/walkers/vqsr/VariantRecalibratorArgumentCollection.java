@@ -101,7 +101,7 @@ final class VariantRecalibratorArgumentCollection {
     public int MIN_NUM_BAD_VARIANTS = 1000;
 
     /**
-     * Variants scoring lower than this threshold will be used to build the Gaussian model of bad variants.
+     * Variants scoring lower than this threshold will be used to buildAndWriteLine the Gaussian model of bad variants.
      */
     @Advanced
     @Argument(fullName = "bad-lod-score-cutoff", shortName = "bad-lod-cutoff", doc = "LOD score cutoff for selecting bad variants", optional = true)

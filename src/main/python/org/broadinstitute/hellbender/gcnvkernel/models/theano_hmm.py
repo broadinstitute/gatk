@@ -194,13 +194,13 @@ class TheanoForwardBackward:
 
         log_data_likelihood = log_data_likelihood_t[-1]  # in theory, they are all the same
 
-        # build the updates list
+        # buildAndWriteLine the updates list
         if self.log_posterior_probs_output_tc is not None:
             updates = [(self.log_posterior_probs_output_tc, processed_log_posterior_tc)]
         else:
             updates = None
 
-        # build the inputs list
+        # buildAndWriteLine the inputs list
         inputs = [log_prior_c, log_trans_tcc, log_emission_tc]
         if self.do_admixing or self.include_update_size_output:
             inputs += [prev_log_posterior_tc]
@@ -209,7 +209,7 @@ class TheanoForwardBackward:
         if self.do_thermalization:
             inputs += [temperature]
 
-        # build the outputs list
+        # buildAndWriteLine the outputs list
         outputs = []
         if self.log_posterior_probs_output_tc is None:
             outputs += [processed_log_posterior_tc]

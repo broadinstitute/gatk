@@ -349,7 +349,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
     @VisibleForTesting
     static FermiLiteAssembly expandAssemblyGraph( final FermiLiteAssembly assembly ) {
         final int nContigs = assembly.getNContigs();
-        // this will hold the new compound contigs that we build
+        // this will hold the new compound contigs that we buildAndWriteLine
         final List<Contig> contigList = new ArrayList<>(nContigs);
 
         // this will keep track of where we've been during a depth-first exploration from some starting contig.

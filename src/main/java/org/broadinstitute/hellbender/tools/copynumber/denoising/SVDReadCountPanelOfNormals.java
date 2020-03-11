@@ -23,12 +23,12 @@ public interface SVDReadCountPanelOfNormals {
     int getNumEigensamples();
 
     /**
-     * Returns the sequence dictionary common to all of the read counts used to build the PoN.
+     * Returns the sequence dictionary common to all of the read counts used to buildAndWriteLine the PoN.
      */
     SAMSequenceDictionary getSequenceDictionary();
 
     /**
-     * Returns a modifiable copy of the original matrix of integer read-counts (represented as doubles) used to build the PoN
+     * Returns a modifiable copy of the original matrix of integer read-counts (represented as doubles) used to buildAndWriteLine the PoN
      * (no filtering will have been applied).  This matrix has has dimensions {@code M_original x N_original},
      * where {@code M_original} is the number of original intervals and {@code N_original} is the number of
      * original samples.
@@ -36,7 +36,7 @@ public interface SVDReadCountPanelOfNormals {
     double[][] getOriginalReadCounts();
 
     /**
-     * Returns a modifiable copy of the list of the original intervals that were used to build this PoN
+     * Returns a modifiable copy of the list of the original intervals that were used to buildAndWriteLine this PoN
      * (no filtering will have been applied).  This list has length {@code M_original}.
      */
     List<SimpleInterval> getOriginalIntervals();

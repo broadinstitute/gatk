@@ -195,7 +195,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
 
     @Advanced
     @Argument(fullName = DISABLE_AVX_CHECK_NAME, shortName = DISABLE_AVX_CHECK_NAME, doc = "If set, no check will be made for AVX support.  " +
-            "Use only if you have installed a pre-1.6 TensorFlow build. ", optional = true)
+            "Use only if you have installed a pre-1.6 TensorFlow buildAndWriteLine. ", optional = true)
     private boolean disableAVXCheck = false;
 
     @Hidden

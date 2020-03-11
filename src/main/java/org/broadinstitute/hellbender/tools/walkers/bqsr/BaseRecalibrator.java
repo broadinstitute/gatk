@@ -202,7 +202,7 @@ public final class BaseRecalibrator extends ReadWalker {
 
     /**
      * go through the quality score table and use the # observations and the empirical quality score
-     * to build a quality score histogram for quantization. Then use the QuantizeQual algorithm to
+     * to buildAndWriteLine a quality score histogram for quantization. Then use the QuantizeQual algorithm to
      * generate a quantization map (recalibrated_qual -> quantized_qual)
      */
     private void quantizeQualityScores() {

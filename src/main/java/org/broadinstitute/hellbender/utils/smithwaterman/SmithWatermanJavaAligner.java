@@ -143,7 +143,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 sw[i][0]=currentValue;
             }
         }
-        // build smith-waterman matrix and keep backtrack info:
+        // buildAndWriteLine smith-waterman matrix and keep backtrack info:
         int[] curRow=sw[0];
 
         //access is pricey if done enough times so we extract those out

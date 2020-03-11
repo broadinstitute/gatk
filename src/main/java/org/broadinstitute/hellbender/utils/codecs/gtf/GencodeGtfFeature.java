@@ -1158,7 +1158,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         // --------------------------------------------------------------------------------------------------------
         // Please note that the ordering of the APPRIS_* tags is also used in sorting here.  Do not re-order!
         // --------------------------------------------------------------------------------------------------------
-        /** Transcript expected to code for the main functional isoform based on a range of protein features (APPRIS pipeline). */
+        /** RefSeqTranscript expected to code for the main functional isoform based on a range of protein features (APPRIS pipeline). */
         APPRIS_PRINCIPAL("appris_principal"),
 
         /** (This flag corresponds to the older flag "appris_principal") Where the transcript expected to code for the main */

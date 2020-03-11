@@ -345,7 +345,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
             writer.println("preprocessing_script = ");
             writer.println("");
             writer.println("# Supported types:");
-            writer.println("# simpleXSV    -- Arbitrary separated value table (e.g. CSV), keyed off Gene Name OR Transcript ID");
+            writer.println("# simpleXSV    -- Arbitrary separated value table (e.g. CSV), keyed off Gene Name OR RefSeqTranscript ID");
             writer.println("# locatableXSV -- Arbitrary separated value table (e.g. CSV), keyed off a genome location");
             writer.println("# gencode      -- Custom datasource class for GENCODE");
             writer.println("# cosmic       -- Custom datasource class for COSMIC");
