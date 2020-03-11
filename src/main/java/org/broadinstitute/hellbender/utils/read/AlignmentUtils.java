@@ -83,7 +83,7 @@ public final class AlignmentUtils {
             return originalRead;
         }
 
-        final Cigar swCigar = consolidateCigar(readToHaplotypeSWAlignment.getCigar());
+        final Cigar swCigar = new CigarBuilder().addAll(readToHaplotypeSWAlignment.getCigar()).make();
 
         // since we're modifying the read we need to clone it
         final GATKRead read = originalRead.copy();
@@ -677,68 +677,6 @@ public final class AlignmentUtils {
         return alignment;
     }
 
-    /**
-     * Need a well-formed, consolidated Cigar string so that the left aligning code works properly.
-     * For example, 1M1M1M1D2M1M --> 3M1D3M
-     * If the given cigar is empty then the returned cigar will also be empty
-     *
-     * Note that this routine collapses cigar elements of size 0, so 2M0M => 2M
-     *
-     * @param c the cigar to consolidate
-     * @return  a non-null cigar with consecutive matching operators merged into single operators.
-     */
-    public static Cigar consolidateCigar( final Cigar c ) {
-        if ( c == null ) { throw new IllegalArgumentException("Cigar cannot be null"); }
-
-        // fast check to determine if there's anything worth doing before we create new Cigar and actually do some work
-        if ( ! needsConsolidation(c) )
-            return c;
-
-        final Cigar returnCigar = new Cigar();
-        int sumLength = 0;
-        CigarElement lastElement = null;
-
-        for( final CigarElement cur : c.getCigarElements() ) {
-            if ( cur.getLength() == 0 )
-                continue; // don't add elements of 0 length
-
-            if ( lastElement != null && lastElement.getOperator() != cur.getOperator() ) {
-                returnCigar.add(new CigarElement(sumLength, lastElement.getOperator()));
-                sumLength = 0;
-            }
-
-            sumLength += cur.getLength();
-            lastElement = cur;
-        }
-
-        if ( sumLength > 0 ) {
-            returnCigar.add(new CigarElement(sumLength, lastElement.getOperator()));
-        }
-
-        return returnCigar;
-    }
-
-    /**
-     * Does the cigar C need to be consolidated?
-     *
-     * @param c a non-null cigar
-     * @return true if so
-     */
-    private static boolean needsConsolidation(final Cigar c) {
-        if ( c.numCigarElements() <= 1 )
-            return false; // fast path for empty or single cigar
-
-        CigarOperator lastOp = null;
-        for( final CigarElement cur : c.getCigarElements() ) {
-            if ( cur.getLength() == 0 || lastOp == cur.getOperator() )
-                return true;
-            lastOp = cur.getOperator();
-        }
-
-        return false;
-    }
-
-
     private static int lengthOnRead(final CigarElement element) {
         return element.getOperator().consumesReadBases() ? element.getLength() : 0;
     }
@@ -822,7 +760,7 @@ public final class AlignmentUtils {
         resultRightToLeft.add(new CigarElement(readIndelRange.size(), CigarOperator.INSERTION));
 
         Utils.validateArg(readIndelRange.getStart() == 0, "Given cigar does not account for all bases of the read");
-        return AlignmentUtils.consolidateCigar(new Cigar(Lists.reverse(resultRightToLeft)));
+        return new CigarBuilder().addAll(Lists.reverse(resultRightToLeft)).make();
     }
 
     /**
@@ -1133,7 +1071,7 @@ public final class AlignmentUtils {
      */
     @SuppressWarnings("fallthrough")
     private static Cigar trimCigar(final Cigar cigar, final int start, final int end, final boolean byReference) {
-        final List<CigarElement> newElements = new LinkedList<>();
+        final CigarBuilder newElements = new CigarBuilder();
 
         int pos = 0;
         for ( final CigarElement elt : cigar.getCigarElements() ) {
@@ -1148,14 +1086,16 @@ public final class AlignmentUtils {
                     }
                     // otherwise fall through to the next case
                 case EQ: case M: case X:
-                    pos = addCigarElements(newElements, pos, start, end, elt);
+                    newElements.add(elt);
+                    pos += elt.getLength();
                     break;
                 case S: case I:
                     if ( byReference ) {
                         if ( pos >= start )
                             newElements.add(elt);
                     } else {
-                        pos = addCigarElements(newElements, pos, start, end, elt);
+                        newElements.add(elt);
+                        pos += elt.getLength();
                     }
                     break;
                 default:
@@ -1163,31 +1103,7 @@ public final class AlignmentUtils {
             }
         }
 
-        return AlignmentUtils.consolidateCigar(new Cigar(newElements));
-    }
-
-    /**
-     * Helper function for trimCigar that adds cigar elements (of total length X) of elt.op to dest for
-     * X bases that fall between start and end, where the last position of the base is pos.
-     *
-     * The primary use of this function is to create a new cigar element list that contains only
-     * elements that occur between start and end bases in an initial cigar.
-     *
-     * Note that this function may return multiple cigar elements (1M1M etc) that are best consolidated
-     * after the fact into a single simpler representation.
-     *
-     * @param dest we will append our cigar elements to this list
-     * @param pos the position (0 indexed) where elt started
-     * @param start only include bases that occur >= this position
-     * @param end only include bases that occur <= this position
-     * @param elt the element we are slicing down
-     * @return the position after we've traversed all elt.length bases of elt
-     */
-    protected static int addCigarElements(final List<CigarElement> dest, int pos, final int start, final int end, final CigarElement elt) {
-        final int length = Math.min(pos + elt.getLength() - 1, end) - Math.max(pos, start) + 1;
-        if ( length > 0 )
-            dest.add(new CigarElement(length, elt.getOperator()));
-        return pos + elt.getLength();
+        return newElements.make();
     }
 
     /**
@@ -1226,7 +1142,7 @@ public final class AlignmentUtils {
     public static Cigar applyCigarToCigar(final Cigar firstToSecond, final Cigar secondToThird) {
         final boolean DEBUG = false;
 
-        final List<CigarElement> newElements = new LinkedList<>();
+        final CigarBuilder newElements = new CigarBuilder();
         final int nElements12 = firstToSecond.numCigarElements();
         final int nElements23 = secondToThird.numCigarElements();
 
@@ -1254,7 +1170,7 @@ public final class AlignmentUtils {
             if ( elt23I == elt23.getLength() ) { cigar23I++; elt23I = 0; }
         }
 
-        return AlignmentUtils.consolidateCigar(new Cigar(newElements));
+        return newElements.make();
     }
 
     private static CigarPairTransform getTransformer(final CigarOperator op12, final CigarOperator op23) {

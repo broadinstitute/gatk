@@ -36,6 +36,10 @@ public class CigarBuilder {
     public CigarBuilder() { }
 
     public CigarBuilder add(final CigarElement element) {
+        if (element.getLength() == 0) {
+            return this;
+        }
+
         final CigarOperator operator = element.getOperator();
 
         // skip a deletion after clipping ie at the beginning of the read
@@ -82,7 +86,7 @@ public class CigarBuilder {
         return this;
     }
 
-    public CigarBuilder addAll(final Collection<CigarElement> elements) {
+    public CigarBuilder addAll(final Iterable<CigarElement> elements) {
         for (final CigarElement element : elements) {
             add(element);
         }

@@ -403,49 +403,6 @@ public final class AlignmentUtilsUnitTest {
         Assert.assertEquals(AlignmentUtils.getNumAlignmentBlocks(read), expected, "Cigar " + cigar + " failed NumAlignedBlocks");
     }
 
-    @DataProvider(name = "ConsolidateCigarData")
-    public Object[][] makeConsolidateCigarData() {
-        List<Object[]> tests = new ArrayList<>();
-
-        // this functionality can be adapted to provide input data for whatever you might want in your data
-        tests.add(new Object[]{"1M1M", "2M"});
-        tests.add(new Object[]{"2M", "2M"});
-        tests.add(new Object[]{"2M0M", "2M"});
-        tests.add(new Object[]{"0M2M", "2M"});
-        tests.add(new Object[]{"0M2M0M0I0M1M", "3M"});
-        tests.add(new Object[]{"2M0M1M", "3M"});
-        tests.add(new Object[]{"1M1M1M1D2M1M", "3M1D3M"});
-        tests.add(new Object[]{"6M6M6M", "18M"});
-
-        final List<CigarElement> elements = new LinkedList<>();
-        int i = 1;
-        for ( final CigarOperator op : CigarOperator.values() ) {
-            elements.add(new CigarElement(i++, op));
-        }
-        for ( final List<CigarElement> ops : Utils.makePermutations(elements,  3, false) ) {
-            final String expected = new Cigar(ops).toString();
-            final List<CigarElement> cutElements = new LinkedList<>();
-            for ( final CigarElement elt : ops ) {
-                for ( int j = 0; j < elt.getLength(); j++ ) {
-                    cutElements.add(new CigarElement(1, elt.getOperator()));
-                }
-            }
-
-            final String actual = new Cigar(cutElements).toString();
-            tests.add(new Object[]{actual, expected});
-        }
-
-        return tests.toArray(new Object[][]{});
-    }
-
-    @Test(enabled = !DEBUG, dataProvider = "ConsolidateCigarData")
-    public void testConsolidateCigarWithData(final String testCigarString, final String expectedCigarString) {
-        final Cigar testCigar = TextCigarCodec.decode(testCigarString);
-        final Cigar expectedCigar = TextCigarCodec.decode(expectedCigarString);
-        final Cigar actualCigar = AlignmentUtils.consolidateCigar(testCigar);
-        Assert.assertEquals(actualCigar, expectedCigar);
-    }
-
     @DataProvider(name = "SoftClipsDataProvider")
     public Object[][] makeSoftClipsDataProvider() {
         List<Object[]> tests = new ArrayList<>();
@@ -1037,43 +994,6 @@ public final class AlignmentUtilsUnitTest {
         final Cigar expectedCigar = TextCigarCodec.decode(expectedCigarString);
         final Cigar actualCigar = AlignmentUtils.applyCigarToCigar(firstToSecond, secondToThird);
         Assert.assertEquals(actualCigar, expectedCigar);
-    }
-
-    //////////////////////////////////////////
-    // Test AlignmentUtils.addCigarElements() //
-    //////////////////////////////////////////
-
-    @DataProvider(name = "AddCigarElementsData")
-    public Object[][] makeAddCigarElementsData() {
-        List<Object[]> tests = new ArrayList<>();
-
-        final int SIZE = 10;
-        for ( final CigarOperator op : Arrays.asList(CigarOperator.I, CigarOperator.M, CigarOperator.S, CigarOperator.EQ, CigarOperator.X)) {
-            for ( int start = 0; start < SIZE; start++ ) {
-                for ( int end = start; end < SIZE * 2; end ++ ) {
-                    for ( int pos = 0; pos < SIZE * 3; pos++ ) {
-                        int length = 0;
-                        for ( int i = 0; i < SIZE; i++ ) length += (i+pos) >= start && (i+pos) <= end ? 1 : 0;
-                        tests.add(new Object[]{SIZE + op.toString(), pos, start, end, length > 0 ? length + op.toString() : "*"});
-                    }
-                }
-            }
-        }
-
-        return tests.toArray(new Object[][]{});
-    }
-
-    @Test(dataProvider = "AddCigarElementsData", enabled = !DEBUG)
-    public void testAddCigarElements(final String cigarString, final int pos, final int start, final int end, final String expectedCigarString) {
-        final Cigar cigar = TextCigarCodec.decode(cigarString);
-        final CigarElement elt = cigar.getCigarElement(0);
-        final Cigar expectedCigar = TextCigarCodec.decode(expectedCigarString);
-
-        final List<CigarElement> elts = new LinkedList<>();
-        final int actualEndPos = AlignmentUtils.addCigarElements(elts, pos, start, end, elt);
-
-        Assert.assertEquals(actualEndPos, pos + elt.getLength());
-        Assert.assertEquals(AlignmentUtils.consolidateCigar(new Cigar(elts)), expectedCigar);
     }
 
     @DataProvider(name = "GetBasesCoveringRefIntervalData")

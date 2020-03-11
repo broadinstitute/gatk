@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -198,7 +199,7 @@ public final class GraphBasedKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         path = new Path<>(path, graph.getEdge(v2Alt, v3));
 
         // Construct the actual cigar string implied by the test path
-        Cigar expectedCigar = new Cigar();
+        final CigarBuilder expectedCigar = new CigarBuilder();
         expectedCigar.add(new CigarElement(preRef.length(), CigarOperator.M));
         if( refBubbleLength > altBubbleLength ) {
             expectedCigar.add(new CigarElement(refBubbleLength - altBubbleLength, CigarOperator.D));
@@ -212,7 +213,7 @@ public final class GraphBasedKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         expectedCigar.add(new CigarElement(postRef.length(), CigarOperator.M));
 
         final String ref = preRef + v2Ref.getSequenceString() + postRef;
-        Assert.assertEquals(path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), AlignmentUtils.consolidateCigar(expectedCigar).toString(), "Cigar string mismatch");
+        Assert.assertEquals(path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), expectedCigar.make().toString(), "Cigar string mismatch");
     }
 
     @DataProvider(name = "GetBasesData")
@@ -331,7 +332,7 @@ public final class GraphBasedKBestHaplotypeFinderUnitTest extends GATKBaseTest {
             path = new Path<>(path, graph.getEdge(v7,postV));
 
         // Construct the actual cigar string implied by the test path
-        Cigar expectedCigar = new Cigar();
+        final CigarBuilder expectedCigar = new CigarBuilder();
         if( offRefBeginning ) {
             expectedCigar.add(new CigarElement(preAltOption.length(), CigarOperator.I));
         }
@@ -366,7 +367,7 @@ public final class GraphBasedKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         }
 
         Assert.assertEquals(path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(),
-                AlignmentUtils.consolidateCigar(expectedCigar).toString(),
+                expectedCigar.make().toString(),
                 "Cigar string mismatch: ref = " + ref + " alt " + new String(path.getBases()));
     }
 
@@ -615,22 +616,24 @@ public final class GraphBasedKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         // Construct the test path
         Path<SeqVertex,BaseEdge> path = makePath(Arrays.asList(top, alt, bot), graph);
 
-        Cigar expected = new Cigar();
+        final CigarBuilder expected = new CigarBuilder();
         expected.add(new CigarElement(padSize, CigarOperator.M));
-        if ( ! prefix.equals("") ) expected.add(new CigarElement(prefix.length(), CigarOperator.M));
-        for ( final CigarElement elt : TextCigarCodec.decode(midCigar).getCigarElements() ) expected.add(elt);
-        if ( ! end.equals("") ) expected.add(new CigarElement(end.length(), CigarOperator.M));
+        if ( ! prefix.equals("") ) {
+            expected.add(new CigarElement(prefix.length(), CigarOperator.M));
+        }
+        expected.addAll(TextCigarCodec.decode(midCigar));
+        if ( ! end.equals("") ) {
+            expected.add(new CigarElement(end.length(), CigarOperator.M));
+        }
         expected.add(new CigarElement(padSize, CigarOperator.M));
-        expected = AlignmentUtils.consolidateCigar(expected);
 
         final String refString = top.getSequenceString() + ref.getSequenceString() + bot.getSequenceString();
         final Cigar pathCigar = path.calculateCigar(refString.getBytes(), SmithWatermanJavaAligner.getInstance());
 
         logger.warn("diffs: " + ref + " vs. " + alt + " cigar " + midCigar);
         logger.warn("Path " + path + " with cigar " + pathCigar);
-        logger.warn("Expected cigar " + expected);
 
-        Assert.assertEquals(pathCigar, expected, "Cigar mismatch: ref = " + refString + " vs alt = " + new String(path.getBases()));
+        Assert.assertEquals(pathCigar, expected.make(), "Cigar mismatch: ref = " + refString + " vs alt = " + new String(path.getBases()));
     }
 
     @Test
@@ -648,14 +651,14 @@ public final class GraphBasedKBestHaplotypeFinderUnitTest extends GATKBaseTest {
                 for ( final int indelSize2 : Arrays.asList(1, 2, 3, 4) ) {
                     for ( final int indelOp2 : Arrays.asList(1, -1) ) {
 
-                        Cigar expectedCigar = new Cigar();
-                        expectedCigar.add(new CigarElement(refString.length(), CigarOperator.M));
-                        expectedCigar.add(new CigarElement(indelSize1, (indelOp1 > 0 ? CigarOperator.I : CigarOperator.D)));
-                        expectedCigar.add(new CigarElement((indelOp1 < 0 ? refIndel1 - indelSize1 : refIndel1), CigarOperator.M));
-                        expectedCigar.add(new CigarElement(refString.length(), CigarOperator.M));
-                        expectedCigar.add(new CigarElement(indelSize2 * 2, (indelOp2 > 0 ? CigarOperator.I : CigarOperator.D)));
-                        expectedCigar.add(new CigarElement((indelOp2 < 0 ? (refIndel2 - indelSize2) * 2 : refIndel2 * 2), CigarOperator.M));
-                        expectedCigar.add(new CigarElement(refString.length(), CigarOperator.M));
+                        final CigarBuilder expectedCigar = new CigarBuilder()
+                                .add(new CigarElement(refString.length(), CigarOperator.M))
+                                .add(new CigarElement(indelSize1, (indelOp1 > 0 ? CigarOperator.I : CigarOperator.D)))
+                                .add(new CigarElement((indelOp1 < 0 ? refIndel1 - indelSize1 : refIndel1), CigarOperator.M))
+                                .add(new CigarElement(refString.length(), CigarOperator.M))
+                                .add(new CigarElement(indelSize2 * 2, (indelOp2 > 0 ? CigarOperator.I : CigarOperator.D)))
+                                .add(new CigarElement((indelOp2 < 0 ? (refIndel2 - indelSize2) * 2 : refIndel2 * 2), CigarOperator.M))
+                                .add(new CigarElement(refString.length(), CigarOperator.M));
 
                         Cigar givenCigar = new Cigar();
                         givenCigar.add(new CigarElement(refString.length() + refIndel1/2, CigarOperator.M));
@@ -667,8 +670,8 @@ public final class GraphBasedKBestHaplotypeFinderUnitTest extends GATKBaseTest {
                         String theRef = preRefString + refString + Strings.repeat(indelString1, refIndel1) + refString + Strings.repeat(indelString2, refIndel2) + refString + postRefString;
                         String theRead = refString + Strings.repeat(indelString1, refIndel1 + indelOp1 * indelSize1) + refString + Strings.repeat(indelString2, refIndel2 + indelOp2 * indelSize2) + refString;
 
-                        Cigar calculatedCigar = AlignmentUtils.leftAlignIndels(AlignmentUtils.consolidateCigar(givenCigar), theRef.getBytes(), theRead.getBytes(), preRefString.length());
-                        Assert.assertEquals(AlignmentUtils.consolidateCigar(calculatedCigar).toString(), AlignmentUtils.consolidateCigar(expectedCigar).toString(), "Cigar strings do not match!");
+                        Cigar calculatedCigar = AlignmentUtils.leftAlignIndels(givenCigar, theRef.getBytes(), theRead.getBytes(), preRefString.length());
+                        Assert.assertEquals(calculatedCigar.toString(), expectedCigar.make().toString(), "Cigar strings do not match!");
                     }
                 }
             }

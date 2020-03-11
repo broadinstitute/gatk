@@ -20,7 +20,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
@@ -290,7 +290,7 @@ public final class BaseRecalibrationEngine implements Serializable {
     private static GATKRead consolidateCigar( final GATKRead read ) {
         // Always consolidate the cigar string into canonical form, collapsing zero-length / repeated cigar elements.
         // Downstream code cannot necessarily handle non-consolidated cigar strings.
-        read.setCigar(AlignmentUtils.consolidateCigar(read.getCigar()));
+        read.setCigar(new CigarBuilder().addAll(read.getCigar()).make());
         return read;
     }
 

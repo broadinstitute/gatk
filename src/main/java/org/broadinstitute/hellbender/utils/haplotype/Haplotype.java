@@ -10,6 +10,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.Arrays;
@@ -176,11 +177,7 @@ public final class Haplotype extends Allele {
      */
     public Cigar getConsolidatedPaddedCigar(final int padSize) {
         Utils.validateArg( padSize >= 0, () -> "padSize must be >= 0 but got " + padSize);
-        final Cigar extendedHaplotypeCigar = new Cigar(getCigar().getCigarElements());
-        if ( padSize > 0 ) {
-            extendedHaplotypeCigar.add(new CigarElement(padSize, CigarOperator.M));
-        }
-        return AlignmentUtils.consolidateCigar(extendedHaplotypeCigar);
+        return new CigarBuilder().addAll(getCigar()).add(new CigarElement(padSize, CigarOperator.M)).make();
     }
 
     /**
@@ -191,7 +188,7 @@ public final class Haplotype extends Allele {
      * @param cigar a cigar whose readLength == length()
      */
     public void setCigar( final Cigar cigar ) {
-        this.cigar = AlignmentUtils.consolidateCigar(cigar);
+        this.cigar = new CigarBuilder().addAll(cigar).make();
         Utils.validateArg( this.cigar.getReadLength() == length(), () -> "Read length " + length() + " not equal to the read length of the cigar " + cigar.getReadLength() + " " + this.cigar);
     }
 

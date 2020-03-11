@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.smithwaterman;
 
+import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -7,6 +8,7 @@ import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -78,9 +80,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
         if (matchIndex != -1) {
             // generate the alignment result when the substring search was successful
-            final List<CigarElement> lce = new ArrayList<>(alternate.length);
-            lce.add(makeElement(State.MATCH, alternate.length));
-            alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
+            alignmentResult = new SWPairwiseAlignmentResult(new Cigar(Collections.singletonList(new CigarElement(alternate.length, CigarOperator.M))), matchIndex);
         }
         else {
             // run full Smith-Waterman
@@ -373,8 +373,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             alignment_offset = 0;
         }
 
-        Collections.reverse(lce);
-        return new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), alignment_offset);
+        return new SWPairwiseAlignmentResult(new CigarBuilder().addAll(Lists.reverse(lce)).make(), alignment_offset);
     }
 
     private static CigarElement makeElement(final State state, final int length) {
