@@ -1066,7 +1066,7 @@ public final class AlignmentUtils {
      * @param cigar a non-null Cigar to trim down
      * @param start Where should we start keeping bases in the cigar?  The first position is 0
      * @param end Where should we stop keeping bases in the cigar?  The maximum value is cigar.getLength()
-     * @param byReference should start and end be intrepreted as position in the reference or the read to trim to/from?
+     * @param byReference should start and end be interpreted as position in the reference or the read to trim to/from?
      * @return a non-null cigar
      */
     @SuppressWarnings("fallthrough")
@@ -1077,25 +1077,26 @@ public final class AlignmentUtils {
         for ( final CigarElement elt : cigar.getCigarElements() ) {
             if ( pos > end && (byReference || elt.getOperator() != CigarOperator.D) ) break;
 
+            if (elt.getOperator() == CigarOperator.DELETION && pos >= start && !byReference) {  // consumes ref but not read
+                newElements.add(elt);
+            } else if (
             switch ( elt.getOperator() ) {
                 case D:
-                    if ( ! byReference ) {
-                        if ( pos >= start )
-                            newElements.add(elt);
-                        break;
-                    }
+
                     // otherwise fall through to the next case
                 case EQ: case M: case X:
-                    newElements.add(elt);
-                    pos += elt.getLength();
+                    final int overlapLength = overlapLength(pos, start, end, elt);
+                    newElements.add(new CigarElement(overlapLength, elt.getOperator());
+                    pos += overlapLength;
                     break;
                 case S: case I:
                     if ( byReference ) {
                         if ( pos >= start )
                             newElements.add(elt);
                     } else {
-                        newElements.add(elt);
-                        pos += elt.getLength();
+                        final int overlapLength = overlapLength(pos, start, end, elt);
+                        newElements.add(new CigarElement(overlapLength, elt.getOperator());
+                        pos += overlapLength;
                     }
                     break;
                 default:
@@ -1104,6 +1105,10 @@ public final class AlignmentUtils {
         }
 
         return newElements.make();
+    }
+
+    private static int overlapLength(int pos, final int start, final int end, final CigarElement elt) {
+        return Math.min(pos + elt.getLength() - 1, end) - Math.max(pos, start) + 1;
     }
 
     /**
