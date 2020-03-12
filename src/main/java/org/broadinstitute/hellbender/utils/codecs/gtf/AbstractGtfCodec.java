@@ -504,15 +504,7 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
      * @return {@code true} iff the line starts with a comment delimiter.  {@code false} otherwise.
      */
     boolean isLineCommented(final String line) {
-        boolean isCommented = false;
-        for ( final String commentPrefix : getAllLineComments() ) {
-            if ( line.startsWith(commentPrefix) ) {
-                isCommented = true;
-                break;
-            }
-        }
-
-        return isCommented;
+        return isLineCommented(line, "");
     }
 
     /**
