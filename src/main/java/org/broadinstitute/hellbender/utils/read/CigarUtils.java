@@ -5,6 +5,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.utils.IndexRange;
@@ -230,35 +231,21 @@ public final class CigarUtils {
         // cut off the padding bases
         final int baseStart = SW_PAD.length();
         final int baseEnd = paddedPath.length() - SW_PAD.length() - 1; // -1 because it's inclusive
-        nonStandard = AlignmentUtils.trimCigarByBases(alignment.getCigar(), baseStart, baseEnd);
+        final Triple<Cigar, Integer, Integer> trimmedCigarAndDeletionsRemoved = AlignmentUtils.trimCigarByBases(alignment.getCigar(), baseStart, baseEnd);
 
-        // was there a deletion element in the SW alignment between the padding and the start?
-        // if so, it was removed by cigar trimming and we must account for the shift in alignment start
-        // otherwise, left-alignment will be wrong
-        final int leadingDeletionsInAlignment = deletionsBeforeStart(alignment.getCigar(), baseStart);
+        nonStandard = trimmedCigarAndDeletionsRemoved.getLeft();
 
-        if ( nonStandard.getReferenceLength() + leadingDeletionsInAlignment < refSeq.length ) {
-            nonStandard.add(new CigarElement(refSeq.length - nonStandard.getReferenceLength() - leadingDeletionsInAlignment, CigarOperator.D));
+        // leading deletion removed by cigar trimming shift the alignment start to the right
+        final int trimmedLeadingDeletions = trimmedCigarAndDeletionsRemoved.getMiddle();
+
+        // trailing deletions should be kept in order to left-align
+        final int trimmedTrailingDeletions = trimmedCigarAndDeletionsRemoved.getRight();
+
+        if ( trimmedTrailingDeletions > 0  ) {
+            nonStandard.add(new CigarElement(trimmedTrailingDeletions, CigarOperator.D));
         }
 
-        return AlignmentUtils.leftAlignIndels(nonStandard, refSeq, altSeq, leadingDeletionsInAlignment);
-    }
-
-    private static int deletionsBeforeStart(final Cigar cigar, final int start) {
-        int position = 0;
-        int result = 0;
-        for (final CigarElement element : cigar) {
-            if (element.getOperator() == CigarOperator.DELETION) {
-                result += element.getLength();
-            } else {
-                position += element.getOperator().consumesReadBases() ? element.getLength() : 0;
-                if (position > start) {
-                    return result;
-                }
-            }
-        }
-        Utils.validateArg(position >= start, () -> "start index " + start + " not reached in cigar " + cigar.toString());
-        return result;
+        return AlignmentUtils.leftAlignIndels(nonStandard, refSeq, altSeq, trimmedLeadingDeletions);
     }
 
     /**

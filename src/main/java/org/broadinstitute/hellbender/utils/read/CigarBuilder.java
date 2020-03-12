@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
@@ -33,6 +34,10 @@ public class CigarBuilder {
 
     private Section section = Section.LEFT_HARD_CLIP;
 
+    private int leadingDeletionBasesRemoved = 0;
+    private int trailingDeletionBasesRemoved = 0;
+    private int trailingDeletionBasesRemovedInMake = 0;
+
     public CigarBuilder() { }
 
     public CigarBuilder add(final CigarElement element) {
@@ -46,8 +51,10 @@ public class CigarBuilder {
         // note the edge case of a deletion following a leading insertion, which we also skip
         if (operator == CigarOperator.DELETION) {
             if(lastOperator == null || lastOperator.isClipping()) {
+                leadingDeletionBasesRemoved += element.getLength();
                 return this;
             } else if (lastOperator == CigarOperator.INSERTION && (cigarElements.size() == 1 || cigarElements.get(cigarElements.size() - 2).getOperator().isClipping())) {
+                leadingDeletionBasesRemoved += element.getLength();
                 return this;
             }
         }
@@ -64,6 +71,7 @@ public class CigarBuilder {
                 lastOperator = operator;
             } else if (operator.isClipping() && !lastOperator.consumesReadBases() && !lastOperator.isClipping()) {
                 // if we have just start clipping on the right and realize the last operator was a deletion, remove it
+                trailingDeletionBasesRemoved += cigarElements.get(cigarElements.size() - 1).getLength();
                 cigarElements.set(cigarElements.size() - 1, element);
                 lastOperator = operator;
             } else if (operator == CigarOperator.INSERTION && lastOperator == CigarOperator.DELETION) {
@@ -95,9 +103,12 @@ public class CigarBuilder {
 
     public Cigar make() {
         Utils.validate(!(section == Section.LEFT_SOFT_CLIP && cigarElements.get(0).getOperator() == CigarOperator.SOFT_CLIP), "cigar is completely soft-clipped");
+        trailingDeletionBasesRemovedInMake = 0;
         if (lastOperator == CigarOperator.DELETION) {
+            trailingDeletionBasesRemovedInMake = cigarElements.get(cigarElements.size() - 1).getLength();
             cigarElements.remove(cigarElements.size() - 1);
         }
+        Utils.validate(!cigarElements.isEmpty(), "No cigar elements left after removing leading and trailing deletions.");
         return new Cigar(cigarElements);    // removing flanking deletions may cause an empty cigar to be output.  We do not throw an error or return null.
     }
 
@@ -122,5 +133,18 @@ public class CigarBuilder {
                 section = Section.MIDDLE;
             }
         }
+    }
+
+    public int getLeadingDeletionBasesRemoved() {
+        return leadingDeletionBasesRemoved;
+    }
+
+    public int getTrailingDeletionBasesRemoved() {
+        return trailingDeletionBasesRemoved + trailingDeletionBasesRemovedInMake;
+    }
+
+    public Triple<Cigar, Integer, Integer> makeAndRecordDeletionsRemoved() {
+        final Cigar cigar = make();
+        return Triple.of(cigar, getLeadingDeletionBasesRemoved(), getTrailingDeletionBasesRemoved());
     }
 }

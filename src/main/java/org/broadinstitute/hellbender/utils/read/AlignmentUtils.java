@@ -7,6 +7,7 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -97,7 +98,7 @@ public final class AlignmentUtils {
         // SW of read -> hap mapped through the given by hap -> ref
 
         // this is the sub-cigar of the haplotype-to-ref alignment, with cigar elements before the read start removed.  Elements after the read end are kept.
-        final Cigar haplotypeToRef = trimCigarByBases(rightPaddedHaplotypeVsRefCigar, readToHaplotypeSWAlignment.getAlignmentOffset(), rightPaddedHaplotypeVsRefCigar.getReadLength() - 1);
+        final Cigar haplotypeToRef = trimCigarByBases(rightPaddedHaplotypeVsRefCigar, readToHaplotypeSWAlignment.getAlignmentOffset(), rightPaddedHaplotypeVsRefCigar.getReadLength() - 1).getLeft();
 
         final Cigar readToRefCigar = applyCigarToCigar(swCigar, haplotypeToRef);
         final Cigar leftAlignedReadToRefCigar = leftAlignIndels(readToRefCigar, refHaplotype.getBases(), originalRead.getBases(), readStartOnReferenceHaplotype);
@@ -880,6 +881,26 @@ public final class AlignmentUtils {
         return new Cigar(elements.subList(0, elements.size() - 1));
     }
 
+    /**
+     * Does cigar start or end with a deletion operation?
+     *
+     * WARNING: there is usually no good reason to use this method, because one should handle the leading and trailing
+     * deletion via the {@link CigarBuilder} class.  Do not use this method when you can instead use {@link CigarBuilder}.
+     *
+     * @param cigar a non-null cigar to test
+     * @return true if the first or last operator of cigar is a D
+     */
+    public static boolean startsOrEndsWithInsertionOrDeletion(final Cigar cigar) {
+        Utils.nonNull(cigar);
+
+        if ( cigar.isEmpty() )
+            return false;
+
+        final CigarOperator first = cigar.getCigarElement(0).getOperator();
+        final CigarOperator last = cigar.getCigarElement(cigar.numCigarElements()-1).getOperator();
+        return first == CigarOperator.D || first == CigarOperator.I || last == CigarOperator.D || last == CigarOperator.I;
+    }
+
 
     /**
      * Trim cigar down to one that starts at start reference on the left and extends to end on the reference
@@ -889,7 +910,7 @@ public final class AlignmentUtils {
      * @param end Where should we stop keeping bases on the reference?  The maximum value is cigar.getReferenceLength()
      * @return a new Cigar with reference length == start - end + 1
      */
-    public static Cigar trimCigarByReference(final Cigar cigar, final int start, final int end) {
+    public static Triple<Cigar, Integer, Integer> trimCigarByReference(final Cigar cigar, final int start, final int end) {
         return trimCigar(cigar, start, end, true);
     }
 
@@ -901,7 +922,7 @@ public final class AlignmentUtils {
      * @param end Where should we stop keeping bases in the cigar (inclusive)?  The maximum value is cigar.getLength() - 1
      * @return a new Cigar containing == start - end + 1 reads
      */
-    public static Cigar trimCigarByBases(final Cigar cigar, final int start, final int end) {
+    public static Triple<Cigar, Integer, Integer> trimCigarByBases(final Cigar cigar, final int start, final int end) {
         return trimCigar(cigar, start, end, false);
     }
 
@@ -916,7 +937,7 @@ public final class AlignmentUtils {
      * @return a non-null cigar
      */
     @SuppressWarnings("fallthrough")
-    private static Cigar trimCigar(final Cigar cigar, final int start, final int end, final boolean byReference) {
+    private static Triple<Cigar, Integer, Integer> trimCigar(final Cigar cigar, final int start, final int end, final boolean byReference) {
         ParamUtils.isPositiveOrZero(start, "start position can't be negative");
         Utils.validateArg(end >= start, () -> "end " + end + " is before start " + start);
         final CigarBuilder newElements = new CigarBuilder();
@@ -938,7 +959,7 @@ public final class AlignmentUtils {
         }
         Utils.validateArg(elementEnd > end, () -> "cigar elements don't reach end position (inclusive) " + end);
 
-        return newElements.make();
+        return newElements.makeAndRecordDeletionsRemoved();
     }
 
     /**

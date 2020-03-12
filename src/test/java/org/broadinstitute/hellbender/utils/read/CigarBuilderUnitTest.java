@@ -180,4 +180,73 @@ public class CigarBuilderUnitTest {
 
         builder.make();
     }
+
+    @DataProvider(name = "removed_deletions")
+    public Object[][] removedDeletions() {
+        return new Object[][] {
+                {Arrays.asList("10M"), 0, 0},
+                {Arrays.asList("10S", "10M"), 0, 0},
+                {Arrays.asList("10M","10S"), 0, 0},
+                {Arrays.asList("10M", "10I", "10D", "10M"), 0, 0},
+                {Arrays.asList("10M", "10D", "10I", "10M"), 0, 0},
+
+                {Arrays.asList("10D", "10I", "10M"), 10, 0},
+                {Arrays.asList("10D", "10D", "10I", "10M"), 20, 0},
+                {Arrays.asList("10D", "10D", "10I", "10D", "10M"), 30, 0},
+                {Arrays.asList("10S", "10D", "10D", "10I", "10D", "10M"), 30, 0},
+
+                {Arrays.asList("10M", "10I", "10D"), 0, 10},
+                {Arrays.asList("10M", "10D", "10I"), 0, 10},
+                {Arrays.asList("10M", "10D", "10I", "10D"), 0, 20},
+                {Arrays.asList("10M", "10D", "10I", "10D", "10S", "10H"), 0, 20},
+
+                {Arrays.asList("10H", "10S", "10D", "10M", "10D", "10I", "10D", "10S", "10H"), 10, 20},
+        };
+    }
+
+    @Test(dataProvider = "removed_deletions")
+    public void testRemovedDeletions(final List<String> cigarElementStrings, final int removedLeading, final int removedTrailing) {
+        final CigarBuilder builder = new CigarBuilder();
+        for (final String elementString : cigarElementStrings) {
+            builder.add(TextCigarCodec.decode(elementString).getFirstCigarElement());
+        }
+
+        builder.make();
+        Assert.assertEquals(builder.getLeadingDeletionBasesRemoved(), removedLeading);
+        Assert.assertEquals(builder.getTrailingDeletionBasesRemoved(), removedTrailing);
+    }
+
+    @DataProvider(name = "removed_deletions_two_makes")
+    public Object[][] removedDeletionsTwoMakes() {
+        return new Object[][] {
+                {Arrays.asList("10M"), Arrays.asList("10M"), 0, 0},
+                {Arrays.asList("10M", "10I"), Arrays.asList("10D", "10M"), 0, 0},
+                {Arrays.asList("10M", "10D"), Arrays.asList("10I", "10M"), 0, 0},
+
+                {Arrays.asList("10D", "10I"), Arrays.asList("10M"), 10, 0},
+                {Arrays.asList("10D", "10D", "10I"), Arrays.asList("10D", "10M"), 30, 0},
+
+                {Arrays.asList("10H", "10S", "10D", "10M"), Arrays.asList("10D", "10I", "10D", "10S", "10H"), 10, 20},
+        };
+    }
+
+    @Test(dataProvider = "removed_deletions_two_makes")
+    public void testRemovedDeletionsWithTwoMakes(final List<String> cigarElementStrings1, final List<String> cigarElementStrings2, final int removedLeading, final int removedTrailing) {
+        final CigarBuilder builder = new CigarBuilder();
+        for (final String elementString : cigarElementStrings1) {
+            builder.add(TextCigarCodec.decode(elementString).getFirstCigarElement());
+        }
+
+        builder.make();
+
+        for (final String elementString : cigarElementStrings2) {
+            builder.add(TextCigarCodec.decode(elementString).getFirstCigarElement());
+        }
+
+        builder.make();
+
+
+        Assert.assertEquals(builder.getLeadingDeletionBasesRemoved(), removedLeading);
+        Assert.assertEquals(builder.getTrailingDeletionBasesRemoved(), removedTrailing);
+    }
 }

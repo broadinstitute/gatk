@@ -93,11 +93,12 @@ public final class Haplotype extends Allele {
         final int newStart = loc.getStart() - this.genomeLocation.getStart();
         final int newStop = newStart + loc.getEnd() - loc.getStart();
         final byte[] newBases = AlignmentUtils.getBasesCoveringRefInterval(newStart, newStop, getBases(), 0, getCigar());
-        final Cigar newCigar = AlignmentUtils.trimCigarByReference(getCigar(), newStart, newStop);
 
-        if ( newBases == null || newCigar.isEmpty() ) { // we cannot meaningfully chop down the haplotype, so return null
+        if ( newBases == null || newBases.length == 0 ) { // we cannot meaningfully chop down the haplotype, so return null
             return null;
         }
+
+        final Cigar newCigar = AlignmentUtils.trimCigarByReference(getCigar(), newStart, newStop).getLeft();
 
         final Haplotype ret = new Haplotype(newBases, isReference());
         ret.setCigar(newCigar);
