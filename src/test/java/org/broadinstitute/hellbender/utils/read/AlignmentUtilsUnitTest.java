@@ -911,14 +911,14 @@ public final class AlignmentUtilsUnitTest {
         tests.add(new Object[]{"2M3I4M", 4, 4, "1I"});
         tests.add(new Object[]{"2M3I4M", 5, 5, "1M"});
 
-        tests.add(new Object[]{"2M2D2I", 0, 3, "2M2D2I"});
-        tests.add(new Object[]{"2M2D2I", 1, 3, "1M2D2I"});
-        tests.add(new Object[]{"2M2D2I", 2, 3, "2D2I"});
+        tests.add(new Object[]{"2M2D2I", 0, 3, "2M2I"});
+        tests.add(new Object[]{"2M2D2I", 1, 3, "1M2I"});
+        tests.add(new Object[]{"2M2D2I", 2, 3, "2I"});
         tests.add(new Object[]{"2M2D2I", 3, 3, "1I"});
-        tests.add(new Object[]{"2M2D2I", 2, 2, "2D1I"});
-        tests.add(new Object[]{"2M2D2I", 1, 2, "1M2D1I"});
-        tests.add(new Object[]{"2M2D2I", 0, 1, "2M2D"});
-        tests.add(new Object[]{"2M2D2I", 1, 1, "1M2D"});
+        tests.add(new Object[]{"2M2D2I", 2, 2, "1I"});
+        tests.add(new Object[]{"2M2D2I", 1, 2, "1M1I"});
+        tests.add(new Object[]{"2M2D2I", 0, 1, "2M"});
+        tests.add(new Object[]{"2M2D2I", 1, 1, "1M"});
 
         return tests.toArray(new Object[][]{});
     }
