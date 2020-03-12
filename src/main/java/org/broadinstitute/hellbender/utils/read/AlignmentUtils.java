@@ -1028,10 +1028,6 @@ public final class AlignmentUtils {
      * @return a new Cigar with reference length == start - end + 1
      */
     public static Cigar trimCigarByReference(final Cigar cigar, final int start, final int end) {
-        if ( start < 0 ) throw new IllegalArgumentException("Start must be >= 0 but got " + start);
-        if ( end < start ) throw new IllegalArgumentException("End " + end + " is < start start " + start);
-        if ( end > cigar.getReferenceLength() ) throw new IllegalArgumentException("End is beyond the cigar's reference length " + end + " for cigar " + cigar );
-
         final Cigar result = trimCigar(cigar, start, end, true);
 
         Utils.validate(result.getReferenceLength() == end - start + 1, () -> "trimCigarByReference failure: start " + start + " end " + end + " for " + cigar + " resulted in cigar with wrong size " + result);
@@ -1047,10 +1043,6 @@ public final class AlignmentUtils {
      * @return a new Cigar containing == start - end + 1 reads
      */
     public static Cigar trimCigarByBases(final Cigar cigar, final int start, final int end) {
-        if ( start < 0 ) throw new IllegalArgumentException("Start must be >= 0 but got " + start);
-        if ( end < start ) throw new IllegalArgumentException("End " + end + " is < start = " + start);
-        if ( end > cigar.getReadLength() ) throw new IllegalArgumentException("End is beyond the cigar's read length " + end + " for cigar " + cigar );
-
         final Cigar result = trimCigar(cigar, start, end, false);
 
         final int expectedSize = end - start + 1;
@@ -1071,6 +1063,8 @@ public final class AlignmentUtils {
      */
     @SuppressWarnings("fallthrough")
     private static Cigar trimCigar(final Cigar cigar, final int start, final int end, final boolean byReference) {
+        ParamUtils.isPositiveOrZero(start, "start position can't be negative");
+        Utils.validateArg(end >= start, () -> "end " + end + " is before start " + start);
         final CigarBuilder newElements = new CigarBuilder();
 
         int elementStart;   // inclusive
@@ -1088,6 +1082,7 @@ public final class AlignmentUtils {
             final int overlapLength = Math.min(end + 1, elementEnd) - Math.max(start, elementStart);
             newElements.add(new CigarElement(overlapLength, elt.getOperator()));
         }
+        Utils.validateArg(elementEnd > end, () -> "cigar elements don't reach end position (inclusive) " + end);
 
         return newElements.make();
     }
