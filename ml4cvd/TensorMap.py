@@ -74,7 +74,7 @@ class TensorMap(object):
                  name: str,
                  interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
                  loss: Optional[Union[str, Callable]] = None,
-                 shape: Optional[Tuple[int]] = None,
+                 shape: Optional[Tuple[int, ...]] = None,
                  model: Optional[Model] = None,
                  metrics: Optional[List[Union[str, Callable]]] = None,
                  parents: Optional[List["TensorMap"]] = None,
