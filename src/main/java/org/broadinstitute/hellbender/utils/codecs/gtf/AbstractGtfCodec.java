@@ -482,13 +482,7 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
      * @return {@code true} IFF the header line number {@code lineNum} starts with {@code startingText}; {@code false} otherwise.
      */
     boolean checkHeaderLineStartsWith(final List<String> header, final int lineNum, final String startingText, final boolean throwIfInvalid ) {
-        boolean foundGoodLine = false;
-        for ( final String commentPrefix : getAllLineComments() ) {
-            if ( header.get(lineNum).startsWith(commentPrefix + startingText) ) {
-                foundGoodLine = true;
-                break;
-            }
-        }
+        final boolean foundGoodLine = isLineCommented(header.get(lineNum), startingText);
 
         if (!foundGoodLine) {
             if ( throwIfInvalid ) {
@@ -513,6 +507,25 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
         boolean isCommented = false;
         for ( final String commentPrefix : getAllLineComments() ) {
             if ( line.startsWith(commentPrefix) ) {
+                isCommented = true;
+                break;
+            }
+        }
+
+        return isCommented;
+    }
+
+    /**
+     * Checks whether the given line is commented out or not and if the content of the line begins with the given
+     * {@code linePrefix}.
+     * @param line A {@link String} representing a line in the GTF file.
+     * @param linePrefix A {@link String} containing content that the line must start with in addition to the comment prefix.
+     * @return {@code true} iff the line starts with a comment delimiter.  {@code false} otherwise.
+     */
+    boolean isLineCommented(final String line, final String linePrefix) {
+        boolean isCommented = false;
+        for ( final String commentPrefix : getAllLineComments() ) {
+            if ( line.startsWith(commentPrefix + linePrefix) ) {
                 isCommented = true;
                 break;
             }

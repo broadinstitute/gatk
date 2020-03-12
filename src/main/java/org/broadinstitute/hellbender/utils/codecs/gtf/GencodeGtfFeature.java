@@ -49,7 +49,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
     public static final String ANNOTATION_SOURCE_ENSEMBL = "ENSEMBL";
     public static final String ANNOTATION_SOURCE_HAVANA = "HAVANA";
-    public static String ANNOTATION_SOURCE_ENA = "ena";
+    public static final String ANNOTATION_SOURCE_ENA = "ena";
 
     // ===========================================================================
 

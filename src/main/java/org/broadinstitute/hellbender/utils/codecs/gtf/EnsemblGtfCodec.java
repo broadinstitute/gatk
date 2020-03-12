@@ -28,8 +28,9 @@ final public class EnsemblGtfCodec extends AbstractGtfCodec {
     //==================================================================================================================
     // Private Static Members:
 
-    private static String VERSION_FIELD = "genome-version";
-    private static String DEFAULT_VERSION = "ENSEMBL_DEFAULT_VERSION";
+    private static String            VERSION_FIELD    = "genome-version";
+    private static String            DEFAULT_VERSION  = "ENSEMBL_DEFAULT_VERSION";
+    private static final Set<String> COMMENT_PREFIXES = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList("#!", "##")));
 
     //==================================================================================================================
     // Private Members:
@@ -37,7 +38,6 @@ final public class EnsemblGtfCodec extends AbstractGtfCodec {
     private final        List<String> header          = new ArrayList<>();
     private              int          currentLineNum  = 1;
     private              String       version         = null;
-    private static final Set<String>  commentPrefixes = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList("#!", "##")));
 
     //==================================================================================================================
     // Constructors:
@@ -56,12 +56,12 @@ final public class EnsemblGtfCodec extends AbstractGtfCodec {
 
     @Override
     String getDefaultLineComment() {
-        return commentPrefixes.iterator().next();
+        return COMMENT_PREFIXES.iterator().next();
     }
 
     @Override
     Set<String> getAllLineComments() {
-        return commentPrefixes;
+        return COMMENT_PREFIXES;
     }
 
     @Override
