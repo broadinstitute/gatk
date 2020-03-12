@@ -927,13 +927,13 @@ public final class AlignmentUtils {
             elementStart = elementEnd;
             elementEnd = elementStart + (byReference ? lengthOnReference(elt) : lengthOnRead(elt));
 
-            if (elementEnd <= start) {
+            if (elementEnd < start || (elementEnd == start && elementStart < start)) {  // this logic is to preserve initial insertions
                 continue;
             } else if (elementStart > end) {
                 break;
             }
 
-            final int overlapLength = Math.min(end + 1, elementEnd) - Math.max(start, elementStart);
+            final int overlapLength = elementEnd == elementStart ? elt.getLength() : Math.min(end + 1, elementEnd) - Math.max(start, elementStart);
             newElements.add(new CigarElement(overlapLength, elt.getOperator()));
         }
         Utils.validateArg(elementEnd > end, () -> "cigar elements don't reach end position (inclusive) " + end);

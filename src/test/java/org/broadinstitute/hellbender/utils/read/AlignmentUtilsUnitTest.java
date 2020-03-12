@@ -891,13 +891,9 @@ public final class AlignmentUtilsUnitTest {
     @Test(dataProvider = "TrimCigarData", enabled = ! DEBUG)
     public void testTrimCigar(final String cigarString, final int start, final int length, final String expectedCigarString) {
         final Cigar cigar = TextCigarCodec.decode(cigarString);
-        final Cigar expectedCigar = TextCigarCodec.decode(expectedCigarString);
+        final Cigar expectedCigar = new CigarBuilder().addAll(TextCigarCodec.decode(expectedCigarString)).make();
         final Cigar actualCigar = AlignmentUtils.trimCigarByReference(cigar, start, length);
-        if (actualCigar.isEmpty()) {
-            Assert.assertTrue(expectedCigar.getCigarElements().stream().noneMatch(el -> el.getOperator().consumesReadBases()));
-        } else {
-            Assert.assertEquals(actualCigar, expectedCigar);
-        }
+        Assert.assertEquals(actualCigar, expectedCigar);
     }
 
     @DataProvider(name = "TrimCigarByBasesData")
