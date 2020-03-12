@@ -116,12 +116,11 @@ public final class AlignmentUtils {
         // this is the sub-cigar of the haplotype-to-ref alignment, with cigar elements before the read start removed.  Elements after the read end are kept.
         final Cigar haplotypeToRef = trimCigarByBases(rightPaddedHaplotypeVsRefCigar, readToHaplotypeSWAlignment.getAlignmentOffset(), rightPaddedHaplotypeVsRefCigar.getReadLength() - 1);
 
-        final Cigar readToRefCigarRaw = applyCigarToCigar(swCigar, haplotypeToRef);
-        final Cigar readToRefCigarClean = cleanUpCigar(readToRefCigarRaw);
-        final Cigar readToRefCigar = leftAlignIndels(readToRefCigarClean, refHaplotype.getBases(), originalRead.getBases(), readStartOnReferenceHaplotype);
+        final Cigar readToRefCigar = applyCigarToCigar(swCigar, haplotypeToRef);
+        final Cigar leftAlignedReadToRefCigar = leftAlignIndels(readToRefCigar, refHaplotype.getBases(), originalRead.getBases(), readStartOnReferenceHaplotype);
 
         // it's possible that left-alignment shifted a deletion to the beginning of a read and removed it, shifting the first aligned base to the right
-        final int leadingDeletions = readToRefCigarClean.getReferenceLength() - readToRefCigar.getReferenceLength();
+        final int leadingDeletions = readToRefCigar.getReferenceLength() - leftAlignedReadToRefCigar.getReferenceLength();
         read.setPosition(read.getContig(), readStartOnReference + leadingDeletions);
 
         // the SW Cigar does not contain the hard clips of the original read
@@ -132,15 +131,15 @@ public final class AlignmentUtils {
         if (firstElement.getOperator() == CigarOperator.HARD_CLIP) {
             readToRefCigarElementsWithHardClips.add(firstElement);
         }
-        readToRefCigarElementsWithHardClips.addAll(readToRefCigar.getCigarElements());
+        readToRefCigarElementsWithHardClips.addAll(leftAlignedReadToRefCigar.getCigarElements());
         if (lastElement.getOperator() == CigarOperator.HARD_CLIP) {
             readToRefCigarElementsWithHardClips.add(lastElement);
         }
 
         read.setCigar(new Cigar(readToRefCigarElementsWithHardClips));
 
-        if ( readToRefCigar.getReadLength() != read.getLength() ) {
-            throw new GATKException("Cigar " + readToRefCigar + " with read length " + readToRefCigar.getReadLength()
+        if ( leftAlignedReadToRefCigar.getReadLength() != read.getLength() ) {
+            throw new GATKException("Cigar " + leftAlignedReadToRefCigar + " with read length " + leftAlignedReadToRefCigar.getReadLength()
                     + " != read length " + read.getLength() + " for read " + read.toString() + "\nhapToRef " + haplotypeToRef + " length " + haplotypeToRef.getReadLength() + "/" + haplotypeToRef.getReferenceLength()
                     + "\nreadToHap " + swCigar + " length " + swCigar.getReadLength() + "/" + swCigar.getReferenceLength());
         }
@@ -884,27 +883,6 @@ public final class AlignmentUtils {
     }
 
     /**
-     * Clean up the incoming cigar
-     *
-     * Removes elements with zero size
-     * Clips away beginning deletion operators
-     *
-     * @param c the cigar string we want to clean up
-     * @return a newly allocated, cleaned up Cigar
-     */
-    public static Cigar cleanUpCigar(final Cigar c) {
-        final List<CigarElement> elements = new ArrayList<>(c.numCigarElements() - 1);
-
-        for (final CigarElement ce : c.getCigarElements()) {
-            if (ce.getLength() != 0 && (! elements.isEmpty() || ce.getOperator() != CigarOperator.D)) {
-                elements.add(ce);
-            }
-        }
-
-        return new Cigar(elements);
-    }
-
-    /**
      * Removing a trailing deletion from the incoming cigar if present
      *
      * @param c the cigar we want to update
@@ -1022,8 +1000,6 @@ public final class AlignmentUtils {
      * @return A cigar mapping hap1 -> hap3
      */
     public static Cigar applyCigarToCigar(final Cigar firstToSecond, final Cigar secondToThird) {
-        final boolean DEBUG = false;
-
         final CigarBuilder newElements = new CigarBuilder();
         final int nElements12 = firstToSecond.numCigarElements();
         final int nElements23 = secondToThird.numCigarElements();
@@ -1036,10 +1012,6 @@ public final class AlignmentUtils {
             final CigarElement elt23 = secondToThird.getCigarElement(cigar23I);
 
             final CigarPairTransform transform = getTransformer(elt12.getOperator(), elt23.getOperator());
-
-            if ( DEBUG )
-                System.out.printf("Transform %s => %s with elt1 = %d %s @ %d elt2 = %d %s @ %d with transform %s%n",
-                        firstToSecond, secondToThird, cigar12I, elt12.getOperator(), elt12I, cigar23I, elt23.getOperator(), elt23I, transform);
 
             if ( transform.op13 != null ) // skip no ops
                 newElements.add(new CigarElement(1, transform.op13));
