@@ -32,23 +32,6 @@ public final class AlignmentUtils {
     private AlignmentUtils() { }
 
     /**
-     * Does cigar start or end with a deletion operation?
-     *
-     * @param cigar a non-null cigar to test
-     * @return true if the first or last operator of cigar is a D
-     */
-    public static boolean startsOrEndsWithInsertionOrDeletion(final Cigar cigar) {
-        Utils.nonNull(cigar);
-
-        if ( cigar.isEmpty() )
-            return false;
-
-        final CigarOperator first = cigar.getCigarElement(0).getOperator();
-        final CigarOperator last = cigar.getCigarElement(cigar.numCigarElements()-1).getOperator();
-        return first == CigarOperator.D || first == CigarOperator.I || last == CigarOperator.D || last == CigarOperator.I;
-    }
-
-    /**
      * Aligns reads the haplotype, and then projects this alignment of read -> hap onto the reference
      * via the alignment of haplotype (via its getCigar) method.
      *
@@ -907,10 +890,7 @@ public final class AlignmentUtils {
      * @return a new Cigar with reference length == start - end + 1
      */
     public static Cigar trimCigarByReference(final Cigar cigar, final int start, final int end) {
-        final Cigar result = trimCigar(cigar, start, end, true);
-
-        Utils.validate(result.getReferenceLength() == end - start + 1, () -> "trimCigarByReference failure: start " + start + " end " + end + " for " + cigar + " resulted in cigar with wrong size " + result);
-        return result;
+        return trimCigar(cigar, start, end, true);
     }
 
     /**
@@ -922,12 +902,7 @@ public final class AlignmentUtils {
      * @return a new Cigar containing == start - end + 1 reads
      */
     public static Cigar trimCigarByBases(final Cigar cigar, final int start, final int end) {
-        final Cigar result = trimCigar(cigar, start, end, false);
-
-        final int expectedSize = end - start + 1;
-        Utils.validate(result.getReadLength() == expectedSize, () -> "trimCigarByBases failure: start "
-                + start + " end " + end + " for " + cigar + " resulted in cigar with wrong size " + result + " with size " + result.getReadLength() + " expected " + expectedSize + " for input cigar " + cigar);
-        return result;
+        return trimCigar(cigar, start, end, false);
     }
 
 

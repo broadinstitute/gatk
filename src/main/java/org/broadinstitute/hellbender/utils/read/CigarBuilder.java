@@ -98,7 +98,7 @@ public class CigarBuilder {
         if (lastOperator == CigarOperator.DELETION) {
             cigarElements.remove(cigarElements.size() - 1);
         }
-        return new Cigar(cigarElements);
+        return new Cigar(cigarElements);    // removing flanking deletions may cause an empty cigar to be output.  We do not throw an error or return null.
     }
 
     private enum Section {LEFT_HARD_CLIP, LEFT_SOFT_CLIP, MIDDLE, RIGHT_SOFT_CLIP, RIGHT_HARD_CLIP}

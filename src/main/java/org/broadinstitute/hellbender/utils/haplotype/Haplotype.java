@@ -95,9 +95,7 @@ public final class Haplotype extends Allele {
         final byte[] newBases = AlignmentUtils.getBasesCoveringRefInterval(newStart, newStop, getBases(), 0, getCigar());
         final Cigar newCigar = AlignmentUtils.trimCigarByReference(getCigar(), newStart, newStop);
 
-        if ( newBases == null || AlignmentUtils.startsOrEndsWithInsertionOrDeletion(newCigar) )
-            // we cannot meaningfully chop down the haplotype, so return null
-        {
+        if ( newBases == null || newCigar.isEmpty() ) { // we cannot meaningfully chop down the haplotype, so return null
             return null;
         }
 
