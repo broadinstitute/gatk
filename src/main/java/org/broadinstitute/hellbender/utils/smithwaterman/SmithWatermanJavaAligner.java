@@ -335,7 +335,9 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             if ( new_state == state ) segment_length+=step_length;
             else {
                 // state changed, lets emit previous segment, whatever it was (Insertion Deletion, or (Mis)Match).
-                lce.add(makeElement(state, segment_length));
+                if (segment_length > 0) {
+                    lce.add(makeElement(state, segment_length));
+                }
                 segment_length = step_length;
                 state = new_state;
             }
@@ -373,7 +375,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             alignment_offset = 0;
         }
 
-        return new SWPairwiseAlignmentResult(new CigarBuilder().addAll(Lists.reverse(lce)).make(), alignment_offset);
+        return new SWPairwiseAlignmentResult(new Cigar(Lists.reverse(lce)), alignment_offset);
     }
 
     private static CigarElement makeElement(final State state, final int length) {

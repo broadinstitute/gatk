@@ -632,8 +632,7 @@ public final class GraphBasedKBestHaplotypeFinderUnitTest extends GATKBaseTest {
 
         logger.warn("diffs: " + ref + " vs. " + alt + " cigar " + midCigar);
         logger.warn("Path " + path + " with cigar " + pathCigar);
-
-        Assert.assertEquals(pathCigar, expected.make(), "Cigar mismatch: ref = " + refString + " vs alt = " + new String(path.getBases()));
+        Assert.assertEquals(new CigarBuilder().addAll(pathCigar).make(), expected.make(), "Cigar mismatch: ref = " + refString + " vs alt = " + new String(path.getBases()));
     }
 
     @Test
