@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -19,6 +20,7 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -63,7 +65,7 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
     @Override
     protected void firstPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         // if the site is not filtered but it is low het, increment counter
-        if (variant.isNotFiltered() && isLowHeteroplasmy(variant)) {
+        if (variant.isNotFiltered() && isSiteLowHeteroplasmy(variant)) {
             unfilteredLowHetSites++;
         }
     }
@@ -76,8 +78,14 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
     @Override
     protected void secondPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         VariantContextBuilder vcb = new VariantContextBuilder(variant);
-        if (failedLowHet && isLowHeteroplasmy(variant)) {
-            vcb.filter(GATKVCFConstants.LOW_HET_FILTER_NAME);
+        if (failedLowHet) {
+            List<Boolean> appliedFilter = areAllelesArtifacts(variant);
+            if (!appliedFilter.contains(Boolean.FALSE)) {
+                vcb.filter(filterName());
+            }
+            if (appliedFilter.contains(Boolean.TRUE)) {
+                vcb.attribute(GATKVCFConstants.AS_FILTER_STATUS_KEY, AlleleFilterUtils.getMergedASFilterString(variant, appliedFilter, filterName()));
+            }
         }
         vcfWriter.add(vcb.make());
     }
@@ -89,12 +97,29 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
         }
     }
 
-    protected boolean isLowHeteroplasmy(VariantContext v) {
+    protected String filterName() {
+        return GATKVCFConstants.LOW_HET_FILTER_NAME;
+    }
+
+    public List<Integer> getData(Genotype g) {
+        return Arrays.stream(g.getAD()).boxed().collect(Collectors.toList());
+    }
+
+    protected boolean isSiteLowHeteroplasmy(VariantContext v) {
         return v.getGenotypes().stream().map(g -> lowestAF(g)).min(Double::compareTo).orElse(0.0) < lowHetThreshold;
     }
 
+    protected List<Boolean> areAllelesArtifacts(final VariantContext vc) {
+        VariantContextBuilder vcb = new VariantContextBuilder(vc);
+        LinkedHashMap<Allele, List<Integer>> dataByAllele = Mutect2AlleleFilter.getDataByAllele(vc, Genotype::hasAD, this::getData, null);
+        Integer total = dataByAllele.values().stream().map(alleleCounts -> alleleCounts.stream().max(Integer::compareTo).orElse(0)).mapToInt(Integer::intValue).sum();
+        return dataByAllele.entrySet().stream()
+                .filter(entry -> !vc.getReference().equals(entry.getKey()))
+                .map(entry -> (entry.getValue().stream().max(Integer::compareTo).orElse(0) / (double) total) < lowHetThreshold).collect(Collectors.toList());
+    }
+
     protected double lowestAF(Genotype g) {
-        List<Integer> depths = Arrays.stream(g.getAD()).boxed().collect(Collectors.toList());
+        List<Integer> depths = getData(g);
         return Collections.min(depths.subList(1, depths.size())) / (double) depths.stream().mapToInt(Integer::intValue).sum();
     }
 }
