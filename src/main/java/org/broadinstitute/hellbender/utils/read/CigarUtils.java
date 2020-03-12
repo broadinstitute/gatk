@@ -232,12 +232,33 @@ public final class CigarUtils {
         final int baseEnd = paddedPath.length() - SW_PAD.length() - 1; // -1 because it's inclusive
         nonStandard = AlignmentUtils.trimCigarByBases(alignment.getCigar(), baseStart, baseEnd);
 
-        if ( nonStandard.getReferenceLength() != refSeq.length ) {
-            nonStandard.add(new CigarElement(refSeq.length - nonStandard.getReferenceLength(), CigarOperator.D));
+        // was there a deletion element in the SW alignment between the padding and the start?
+        // if so, it was removed by cigar trimming and we must account for the shift in alignment start
+        // otherwise, left-alignment will be wrong
+        final int leadingDeletionsInAlignment = deletionsBeforeStart(alignment.getCigar(), baseStart);
+
+        if ( nonStandard.getReferenceLength() + leadingDeletionsInAlignment < refSeq.length ) {
+            nonStandard.add(new CigarElement(refSeq.length - nonStandard.getReferenceLength() - leadingDeletionsInAlignment, CigarOperator.D));
         }
 
-        // finally, return the cigar with all indels left aligned
-        return AlignmentUtils.leftAlignIndels(nonStandard, refSeq, altSeq, 0);
+        return AlignmentUtils.leftAlignIndels(nonStandard, refSeq, altSeq, leadingDeletionsInAlignment);
+    }
+
+    private static int deletionsBeforeStart(final Cigar cigar, final int start) {
+        int position = 0;
+        int result = 0;
+        for (final CigarElement element : cigar) {
+            if (element.getOperator() == CigarOperator.DELETION) {
+                result += element.getLength();
+            } else {
+                position += element.getOperator().consumesReadBases() ? element.getLength() : 0;
+                if (position > start) {
+                    return result;
+                }
+            }
+        }
+        Utils.validateArg(position >= start, () -> "start index " + start + " not reached in cigar " + cigar.toString());
+        return result;
     }
 
     /**
