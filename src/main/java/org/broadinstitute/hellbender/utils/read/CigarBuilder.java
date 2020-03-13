@@ -101,15 +101,19 @@ public class CigarBuilder {
         return this;
     }
 
-    public Cigar make() {
+    public Cigar make(final boolean allowEmpty) {
         Utils.validate(!(section == Section.LEFT_SOFT_CLIP && cigarElements.get(0).getOperator() == CigarOperator.SOFT_CLIP), "cigar is completely soft-clipped");
         trailingDeletionBasesRemovedInMake = 0;
         if (lastOperator == CigarOperator.DELETION) {
             trailingDeletionBasesRemovedInMake = cigarElements.get(cigarElements.size() - 1).getLength();
             cigarElements.remove(cigarElements.size() - 1);
         }
-        Utils.validate(!cigarElements.isEmpty(), "No cigar elements left after removing leading and trailing deletions.");
+        Utils.validate(allowEmpty || !cigarElements.isEmpty(), "No cigar elements left after removing leading and trailing deletions.");
         return new Cigar(cigarElements);    // removing flanking deletions may cause an empty cigar to be output.  We do not throw an error or return null.
+    }
+
+    public Cigar make() {
+        return make(false);
     }
 
     private enum Section {LEFT_HARD_CLIP, LEFT_SOFT_CLIP, MIDDLE, RIGHT_SOFT_CLIP, RIGHT_HARD_CLIP}
