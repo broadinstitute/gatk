@@ -90,12 +90,12 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         // Create the Features as they exist in the test file:
         GencodeGtfFeatureBaseData data;
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
                 30366, 30503, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000284332.1", null, GencodeGtfFeature.GeneTranscriptType.MIRNA,
                 null, "MIR1302-2", null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED, null, null);
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 30366, 30503, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000284332.1", "ENST00000607096.1", GencodeGtfFeature.GeneTranscriptType.MIRNA,
                 null, "MIR1302-2", GencodeGtfFeature.GeneTranscriptType.MIRNA, null, "MIR1302-2-201", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -108,7 +108,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfTranscriptFeature transcript = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 30366, 30503, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000284332.1", "ENST00000607096.1", GencodeGtfFeature.GeneTranscriptType.MIRNA,
                 null, "MIR1302-2", GencodeGtfFeature.GeneTranscriptType.MIRNA, null, "MIR1302-2-201", 1, "ENSE00003695741.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -145,7 +145,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         // Let's define all our features up front:
         GencodeGtfFeatureBaseData data;
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.GENE,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.GENE,
                 50200979, 50217616, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", null, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", null, null, null, -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -156,7 +156,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfGeneFeature gene1 = (GencodeGtfGeneFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 50200979, 50217615, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -171,7 +171,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfTranscriptFeature transcript1 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 50200979, 50201590, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 1, "ENSE00001541223.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -186,7 +186,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon1 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 9, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 9, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 50201037, 50201590, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 1, "ENSE00001541223.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -201,7 +201,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds1 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 10, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 10, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
                 50201037, 50201039, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 1, "ENSE00001541223.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -216,7 +216,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfStartCodonFeature start_codon1 = (GencodeGtfStartCodonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 11, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 11, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 50206317, 50206520, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 2, "ENSE00001129529.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -231,7 +231,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon2 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 12, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 12, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 50206317, 50206520, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 2, "ENSE00001129529.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -246,7 +246,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds2 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 13, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 13, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 50208536, 50208716, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 3, "ENSE00001129524.2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -261,7 +261,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon3 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 14, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 14, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 50208536, 50208716, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 3, "ENSE00001129524.2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -276,7 +276,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds3 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 15, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 15, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 50210181, 50210311, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 4, "ENSE00003473644.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -291,7 +291,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon4 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 16, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 16, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 50210181, 50210311, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 4, "ENSE00003473644.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -306,7 +306,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds4 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 17, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 17, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 50210631, 50210911, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 5, "ENSE00003503715.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -321,7 +321,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon5 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 18, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 18, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 50210631, 50210911, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 5, "ENSE00003503715.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -336,7 +336,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds5 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 19, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 19, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 50215717, 50215867, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 6, "ENSE00003573348.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -351,7 +351,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon6 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 20, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 20, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 50215717, 50215867, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.TWO, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 6, "ENSE00003573348.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -366,7 +366,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds6 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 21, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 21, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 50216691, 50216876, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 7, "ENSE00003510005.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -381,7 +381,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon7 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 22, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 22, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 50216691, 50216876, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 7, "ENSE00003510005.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -396,7 +396,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds7 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 23, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 23, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 50216972, 50217128, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 8, "ENSE00003591346.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -411,7 +411,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon8 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 24, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 24, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 50216972, 50217128, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 8, "ENSE00003591346.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -426,7 +426,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds8 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 25, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 25, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 50217205, 50217357, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 9, "ENSE00003728455.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -441,7 +441,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon9 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 26, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 26, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 50217205, 50217357, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 9, "ENSE00003728455.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -456,7 +456,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds9 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 27, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 27, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 50217361, 50217615, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 10, "ENSE00003739808.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -471,7 +471,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon10 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 28, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 28, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 50217361, 50217366, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 10, "ENSE00003739808.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -486,7 +486,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds10 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 29, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.STOP_CODON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 29, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.STOP_CODON,
                 50217367, 50217369, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 10, "ENSE00003739808.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -501,7 +501,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfStopCodonFeature stop_codon1 = (GencodeGtfStopCodonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 30, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 30, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 50200979, 50201036, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 1, "ENSE00001541223.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -516,7 +516,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfUTRFeature utr1 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 31, "chr22", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 31, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 50217367, 50217615, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000611222.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-201", 10, "ENSE00003739808.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -531,7 +531,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfUTRFeature utr2 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 32, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 32, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 50200979, 50217616, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -550,7 +550,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfTranscriptFeature transcript2 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 33, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.SELENOCYSTEINE,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 33, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.SELENOCYSTEINE,
                 50217358, 50217360, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -569,7 +569,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfSelenocysteineFeature selenocysteine1 = (GencodeGtfSelenocysteineFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 34, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 34, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50200979, 50201590, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 1, "ENSE00001541223.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -588,7 +588,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon11 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 35, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 35, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50201037, 50201590, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 1, "ENSE00001541223.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -607,7 +607,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds11 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 36, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.START_CODON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 36, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.START_CODON,
                 50201037, 50201039, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 1, "ENSE00001541223.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -626,7 +626,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfStartCodonFeature start_codon2 = (GencodeGtfStartCodonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 37, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 37, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50206317, 50206520, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 2, "ENSE00001129529.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -645,7 +645,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon12 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 38, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 38, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50206317, 50206520, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 2, "ENSE00001129529.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -664,7 +664,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds12 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 39, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 39, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50208536, 50208716, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 3, "ENSE00001129524.2", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -683,7 +683,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon13 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 40, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 40, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50208536, 50208716, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 3, "ENSE00001129524.2", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -702,7 +702,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds13 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 41, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 41, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50210181, 50210311, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 4, "ENSE00003473644.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -721,7 +721,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon14 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 42, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 42, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50210181, 50210311, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 4, "ENSE00003473644.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -740,7 +740,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds14 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 43, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 43, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50210631, 50210911, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 5, "ENSE00003503715.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -759,7 +759,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon15 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 44, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 44, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50210631, 50210911, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 5, "ENSE00003503715.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -778,7 +778,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds15 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 45, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 45, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50215717, 50215867, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 6, "ENSE00003573348.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -797,7 +797,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon16 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 46, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 46, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50215717, 50215867, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.TWO, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 6, "ENSE00003573348.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -816,7 +816,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds16 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 47, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 47, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50216691, 50216876, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 7, "ENSE00003510005.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -835,7 +835,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon17 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 48, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 48, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50216691, 50216876, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 7, "ENSE00003510005.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -854,7 +854,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds17 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 49, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 49, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50216972, 50217128, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 8, "ENSE00003591346.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -873,7 +873,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon18 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 50, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 50, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50216972, 50217128, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 8, "ENSE00003591346.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -892,7 +892,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds18 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 51, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 51, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50217205, 50217616, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 9, "ENSE00003512975.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -911,7 +911,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon19 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 52, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 52, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50217205, 50217366, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 9, "ENSE00003512975.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -930,7 +930,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds19 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 53, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.STOP_CODON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 53, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.STOP_CODON,
                 50217367, 50217369, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 9, "ENSE00003512975.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -949,7 +949,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfStopCodonFeature stop_codon2 = (GencodeGtfStopCodonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 54, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 54, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.UTR,
                 50200979, 50201036, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 1, "ENSE00001541223.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -968,7 +968,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfUTRFeature utr3 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 55, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 55, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.UTR,
                 50217367, 50217616, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000380903.6", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "SELENOO-001", 9, "ENSE00003512975.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -987,7 +987,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfUTRFeature utr4 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 56, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 56, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 50206442, 50217616, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, null, "SELENOO-002", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1000,7 +1000,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfTranscriptFeature transcript3 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 57, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 57, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50206442, 50206520, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, null, "SELENOO-002", 1, "ENSE00001890724.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1013,7 +1013,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon20 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 58, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 58, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50208488, 50208716, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, null, "SELENOO-002", 2, "ENSE00001952603.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1026,7 +1026,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon21 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 59, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 59, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50210181, 50210311, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, null, "SELENOO-002", 3, "ENSE00003583919.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1039,7 +1039,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon22 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 60, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 60, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50210631, 50210911, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, null, "SELENOO-002", 4, "ENSE00003620115.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1052,7 +1052,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon23 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 61, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 61, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50215717, 50215867, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, null, "SELENOO-002", 5, "ENSE00003636069.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1065,7 +1065,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon24 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 62, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 62, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50216691, 50216876, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, null, "SELENOO-002", 6, "ENSE00003579717.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1078,7 +1078,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon25 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 63, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 63, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50216972, 50217128, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, null, "SELENOO-002", 7, "ENSE00003650938.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1091,7 +1091,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon26 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 64, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 64, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50217205, 50217616, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.13", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "SELENOO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, null, "SELENOO-002", 8, "ENSE00003475904.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1263,14 +1263,14 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         // Let's define all our features up front:
         GencodeGtfFeatureBaseData data;
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
                 138082, 161852, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", null, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(), null
         );
 
         final GencodeGtfGeneFeature gene1 = (GencodeGtfGeneFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 138082, 161750, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1283,7 +1283,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfTranscriptFeature transcript1 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 161689, 161750, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 1, "ENSE00003735197.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1296,7 +1296,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon1 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 9, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 9, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 156289, 156497, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 2, "ENSE00003737280.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1309,7 +1309,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon2 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 10, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 10, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 156289, 156446, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 2, "ENSE00003737280.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1322,7 +1322,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds1 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 11, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 11, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
                 156444, 156446, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 2, "ENSE00003737280.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1335,7 +1335,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfStartCodonFeature start_codon1 = (GencodeGtfStartCodonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 12, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 12, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 150987, 151021, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 3, "ENSE00003731891.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1348,7 +1348,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon3 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 13, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 13, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 150987, 151021, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 3, "ENSE00003731891.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1361,7 +1361,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds2 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 14, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 14, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 150350, 150499, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 4, "ENSE00003724613.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1374,7 +1374,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon4 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 15, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 15, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 150350, 150499, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.TWO, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 4, "ENSE00003724613.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1387,7 +1387,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds3 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 16, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 16, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 148414, 148478, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 5, "ENSE00003732418.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1400,7 +1400,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon5 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 17, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 17, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 148414, 148478, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.TWO, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 5, "ENSE00003732418.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1413,7 +1413,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds4 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 18, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 18, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 148116, 148232, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 6, "ENSE00003733960.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1426,7 +1426,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon6 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 19, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 19, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 148116, 148232, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 6, "ENSE00003733960.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1439,7 +1439,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds5 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 20, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 20, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 147624, 147703, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 7, "ENSE00003727207.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1452,7 +1452,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon7 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 21, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 21, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 147624, 147703, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 7, "ENSE00003727207.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1465,7 +1465,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds6 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 22, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 22, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 146640, 146721, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 8, "ENSE00003728972.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1478,7 +1478,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon8 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 23, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 23, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 146640, 146721, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 8, "ENSE00003728972.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1491,7 +1491,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds7 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 24, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 24, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 145004, 145096, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 9, "ENSE00003733844.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1504,7 +1504,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon9 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 25, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 25, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 145004, 145096, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 9, "ENSE00003733844.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1517,7 +1517,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds8 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 26, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 26, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 144749, 144895, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 10, "ENSE00003752738.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1530,7 +1530,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon10 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 27, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 27, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 144749, 144895, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 10, "ENSE00003752738.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1543,7 +1543,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds9 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 28, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 28, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 143614, 143789, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 11, "ENSE00003720006.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1556,7 +1556,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon11 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 29, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 29, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 143614, 143789, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 11, "ENSE00003720006.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1569,7 +1569,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds10 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 30, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 30, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 142194, 142292, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 12, "ENSE00003719283.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1582,7 +1582,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon12 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 31, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 31, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 142194, 142292, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 12, "ENSE00003719283.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1595,7 +1595,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds11 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 32, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 32, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 138743, 138831, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 13, "ENSE00003751415.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1608,7 +1608,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon13 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 33, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 33, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 138743, 138831, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 13, "ENSE00003751415.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1621,7 +1621,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds12 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 34, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 34, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 138082, 138667, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 14, "ENSE00003753010.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1634,7 +1634,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon14 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 35, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 35, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 138483, 138667, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.TWO, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 14, "ENSE00003753010.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1647,7 +1647,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds13 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 36, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.STOP_CODON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 36, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.STOP_CODON,
                 138480, 138482, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 14, "ENSE00003753010.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1660,7 +1660,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfStopCodonFeature stop_codon1 = (GencodeGtfStopCodonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 37, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 37, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 161689, 161750, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 1, "ENSE00003735197.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1673,7 +1673,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfUTRFeature utr1 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 38, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 38, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 156447, 156497, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 2, "ENSE00003737280.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1686,7 +1686,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfUTRFeature utr2 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 39, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 39, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 138082, 138482, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000615165.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-202", 14, "ENSE00003753010.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1699,7 +1699,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfUTRFeature utr3 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 40, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 40, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 138082, 161852, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1712,7 +1712,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfTranscriptFeature transcript2 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 41, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 41, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 161689, 161852, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 1, "ENSE00003746084.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1725,7 +1725,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon15 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 42, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 42, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 161314, 161626, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 2, "ENSE00003719550.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1738,7 +1738,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon16 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 43, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 43, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 161314, 161586, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 2, "ENSE00003719550.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1751,7 +1751,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds14 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 44, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 44, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
                 161584, 161586, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 2, "ENSE00003719550.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1764,7 +1764,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfStartCodonFeature start_codon2 = (GencodeGtfStartCodonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 45, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 45, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 156289, 156497, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 3, "ENSE00003723757.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1777,7 +1777,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon17 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 46, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 46, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 156289, 156497, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 3, "ENSE00003723757.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1790,7 +1790,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds15 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 47, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 47, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 150987, 151021, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 4, "ENSE00003731891.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1803,7 +1803,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon18 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 48, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 48, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 150987, 151021, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 4, "ENSE00003731891.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1816,7 +1816,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds16 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 49, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 49, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 150350, 150499, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 5, "ENSE00003724613.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1829,7 +1829,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon19 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 50, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 50, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 150350, 150499, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.TWO, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 5, "ENSE00003724613.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1842,7 +1842,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds17 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 51, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 51, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 148414, 148478, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 6, "ENSE00003732418.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1855,7 +1855,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon20 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 52, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 52, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 148414, 148478, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.TWO, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 6, "ENSE00003732418.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1868,7 +1868,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds18 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 53, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 53, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 148116, 148232, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 7, "ENSE00003733960.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1881,7 +1881,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon21 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 54, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 54, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 148116, 148232, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 7, "ENSE00003733960.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1894,7 +1894,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds19 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 55, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 55, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 147624, 147703, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 8, "ENSE00003727207.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1907,7 +1907,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon22 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 56, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 56, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 147624, 147703, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 8, "ENSE00003727207.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1920,7 +1920,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds20 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 57, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 57, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 146640, 146721, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 9, "ENSE00003728972.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1933,7 +1933,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon23 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 58, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 58, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 146640, 146721, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 9, "ENSE00003728972.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1946,7 +1946,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds21 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 59, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 59, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 145004, 145096, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 10, "ENSE00003733844.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1959,7 +1959,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon24 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 60, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 60, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 145004, 145096, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 10, "ENSE00003733844.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1972,7 +1972,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds22 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 61, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 61, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 144749, 144895, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 11, "ENSE00003752738.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1985,7 +1985,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon25 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 62, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 62, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 144749, 144895, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 11, "ENSE00003752738.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -1998,7 +1998,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds23 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 63, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 63, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 143614, 143789, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 12, "ENSE00003720006.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2011,7 +2011,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon26 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 64, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 64, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 143614, 143789, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 12, "ENSE00003720006.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2024,7 +2024,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds24 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 65, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 65, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 142194, 142292, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 13, "ENSE00003719283.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2037,7 +2037,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon27 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 66, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 66, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 142194, 142292, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 13, "ENSE00003719283.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2050,7 +2050,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds25 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 67, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 67, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 138743, 138831, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 14, "ENSE00003751415.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2063,7 +2063,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon28 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 68, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 68, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 138743, 138831, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 14, "ENSE00003751415.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2076,7 +2076,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds26 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 69, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 69, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 138082, 138667, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 15, "ENSE00003753010.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2089,7 +2089,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon29 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 70, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 70, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 138483, 138667, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.TWO, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 15, "ENSE00003753010.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2102,7 +2102,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds27 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 71, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.STOP_CODON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 71, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.STOP_CODON,
                 138480, 138482, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 15, "ENSE00003753010.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2115,7 +2115,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfStopCodonFeature stop_codon2 = (GencodeGtfStopCodonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 72, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 72, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 161689, 161852, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 1, "ENSE00003746084.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2128,7 +2128,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfUTRFeature utr4 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 73, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 73, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 161587, 161626, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 2, "ENSE00003719550.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2141,7 +2141,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfUTRFeature utr5 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 74, "KI270734.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 74, "KI270734.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 138082, 138482, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000277196.4", "ENST00000621424.4", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "AC007325.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "AC007325.2-201", 15, "ENSE00003753010.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2324,7 +2324,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         // Create the Features as they exist in the test file:
         GencodeGtfFeatureBaseData data;
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "chr1", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.GENE,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.GENE,
                 11869, 14412, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000223972.4", "ENSG00000223972.4",
                 GencodeGtfFeature.GeneTranscriptType.PSEUDOGENE, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "DDX11L1", GencodeGtfFeature.GeneTranscriptType.PSEUDOGENE,
                  GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "DDX11L1", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
@@ -2337,7 +2337,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "chr1", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 11869, 14409, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000223972.4", "ENST00000456328.2",
                 GencodeGtfFeature.GeneTranscriptType.PSEUDOGENE, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "DDX11L1", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "DDX11L1-002", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
@@ -2352,7 +2352,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfTranscriptFeature transcript = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "chr1", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 11869, 12227, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000223972.4", "ENST00000456328.2",
                 GencodeGtfFeature.GeneTranscriptType.PSEUDOGENE, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "DDX11L1", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "DDX11L1-002", 1, "ENSE00002234944.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
@@ -2387,7 +2387,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         // Create the Features as they exist in the test file:
         GencodeGtfFeatureBaseData data;
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.GENE,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.GENE,
                 50637519, 50638976, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000273253.1", "ENSG00000273253.1", GencodeGtfFeature.GeneTranscriptType.ANTISENSE,
                 GencodeGtfFeature.GeneTranscriptStatus.NOVEL, "RP3-402G11.26", GencodeGtfFeature.GeneTranscriptType.ANTISENSE, GencodeGtfFeature.GeneTranscriptStatus.NOVEL, "RP3-402G11.26", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2398,7 +2398,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfGeneFeature gene1 = (GencodeGtfGeneFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 50637519, 50638976, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000273253.1", "ENST00000608025.1", GencodeGtfFeature.GeneTranscriptType.ANTISENSE,
                 GencodeGtfFeature.GeneTranscriptStatus.NOVEL, "RP3-402G11.26", GencodeGtfFeature.GeneTranscriptType.ANTISENSE, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "RP3-402G11.26-001", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2411,7 +2411,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfTranscriptFeature transcript1 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50638505, 50638976, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000273253.1", "ENST00000608025.1", GencodeGtfFeature.GeneTranscriptType.ANTISENSE,
                 GencodeGtfFeature.GeneTranscriptStatus.NOVEL, "RP3-402G11.26", GencodeGtfFeature.GeneTranscriptType.ANTISENSE, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "RP3-402G11.26-001", 1, "ENSE00003710600.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2424,7 +2424,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon1 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 9, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 9, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50637519, 50637757, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000273253.1", "ENST00000608025.1", GencodeGtfFeature.GeneTranscriptType.ANTISENSE,
                 GencodeGtfFeature.GeneTranscriptStatus.NOVEL, "RP3-402G11.26", GencodeGtfFeature.GeneTranscriptType.ANTISENSE, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "RP3-402G11.26-001", 2, "ENSE00003710731.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2437,7 +2437,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon2 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 10, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.GENE,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 10, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.GENE,
                 50639408, 50656045, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENSG00000073169.9", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2448,7 +2448,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfGeneFeature gene2 = (GencodeGtfGeneFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 11, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 11, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 50639408, 50656045, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2465,7 +2465,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfTranscriptFeature transcript2 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 12, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.SELENOCYSTEINE,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 12, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.SELENOCYSTEINE,
                 50655787, 50655789, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2482,7 +2482,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfSelenocysteineFeature selenocysteine1 = (GencodeGtfSelenocysteineFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 13, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 13, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50639408, 50640019, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 1, "ENSE00001541223.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2499,7 +2499,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon3 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 14, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 14, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50639466, 50640019, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 1, "ENSE00001541223.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2516,7 +2516,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds1 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 15, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.START_CODON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 15, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.START_CODON,
                 50639466, 50639468, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 1, "ENSE00001541223.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2533,7 +2533,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfStartCodonFeature start_codon1 = (GencodeGtfStartCodonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 16, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 16, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50644746, 50644949, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 2, "ENSE00001129529.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2550,7 +2550,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon4 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 17, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 17, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50644746, 50644949, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 2, "ENSE00001129529.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2567,7 +2567,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds2 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 18, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 18, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50646965, 50647145, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 3, "ENSE00001129524.2", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2584,7 +2584,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon5 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 19, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 19, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50646965, 50647145, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 3, "ENSE00001129524.2", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2601,7 +2601,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds3 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 20, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 20, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50648610, 50648740, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 4, "ENSE00003473644.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2618,7 +2618,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon6 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 21, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 21, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50648610, 50648740, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 4, "ENSE00003473644.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2635,7 +2635,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds4 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 22, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 22, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50649060, 50649340, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 5, "ENSE00003503715.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2652,7 +2652,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon7 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 23, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 23, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50649060, 50649340, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 5, "ENSE00003503715.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2669,7 +2669,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds5 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 24, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 24, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50654146, 50654296, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 6, "ENSE00003573348.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2686,7 +2686,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon8 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 25, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 25, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50654146, 50654296, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.TWO, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 6, "ENSE00003573348.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2703,7 +2703,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds6 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 26, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 26, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50655120, 50655305, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 7, "ENSE00003510005.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2720,7 +2720,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon9 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 27, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 27, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50655120, 50655305, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 7, "ENSE00003510005.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2737,7 +2737,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds7 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 28, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 28, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50655401, 50655557, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 8, "ENSE00003591346.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2754,7 +2754,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon10 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 29, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 29, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50655401, 50655557, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 8, "ENSE00003591346.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2771,7 +2771,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds8 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 30, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 30, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50655634, 50656045, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 9, "ENSE00003512975.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2788,7 +2788,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon11 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 31, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 31, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.CDS,
                 50655634, 50655795, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 9, "ENSE00003512975.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2805,7 +2805,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfCDSFeature cds9 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 32, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.STOP_CODON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 32, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.STOP_CODON,
                 50655796, 50655798, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", 9, "ENSE00003512975.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2822,7 +2822,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfStopCodonFeature stop_codon1 = (GencodeGtfStopCodonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 33, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 33, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.UTR,
                 50639408, 50639465, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2839,7 +2839,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfUTRFeature utr1 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 34, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 34, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.UTR,
                 50655796, 50656045, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000380903.2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-001", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2856,7 +2856,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfUTRFeature utr2 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 35, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 35, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 50644871, 50656045, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-002", -1, null, GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2869,7 +2869,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfTranscriptFeature transcript3 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 36, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 36, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50644871, 50644949, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-002", 1, "ENSE00001890724.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2882,7 +2882,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon12 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 37, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 37, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50646917, 50647145, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-002", 2, "ENSE00001952603.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2895,7 +2895,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon13 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 38, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 38, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50648610, 50648740, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-002", 3, "ENSE00003583919.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2908,7 +2908,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon14 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 39, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 39, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50649060, 50649340, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-002", 4, "ENSE00003620115.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2921,7 +2921,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon15 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 40, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 40, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50654146, 50654296, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-002", 5, "ENSE00003636069.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2934,7 +2934,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon16 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 41, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 41, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50655120, 50655305, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-002", 6, "ENSE00003579717.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2947,7 +2947,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon17 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 42, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 42, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50655401, 50655557, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-002", 7, "ENSE00003650938.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -2960,7 +2960,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 null
         );
         final GencodeGtfExonFeature exon18 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 43, "chr22", GencodeGtfFeature.AnnotationSource.HAVANA, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 43, "chr22", GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA, GencodeGtfFeature.FeatureType.EXON,
                 50655634, 50656045, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000073169.9", "ENST00000492092.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO", GencodeGtfFeature.GeneTranscriptType.PROCESSED_TRANSCRIPT, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "SELO-002", 8, "ENSE00003475904.1", GencodeGtfFeature.LocusLevel.MANUALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3080,7 +3080,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         // Create the Features as they exist in the test file:
         GencodeGtfFeatureBaseData data;
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
                 38792, 97421, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000215615.1", "ENSG00000215615.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(), null
@@ -3088,7 +3088,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
 
         final GencodeGtfGeneFeature gene1 = (GencodeGtfGeneFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 38792, 97421, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3100,7 +3100,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfTranscriptFeature transcript1 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 97368, 97421, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", 1, "ENSE00001544212.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3112,7 +3112,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfExonFeature exon1 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 9, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 9, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 95174, 95232, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", 2, "ENSE00001849396.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3124,7 +3124,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfExonFeature exon2 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 10, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 10, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 95174, 95230, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", 2, "ENSE00001849396.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3136,7 +3136,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfCDSFeature cds1 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 11, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 11, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
                 95228, 95230, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", 2, "ENSE00001849396.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3148,7 +3148,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfStartCodonFeature start_codon1 = (GencodeGtfStartCodonFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 12, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 12, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 40642, 40872, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", 3, "ENSE00001900862.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3160,7 +3160,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfExonFeature exon3 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 13, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 13, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 40642, 40872, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", 3, "ENSE00001900862.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3172,7 +3172,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfCDSFeature cds2 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 14, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 14, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 39874, 40028, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", 4, "ENSE00001544206.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3184,7 +3184,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfExonFeature exon4 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 15, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 15, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 39874, 40028, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ZERO, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", 4, "ENSE00001544206.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3196,7 +3196,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfCDSFeature cds3 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 16, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 16, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 38792, 39019, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", 5, "ENSE00001544203.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3208,7 +3208,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfExonFeature exon5 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 17, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 17, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 38794, 39019, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.ONE, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", 5, "ENSE00001544203.1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3220,7 +3220,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfCDSFeature cds4 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 18, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 18, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 97368, 97421, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3232,7 +3232,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfUTRFeature utr1 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 19, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 19, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 95231, 95232, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(
@@ -3244,7 +3244,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         );
         final GencodeGtfUTRFeature utr2 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
 
-        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 20, "GL000218.1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
+        data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 20, "GL000218.1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 38792, 38793, Strand.NEGATIVE, GencodeGtfFeature.GenomicPhase.DOT, "ENSG00000215615.1", "ENST00000400681.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, GencodeGtfFeature.GeneTranscriptStatus.KNOWN, "AL354822.1-201", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 new ArrayList<>(

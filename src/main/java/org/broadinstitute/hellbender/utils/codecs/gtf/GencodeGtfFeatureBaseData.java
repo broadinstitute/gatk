@@ -35,8 +35,14 @@ final public class GencodeGtfFeatureBaseData {
 
     /**
      * Keyword identifying the source of this feature.
+     *
+     * There is no restriction on which keywords can be used here, but some
+     * known annotation sources are defined in their GTF parent objects:
+     *      {@link GencodeGtfCodec#GENCODE_ANNOTATION_SOURCE_ENSEMBL}
+     *      {@link GencodeGtfCodec#GENCODE_ANNOTATION_SOURCE_HAVANA}
+     *      {@link EnsemblGtfCodec#ENSEMBL_ANNOTATION_SOURCE_ENA}
      */
-    public GencodeGtfFeature.AnnotationSource      annotationSource;
+    public String annotationSource;
 
     /**
      * Type of this feature.
@@ -86,7 +92,7 @@ final public class GencodeGtfFeatureBaseData {
             final String gtfSourceFileType,
             final int featureOrderNumber,
             final String chromosomeName,
-            final GencodeGtfFeature.AnnotationSource annotationSource,
+            final String annotationSource,
             final GencodeGtfFeature.FeatureType featureType,
             final int genomicStartLocation,
             final int genomicEndLocation,

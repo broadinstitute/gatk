@@ -12,8 +12,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -58,6 +57,13 @@ final public class GencodeGtfCodec extends AbstractGtfCodec {
 
     private static final Logger logger = LogManager.getLogger(GencodeGtfCodec.class);
 
+    // ============================================================================================================
+
+    public static final String GENCODE_GTF_FILE_PREFIX = "gencode";
+    public static final String GTF_FILE_TYPE_STRING = "GENCODE";
+
+    // ============================================================================================================
+
     private static final int GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE = 19;
 
     /**
@@ -65,15 +71,14 @@ final public class GencodeGtfCodec extends AbstractGtfCodec {
      */
     private static final int GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE = 28;
 
-    public static final String GENCODE_GTF_FILE_PREFIX = "gencode";
-    public static final String GTF_FILE_TYPE_STRING = "GENCODE";
-
     private int currentLineNum = 1;
     private final List<String> header = new ArrayList<>();
     private static final int HEADER_NUM_LINES = 5;
 
     private static final Pattern VERSION_PATTERN = Pattern.compile("version (\\d+)");
     private int versionNumber;
+
+    private static final String commentPrefix = "##";
 
     // ============================================================================================================
 
@@ -134,7 +139,7 @@ final public class GencodeGtfCodec extends AbstractGtfCodec {
         setVersionNumber();
 
         // Set our line number to be the line of the first actual Feature:
-        currentLineNum = HEADER_NUM_LINES + 1;
+        currentLineNum = header.size() + 1;
 
         return header;
     }
@@ -162,7 +167,7 @@ final public class GencodeGtfCodec extends AbstractGtfCodec {
      * @param gtfVersion The GENCODE GTF version against which to validate {@code feature}
      * @return True if {@code feature} contains all required fields for the given GENCODE GTF version, {@code gtfVersion}
      */
-    static boolean validateGencodeGtfFeature(final GencodeGtfFeature feature, final int gtfVersion) {
+    private static boolean validateGencodeGtfFeature(final GencodeGtfFeature feature, final int gtfVersion) {
 
         if (gtfVersion < GencodeGtfCodec.GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE) {
             throw new GATKException("Invalid version number for validation: " + gtfVersion +
@@ -193,7 +198,9 @@ final public class GencodeGtfCodec extends AbstractGtfCodec {
             }
         }
 
-        return true;
+        // Gencode can only have 2 feature types:
+        return feature.getAnnotationSource().equals(GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL) ||
+                feature.getAnnotationSource().equals(GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA);
     }
 
     @Override
@@ -215,8 +222,13 @@ final public class GencodeGtfCodec extends AbstractGtfCodec {
     }
 
     @Override
-    String getLineComment() {
-        return "##";
+    String getDefaultLineComment() {
+        return commentPrefix;
+    }
+
+    @Override
+    Set<String> getAllLineComments() {
+        return Collections.unmodifiableSet(new HashSet<>(Collections.singletonList(commentPrefix)));
     }
 
     @Override

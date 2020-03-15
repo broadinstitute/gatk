@@ -285,7 +285,7 @@ public class FuncotatorTestUtils {
                         GencodeGtfCodec.GTF_FILE_TYPE_STRING,
                         2,
                         contig,
-                        GencodeGtfFeature.AnnotationSource.ENSEMBL,
+                        GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL,
                         GencodeGtfFeature.FeatureType.TRANSCRIPT,
                         start,
                         stop,
