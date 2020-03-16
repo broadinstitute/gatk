@@ -35,8 +35,7 @@ public class DuplicateSet {
     public void init(GATKRead read){
         Utils.validate(moleculeId == -1 || moleculeId == getMoleculeID(read),
                 String.format("Inconsisntent molecule IDs: Duplicate set id = %s, read molecule id = %s", moleculeId, getMoleculeID(read)));
-        setMoleduleId(read);
-        umi = new UMI(read);
+        setMoleduleId(read);umi = new UMI(read);
         contig = read.getContig();
         fragmentStart = read.getStart();
         fragmentEnd = read.getEnd(); // TODO: does this include softclips?
