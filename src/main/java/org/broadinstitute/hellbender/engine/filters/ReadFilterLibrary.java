@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.tools.AddOriginalAlignmentTags;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -293,6 +294,17 @@ public final class ReadFilterLibrary {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {
             return !(read.isUnmapped() || (read.isPaired() && read.mateIsUnmapped()));
+        }
+    }
+
+    /**
+     * Filter reads whose mate is unmapped as well as unmapped reads.
+     */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary = HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter reads that do *not* contain indels")
+    public static class RemoveReadsWithoutIndelsReadFilter extends ReadFilter {
+        private static final long serialVersionUID = 1L;
+        @Override public boolean test(final GATKRead read) {
+            return read.getCigar().containsOperator(CigarOperator.D) || read.getCigar().containsOperator(CigarOperator.I);
         }
     }
 

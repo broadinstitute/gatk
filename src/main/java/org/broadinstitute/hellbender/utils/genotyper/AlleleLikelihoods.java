@@ -569,7 +569,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      * @return a new AlleleLikelihoods based on the grouped, transformed evidence.
      */
     public <U, NEW_EVIDENCE_TYPE extends Locatable> AlleleLikelihoods<NEW_EVIDENCE_TYPE, A> groupEvidence(final Function<EVIDENCE, U> groupingFunction, final Function<List<EVIDENCE>, NEW_EVIDENCE_TYPE> gather) {
-        final int sampleCount = samples.numberOfSamples();
+        final int sampleCount = samples.numberOfSamples(); // ts: read EVIDENCE as GATKRead, NEW_EVIDENCE_TYPE as Fragment
         final double[][][] newLikelihoodValues = new double[sampleCount][][];
         final int alleleCount = alleles.numberOfAlleles();
 
@@ -598,7 +598,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         }
 
         // Finally we create the new read-likelihood
-        final AlleleLikelihoods<NEW_EVIDENCE_TYPE, A> result = new AlleleLikelihoods<NEW_EVIDENCE_TYPE, A>(
+        final AlleleLikelihoods<NEW_EVIDENCE_TYPE, A> result = new AlleleLikelihoods<>(
                 alleles,
                 samples,
                 newEvidenceBySampleIndex,
@@ -1199,7 +1199,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      */
     public void filterPoorlyModeledEvidence(final ToDoubleFunction<EVIDENCE> log10MinTrueLikelihood) {
         Utils.validateArg(alleles.numberOfAlleles() > 0, "unsupported for read-likelihood collections with no alleles");
-
+        // ts: what is this doing?!
         final int numberOfSamples = samples.numberOfSamples();
         for (int s = 0; s < numberOfSamples; s++) {
             final int sampleIndex = s;

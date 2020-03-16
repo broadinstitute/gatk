@@ -2,6 +2,9 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.FileExtensions;
+import htsjdk.samtools.util.SequenceUtil;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -1324,5 +1327,53 @@ public final class ReadUtils {
      **/
     public static boolean readHasReasonableMQ(final GATKRead read){
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
+    }
+
+    /**
+     * count non-consecutive high- and low-quality single-base mismatches between a read and the reference
+     * soft clips and indels are not counted, and MNPs are counted as one mismatch.
+     * @param badBaseQuality base quality threshold for low vs high quality mismatches
+     * @param refBases      local reference sequence, must span the read
+     * @param refOffset     refBases[0] == reference_fasta[refOffset] i.e. this is the offset of the local reference
+     *                      sequence with respect to the entire contig to which the read aligns
+     * @return
+     */
+    public static Pair<Integer, Integer> countMismatches(final GATKRead read, final SAMFileHeader header, final int badBaseQuality, final byte[] refBases, final int refOffset) {
+        // see if we can use an existing NM SAM tag
+        if (read.getCigarElements().size() == 1) {
+            final Integer editDistance = read.getAttributeAsInteger(SAMTag.NM.name());
+            if (editDistance != null && (editDistance == 0 || editDistance == 1)) {
+                return new ImmutablePair<>(editDistance, 0);
+            }
+        }
+
+        // converting to SAM record avoids defensive copying when getting bases and quals
+        final SAMRecord read1 = read.convertToSAMRecord(header);
+        final MutableInt highQualMismatches = new MutableInt(0);
+        final MutableInt lowQualMismatches = new MutableInt(0);
+        final byte[] readBases = read1.getReadBases();
+        final byte[] readBaseQualities = read1.getBaseQualities();
+
+        for (final AlignmentBlock block : read1.getAlignmentBlocks()) {
+            final int readBlockStart = block.getReadStart() - 1;
+            final int referenceBlockStart = block.getReferenceStart() - refOffset;
+            final int length = block.getLength();
+
+            boolean lastBaseWasMatch = true;
+            for (int i = 0; i < length; ++i) {
+                final byte readBase = readBases[readBlockStart + i];
+                final int referenceIndex = referenceBlockStart + i;
+                final byte refBase = refBases[referenceIndex];
+                final boolean basesMatch = SequenceUtil.basesEqual(readBase, refBase);
+                if (!basesMatch && lastBaseWasMatch) {
+                    final byte readBaseQuality = readBaseQualities[readBlockStart + i];
+                    (readBaseQuality > badBaseQuality ? highQualMismatches : lowQualMismatches).increment();
+                }
+                lastBaseWasMatch = basesMatch;
+            }
+        }
+
+        return new ImmutablePair<>(highQualMismatches.intValue(), lowQualMismatches.intValue());
+
     }
 }

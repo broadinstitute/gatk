@@ -4,6 +4,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.walkers.mutect.UMI;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -11,6 +12,8 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
+
+import static org.broadinstitute.hellbender.engine.filters.UMIReadFilter.UMI_TAG;
 
 /**
  * Write reads from SAM format file (SAM/BAM/CRAM) that pass criteria to a new file.
@@ -91,6 +94,11 @@ public final class PrintReads extends ReadWalker {
     public String output;
     private SAMFileGATKReadWriter outputWriter;
 
+    @Argument(fullName = "standardize-umi", doc = "")
+    public boolean standardizeUMI = false;
+
+    public static final String ORIGINAL_UMI_TAG = "OU";
+
     @Override
     public void onTraversalStart() {
         outputWriter = createSAMWriter(IOUtils.getPath(output), true);
@@ -98,6 +106,24 @@ public final class PrintReads extends ReadWalker {
 
     @Override
     public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
+        if (standardizeUMI){
+            final String originalUMI = read.getAttributeAsString(UMI_TAG);
+            read.setAttribute(UMI_TAG, new UMI(read).getStandardizedUMI()); // use static method
+            read.setAttribute(ORIGINAL_UMI_TAG, originalUMI);
+        }
+
+        final boolean oneTimeOnlyFilter = false;
+        if (oneTimeOnlyFilter){
+            final int readStart = 7_578_417;
+            final int epsilon = 2;
+            final boolean readWithinRange = readStart - epsilon < read.getStart() && read.getStart() < readStart + epsilon;
+            final boolean mateWithinRange = readStart - epsilon < read.getMateStart() && read.getMateStart() < readStart + epsilon;
+
+            if (!(readWithinRange || mateWithinRange)){
+                return;
+            }
+        }
+
         outputWriter.addRead(read);
     }
 

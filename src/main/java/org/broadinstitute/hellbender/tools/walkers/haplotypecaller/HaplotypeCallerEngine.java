@@ -605,7 +605,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         //  haplotype containing C as reference (and vice versa).  Now this is fine if all possible haplotypes are included
         //  in the genotyping, but we lose information if we select down to a few haplotypes.  [EB]
 
-        final CalledHaplotypes calledHaplotypes = genotypingEngine.assignGenotypeLikelihoods(
+        final CalledHaplotypes calledHaplotypes = genotypingEngine.assignGenotypeLikelihoods( // ts: should I just call this?
                 haplotypes,
                 readLikelihoods,
                 perSampleFilteredReadList,

@@ -30,7 +30,7 @@ public final class CigarUtils {
     // Since these parameters are for aligning a read to the biological sequence we believe it comes from, the parameters
     // we choose should correspond to sequencer error.  They *do not* have anything to do with the prevalence of true variation!
     public static final SWParameters ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS = new SWParameters(10, -15, -30, -5);
-
+    // ts: understand what this is saying.
     private static final String SW_PAD = "NNNNNNNNNN";
 
     private CigarUtils(){}
@@ -447,5 +447,10 @@ public final class CigarUtils {
             elementStart = elementEnd;
         }
         return refBasesClipped;
+    }
+
+    public static boolean containsIndels(final Cigar cigar){
+        Utils.nonNull(cigar, "the input cigar cannot be null");
+        return cigar.getCigarElements().stream().anyMatch(e -> e.getOperator().isIndel());
     }
 }

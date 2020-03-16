@@ -5,7 +5,7 @@ import htsjdk.variant.variantcontext.Allele;
 import java.util.List;
 
 /**
- * Likelihood matrix between a set of alleles and evidence.
+ * Likelihood matrix between a set of alleles and evidence. ts: Evidence instead of read...
  * @param <A> the allele-type.
  */
 public interface LikelihoodMatrix<EVIDENCE,A extends Allele> extends AlleleList<A> {

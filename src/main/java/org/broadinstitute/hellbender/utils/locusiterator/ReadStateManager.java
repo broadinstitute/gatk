@@ -115,7 +115,7 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
      */
     public void updateReadStates() {
         for (final PerSampleReadStateManager perSampleReadStateManager : readStatesBySample.values() ) {
-            totalReadStates -= perSampleReadStateManager.updateReadStates();
+            totalReadStates -= perSampleReadStateManager.updateReadStates(); // ts: this is where all ASM's take a step forward...
         }
     }
 
@@ -152,7 +152,7 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
             // there's a read in the system, so it's our targeted first read
             final AlignmentStateMachine firstState = getFirst();
             firstContig = firstState.getContig();
-            // note this isn't the alignment start of the read, but rather the alignment start position
+            // note this isn't the alignment start of the read, but rather the alignment start position ts: what!?
             firstAlignmentStart = firstState.getGenomePosition();
         }
 

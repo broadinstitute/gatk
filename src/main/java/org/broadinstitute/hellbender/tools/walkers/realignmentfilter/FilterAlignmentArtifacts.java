@@ -201,13 +201,10 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
 
     @Override
     public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext, final List<ReadsContext> readsContexts) {
-
-
         // for now we do one variant at a time but eventually we will want to combine all reads supporting all variants
         // into a single graph.  This is non-trivial because there may be more than one phasing between variants.
         for (final VariantContext vc : variantContexts) {
             final AssemblyRegion assemblyRegion = makeAssemblyRegionFromVariantReads(readsContexts, vc);
-
 
             // TODO: give this tool M2 Assembler args to allow override default M2ArgumentCollection?
             final AssemblyResultSet assemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyRegion, Collections.emptyList(), MTAC, bamHeader, samplesList, logger, referenceReader, assemblyEngine, ALIGNER, false);
@@ -216,7 +213,7 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
             final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, bamHeader, regionForGenotyping.getReads());
 
             final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads);
-            readLikelihoods.switchToNaturalLog();
+            readLikelihoods.switchToNaturalLog(); // ts: start here, why realign reads to their best haplotype?
             final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), ALIGNER);
             readLikelihoods.changeEvidence(readRealignments);
             writeBamOutput(assemblyResult, readLikelihoods, new HashSet<>(readLikelihoods.alleles()), regionForGenotyping.getSpan());

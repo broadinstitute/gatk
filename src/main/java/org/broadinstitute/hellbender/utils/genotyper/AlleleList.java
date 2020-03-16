@@ -156,9 +156,9 @@ public interface AlleleList<A extends Allele>{
      */
     default AlleleListPermutation<A> permutation(final AlleleList<A> target) {
         if (equals(this, target)) {
-            return new NonPermutation<>(this);
-        } else {
-            return new ActualPermutation<>(this, target);
+            return new NonPermutation<>(this); // ts: this class is here in case
+        } else { // (though unlikely) the two allelists (where does each come from?) disagree
+            return new ActualPermutation<>(this, target); // ts: when do the two alleleList differ? And what do we mean by permutation?
         }
     }
 

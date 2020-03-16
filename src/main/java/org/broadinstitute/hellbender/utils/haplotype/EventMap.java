@@ -69,8 +69,8 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
         ParamUtils.isPositiveOrZero(maxMnpDistance, "maxMnpDistance may not be negative.");
         final Cigar cigar = haplotype.getCigar();
         final byte[] alignment = haplotype.getBases();
-
-        int refPos = haplotype.getAlignmentStartHapwrtRef();
+        // ts: refPos is the offset of the current base in a read wrt reference, which is padded and is larger.
+        int refPos = haplotype.getAlignmentStartHapwrtRef(); // ts:  the reference position where the haplotype starts?
         if( refPos < 0 ) {
             return;
         } // Protection against SW failures
@@ -87,8 +87,8 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
                 {
                     if( refPos > 0 ) { // protect against trying to create insertions/deletions at the beginning of a contig
                         final List<Allele> insertionAlleles = new ArrayList<>();
-                        final int insertionStart = refLoc.getStart() + refPos - 1;
-                        final byte refByte = ref[refPos-1];
+                        final int insertionStart = refLoc.getStart() + refPos - 1; // ts: see this.
+                        final byte refByte = ref[refPos-1]; // refPos is the offset of the ref array.
                         if( BaseUtils.isRegularBase(refByte) ) {
                             insertionAlleles.add( Allele.create(refByte, true) );
                         }
@@ -103,7 +103,7 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
                                 insertionAlleles.add( Allele.create(insertionBases, false) );
                             }
                         }
-                        if( insertionAlleles.size() == 2 ) { // found a proper ref and alt allele
+                        if( insertionAlleles.size() == 2 ) { // found a proper ref and alt allele ts: note how both the start and end are "insertionStart," which is correct
                             proposedEvents.add(new VariantContextBuilder(sourceNameToAdd, refLoc.getContig(), insertionStart, insertionStart, insertionAlleles).make());
                         }
                     }
@@ -290,8 +290,8 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
      * @return a sorted set of start positions of all events among all haplotypes
      */
     public static TreeSet<Integer> buildEventMapsForHaplotypes( final List<Haplotype> haplotypes,
-                                                                final byte[] ref,
-                                                                final Locatable refLoc,
+                                                                final byte[] ref, // ts: ref is surely not the whole referene bases...is it for the entire shard?
+                                                                final Locatable refLoc, // ts: ref and refLoc are haplotype-agnostic. So I think key is hapStartWrtRef in Haplotype
                                                                 final boolean debug,
                                                                 final int maxMnpDistance) {
         ParamUtils.isPositiveOrZero(maxMnpDistance, "maxMnpDistance may not be negative.");

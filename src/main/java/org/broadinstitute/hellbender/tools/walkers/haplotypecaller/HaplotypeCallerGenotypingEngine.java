@@ -98,7 +98,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.
      * @param withBamOut whether to annotate reads in readLikelihoods for future writing to bamout
      *
-     * @return                                       A CalledHaplotypes object containing a list of VC's with genotyped events and called haplotypes
+     * @return A CalledHaplotypes object containing a list of VC's with genotyped events and called haplotypes
      *
      */
     public CalledHaplotypes assignGenotypeLikelihoods(final List<Haplotype> haplotypes,
@@ -178,16 +178,21 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 readAlleleLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
                 mergedAllelesListSizeBeforePossibleTrimming++;
             }
-
+            // ts: wait....we calculate the PL, throw away the alleles, then re-match them with variants/alleles? This seems absurd
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles);
             final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), givenAlleles);
-            if( call != null ) {
-
+            // final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), getGLModel(mergedVC), givenAlleles);
+            if( call != null ) { // ts: the all four alleles exited before calculateGenotypes! Where did they go? Do I need to write my own genotyper?
+            // ts: ooo interesting! At this point, we are down to one alt allele. Ref gets special treatment. And PL is really good, which is BS. 4-bp deletion.
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
                         emitReferenceConfidence, alleleMapper, readAlleleLikelihoods, call, variantCallingRelevantOverlap);
 
-                final VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, mergedAllelesListSizeBeforePossibleTrimming, readAlleleLikelihoods, call, annotationEngine);
-                returnCalls.add( annotatedCall );
+                if (annotationEngine != null){
+                    final VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, mergedAllelesListSizeBeforePossibleTrimming, readAlleleLikelihoods, call, annotationEngine);
+                    returnCalls.add( annotatedCall );
+                } else {
+                    returnCalls.add(mergedVC);
+                }
 
                 if (withBamOut) {
                     AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(call, readAlleleLikelihoods);
@@ -384,7 +389,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods));
         final int sampleCount = samples.numberOfSamples();
         final GenotypesContext result = GenotypesContext.create(sampleCount);
-        for (int s = 0; s < sampleCount; s++) {
+        for (int s = 0; s < sampleCount; s++) { // ts: why noCallAlleles?! Where do we populate the alleles?
             result.add(new GenotypeBuilder(samples.getSample(s)).alleles(noCallAlleles).PL(likelihoods.sampleLikelihoods(s).getAsPLs()).make());
         }
         return result;

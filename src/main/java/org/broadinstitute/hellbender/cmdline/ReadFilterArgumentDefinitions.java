@@ -55,4 +55,6 @@ public final class ReadFilterArgumentDefinitions {
     public static final String INVERT_SOFT_CLIP_RATIO_FILTER = "invert-soft-clip-ratio-filter";
 
     public static final String MATE_TOO_DISTANT_LENGTH = "mate-too-distant-length";
+    
+    public static final String UMI_NAME = "umi";
 }

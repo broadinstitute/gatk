@@ -164,9 +164,16 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             computeReadLikelihoods(result.sampleMatrix(i));
         }
 
-        result.normalizeLikelihoods(log10globalReadMismappingRate);
-        result.filterPoorlyModeledEvidence(log10MinTrueLikelihood(EXPECTED_ERROR_RATE_PER_BASE));
+        result.normalizeLikelihoods(log10globalReadMismappingRate); // ts: do we need this?
+        // result.filterPoorlyModeledEvidence(log10MinTrueLikelihood(EXPECTED_ERROR_RATE_PER_BASE));
         return result;
+    }
+
+    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods(final Set<Haplotype> haplotypes, final SampleList samples, final Map<String, List<GATKRead>> perSampleReadList ) {
+        Utils.nonNull(haplotypes, "haplotypes is null");
+        final AssemblyResultSet assemblyResultSet = new AssemblyResultSet();
+        haplotypes.forEach(h -> assemblyResultSet.add(h));
+        return computeReadLikelihoods(assemblyResultSet, samples, perSampleReadList);
     }
 
     private ToDoubleFunction<GATKRead> log10MinTrueLikelihood(final double maximumErrorPerBase) {
@@ -235,7 +242,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         // Modify the read qualities by applying the PCR error model and capping the minimum base,insertion,deletion qualities
         final List<GATKRead> processedReads = modifyReadQualities(likelihoods.evidence());
 
-        final Map<GATKRead, byte[]> gapContinuationPenalties = buildGapContinuationPenalties(processedReads, constantGCP);
+        final Map<GATKRead, byte[]> gapContinuationPenalties = buildGapContinuationPenalties(processedReads, constantGCP); // ts: what's this/
 
         // Run the PairHMM to calculate the log10 likelihood of each (processed) reads' arising from each haplotype
         pairHMM.computeLog10Likelihoods(likelihoods, processedReads, gapContinuationPenalties);
@@ -322,9 +329,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         }
 
         for ( int i = 1; i < readBases.length; i++ ) {
-            final int repeatLength = findTandemRepeatUnits(readBases, i-1).getRight();
-            readInsQuals[i-1] = (byte) Math.min(0xff & readInsQuals[i - 1], 0xff & pcrIndelErrorModelCache[repeatLength]);
-            readDelQuals[i-1] = (byte) Math.min(0xff & readDelQuals[i - 1], 0xff & pcrIndelErrorModelCache[repeatLength]);
+            final int repeatLength = findTandemRepeatUnits(readBases, i-1).getRight(); // ts: Min on Phred scale quality -> take the higher error prob.
+            readInsQuals[i-1] = (byte) Math.min(0xff & readInsQuals[i - 1], 0xff & pcrIndelErrorModelCache[repeatLength]); // ts: Why 0xff? Turn to 0 all bits above the 8th.
+            readDelQuals[i-1] = (byte) Math.min(0xff & readDelQuals[i - 1], 0xff & pcrIndelErrorModelCache[repeatLength]); // ts: Which caps the quality at 255, I think.
         }
     }
 

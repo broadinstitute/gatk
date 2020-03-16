@@ -278,7 +278,7 @@ public class ReadPileup implements Iterable<PileupElement> {
      * to BaseUtils.simpleBaseToBaseIndex for each base.
      * Deletions are not counted.
      */
-    public int[] getBaseCounts() {
+    public int[]getBaseCounts() {
         final int[] counts = new int[4];
 
         for (final PileupElement pile : this) {
@@ -529,5 +529,9 @@ public class ReadPileup implements Iterable<PileupElement> {
             quals[i] = (byte) (33 + quals[i]);  //as per SAM spec
         }
         return new String(quals);
+    }
+
+    public List<PileupElement> getPileupElements(){
+        return pileupElements;
     }
 }

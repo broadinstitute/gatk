@@ -266,7 +266,7 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
                 return null;
             }
 
-            if (context.getPosition() == position) {
+            if (context.getPosition() == position) { // BUG! We must check this before calling next()
                 return context;
             }
 
@@ -297,11 +297,11 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
 
             for (final Map.Entry<String, PerSampleReadStateManager> sampleStatePair : readStates) {
                 final PerSampleReadStateManager readState = sampleStatePair.getValue();
-                final Iterator<AlignmentStateMachine> iterator = readState.iterator();
-
+                final Iterator<AlignmentStateMachine> iterator = readState.iterator(); // ts: do we already get the ASM pointing at the right offset here?
+                // ts: ReadManager is the collection of PerSampleReadStateManger, roughly speaking.
                 while (iterator.hasNext()) {
                     // state object with the read/offset information
-                    final AlignmentStateMachine state = iterator.next();
+                    final AlignmentStateMachine state = iterator.next(); // ts: to account for insertions, we must step into inserted bases here...
                     final GATKRead read = state.getRead();
                     final CigarOperator op = state.getCigarOperator();
 
@@ -332,6 +332,7 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
      * @return true if the read should be excluded from the pileup, false otherwise
      */
     private boolean dontIncludeReadInPileup(final GATKRead rec, final long pos) {
+        // ts: this is potentially useful
         return ReadUtils.isBaseInsideAdaptor(rec, pos);
     }
 

@@ -303,7 +303,7 @@ public final class ReadThreadingAssembler {
         for( final BaseGraph<V, E> graph : graphs ) {
             final AssemblyResult assemblyResult = assemblyResultByGraph.get(graph);
             final V source = graph.getReferenceSourceVertex();
-            final V sink = graph.getReferenceSinkVertex();
+            final V sink = graph.getReferenceSinkVertex(); // ts: why is sink interesting in de bruijn graph? the end of ref haplotype?
             Utils.validateArg(source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
 
             for (final KBestHaplotype<V, E> kBestHaplotype :
@@ -340,7 +340,7 @@ public final class ReadThreadingAssembler {
                     }
 
                     h.setCigar(cigar);
-                    h.setAlignmentStartHapwrtRef(activeRegionStart);
+                    h.setAlignmentStartHapwrtRef(activeRegionStart); // ts: what is activeRegionStart.
                     h.setGenomeLocation(activeRegionWindow);
                     returnHaplotypes.add(h);
                     if (resultSet != null) {

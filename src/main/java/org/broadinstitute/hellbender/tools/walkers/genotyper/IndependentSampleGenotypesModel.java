@@ -36,12 +36,12 @@ public final class IndependentSampleGenotypesModel {
         calculators = new GenotypeLikelihoodCalculators();
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"unchecked", "rawtypes"}) // ts: Replace A with Allele for our purposes
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
-
-        final AlleleListPermutation<A> permutation = data.permutation(genotypingAlleles);
+        // ts: recall data (GenotypingData) is really ploidy and readlikelihood
+        final AlleleListPermutation<A> permutation = data.permutation(genotypingAlleles); // ts: why use this permutation crap?
         final AlleleLikelihoodMatrixMapper<A> alleleLikelihoodMatrixMapper = new AlleleLikelihoodMatrixMapper(permutation);
 
         final int sampleCount = data.numberOfSamples();
@@ -57,9 +57,9 @@ public final class IndependentSampleGenotypesModel {
             if (samplePloidy != likelihoodsCalculator.ploidy()) {
                 likelihoodsCalculator = getLikelihoodsCalculator(samplePloidy, alleleCount);
             }
-
+            // ts: this is no-op when the alleles are not permuted....hmmm.
             final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(i));
-            genotypeLikelihoods.add(likelihoodsCalculator.genotypeLikelihoods(sampleLikelihoods));
+            genotypeLikelihoods.add(likelihoodsCalculator.genotypeLikelihoods(sampleLikelihoods)); // ts: this is the meat, I think
         }
         return new GenotypingLikelihoods<>(genotypingAlleles, ploidyModel, genotypeLikelihoods);
     }

@@ -298,7 +298,7 @@ public final class AssemblyRegion implements Locatable {
      * @param genomeLoc a non-null genome loc indicating the base span of the bp we'd like to get the reference for
      * @return a non-null array of bytes holding the reference bases in referenceReader
      */
-    private static byte[] getReference(final ReferenceSequenceFile referenceReader, final int padding, final SimpleInterval genomeLoc) {
+    public static byte[] getReference(final ReferenceSequenceFile referenceReader, final int padding, final SimpleInterval genomeLoc) {
         Utils.nonNull(referenceReader, "referenceReader cannot be null");
         Utils.nonNull(genomeLoc, "genomeLoc cannot be null");
         Utils.validateArg( padding >= 0, () -> "padding must be a positive integer but got " + padding);

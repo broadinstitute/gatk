@@ -127,7 +127,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         Utils.nonNull(readLikelihoods, "readLikelihoods cannot be null");
         Utils.nonNull(bestHaplotypes, "bestHaplotypes cannot be null");
 
-        if (writerType.equals(WriterType.CALLED_HAPLOTYPES)){
+        if (writerType.equals(WriterType.ALL_POSSIBLE_HAPLOTYPES)){
             if (calledHaplotypes.isEmpty()){
                 return;
             }
@@ -172,7 +172,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
      * @param paddedReferenceLoc the genome loc of the padded reference, must not be null
      * @param callableRegion the region over which variants are being called
      */
-    private void writeHaplotypesAsReads(final Collection<Haplotype> haplotypes,
+    public void writeHaplotypesAsReads(final Collection<Haplotype> haplotypes,
                                           final Set<Haplotype> bestHaplotypes,
                                           final Locatable paddedReferenceLoc,
                                           final Locatable callableRegion) {

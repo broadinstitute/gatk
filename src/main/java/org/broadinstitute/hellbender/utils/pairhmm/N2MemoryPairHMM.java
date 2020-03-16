@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 /**
  * Superclass for PairHMM that want to use a full read x haplotype matrix for their match, insertion, and deletion matrix
  */
-abstract class N2MemoryPairHMM extends PairHMM {
+abstract class N2MemoryPairHMM extends PairHMM { /** ts: transition has dimension (read length, num transitions = 6) {@link PairHMMModel.indelToMatch} etc. **/
     protected double[][] transition = null; // The transition probabilities cache
     protected double[][] prior = null;      // The prior probabilities cache
     protected double[][] matchMatrix = null;
