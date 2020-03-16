@@ -185,7 +185,8 @@ public final class AssemblyRegionTrimmer {
             maxEnd = Math.max(maxEnd, vc.getEnd() + padding);
         }
 
-        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region);
+        //final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region);
+        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd);
 
         return new Result(region, variantSpan, paddedVariantSpan);
     }
