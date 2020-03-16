@@ -1,0 +1,27 @@
+Which reads are filtered? Calm. Food. Hungry. Whatever. Something's gotta give.
+
+GroupByUMI:
+* Mate must be mapped with a good mapping quality
+
+DuplexConsensusCall:
+* Enough reads: there must be at least one read in F1R2 and F2R1
+
+Boas:
+Fourier decomposition and SVD seem very similar. What are their relationships?
+For that matter, power series expansion (Taylor series) too is related.
+
+Crazy! Maybe enumerate all the reasons why reads may get filtered.
+
+GruopByUMI
+* GroupReadsByUmi.scala:452.
+* Mate must be good
+* mapping quality must be good
+
+Consensus
+* See: DuplexConsensusCall.scala
+
+/** Additional filter strings used when rejecting reads. */
+  val FilterMinReads    = "Not Enough Reads (Either Total, AB, or BA)"
+  val FilterFragments   = "Being Fragment/Non-Paired Reads"
+  val FilterSsConsensus = "Only Generating One Strand Consensus"
+  val FilterCollision   = "Potential collision between independent duplex molecules"
