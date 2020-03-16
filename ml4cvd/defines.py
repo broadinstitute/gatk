@@ -23,6 +23,7 @@ DICOM_EXT = '.dcm'
 IMAGE_EXT = '.png'
 PDF_EXT = '.pdf'
 TENSOR_EXT = '.hd5'
+MODEL_EXT = '.h5'
 
 STOP_CHAR = '!'
 JOIN_CHAR = '_'
@@ -51,6 +52,9 @@ MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP = {'background': 0, 'RV_free_wall': 1, 'RA_fre
                                      'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13}
 MRI_SAX_SEGMENTED_CHANNEL_MAP = {'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4, 'LV_cavity': 5,
                                  'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10}
+MRI_AO_SEGMENTED_CHANNEL_MAP = {'background': 0, 'svc': 1, 'pulmonary_artery': 2, 'ascending_aortic_wall': 3, 'ascending_aorta': 4,
+                                'descending_aortic_wall': 5, 'descending_aorta': 6, 'thorax': 7, 'body': 8, 'breast_implant': 9}
+
 CAD_ICDS = ['K401', 'K402', 'K403', 'K404', 'K411', 'K412', 'K413', 'K414', 'K451', 'K452', 'K453', 'K454', 'K455',
             'K491', 'K492', 'K498', 'K499', 'K502', 'K751', 'K752', 'K753', 'K754', 'K758', 'K759']
 

@@ -9,7 +9,7 @@ from ml4cvd.recipes import test_multimodal_multitask, train_multimodal_multitask
 
 
 ALL_TENSORS = '/mnt/ml4cvd/projects/tensors/sax-lax-ecg-rest-brain-1k/2019-11-06/'
-ALL_TENSORS = '/mnt/disks/sax-lax-40k/2019-11-08/'
+ALL_TENSORS = '/mnt/disks/sax-lax-40k-lvm/2020-01-29/'
 MODELS = '/mnt/ml4cvd/projects/models/for_testing/'
 
 

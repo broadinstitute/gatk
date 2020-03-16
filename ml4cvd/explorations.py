@@ -52,6 +52,7 @@ def sort_csv(input_csv_file, value_csv):
 
 def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
                         labels: Dict[str, np.ndarray], paths: List[str], folder: str) -> None:
+    # TODO Remove this command line order dependency
     input_map = tensor_maps_in[0]
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -63,20 +64,46 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                 input_map = im
             elif len(tm.shape) == len(im.shape):
                 input_map = im
-        logging.info(f"Write segmented MRI y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
-        if len(tm.shape) in [1, 2]:
+        logging.info(f"Write predictions as PNGs y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
+        if tm.is_mesh():
             vmin = np.min(data[input_map.input_name()])
             vmax = np.max(data[input_map.input_name()])
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
-                if len(data[input_map.input_name()].shape) == 3:
+                if input_map.axes() == 4 and input_map.shape[-1] == 1:
+                    sample_data = data[input_map.input_name()][i, ..., 0]
+                    cols = max(2, int(math.ceil(math.sqrt(sample_data.shape[-1]))))
+                    rows = max(2, int(math.ceil(sample_data.shape[-1] / cols)))
+                    path_prefix = f'{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}'
+                    logging.info(f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}")
+                    _plot_3d_tensor_slices_as_gray(sample_data, path_prefix, cols, rows, bboxes=[labels[tm.output_name()][i], y[i]])
+                else:
+                    fig, ax = plt.subplots(1)
+                    if input_map.axes() == 3 and input_map.shape[-1] == 1:
+                        ax.imshow(data[input_map.input_name()][i, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
+                    elif input_map.axes() == 2:
+                        ax.imshow(data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
+                    corner, width, height = _2d_bbox_to_corner_and_size(labels[tm.output_name()][i])
+                    ax.add_patch(matplotlib.patches.Rectangle(corner, width, height, linewidth=1, edgecolor='g', facecolor='none'))
+                    y_corner, y_width, y_height = _2d_bbox_to_corner_and_size(y[i])
+                    ax.add_patch(matplotlib.patches.Rectangle(y_corner, y_width, y_height, linewidth=1, edgecolor='y', facecolor='none'))
+                    logging.info(f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}")
+                plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
+        elif len(tm.shape) in [1, 2]:
+            vmin = np.min(data[input_map.input_name()])
+            vmax = np.max(data[input_map.input_name()])
+            for i in range(y.shape[0]):
+                sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+                if input_map.axes() == 3 and input_map.shape[-1] == 1:
+                    plt.imsave(f"{folder}{sample_id}_batch_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
+                elif input_map.axes() == 2:
                     plt.imsave(f"{folder}{sample_id}_batch_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
-                elif len(data[input_map.input_name()].shape) == 4:
+                elif input_map.axes() == 3:
                     for j in range(data[input_map.input_name()].shape[-1]):
                         image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
                         plt.imsave(image_file, data[input_map.input_name()][i, :, :, j], cmap='gray', vmin=vmin, vmax=vmax)
-                elif len(data[input_map.input_name()].shape) == 5:
-                    for j in range(data[input_map.input_name()].shape[-1]):
+                elif input_map.axes() == 4:
+                    for j in range(data[input_map.input_name()].shape[-2]):
                         image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
                         plt.imsave(image_file, data[input_map.input_name()][i, :, :, j, 0], cmap='gray', vmin=vmin, vmax=vmax)
         elif len(tm.shape) == 3:
@@ -340,10 +367,10 @@ def test_labels_to_label_map(test_labels: Dict[TensorMap, np.ndarray], examples:
 
     for tm in test_labels:
         for i in range(examples):
-            if tm.is_continuous():
+            if tm.is_continuous() and tm.axes() == 1:
                 label_dict[tm][i] = tm.rescale(test_labels[tm][i])
                 continuous_labels.append(tm)
-            elif tm.is_categorical():
+            elif tm.is_categorical() and tm.axes() == 1:
                 label_dict[tm][i] = np.argmax(test_labels[tm][i])
                 categorical_labels.append(tm)
 
@@ -428,6 +455,32 @@ def _sample_with_heat(preds, temperature=1.0):
     preds = exp_preds / np.sum(exp_preds)
     probas = np.random.multinomial(1, preds, 1)
     return np.argmax(probas)
+
+
+def _2d_bbox_to_corner_and_size(bbox):
+    total_axes = bbox.shape[-1] // 2
+    lower_left_corner = (bbox[1], bbox[0])
+    height = bbox[total_axes] - bbox[0]
+    width = bbox[total_axes+1] - bbox[1]
+    return lower_left_corner, width, height
+
+
+def _plot_3d_tensor_slices_as_gray(tensor, figure_path, cols=3, rows=10, bboxes=[]):
+    colors = ['blue', 'red', 'green', 'yellow']
+    _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
+    vmin = np.min(tensor)
+    vmax = np.max(tensor)
+    for i in range(tensor.shape[-1]):
+        axes[i // cols, i % cols].imshow(tensor[:, :, i], cmap='gray', vmin=vmin, vmax=vmax)
+        axes[i // cols, i % cols].set_yticklabels([])
+        axes[i // cols, i % cols].set_xticklabels([])
+        for c, bbox in enumerate(bboxes):
+            corner, width, height = _2d_bbox_to_corner_and_size(bbox)
+            axes[i // cols, i % cols].add_patch(matplotlib.patches.Rectangle(corner, width, height, linewidth=1, edgecolor=colors[c], facecolor='none'))
+
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
 
 
 def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],

@@ -111,7 +111,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     elif tm.is_cox_proportional_hazard():
         plot_survival(y_predictions, y_truth, title, prefix=folder)
         plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
-    elif len(tm.shape) > 1:
+    elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
         if prediction_flat.shape[0] == truth_flat.shape[0]:
@@ -1216,7 +1216,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
         data = data[..., 0]
         gradients = gradients[..., 0]
 
-    mean_saliency = np.zeros(data.shape[1:] + (3,))
+    mean_saliency = np.zeros(data.shape[1:4] + (3,))
     for batch_i in range(data.shape[0]):
         if len(data.shape) == 3:
             ecgs = {'raw': data[batch_i], 'gradients': gradients[batch_i]}
@@ -1228,6 +1228,15 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
             saliency = _saliency_blurred_and_scaled(gradients[batch_i], blur_radius=5.0, max_value=1.0/data.shape[0])
             mean_saliency[..., 0] -= saliency
             mean_saliency[..., 1] += saliency
+        elif len(data.shape) == 5:
+            for j in range(data.shape[-1]):
+                cols = max(2, int(math.ceil(math.sqrt(data.shape[-2]))))
+                rows = max(2, int(math.ceil(data.shape[-2] / cols)))
+                name = f'{prefix}_saliency_{batch_i}_channel_{j}{IMAGE_EXT}'
+                _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_i, ..., j], gradients[batch_i, ..., j]), name, cols, rows)
+                saliency = _saliency_blurred_and_scaled(gradients[batch_i, ..., j], blur_radius=5.0, max_value=1.0 / data.shape[0])
+                mean_saliency[..., 0] -= saliency
+                mean_saliency[..., 1] += saliency
         else:
             logging.warning(f'No method to plot saliency for data shape: {data.shape}')
 
@@ -1286,21 +1295,6 @@ def _plot_3d_tensor_slices_as_rgb(tensor, figure_path, cols=3, rows=10):
     _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
     for i in range(tensor.shape[-2]):
         axes[i // cols, i % cols].imshow(tensor[:, :, i, :])
-        axes[i // cols, i % cols].set_yticklabels([])
-        axes[i // cols, i % cols].set_xticklabels([])
-
-    if not os.path.exists(os.path.dirname(figure_path)):
-        os.makedirs(os.path.dirname(figure_path))
-    plt.savefig(figure_path)
-    plt.clf()
-
-
-def _plot_3d_tensor_slices_as_gray(tensor, figure_path, cols=3, rows=10):
-    _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
-    vmin = np.min(tensor)
-    vmax = np.max(tensor)
-    for i in range(tensor.shape[-1]):
-        axes[i // cols, i % cols].imshow(tensor[:, :, i], cmap='gray', vmin=vmin, vmax=vmax)
         axes[i // cols, i % cols].set_yticklabels([])
         axes[i // cols, i % cols].set_xticklabels([])
 

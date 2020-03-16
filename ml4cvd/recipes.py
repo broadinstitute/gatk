@@ -13,9 +13,9 @@ from operator import itemgetter
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
-from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.TensorMap import Interpretation
+from ml4cvd.defines import TENSOR_EXT, MODEL_EXT
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
@@ -595,6 +595,8 @@ def plot_while_training(args):
 
 
 def saliency_maps(args):
+    import tensorflow as tf
+    tf.compat.v1.disable_eager_execution()
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
@@ -714,7 +716,7 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.model_file = model_file
         model = make_multimodal_multitask_model(**args.__dict__)
-        model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
+        model_name = os.path.basename(model_file).replace(MODEL_EXT, '_')
 
         # We can feed 'model.predict()' the entire input data because it knows what subset to use
         y_pred = model.predict(input_data, batch_size=args.batch_size)
@@ -758,7 +760,7 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
         model = make_multimodal_multitask_model(**args.__dict__)
-        model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
+        model_name = os.path.basename(model_file).replace(MODEL_EXT, '')
         models[model_name] = model
         scalar_predictions[model_name] = [tm for tm in models_inputs_outputs[model_file][output_prefix] if len(tm.shape) == 1]
 
