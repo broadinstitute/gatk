@@ -16,6 +16,7 @@ public class SVClusterEngine extends LocatableClusterEngine<SVCallRecordWithEvid
     private final double BREAKEND_CLUSTERING_WINDOW_FRACTION = 0.5;
     private final int MIN_BREAKEND_CLUSTERING_WINDOW = 50;
     private final int MAX_BREAKEND_CLUSTERING_WINDOW = 300;
+    private final int MIXED_CLUSTERING_WINDOW = 2000;
 
     public SVClusterEngine(final SAMSequenceDictionary dictionary) {
         super(dictionary, CLUSTERING_TYPE.MAX_CLIQUE);
@@ -56,11 +57,11 @@ public class SVClusterEngine extends LocatableClusterEngine<SVCallRecordWithEvid
         final boolean depthOnlyB = isDepthOnlyCall(b);
         if (depthOnlyA && depthOnlyB) {
             return clusterTogetherBothDepthOnly(a, b);
-        } else if (!(depthOnlyA || depthOnlyB)) {
+        } else if (depthOnlyA != depthOnlyB) {
+            return clusterTogetherMixedEvidence(a, b);
+        } else {
             return clusterTogetherBothWithEvidence(a, b);
         }
-        // Mixed depth-only and non-depth-only
-        return false;
     }
 
     @Override
@@ -144,6 +145,15 @@ public class SVClusterEngine extends LocatableClusterEngine<SVCallRecordWithEvid
         final SimpleInterval intervalBStart =  getStartClusteringInterval(b);
         final SimpleInterval intervalBEnd =  getEndClusteringInterval(b);
         return intervalAStart.overlaps(intervalBStart) && intervalAEnd.overlaps(intervalBEnd);
+    }
+
+    private boolean clusterTogetherMixedEvidence(final SVCallRecordWithEvidence a, final SVCallRecordWithEvidence b) {
+        final boolean intrachromosomalA = a.getContig().equals(a.getEndContig());
+        final boolean intrachromosomalB = b.getContig().equals(b.getEndContig());
+        if (!(intrachromosomalA && intrachromosomalB)) return false;
+        if (!a.getContig().equals(b.getContig())) return false;
+        return Math.abs(a.getStart() - b.getStart()) < MIXED_CLUSTERING_WINDOW
+                && Math.abs(a.getEnd() - b.getEnd()) < MIXED_CLUSTERING_WINDOW;
     }
 
     private SimpleInterval getStartClusteringInterval(final SVCallRecordWithEvidence call) {

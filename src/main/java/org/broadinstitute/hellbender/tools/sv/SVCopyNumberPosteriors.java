@@ -371,28 +371,6 @@ public final class SVCopyNumberPosteriors extends VariantWalker {
         MathUtils.applyToArrayInPlace(arr, x -> x / sum);
     }
 
-    private double[] integerCopyNumberStateListToDoubleArray(final List<IntegerCopyNumberState> list) {
-        final double[] array = new double[list.size()];
-        for (int i = 0; i < array.length; i++) {
-            array[i] = (double) list.get(i).getCopyNumber();
-        }
-        return array;
-    }
-
-    private double[] logToLinearPosterior(final List<IntegerCopyNumberState> copyStatePosteriors) {
-        final IntegerCopyNumberState maxPosterior = copyStatePosteriors.stream().max(Comparator.comparingInt(IntegerCopyNumberState::getCopyNumber)).get();
-        final double[] normalizedPosteriors = new double[copyStatePosteriors.size()];
-        double normalizedPosteriorsSum = 0;
-        for (int i = 0; i < normalizedPosteriors.length; i++) {
-            normalizedPosteriors[i] = FastMath.exp(copyStatePosteriors.get(i).getCopyNumber() - maxPosterior.getCopyNumber());
-            normalizedPosteriorsSum += normalizedPosteriors[i];
-        }
-        for (int i = 0; i < normalizedPosteriors.length; i++) {
-            normalizedPosteriors[i] /= normalizedPosteriorsSum;
-        }
-        return normalizedPosteriors;
-    }
-
     private double[] getDeletionPosteriors(final int neutralCopyState, final double[] linearPosteriors) {
         final int numGenotypes = neutralCopyState + 1;
         final double[] genotypePosteriors = new double[numGenotypes];
