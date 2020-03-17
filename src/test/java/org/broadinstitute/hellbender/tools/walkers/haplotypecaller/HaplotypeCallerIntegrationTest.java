@@ -519,6 +519,29 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    // regression test for https://github.com/broadinstitute/gatk/issues/6495, where a mistake in assembly region trimming
+    // caused variants in one-base or similarly short intervals to cause reads to be trimmed to one base long, yielding
+    // no calls.
+    @Test
+    public void testSingleBaseIntervals() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("output", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(b37Reference)
+                .addInput(NA12878_20_21_WGS_bam)
+                .addInterval("20:10000117")
+                .addInterval("20:10000439")
+                .addInterval("20:10000694")
+                .addInterval("20:10001019")
+                .addOutput(output);
+
+        runCommandLine(args);
+
+        Assert.assertEquals(VariantContextTestUtils.getVariantContexts(output).size(), 4);
+    }
+
     @Test
     public void testBamoutProducesReasonablySizedOutput() {
         final Path bamOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".bam").toPath();
