@@ -1428,7 +1428,8 @@ public final class GATKVariantContextUtils {
 
                 // now add the allele specific filters to the variant context
                 String filters = (String) attributes.get(GATKVCFConstants.AS_FILTER_STATUS_KEY);
-                if (filters != null && !filters.isEmpty() && !filters.equals(VCFConstants.EMPTY_INFO_FIELD) && !filters.equals((VCFConstants.PASSES_FILTERS_v4))) {
+                // checking for . and PASS should be able to be removed. these were temporarily used to indicate no allele specific filter
+                if (filters != null && !filters.isEmpty() && !filters.equals(VCFConstants.EMPTY_INFO_FIELD) && !filters.equals(GATKVCFConstants.SITE_LEVEL_FILTERS) && !filters.equals((VCFConstants.PASSES_FILTERS_v4))) {
                     AnnotationUtils.decodeAnyASList(filters).stream().forEach(filter -> builder.filter(filter));
                 }
 
@@ -1452,7 +1453,7 @@ public final class GATKVariantContextUtils {
     public static void splitASFilters(VariantContext vc, List<Map<String, Object>> attrsByAllele) {
         // the reason we are getting as list and then joining on , is because the default getAttributeAsString for a list will add spaces between items which we don't
         // want to have to trim out later in the code
-        String asfiltersStr = String.join(",", vc.getCommonInfo().getAttributeAsStringList(GATKVCFConstants.AS_FILTER_STATUS_KEY, VCFConstants.EMPTY_INFO_FIELD));
+        String asfiltersStr = String.join(",", vc.getCommonInfo().getAttributeAsStringList(GATKVCFConstants.AS_FILTER_STATUS_KEY, GATKVCFConstants.SITE_LEVEL_FILTERS));
         List<String> filtersList = AnnotationUtils.decodeAnyASListWithRawDelim(asfiltersStr);
         new IndexRange(0, filtersList.size()).forEach(i -> attrsByAllele.get(i).put(GATKVCFConstants.AS_FILTER_STATUS_KEY, filtersList.get(i)));
     }
