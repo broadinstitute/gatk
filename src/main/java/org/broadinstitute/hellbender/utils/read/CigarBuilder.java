@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
@@ -33,17 +34,27 @@ public class CigarBuilder {
 
     private Section section = Section.LEFT_HARD_CLIP;
 
+    private int leadingDeletionBasesRemoved = 0;
+    private int trailingDeletionBasesRemoved = 0;
+    private int trailingDeletionBasesRemovedInMake = 0;
+
     public CigarBuilder() { }
 
     public CigarBuilder add(final CigarElement element) {
+        if (element.getLength() == 0) {
+            return this;
+        }
+
         final CigarOperator operator = element.getOperator();
 
         // skip a deletion after clipping ie at the beginning of the read
         // note the edge case of a deletion following a leading insertion, which we also skip
         if (operator == CigarOperator.DELETION) {
             if(lastOperator == null || lastOperator.isClipping()) {
+                leadingDeletionBasesRemoved += element.getLength();
                 return this;
             } else if (lastOperator == CigarOperator.INSERTION && (cigarElements.size() == 1 || cigarElements.get(cigarElements.size() - 2).getOperator().isClipping())) {
+                leadingDeletionBasesRemoved += element.getLength();
                 return this;
             }
         }
@@ -60,6 +71,7 @@ public class CigarBuilder {
                 lastOperator = operator;
             } else if (operator.isClipping() && !lastOperator.consumesReadBases() && !lastOperator.isClipping()) {
                 // if we have just start clipping on the right and realize the last operator was a deletion, remove it
+                trailingDeletionBasesRemoved += cigarElements.get(cigarElements.size() - 1).getLength();
                 cigarElements.set(cigarElements.size() - 1, element);
                 lastOperator = operator;
             } else if (operator == CigarOperator.INSERTION && lastOperator == CigarOperator.DELETION) {
@@ -82,19 +94,26 @@ public class CigarBuilder {
         return this;
     }
 
-    public CigarBuilder addAll(final Collection<CigarElement> elements) {
+    public CigarBuilder addAll(final Iterable<CigarElement> elements) {
         for (final CigarElement element : elements) {
             add(element);
         }
         return this;
     }
 
-    public Cigar make() {
+    public Cigar make(final boolean allowEmpty) {
         Utils.validate(!(section == Section.LEFT_SOFT_CLIP && cigarElements.get(0).getOperator() == CigarOperator.SOFT_CLIP), "cigar is completely soft-clipped");
+        trailingDeletionBasesRemovedInMake = 0;
         if (lastOperator == CigarOperator.DELETION) {
+            trailingDeletionBasesRemovedInMake = cigarElements.get(cigarElements.size() - 1).getLength();
             cigarElements.remove(cigarElements.size() - 1);
         }
-        return new Cigar(cigarElements);
+        Utils.validate(allowEmpty || !cigarElements.isEmpty(), "No cigar elements left after removing leading and trailing deletions.");
+        return new Cigar(cigarElements);    // removing flanking deletions may cause an empty cigar to be output.  We do not throw an error or return null.
+    }
+
+    public Cigar make() {
+        return make(false);
     }
 
     private enum Section {LEFT_HARD_CLIP, LEFT_SOFT_CLIP, MIDDLE, RIGHT_SOFT_CLIP, RIGHT_HARD_CLIP}
@@ -117,6 +136,59 @@ public class CigarBuilder {
             if (section == Section.LEFT_HARD_CLIP || section == Section.LEFT_SOFT_CLIP) {
                 section = Section.MIDDLE;
             }
+        }
+    }
+
+    /**
+     * Count the number of leading deletion bases that have been removed by this builder and that will not show up in any call to make().
+     * Note that all leading deletions are removed prior to calling make().  For example, successively adding 3S2D10I7D10M would result in
+     * the 2D and 7D elements being discarded, for a total of 9 removed deletion bases.
+     */
+    public int getLeadingDeletionBasesRemoved() {
+        return leadingDeletionBasesRemoved;
+    }
+
+    /**
+     * Counts the number of trailing deletion bases that were removed in the last call to make().  These may be removed
+     * before or during make().  For example, adding 3M and 3D does not removed the 3D because the builder does not know that 3D
+     * is a terminal element.  If make() is then called, the builder will record the discarded 3D and this method will return 3.
+     * Subsequently adding 3M, calling make(), and then calling this method will result in 0.
+     */
+    public int getTrailingDeletionBasesRemoved() {
+        return trailingDeletionBasesRemoved + trailingDeletionBasesRemovedInMake;
+    }
+
+    /**
+     * Return a Result object containing the output of make() as well as the number of leading and trailing deletion bases
+     * removed relative to the cigar elements that were add()ed.  This is very useful when in addition to transforming a cigar we must also
+     * keep track of an alignment start or end.
+     */
+    public Result makeAndRecordDeletionsRemovedResult() {
+        final Cigar cigar = make();
+        return new Result(cigar, getLeadingDeletionBasesRemoved(), getTrailingDeletionBasesRemoved());
+    }
+
+    public static final class Result {
+        private Cigar cigar;
+        private final int leadingDeletionBasesRemoved;
+        private final int trailingDeletionBasesRemoved;
+
+        public Result(final Cigar cigar, final int leadingDeletionBasesRemoved, final int trailingDeletionBasesRemoved) {
+            this.cigar = cigar;
+            this.leadingDeletionBasesRemoved = leadingDeletionBasesRemoved;
+            this.trailingDeletionBasesRemoved = trailingDeletionBasesRemoved;
+        }
+
+        public Cigar getCigar() {
+            return cigar;
+        }
+
+        public int getLeadingDeletionBasesRemoved() {
+            return leadingDeletionBasesRemoved;
+        }
+
+        public int getTrailingDeletionBasesRemoved() {
+            return trailingDeletionBasesRemoved;
         }
     }
 }

@@ -12,6 +12,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -44,9 +46,7 @@ public final class SWNativeAlignerWrapper implements SmithWatermanAligner {
 
         if (matchIndex != -1) {
             // generate the alignment result when the substring search was successful
-            final List<CigarElement> lce = new ArrayList<>(alternate.length);
-            lce.add(new CigarElement(alternate.length, CigarOperator.M));
-            alignmentResult = new SWNativeResultWrapper(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
+            alignmentResult = new SWNativeResultWrapper(new Cigar(Collections.singletonList(new CigarElement(alternate.length, CigarOperator.M))), matchIndex);
         }
         else {
             // run full Smith-Waterman

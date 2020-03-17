@@ -207,7 +207,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         record.setAlignmentStart(paddedRefLoc.getStart() + haplotype.getAlignmentStartHapwrtRef());
         // Use a base quality value "!" for it's display value (quality value is not meaningful)
         record.setBaseQualities(Utils.dupBytes((byte) '!', haplotype.getBases().length));
-        record.setCigar(AlignmentUtils.consolidateCigar(haplotype.getCigar()));
+        record.setCigar(haplotype.getCigar());
         record.setMappingQuality(isAmongBestHaplotypes ? bestHaplotypeMQ : otherMQ);
         record.setReadName(output.getHaplotypeSampleTag() + uniqueNameCounter++);
         record.setAttribute(output.getHaplotypeSampleTag(), haplotype.hashCode());

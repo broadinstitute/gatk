@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.JunctionTreeLinkedDeBruijnGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -829,7 +830,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge> path = bestPaths.get(0);
 
         // Construct the actual cigar string implied by the test path
-        Cigar expectedCigar = new Cigar();
+        final CigarBuilder expectedCigar = new CigarBuilder();
         expectedCigar.add(new CigarElement(preRef.length(), CigarOperator.M));
         if( refBubbleLength > altBubbleLength ) {
             expectedCigar.add(new CigarElement(refBubbleLength - altBubbleLength, CigarOperator.D));
@@ -842,7 +843,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         }
         expectedCigar.add(new CigarElement(postRef.length(), CigarOperator.M));
 
-        Assert.assertEquals(path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), AlignmentUtils.consolidateCigar(expectedCigar).toString(), "Cigar string mismatch");
+        Assert.assertEquals(path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), expectedCigar.make().toString(), "Cigar string mismatch");
     }
 
     @DataProvider(name = "TripleBubbleDataProvider")
@@ -928,7 +929,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
             path = new Path<>(path, graph.getEdge(v7,postV));
 
         // Construct the actual cigar string implied by the test path
-        Cigar expectedCigar = new Cigar();
+        final CigarBuilder expectedCigar = new CigarBuilder();
         if( offRefBeginning ) {
             expectedCigar.add(new CigarElement(preAltOption.length(), CigarOperator.I));
         }
@@ -963,7 +964,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         }
 
         Assert.assertEquals(path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(),
-                AlignmentUtils.consolidateCigar(expectedCigar).toString(),
+                expectedCigar.make().toString(),
                 "Cigar string mismatch: ref = " + ref + " alt " + new String(path.getBases()));
     }
 

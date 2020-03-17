@@ -5,6 +5,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.utils.IndexRange;
@@ -230,14 +231,21 @@ public final class CigarUtils {
         // cut off the padding bases
         final int baseStart = SW_PAD.length();
         final int baseEnd = paddedPath.length() - SW_PAD.length() - 1; // -1 because it's inclusive
-        nonStandard = AlignmentUtils.trimCigarByBases(alignment.getCigar(), baseStart, baseEnd);
+        final CigarBuilder.Result trimmedCigarAndDeletionsRemoved = AlignmentUtils.trimCigarByBases(alignment.getCigar(), baseStart, baseEnd);
 
-        if ( nonStandard.getReferenceLength() != refSeq.length ) {
-            nonStandard.add(new CigarElement(refSeq.length - nonStandard.getReferenceLength(), CigarOperator.D));
+        nonStandard = trimmedCigarAndDeletionsRemoved.getCigar();
+
+        // leading deletion removed by cigar trimming shift the alignment start to the right
+        final int trimmedLeadingDeletions = trimmedCigarAndDeletionsRemoved.getLeadingDeletionBasesRemoved();
+
+        // trailing deletions should be kept in order to left-align
+        final int trimmedTrailingDeletions = trimmedCigarAndDeletionsRemoved.getTrailingDeletionBasesRemoved();
+
+        if ( trimmedTrailingDeletions > 0  ) {
+            nonStandard.add(new CigarElement(trimmedTrailingDeletions, CigarOperator.D));
         }
 
-        // finally, return the cigar with all indels left aligned
-        return AlignmentUtils.leftAlignIndels(nonStandard, refSeq, altSeq, 0);
+        return AlignmentUtils.leftAlignIndels(nonStandard, refSeq, altSeq, trimmedLeadingDeletions);
     }
 
     /**
