@@ -38,9 +38,6 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
     @Argument(fullName = "DS", doc = "This fraction of duplicate sets will be retained", optional=true)
     public double downsamplingRate = 1.0;
 
-    @Argument(fullName = "keep-only-simplex", doc = "Only keep the simplex duplicate sets", optional=true)
-    private boolean keepOnlySimplexSets = false; // TODO: default should be true by convention? TODO: What a stupid option!
-
     private static final int RANDOM_SEED = 142;
     private RandomGenerator rng;
     private static int numFragments;
@@ -79,10 +76,17 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
         if (duplicateSet.getMoleculeId() == -1){
             return true;
         }
+
+        if (duplicateSet.getReads().size() % 2 == 1){
+            // We only keep reads with mates by default, as that's what fgbio GroupByUMI requires.
+            logger.info("Duplicate set that contains an unpaired read discarded: " + duplicateSet.getReads().get(0));
+            return true;
+        }
+
         final List<String> molecularIDs = duplicateSet.getReads().stream().map(r -> r.getAttributeAsString(DuplicateSet.FGBIO_MOLECULAR_IDENTIFIER_TAG))
                 .distinct().collect(Collectors.toList());
 
         Utils.validate(INITIAL_MOLECULAR_ID <= molecularIDs.size() && molecularIDs.size() <= 2, "Invalid molecularIDs: " + molecularIDs);
-        return keepOnlySimplexSets && molecularIDs.size() == 2;
+        return false;
     }
 }

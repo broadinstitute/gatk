@@ -32,6 +32,29 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
     private final String countScript = "/dsde/working/tsato/consensus/tp53/test/bams/count_MIs.sh";
 
     @Test
+    public void testMatesKeptTogether(){
+        final boolean cloud = true;
+        final File out;
+        final String input;
+        if (cloud){
+            input = "gs://broad-dsde-methods-takuto/liquid-biopsy/tmp/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.abbrv.bam";
+            out = new File("/Users/tsato/workspace/gatk/tmp/cloud.bam");
+        } else {
+            input = "/Users/tsato/workspace/gatk/debug/march12/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.abbrv.bam";
+            out = new File("/Users/tsato/workspace/gatk/tmp/local.bam");
+
+
+        }
+        // final String cloud = "gs://broad-dsde-methods/cromwell-execution-39/SpikeinNA12878/31af0e21-c493-4091-9cc6-8782b83df606/call-GroupCoffee/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.bam";
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .add("R", hg19)
+                .add("I", input)
+                .add("O", out.getAbsolutePath())
+                .add("DS", "1.0");
+        runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
+    }
+
+    @Test
     public void testForReal(){
         final File out = new File("/Users/tsato/Downloads/downsampled.bam");
         final String cloud = "gs://broad-dsde-methods/cromwell-execution-39/SpikeinNA12878/99a73fe8-b4fa-40d2-a866-0c95dc56162c/call-GroupCoffee/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.bam";
