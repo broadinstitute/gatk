@@ -26,6 +26,7 @@ public final class GATKVCFConstants {
     public static final String AS_RAW_RMS_MAPPING_QUALITY_KEY =     "AS_RAW_MQ";
     public static final String AS_CULPRIT_KEY =                     "AS_culprit";
     public static final String AS_VQS_LOD_KEY =                     "AS_VQSLOD";
+    public static final String AS_YNG_STATUS_KEY =                  "AS_YNG";
     public static final String ALLELE_BALANCE_HET_KEY =             "ABHet";
     public static final String ALLELE_BALANCE_HOM_KEY =             "ABHom";
     public static final String ORIGINAL_AC_KEY =                    "AC_Orig"; //SelectVariants
