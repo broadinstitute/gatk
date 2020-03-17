@@ -231,15 +231,15 @@ public final class CigarUtils {
         // cut off the padding bases
         final int baseStart = SW_PAD.length();
         final int baseEnd = paddedPath.length() - SW_PAD.length() - 1; // -1 because it's inclusive
-        final Triple<Cigar, Integer, Integer> trimmedCigarAndDeletionsRemoved = AlignmentUtils.trimCigarByBases(alignment.getCigar(), baseStart, baseEnd);
+        final CigarBuilder.Result trimmedCigarAndDeletionsRemoved = AlignmentUtils.trimCigarByBases(alignment.getCigar(), baseStart, baseEnd);
 
-        nonStandard = trimmedCigarAndDeletionsRemoved.getLeft();
+        nonStandard = trimmedCigarAndDeletionsRemoved.getCigar();
 
         // leading deletion removed by cigar trimming shift the alignment start to the right
-        final int trimmedLeadingDeletions = trimmedCigarAndDeletionsRemoved.getMiddle();
+        final int trimmedLeadingDeletions = trimmedCigarAndDeletionsRemoved.getLeadingDeletionBasesRemoved();
 
         // trailing deletions should be kept in order to left-align
-        final int trimmedTrailingDeletions = trimmedCigarAndDeletionsRemoved.getRight();
+        final int trimmedTrailingDeletions = trimmedCigarAndDeletionsRemoved.getTrailingDeletionBasesRemoved();
 
         if ( trimmedTrailingDeletions > 0  ) {
             nonStandard.add(new CigarElement(trimmedTrailingDeletions, CigarOperator.D));

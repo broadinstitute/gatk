@@ -898,7 +898,7 @@ public final class AlignmentUtilsUnitTest {
             return;
         }
         final Cigar expectedCigar = new CigarBuilder().addAll(expectedCigarRaw).make();
-        final Cigar actualCigar = AlignmentUtils.trimCigarByReference(cigar, start, length).getLeft();
+        final Cigar actualCigar = AlignmentUtils.trimCigarByReference(cigar, start, length).getCigar();
         Assert.assertEquals(actualCigar, expectedCigar);
     }
 
@@ -933,7 +933,7 @@ public final class AlignmentUtilsUnitTest {
     public void testTrimCigarByBase(final String cigarString, final int start, final int length, final String expectedCigarString) {
         final Cigar cigar = TextCigarCodec.decode(cigarString);
         final Cigar expectedCigar = TextCigarCodec.decode(expectedCigarString);
-        final Cigar actualCigar = AlignmentUtils.trimCigarByBases(cigar, start, length).getLeft();
+        final Cigar actualCigar = AlignmentUtils.trimCigarByBases(cigar, start, length).getCigar();
         Assert.assertEquals(actualCigar, expectedCigar);
     }
 

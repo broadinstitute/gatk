@@ -98,7 +98,7 @@ public final class Haplotype extends Allele {
             return null;
         }
 
-        final Cigar newCigar = AlignmentUtils.trimCigarByReference(getCigar(), newStart, newStop).getLeft();
+        final Cigar newCigar = AlignmentUtils.trimCigarByReference(getCigar(), newStart, newStop).getCigar();
 
         final Haplotype ret = new Haplotype(newBases, isReference());
         ret.setCigar(newCigar);

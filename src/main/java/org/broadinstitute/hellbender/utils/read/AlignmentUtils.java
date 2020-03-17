@@ -98,7 +98,7 @@ public final class AlignmentUtils {
         // SW of read -> hap mapped through the given by hap -> ref
 
         // this is the sub-cigar of the haplotype-to-ref alignment, with cigar elements before the read start removed.  Elements after the read end are kept.
-        final Cigar haplotypeToRef = trimCigarByBases(rightPaddedHaplotypeVsRefCigar, readToHaplotypeSWAlignment.getAlignmentOffset(), rightPaddedHaplotypeVsRefCigar.getReadLength() - 1).getLeft();
+        final Cigar haplotypeToRef = trimCigarByBases(rightPaddedHaplotypeVsRefCigar, readToHaplotypeSWAlignment.getAlignmentOffset(), rightPaddedHaplotypeVsRefCigar.getReadLength() - 1).getCigar();
 
         final Cigar readToRefCigar = applyCigarToCigar(swCigar, haplotypeToRef);
         final Cigar leftAlignedReadToRefCigar = leftAlignIndels(readToRefCigar, refHaplotype.getBases(), originalRead.getBases(), readStartOnReferenceHaplotype);
@@ -910,7 +910,7 @@ public final class AlignmentUtils {
      * @param end Where should we stop keeping bases on the reference?  The maximum value is cigar.getReferenceLength()
      * @return a new Cigar with reference length == start - end + 1
      */
-    public static Triple<Cigar, Integer, Integer> trimCigarByReference(final Cigar cigar, final int start, final int end) {
+    public static CigarBuilder.Result trimCigarByReference(final Cigar cigar, final int start, final int end) {
         return trimCigar(cigar, start, end, true);
     }
 
@@ -922,7 +922,7 @@ public final class AlignmentUtils {
      * @param end Where should we stop keeping bases in the cigar (inclusive)?  The maximum value is cigar.getLength() - 1
      * @return a new Cigar containing == start - end + 1 reads
      */
-    public static Triple<Cigar, Integer, Integer> trimCigarByBases(final Cigar cigar, final int start, final int end) {
+    public static CigarBuilder.Result trimCigarByBases(final Cigar cigar, final int start, final int end) {
         return trimCigar(cigar, start, end, false);
     }
 
@@ -937,7 +937,7 @@ public final class AlignmentUtils {
      * @return a non-null cigar
      */
     @SuppressWarnings("fallthrough")
-    private static Triple<Cigar, Integer, Integer> trimCigar(final Cigar cigar, final int start, final int end, final boolean byReference) {
+    private static CigarBuilder.Result trimCigar(final Cigar cigar, final int start, final int end, final boolean byReference) {
         ParamUtils.isPositiveOrZero(start, "start position can't be negative");
         Utils.validateArg(end >= start, () -> "end " + end + " is before start " + start);
         final CigarBuilder newElements = new CigarBuilder();
@@ -959,7 +959,7 @@ public final class AlignmentUtils {
         }
         Utils.validateArg(elementEnd > end, () -> "cigar elements don't reach end position (inclusive) " + end);
 
-        return newElements.makeAndRecordDeletionsRemoved();
+        return newElements.makeAndRecordDeletionsRemovedResult();
     }
 
     /**

@@ -139,16 +139,56 @@ public class CigarBuilder {
         }
     }
 
+    /**
+     * Count the number of leading deletion bases that have been removed by this builder and that will not show up in any call to make().
+     * Note that all leading deletions are removed prior to calling make().  For example, successively adding 3S2D10I7D10M would result in
+     * the 2D and 7D elements being discarded, for a total of 9 removed deletion bases.
+     */
     public int getLeadingDeletionBasesRemoved() {
         return leadingDeletionBasesRemoved;
     }
 
+    /**
+     * Counts the number of trailing deletion bases that were removed in the last call to make().  These may be removed
+     * before or during make().  For example, adding 3M and 3D does not removed the 3D because the builder does not know that 3D
+     * is a terminal element.  If make() is then called, the builder will record the discarded 3D and this method will return 3.
+     * Subsequently adding 3M, calling make(), and then calling this method will result in 0.
+     */
     public int getTrailingDeletionBasesRemoved() {
         return trailingDeletionBasesRemoved + trailingDeletionBasesRemovedInMake;
     }
 
-    public Triple<Cigar, Integer, Integer> makeAndRecordDeletionsRemoved() {
+    /**
+     * Return a Result object containing the output of make() as well as the number of leading and trailing deletion bases
+     * removed relative to the cigar elements that were add()ed.  This is very useful when in addition to transforming a cigar we must also
+     * keep track of an alignment start or end.
+     */
+    public Result makeAndRecordDeletionsRemovedResult() {
         final Cigar cigar = make();
-        return Triple.of(cigar, getLeadingDeletionBasesRemoved(), getTrailingDeletionBasesRemoved());
+        return new Result(cigar, getLeadingDeletionBasesRemoved(), getTrailingDeletionBasesRemoved());
+    }
+
+    public static final class Result {
+        private Cigar cigar;
+        private final int leadingDeletionBasesRemoved;
+        private final int trailingDeletionBasesRemoved;
+
+        public Result(final Cigar cigar, final int leadingDeletionBasesRemoved, final int trailingDeletionBasesRemoved) {
+            this.cigar = cigar;
+            this.leadingDeletionBasesRemoved = leadingDeletionBasesRemoved;
+            this.trailingDeletionBasesRemoved = trailingDeletionBasesRemoved;
+        }
+
+        public Cigar getCigar() {
+            return cigar;
+        }
+
+        public int getLeadingDeletionBasesRemoved() {
+            return leadingDeletionBasesRemoved;
+        }
+
+        public int getTrailingDeletionBasesRemoved() {
+            return trailingDeletionBasesRemoved;
+        }
     }
 }
