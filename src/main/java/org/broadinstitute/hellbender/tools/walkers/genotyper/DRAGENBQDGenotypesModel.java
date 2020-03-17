@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingEngine;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
@@ -88,7 +89,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 
             ////TODO BIG GIANT TODO, THIS IS WRONG!!!! READS WITH INDELS ARE GOING TO BE SORTED INCORRECTLY HERE!!!!!!!!!!!! NEED TO ROLL MY OWN CLIPPING MANAGING CODE.......
             for (int j = 0; j < readsForSample.size(); j++) {
-                final GATKRead readForSample = readsForSample.get(j);
+                final GATKRead readForSample = ReadClipper.revertSoftClippedBases(readsForSample.get(j));
                 final Pair<Integer, Boolean> baseOffsetForRead = ReadUtils.getReadCoordinateForReferenceCoordinate(readForSample, variantOffset, true);
                 final int indexForSnp = readForSample.getBaseQualityCount() > baseOffsetForRead.getLeft() ?  baseOffsetForRead.getLeft() : -1;
 
@@ -101,7 +102,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             //TODO unsilly this
             //TODO marking this with -1s is silly and probably not the right answer
             for (int j = 0; j < hmmFilteredReadsForSample.size(); j++) {
-                final GATKRead filteredReadForSample = hmmFilteredReadsForSample.get(j);
+                final GATKRead filteredReadForSample = ReadClipper.revertSoftClippedBases(hmmFilteredReadsForSample.get(j));
                 final Pair<Integer, Boolean> baseOffsetForRead = ReadUtils.getReadCoordinateForReferenceCoordinate(filteredReadForSample, variantOffset, true);
                 final int indexForSnp = filteredReadForSample.getBaseQualityCount() > baseOffsetForRead.getLeft() ?  baseOffsetForRead.getLeft() : -1; //This is fixing a horrible off by one bug in the above method, this shoulld be fixed but I don't want to deal with the offtarget effects here
 
@@ -125,9 +126,9 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             // this is the data array for the read liklihoods without any trouble
             final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(sampleIndex));
             final double[] ployidyModelGenotypeLikelihoods = likelihoodsCalculator.rawGenotypeLikelihoods(sampleLikelihoods);
-
-            System.out.println("Genotyping model results for alleles before being modified");
-            System.out.println(Arrays.toString(ployidyModelGenotypeLikelihoods));
+//
+//            System.out.println("Genotyping model results for alleles before being modified");
+//            System.out.println(Arrays.toString(ployidyModelGenotypeLikelihoods));
 
             // TODO these must be instantiated as something real
             double[] BQDCallResults = null;
@@ -137,13 +138,16 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
                 double forwardHomopolymerAdjustment = FRDBQDUtils.computeForwardHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent);
                 double reverseHomopolymerAdjustment = FRDBQDUtils.computeReverseHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent);
                 BQDCallResults = likelihoodsCalculator.calculateBQDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment, calculators);
-                System.out.println("Genotyping model results for genotypes given BQD results");
-                System.out.println(Arrays.toString(BQDCallResults));
+//                System.out.println("Genotyping model results for genotypes given BQD results");
+//                System.out.println(Arrays.toString(BQDCallResults));
             }
             if (computeFRD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
-//                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment);
-                System.out.println("Genotyping model results for genotypes given FRD results");
-                System.out.println(Arrays.toString(FRDCallResults));
+//                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods,
+//                        strandForward.stream().filter(r -> r.getIndexInLikelihoodsObject() != -1).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
+//                        strandReverse.stream().filter(r -> r.getIndexInLikelihoodsObject() != -1).collect(Collectors.toList()),
+//                        34.77);
+//                System.out.println("Genotyping model results for genotypes given FRD results");
+//                System.out.println(Arrays.toString(FRDCallResults));
             }
 
             //make synthesized likelihoods object (NOTE that we can do this since for invalid model GT fields we simply infinity out the result in the array)
@@ -191,6 +195,9 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
         final int unclippedEnd;
         final int indexInLikelihoodsObject;
 
+        // Transient value used to store thresholds for FRD
+       double phredPFValue = 0;
+
 
         public DragenReadContainer(final GATKRead underlyingRead, final int offsetIntoReadForBaseQuality, final int unclippedEnd, final int indexInLikelihoodsObject) {
             this.underlyingRead = underlyingRead;
@@ -213,6 +220,18 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 
         public int getBaseQuality() {
             return underlyingRead.getBaseQuality(offsetIntoReadForBaseQuality);
+        }
+
+        public int getMappingQuality() {
+            return underlyingRead.getMappingQuality();
+        }
+
+        public double getPhredPFValue() {
+            return phredPFValue;
+        }
+
+        public void setPhredPFValue(double phredPFValue) {
+            this.phredPFValue = phredPFValue;
         }
 
         @Override

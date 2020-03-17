@@ -375,7 +375,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "--transform-dragen-mapping-quality",
                 "--reference", "/Users/emeryj/hellbender/references/human_g1k_v37.fasta",
                 "--disable-read-filter", "MappingQualityAvailableReadFilter",
-                "--min-base-quality-score", "1"
+//                "--min-base-quality-score", "1"
+                "--soft-clip-low-quality-ends"
         };
         runCommandLine(args);
 

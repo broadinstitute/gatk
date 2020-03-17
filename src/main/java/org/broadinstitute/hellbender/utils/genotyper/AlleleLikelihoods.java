@@ -12,8 +12,10 @@ import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
 import java.util.function.Function;
@@ -758,7 +760,8 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             final int sampleEvidenceCount = sampleEvidence.size();
             buffer.ensureCapacity(sampleEvidenceCount);
             for (int r = 0; r < sampleEvidenceCount; r++) {
-                if (sampleEvidence.get(r).overlaps(overlap)) {
+                //TODO this is bad and should be fixed?
+                if (ReadClipper.revertSoftClippedBases((GATKRead) sampleEvidence.get(r)).overlaps(overlap)) {
                     buffer.add(r);
                 }
             }
