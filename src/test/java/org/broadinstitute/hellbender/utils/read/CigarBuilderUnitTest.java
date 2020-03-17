@@ -123,11 +123,11 @@ public class CigarBuilderUnitTest {
     @DataProvider(name = "indel_sandwich")
     public Object[][] indelSandwich() {
         return new Object[][] {
-                {Arrays.asList("10M", "10I", "10D", "10M"), "10M10I10D10M"},
-                {Arrays.asList("10M", "10D", "10I", "10M"), "10M10I10D10M"},
-                {Arrays.asList("10M", "10I", "10D", "10I", "10M"), "10M20I10D10M"},
-                {Arrays.asList("10M", "10I", "10D", "10I", "10D", "10I", "10M"), "10M30I20D10M"},
-                {Arrays.asList("10M", "10I", "10D", "10I", "10M", "10D", "10I", "10M"), "10M20I10D10M10I10D10M"},
+                {Arrays.asList("10M", "10I", "10D", "10M"), "10M10D10I10M"},
+                {Arrays.asList("10M", "10D", "10I", "10M"), "10M10D10I10M"},
+                {Arrays.asList("10M", "10I", "10D", "10I", "10M"), "10M10D20I10M"},
+                {Arrays.asList("10M", "10I", "10D", "10I", "10D", "10I", "10M"), "10M20D30I10M"},
+                {Arrays.asList("10M", "10I", "10D", "10I", "10M", "10D", "10I", "10M"), "10M10D20I10M10D10I10M"},
 
                 //does the indel sandwich logic interfere with removing leading/trailing deletions
                 {Arrays.asList("10D", "10I", "10M"), "10I10M"},
