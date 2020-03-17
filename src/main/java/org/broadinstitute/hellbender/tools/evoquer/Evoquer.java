@@ -203,6 +203,18 @@ public class Evoquer extends GATKTool {
             optional = true)
     private boolean printDebugInformation = false;
 
+    @Argument(
+            fullName = "vqslog-SNP-threshold",
+            doc = "The minimum value required for a SNP to pass.",
+            optional = true)
+    private double vqsLodSNPThreshold = 0.0;
+
+    @Argument(
+            fullName = "vqslog-INDEL-threshold",
+            doc = "The minimum value required for an INDEL to pass.",
+            optional = true)
+    private double vqsLodINDELThreshold = 0.0;
+
     private VariantContextWriter vcfWriter = null;
     private EvoquerEngine evoquerEngine;
     private boolean precomputedResultsMode;
@@ -287,6 +299,8 @@ public class Evoquer extends GATKTool {
                     keepAllSitesInGnarlyGenotyper,
                     runQueryInBatchMode,
                     printDebugInformation,
+                    vqsLodSNPThreshold,
+                    vqsLodINDELThreshold,
                     progressMeter);
         } else if ( precomputedQueryResultsFile != null && sampleListFile != null ) {
             precomputedResultsMode = true;
@@ -304,6 +318,8 @@ public class Evoquer extends GATKTool {
                     disableGnarlyGenotyper,
                     keepAllSitesInGnarlyGenotyper,
                     printDebugInformation,
+                    vqsLodSNPThreshold,
+                    vqsLodINDELThreshold,
                     progressMeter);
         } else {
             throw new UserException("You must either specify both --project-id and --dataset-map, " +

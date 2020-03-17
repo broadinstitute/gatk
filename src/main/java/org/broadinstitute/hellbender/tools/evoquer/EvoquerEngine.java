@@ -4,6 +4,7 @@ import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+import com.google.errorprone.annotations.Var;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -23,11 +24,13 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StrandBiasTest;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper.GnarlyGenotyperEngine;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -131,6 +134,9 @@ class EvoquerEngine {
 
     private final boolean printDebugInformation;
 
+    private double vqsLodSNPThreshold = 0.0;
+    private double vqsLodINDELThreshold = 0.0;
+
     private final ProgressMeter progressMeter;
 
     private int totalNumberOfVariants = 0;
@@ -157,6 +163,8 @@ class EvoquerEngine {
                    final boolean keepAllSitesInGnarlyGenotyper,
                    final boolean runQueryInBatchMode,
                    final boolean printDebugInformation,
+                   final double vqsLodSNPThreshold,
+                   final double vqsLodINDELThreshold,
                    final ProgressMeter progressMeter ) {
 
         // We were given a dataset map, so we're going to do live queries against BigQuery
@@ -179,6 +187,8 @@ class EvoquerEngine {
         this.enableVariantAnnotator = enableVariantAnnotator;
         this.runQueryInBatchMode = runQueryInBatchMode;
         this.printDebugInformation = printDebugInformation;
+        this.vqsLodSNPThreshold = vqsLodSNPThreshold;
+        this.vqsLodINDELThreshold = vqsLodINDELThreshold;
         this.progressMeter = progressMeter;
 
         final Map<String, String> tmpContigToPositionTableMap = new HashMap<>();
@@ -216,6 +226,8 @@ class EvoquerEngine {
                    final boolean disableGnarlyGenotyper,
                    final boolean keepAllSitesInGnarlyGenotyper,
                    final boolean printDebugInformation,
+                   final double vqsLodSNPThreshold,
+                   final double vqsLodINDELThreshold,
                    final ProgressMeter progressMeter ) {
 
         // We weren't given a dataset map, so we're not going to do any live queries against BigQuery,
@@ -235,6 +247,8 @@ class EvoquerEngine {
         this.disableGnarlyGenotyper = disableGnarlyGenotyper;
         this.enableVariantAnnotator = false;
         this.printDebugInformation = printDebugInformation;
+        this.vqsLodSNPThreshold = vqsLodSNPThreshold;
+        this.vqsLodINDELThreshold = vqsLodINDELThreshold;
         this.progressMeter = progressMeter;
 
         this.projectID = null;
@@ -403,10 +417,10 @@ class EvoquerEngine {
 
         // TODO: Temporary.  We don't really want these as FORMAT fields,
         headerLines.add(
-                new VCFFormatHeaderLine(AS_VQS_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, the log odds of being a true variant versus being false under the trained gaussian mixture model")
+                new VCFInfoHeaderLine(AS_VQS_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, the log odds of being a true variant versus being false under the trained gaussian mixture model")
         );
         headerLines.add(
-                new VCFFormatHeaderLine("YNG_STATUS", VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, status of the YNG filter")
+                new VCFInfoHeaderLine(AS_YNG_STATUS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, status of the YNG filter")
         );
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VARIANT_DEPTH_KEY));
@@ -427,12 +441,10 @@ class EvoquerEngine {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
 
         // TODO: There m ust be a more appropriate constant to use for these
-        headerLines.add(
-            new VCFFilterHeaderLine(PASSES_FILTERS_v4, "PASSING")
-        );
-        headerLines.add(
-                new VCFInfoHeaderLine("YNG_STATUS", VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, status from the YNG table")
-        );
+        headerLines.add(new VCFFilterHeaderLine(PASSES_FILTERS_v4, "PASSING"));
+        headerLines.add(new VCFFilterHeaderLine("NAY", "Site is Nay in the YNG table"));
+        headerLines.add(new VCFFilterHeaderLine("VQSRTranchSNP", "Site fails to exceed the SNP tranch threshold"));
+        headerLines.add(new VCFFilterHeaderLine("VQSRTrachINDEL", "Site fails to exceel the INDEL tranch threshold"));
 
         return headerLines;
     }
@@ -700,6 +712,9 @@ class EvoquerEngine {
         final Allele refAllele = Allele.create(refSource.queryAndPrefetch(contig, currentPosition, currentPosition).getBaseString(), true);
         int numRecordsAtPosition = 0;
 
+        final HashMap<Allele, HashMap<Allele, Double>> vqsLodMap = new HashMap<>();
+        final HashMap<Allele, HashMap<Allele, String>> yngMap = new HashMap<>();
+
         for ( final GenericRecord sampleRecord : sampleRecordsAtPosition ) {
             final String sampleName = sampleRecord.get(SAMPLE_FIELD_NAME).toString();
             currentPositionSamplesSeen.add(sampleName);
@@ -712,7 +727,7 @@ class EvoquerEngine {
             switch (sampleRecord.get(STATE_FIELD_NAME).toString()) {
                 case "v":   // Variant
                     ++totalNumberOfVariants;
-                    unmergedCalls.add(createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName));
+                    unmergedCalls.add(createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName, vqsLodMap, yngMap));
                     currentPositionHasVariant = true;
                     break;
                 case "0":   // Non Variant Block with GQ < 10
@@ -751,7 +766,7 @@ class EvoquerEngine {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele);
+        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele, vqsLodMap, yngMap);
     }
 
     private void validateSchema(final Set<String> columnNames) {
@@ -763,7 +778,8 @@ class EvoquerEngine {
         }
     }
 
-    private VariantContext createVariantContextFromSampleRecord(final GenericRecord sampleRecord, final Set<String> columnNames, final String contig, final long startPosition, final String sample) {
+    // vqsLogMap and yngMap are in/out parameters for this method. i.e. they are modified by this method
+    private VariantContext createVariantContextFromSampleRecord(final GenericRecord sampleRecord, final Set<String> columnNames, final String contig, final long startPosition, final String sample, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {
         final VariantContextBuilder builder = new VariantContextBuilder();
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
 
@@ -771,14 +787,20 @@ class EvoquerEngine {
         builder.start(startPosition);
 
         final List<Allele> alleles = new ArrayList<>();
-        alleles.add(Allele.create(sampleRecord.get(REF_ALLELE_FIELD_NAME).toString(), true));
-        Arrays.stream(sampleRecord.get(ALT_ALLELE_FIELD_NAME).toString().split(MULTIVALUE_FIELD_DELIMITER))
-                .forEach(altAllele -> alleles.add(Allele.create(altAllele, false)));
+        Allele ref = Allele.create(sampleRecord.get(REF_ALLELE_FIELD_NAME).toString(), true);
+        alleles.add(ref);
+        List<Allele> altAlleles = Arrays.stream(sampleRecord.get(ALT_ALLELE_FIELD_NAME).toString().split(MULTIVALUE_FIELD_DELIMITER))
+                .map(altAllele -> Allele.create(altAllele, false)).collect(Collectors.toList());
+        alleles.addAll(altAlleles);
         builder.alleles(alleles);
 
         builder.stop(startPosition + alleles.get(0).length() - 1);
 
         genotypeBuilder.name(sample);
+
+        vqsLodMap.putIfAbsent(ref, new HashMap<>());
+        yngMap.putIfAbsent(ref, new HashMap<>());
+
 
         for ( final String columnName : columnNames ) {
             if ( REQUIRED_FIELDS.contains(columnName) || columnName.equals(POSITION_FIELD_NAME) ) {
@@ -812,18 +834,14 @@ class EvoquerEngine {
                 } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS) ) {
                     genotypeBuilder.AD(Arrays.stream(columnValueString.split(MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
                 } else if ( genotypeAttributeName.equals(GATKVCFConstants.AS_VQS_LOD_KEY) ) {
-
-                    // TODO: must be a better way to get these back up to the INFO field level
-                    genotypeBuilder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY,
-                            Arrays.stream(columnValueString.split(MULTIVALUE_FIELD_DELIMITER)).mapToDouble(Double::parseDouble).toArray()
-                    );
+                    HashMap<Allele, Double> innerVqslodMap = vqsLodMap.get(ref);
+                    double[] vqslodValues = Arrays.stream(columnValueString.split(MULTIVALUE_FIELD_DELIMITER)).mapToDouble(Double::parseDouble).toArray();
+                    // should we use put or putIfAbsent - this may insert the same value multiple times. same with YNG below
+                    new IndexRange(0, vqslodValues.length).forEach(i -> innerVqslodMap.put(altAlleles.get(i), vqslodValues[i]));
                 } else if ( genotypeAttributeName.equals("YNG_STATUS") ) {
-
-                    // TODO: must be a better way to get these back up to the INFO field level
-                    genotypeBuilder.attribute("YNG_STATUS",
-                            columnValueString.split(MULTIVALUE_FIELD_DELIMITER)
-                    );
-
+                    HashMap<Allele, String> innerYNGMap = yngMap.get(ref);
+                    String[] yngValues = columnValueString.split(MULTIVALUE_FIELD_DELIMITER);
+                    new IndexRange(0, yngValues.length).forEach(i -> innerYNGMap.put(altAlleles.get(i), yngValues[i]));
                 } else {
                     genotypeBuilder.attribute(genotypeAttributeName, columnValueString);
                 }
@@ -867,7 +885,7 @@ class EvoquerEngine {
         return builder.make();
     }
 
-    private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls, final Set<String> currentVariantSamplesSeen, final boolean currentPositionHasVariant, final String contig, final long start, final Allele refAllele) {
+    private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls, final Set<String> currentVariantSamplesSeen, final boolean currentPositionHasVariant, final String contig, final long start, final Allele refAllele, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {
         // If there were no variants at this site, we don't emit a record and there's nothing to do here
         if ( ! currentPositionHasVariant ) {
             return;
@@ -885,81 +903,38 @@ class EvoquerEngine {
         final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], disableGnarlyGenotyper, false, true);
 
 
-        // TODO: this is all a big mess, trying to pull YNG up to the INFO level and
-        // compute an appropriate FILTER status
-        Map<Allele, Double> vqsLodMap = new HashMap<>();
-        Map<Allele, String> yngStatusMap = new HashMap<>();
-        for (Genotype g : mergedVC.getGenotypes()) {
-            for (int i=1; i<g.getAlleles().size(); i++) {  // skip reference  by starting at 1?
-                Allele a = g.getAllele(i);
-
-                if (a.isNonReference()) {
-                    if (!vqsLodMap.containsKey(a)) {
-                        double[] vqslods = (double[]) g.getExtendedAttribute(GATKVCFConstants.AS_VQS_LOD_KEY);
-                        if (vqslods != null) {
-                            vqsLodMap.put(a, vqslods[i - 1]); // reference  allele is first, shift by one... but this feels icky
-                        }
-                    }
-
-                    if (!yngStatusMap.containsKey(a)) {
-                        String[] yngStatuses = (String[]) g.getExtendedAttribute("YNG_STATUS");
-                        if (yngStatuses != null) {
-                            yngStatusMap.put(a, yngStatuses[i - 1]); // reference  allele is first, shift by one... but this feels icky
-                        }
-                    }
-
-                    // TODO: remove this from the genotypes
-//                    g.getExtendedAttributes().remove(GATKVCFConstants.AS_VQS_LOD_KEY);
-//                    g.getExtendedAttributes().remove("YNG_STATUS");
-
-                }
-
-//                if (!filterMap.containsKey(a)) {
-//                    String[] vqslods = (String[]) g.getExtendedAttribute(GATKVCFConstants.AS_VQS_LOD_KEY);
-//                    vqsLodMap.put(a, vqslods[i]);
-//                }
-
-            }
-        }
-
-        Double[] values = new Double[ mergedVC.getAlternateAlleles().size() ];
-        String[] yngValues = new String[ mergedVC.getAlternateAlleles().size() ];
-
-        for (int i=0; i<mergedVC.getAlternateAlleles().size(); i++) {
-            Allele a = mergedVC.getAlternateAllele(i);
-
-            if (vqsLodMap.containsKey(a)) {
-                values[i] = vqsLodMap.get(a);
-            }
-            if (yngStatusMap.containsKey(a)) {
-                yngValues[i] = yngStatusMap.get(a);
-            }
-        }
-
-        // TODO: CALCULATE FILTER STATUS based on YNG Status, VQSLOD and appropriate threshold (SNP vs INDEL)
-
-        String filter = null;
-
-        // 1. if there are any Yays, the site is PASS
-        if (yngStatusMap.values().contains("Y")) {
-            filter = "PASS";
-        }
-
-        // 2. if ANY of the VQS lods pass the specific threshold, the site is PASS
-
-        // 3. otherwise, it's failing
+        LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap);
+        LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap);
 
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
-        builder.getAttributes().put(GATKVCFConstants.AS_VQS_LOD_KEY, values );
-        builder.getAttributes().put("YNG_STATUS", yngValues );
-        if (filter != null) {
-            builder.filter(filter);
+        builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, remappedVqsLodMap.values() );
+        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, remappedYngMap.values() );
+
+        int refLength = mergedVC.getReference().length();
+
+        // TODO: should we use the FilterVariantTranches tool instead of reimplementing it ourselves???
+
+        // if there are any Yays, the site is PASS
+        if (remappedYngMap.values().contains("Y")) {
+            builder.filter("PASS");
+        } else if (remappedYngMap.values().contains("N")) {
+            // TODO: do we want to remove this variant?
+              builder.filter("NAY");
+        } else {
+            if (remappedYngMap.values().contains("G")) {
+                Optional<Double> snpMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue()).max(Double::compareTo);
+                if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
+                    // TODO: add in sensitivities
+                    builder.filter("VQSRTranchSNP");
+                }
+                Optional<Double> indelMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue()).max(Double::compareTo);
+                if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
+                    // TODO: add in sensitivities
+                    builder.filter("VQSRTrancheINDEL");
+                }
+            }
+            // TODO: what if there is nothing in the YNG table?
         }
-
-        // TODO: end of above mess
-
-
-
 
         final VariantContext filteredVC = builder.make();
 
@@ -979,6 +954,32 @@ class EvoquerEngine {
             logger.warn(String.format("GnarlyGenotyper returned null for site %s:%s", contig, start));
             progressMeter.update(mergedVC);
         }
+    }
+
+    private <T> LinkedHashMap<Allele, T> remapAllelesInMap(VariantContext vc, HashMap<Allele, HashMap<Allele, T>> datamap) {
+        // get the extended reference
+        Allele ref = vc.getReference();
+
+        // create ordered results map
+        LinkedHashMap<Allele, T> results = new LinkedHashMap<>();
+        vc.getAlternateAlleles().stream().forEachOrdered(allele -> results.put(allele, null));
+
+        List<Allele> newAlleles = new ArrayList<>();
+        datamap.entrySet().stream().forEachOrdered(entry -> {
+            if (entry.getKey() == ref) {
+                // reorder
+                entry.getValue().entrySet().stream().forEach(altMapEntry -> results.put(altMapEntry.getKey(), altMapEntry.getValue()));
+            } else {
+                // remap
+                List<Allele> allAlleles = new ArrayList<>();
+                allAlleles.add(entry.getKey());
+                allAlleles.addAll(entry.getValue().keySet());
+                VariantContextBuilder vcb = new VariantContextBuilder(vc.getSource(), vc.getContig(), vc.getStart(), vc.getEnd(), allAlleles);
+                Map<Allele, Allele> alleleMapping = GATKVariantContextUtils.createAlleleMapping(ref, vcb.make(), newAlleles);
+                alleleMapping.entrySet().stream().forEach(mapped -> results.put(mapped.getValue(), entry.getValue().get(mapped.getKey())));
+            }
+        });
+        return results;
     }
 
     // HACK to deal with malformed allele-specific annotations in our test dataset
