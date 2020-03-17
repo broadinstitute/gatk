@@ -207,13 +207,13 @@ public class Evoquer extends GATKTool {
             fullName = "vqslog-SNP-threshold",
             doc = "The minimum value required for a SNP to pass.",
             optional = true)
-    private double vqsLodSNPThreshold = 0.0;
+    private double vqsLodSNPThreshold = 99.95;
 
     @Argument(
             fullName = "vqslog-INDEL-threshold",
             doc = "The minimum value required for an INDEL to pass.",
             optional = true)
-    private double vqsLodINDELThreshold = 0.0;
+    private double vqsLodINDELThreshold = 99.4;
 
     private VariantContextWriter vcfWriter = null;
     private EvoquerEngine evoquerEngine;
