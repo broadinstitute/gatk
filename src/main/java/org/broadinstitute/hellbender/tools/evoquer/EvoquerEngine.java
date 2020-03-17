@@ -134,8 +134,8 @@ class EvoquerEngine {
 
     private final boolean printDebugInformation;
 
-    private double vqsLodSNPThreshold = 0.0;
-    private double vqsLodINDELThreshold = 0.0;
+    private double vqsLodSNPThreshold = 0;
+    private double vqsLodINDELThreshold = 0;
 
     private final ProgressMeter progressMeter;
 
@@ -440,11 +440,13 @@ class EvoquerEngine {
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
 
-        // TODO: There m ust be a more appropriate constant to use for these
+        // TODO: There must be a more appropriate constant to use for these
         headerLines.add(new VCFFilterHeaderLine(PASSES_FILTERS_v4, "PASSING"));
+
+        // TODO: fix these
         headerLines.add(new VCFFilterHeaderLine("NAY", "Site is Nay in the YNG table"));
-        headerLines.add(new VCFFilterHeaderLine("VQSRTranchSNP", "Site fails to exceed the SNP tranch threshold"));
-        headerLines.add(new VCFFilterHeaderLine("VQSRTrachINDEL", "Site fails to exceel the INDEL tranch threshold"));
+        headerLines.add(new VCFFilterHeaderLine("VQSRTrancheSNP", "Site fails to exceed the SNP tranch threshold"));
+        headerLines.add(new VCFFilterHeaderLine("VQSRTrancheINDEL", "Site fails to exceel the INDEL tranch threshold"));
 
         return headerLines;
     }
@@ -903,12 +905,12 @@ class EvoquerEngine {
         final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], disableGnarlyGenotyper, false, true);
 
 
-        LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap);
-        LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap);
+        LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap, Double.NaN);
+        LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
-        builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, remappedVqsLodMap.values() );
-        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, remappedYngMap.values() );
+        builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, remappedVqsLodMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
+        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, remappedYngMap.values());
 
         int refLength = mergedVC.getReference().length();
 
@@ -922,12 +924,12 @@ class EvoquerEngine {
               builder.filter("NAY");
         } else {
             if (remappedYngMap.values().contains("G")) {
-                Optional<Double> snpMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue()).max(Double::compareTo);
+                Optional<Double> snpMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
                 if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
                     // TODO: add in sensitivities
-                    builder.filter("VQSRTranchSNP");
+                    builder.filter("VQSRTrancheSNP");
                 }
-                Optional<Double> indelMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue()).max(Double::compareTo);
+                Optional<Double> indelMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
                 if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
                     // TODO: add in sensitivities
                     builder.filter("VQSRTrancheINDEL");
@@ -956,13 +958,13 @@ class EvoquerEngine {
         }
     }
 
-    private <T> LinkedHashMap<Allele, T> remapAllelesInMap(VariantContext vc, HashMap<Allele, HashMap<Allele, T>> datamap) {
+    private <T> LinkedHashMap<Allele, T> remapAllelesInMap(VariantContext vc, HashMap<Allele, HashMap<Allele, T>> datamap, T emptyVal) {
         // get the extended reference
         Allele ref = vc.getReference();
 
         // create ordered results map
         LinkedHashMap<Allele, T> results = new LinkedHashMap<>();
-        vc.getAlternateAlleles().stream().forEachOrdered(allele -> results.put(allele, null));
+        vc.getAlternateAlleles().stream().forEachOrdered(allele -> results.put(allele, emptyVal));
 
         List<Allele> newAlleles = new ArrayList<>();
         datamap.entrySet().stream().forEachOrdered(entry -> {
@@ -971,11 +973,13 @@ class EvoquerEngine {
                 entry.getValue().entrySet().stream().forEach(altMapEntry -> results.put(altMapEntry.getKey(), altMapEntry.getValue()));
             } else {
                 // remap
+                int refLength = entry.getKey().length();
                 List<Allele> allAlleles = new ArrayList<>();
                 allAlleles.add(entry.getKey());
                 allAlleles.addAll(entry.getValue().keySet());
-                VariantContextBuilder vcb = new VariantContextBuilder(vc.getSource(), vc.getContig(), vc.getStart(), vc.getEnd(), allAlleles);
-                Map<Allele, Allele> alleleMapping = GATKVariantContextUtils.createAlleleMapping(ref, vcb.make(), newAlleles);
+                VariantContextBuilder vcb = new VariantContextBuilder(vc.getSource(), vc.getContig(), vc.getStart(), vc.getStart()+refLength-1, allAlleles);
+                VariantContext newvc = vcb.make();
+                Map<Allele, Allele> alleleMapping = GATKVariantContextUtils.createAlleleMapping(ref, newvc, newAlleles);
                 alleleMapping.entrySet().stream().forEach(mapped -> results.put(mapped.getValue(), entry.getValue().get(mapped.getKey())));
             }
         });
