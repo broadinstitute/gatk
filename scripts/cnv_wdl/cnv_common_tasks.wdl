@@ -34,7 +34,6 @@ task PreprocessIntervals {
         gatk --java-options "-Xmx~{command_mem_mb}m" PreprocessIntervals \
             ~{"-L " + intervals} \
             ~{"-XL " + blacklist_intervals} \
-            --sequence-dictionary ~{ref_fasta_dict} \
             --reference ~{ref_fasta} \
             --padding ~{default="250" padding} \
             --bin-length ~{default="1000" bin_length} \
