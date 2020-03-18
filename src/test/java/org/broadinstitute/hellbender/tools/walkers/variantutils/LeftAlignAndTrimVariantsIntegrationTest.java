@@ -83,7 +83,7 @@ public class LeftAlignAndTrimVariantsIntegrationTest extends CommandLineProgramT
                         + " --" + LeftAlignAndTrimVariants.KEEP_ORIGINAL_AC_LONG_NAME,
                 Collections.singletonList(expectedOutputFile.toString())
         );
-        spec.executeTest("testLeftAlignment--" + expectedOutputFile.toString(), this);
+        spec.executeTest("testSplitAllelesWithASFilters--" + expectedOutputFile.toString(), this);
 
     }
 }

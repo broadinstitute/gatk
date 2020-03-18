@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.TwoPassVariantWalker;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
@@ -101,25 +102,17 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
         return GATKVCFConstants.LOW_HET_FILTER_NAME;
     }
 
-    public List<Integer> getData(Genotype g) {
-        return Arrays.stream(g.getAD()).boxed().collect(Collectors.toList());
+    public List<Double> getData(Genotype g) {
+        return Arrays.stream(VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, Double.MAX_VALUE)).boxed().collect(Collectors.toList());
     }
 
     protected boolean isSiteLowHeteroplasmy(VariantContext v) {
-        return v.getGenotypes().stream().map(g -> lowestAF(g)).min(Double::compareTo).orElse(0.0) < lowHetThreshold;
+        return !(v.getGenotypes().stream().flatMap(g -> getData(g).stream().filter(x -> x < lowHetThreshold)).collect(Collectors.toList()).isEmpty());
     }
 
     protected List<Boolean> areAllelesArtifacts(final VariantContext vc) {
-        VariantContextBuilder vcb = new VariantContextBuilder(vc);
-        LinkedHashMap<Allele, List<Integer>> dataByAllele = Mutect2AlleleFilter.getDataByAllele(vc, Genotype::hasAD, this::getData, null);
-        Integer total = dataByAllele.values().stream().map(alleleCounts -> alleleCounts.stream().max(Integer::compareTo).orElse(0)).mapToInt(Integer::intValue).sum();
-        return dataByAllele.entrySet().stream()
-                .filter(entry -> !vc.getReference().equals(entry.getKey()))
-                .map(entry -> (entry.getValue().stream().max(Integer::compareTo).orElse(0) / (double) total) < lowHetThreshold).collect(Collectors.toList());
-    }
-
-    protected double lowestAF(Genotype g) {
-        List<Integer> depths = getData(g);
-        return Collections.min(depths.subList(1, depths.size())) / (double) depths.stream().mapToInt(Integer::intValue).sum();
+        LinkedHashMap<Allele, List<Double>> dataByAllele = Mutect2AlleleFilter.getAltDataByAllele(vc, g -> g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY), this::getData, null);
+        return dataByAllele.values().stream()
+                .map(afList -> afList.stream().max(Double::compareTo).orElse(0.0) < lowHetThreshold).collect(Collectors.toList());
     }
 }
