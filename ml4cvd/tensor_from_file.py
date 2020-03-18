@@ -423,9 +423,7 @@ def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False
                         tensor[:, tm.channel_map[k]] = np.roll(data, roll)
                     else:
                         tensor[:, tm.channel_map[k]] = data
-        if population_normalize is None:
-            tm.normalization = {'zero_mean_std1': 1.0}
-        else:
+        if population_normalize:
             tensor /= population_normalize
         if warp:
             tensor = _warp_ecg(tensor)
@@ -446,36 +444,36 @@ TMAPS['ecg_rest_raw_100'] = TensorMap('ecg_rest_raw_100', Interpretation.CONTINU
                                       channel_map=ECG_REST_LEADS)
 
 TMAPS['ecg_rest'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-                              channel_map=ECG_REST_LEADS)
+                              channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0})
 TMAPS['ecg_rest_2500_ukb'] = TensorMap('ecg_rest_2500', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
-                                       tensor_from_file=_make_ecg_rest(downsample_steps=2))
+                                       tensor_from_file=_make_ecg_rest(downsample_steps=2), normalization={'zero_mean_std1': 1.0})
 
 TMAPS['ecg_rest_stft'] = TensorMap('ecg_rest_stft', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
-                                   tensor_from_file=_make_ecg_rest(short_time_nperseg=64, short_time_noverlap=32))
+                                   tensor_from_file=_make_ecg_rest(short_time_nperseg=64, short_time_noverlap=32), normalization={'zero_mean_std1': 1.0})
 TMAPS['ecg_rest_stft_512'] = TensorMap('ecg_rest_stft_512', shape=(257, 314, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
-                                       tensor_from_file=_make_ecg_rest(short_time_nperseg=512, short_time_noverlap=496))
+                                       tensor_from_file=_make_ecg_rest(short_time_nperseg=512, short_time_noverlap=496), normalization={'zero_mean_std1': 1.0})
 
 TMAPS['ecg_rest'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-                              channel_map=ECG_REST_LEADS)
+                              channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0})
 
 TMAPS['ecg_rest_stack'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(600, 12, 8), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-                                    channel_map=ECG_REST_LEADS)
+                                    channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0})
 
 TMAPS['ecg_rest_median_raw'] = TensorMap('median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
                                          metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS)
 
 TMAPS['ecg_rest_median'] = TensorMap('median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
-                                     metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS)
+                                     metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization={'zero_mean_std1': 1.0})
 
 TMAPS['ecg_rest_median_stack'] = TensorMap('median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12, 1), activation='linear', tensor_from_file=_make_ecg_rest(),
                                            metrics=['mse', 'mae', 'logcosh'], loss='logcosh', loss_weight=1.0,
-                                           channel_map=ECG_REST_MEDIAN_LEADS)
+                                           channel_map=ECG_REST_MEDIAN_LEADS, normalization={'zero_mean_std1': 1.0})
 
 TMAPS['ecg_median_1lead'] = TensorMap('median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 1), loss='logcosh', loss_weight=10.0, tensor_from_file=_make_ecg_rest(),
-                                      activation='linear', metrics=['mse', 'mae', 'logcosh'], channel_map={'lead': 0})
+                                      activation='linear', metrics=['mse', 'mae', 'logcosh'], channel_map={'lead': 0}, normalization={'zero_mean_std1': 1.0})
 
 TMAPS['ecg_rest_1lead'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(600, 8), path_prefix='ukb_ecg_rest', channel_map={'lead': 0}, tensor_from_file=_make_ecg_rest(),
-                                    dependent_map=TMAPS['ecg_median_1lead'])
+                                    dependent_map=TMAPS['ecg_median_1lead'], normalization={'zero_mean_std1': 1.0})
 
 
 def _get_lead_cm(length):
@@ -489,10 +487,11 @@ def _get_lead_cm(length):
 
 
 TMAPS['ecg_median_1lead_categorical'] = TensorMap('median',  Interpretation.CATEGORICAL, shape=(600, 32), activation='softmax', tensor_from_file=_make_ecg_rest(),
-                                                  channel_map=_get_lead_cm(32)[0],
+                                                  channel_map=_get_lead_cm(32)[0], normalization={'zero_mean_std1': 1.0},
                                                   loss=weighted_crossentropy(np.array(_get_lead_cm(32)[1]), 'ecg_median_categorical'))
 
 TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+                                                normalization={'zero_mean_std1': 1.0},
                                                 channel_map={'window0': 0, 'window1': 1, 'window2': 2, 'window3': 3,
                                                              'window4': 4, 'window5': 5, 'window6': 6, 'window7': 7},
                                                 dependent_map=TMAPS['ecg_median_1lead_categorical'])
