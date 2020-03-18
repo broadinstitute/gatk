@@ -363,6 +363,20 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testBQDLocalchr15InDebugger() {
+        final File output = createTempFile("test", ".vcf");
+
+        final String[] args = {
+                "-I", "/Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/G96832.NA12878.chr15.bam",
+                "-O", output.getAbsolutePath(),
+                "-R", "/Users/emeryj/hellbender/references/Homo_sapiens_assembly19.fasta",
+                "-L", "15"
+        };
+
+        runCommandLine(args);
+    }
+
+    @Test
     public void testBQDOnThisFileInDebugger() {
         final File output = createTempFile("test", ".vcf");
 

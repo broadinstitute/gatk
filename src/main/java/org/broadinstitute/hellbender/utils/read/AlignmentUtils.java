@@ -108,18 +108,24 @@ public final class AlignmentUtils {
 
         // the SW Cigar does not contain the hard clips of the original read
         final Cigar originalCigar = originalRead.getCigar();
-        final CigarElement firstElement = originalCigar.getFirstCigarElement();
-        final CigarElement lastElement = originalCigar.getLastCigarElement();
+        int firstIndex = 0;
+        int lastIndex = originalCigar.numCigarElements() - 1;
+        CigarElement firstElement = originalCigar.getFirstCigarElement();
+        CigarElement lastElement = originalCigar.getLastCigarElement();
         final List<CigarElement> readToRefCigarElementsWithHardClips = new ArrayList<>();
         int softClippedBases = 0;
-        if (firstElement.getOperator().isClipping()) {
+        while (firstElement.getOperator().isClipping() && firstIndex != lastIndex) {
             if (firstElement.getOperator()== CigarOperator.SOFT_CLIP) {softClippedBases+= firstElement.getLength();}
             readToRefCigarElementsWithHardClips.add(firstElement);
+            // TODO add a test for this behavior on soft and hardclipped reads
+            firstElement = originalCigar.getCigarElement(++firstIndex);
         }
         readToRefCigarElementsWithHardClips.addAll(readToRefCigar.getCigarElements());
-        if (lastElement.getOperator().isClipping()) {
+        while (lastElement.getOperator().isClipping() && firstIndex != lastIndex)  {
             if (lastElement.getOperator()== CigarOperator.SOFT_CLIP) {softClippedBases+= lastElement.getLength();}
             readToRefCigarElementsWithHardClips.add(lastElement);
+            // TODO add a test for this behavior on soft and hardclipped reads
+            lastElement = originalCigar.getCigarElement(--lastIndex);
         }
 
         read.setCigar(new Cigar(readToRefCigarElementsWithHardClips));
