@@ -17,7 +17,7 @@ from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.utils import model_to_dot
-from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda
+from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
@@ -297,7 +297,7 @@ class KLDivergenceLayer(Layer):
     """
     def __init__(self, *args, **kwargs):
         self.is_placeholder = True
-        self.kl_weight = K.variable(1e-5)
+        self.kl_weight = tf.Variable(1e-5, trainable=False)
         super(KLDivergenceLayer, self).__init__(**kwargs)
 
     def call(self, inputs, **kwargs):
@@ -873,8 +873,9 @@ def train_model_from_generators(model: Model,
         image_p = os.path.join(output_folder, run_id, 'architecture_graph_' + run_id + IMAGE_EXT)
         _inspect_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
 
-    history = model.fit(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1, validation_steps=validation_steps,
-                        validation_data=generate_valid, callbacks=_get_callbacks(patience, model_file))
+    history = model.fit(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
+                        validation_steps=validation_steps, validation_data=generate_valid,
+                        callbacks=_get_callbacks(patience, model_file, anneal_max, anneal_shift, anneal_rate))
     generate_train.kill_workers()
     generate_valid.kill_workers()
 
@@ -896,7 +897,7 @@ def _get_callbacks(patience: int, model_file: str,
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1)
     ]
-    if anneal_max and anneal_rate and anneal_shift:
+    if anneal_max is not None and anneal_rate is not None and anneal_shift is not None:
         callbacks.append(AdjustKLLoss(anneal_max, anneal_rate, anneal_shift))
     return callbacks
 

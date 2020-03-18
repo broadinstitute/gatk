@@ -160,7 +160,7 @@ class TensorMapArrayCache:
         self.max_size = max_size
         self.data = {}
         self.row_size = sum(np.zeros(tm.shape, dtype=np.float32).nbytes for tm in set(input_tms + output_tms))
-        self.nrows = min(int(max_size / self.row_size), max_rows)
+        self.nrows = min(int(max_size / self.row_size), max_rows) if self.row_size else 0
         self.autoencode_names: Dict[str, str] = {}
         for tm in input_tms:
             self.data[tm.input_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
@@ -209,7 +209,7 @@ class TensorMapArrayCache:
         return sum(self.files_seen.values())
 
     def average_fill(self):
-        return np.mean(list(self.files_seen.values()) or [0]) / self.nrows
+        return np.mean(list(self.files_seen.values()) or [0]) / self.nrows if self.nrows else 0
 
     def __str__(self):
         hits = f"The cache has had {self.hits} hits."
