@@ -20,7 +20,7 @@ import java.util.ArrayList;
  *
  * <p>
  * Instructions for generating a RefSeq file for use with the RefSeq codec can be found on the documentation guide here
- * <a href="http://www.broadinstitute.org/gatk/guide/article?id=1329">http://www.broadinstitute.org/gatk/guide/article?id=1329</a>
+ * <a href="https://gatkforums.broadinstitute.org/gatk/discussion/1329/where-can-i-get-a-gene-list-in-refseq-format">https://gatkforums.broadinstitute.org/gatk/discussion/1329/where-can-i-get-a-gene-list-in-refseq-format</a>
  * </p>
  *
  * You will need to consult individual walkers for the argument name
