@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-/** Maybe useful, maybe un**/
 public class DuplicateSet {
     public static final String FGBIO_MOLECULAR_IDENTIFIER_TAG = "MI";
     public static final String FGBIO_MI_TAG_DELIMITER = "/";
@@ -58,7 +57,20 @@ public class DuplicateSet {
         moleculeId = id;
     }
 
-    private static int getMoleculeID(final GATKRead read) {
+    /**
+     * Some examples of molecule IDs (MI tag):
+     *
+     * "0/A" (The first molecule in the bam, top (A) strand)
+     * "0/B" (The first molecule in the bam, bottom (B) strand)
+     * "99/A" (100th molecule in the bam, top top (A) strand)
+     *
+     * Top strand is synonymous to "F1R2"
+     * Bottom strand is synonymous to "F2R1"
+     *
+     * Thus only the integer component is relevant for identifying reads that originated from the same molecule.
+     * Should the need arise, we could extend this to distinguish between different strands of the same molecule.
+     */
+    public static int getMoleculeID(final GATKRead read) {
         final String MITag = read.getAttributeAsString(FGBIO_MOLECULAR_IDENTIFIER_TAG);
         return Integer.parseInt(MITag.split(FGBIO_MI_TAG_DELIMITER)[0]);
     }

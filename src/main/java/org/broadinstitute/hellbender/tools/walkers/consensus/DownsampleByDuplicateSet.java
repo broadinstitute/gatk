@@ -73,10 +73,6 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
     }
 
     private boolean filterThisSet(final DuplicateSet duplicateSet){
-        if (duplicateSet.getMoleculeId() == -1){
-            return true;
-        }
-
         if (duplicateSet.getReads().size() % 2 == 1){
             // We only keep reads with mates by default, as that's what fgbio GroupByUMI requires.
             logger.info("Duplicate set that contains an unpaired read discarded: " + duplicateSet.getReads().get(0));

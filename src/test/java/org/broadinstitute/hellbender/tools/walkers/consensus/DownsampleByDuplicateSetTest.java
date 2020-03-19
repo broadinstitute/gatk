@@ -27,57 +27,52 @@ import java.util.stream.Stream;
 import static org.testng.Assert.*;
 
 public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
-    private final String hg19 = "/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta";
-    private final String medium = "/dsde/working/tsato/consensus/tp53/test/bams/medium/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.CTG-TTC.grouped.bam";
-    private final String countScript = "/dsde/working/tsato/consensus/tp53/test/bams/count_MIs.sh";
+    public static final String NA12878_GROUPED = publicTestDir + "org/broadinstitute/hellbender/tools/downsampleByDuplicateSet/NA12878.grouped.bam";
 
     @Test
-    public void testMatesKeptTogether(){
-        final boolean cloud = true;
+    public void testMatesAreTogether(){
+        final boolean cloud = false;
         final File out;
+        // final File out = createTempFile("downsampled", "bam");
         final String input;
+
         if (cloud){
             input = "gs://broad-dsde-methods-takuto/liquid-biopsy/tmp/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.abbrv.bam";
             out = new File("/Users/tsato/workspace/gatk/tmp/cloud.bam");
         } else {
             input = "/Users/tsato/workspace/gatk/debug/march12/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.abbrv.bam";
             out = new File("/Users/tsato/workspace/gatk/tmp/local.bam");
-
-
         }
+
         // final String cloud = "gs://broad-dsde-methods/cromwell-execution-39/SpikeinNA12878/31af0e21-c493-4091-9cc6-8782b83df606/call-GroupCoffee/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.bam";
         final ArgumentsBuilder args = new ArgumentsBuilder()
-                .add("R", hg19)
                 .add("I", input)
                 .add("O", out.getAbsolutePath())
                 .add("DS", "1.0");
         runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
+
+        final ReadsDataSource readsDataSource = new ReadsDataSource(Paths.get(out.getAbsolutePath()));
+        final Iterator<GATKRead> iterator = readsDataSource.iterator();
+        while (iterator.hasNext()){
+            // Make sure that the read and its mate are next to each other in the file
+            final GATKRead read1 = iterator.next();
+            final GATKRead read2 = iterator.next();
+            Assert.assertEquals(read1.getName(), read2.getName());
+        }
     }
 
+    /** When down-sampling rate is 1.0, the input file is returned unchanged **/
     @Test
-    public void testForReal(){
-        final File out = new File("/Users/tsato/Downloads/downsampled.bam");
-        final String cloud = "gs://broad-dsde-methods/cromwell-execution-39/SpikeinNA12878/99a73fe8-b4fa-40d2-a866-0c95dc56162c/call-GroupCoffee/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.bam";
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .add("R", hg19)
-                .add("I", cloud)
-                .add("O", out.getAbsolutePath())
-                .add("DS", "0.5");
-        runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
-    }
-
-    @Test
-    public void testDownsampleMaintainsCounts(){
-         final File out = new File("/dsde/working/tsato/gatk/test.bam");
+    public void testNoDownsampling(){
+        final File out = createTempFile("downasampled", "bam");
         final double downsampleRate = 1.0;
         final ArgumentsBuilder args = new ArgumentsBuilder()
-                .add("R", hg19)
-                .add("I", medium)
+                .add("I", NA12878_GROUPED)
                 .add("DS", Double.toString(downsampleRate))
                 .add("O", out.getAbsolutePath());
         runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
 
-        final ReadsDataSource originalBam = new ReadsDataSource(Paths.get(medium));
+        final ReadsDataSource originalBam = new ReadsDataSource(Paths.get(NA12878_GROUPED));
         final Map<String, MutableInt> originalMoleculeCounts = molecularIDsAndCounts(originalBam);
 
         final ReadsDataSource downsampledBam = new ReadsDataSource(Paths.get(out.getAbsolutePath()));
@@ -89,26 +84,30 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
             Assert.assertTrue(originalCount == downsampledMoleculeCounts.get(originalID).intValue());
         }
     }
+
+    /**
+     * Test that the downsampling rate corresponds to the reduction in the number of duplicates in the output
+     * file up to sampling noise.
+     */
     @Test
     public void testDownsampleFraction(){
-        // final File out = createTempFile("downsampled", "bam");
-        final File out = new File("/dsde/working/tsato/gatk/test.bam");
+        final File out = createTempFile("downasampled", "bam");
         for (double downsampleRate : Arrays.asList(0.1, 0.3, 0.5)){
             final ArgumentsBuilder args = new ArgumentsBuilder()
-                    .add("R", hg19)
-                    .add("I", medium)
+                    .add("I", NA12878_GROUPED)
                     .add("DS", Double.toString(downsampleRate))
                     .add("O", out.getAbsolutePath());
             runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
 
-            final ReadsDataSource originalBam = new ReadsDataSource(Paths.get(medium));
+            final ReadsDataSource originalBam = new ReadsDataSource(Paths.get(NA12878_GROUPED));
             final int originalMoleculeCount = countDuplicateSets(originalBam);
 
             final ReadsDataSource downsampledBam = new ReadsDataSource(Paths.get(out.getAbsolutePath()));
             final int downsampledMoleculeCount = countDuplicateSets(downsampledBam);
 
-            final int noise = 10; // TODO: Can I do better?
-            Assert.assertTrue(Math.abs(downsampleRate * originalMoleculeCount - downsampledMoleculeCount) < noise);
+            final double noise = 2.0;
+            final double deviationFromExpected = Math.abs(downsampleRate * originalMoleculeCount - downsampledMoleculeCount);
+            Assert.assertTrue(deviationFromExpected < noise);
         }
     }
 
@@ -140,9 +139,6 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
                 map.put(molecularID, new MutableInt(0));
             }
         }
-
         return map;
     }
-
-
 }
