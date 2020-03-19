@@ -31,22 +31,9 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
 
     @Test
     public void testMatesAreTogether(){
-        final boolean cloud = false;
-        final File out;
-        // final File out = createTempFile("downsampled", "bam");
-        final String input;
-
-        if (cloud){
-            input = "gs://broad-dsde-methods-takuto/liquid-biopsy/tmp/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.abbrv.bam";
-            out = new File("/Users/tsato/workspace/gatk/tmp/cloud.bam");
-        } else {
-            input = "/Users/tsato/workspace/gatk/debug/march12/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.abbrv.bam";
-            out = new File("/Users/tsato/workspace/gatk/tmp/local.bam");
-        }
-
-        // final String cloud = "gs://broad-dsde-methods/cromwell-execution-39/SpikeinNA12878/31af0e21-c493-4091-9cc6-8782b83df606/call-GroupCoffee/Jonna_Grimsby_A05_denovo_bloodbiopsy_100pct_HD78_rep1.fgbio.groupByUmi.bam";
+        final File out = createTempFile("downsampled", "bam");
         final ArgumentsBuilder args = new ArgumentsBuilder()
-                .add("I", input)
+                .add("I", NA12878_GROUPED)
                 .add("O", out.getAbsolutePath())
                 .add("DS", "1.0");
         runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
