@@ -119,10 +119,10 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
         ArgumentsBuilder cmd = new ArgumentsBuilder();
         cmd.addReference(new File(hg38Reference));
         cmd.addInput(new File(largeFileTestDir+"multiSampleSubsetted.bam"));
-        cmd.addArgument("min-base-quality","0");
-        cmd.addArgument("include-deletions");
-        cmd.addArgument("partition-type", "sample");
-        cmd.addArgument("omit-depth-output-at-each-base");
+        cmd.add("min-base-quality","0");
+        cmd.addRaw("--include-deletions");
+        cmd.add("partition-type", "sample");
+        cmd.addRaw("--omit-depth-output-at-each-base");
         cmd.addOutput(output);
 
         // We construct overlapping intervals to demonstrate the new interval merging behavior

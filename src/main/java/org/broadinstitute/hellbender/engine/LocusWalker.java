@@ -62,6 +62,15 @@ public abstract class LocusWalker extends WalkerBase {
     public String getProgressMeterRecordLabel() { return "loci"; }
 
     /**
+     * Does this tool require deletions in the AlignmentContext? Tools that don't should override to return {@code false}.
+     *
+     * @return {@code true} if this tool requires deletions, {@code false} otherwise
+     */
+    public boolean includeDeletions() {
+        return true;
+    }
+
+    /**
      * Does this tool require Ns in the AlignmentContext? Tools that do should override to return {@code true}.
      *
      * @return {@code true} if this tool requires Ns, {@code false} otherwise
@@ -175,6 +184,7 @@ public abstract class LocusWalker extends WalkerBase {
         final AlignmentContextIteratorBuilder alignmentContextIteratorBuilder = new AlignmentContextIteratorBuilder();
         alignmentContextIteratorBuilder.setDownsamplingInfo(getDownsamplingInfo());
         alignmentContextIteratorBuilder.setEmitEmptyLoci(emitEmptyLoci());
+        alignmentContextIteratorBuilder.setIncludeDeletions(includeDeletions());
         alignmentContextIteratorBuilder.setKeepUniqueReadListInLibs(keepUniqueReadListInLibs());
         alignmentContextIteratorBuilder.setIncludeNs(includeNs());
 
@@ -207,5 +217,4 @@ public abstract class LocusWalker extends WalkerBase {
         // Overridden only to make final so that concrete tool implementations don't override
         super.onShutdown();
     }
-
 }

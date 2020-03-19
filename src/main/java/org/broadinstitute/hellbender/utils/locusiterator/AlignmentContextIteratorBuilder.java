@@ -28,6 +28,7 @@ public class AlignmentContextIteratorBuilder {
 
     private boolean isEmitEmptyLoci;
     private boolean isKeepUniqueReadListInLibs;
+    private boolean isIncludeDeletions;
     private boolean isIncludeNs;
     private LIBSDownsamplingInfo downsamplingInfo;
 
@@ -37,6 +38,10 @@ public class AlignmentContextIteratorBuilder {
 
     public void setKeepUniqueReadListInLibs(boolean keepUniqueReadListInLibs) {
         isKeepUniqueReadListInLibs = keepUniqueReadListInLibs;
+    }
+
+    public void setIncludeDeletions(boolean includeDeletions) {
+        isIncludeDeletions = includeDeletions;
     }
 
     public void setIncludeNs(boolean includeNs) {
@@ -50,6 +55,7 @@ public class AlignmentContextIteratorBuilder {
     public AlignmentContextIteratorBuilder() {
         isEmitEmptyLoci = false;
         isKeepUniqueReadListInLibs = false;
+        isIncludeDeletions = true;
         isIncludeNs = false;
         downsamplingInfo = LocusIteratorByState.NO_DOWNSAMPLING;
     }
@@ -69,7 +75,7 @@ public class AlignmentContextIteratorBuilder {
         Utils.nonNull(readIterator, "Read iterator cannot be null");
         final boolean isDefinitelyReference = (dictionary != null) && isReference ;
         return createAlignmentContextIterator(intervalsForTraversal, header, readIterator, dictionary, downsamplingInfo,
-                isDefinitelyReference, isEmitEmptyLoci, isKeepUniqueReadListInLibs, isIncludeNs);
+                isDefinitelyReference, isEmitEmptyLoci, isKeepUniqueReadListInLibs, isIncludeDeletions, isIncludeNs);
     }
 
     /**
@@ -86,6 +92,7 @@ public class AlignmentContextIteratorBuilder {
      * @param emitEmptyLoci whether loci with no coverage should be emitted.  In this case, the AlignmentContext will be empty (not null).
      * @param isKeepUniqueReadListInLibs if true, we will keep the unique reads from the samIterator and make them
      *                                       available via the transferReadsFromAllPreviousPileups interface (this parameter is specific to {@link LocusIteratorByState})
+     * @param isIncludeDeletions include reads with deletion on the loci in question
      * @param isIncludeNs include reads with N on the loci in question
      * @return iterator that produces AlignmentContexts ready for consumption (e.g. by a {@link org.broadinstitute.hellbender.engine.LocusWalker})
      */
@@ -97,6 +104,7 @@ public class AlignmentContextIteratorBuilder {
                                                                              final boolean isReference,
                                                                              boolean emitEmptyLoci,
                                                                              boolean isKeepUniqueReadListInLibs,
+                                                                             boolean isIncludeDeletions,
                                                                              boolean isIncludeNs) {
 
         // get the samples from the read groups
@@ -105,7 +113,7 @@ public class AlignmentContextIteratorBuilder {
                 .collect(Collectors.toSet());
 
         // get the LIBS
-        final LocusIteratorByState libs = new LocusIteratorByState(readIterator, downsamplingInfo, isKeepUniqueReadListInLibs, samples, header, isIncludeNs);
+        final LocusIteratorByState libs = new LocusIteratorByState(readIterator, downsamplingInfo, isKeepUniqueReadListInLibs, samples, header, isIncludeDeletions, isIncludeNs);
 
         List<SimpleInterval> finalIntervals = intervalsForTraversal;
         validateEmitEmptyLociParameters(emitEmptyLoci, dictionary, intervalsForTraversal, isReference);
