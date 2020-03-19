@@ -8,7 +8,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class DuplicateSet {
     public static final String FGBIO_MOLECULAR_IDENTIFIER_TAG = "MI";
     public static final String FGBIO_MI_TAG_DELIMITER = "/";

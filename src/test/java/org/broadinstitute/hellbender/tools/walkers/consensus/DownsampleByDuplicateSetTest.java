@@ -1,30 +1,16 @@
 package org.broadinstitute.hellbender.tools.walkers.consensus;
 
-import htsjdk.samtools.SamReader;
-import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.iterators.SamReaderQueryingIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-
-import static org.testng.Assert.*;
 
 public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
     public static final String NA12878_GROUPED = publicTestDir + "org/broadinstitute/hellbender/tools/downsampleByDuplicateSet/NA12878.grouped.bam";

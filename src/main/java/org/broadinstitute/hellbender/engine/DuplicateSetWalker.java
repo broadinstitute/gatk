@@ -7,9 +7,15 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * A walker that processes duplicate reads that share the same UMI as a single unit.
+ *
+ * This tool assumes that the input bam has been sorted by UMI with FGBio GroupReadsByUmi:
+ * http://fulcrumgenomics.github.io/fgbio/tools/latest/GroupReadsByUmi.html
+ */
 public abstract class DuplicateSetWalker extends ReadWalker {
     DuplicateSet currentDuplicateSet; // TODO: does it make sense to call clear() and recycle the same object?
-    public static int INITIAL_MOLECULAR_ID = -1; // this won't match the ID of the first read
+    public static int INITIAL_MOLECULAR_ID = -1;
 
     @Override
     public final void onStartup(){
@@ -18,7 +24,6 @@ public abstract class DuplicateSetWalker extends ReadWalker {
         super.onStartup();
         currentDuplicateSet = new DuplicateSet();
         currentDuplicateSet.setMoleduleId(INITIAL_MOLECULAR_ID);
-        // TODO: I guess the problem isn't really peeking but rather peeking gave me three reads instead of one...
     }
 
     /***
@@ -63,9 +68,13 @@ public abstract class DuplicateSetWalker extends ReadWalker {
                 logger.info("First read: " + currentDuplicateSet.getReads().get(0));
             }
             return true;
-        } else {
-            return false;
         }
+
+        final List<String> molecularIDs = duplicateSet.getReads().stream().map(r -> r.getAttributeAsString(DuplicateSet.FGBIO_MOLECULAR_IDENTIFIER_TAG))
+                .distinct().collect(Collectors.toList());
+        Utils.validate(molecularIDs.size() <= 2, "No more than 2 molecular IDs should be in a duplicate set: " + molecularIDs);
+
+        return false;
     }
 
     @Override
