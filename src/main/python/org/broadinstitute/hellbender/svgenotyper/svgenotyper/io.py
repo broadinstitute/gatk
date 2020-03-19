@@ -21,10 +21,21 @@ def read_vcf(vcf_path: str, svtype: SVTypes):
     svtype_list = []
     num_processed = 0
     for record in vcf.fetch():
-        # TODO: generate genotypes from depth posteriors
+        # TODO: handle depth-only variants
         if record.info['ALGORITHMS'] == 'depth':
             continue
-        svtype_i = SVTypes[record.info['SVTYPE']]
+        if SVTypes[record.info['SVTYPE']] != SVTypes.BND:
+            svtype_i = SVTypes[record.info['SVTYPE']]
+        else:
+            strands = record.info['STRANDS']
+            if strands == '+-':
+                svtype_i = SVTypes.DEL
+            elif strands == '-+':
+                svtype_i = SVTypes.DUP
+            elif strands == '++' or strands == '--':
+                svtype_i = SVTypes.INV
+            else:
+                raise ValueError('Invalid STRANDS value: ' + strands)
         if svtype_i != svtype:
             continue
         vids_list.append(record.id)
@@ -32,18 +43,7 @@ def read_vcf(vcf_path: str, svtype: SVTypes):
         data_list.append([[record.samples[sample][attr] for attr in constants.INPUT_GENOTYPE_FIELDS] for sample in samples_list])
         cnlp_list.append([record.samples[sample]['CNLP'] for sample in samples_list])
         svlen_list.append(record.info['SVLEN'])
-        if svtype_i != SVTypes.BND:
-            svtype_list.append(svtype_i.value)
-        else:
-            strands = record.info['STRANDS']
-            if strands == '+-':
-                svtype_list.append(SVTypes.DEL)
-            elif strands == '-+':
-                svtype_list.append(SVTypes.DUP)
-            elif strands == '++' or strands == '--':
-                svtype_list.append(SVTypes.INV)
-            else:
-                raise ValueError('Invalid STRANDS value: ' + strands)
+        svtype_list.append(svtype_i.value)
         num_processed += 1
         if num_processed % 1000 == 0:
             logging.info("Read {:d} vcf records...".format(num_processed))
