@@ -48,7 +48,10 @@ def plot_info_field_histograms(vcf_path: str, out_path: str):
     for record in vcf.fetch():
         svtype = record.info['SVTYPE']
         for info in INFOS_LIST:
-            site_infos[info][svtype].append(record.info[info])
+            if info in record.info:
+                site_infos[info][svtype].append(record.info[info])
+            else:
+                site_infos[info][svtype].append(np.nan)
     vcf.close()
 
     rows = len(SVTYPES_LIST)
