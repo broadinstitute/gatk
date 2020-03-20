@@ -425,6 +425,7 @@ def _make_tmap_nan_on_fail(tmap):
     Builds a copy TensorMap with a tensor_from_file that returns nans on errors instead of raising an error
     """
     new_tmap = copy.deepcopy(tmap)
+    new_tmap.validator = lambda _, x: x  # prevent failure caused by validator
 
     def _tff(tm, hd5, dependents=None):
         try:
@@ -509,9 +510,9 @@ def infer_hidden_layer_multimodal_multitask(args):
     else:
         full_model = make_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
-    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[1:]) for tm in args.tensor_maps_in}
+    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)
-    latent_dimensions = np.prod(dummy_out.shape[1:])
+    latent_dimensions = int(np.prod(dummy_out.shape[1:]))
     logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions}')
     with open(inference_tsv, mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)

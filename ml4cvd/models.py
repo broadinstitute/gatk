@@ -39,8 +39,8 @@ def make_shallow_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[Te
                        learning_rate: float, model_file: str = None, model_layers: str = None) -> Model:
     """Make a shallow model (e.g. linear or logistic regression)
 
-	Input and output tensor maps are set from the command line.
-	Model summary printed to output
+    Input and output tensor maps are set from the command line.
+    Model summary printed to output
 
     :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
                             otherwise there are layer name collisions.
@@ -1270,8 +1270,8 @@ def get_model_inputs_outputs(model_files: List[str],
 
     for model_file in model_files:
         custom = get_metric_dict(tensor_maps_out)
-        logging.info(f'custom keysssss: {list(custom.keys())}')
-        m = load_model(model_file, custom_objects=custom)
+        logging.info(f'custom keys: {list(custom.keys())}')
+        m = load_model(model_file, custom_objects=custom, compile=False)
         model_inputs_outputs = defaultdict(list)
         for input_tensor_map in tensor_maps_in:
             try:
