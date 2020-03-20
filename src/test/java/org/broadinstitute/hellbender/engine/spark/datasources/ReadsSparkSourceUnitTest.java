@@ -59,6 +59,32 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
         };
     }
 
+    @Test(dataProvider = "loadReads")
+    public void testGetHeader(final String bam, final String referencePath) {
+        doTestGetHeader(bam, referencePath);
+    }
+
+    @Test(groups="cloud")
+    public void testGetHeaderOnGCSInputs() {
+        doTestGetHeader(
+                GCS_GATK_TEST_RESOURCES + "org/broadinstitute/hellbender/tools/count_reads_sorted.cram",
+                GCS_GATK_TEST_RESOURCES + "org/broadinstitute/hellbender/tools/count_reads.fasta");
+    }
+
+    private void doTestGetHeader(final String bam, final String referencePath) {
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        final ReadsSparkSource readSource = new ReadsSparkSource(ctx, ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY);
+        final SAMFileHeader samHeader = readSource.getHeader(bam, referencePath == null ? null : new GATKPathSpecifier(referencePath));
+        Assert.assertNotNull(samHeader);
+    }
+
+    @Test
+    public void testCheckCRAMReference() {
+        // the "hdfs://" case is covered in testCRAMReferenceFromHDFS
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        ReadsSparkSource.checkCramReference(ctx, NA12878_chr17_1k_CRAM, new GATKPathSpecifier(v37_chr17_1Mb_Reference));
+    }
+
     // this tests handling the case where a reference is specified but the file doesn't exist
     @Test(expectedExceptions = UserException.MissingReference.class)
     public void loadReadsNonExistentReference() {
@@ -197,6 +223,8 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
 
             final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
             final ReadsSparkSource readsSparkSource = new ReadsSparkSource(ctx);
+            final SAMFileHeader samHeader = readsSparkSource.getHeader(cramHDFSPath.toString(), new GATKPathSpecifier(refHDFSPath.toString()));
+            Assert.assertNotNull(samHeader);
             final List<GATKRead> localReads = readsSparkSource.getParallelReads(cram.toURI().toString(), reference).collect();
             final List<GATKRead> hdfsReads = readsSparkSource.getParallelReads(cramHDFSPath.toUri().toString(), new GATKPathSpecifier(refHDFSPath.toUri().toString())).collect();
 
