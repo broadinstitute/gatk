@@ -80,8 +80,10 @@ def write_vcf(input_vcf_path: str, output_vcf_path: str, output_data: dict, glob
     header.info.add("PHI_PE", "1", "Float", "Paired-end mean bias")
     header.info.add("PHI_SR1", "1", "Float", "First split mean bias")
     header.info.add("PHI_SR2", "1", "Float", "Second split mean bias")
-    header.formats.add("PL", "1", "Float", "Genotype probability")
-    header.formats.add("GQ", "1", "Float", "Genotype quality (log odds ratio)")
+    if "PL" not in header.formats:
+        header.formats.add("PL", "1", "Float", "Genotype probability")
+    if "GQ" not in header.formats:
+        header.formats.add("GQ", "1", "Float", "Genotype quality")
 
     for svtype in global_stats:
         items = {key: "{:0.4f}".format(float(global_stats[svtype][key])) for key in global_stats[svtype]}.items()
