@@ -329,4 +329,4 @@ public class GencodeFuncotationBuilder {
         gencodeFuncotation.setDataSourceName( name );
         return this;
     }
- }
+}

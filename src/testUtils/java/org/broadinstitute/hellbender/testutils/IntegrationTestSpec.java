@@ -232,7 +232,7 @@ public final class IntegrationTestSpec {
             throw new AssertionError("File sizes are unequal - actual = " + actual.readLines().size() + ", expected = " + expected.readLines().size() + " AND detected unequal lines: " + numUnequalLines);
         }
         else if ( numUnequalLines != 0 ) {
-            throw new AssertionError("Detected unequal lines: " + numUnequalLines);
+            throw new AssertionError("Detected unequal lines: " + numUnequalLines + " between files actual file = "+resultFile+", expected file = "+expectedFile);
         }
         else if (!sizeMatches) {
             throw new AssertionError("File sizes are unequal - actual = " + actual.readLines().size() + ", expected = " + expected.readLines().size());

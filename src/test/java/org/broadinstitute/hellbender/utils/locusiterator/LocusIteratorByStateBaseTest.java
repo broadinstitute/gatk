@@ -49,9 +49,9 @@ public abstract class LocusIteratorByStateBaseTest extends GATKBaseTest {
     }
 
     protected LocusIteratorByState makeLIBS(final List<GATKRead> reads,
-        final DownsamplingMethod downsamplingMethod,
-        final boolean keepUniqueReadList,
-        final SAMFileHeader header) {
+                                            final DownsamplingMethod downsamplingMethod,
+                                            final boolean keepUniqueReadList,
+                                            final SAMFileHeader header) {
         return makeLIBS(reads, downsamplingMethod, false, keepUniqueReadList, header);
     }
 
@@ -67,6 +67,7 @@ public abstract class LocusIteratorByStateBaseTest extends GATKBaseTest {
                 keepUniqueReadList,
                 sampleListForSAMWithoutReadGroups(),
                 header,
+                true,
                 includeNs
         );
     }

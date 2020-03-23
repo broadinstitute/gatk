@@ -1,0 +1,3 @@
+@HD	VN:1.0	SO:coordinate
+@SQ	SN:chr1	LN:248956422	M5:6aef897c3d6ff0c78aff06ac189178dd	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo	sapiens
+chr1	1570602	1711508	+	gene_spanning_target

@@ -247,7 +247,6 @@ public final class IntervalUtils {
         return sortAndMergeIntervals(genomeLocParser, allIntervals, intervalMergingRule);
     }
 
-
     /**
      * Method that takes a list of interval strings in the command line format and parses them into GenomicLoc objects
      * without attempting to perform any sort of interval merging whatsover regardless of overlap between the intervals.
