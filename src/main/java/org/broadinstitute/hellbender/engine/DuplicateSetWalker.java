@@ -54,27 +54,22 @@ public abstract class DuplicateSetWalker extends ReadWalker {
                     new FeatureContext(features, currentDuplicateSet.getDuplicateSetInterval()));
             currentDuplicateSet = new DuplicateSet(read);
         } else {
-            currentDuplicateSet.addRead(read);
+            Utils.validate(currentDuplicateSet.addRead(read), "Adding a read that doesn't have a matching molecular ID tag");
         }
     }
 
     public abstract void apply(DuplicateSet duplicateSet, ReferenceContext referenceContext, FeatureContext featureContext );
 
     protected boolean rejectDuplicateSet(final DuplicateSet duplicateSet){
-        if (!duplicateSet.hasValidInterval()){
+        if (!duplicateSet.hasValidInterval()) {
             logger.info("Duplicate Set with Invalid Intervals");
             logger.info("Number of reads:" + currentDuplicateSet.getReads().size());
-            if (currentDuplicateSet.getReads().size() > 0){
+            if (currentDuplicateSet.getReads().size() > 0) {
                 logger.info("First read: " + currentDuplicateSet.getReads().get(0));
             }
-            return true;
         }
 
-        final List<String> molecularIDs = duplicateSet.getReads().stream().map(r -> r.getAttributeAsString(DuplicateSet.FGBIO_MOLECULAR_IDENTIFIER_TAG))
-                .distinct().collect(Collectors.toList());
-        Utils.validate(molecularIDs.size() <= 2, "No more than 2 molecular IDs should be in a duplicate set: " + molecularIDs);
-
-        return false;
+        return !duplicateSet.hasValidInterval();
     }
 
     @Override
