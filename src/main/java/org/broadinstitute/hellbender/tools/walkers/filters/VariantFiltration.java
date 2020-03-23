@@ -13,7 +13,6 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.AlleleFilterUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -345,24 +344,15 @@ public final class VariantFiltration extends VariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext ref, final FeatureContext featureContext) {
         if (applyForAllele) {
-            // TODO either put allele specific filters in filter or do a different merge so we get all the other flags processed correctly too
-            List<VariantContext> filtered = splitMultiAllelics(variant).stream().map(vc -> filter(internalApply(vc, readsContext, ref, new FeatureContext(featureContext, new SimpleInterval(vc.getContig(), vc.getStart(), vc.getEnd()))), featureContext)).collect(Collectors.toList());
-            // now we need to add individual alleles
-            // get allele filters list
+            List<VariantContext> filtered = splitMultiAllelics(variant).stream().map(vc -> filter(vc, new FeatureContext(featureContext, new SimpleInterval(vc.getContig(), vc.getStart(), vc.getEnd())))).collect(Collectors.toList());
+            // get filters for each allele
             List<Set<String>> alleleFilters = filtered.stream().map(filteredvc -> filteredvc.getFilters()).collect(Collectors.toList());
-            // convert List<Set<String>> to List<List<String>> and encode
-            VariantContext filteredVC = AlleleFilterUtils.addAlleleFilters(variant, alleleFilters, invalidatePreviousFilters);
+            // add in the AS_FilterStatus and set the variant filters
+            VariantContext filteredVC = AlleleFilterUtils.addAlleleAndComputeSiteFilters(variant, alleleFilters);
             writer.add(filteredVC);
         } else {
-            writer.add(filter(internalApply(variant, readsContext, ref, featureContext), featureContext));
+            writer.add(filter(variant, featureContext));
         }
-
-    }
-
-    // TODO change the name of this method
-    protected VariantContext internalApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext ref, final FeatureContext featureContext) {
-        final VariantContext vc1 = invalidatePreviousFilters ? (new VariantContextBuilder(variant)).unfiltered().make() : variant;
-        return isMaskFilterPresent(vc1) ? vc1: addMaskIfCoversVariant(vc1, featureContext);
     }
 
     private List<VariantContext> splitMultiAllelics(VariantContext vc) {
@@ -394,7 +384,9 @@ public final class VariantFiltration extends VariantWalker {
         return vc.getFilters() != null && vc.getFilters().contains(maskName);
     }
 
-    private VariantContext filter(final VariantContext vc, final FeatureContext featureContext) {
+    private VariantContext filter(final VariantContext variant, final FeatureContext featureContext) {
+        final VariantContext vcModFilters = invalidatePreviousFilters ? (new VariantContextBuilder(variant)).unfiltered().make() : variant;
+        final VariantContext vc = isMaskFilterPresent(vcModFilters) ? vcModFilters: addMaskIfCoversVariant(vcModFilters, featureContext);
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
 
         // make new Genotypes based on filters

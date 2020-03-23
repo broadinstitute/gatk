@@ -12,6 +12,9 @@ import shaded.cloud_nio.com.google.errorprone.annotations.Var;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Helps read and set allele specific filters
+ */
 public class AlleleFilterUtils {
 
     public static List<List<String>> decodeASFilters(VariantContext vc) {
@@ -50,8 +53,14 @@ public class AlleleFilterUtils {
         }
     }
 
-    public static VariantContext addAlleleFilters(VariantContext vc, List<Set<String>> alleleFilters, boolean invalidatePreviousFilters) {
-        // TODO: should invalidatePreviousFilters apply to allele filters? probably TBD
+    /**
+     * Sets the filters for each allele and calculates the intersection of the allele filters to set on the variant.
+     * PASS if the intersection is empty.
+     * @param vc The variant context to build from, however it assumes all relevant filters are set in the alleleFilters collection
+     * @param alleleFilters filters to be applied to each allele, the intersection of these filters are applied at the site level
+     * @return The updated variant context
+     */
+    public static VariantContext addAlleleAndComputeSiteFilters(VariantContext vc, List<Set<String>> alleleFilters) {
         String encodedFilters = AlleleFilterUtils.encodeASFilters(alleleFilters.stream().map(
                 af -> af.isEmpty() ? Collections.singletonList(GATKVCFConstants.SITE_LEVEL_FILTERS) : af.stream().collect(Collectors.toList())).collect(Collectors.toList()));
         VariantContextBuilder vcb = new VariantContextBuilder(vc).attribute(GATKVCFConstants.AS_FILTER_STATUS_KEY, encodedFilters);
@@ -59,13 +68,10 @@ public class AlleleFilterUtils {
         Set<String> siteFilters = alleleFilters.stream().skip(1)
                 .collect(()->new HashSet<>(alleleFilters.get(0)), Set::retainAll, Set::retainAll);
 
-        if (invalidatePreviousFilters && !siteFilters.isEmpty()) {
+        if (!siteFilters.isEmpty()) {
             vcb.filters(siteFilters);
-        } else if (siteFilters.isEmpty() && vcb.getFilters() == null) {
-            vcb.passFilters();
         } else {
-            // either siteFilters is not empty or vbc filter is not empty
-            siteFilters.forEach(filter -> vcb.filter(filter));
+            vcb.passFilters();
         }
         return vcb.make();
     }
