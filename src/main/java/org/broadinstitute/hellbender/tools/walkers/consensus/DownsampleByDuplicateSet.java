@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.io.File;
+import java.util.List;
 import java.util.Random;
 
 @CommandLineProgramProperties(
@@ -59,6 +60,9 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
     @Argument(fullName = "DS", doc = "This fraction of duplicate sets in the input bam will be retained")
     public double downsamplingRate;
 
+    @Argument(fullName = "keep-duplex-only", doc = "Discard all duplicate sets that don't have duplex evidence")
+    public boolean duplexOnly = false;
+
     private static final int RANDOM_SEED = 142;
     private RandomGenerator rng;
     private static int numFragments;
@@ -97,6 +101,12 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
             // We only keep reads with mates by default, as that's what fgbio GroupByUMI requires.
             logger.info("Duplicate set that contains an unpaired read discarded: " + duplicateSet.getReads().get(0));
             return true;
+        }
+
+        // Experiment: only keep duplex
+        if (duplexOnly){
+            final List<String> molecularIDs = DuplicateSet.getMolecularIDs(duplicateSet.getReads());
+            return molecularIDs.size() != 2;
         }
 
         return false;

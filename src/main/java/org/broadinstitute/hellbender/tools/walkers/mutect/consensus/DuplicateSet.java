@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class DuplicateSet {
     public static final String FGBIO_MOLECULAR_IDENTIFIER_TAG = "MI";
@@ -114,4 +115,8 @@ public class DuplicateSet {
         return SimpleInterval.isValid(contig, fragmentStart, fragmentEnd);
     }
 
+    public static List<String> getMolecularIDs(final List<GATKRead> reads) {
+        return reads.stream().map(r -> r.getAttributeAsString(DuplicateSet.FGBIO_MOLECULAR_IDENTIFIER_TAG))
+                .distinct().collect(Collectors.toList());
+    }
 }

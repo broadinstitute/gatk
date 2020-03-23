@@ -16,6 +16,18 @@ public class DownsampleByDuplicateSetTest extends CommandLineProgramTest {
     public static final String NA12878_GROUPED = publicTestDir + "org/broadinstitute/hellbender/tools/downsampleByDuplicateSet/NA12878.grouped.bam";
 
     @Test
+    public void test(){
+        final String cloud = "gs://fc-secure-429c9379-aa5e-4884-8c35-7a5b947efc37/4c979e79-ca8e-4703-b8da-95b6da07f693/GenerateDuplexConsensusBams/c4b5b563-8266-4fe2-a653-83b5754679aa/call-FGBioGroupReadsByUmi/NA12878_rep1_A05_rep1_5pct.fgbio.groupByUmi.bam";
+        final String out = "/Users/tsato/workspace/gatk/tmp/duplex.bam";
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .add("I", cloud)
+                .add("O", out)
+                .add("DS", "1.0")
+                .add("keep-duplex-only", "true");
+        runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
+    }
+
+    @Test
     public void testMatesAreTogether(){
         final File out = createTempFile("downsampled", "bam");
         final ArgumentsBuilder args = new ArgumentsBuilder()
