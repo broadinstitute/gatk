@@ -207,7 +207,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     private final TranscriptSelectionMode transcriptSelectionMode;
 
     /**
-     * {@link List} of RefSeqTranscript IDs that the user has requested that we annotate.
+     * {@link List} of Transcript IDs that the user has requested that we annotate.
      * If this list is empty, will default to keeping ALL transcripts.
      * Otherwise, only transcripts on this list will be annotated.
      */
@@ -257,7 +257,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param userRequestedTranscripts A {@link Set<String>} containing Gencode TranscriptIDs that the user requests to be annotated with priority over all other transcripts for overlapping variants.
      * @param annotationOverrides A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
      * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
-     * @param ncbiBuildVersion The NCBI buildAndWriteLine version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
+     * @param ncbiBuildVersion The NCBI build version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
      */
     public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFilePath,
                                      final String version,
@@ -281,7 +281,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param annotationOverrides A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
      * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
-     * @param ncbiBuildVersion The NCBI buildAndWriteLine version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
+     * @param ncbiBuildVersion The NCBI build version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
      */
     public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFilePath,
                                      final String version,
@@ -307,7 +307,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
      * @param isDataSourceB37 If {@code true}, indicates that the data source behind this {@link GencodeFuncotationFactory} contains B37 data.
-     * @param ncbiBuildVersion The NCBI buildAndWriteLine version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
+     * @param ncbiBuildVersion The NCBI build version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
      */
     public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFilePath,
                                      final String version,
@@ -476,7 +476,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Sort the funcotations, and populate other transcripts. Note that we're guaranteed not to have any
         // IGR funcotations at this point due to the contract of createFuncotationsHelper().
         if (gencodeFuncotationList.size() > 0) {
-            // Get our "Best RefSeqTranscript" from our list.
+            // Get our "Best Transcript" from our list.
             sortFuncotationsByTranscriptForOutput(gencodeFuncotationList);
             populateOtherTranscriptsMapForFuncotation(gencodeFuncotationList);
         }
@@ -602,9 +602,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Creates a map of RefSeqTranscript IDs for use in looking up transcripts from the FASTA dictionary for the GENCODE Transcripts.
+     * Creates a map of Transcript IDs for use in looking up transcripts from the FASTA dictionary for the GENCODE Transcripts.
      * We include the start and stop codons in the transcripts so we can handle start/stop codon variants.
-     * @param fastaReference The {@link ReferenceDataSource} corresponding to the RefSeqTranscript FASTA file for this GENCODE dataset.
+     * @param fastaReference The {@link ReferenceDataSource} corresponding to the Transcript FASTA file for this GENCODE dataset.
      * @return A {@link Map} of {@link String} -> {@link MappedTranscriptIdInfo} which maps real transcript IDs to the information about that transcript in the transcript FASTA file.
      */
     @VisibleForTesting
@@ -683,7 +683,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Get the coding sequence from the GENCODE RefSeqTranscript FASTA file for a given {@code transcriptId}.
+     * Get the coding sequence from the GENCODE Transcript FASTA file for a given {@code transcriptId}.
      * This will get ONLY the coding sequence for the given {@code transcriptId} and will not include any UTRs.
      * @param transcriptId The ID of the transcript to get from the FASTA file.
      * @param transcriptIdMap A map from transcriptId to MappedTranscriptIdInfo, which tells us how to pull information for the given {@code transcriptId} out of the given {@code transcriptFastaReferenceDataSource}.
@@ -699,7 +699,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final MappedTranscriptIdInfo transcriptMapIdAndMetadata = transcriptIdMap.get(transcriptId);
 
         if ( transcriptMapIdAndMetadata == null ) {
-            throw new UserException.BadInput( "Unable to find the given RefSeqTranscript ID in our transcript list for our coding sequence (not in given transcript FASTA file): " + transcriptId );
+            throw new UserException.BadInput( "Unable to find the given Transcript ID in our transcript list for our coding sequence (not in given transcript FASTA file): " + transcriptId );
         }
 
         final SimpleInterval transcriptInterval = new SimpleInterval(
@@ -712,7 +712,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Get the 5' UTR sequence from the GENCODE RefSeqTranscript FASTA file for a given {@code transcriptId}.
+     * Get the 5' UTR sequence from the GENCODE Transcript FASTA file for a given {@code transcriptId}.
      * This will get ONLY the 5' UTR sequence for the given {@code transcriptId} and will NOT include the coding sequence or the 3' UTR.
      * If the given transcript has no 5' UTR, this will return an empty {@link String}.
      * @param transcriptId The ID of the transcript to get from the FASTA file.
@@ -729,7 +729,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final MappedTranscriptIdInfo transcriptMapIdAndMetadata = transcriptIdMap.get(transcriptId);
 
         if ( transcriptMapIdAndMetadata == null ) {
-            throw new UserException.BadInput( "Unable to find the given RefSeqTranscript ID in our transcript list for our 5'UTR (not in given transcript FASTA file): " + transcriptId );
+            throw new UserException.BadInput( "Unable to find the given Transcript ID in our transcript list for our 5'UTR (not in given transcript FASTA file): " + transcriptId );
         }
 
         if ( transcriptMapIdAndMetadata.has5pUtr ) {
@@ -873,7 +873,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param transcript The {@link GencodeGtfTranscriptFeature} which is being used to annotate the given {@code variant}.
      * @param version A {@link String} representing the version of the {@link GencodeFuncotationFactory} being used to annotate the given {@code variant}.
      * @param dataSourceName A {@link String} containing the name of the data source instance.
-     * @param ncbiBuildVersion NCBI buildAndWriteLine version
+     * @param ncbiBuildVersion NCBI build version
      * @return A placeholder {@link GencodeFuncotation} for the given {@code variant}.
      */
     @VisibleForTesting
@@ -946,7 +946,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             if ( transcript.overlaps(variant) ) {
                 throw new FuncotatorUtils.TranscriptCodingSequenceException(String.format(
                         "Variant overlaps transcript but is not completely contained within it. " +
-                        "Funcotator cannot currently handle this case. RefSeqTranscript: %s  Variant: %s",
+                        "Funcotator cannot currently handle this case. Transcript: %s  Variant: %s",
                         transcript.getTranscriptId(), variant));
             }
             else if ( isFivePrimeFlank(variant, transcript, flankSettings.fivePrimeFlankSize) ) {
@@ -1610,7 +1610,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 }
             }
             else {
-                logger.warn("Attempted to process transcript information for transcript WITHOUT sequence data.  Ignoring sequence information for Gencode RefSeqTranscript ID: " + transcript.getTranscriptId());
+                logger.warn("Attempted to process transcript information for transcript WITHOUT sequence data.  Ignoring sequence information for Gencode Transcript ID: " + transcript.getTranscriptId());
             }
         }
         else {
@@ -2023,7 +2023,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 sequenceComparison.setProteinChangeInfo( proteinChangeInfo );
             }
             else {
-                logger.warn("Attempted to process transcript information for transcript WITHOUT sequence data.  Ignoring sequence information for Gencode RefSeqTranscript ID: " + transcript.getTranscriptId());
+                logger.warn("Attempted to process transcript information for transcript WITHOUT sequence data.  Ignoring sequence information for Gencode Transcript ID: " + transcript.getTranscriptId());
             }
         }
 
@@ -2149,7 +2149,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param variant The {@link VariantContext} for the current variant.
      * @param altAllele The alternate {@link Allele} we are currently annotating.
      * @param transcript The current {@link GencodeGtfTranscriptFeature} containing our {@code alternateAllele}.
-     * @param ncbiBuildVersion NCBI buildAndWriteLine version
+     * @param ncbiBuildVersion NCBI build version
      * @return A trivially populated {@link GencodeFuncotationBuilder} object.
      */
      @VisibleForTesting
@@ -2782,7 +2782,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     @VisibleForTesting
     static class MappedTranscriptIdInfo {
         /**
-         * The key in the GENCODE transcript FASTA file to use to get the coding sequence associated with this RefSeqTranscript.
+         * The key in the GENCODE transcript FASTA file to use to get the coding sequence associated with this Transcript.
          */
         String mapKey;
 

@@ -281,7 +281,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                             final SimpleInterval interval,
                                             final Strand strand,
                                             final GencodeGtfStartCodonFeature startCodonFeature) {
-        //    All that is needed for the RefSeqTranscript is:
+        //    All that is needed for the Transcript is:
         //      Strand
         //      Exons
         //          start codon within an exon
@@ -734,7 +734,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     Object[][] provideForTestIs5PrimeUtr() {
 
         // Need:
-        //    RefSeqTranscript:
+        //    Transcript:
         //      Strand
         //      Exons
         //          start codon within an exon
@@ -854,7 +854,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         return new Object[][] {
                 // ==================================================================================================
                 // CanonicalGencodeFuncotationComparator
-                // RefSeqTranscript list:
+                // Transcript list:
                 {
                         // Goes down to Locus Level:
                         TranscriptSelectionMode.CANONICAL.getComparator(new HashSet<>()),
@@ -957,7 +957,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGtfFeature.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         GencodeGtfFeature.FeatureTag.APPRIS_CANDIDATE_HIGHEST_SCORE.ordinal() - GencodeGtfFeature.FeatureTag.APPRIS_PRINCIPAL.ordinal()
                 },
-                // RefSeqTranscript Length:
+                // Transcript Length:
                 {
                         TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGtfFeature.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
@@ -982,7 +982,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGtfFeature.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         1
                 },
-                // ABC Order of RefSeqTranscript ID:
+                // ABC Order of Transcript ID:
                 {
                         TranscriptSelectionMode.CANONICAL.getComparator(transcriptSet),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGtfFeature.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
@@ -1011,7 +1011,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
                 // ==================================================================================================
                 // BestEffectGencodeFuncotationComparator
-                // RefSeqTranscript list:
+                // Transcript list:
                 {
                         // Goes down to Locus Level:
                         TranscriptSelectionMode.BEST_EFFECT.getComparator(new HashSet<>()),
@@ -1114,7 +1114,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGtfFeature.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         GencodeGtfFeature.FeatureTag.APPRIS_CANDIDATE_HIGHEST_SCORE.ordinal() - GencodeGtfFeature.FeatureTag.APPRIS_PRINCIPAL.ordinal()
                 },
-                // RefSeqTranscript Length:
+                // Transcript Length:
                 {
                         TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGtfFeature.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
@@ -1139,7 +1139,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId2 + ".5", GencodeGtfFeature.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         1
                 },
-                // ABC Order of RefSeqTranscript ID:
+                // ABC Order of Transcript ID:
                 {
                         TranscriptSelectionMode.BEST_EFFECT.getComparator(transcriptSet),
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGtfFeature.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),

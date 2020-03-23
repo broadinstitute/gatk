@@ -146,7 +146,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         }
                 );
 
-                // Add an entry for the RefSeqTranscript ID Key:
+                // Add an entry for the Transcript ID Key:
                 outList.add(
                         new Object[]{
                                 new SimpleKeyXsvFuncotationFactory(

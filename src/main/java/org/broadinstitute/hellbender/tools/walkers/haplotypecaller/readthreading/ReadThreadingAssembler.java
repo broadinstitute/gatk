@@ -600,7 +600,7 @@ public final class ReadThreadingAssembler {
             rtgraph.addRead(read, header);
         }
 
-        // actually buildAndWriteLine the read threading graph
+        // actually build the read threading graph
         rtgraph.buildGraphIfNecessary();
 
         // It's important to prune before recovering dangling ends so that we don't waste time recovering bad ends.

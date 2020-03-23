@@ -264,7 +264,7 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
             argsBuilder.add(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
         }
         argsBuilder.addInput(inputFiles.get(NUM_BAD_SAMPLES_WITH_TOO_MANY_ZEROS));  //use only first good sample
-        runCommandLine(argsBuilder);                                                //just check that we can buildAndWriteLine the panel; no other assertions checked
+        runCommandLine(argsBuilder);                                                //just check that we can build the panel; no other assertions checked
     }
 
     @Test(dataProvider = "dataPanelOfNormals")

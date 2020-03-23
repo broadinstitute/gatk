@@ -68,7 +68,7 @@ public final class FragmentCollection<T> {
 
         int lastStart = -1;
 
-        // buildAndWriteLine an initial map, grabbing all of the multi-read fragments
+        // build an initial map, grabbing all of the multi-read fragments
         for ( final T p : readContainingObjects ) {
             final GATKRead read = getter.apply(p);
 
