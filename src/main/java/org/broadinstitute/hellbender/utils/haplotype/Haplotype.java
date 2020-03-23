@@ -98,10 +98,14 @@ public final class Haplotype extends Allele {
             return null;
         }
 
+        // note: trimCigarByReference does not remove leading indels, while getBasesCoveringRefInterval does remove bases
+        // of leading indels.  We must remove leading indels from the Cigar manually.
         final Cigar newCigar = AlignmentUtils.trimCigarByReference(getCigar(), newStart, newStop).getCigar();
+        final Cigar leadingIndelTrimmedNewCigar = newCigar.getFirstCigarElement().getOperator().consumesReferenceBases() ? newCigar :
+                new CigarBuilder().addAll(newCigar.getCigarElements().subList(1, newCigar.numCigarElements())).make();
 
         final Haplotype ret = new Haplotype(newBases, isReference());
-        ret.setCigar(newCigar);
+        ret.setCigar(leadingIndelTrimmedNewCigar);
         ret.setGenomeLocation(loc);
         ret.setScore(score);
         ret.setAlignmentStartHapwrtRef(newStart + getAlignmentStartHapwrtRef());

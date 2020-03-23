@@ -1042,6 +1042,10 @@ public final class AlignmentUtilsUnitTest {
         tests.add(new Object[]{"ACTTGT", 2, 2, "2M2I2M", "G"});
         tests.add(new Object[]{"ACTTGT", 1, 1, "2M2I2M", "C"});
 
+        // leading and terminal insertions - test that they are excluded
+        tests.add(new Object[]{"ACTTGT", 0, 3, "2I4M", "TTGT"});
+        tests.add(new Object[]{"ACTTGT", 0, 3, "4M2I", "ACTT"});
+
         tests.add(new Object[]{"ACGT", 0, 1, "2M2I", "AC"});
         tests.add(new Object[]{"ACGT", 1, 1, "2M2I", "C"});
         tests.add(new Object[]{"ACGT", 0, 0, "2M2I", "A"});

@@ -10,6 +10,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.UnvalidatingGenomeLoc;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -206,6 +207,19 @@ public final class HaplotypeUnitTest extends GATKBaseTest {
         } else {
             Assert.assertNull(actual);
         }
+    }
+
+    // If trimming starts at position p and there is an insertion before p (i.e. the first aligned base is at p), make sure
+    // that the insertion is excluded in the cigar and the bases of the resulting trimmed haplotype
+    @Test
+    public void testTrimLeadingInsertion() {
+        //The first GT is an insertion
+        final Haplotype haplotype = new Haplotype("ACGTACGT".getBytes(), new SimpleInterval("1", 1, 6));
+        haplotype.setCigar(TextCigarCodec.decode("2M2I4M"));
+        final Haplotype trimmed = haplotype.trim(new SimpleInterval("1", 3, 6));
+        Assert.assertEquals(trimmed.getStartPosition(), 3);
+        Assert.assertEquals(trimmed.getCigar().toString(), "4M");
+        Assert.assertEquals(trimmed.getBaseString(), "ACGT");
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
