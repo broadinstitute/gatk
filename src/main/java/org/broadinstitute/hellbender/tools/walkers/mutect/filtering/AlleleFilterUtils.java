@@ -1,16 +1,15 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import shaded.cloud_nio.com.google.errorprone.annotations.Var;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.ListIterator;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class AlleleFilterUtils {
@@ -49,5 +48,25 @@ public class AlleleFilterUtils {
             updated.add(newFilter);
             return updated;
         }
+    }
+
+    public static VariantContext addAlleleFilters(VariantContext vc, List<Set<String>> alleleFilters, boolean invalidatePreviousFilters) {
+        // TODO: should invalidatePreviousFilters apply to allele filters? probably TBD
+        String encodedFilters = AlleleFilterUtils.encodeASFilters(alleleFilters.stream().map(
+                af -> af.isEmpty() ? Collections.singletonList(GATKVCFConstants.SITE_LEVEL_FILTERS) : af.stream().collect(Collectors.toList())).collect(Collectors.toList()));
+        VariantContextBuilder vcb = new VariantContextBuilder(vc).attribute(GATKVCFConstants.AS_FILTER_STATUS_KEY, encodedFilters);
+
+        Set<String> siteFilters = alleleFilters.stream().skip(1)
+                .collect(()->new HashSet<>(alleleFilters.get(0)), Set::retainAll, Set::retainAll);
+
+        if (invalidatePreviousFilters && !siteFilters.isEmpty()) {
+            vcb.filters(siteFilters);
+        } else if (siteFilters.isEmpty() && vcb.getFilters() == null) {
+            vcb.passFilters();
+        } else {
+            // either siteFilters is not empty or vbc filter is not empty
+            siteFilters.forEach(filter -> vcb.filter(filter));
+        }
+        return vcb.make();
     }
 }

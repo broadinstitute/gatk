@@ -48,6 +48,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 {"foo", "--mask " + getToolTestDataDir() + "vcfexample2.vcf", "testVariantFiltration_testMask1.vcf"},
                 {"foo", "--mask " + new File(getToolTestDataDir() + "vcfMask.vcf").getAbsolutePath(), "testVariantFiltration_testMask2.vcf"},
                 {"foo", "--" + VariantFiltration.MASK_EXTENSION_LONG_NAME + " 10 --mask:VCF " + getToolTestDataDir() + "vcfMask.vcf", "testVariantFiltration_testMask3.vcf"},
+                {"foo", "--apply-allele-specific-filters true --mask " + new File(getToolTestDataDir() + "vcfMask.vcf").getAbsolutePath(), "testVariantFiltration_testMask4.vcf"}
         };
     }
 
