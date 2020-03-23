@@ -50,13 +50,13 @@ public final class AlleleFractionKernelSegmenter {
      * Segments the internally held {@link AllelicCountCollection} using a separate {@link KernelSegmenter} for each chromosome.
      * @param kernelVariance    variance of the Gaussian kernel; if zero, a linear kernel is used instead
      */
-    public AlleleFractionSegmentCollection findSegmentation(final int maxNumChangepointsPerChromosome,
+    public AlleleFractionSegmentCollection findSegmentation(final int maxNumSegmentsPerChromosome,
                                                             final double kernelVariance,
                                                             final int kernelApproximationDimension,
                                                             final List<Integer> windowSizes,
                                                             final double numChangepointsPenaltyLinearFactor,
                                                             final double numChangepointsPenaltyLogLinearFactor) {
-        ParamUtils.isPositiveOrZero(maxNumChangepointsPerChromosome, "Maximum number of changepoints must be non-negative.");
+        ParamUtils.isPositive(maxNumSegmentsPerChromosome, "Maximum number of segments must be positive.");
         ParamUtils.isPositiveOrZero(kernelVariance, "Variance of Gaussian kernel must be non-negative (if zero, a linear kernel will be used).");
         ParamUtils.isPositive(kernelApproximationDimension, "Dimension of kernel approximation must be positive.");
         Utils.validateArg(windowSizes.stream().allMatch(ws -> ws > 0), "Window sizes must all be positive.");
@@ -65,6 +65,8 @@ public final class AlleleFractionKernelSegmenter {
                 "Linear factor for the penalty on the number of changepoints per chromosome must be non-negative.");
         ParamUtils.isPositiveOrZero(numChangepointsPenaltyLogLinearFactor,
                 "Log-linear factor for the penalty on the number of changepoints per chromosome must be non-negative.");
+
+        final int maxNumChangepointsPerChromosome = maxNumSegmentsPerChromosome - 1;
 
         logger.info(String.format("Finding changepoints in %d data points and %d chromosomes...",
                 allelicCounts.size(), allelicCountsPerChromosome.size()));
