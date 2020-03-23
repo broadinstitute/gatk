@@ -1243,6 +1243,7 @@ TMAPS['cine_segmented_ao_dist_slice0'] = TensorMap('cine_segmented_ao_dist_slice
                                                    normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0))
 
 
+
 def _pad_crop_tensor(tm, hd5, dependents={}):
     return _pad_or_crop_array_to_shape(tm.shape, np.array(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess()), dtype=np.float32))
 
@@ -1285,6 +1286,9 @@ TMAPS['lax_3ch_segmented_192'] = TensorMap('lax_3ch_segmented', Interpretation.C
 TMAPS['lax_3ch_segmented_192_160'] = TensorMap('lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 50, 6),
                                                tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
                                                channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)
+TMAPS['lax_3ch_segmented_192_160'] = TensorMap('lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 50, 6),
+                                               tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
+                                               channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)
 TMAPS['lax_4ch_segmented'] = TensorMap('lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 50, 14),
                                        tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
                                        channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)
@@ -1301,6 +1305,7 @@ TMAPS['sax_segmented_b6'] = TensorMap('sax_segmented_b6', Interpretation.CATEGOR
 TMAPS['sax_segmented_b6_192'] = TensorMap('sax_segmented_b6', Interpretation.CATEGORICAL, shape=(192, 192, 50, 11),
                                           tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
                                           channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP)
+
 TMAPS['cine_segmented_ao_dist'] = TensorMap('cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(160, 192, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
                                             tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP)
 
@@ -1523,6 +1528,3 @@ TMAPS['cine_segmented_ao_descending_aorta_bbox'] = TensorMap('cine_segmented_ao_
 abbfc = _bounding_box_from_callable(MRI_AO_SEGMENTED_CHANNEL_MAP['ascending_aorta'], _segmented_index_slices('cine_segmented_ao_dist_annotated_', (192, 224, 100)))
 TMAPS['cine_segmented_ao_ascending_aorta_bbox'] = TensorMap('cine_segmented_ao_ascending_aorta_bbox', Interpretation.MESH, shape=(6,), tensor_from_file=abbfc,
                                                             channel_map=_bounding_box_channel_map(3))
-
-
-

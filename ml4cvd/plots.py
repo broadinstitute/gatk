@@ -159,7 +159,6 @@ def plot_metric_history(history, title, prefix='./figures/'):
                 if col >= cols:
                     break
 
-    plt.title(title)
     plt.tight_layout()
     figure_path = os.path.join(prefix, 'metric_history_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -325,13 +324,14 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
     logging.info(f"Sick per step is: {np.sum(truth[:, intervals:], axis=0)} out of {truth.shape[0]}")
+    logging.info(f"Predicted sick per step is: {list(map(int, np.sum(1-prediction[:, :intervals], axis=0)))} out of {truth.shape[0]}")
     logging.info(f"Cumulative sick at each step is: {np.cumsum(np.sum(truth[:, intervals:], axis=0))} out of {truth.shape[0]}")
     predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
     true_proportion = np.cumsum(np.sum(truth[:, intervals:], axis=0)) / truth.shape[0]
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
     if paths is not None:
         pass
-    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.2f}')
+    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.3f}')
     plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - true_proportion, marker='o', label='True Proportion')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
@@ -644,47 +644,27 @@ def plot_ecg(data, label, prefix='./figures/'):
 
 def plot_partners_ecgs(args):
     tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
-    tensor_maps_in = args.tensor_maps_in
-
-    # Initialize dict that stores tensors
-    tdict = defaultdict(dict)
-    for tm in tensor_maps_in:
-        if tm.channel_map:
-            for cm in tm.channel_map:
-                tdict[tm.name].update({(tm.name, cm): list()})
-        else:
-            tdict[tm.name].update({tm.name: list()})
-
+    logging.info(f'tensor_paths:{len(tensor_paths)} tensor maps: {len(args.tensor_maps_in)}')
     # Get tensors for all hd5
     for tp in tensor_paths:
+        title = os.path.basename(tp).replace(TENSOR_EXT, '')
         try:
             with h5py.File(tp, 'r') as hd5:
-                for tm in tensor_maps_in:
+                ecg_dict = {}
+                for tm in args.tensor_maps_in:
                     try:
                         tensor = tm.tensor_from_file(tm, hd5)
-                        # Append tensor to dict
-                        if tm.channel_map:
+                        if tm.axes() > 1:
                             for cm in tm.channel_map:
-                                tdict[tm.name][(tm.name, cm)].append(
-                                    tensor[tm.channel_map[cm]])
+                                ecg_dict[cm] = tensor[:, tm.channel_map[cm]]
                         else:
-                            tdict[tm.name][tm.name].append(tensor)
+                            title += f'_{tm.name}_{tensor}'
                     except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                        # Could not obtain tensor, append nan
-                        if tm.channel_map:
-                            for cm in tm.channel_map:
-                                tdict[tm.name][(tm.name, cm)].append(np.nan)
-                        else:
-                            tdict[tm.name][tm.name].append(np.nan)
                         logging.exception(e)
-        except:
+                if len(ecg_dict) > 0:
+                    plot_ecg(ecg_dict, title, os.path.join(args.output_folder, args.id, 'ecg_plots/'))
+        except OSError:
             logging.exception(f"Broken tensor at: {tp}")
-
-    # TODO plot ecgs w/ data in tdict and save to output folder / run_id
-
-    plt.figure(figsize=(5, 5))
-    plt.title('THIS IS A PLACEHOLDER')
-    plt.savefig(os.path.join(args.output_folder, args.id, 'placeholder' + IMAGE_EXT))
 
 
 def _ecg_rest_traces(hd5):
@@ -762,12 +742,14 @@ def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, a
             lead_name = lead_mapping[i-offset][j]
             lead = twelve_leads[lead_name]
             # Convert units to mV
-            yy = np.array([elem_ * raw_scale for elem_ in lead['raw']])
+            if isinstance(lead, dict):
+                yy = np.array([elem_ * raw_scale for elem_ in lead['raw']])
+            else:
+                yy = lead
             if not is_median:
                 ax[i,j].set_xlim(j*time_interval,(j+1)*time_interval)
                 # extract portion of waveform that is included in the actual plots 
-                yplot = yy[np.logical_and(lead['ts_reference']>j*time_interval,
-                                lead['ts_reference']<(j+1)*time_interval)]
+                yplot = yy[j*time_interval: (j+1)*time_interval]
             else:
                 yplot = yy                       
             ylim_min, ylim_max = _ecg_rest_ylims(yrange, yplot)            
@@ -935,7 +917,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
 def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     lw = 2
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
@@ -1081,7 +1063,7 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
     # Compute Precision-Recall and plot curve for each model
     lw = 2.0
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for p in predictions:
         for k in labels:

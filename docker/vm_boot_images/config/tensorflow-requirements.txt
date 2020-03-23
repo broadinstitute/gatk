@@ -1,4 +1,4 @@
-h5py==2.9.0
+h5py==2.10.0
 pydot==1.2.4
 nibabel==2.5.0
 pydicom==1.2.2
@@ -16,3 +16,4 @@ Pillow==7.0.0
 keras-rectified-adam==0.15.0
 notebook
 pytest
+numcodecs

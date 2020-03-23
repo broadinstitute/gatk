@@ -722,8 +722,8 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
                 create_tensor_in_hd5(hd5, 'ukb_ecg_rest', child.tag.lower(), values, stats, date=ecg_date)
 
 
-def create_tensor_in_hd5(hd5: h5py.File, path_prefix: str, name: str, value, stats: Optional[Counter] = None, date: Optional[datetime.datetime] = None,
-                         storage_type: Optional[StorageType] = None, attributes: Optional[Dict[str, Any]] = None):
+def create_tensor_in_hd5(hd5: h5py.File, path_prefix: str, name: str, value, stats: Counter = None, date: datetime.datetime = None,
+                         storage_type: StorageType = None, attributes: Dict[str, Any] = None):
     hd5_path = tensor_path(path_prefix, name)
     if hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
@@ -744,7 +744,6 @@ def create_tensor_in_hd5(hd5: h5py.File, path_prefix: str, name: str, value, sta
     if attributes is not None:
         for k in attributes:
             d.attrs[k] = attributes[k]
-
 
 
 def tensor_path(path_prefix: str, name: str) -> str:

@@ -45,11 +45,12 @@ class _ShufflePaths(Iterator):
         self.idx = 0
 
     def __next__(self):
-        path = self.paths[self.idx]
-        self.idx += 1
         if self.idx >= len(self.paths):
             self.idx = 0
+        path = self.paths[self.idx]
+        if self.idx == 0:
             np.random.shuffle(self.paths)
+        self.idx += 1
         return path
 
 
@@ -129,7 +130,6 @@ class TensorGenerator:
     def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
         if not self._started:
             self._init_workers()
-        logging.debug(f'Currently there are {self.q.qsize()} queued batches.')
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
         else:
@@ -249,8 +249,6 @@ class _MultiModalMultiTaskWorker:
         self.out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.shape) for tm in output_maps}
 
         self.cache = TensorMapArrayCache(cache_size, input_maps, output_maps, true_epoch_len)
-        logging.info(f'{name} initialized cache of size {self.cache.row_size * self.cache.nrows / 1e9:.3f} GB.')
-
         self.dependents = {}
         self.idx = 0
 
@@ -268,7 +266,7 @@ class _MultiModalMultiTaskWorker:
             return self.hd5
         if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
             self.hd5 = h5py.File(path, 'r')
-        tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, self.hd5, self.dependents), augment=self.augment)
+        tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, self.hd5, self.dependents), augment=self.augment, hd5=self.hd5)
         batch[name][idx] = tensor
         if tm.cacheable:
             self.cache[path, name] = tensor

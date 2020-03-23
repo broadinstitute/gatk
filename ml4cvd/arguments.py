@@ -18,11 +18,13 @@ import operator
 import datetime
 import numpy as np
 import multiprocessing
+from typing import List
 
 from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
+from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps
 from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
 
@@ -172,21 +174,42 @@ def parse_args():
     return args
 
 
-def _get_tmap(name: str) -> TensorMap:
+def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
     """
     This allows tensor_maps_by_script to only be imported if necessary, because it's slow.
     """
     if name in TMAPS:
         return TMAPS[name]
-    from ml4cvd.tensor_maps_by_script import TMAPS as SCRIPT_TMAPS
-    TMAPS.update(SCRIPT_TMAPS)
+
+    TMAPS.update(build_partners_tensor_maps(needed_tensor_maps))
+    if name in TMAPS:
+        return TMAPS[name]
+
+    from ml4cvd.tensor_maps_partners_ecg import TMAPS as partners_tmaps
+    TMAPS.update(partners_tmaps)
+
+    if name in TMAPS:
+        return TMAPS[name]
+
+    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as partners_label_tmaps
+    TMAPS.update(partners_label_tmaps)
+
+    if name in TMAPS:
+        return TMAPS[name]
+
+    from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
+    TMAPS.update(script_tmaps)
+
+    from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
+    TMAPS.update(script_tmaps)
+
     return TMAPS[name]
 
 
 def _process_args(args):
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     args_file = os.path.join(args.output_folder, args.id, 'arguments_' + now_string + '.txt')
-    command_line = f"\n\n./scripts/tf.sh {' '.join(sys.argv)}\n\n\n"
+    command_line = f"\n./scripts/tf.sh {' '.join(sys.argv)}\n"
     if not os.path.exists(os.path.dirname(args_file)):
         os.makedirs(os.path.dirname(args_file))
     with open(args_file, 'w') as f:
@@ -194,7 +217,8 @@ def _process_args(args):
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
-    args.tensor_maps_in = [_get_tmap(it) for it in args.input_tensors]
+    needed_tensor_maps = args.input_tensors + args.output_tensors
+    args.tensor_maps_in = [_get_tmap(it, needed_tensor_maps) for it in args.input_tensors]
 
     args.tensor_maps_out = []
     if args.continuous_file is not None:
@@ -204,9 +228,9 @@ def _process_args(args):
                                                                              args.output_tensors.pop(0),
                                                                              args.continuous_file_normalize,
                                                                              args.continuous_file_discretization_bounds))
-    args.tensor_maps_out.extend([_get_tmap(ot) for ot in args.output_tensors])
+    args.tensor_maps_out.extend([_get_tmap(ot, needed_tensor_maps) for ot in args.output_tensors])
 
     np.random.seed(args.random_seed)
 
-    logging.info(f"Command Line was:{command_line}")
-    logging.info(f"Total TensorMaps:{len(TMAPS)} Arguments are {args}")
+    logging.info(f"Command Line was: {command_line}")
+    logging.info(f"Total TensorMaps: {len(TMAPS)} Arguments are {args}")

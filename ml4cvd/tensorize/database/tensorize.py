@@ -53,7 +53,8 @@ def tensorize_sql_fields(pipeline: Pipeline, output_path: str, sql_dataset: str,
 try:
     gcs_client = storage.Client()
     output_bucket = gcs_client.get_bucket(GCS_BUCKET)
-except OSError:
+# except OSError:
+except:
     output_bucket ='nope'
     logging.warning(f"no GCS storage client")
 

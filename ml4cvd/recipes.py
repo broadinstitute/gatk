@@ -3,13 +3,15 @@
 # Imports
 import os
 import csv
+from typing import Dict, List
+from operator import itemgetter
+
 import h5py
 import copy
 import logging
 import numpy as np
 import pandas as pd
 from functools import reduce
-from operator import itemgetter
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
@@ -87,7 +89,7 @@ def run(args):
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'sort_csv' == args.mode:
-            sort_csv(args.app_csv, args.app_csv)
+            sort_csv(args.tensors, args.tensor_maps_in)
         elif 'append_continuous_csv' == args.mode:
             append_fields_from_csv(args.tensors, args.app_csv, 'continuous', ',')
         elif 'append_categorical_csv' == args.mode:
@@ -142,18 +144,17 @@ def _tensors_to_df(args):
                         error_type = ""
                         try:
                             tensor = tm.tensor_from_file(tm, hd5, dependents)
-                            tensor = tm.postprocess_tensor(tensor, augment=False)
-                            
-                            # If tensor is a scaler, isolate the value in the array;
-                            # otherwise, retain the value as array
-                            if tm.shape[0] == 1:
-                                tensor = tensor.item()
+                            tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
                            
                             # Append tensor to dict
                             if tm.channel_map:
                                 for cm in tm.channel_map:
                                     tensor_dict[tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
                             else:
+                                # If tensor is a scalar, isolate the value in the array;
+                                # otherwise, retain the value as array
+                                if tm.shape[0] == 1:
+                                    tensor = tensor.item()
                                 tensor_dict[tm.name][tm.name] = tensor
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                             # Could not obtain tensor, so append nans
