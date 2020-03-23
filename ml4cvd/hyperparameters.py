@@ -90,7 +90,7 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             history.history['parameter_count'] = [model.count_params()]
             histories.append(history.history)
             title = f'trial_{i}'  # refer to loss_by_params.txt to find the params for this trial
-            plot_metric_history(history, title, fig_path)
+            plot_metric_history(history, args.training_steps, title, fig_path)
             model.load_weights(os.path.join(args.output_folder, args.id, args.id + MODEL_EXT))
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             logging.info(f'Current architecture:\n{string_from_arch_dict(x)}\nCurrent model size: {model.count_params()}.')

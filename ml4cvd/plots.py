@@ -17,6 +17,7 @@ from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
+from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
@@ -131,7 +132,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     return performance_metrics
 
 
-def plot_metric_history(history, title, prefix='./figures/'):
+def plot_metric_history(history, training_steps: int, title: str, prefix='./figures/'):
     row = 0
     col = 0
     total_plots = int(len(history.history) / 2)  # divide by 2 because we plot validation and train histories together
@@ -140,6 +141,8 @@ def plot_metric_history(history, title, prefix='./figures/'):
     f, axes = plt.subplots(rows, cols, figsize=(int(cols*SUBPLOT_SIZE), int(rows*SUBPLOT_SIZE)))
     for k in sorted(history.history.keys()):
         if 'val_' not in k:
+            if isinstance(history.history[k][0], LearningRateSchedule):
+                history.history[k] = [history.history[k][0](i * training_steps) for i in range(len(history.history[k]))]
             axes[row, col].plot(history.history[k])
             k_split = str(k).replace('output_', '').split('_')
             k_title = " ".join(OrderedDict.fromkeys(k_split))
@@ -1180,6 +1183,22 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
     plt.savefig(figure_path)
     plt.clf()
     logging.info(f"Saved T-SNE plot at: {figure_path}")
+
+
+def plot_find_learning_rate(learning_rates: List[float], losses: List[float], smoothed_losses: List[float], picked_learning_rate: float, figure_path: str):
+    plt.figure(figsize=(2 * SUBPLOT_SIZE, SUBPLOT_SIZE))
+    plt.title('Learning rate finder')
+    cutoff = smoothed_losses[0]
+    plt.ylim(min(smoothed_losses), cutoff * 1.05)
+    plt.axhline(cutoff, linestyle='--', color='k', label=f'Deltas ignored above {cutoff:.2f}')
+    learning_rates = np.log(learning_rates) / np.log(10)
+    plt.plot(learning_rates, losses, label='Loss', c='r')
+    plt.plot(learning_rates, smoothed_losses, label='Smoothed loss', c='b')
+    plt.axvline(np.log(picked_learning_rate) / np.log(10), label=f'Learning rate found {picked_learning_rate:.2E}', color='g', linestyle='--')
+    plt.xlabel('Log_10 learning rate')
+    plt.legend()
+    plt.savefig(os.path.join(figure_path, f'find_learning_rate{IMAGE_EXT}'))
+    plt.clf()
 
 
 def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):

@@ -12,12 +12,13 @@ from typing import Dict, List, Tuple, Iterable, Union, Optional
 
 # Keras imports
 import tensorflow as tf
+import tensorflow_addons as tfa
 import tensorflow.keras.backend as K
 from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.utils import model_to_dot
-from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape
+from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape, LayerNormalization
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
@@ -702,6 +703,8 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
                                     padding: str = None,
                                     learning_rate: float = None,
                                     optimizer: str = 'adam',
+                                    training_steps: int = None,
+                                    learning_rate_schedule: str = None,
                                     **kwargs) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
 
@@ -741,7 +744,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
     :param optimizer: which optimizer to use. See optimizers.py.
     :return: a compiled keras model
     """
-    opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
+    opt = get_optimizer(optimizer, learning_rate, steps_per_epoch=training_steps, learning_rate_schedule=learning_rate_schedule, optimizer_kwargs=kwargs.get('optimizer_kwargs'))
     metric_dict = get_metric_dict(tensor_maps_out)
     custom_dict = {**metric_dict, type(opt).__name__: opt}
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
@@ -882,7 +885,7 @@ def train_model_from_generators(model: Model,
 
     logging.info('Model weights saved at: %s' % model_file)
     if plot:
-        plot_metric_history(history, run_id, os.path.dirname(model_file))
+        plot_metric_history(history, training_steps, run_id, os.path.dirname(model_file))
     if return_history:
         return model, history
     return model
@@ -1048,27 +1051,34 @@ def _upsampler(dimension, pool_x, pool_y, pool_z):
         return UpSampling1D(size=pool_x)
 
 
-def _activation_layer(activation):
-    if activation == 'leaky':
-        return LeakyReLU()
-    elif activation == 'prelu':
-        return PReLU()
-    elif activation == 'elu':
-        return ELU()
-    elif activation == 'thresh_relu':
-        return ThresholdedReLU()
-    else:
-        return Activation(activation)
+def _activation_layer(activation: str) -> Activation:
+    activation_classes = {
+        'leaky': LeakyReLU(),
+        'prelu': PReLU(),
+        'elu': ELU(),
+        'thresh_relu': ThresholdedReLU,
+    }
+    activation_functions = {
+        'swish': tf.nn.swish,
+        'gelu': tfa.activations.gelu,
+        'lisht': tfa.activations.lisht,
+        'mish': tfa.activations.mish,
+    }
+    return (activation_classes.get(activation, None)
+            or Activation(activation_functions.get(activation, None) or activation))
 
 
-def _normalization_layer(norm):
-    if norm == 'batch_norm':
-        return BatchNormalization(axis=CHANNEL_AXIS)
-    else:
-        return lambda x: x
+def _normalization_layer(norm: str) -> Layer:
+    normalization_classes = {
+        'batch_norm': BatchNormalization(axis=CHANNEL_AXIS),
+        'layer_norm': LayerNormalization(),
+        'instance_norm': tfa.layers.InstanceNormalization(),
+        'poincare_norm': tfa.layers.PoincareNormalize(),
+    }
+    return normalization_classes.get(norm, lambda x: x)
 
 
-def _regularization_layer(dimension, regularization_type, rate):
+def _regularization_layer(dimension: int, regularization_type: str, rate: float):
     if dimension == 4 and regularization_type == 'spatial_dropout':
         return SpatialDropout3D(rate)
     elif dimension == 3 and regularization_type == 'spatial_dropout':

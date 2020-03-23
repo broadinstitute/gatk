@@ -11,12 +11,14 @@ import copy
 import logging
 import numpy as np
 import pandas as pd
+from typing import List, Dict
 from functools import reduce
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
 from ml4cvd.arguments import parse_args
 from ml4cvd.TensorMap import Interpretation
+from ml4cvd.optimizers import find_learning_rate
 from ml4cvd.defines import TENSOR_EXT, MODEL_EXT
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
@@ -32,10 +34,8 @@ from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs,
 
 
 def run(args):
+    start_time = timer()  # Keep track of elapsed execution time
     try:
-        # Keep track of elapsed execution time
-        start_time = timer()
-
         if 'tensorize' == args.mode:
             write_tensors(args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
                           args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
@@ -100,6 +100,11 @@ def run(args):
             append_fields_from_csv(args.tensors, args.app_csv, 'categorical', '\t')
         elif 'append_gene_csv' == args.mode:
             append_gene_csv(args.tensors, args.app_csv, ',')
+        elif 'find_learning_rate' == args.mode:
+            _find_learning_rate(args)
+        elif 'find_learning_rate_and_train' == args.mode:
+            args.learning_rate = _find_learning_rate(args)
+            train_multimodal_multitask(args)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
@@ -109,6 +114,19 @@ def run(args):
     end_time = timer()
     elapsed_time = end_time - start_time
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
+
+
+def _find_learning_rate(args) -> float:
+    schedule = args.learning_rate_schedule
+    args.learning_rate_schedule = None  # learning rate schedule interferes with setting lr done by find_learning_rate
+    generate_train, _, _ = test_train_valid_tensor_generators(**args.__dict__)
+    model = make_multimodal_multitask_model(**args.__dict__)
+    try:
+        lr = find_learning_rate(model, generate_train, args.training_steps, os.path.join(args.output_folder, args.id))
+    finally:
+        generate_train.kill_workers()
+    args.learning_rate_schedule = schedule
+    return lr
 
 
 def _init_dict_of_tensors(tmaps: list) -> dict:
