@@ -141,6 +141,9 @@ public final class AlignmentUtils {
      *
      * If refStart or refEnd would start or end the new bases within a deletion, this function will return null
      *
+     * If the cigar starts with an insertion, the inserted bases are considered as coming before the start position and
+     * are therefore excluded from the result.  That is getBasesCoveringRefInterval(0, 3, "ACTTGT", 0, 2I4M) should yield "TTGT".
+     *
      * @param bases
      * @param refStart
      * @param refEnd
