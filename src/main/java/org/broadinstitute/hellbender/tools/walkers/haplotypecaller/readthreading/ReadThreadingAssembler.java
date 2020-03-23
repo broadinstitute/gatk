@@ -334,9 +334,25 @@ public final class ReadThreadingAssembler {
                         // N cigar elements means that a bubble was too divergent from the reference so skip over this path
                         continue;
                     } else if (cigar.getReferenceLength() != refHaplotype.getCigar().getReferenceLength()) { // SW failure
-                        throw new IllegalStateException("Smith-Waterman alignment failure. Cigar = " + cigar + " with reference length "
-                                + cigar.getReferenceLength() + " but expecting reference length of " + refHaplotype.getCigar().getReferenceLength()
-                                + " ref = " + refHaplotype + " path " + new String(h.getBases()));
+                        final Cigar cigarWithIndelStrategy = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, SWOverhangStrategy.INDEL);
+                        // the SOFTCLIP strategy can produce a haplotype cigar that matches the beginning of the reference and
+                        // skips the latter part of the reference.  For example, when padded haplotype = NNNNNNNNNN[sequence 1]NNNNNNNNNN
+                        // and padded ref = NNNNNNNNNN[sequence 1][sequence 2]NNNNNNNNNN, the alignment may choose to align only sequence 1.
+                        // If aligning with an indel strategy produces a cigar with deletions for sequence 2 (which is reflected in the
+                        // reference length of the cigar matching the reference length of the ref haplotype), then the assembly window was
+                        // simply too small to reliably resolve the deletion; it should only throw an IllegalStateException when aligning
+                        // with the INDEL strategy still produces discrepant reference lengths.
+                        // You might wonder why not just use the INDEL strategy from the beginning.  This is because the SOFTCLIP strategy only fails
+                        // when there is insufficient flanking sequence to resolve the cigar unambiguously.  The INDEL strategy would produce
+                        // valid but most likely spurious indel cigars.
+                        if (cigarWithIndelStrategy.getReferenceLength() == refHaplotype.getCigar().getReferenceLength()) {
+                            failedCigars++;
+                            continue;
+                        } else {
+                            throw new IllegalStateException("Smith-Waterman alignment failure. Cigar = " + cigar + " with reference length "
+                                    + cigar.getReferenceLength() + " but expecting reference length of " + refHaplotype.getCigar().getReferenceLength()
+                                    + " ref = " + refHaplotype + " path " + new String(h.getBases()));
+                        }
                     }
 
                     h.setCigar(cigar);
