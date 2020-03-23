@@ -507,7 +507,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "chrM:750-750 A*, [G]");
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
 
-        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1672);
+        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1664);
     }
 
     @DataProvider(name = "vcfsForFiltering")
@@ -703,7 +703,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 //ref blocks will be dependent on TLOD band values
                 "chrM:218-218 A*, [<NON_REF>]",
                 "chrM:264-266 C*, [<NON_REF>]",
-                "chrM:479-483 A*, [<NON_REF>]",
+                "chrM:475-483 A*, [<NON_REF>]",
                 "chrM:488-492 T*, [<NON_REF>]");
 
         //ref block boundaries aren't particularly stable, so try a few and make sure we check at least one

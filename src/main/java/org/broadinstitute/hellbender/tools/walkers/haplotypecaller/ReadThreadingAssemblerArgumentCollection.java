@@ -18,6 +18,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     private static final long serialVersionUID = 1L;
 
     public static final double DEFAULT_PRUNING_LOG_ODDS_THRESHOLD = MathUtils.log10ToLog(1.0);
+    public static final double DEFAULT_PRUNING_SEEDING_LOG_ODDS_THRESHOLD = MathUtils.log10ToLog(2.0);
 
     public static final String ERROR_CORRECT_READS_LONG_NAME = "error-correct-reads";
     public static final String PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME = "error-correction-log-odds";
@@ -117,6 +118,13 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Advanced
     @Argument(fullName="pruning-lod-threshold", doc = "Ln likelihood ratio threshold for adaptive pruning algorithm", optional = true)
     public double pruningLogOddsThreshold = DEFAULT_PRUNING_LOG_ODDS_THRESHOLD;
+
+    /**
+     * Log-10 likelihood ratio threshold for adaptive pruning algorithm.
+     */
+    @Advanced
+    @Argument(fullName="pruning-seeding-lod-threshold", doc = "Ln likelihood ratio threshold for seeding subgraph of good variation in adaptive pruning algorithm", optional = true)
+    public double pruningSeedingLogOddsThreshold = DEFAULT_PRUNING_SEEDING_LOG_ODDS_THRESHOLD;
 
     /**
      * The maximum number of variants in graph the adaptive pruner will allow

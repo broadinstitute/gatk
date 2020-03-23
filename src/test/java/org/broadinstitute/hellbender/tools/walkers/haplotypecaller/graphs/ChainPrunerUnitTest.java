@@ -148,7 +148,7 @@ public final class ChainPrunerUnitTest extends GATKBaseTest {
         // note: these are the steps in ReadThreadingAssembler::createGraph
         graph.buildGraphIfNecessary();
 
-        final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> pruner = new AdaptiveChainPruner<>(0.001, logOddsThreshold, 50);
+        final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> pruner = new AdaptiveChainPruner<>(0.001, logOddsThreshold, 2.0, 50);
         pruner.pruneLowWeightChains(graph);
 
         final SmithWatermanAligner aligner = SmithWatermanJavaAligner.getInstance();
@@ -173,6 +173,47 @@ public final class ChainPrunerUnitTest extends GATKBaseTest {
         // around the log-10 of the allele fraction up to some fudge factor, assumign we didn't do any dumb pruning
         Assert.assertEquals(bestPaths.get(altIndex.getAsInt()).score(), Math.log10(altFraction), 0.5);
         Assert.assertTrue(bestPaths.size() < 15);
+    }
+
+    // test that in graph with good path A -> B -> C and bad edges A -> D -> C and D -> B that the adjacency of bad edges --
+    // such that when bad edges meet the multiplicities do not indicate an error - does not harm pruning.
+    // we test with and without a true variant path A -> E -> C
+    @Test
+    public void testAdaptivePruningWithAdjacentBadEdges() {
+        final int goodMultiplicity = 1000;
+        final int variantMultiplicity = 50;
+        final int badMultiplicity = 5;
+
+        final SeqVertex source = new SeqVertex("source");
+        final SeqVertex sink = new SeqVertex("sink");
+        final SeqVertex A = new SeqVertex("A");
+        final SeqVertex B = new SeqVertex("B");
+        final SeqVertex C = new SeqVertex("C");
+        final SeqVertex D = new SeqVertex("D");
+        final SeqVertex E = new SeqVertex("E");
+
+
+        for (boolean variantPresent : new boolean[] {false, true}) {
+            final SeqGraph graph = new SeqGraph(20);
+
+            graph.addVertices(source, A, B, C, D, sink);
+            graph.addEdges(() -> new BaseEdge(true, goodMultiplicity), source, A, B, C, sink);
+            graph.addEdges(() -> new BaseEdge(false, badMultiplicity), A, D, C);
+            graph.addEdges(() -> new BaseEdge(false, badMultiplicity), D, B);
+
+            if (variantPresent) {
+                graph.addVertices(E);
+                graph.addEdges(() -> new BaseEdge(false, variantMultiplicity), A, E, C);
+            }
+
+            final ChainPruner<SeqVertex, BaseEdge> pruner = new AdaptiveChainPruner<>(0.01, 2.0, 2.0, 50);
+            pruner.pruneLowWeightChains(graph);
+
+            Assert.assertFalse(graph.containsVertex(D));
+            if (variantPresent) {
+                Assert.assertTrue(graph.containsVertex(E));
+            }
+        }
     }
 
     @DataProvider(name = "chainPrunerData")
