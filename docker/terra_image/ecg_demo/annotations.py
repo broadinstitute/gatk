@@ -31,14 +31,17 @@ def display_annotation_collector(sample_info, sample_id):
     key = widgets.Dropdown(
         options=sample_info.keys(),
         description='Key:',
-        disabled=False)
+        disabled=False,
+    )
 
     # return the sample's value for that key
     valuelabel = widgets.Label(value='Value: ')
     keyvalue = widgets.Label(value=str(df_sample[key.value].iloc[0]))
 
-    box1 = widgets.HBox([key, valuelabel, keyvalue],
-                        layout=widgets.Layout(width='50%'))
+    box1 = widgets.HBox(
+        [key, valuelabel, keyvalue],
+        layout=widgets.Layout(width='50%'),
+    )
 
     # have keyvalue auto update depending on the selected key
     def handle_key_change(change):
@@ -53,7 +56,7 @@ def display_annotation_collector(sample_info, sample_id):
         description=f'Comment:',
         disabled=False,
         layout=widgets.Layout(width='80%', height='50px'),
-        style={'description_width': 'initial'}
+        style={'description_width': 'initial'},
     )
 
     # configure submission button
@@ -110,7 +113,7 @@ def format_annotation(sample_id, annotation_data):
         'key': key,
         'value_numeric': value_numeric,
         'value_string': value_string,
-        'comment': comment
+        'comment': comment,
     }
 
     return params
@@ -129,13 +132,15 @@ INSERT INTO `{table}`
 (sample_id, annotator, annotation_timestamp, key, value_numeric, value_string, comment)
 VALUES
 ('{sample_id}', '{annotator}', CURRENT_TIMESTAMP(), '{key}', SAFE_CAST('{value_numeric}' as NUMERIC), '{value_string}', '{comment}')
-'''.format(table=table,
-           sample_id=params['sample_id'],
-           annotator=params['annotator'],
-           key=params['key'],
-           value_numeric=params['value_numeric'],
-           value_string=params['value_string'],
-           comment=params['comment'])
+'''.format(
+        table=table,
+        sample_id=params['sample_id'],
+        annotator=params['annotator'],
+        key=params['key'],
+        value_numeric=params['value_numeric'],
+        value_string=params['value_string'],
+        comment=params['comment']
+    )
 
     # submit the insert request
     submission = bqclient.query(query_string)
@@ -155,12 +160,13 @@ def view_submissions(count=10, table='uk-biobank-sek-data.ml_results.annotations
     query_string = '''SELECT * FROM `{table}`
 WHERE annotator = '{annotator}'
 ORDER BY annotation_timestamp DESC
-LIMIT {count}'''.format(table=table,
-                        annotator=os.getenv('OWNER_EMAIL'),
-                        count=str(count))
+LIMIT {count}'''.format(
+        table=table,
+        annotator=os.getenv('OWNER_EMAIL'),
+        count=str(count)
+    )
 
     # submit the query and store the result as a dataframe
     df = bqclient.query(query_string).result().to_dataframe()
 
     return df
-

@@ -44,7 +44,7 @@ def fields_to_curl(name, action, id, s, t, i, v):
     return f"""
 curl -d "id={id}&s={s}&t={t}&i={i}&v={v}&submit=Fetch" \
 -X POST {action} \
--o {name}    
+-o {name}
     """
 
 

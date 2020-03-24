@@ -6,7 +6,7 @@
 # Sometimes code overwrites user-provided arguments to enforce assumptions or sanity.
 #
 # October 2018
-# Sam Friedman 
+# Sam Friedman
 # sam@broadinstitute.org
 
 # Imports
@@ -34,8 +34,10 @@ def parse_args():
     parser.add_argument('--mode', default='mlp', help='What would you like to do?')
 
     # Config arguments
-    parser.add_argument("--logging_level", default='INFO', choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-                        help="Logging level. Overrides any configuration given in the logging configuration file.")
+    parser.add_argument(
+        "--logging_level", default='INFO', choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level. Overrides any configuration given in the logging configuration file.",
+    )
 
     # Tensor Map arguments
     parser.add_argument('--input_tensors', default=[], nargs='+')
@@ -44,8 +46,10 @@ def parse_args():
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
 
     # Input and Output files and directories
-    parser.add_argument('--bigquery_credentials_file', default='/mnt/ml4cvd/projects/jamesp/bigquery/bigquery-viewer-credentials.json',
-                        help='Path to service account credentials for looking up BigQuery tables.')
+    parser.add_argument(
+        '--bigquery_credentials_file', default='/mnt/ml4cvd/projects/jamesp/bigquery/bigquery-viewer-credentials.json',
+        help='Path to service account credentials for looking up BigQuery tables.',
+    )
     parser.add_argument('--bigquery_dataset', default='broad-ml4cvd.ukbb7089_r10data', help='BigQuery dataset containing tables we want to query.')
     parser.add_argument('--xml_folder', default='/mnt/disks/ecg-rest-xml/', help='Path to folder of XMLs of ECG data.')
     parser.add_argument('--zip_folder', default='/mnt/disks/sax-mri-zip/', help='Path to folder of zipped dicom images.')
@@ -60,25 +64,35 @@ def parse_args():
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
     parser.add_argument('--model_layers', help='Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.')
     parser.add_argument('--freeze_model_layers', default=False, action='store_true', help='Whether to freeze the layers from model_layers.')
-    parser.add_argument('--continuous_file', default=None, help='Path to a file containing continuous values from which a output TensorMap will be made.'
-                                                               'Note that setting this argument has the effect of linking the first output_tensors'
-                                                               'argument to the TensorMap made from this file.')
+    parser.add_argument(
+        '--continuous_file', default=None, help='Path to a file containing continuous values from which a output TensorMap will be made.'
+        'Note that setting this argument has the effect of linking the first output_tensors'
+        'argument to the TensorMap made from this file.',
+    )
 
     # Data selection parameters
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
-    parser.add_argument('--continuous_file_discretization_bounds', default=[], nargs='*', type=float,
-                        help='Bin boundaries to use to discretize a continuous TensorMap read from a file.')
-    parser.add_argument('--categorical_field_ids', nargs='*', default=[], type=int,
-        help='List of field ids from which input features will be collected.')
-    parser.add_argument('--continuous_field_ids', nargs='*', default=[], type=int,
-        help='List of field ids from which continuous real-valued input features will be collected.')
+    parser.add_argument(
+        '--continuous_file_discretization_bounds', default=[], nargs='*', type=float,
+        help='Bin boundaries to use to discretize a continuous TensorMap read from a file.',
+    )
+    parser.add_argument(
+        '--categorical_field_ids', nargs='*', default=[], type=int,
+        help='List of field ids from which input features will be collected.',
+    )
+    parser.add_argument(
+        '--continuous_field_ids', nargs='*', default=[], type=int,
+        help='List of field ids from which continuous real-valued input features will be collected.',
+    )
     parser.add_argument('--include_array', default=False, action='store_true', help='Include array idx for UKBB phenotypes.')
     parser.add_argument('--include_instance', default=False, action='store_true', help='Include instances for UKBB phenotypes.')
     parser.add_argument('--min_values', default=10, type=int, help='Per feature size minimum.')
     parser.add_argument('--min_samples', default=3, type=int, help='Min number of samples to require for calculating correlations.')
-    parser.add_argument('--max_samples', type=int, default=None,
-                        help='Max number of samples to use for tensor reporting -- all samples are used if not specified.')
+    parser.add_argument(
+        '--max_samples', type=int, default=None,
+        help='Max number of samples to use for tensor reporting -- all samples are used if not specified.',
+    )
     parser.add_argument('--mri_field_ids', default=['20208', '20209'], nargs='*', help='Field id for MR images.')
     parser.add_argument('--xml_field_ids', default=['20205', '6025'], nargs='*', help='Field id for XMLs of resting and exercise ECG data.')
     parser.add_argument('--max_patients', default=999999, type=int,  help='Maximum number of patient data to read')
@@ -86,12 +100,18 @@ def parse_args():
     parser.add_argument('--max_sample_id', default=7000000, type=int, help='Maximum sample id to write to tensor.')
     parser.add_argument('--max_slices', default=999999, type=int, help='Maximum number of dicom slices to read')
     parser.add_argument('--dicom_series', default='cine_segmented_sax_b6', help='Maximum number of dicom slices to read')
-    parser.add_argument('--b_slice_force', default=None,
-                        help='If set, will only load specific b slice for short axis MRI diastole systole tensor maps (i.e b0, b1, b2, ... b10).')
-    parser.add_argument('--include_missing_continuous_channel', default=False, action='store_true',
-                        help='Include missing channels in continuous tensors')
-    parser.add_argument('--imputation_method_for_continuous_fields', default=IMPUTATION_RANDOM, help='can be random or mean',
-                        choices=[IMPUTATION_RANDOM, IMPUTATION_MEAN])
+    parser.add_argument(
+        '--b_slice_force', default=None,
+        help='If set, will only load specific b slice for short axis MRI diastole systole tensor maps (i.e b0, b1, b2, ... b10).',
+    )
+    parser.add_argument(
+        '--include_missing_continuous_channel', default=False, action='store_true',
+        help='Include missing channels in continuous tensors',
+    )
+    parser.add_argument(
+        '--imputation_method_for_continuous_fields', default=IMPUTATION_RANDOM, help='can be random or mean',
+        choices=[IMPUTATION_RANDOM, IMPUTATION_MEAN],
+    )
 
     # Model Architecture Parameters
     parser.add_argument('--x', default=256, type=int, help='x tensor resolution')
@@ -127,8 +147,10 @@ def parse_args():
     parser.add_argument('--block_size', default=3, type=int, help='Number of convolutional layers within a block.')
     parser.add_argument('--u_connect', default=False, action='store_true', help='Connect early convolutional layers to later ones of the same size, as in U-Net.')
     parser.add_argument('--aligned_dimension', default=16, type=int, help='Dimensionality of aligned embedded space for multi-modal alignment models.')
-    parser.add_argument('--max_parameters', default=9000000, type=int,
-                        help='Maximum number of trainable parameters in a model during hyperparameter optimization.')
+    parser.add_argument(
+        '--max_parameters', default=9000000, type=int,
+        help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
+    )
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
     parser.add_argument('--variational', default=False, action='store_true', help='Make the embed layer variational. No U-connections.')
 
@@ -137,19 +159,27 @@ def parse_args():
     parser.add_argument('--batch_size', default=16, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
     parser.add_argument('--valid_ratio', default=0.2, type=float, help='Rate of training tensors to save for validation must be in [0.0, 1.0].')
     parser.add_argument('--test_ratio', default=0.1, type=float, help='Rate of training tensors to save for testing [0.0, 1.0].')
-    parser.add_argument('--test_modulo', default=0, type=int,
-                        help='Sample IDs modulo this number will be reserved for testing. Set to 1 to only reserve test_ratio for testing.')
+    parser.add_argument(
+        '--test_modulo', default=0, type=int,
+        help='Sample IDs modulo this number will be reserved for testing. Set to 1 to only reserve test_ratio for testing.',
+    )
     parser.add_argument('--test_steps', default=32, type=int, help='Number of batches to use for testing.')
     parser.add_argument('--training_steps', default=400, type=int, help='Number of training batches to examine in an epoch.')
     parser.add_argument('--validation_steps', default=40, type=int, help='Number of validation batches to examine in an epoch validation.')
     parser.add_argument('--learning_rate', default=0.0002, type=float, help='Learning rate during training.')
     parser.add_argument('--mixup_alpha', default=0, type=float, help='If positive apply mixup and sample from a Beta with this value as shape parameter alpha.')
-    parser.add_argument('--label_weights', nargs='*', type=float,
-                        help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.')
-    parser.add_argument('--patience', default=8, type=int,
-                        help='Early Stopping parameter: Maximum number of epochs to run without validation loss improvements.')
-    parser.add_argument('--max_models', default=16, type=int,
-                        help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.')
+    parser.add_argument(
+        '--label_weights', nargs='*', type=float,
+        help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.',
+    )
+    parser.add_argument(
+        '--patience', default=8, type=int,
+        help='Early Stopping parameter: Maximum number of epochs to run without validation loss improvements.',
+    )
+    parser.add_argument(
+        '--max_models', default=16, type=int,
+        help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.',
+    )
     parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
     parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
     parser.add_argument('--learning_rate_schedule', default=None, type=str, choices=['triangular', 'triangular2'], help='Adjusts learning rate during training.')
@@ -224,11 +254,15 @@ def _process_args(args):
     args.tensor_maps_out = []
     if args.continuous_file is not None:
         # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
-        args.tensor_maps_out.append(generate_continuous_tensor_map_from_file(args.continuous_file,
-                                                                             args.continuous_file_column,
-                                                                             args.output_tensors.pop(0),
-                                                                             args.continuous_file_normalize,
-                                                                             args.continuous_file_discretization_bounds))
+        args.tensor_maps_out.append(
+            generate_continuous_tensor_map_from_file(
+                args.continuous_file,
+                args.continuous_file_column,
+                args.output_tensors.pop(0),
+                args.continuous_file_normalize,
+                args.continuous_file_discretization_bounds,
+            ),
+        )
     args.tensor_maps_out.extend([_get_tmap(ot, needed_tensor_maps) for ot in args.output_tensors])
 
     if args.learning_rate_schedule is not None and args.patience < args.epochs:

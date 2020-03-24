@@ -156,29 +156,36 @@ def plot_cardiac_long_axis(b_series, sides=7, fig_width=18, title_prefix=''):
             np.ma.masked_where(anatomical_mask == 2, dcm.pixel_array),
             cmap='gray',
             vmin=np.min(dcm.pixel_array),
-            vmax=np.max(dcm.pixel_array))
+            vmax=np.max(dcm.pixel_array),
+        )
       except KeyError:
-        axes[idx%sides, idx//sides].imshow(dcm.pixel_array,
-                                           cmap='gray',
-                                           vmin=np.min(dcm.pixel_array),
-                                           vmax=np.max(dcm.pixel_array))
+        axes[idx%sides, idx//sides].imshow(
+            dcm.pixel_array,
+            cmap='gray',
+            vmin=np.min(dcm.pixel_array),
+            vmax=np.max(dcm.pixel_array),
+        )
     axes[idx%sides, idx//sides].set_yticklabels([])
     axes[idx%sides, idx//sides].set_xticklabels([])
 
-  fig.suptitle(title_prefix + ', Number of sides: ' + str(sides)
-               + ', Figure size:' + str((fig_width, fig_height)),
-               fontsize=fig_width)
+  fig.suptitle(
+      title_prefix + ', Number of sides: ' + str(sides)
+      + ', Figure size:' + str((fig_width, fig_height)),
+      fontsize=fig_width,
+  )
   fig.subplots_adjust(
       top=0.96,    # the top of the subplots of the figure
       wspace=0.1,  # the amount of width reserved for space between subplots,
                    # expressed as a fraction of the average axis width
-      hspace=0.1   # the amount of height reserved for space between subplots,
+      hspace=0.1,   # the amount of height reserved for space between subplots,
                    # expressed as a fraction of the average axis height
   )
 
 
-def plot_cardiac_short_axis(series, transpose=False, fig_width=18,
-                            title_prefix=''):
+def plot_cardiac_short_axis(
+    series, transpose=False, fig_width=18,
+    title_prefix='',
+):
   """Visualize CINE_segmented_LAX series.
 
   Args:
@@ -203,31 +210,39 @@ def plot_cardiac_short_axis(series, transpose=False, fig_width=18,
     col = (dcm.InstanceNumber-1)%cols
     row = (dcm.InstanceNumber-1)//cols
     if transpose:
-      axes[row, col].imshow(dcm.pixel_array.T,
-                            cmap='gray',
-                            vmin=np.min(dcm.pixel_array),
-                            vmax=np.max(dcm.pixel_array))
+      axes[row, col].imshow(
+          dcm.pixel_array.T,
+          cmap='gray',
+          vmin=np.min(dcm.pixel_array),
+          vmax=np.max(dcm.pixel_array),
+      )
     else:
-      axes[row, col].imshow(dcm.pixel_array,
-                            cmap='gray',
-                            vmin=np.min(dcm.pixel_array),
-                            vmax=np.max(dcm.pixel_array))
+      axes[row, col].imshow(
+          dcm.pixel_array,
+          cmap='gray',
+          vmin=np.min(dcm.pixel_array),
+          vmax=np.max(dcm.pixel_array),
+      )
     axes[row, col].set_yticklabels([])
     axes[row, col].set_xticklabels([])
-  fig.suptitle(title_prefix + ', Transpose: ' + str(transpose)
-               + ', Figure size:' + str((fig_width, fig_height)),
-               fontsize=fig_width)
+  fig.suptitle(
+      title_prefix + ', Transpose: ' + str(transpose)
+      + ', Figure size:' + str((fig_width, fig_height)),
+      fontsize=fig_width,
+  )
   fig.subplots_adjust(
       top=0.96,    # the top of the subplots of the figure
       wspace=0.1,  # the amount of width reserved for space between subplots,
                    # expressed as a fraction of the average axis width
-      hspace=0.1   # the amount of height reserved for space between subplots,
+      hspace=0.1,   # the amount of height reserved for space between subplots,
                    # expressed as a fraction of the average axis height
   )
 
 
-def plot_mri_series(sample_mri, dicoms, series_name, sax_sides,
-                    lax_transpose, fig_width):
+def plot_mri_series(
+    sample_mri, dicoms, series_name, sax_sides,
+    lax_transpose, fig_width,
+):
   """Visualize the applicable series within this DICOM.
 
   Args:
@@ -243,15 +258,19 @@ def plot_mri_series(sample_mri, dicoms, series_name, sax_sides,
   title_prefix = f'{dicoms[series_name][0].SeriesDescription}  from MRI {os.path.basename(sample_mri)}'
   print(f'Rendering {title_prefix}.')
   if 'cine_segmented_lax' in series_name:
-    plot_cardiac_short_axis(dicoms[series_name],
-                            transpose=lax_transpose,
-                            fig_width=fig_width,
-                            title_prefix=title_prefix)
+    plot_cardiac_short_axis(
+        dicoms[series_name],
+        transpose=lax_transpose,
+        fig_width=fig_width,
+        title_prefix=title_prefix,
+    )
   elif 'cine_segmented_sax_inlinevf' in series_name:
-    plot_cardiac_long_axis(dicoms[series_name],
-                           sides=sax_sides,
-                           fig_width=fig_width,
-                           title_prefix=title_prefix)
+    plot_cardiac_long_axis(
+        dicoms[series_name],
+        sides=sax_sides,
+        fig_width=fig_width,
+        title_prefix=title_prefix,
+    )
   else:
     print(f'Visualization not currently implemented for {series_name}.')
     return None
@@ -303,7 +322,7 @@ def choose_mri_series(sample_mri):
           value=sorted(list(filtered_dicoms.keys()))[0],
           description='Choose the MRI series to visualize:',
           style={'description_width': 'initial'},
-          layout=widgets.Layout(width='800px')
+          layout=widgets.Layout(width='800px'),
       )
       fig_width_chooser = widgets.IntSlider(
           continuous_update=False,
@@ -311,34 +330,45 @@ def choose_mri_series(sample_mri):
           min=8,
           description='Desired width of figure (height will be computed using input data)',
           style={'description_width': 'initial'},
-          layout=widgets.Layout(width='800px'))
+          layout=widgets.Layout(width='800px'),
+      )
       sax_sides_chooser = widgets.IntSlider(
           continuous_update=False,
           value=7,
           min=1,
           description='How many sides to display for CINE_segmented_SAX_InlineVF',
           style=fig_width_chooser.style,
-          layout=fig_width_chooser.layout)
+          layout=fig_width_chooser.layout,
+      )
       lax_transpose_chooser = widgets.Checkbox(
           description='Whether to transpose the images when plotting CINE_segmented_LAX',
           style=fig_width_chooser.style,
-          layout=fig_width_chooser.layout)
+          layout=fig_width_chooser.layout,
+      )
       viz_controls_ui = widgets.VBox(
-          [widgets.HTML('<h3>Visualization controls</h3>'), series_name_chooser,
-           fig_width_chooser, sax_sides_chooser, lax_transpose_chooser],
-          layout=widgets.Layout(width='auto', border='solid 1px grey'))
+          [
+              widgets.HTML('<h3>Visualization controls</h3>'), series_name_chooser,
+              fig_width_chooser, sax_sides_chooser, lax_transpose_chooser,
+          ],
+          layout=widgets.Layout(width='auto', border='solid 1px grey'),
+      )
       viz_controls_output = widgets.interactive_output(
           plot_mri_series,
-          {'sample_mri': widgets.fixed(sample_mri),
-           'dicoms': widgets.fixed(filtered_dicoms),
-           'series_name': series_name_chooser,
-           'sax_sides': sax_sides_chooser,
-           'lax_transpose': lax_transpose_chooser,
-           'fig_width': fig_width_chooser})
+          {
+              'sample_mri': widgets.fixed(sample_mri),
+              'dicoms': widgets.fixed(filtered_dicoms),
+              'series_name': series_name_chooser,
+              'sax_sides': sax_sides_chooser,
+              'lax_transpose': lax_transpose_chooser,
+              'fig_width': fig_width_chooser,
+          },
+      )
       display(viz_controls_ui, viz_controls_output)
     else:
-      print(f'\n\nNeither CINE_segmented_SAX_InlineVF nor CINE_segmented_LAX available in MRI for sample {os.path.basename(sample_mri)}.',
-            '\n\nTry a different MRI.')
+      print(
+          f'\n\nNeither CINE_segmented_SAX_InlineVF nor CINE_segmented_LAX available in MRI for sample {os.path.basename(sample_mri)}.',
+          '\n\nTry a different MRI.',
+      )
       return None
 
 
@@ -376,11 +406,13 @@ def choose_cardiac_mri(sample_id, folder=None):
       value=sample_mris[0],
       description=f'Choose an MRI to visualize for sample {sample_id}:',
       style={'description_width': 'initial'},
-      layout=widgets.Layout(width='800px')
+      layout=widgets.Layout(width='800px'),
   )
   file_controls_ui = widgets.VBox(
       [widgets.HTML('<h3>File controls</h3>'), mri_chooser],
-      layout=widgets.Layout(width='auto', border='solid 1px grey'))
+      layout=widgets.Layout(width='auto', border='solid 1px grey'),
+  )
   file_controls_output = widgets.interactive_output(
-      choose_mri_series, {'sample_mri': mri_chooser})
+      choose_mri_series, {'sample_mri': mri_chooser},
+  )
   display(file_controls_ui, file_controls_output)

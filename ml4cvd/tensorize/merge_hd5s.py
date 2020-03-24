@@ -7,7 +7,7 @@ from collections import Counter
 
 from ml4cvd.defines import TENSOR_EXT, HD5_GROUP_CHAR
 
-""" 
+"""
 This script copies all the hd5 datasets from all hd5 files within the 'sources'
 directories to the same-named files within the 'destination' directory.
 
@@ -20,7 +20,7 @@ If any of the source files contain the same dataset at the same group path, it e
 Example command line:
 python .merge_hd5s.py \
     --sources /path/to/src/continuous/tensor/directory/ /path/to/src/categorical/tensor/directory/ \
-    --destination /path/to/output/directory/ 
+    --destination /path/to/output/directory/
 """
 
 
@@ -77,8 +77,10 @@ def parse_args():
     parser.add_argument('--max_sample_id', default=7000000, type=int, help='Maximum sample id to write to tensor.')
     parser.add_argument("--logging_level", default='INFO', help="Logging level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     parser.add_argument('--inplace', default=False, action='store_true', help='Merge into pre-existing destination tensors')
-    parser.add_argument('--intersect', default=False, action='store_true',
-                        help='Only merge files if the sample id is in every source directory (and if destination if destination is not empty')
+    parser.add_argument(
+        '--intersect', default=False, action='store_true',
+        help='Only merge files if the sample id is in every source directory (and if destination if destination is not empty',
+    )
     return parser.parse_args()
 
 

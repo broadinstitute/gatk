@@ -34,31 +34,31 @@ def _create_config(log_level, log_file):
         'disable_existing_loggers': False,
         'formatters': {
             'simple': {
-                'format': '%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s'
+                'format': '%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s',
             },
             'detailed': {
-                'format': '%(name)s:%(levelname)s %(module)s:%(lineno)d:  %(message)s'
-            }
+                'format': '%(name)s:%(levelname)s %(module)s:%(lineno)d:  %(message)s',
+            },
         },
         'handlers': {
             'console': {
                 'level': log_level,
                 'class': 'logging.StreamHandler',
                 'formatter': 'simple',
-                'stream': sys.stdout
+                'stream': sys.stdout,
             },
             'file': {
                 'level': log_level,
                 'class': 'logging.FileHandler',
                 'formatter': 'simple',
                 'filename': log_file,
-                'mode': 'w'
-            }
+                'mode': 'w',
+            },
         },
         'loggers': {
             '': {
                 'handlers': ['console', 'file'],
                 'level': log_level,
-            }
-        }
+            },
+        },
     }

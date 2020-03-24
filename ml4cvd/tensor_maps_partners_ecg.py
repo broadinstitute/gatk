@@ -40,10 +40,10 @@ def _compress_data(hf, name, data, dtype, method='zstd', compression_opts=19):
     dat.attrs['uncompressed_length'] = dsize
     dat.attrs['compressed_length']   = len(data_compressed)
     dat.attrs['dtype'] = dtype
-   
+
 
 def _decompress_data(data_compressed, dtype):
-    codec = numcodecs.zstd.Zstd() 
+    codec = numcodecs.zstd.Zstd()
     data_decompressed = codec.decode(data_compressed)
     if dtype == 'str':
         data = data_decompressed.decode()
@@ -88,20 +88,22 @@ def make_voltage(population_normalize: float = None):
         for cm in tm.channel_map:
             voltage = _decompress_data(data_compressed=hd5[cm][()], dtype=hd5[cm].attrs['dtype'])
             voltage = _resample_voltage(voltage, tm.shape[0])
-            tensor[:, tm.channel_map[cm]] = voltage 
+            tensor[:, tm.channel_map[cm]] = voltage
         if population_normalize is None:
             tm.normalization = {'zero_mean_std1': True}
         else:
-            tensor /= population_normalize 
+            tensor /= population_normalize
         return tensor
     return get_voltage_from_file
 
 
-TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
-                                        shape=(2500, 12),
-                                        interpretation=Interpretation.CONTINUOUS,
-                                        tensor_from_file=make_voltage(population_normalize=2000.0),
-                                        channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_voltage'] = TensorMap(
+    'partners_ecg_voltage',
+    shape=(2500, 12),
+    interpretation=Interpretation.CONTINUOUS,
+    tensor_from_file=make_voltage(population_normalize=2000.0),
+    channel_map=ECG_REST_AMP_LEADS,
+)
 
 TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(2500, 12), tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(5000, 12), tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS)
@@ -118,11 +120,13 @@ def make_voltage_attr(volt_attr: str = ""):
     return get_voltage_attr_from_file
 
 
-TMAPS["voltage_len"] = TensorMap("voltage_len",
-                                 interpretation=Interpretation.CONTINUOUS,
-                                 tensor_from_file=make_voltage_attr(volt_attr="len"),
-                                 shape=(12,),
-                                 channel_map=ECG_REST_AMP_LEADS)
+TMAPS["voltage_len"] = TensorMap(
+    "voltage_len",
+    interpretation=Interpretation.CONTINUOUS,
+    tensor_from_file=make_voltage_attr(volt_attr="len"),
+    shape=(12,),
+    channel_map=ECG_REST_AMP_LEADS,
+)
 
 TMAPS["len_i"] = TensorMap("len_i", shape=(1,), tensor_from_file=make_voltage_attr(volt_attr="len"), channel_map={'I': 0})
 TMAPS["len_v6"] = TensorMap("len_v6", shape=(1,), tensor_from_file=make_voltage_attr(volt_attr="len"), channel_map={'V6': 0})
@@ -174,17 +178,21 @@ def make_partners_ecg_tensor(key: str):
 
 
 task = "partners_ecg_read_md_raw"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(key="read_md_clean"),
-                        shape=(1,))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    tensor_from_file=make_partners_ecg_tensor(key="read_md_clean"),
+    shape=(1,),
+)
 
 
 task = "partners_ecg_read_pc_raw"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(key="read_pc_clean"),
-                        shape=(1,))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    tensor_from_file=make_partners_ecg_tensor(key="read_pc_clean"),
+    shape=(1,),
+)
 
 
 def validator_cross_reference(tm: TensorMap, tensor: np.ndarray):
@@ -204,103 +212,131 @@ def create_cross_reference_dict(fpath="/data/apollo/demographics.csv"):
 
 
 task = "partners_ecg_patientid_cross_reference_apollo"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(key="patientid"),
-                        shape=(1,),
-                        validator=validator_cross_reference)
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    tensor_from_file=make_partners_ecg_tensor(key="patientid"),
+    shape=(1,),
+    validator=validator_cross_reference,
+)
 
 TMAPS[task].cross_reference = create_cross_reference_dict()
 
 task = "partners_ecg_patientid"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(key="patientid"),
-                        shape=(1,))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    tensor_from_file=make_partners_ecg_tensor(key="patientid"),
+    shape=(1,),
+)
 
 task = "partners_ecg_firstname"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(key="patientfirstname"),
-                        shape=(1,))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    tensor_from_file=make_partners_ecg_tensor(key="patientfirstname"),
+    shape=(1,),
+)
 
 task = "partners_ecg_lastname"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(key="patientlastname"),
-                        shape=(1,))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    tensor_from_file=make_partners_ecg_tensor(key="patientlastname"),
+    shape=(1,),
+)
 
 task = "partners_ecg_date"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(key="acquisitiondate"),
-                        shape=(1,))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    tensor_from_file=make_partners_ecg_tensor(key="acquisitiondate"),
+    shape=(1,),
+)
 
 task = "partners_ecg_dob"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(key="dateofbirth"),
-                        shape=(1,))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    tensor_from_file=make_partners_ecg_tensor(key="dateofbirth"),
+    shape=(1,),
+)
 
 task = "partners_ecg_sampling_frequency"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.CONTINUOUS,
-                        tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase"),
-                        shape=(1,))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase"),
+    shape=(1,),
+)
 
 task = "partners_ecg_rate"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.CONTINUOUS,
-                        loss='logcosh',
-                        tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"),
-                        shape=(1,),
-                        validator=make_range_validator(10, 200))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"),
+    shape=(1,),
+    validator=make_range_validator(10, 200),
+)
 
-TMAPS['partners_ventricular_rate'] = TensorMap('VentricularRate', loss='logcosh', tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"), shape=(1,),
-                                               validator=make_range_validator(10, 200), normalization={'mean': 59.3, 'std': 10.6})
+TMAPS['partners_ventricular_rate'] = TensorMap(
+    'VentricularRate', loss='logcosh', tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"), shape=(1,),
+    validator=make_range_validator(10, 200), normalization={'mean': 59.3, 'std': 10.6},
+)
 
 task = "partners_ecg_qrs"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.CONTINUOUS,
-                        loss='logcosh',
-                        metrics=['mse'],
-                        tensor_from_file=make_partners_ecg_tensor(key="qrsduration"),
-                        shape=(1,),
-                        validator=make_range_validator(20, 400))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="qrsduration"),
+    shape=(1,),
+    validator=make_range_validator(20, 400),
+)
 
 task = "partners_ecg_pr"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.CONTINUOUS,
-                        loss='logcosh',
-                        metrics=['mse'],
-                        tensor_from_file=make_partners_ecg_tensor(key="printerval"),
-                        shape=(1,),
-                        validator=make_range_validator(50, 500))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="printerval"),
+    shape=(1,),
+    validator=make_range_validator(50, 500),
+)
 
 task = "partners_ecg_qt"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.CONTINUOUS,
-                        loss='logcosh',
-                        tensor_from_file=make_partners_ecg_tensor(key="qtinterval"),
-                        shape=(1,),
-                        validator=make_range_validator(100, 800))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qtinterval"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
 
 task = "partners_ecg_qtc"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.CONTINUOUS,
-                        loss='logcosh',
-                        tensor_from_file=make_partners_ecg_tensor(key="qtcorrected"),
-                        shape=(1,),
-                        validator=make_range_validator(100, 800))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qtcorrected"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
 
 
 task = "partners_weight_lbs"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.CONTINUOUS,
-                        loss='logcosh',
-                        tensor_from_file=make_partners_ecg_tensor(key="weightlbs"),
-                        shape=(1,),
-                        validator=make_range_validator(100, 800))
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="weightlbs"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
 
 
 def _partners_str2date(d):
@@ -362,10 +398,14 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
 
 
 race_synonyms = {'asian': ['oriental'], 'hispanic': ['latino'], 'white': ['caucasian']}
-TMAPS['partners_race'] = TensorMap('race', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3, 'unknown': 4},
-                                   tensor_from_file=partners_channel_string('race', race_synonyms))
-TMAPS['partners_gender'] = TensorMap('gender', interpretation=Interpretation.CATEGORICAL, channel_map={'female': 0, 'male': 1},
-                                     tensor_from_file=partners_channel_string('gender'))
+TMAPS['partners_race'] = TensorMap(
+    'race', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3, 'unknown': 4},
+    tensor_from_file=partners_channel_string('race', race_synonyms),
+)
+TMAPS['partners_gender'] = TensorMap(
+    'gender', interpretation=Interpretation.CATEGORICAL, channel_map={'female': 0, 'male': 1},
+    tensor_from_file=partners_channel_string('gender'),
+)
 
 
 def _partners_adult(hd5_key, minimum_age=18):
@@ -386,8 +426,10 @@ def _partners_adult(hd5_key, minimum_age=18):
     return tensor_from_string
 
 
-TMAPS['partners_adult_gender'] = TensorMap('adult_gender', interpretation=Interpretation.CATEGORICAL, channel_map={'female': 0, 'male': 1},
-                                           tensor_from_file=_partners_adult('gender'))
+TMAPS['partners_adult_gender'] = TensorMap(
+    'adult_gender', interpretation=Interpretation.CATEGORICAL, channel_map={'female': 0, 'male': 1},
+    tensor_from_file=_partners_adult('gender'),
+)
 
 
 def voltage_zeros(tm, hd5, dependents={}):
@@ -412,9 +454,11 @@ def _loyalty_str2date(date_string: str):
     return str2date(date_string.split(' ')[0])
 
 
-def build_incidence_tensor_from_file(file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
-                                     diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
-                                     delimiter: str = ',', incidence_only: bool = False) -> Callable:
+def build_incidence_tensor_from_file(
+    file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
+    diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
+    delimiter: str = ',', incidence_only: bool = False,
+) -> Callable:
     """Build a tensor_from_file function for future (and prior) diagnoses given a TSV of patients and diagnosis dates.
 
     The tensor_from_file function returned here should be used
@@ -496,9 +540,11 @@ def _diagnosis_channels(disease: str):
     return {f'no_{disease}': 0, f'prior_{disease}': 1, f'future_{disease}': 2}
 
 
-def _survival_from_file(day_window: int, file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
-                        follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
-                        diagnosis_column: str = 'first_stroke', delimiter: str = ',') -> Callable:
+def _survival_from_file(
+    day_window: int, file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
+    follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
+    diagnosis_column: str = 'first_stroke', delimiter: str = ',',
+) -> Callable:
     """Build a tensor_from_file function for modeling survival curves of diagnoses given a TSV of patients and dates.
 
     The tensor_from_file function returned here should be used
@@ -573,20 +619,24 @@ def _survival_from_file(day_window: int, file_name: str, incidence_only: bool = 
                 survival_then_censor[intervals] = has_disease
                 if has_disease and incidence_only:
                     raise ValueError(f'{tm.name} is skipping prevalent cases.')
-        logging.debug(f"Got survival disease {has_disease}, censor: {censor_date}, assess {assess_date}, fu start {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
-                      f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} tensor:{survival_then_censor[:4]} mid tense: {survival_then_censor[intervals:intervals+4]} ")
+        logging.debug(
+            f"Got survival disease {has_disease}, censor: {censor_date}, assess {assess_date}, fu start {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
+            f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} tensor:{survival_then_censor[:4]} mid tense: {survival_then_censor[intervals:intervals+4]} ",
+        )
         return survival_then_censor
     return tensor_from_file
 
 
 def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]:
     name2tensormap: Dict[str: TensorMap] = {}
-    diagnosis2column = {'atrial_fibrillation': 'first_af', 'blood_pressure_medication': 'first_bpmed',
-                        'coronary_artery_disease': 'first_cad', 'cardiovascular_disease': 'first_cvd',
-                        'death': 'death_date', 'diabetes_mellitus': 'first_dm', 'heart_failure': 'first_hf',
-                        'hypertension': 'first_htn', 'left_ventricular_hypertrophy': 'first_lvh',
-                        'myocardial_infarction': 'first_mi', 'pulmonary_artery_disease': 'first_pad',
-                        'stroke': 'first_stroke', 'valvular_disease': 'first_valvular_disease'}
+    diagnosis2column = {
+        'atrial_fibrillation': 'first_af', 'blood_pressure_medication': 'first_bpmed',
+        'coronary_artery_disease': 'first_cad', 'cardiovascular_disease': 'first_cvd',
+        'death': 'death_date', 'diabetes_mellitus': 'first_dm', 'heart_failure': 'first_hf',
+        'hypertension': 'first_htn', 'left_ventricular_hypertrophy': 'first_lvh',
+        'myocardial_infarction': 'first_mi', 'pulmonary_artery_disease': 'first_pad',
+        'stroke': 'first_stroke', 'valvular_disease': 'first_valvular_disease',
+    }
 
     for diagnosis in diagnosis2column:
         # Build diagnosis classification TensorMaps

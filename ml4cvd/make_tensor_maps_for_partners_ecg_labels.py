@@ -100,8 +100,8 @@ def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir, keys_in_hd5
 
                 # Clean label string
                 label_str = _clean_label_string(label_str)
-               
-                # If ??? 
+
+                # If ???
                 if len(prefix) == 0:
                     channel_maps[task].add(label_str)
 
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     fpath_dropbox = '/home/' + getuser() + '/Dropbox (Partners HealthCare)'
     subdir = 'partners_ecg/partners_ecg_labeling'
     fpath_csv_dir = os.path.join(fpath_dropbox, subdir)
-    
+
     # List of keys in HD5 file to parse (that contain the reads)
     keys_in_hd5 = ["read_md_clean", "read_pc_clean"]
 

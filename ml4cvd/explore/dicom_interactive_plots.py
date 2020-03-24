@@ -73,11 +73,12 @@ def choose_mri(sample_id, folder=None):
       value=sample_mris[0],
       description=f'Choose an MRI to visualize for sample {sample_id}:',
       style={'description_width': 'initial'},
-      layout=widgets.Layout(width='800px')
+      layout=widgets.Layout(width='800px'),
   )
   file_controls_ui = widgets.VBox(
       [widgets.HTML('<h3>File controls</h3>'), mri_chooser],
-      layout=widgets.Layout(width='auto', border='solid 1px grey'))
+      layout=widgets.Layout(width='auto', border='solid 1px grey'),
+  )
   file_controls_output = widgets.interactive_output(choose_mri_series, {'sample_mri': mri_chooser})
   display(file_controls_ui, file_controls_output)
 
@@ -137,7 +138,7 @@ def choose_mri_series(sample_mri):
       value=default_series_value,
       description='Choose the MRI series to visualize:',
       style={'description_width': 'initial'},
-      layout=widgets.Layout(width='800px')
+      layout=widgets.Layout(width='800px'),
   )
   # Slide through dicom image instances using a slide bar.
   instance_chooser = widgets.IntSlider(
@@ -148,7 +149,8 @@ def choose_mri_series(sample_mri):
       description='Image instance to display '
       + '(click on slider, then use left/right arrows):',
       style={'description_width': 'initial'},
-      layout=series_name_chooser.layout)
+      layout=series_name_chooser.layout,
+  )
   vmin_chooser = widgets.IntSlider(
       continuous_update=True,
       value=default_vmin_value,
@@ -156,7 +158,8 @@ def choose_mri_series(sample_mri):
       max=MAX_COLOR_RANGE,
       description='Color range minimum:',
       style={'description_width': 'initial'},
-      layout=widgets.Layout(width='300px'))
+      layout=widgets.Layout(width='300px'),
+  )
   vmax_chooser = widgets.IntSlider(
       continuous_update=True,
       value=default_vmax_value,
@@ -164,11 +167,13 @@ def choose_mri_series(sample_mri):
       max=MAX_COLOR_RANGE,
       description='Color range maximum:',
       style={'description_width': 'initial'},
-      layout=vmin_chooser.layout)
+      layout=vmin_chooser.layout,
+  )
   transpose_chooser = widgets.Checkbox(
       description='Whether to transpose the image.',
       style={'description_width': 'initial'},
-      layout=vmin_chooser.layout)
+      layout=vmin_chooser.layout,
+  )
   fig_width_chooser = widgets.IntSlider(
       continuous_update=False,
       value=DEFAULT_IMAGE_WIDTH,
@@ -176,24 +181,31 @@ def choose_mri_series(sample_mri):
       max=MAX_IMAGE_WIDTH,
       description='Width of figure (height will be computed using input data):',
       style={'description_width': 'initial'},
-      layout=vmin_chooser.layout)
+      layout=vmin_chooser.layout,
+  )
 
   viz_controls_ui = widgets.VBox(
-      [widgets.HTML('<h3>Visualization controls</h3>'),
-       series_name_chooser, instance_chooser,
-       widgets.HBox([vmin_chooser, vmax_chooser]),
-       widgets.HBox([transpose_chooser, fig_width_chooser])],
-      layout=widgets.Layout(width='auto', border='solid 1px grey'))
+      [
+          widgets.HTML('<h3>Visualization controls</h3>'),
+          series_name_chooser, instance_chooser,
+          widgets.HBox([vmin_chooser, vmax_chooser]),
+          widgets.HBox([transpose_chooser, fig_width_chooser]),
+      ],
+      layout=widgets.Layout(width='auto', border='solid 1px grey'),
+  )
   viz_controls_output = widgets.interactive_output(
       dicom_animation,
-      {'dicoms': widgets.fixed(dicoms),
-       'series_name': series_name_chooser,
-       'instance': instance_chooser,
-       'vmin': vmin_chooser,
-       'vmax': vmax_chooser,
-       'transpose': transpose_chooser,
-       'fig_width': fig_width_chooser,
-       'title_prefix': widgets.fixed(os.path.basename(sample_mri))})
+      {
+          'dicoms': widgets.fixed(dicoms),
+          'series_name': series_name_chooser,
+          'instance': instance_chooser,
+          'vmin': vmin_chooser,
+          'vmax': vmax_chooser,
+          'transpose': transpose_chooser,
+          'fig_width': fig_width_chooser,
+          'title_prefix': widgets.fixed(os.path.basename(sample_mri)),
+      },
+  )
 
   def on_value_change(change):
     """Inner function to capture state being observed."""
@@ -220,8 +232,10 @@ def compute_instance_range(dicoms, series_name):
   return(middle_instance, max_instance)
 
 
-def dicom_animation(dicoms, series_name, instance, vmin, vmax, transpose,
-                    fig_width, title_prefix=''):
+def dicom_animation(
+    dicoms, series_name, instance, vmin, vmax, transpose,
+    fig_width, title_prefix='',
+):
   """Render one frame of a dicom animation.
 
   Args:
@@ -255,13 +269,15 @@ def dicom_animation(dicoms, series_name, instance, vmin, vmax, transpose,
 
   _, ax = plt.subplots(figsize=(fig_width, fig_height), facecolor='beige')
   ax.imshow(dcm.pixel_array.T if transpose else dcm.pixel_array, cmap='gray', vmin=vmin, vmax=vmax)
-  ax.set_title(title_prefix
-               + ', Series: ' + dcm.SeriesDescription
-               + ', Series Number: ' + str(dcm.SeriesNumber)
-               + ', Instance: ' + str(dcm.InstanceNumber)
-               + '\nColor range: ' + str(vmin) + '-' + str(vmax)
-               + ', Transpose: ' + str(transpose)
-               + ', Figure size:' + str(fig_width) + 'x' + str(fig_height),
-               fontsize=fig_width)
+  ax.set_title(
+      title_prefix
+      + ', Series: ' + dcm.SeriesDescription
+      + ', Series Number: ' + str(dcm.SeriesNumber)
+      + ', Instance: ' + str(dcm.InstanceNumber)
+      + '\nColor range: ' + str(vmin) + '-' + str(vmax)
+      + ', Transpose: ' + str(transpose)
+      + ', Figure size:' + str(fig_width) + 'x' + str(fig_height),
+      fontsize=fig_width,
+  )
   ax.set_yticklabels([])
   ax.set_xticklabels([])

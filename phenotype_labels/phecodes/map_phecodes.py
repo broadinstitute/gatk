@@ -27,7 +27,7 @@ PARAMS = {
     'gs_location': 'data/tmp/',
     'output_schema': os.path.join(CWD, 'phecode_mapping.json'),
     'output_file': PHENO_DATASET + '_phecode_mapping.csv.gz',
-    'output_table': PHENO_DATASET + '.phecode_mapping'
+    'output_table': PHENO_DATASET + '.phecode_mapping',
 }
 client = bigquery.Client() #should already be hooked up to your default project
 
@@ -40,11 +40,13 @@ def get_ranged_phecodes():
     # create list of ranged elements (note, same range may appear twice with
     # different phecode
     ranged_lookups = []  # [(low,high,phecode),...]
-    query_job = client.query("""
+    query_job = client.query(
+        """
         SELECT REPLACE(icd10,'.','') as icd10, phecode
         FROM %(phecode_icd10)s
         WHERE regexp_contains(icd10,'-')
-        """ % PARAMS)
+        """ % PARAMS
+    )
     for row in query_job:
         (low, high) = tuple(row['icd10'].split('-'))  # (start icd10,end icd10)
         ranged_lookups.append((low, high, row['phecode']))
@@ -65,9 +67,10 @@ def identify_phecode_from_ranged_list(sorted_ranged_list, icd10):
         elif icd10 > high:
             continue
         else:
-            raise Exception("not catching icd10 %s in range %s, %s" %
-                            (icd10, low, high)
-                            )
+            raise Exception(
+                "not catching icd10 %s in range %s, %s" %
+                (icd10, low, high),
+            )
     return phecodes
 
 
@@ -89,29 +92,36 @@ def create_phecode_match_file():
 
     # now grab exact phecodes, excluding ones covered in the range already
     exact_phecodes = defaultdict(set)  # dict of exact icd -> set(phecode),
-    query_job = client.query("""
+    query_job = client.query(
+        """
         SELECT replace(icd10,'.','') as icd10, phecode
         from %(phecode_icd10)s
         where regexp_contains(icd10,'-') = false
-        """ % PARAMS)
+        """ % PARAMS
+    )
 
     for row in query_job:
         matched_phecodes = identify_phecode_from_ranged_list(
                            ranged_sorted_phecodes,
-                           row['icd10'])
+                           row['icd10'],
+        )
         if row['phecode'] in matched_phecodes:
-            print('(%s,%s) icd10, phecode redundantly found in range'
-                  % (row['icd10'], row['phecode']))
+            print(
+                '(%s,%s) icd10, phecode redundantly found in range'
+                % (row['icd10'], row['phecode']),
+            )
         else:
             exact_phecodes[row['icd10']].add(row['phecode'])
 
     #read row from hesin table, match to phecode, dump to file
-    query_job = client.query("""
+    query_job = client.query(
+        """
         SELECT eid, record_id, admidate, diag_icd10,
         replace(diag_icd10,'.','') as icd10
         FROM %(pheno_dataset)s.hesin
         where diag_icd10 is not null
-        """ % PARAMS)
+        """ % PARAMS
+    )
     count = 0
 
     #read schema from json to make sure we get the ordering right
@@ -130,9 +140,12 @@ def create_phecode_match_file():
             #one at a time, should be slow as hell
             matched_phecodes = identify_phecode_from_ranged_list(
                             ranged_sorted_phecodes,
-                            row['icd10'])
-            all_matches = matched_phecodes | exact_phecodes.get(row['icd10'],
-                                                                set())
+                            row['icd10'],
+            )
+            all_matches = matched_phecodes | exact_phecodes.get(
+                row['icd10'],
+                set(),
+            )
             if len(all_matches):
                 output_dict = {}
                 for fn in fieldnames:
@@ -163,10 +176,14 @@ def create_phecode_match_file():
 
 
 if __name__ == '__main__':
-    test = {('a', 'b'): 2, ('a', 'c'): 3, ('a1', 'b'): 2,
-            ('a',  'b1'): 2, ('a1', 'b1'): 3}
-    correct = [('a', 'b', 2), ('a', 'b1', 2), ('a', 'c', 3),
-               ('a1', 'b', 2), ('a1', 'b1', 3)]
+    test = {
+        ('a', 'b'): 2, ('a', 'c'): 3, ('a1', 'b'): 2,
+        ('a',  'b1'): 2, ('a1', 'b1'): 3,
+    }
+    correct = [
+        ('a', 'b', 2), ('a', 'b1', 2), ('a', 'c', 3),
+        ('a1', 'b', 2), ('a1', 'b1', 3),
+    ]
     test_list = [(k[0], k[1], v) for k, v in test.items()]
     sorted_test_list = sorted(test_list, key=lambda x: (x[0], x[1]))
     print(sorted_test_list)

@@ -72,29 +72,30 @@ class TensorMap(object):
         In general, new data sources require new TensorMaps and new tensor writers.
         Input and output names are treated differently to allow self mappings, for example auto-encoders
     """
-    def __init__(self,
-                 name: str,
-                 interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
-                 loss: Optional[Union[str, Callable]] = None,
-                 shape: Optional[Tuple[int, ...]] = None,
-                 model: Optional[Model] = None,
-                 metrics: Optional[List[Union[str, Callable]]] = None,
-                 parents: Optional[List["TensorMap"]] = None,
-                 sentinel: Optional[float] = None,
-                 validator: Optional[Callable] = None,
-                 cacheable: Optional[bool] = True,
-                 activation: Optional[Union[str, Callable]] = None,
-                 path_prefix: Optional[str] = None,
-                 loss_weight: Optional[float] = 1.0,
-                 channel_map: Optional[Dict[str, int]] = None,
-                 storage_type: Optional[StorageType] = None,
-                 dependent_map: Optional[str] = None,
-                 augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
-                 normalization: Optional[Normalizer] = None,
-                 annotation_units: Optional[int] = 32,
-                 tensor_from_file: Optional[Callable] = None,
-                 discretization_bounds: Optional[List[float]] = None,
-                 ):
+    def __init__(
+        self,
+        name: str,
+        interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
+        loss: Optional[Union[str, Callable]] = None,
+        shape: Optional[Tuple[int, ...]] = None,
+        model: Optional[Model] = None,
+        metrics: Optional[List[Union[str, Callable]]] = None,
+        parents: Optional[List["TensorMap"]] = None,
+        sentinel: Optional[float] = None,
+        validator: Optional[Callable] = None,
+        cacheable: Optional[bool] = True,
+        activation: Optional[Union[str, Callable]] = None,
+        path_prefix: Optional[str] = None,
+        loss_weight: Optional[float] = 1.0,
+        channel_map: Optional[Dict[str, int]] = None,
+        storage_type: Optional[StorageType] = None,
+        dependent_map: Optional[str] = None,
+        augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
+        normalization: Optional[Normalizer] = None,
+        annotation_units: Optional[int] = 32,
+        tensor_from_file: Optional[Callable] = None,
+        discretization_bounds: Optional[List[float]] = None,
+    ):
         """TensorMap constructor
 
 
@@ -273,8 +274,10 @@ class TensorMap(object):
     def discretize(self, np_tensor):
         if not self.is_discretized():
             return np_tensor
-        return to_categorical(np.digitize(np_tensor, bins=self.discretization_bounds),
-                              num_classes=len(self.discretization_bounds) + 1)
+        return to_categorical(
+            np.digitize(np_tensor, bins=self.discretization_bounds),
+            num_classes=len(self.discretization_bounds) + 1,
+        )
 
     def postprocess_tensor(self, np_tensor, augment: bool, hd5: h5py.File):
         self.validator(self, np_tensor, hd5=hd5)

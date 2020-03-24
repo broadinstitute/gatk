@@ -14,9 +14,11 @@ if 'GOOGLE_PROJECT' in os.environ:  # This is Terra.
   # from a location relative to the notebook.
   if not os.path.exists(FACETS_RELATIVE_URL):
     # If this is our Terra Docker image, the file is available locally.
-    docker_image_path = os.path.join(os.environ['JUPYTER_HOME'],
-                                     'custom',
-                                     FACETS_RELATIVE_URL)
+    docker_image_path = os.path.join(
+        os.environ['JUPYTER_HOME'],
+        'custom',
+        FACETS_RELATIVE_URL,
+    )
     if os.path.exists(docker_image_path):
       os.system('ln -s ' + docker_image_path)
     else:
@@ -35,7 +37,8 @@ class FacetsOverview(object):
     #     top category, etc.
     gfsg = GenericFeatureStatisticsGenerator()
     self._proto = gfsg.ProtoFromDataFrames(
-        [{'name': 'data', 'table': data}])
+        [{'name': 'data', 'table': data}],
+    )
 
   def _repr_html_(self):
     """Html representation of Facets Overview for use in a Jupyter notebook."""
@@ -65,7 +68,9 @@ class FacetsDive(object):
         <script>
           document.querySelector("#dive_elem").data = {data};
         </script>"""
-    html = html_template.format(facets_html=FACETS_HTML,
-                                data=self._data.to_json(orient='records'),
-                                height=self.height)
+    html = html_template.format(
+        facets_html=FACETS_HTML,
+        data=self._data.to_json(orient='records'),
+        height=self.height,
+    )
     return html

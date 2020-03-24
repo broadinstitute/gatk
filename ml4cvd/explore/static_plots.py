@@ -60,4 +60,3 @@ def major_breaks_x_resting_ecg(limits):
     min_break = 7.5
     max_break = 10.0
   return np.arange(min_break, max_break + step, step)
-

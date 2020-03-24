@@ -115,7 +115,7 @@ def _get_categorical_query(dataset):
         (
             SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value, p.coding_file_id
             FROM `{dataset}.phenotype` p
-            INNER JOIN 
+            INNER JOIN
             (
               SELECT d.fieldid, d.field
               FROM `shared_data.tensorization_fieldids` f
@@ -134,7 +134,7 @@ def _get_continuous_query(dataset):
     return f"""
         SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value
         FROM `{dataset}.phenotype` p
-        INNER JOIN 
+        INNER JOIN
         (
           SELECT d.fieldid, d.field
           FROM `shared_data.tensorization_fieldids` f
@@ -161,7 +161,7 @@ def _get_disease_query(dataset):
 def _get_death_and_censor_query(dataset):
     return f"""
         SELECT distinct(d.sample_id), d.has_died, d.death_censor_date, c.phenotype_censor_date, d.enroll_date
-        FROM `{dataset}.disease` d INNER JOIN `{dataset}.censor` c 
+        FROM `{dataset}.disease` d INNER JOIN `{dataset}.censor` c
          ON c.sample_id = d.sample_id ORDER BY d.sample_id;
     """
 
@@ -170,4 +170,3 @@ def _get_phecode_query(dataset):
     return f"""
         SELECT sample_id, disease, has_disease, censor_date FROM `{dataset}.phecodes_nonzero` WHERE has_disease=1;
     """
-

@@ -1,6 +1,6 @@
 """Runtime-specific data location constants and associated helper methods.
 
-TODO(everyone): 
+TODO(everyone):
 * Add more datasets and data types as needed.
 * Update logic to determine runtime as needed.
 * Update Cloud Storage and persistent disk paths as needed.
@@ -53,7 +53,7 @@ FOLDERS[Runtime.TERRA] = {
         DataType.RESTING_ECG_SVG: 'gs://ml4cvd/ecg_views_fake/',
         DataType.BRAIN_MRI: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
         DataType.CARDIAC_MRI: 'gs://ml4cvd/projects/fake_mris/',
-    }
+    },
 }
 
 # The full data is available on an attached persistent disk, read from there.
@@ -75,7 +75,7 @@ FOLDERS[Runtime.ML4CVD_VM] = {
         DataType.RESTING_ECG_SVG: '/mnt/disks/data/ml4cvd/ecg_views_fake/',
         DataType.BRAIN_MRI: '/mnt/disks/data/bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
         DataType.CARDIAC_MRI: '/mnt/disks/data/ml4cvd/projects/fake_mris/',
-    }
+    },
 }
 
 # Configure other environements such as AI Platform Notebooks to
@@ -102,33 +102,40 @@ def determine_dataset(sample_id):
 
 def get_resting_ecg_hd5_folder(sample_id):
   return FOLDERS[determine_runtime()][
-      determine_dataset(sample_id)][DataType.RESTING_ECG_HD5]
+      determine_dataset(sample_id)
+  ][DataType.RESTING_ECG_HD5]
 
 
 def get_resting_ecg_svg_folder(sample_id):
   return FOLDERS[determine_runtime()][
-      determine_dataset(sample_id)][DataType.RESTING_ECG_SVG]
+      determine_dataset(sample_id)
+  ][DataType.RESTING_ECG_SVG]
 
 
 def get_exercise_ecg_hd5_folder(sample_id):
   return FOLDERS[determine_runtime()][
-      determine_dataset(sample_id)][DataType.EXERCISE_ECG_HD5]
+      determine_dataset(sample_id)
+  ][DataType.EXERCISE_ECG_HD5]
 
 
 def get_brain_mri_folder(sample_id):
   return FOLDERS[determine_runtime()][
-      determine_dataset(sample_id)][DataType.BRAIN_MRI]
+      determine_dataset(sample_id)
+  ][DataType.BRAIN_MRI]
 
 
 def get_cardiac_mri_folder(sample_id):
   return FOLDERS[determine_runtime()][
-      determine_dataset(sample_id)][DataType.CARDIAC_MRI]
+      determine_dataset(sample_id)
+  ][DataType.CARDIAC_MRI]
 
 
 def get_mri_folders(sample_id):
   return [
       FOLDERS[determine_runtime()][
-          determine_dataset(sample_id)][DataType.BRAIN_MRI],
+          determine_dataset(sample_id)
+      ][DataType.BRAIN_MRI],
       FOLDERS[determine_runtime()][
-          determine_dataset(sample_id)][DataType.CARDIAC_MRI]
+          determine_dataset(sample_id)
+      ][DataType.CARDIAC_MRI],
   ]

@@ -66,26 +66,32 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
           data['raw'].extend(signal)
           data['lead'].extend([field] * signal_length)
           data['ts_reference'].extend(np.array([i*1./(SAMPLING_RATE+1.) for i in range(0, signal_length)]))
-          filtered, _, _ = filter_signal(signal=signal,
-                                         ftype='FIR',
-                                         band='bandpass',
-                                         order=int(0.3 * SAMPLING_RATE),
-                                         frequency=[.9, 50],
-                                         sampling_rate=SAMPLING_RATE)
+          filtered, _, _ = filter_signal(
+              signal=signal,
+              ftype='FIR',
+              band='bandpass',
+              order=int(0.3 * SAMPLING_RATE),
+              frequency=[.9, 50],
+              sampling_rate=SAMPLING_RATE,
+          )
           data['filtered'].extend(filtered)
-          filtered_1, _, _ = filter_signal(signal=signal,
-                                           ftype='FIR',
-                                           band='bandpass',
-                                           order=int(0.3 * SAMPLING_RATE),
-                                           frequency=[.9, 20],
-                                           sampling_rate=SAMPLING_RATE)
+          filtered_1, _, _ = filter_signal(
+              signal=signal,
+              ftype='FIR',
+              band='bandpass',
+              order=int(0.3 * SAMPLING_RATE),
+              frequency=[.9, 20],
+              sampling_rate=SAMPLING_RATE,
+          )
           data['filtered_1'].extend(filtered_1)
-          filtered_2, _, _ = filter_signal(signal=signal,
-                                           ftype='FIR',
-                                           band='bandpass',
-                                           order=int(0.3 * SAMPLING_RATE),
-                                           frequency=[.9, 30],
-                                           sampling_rate=SAMPLING_RATE)
+          filtered_2, _, _ = filter_signal(
+              signal=signal,
+              ftype='FIR',
+              band='bandpass',
+              order=int(0.3 * SAMPLING_RATE),
+              frequency=[.9, 30],
+              sampling_rate=SAMPLING_RATE,
+          )
           data['filtered_2'].extend(filtered_2)
 
   signal_df = pd.DataFrame(data)
@@ -95,16 +101,21 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
   signal_df['filtered_1_mV'] = signal_df['filtered_1'] * RAW_SCALE
   signal_df['filtered_2_mV'] = signal_df['filtered_2'] * RAW_SCALE
   # Reshape to tidy (long format).
-  tidy_signal_df = signal_df.melt(id_vars=['lead', 'ts_reference'],
-                                  value_vars=['raw_mV', 'filtered_mV', 'filtered_1_mV', 'filtered_2_mV'],
-                                  var_name='filtering', value_name='signal_mV')
+  tidy_signal_df = signal_df.melt(
+      id_vars=['lead', 'ts_reference'],
+      value_vars=['raw_mV', 'filtered_mV', 'filtered_1_mV', 'filtered_2_mV'],
+      var_name='filtering', value_name='signal_mV',
+  )
 
   # The leads have a meaningful order, apply the order to this column.
   lead_factor_type = pd.api.types.CategoricalDtype(
-      categories=['strip_I', 'strip_aVR', 'strip_V1', 'strip_V4',
-                  'strip_II', 'strip_aVL', 'strip_V2', 'strip_V5',
-                  'strip_III', 'strip_aVF', 'strip_V3', 'strip_V6'],
-      ordered=True)
+      categories=[
+          'strip_I', 'strip_aVR', 'strip_V1', 'strip_V4',
+          'strip_II', 'strip_aVL', 'strip_V2', 'strip_V5',
+          'strip_III', 'strip_aVF', 'strip_V3', 'strip_V6',
+      ],
+      ordered=True,
+  )
   tidy_signal_df['lead'] = tidy_signal_df.lead.astype(lead_factor_type)
 
   return tidy_signal_df
@@ -162,12 +173,14 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
   # Convert exercise ecg signal tensor dictionary to a dataframe, clean data
   # as needed, and then pivot to tidy.
   signal_df = pd.DataFrame(signal_data)
-  tidy_signal_df = pd.wide_to_long(signal_df,
-                                   stubnames=['raw_mV'],
-                                   i='time',
-                                   j='lead',
-                                   sep='_',
-                                   suffix='.*')
+  tidy_signal_df = pd.wide_to_long(
+      signal_df,
+      stubnames=['raw_mV'],
+      i='time',
+      j='lead',
+      sep='_',
+      suffix='.*',
+  )
   tidy_signal_df.reset_index(inplace=True)  # Turn pd multiindex into columns.
   # The leads have a meaningful order, apply the order to this column.
   lead_factor_type = pd.api.types.CategoricalDtype(categories=EXERCISE_LEADS, ordered=True)
@@ -199,6 +212,7 @@ def reshape_exercise_ecg_and_trend_to_tidy(sample_id, folder=None):
       id_vars=trend_id_vars,
       value_vars=trend_value_vars,
       var_name='measurement',
-      value_name='value')
+      value_name='value',
+  )
 
   return (tidy_trend_df, tidy_signal_df)
