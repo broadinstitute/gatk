@@ -914,8 +914,6 @@ class EvoquerEngine {
 
         int refLength = mergedVC.getReference().length();
 
-        // TODO: should we use the FilterVariantTranches tool instead of reimplementing it ourselves???
-
         // if there are any Yays, the site is PASS
         if (remappedYngMap.values().contains("Y")) {
             builder.filter("PASS");
@@ -924,6 +922,7 @@ class EvoquerEngine {
               builder.filter("NAY");
         } else {
             if (remappedYngMap.values().contains("G")) {
+                // TODO change the initial query to include the filtername from the tranches tables
                 Optional<Double> snpMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
                 if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
                     // TODO: add in sensitivities
@@ -936,6 +935,7 @@ class EvoquerEngine {
                 }
             }
             // TODO: what if there is nothing in the YNG table?
+            // this shouldn't happen
         }
 
         final VariantContext filteredVC = builder.make();
