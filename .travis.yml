@@ -137,28 +137,28 @@ script:
     echo "Deleting some unused files before running M2 WDL...";
     rm -Rf src/test/resources/large/VQSR;
     echo "Running M2 WDL";
-    sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
+    bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
   elif [[ $RUN_CNN_WDL == true ]]; then
     echo "Running CNN WDL";
-    sudo bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
+    bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image and running appropriate tests..." ;
     if [ ${TRAVIS_PULL_REQUEST} != false ]; then
-      sudo bash build_docker.sh  -e FETCH_HEAD -s -u -t ${TRAVIS_PULL_REQUEST};
+      bash build_docker.sh  -e FETCH_HEAD -s -u -t ${TRAVIS_PULL_REQUEST};
       DOCKER_TAG=FETCH_HEAD;
     else
       echo ${TRAVIS_COMMIT};
-      sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u;
+      bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u;
       DOCKER_TAG=$TRAVIS_COMMIT;
     fi;
-    sudo docker images;
+    docker images;
     echo ${TEST_TYPE};
-    sudo mkdir -p build/reports/;
-    sudo chmod -R a+w build/reports/;
+    mkdir -p build/reports/;
+    chmod -R a+w build/reports/;
     cp scripts/docker/dockertest.gradle .;
-    sudo docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e "scala.version=${SCALA_VERSION}" -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
+    docker run -v $(pwd):/gatk/gatkCloneMountPoint -v $(pwd)/testJars:/gatk/jars --rm -e "scala.version=${SCALA_VERSION}" -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /gatk/run_unit_tests.sh;
     TEST_EXIT_VALUE=$?;
-    sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar;
+    mkdir build/reports/tests/test && cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && rm -r build/reports/tests/testOnPackagedReleaseJar;
     $( exit ${TEST_EXIT_VALUE} );
   else
     ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
