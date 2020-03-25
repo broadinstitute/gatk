@@ -26,10 +26,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -95,11 +92,11 @@ public final class Utils {
 
     public static List<String> warnUserLines(final String msg) {
         final List<String> results = new ArrayList<>();
-        results.add(String.format(TEXT_WARNING_BORDER));
-        results.add(String.format(TEXT_WARNING_PREFIX + "WARNING:"));
-        results.add(String.format(TEXT_WARNING_PREFIX));
+        results.add(TEXT_WARNING_BORDER);
+        results.add(TEXT_WARNING_PREFIX + "WARNING:");
+        results.add(TEXT_WARNING_PREFIX);
         prettyPrintWarningMessage(results, msg);
-        results.add(String.format(TEXT_WARNING_BORDER));
+        results.add(TEXT_WARNING_BORDER);
         return results;
     }
 
@@ -163,7 +160,7 @@ public final class Utils {
      * @throws IllegalArgumentException if {@code separator} or {@code objects} is {@code null}.
      * @return a string with the values separated by the separator
      */
-    public static String join(final String separator, final Object ... objects) {
+    public static String join(final CharSequence separator, final Object ... objects) {
         Utils.nonNull(separator, "the separator cannot be null");
         Utils.nonNull(objects, "the value array cannot be null");
 
@@ -171,9 +168,9 @@ public final class Utils {
             return "";
         } else {
             final StringBuilder ret = new StringBuilder();
-            ret.append(String.valueOf(objects[0]));
+            ret.append(objects[0]);
             for (int i = 1; i < objects.length; i++) {
-                ret.append(separator).append(String.valueOf(objects[i]));
+                ret.append(separator).append(objects[i]);
             }
             return ret.toString();
         }
@@ -778,6 +775,24 @@ public final class Utils {
         return index;
     }
 
+    /**
+     * Checks whether an index is within bounds considering a collection or array of a particular size
+     * whose first position index is 0
+     * @param index the query index.
+     * @param length the collection or array size.
+     * @param errorMessage the error message to use in case of an exception is thrown.
+     * @return same value as the input {@code index}.
+     */
+    public static int validIndex(final int index, final int length, final String errorMessage) {
+        if (index < 0) {
+            throw new IllegalArgumentException(errorMessage);
+        } else if (index >= length) {
+            throw new IllegalArgumentException(errorMessage);
+        }
+        return index;
+    }
+
+
     public static void validateArg(final boolean condition, final String msg){
         if (!condition){
             throw new IllegalArgumentException(msg);
@@ -1153,6 +1168,10 @@ public final class Utils {
         };
     }
 
+    public static <T> Stream<T> stream(final Enumeration<T> enumeration) {
+        return Utils.stream(Iterators.forEnumeration(enumeration));
+    }
+
     public static <T> Stream<T> stream(final Iterable<T> iterable) {
         return StreamSupport.stream(iterable.spliterator(), false);
     }
@@ -1444,53 +1463,31 @@ public final class Utils {
     }
 
     /**
-     * Removes the last portion of a list so that it has a new size of at
-     * most a given number of elements.
-     * @param list the list to modify.
-     * @param maxLength the intended maximum length for the list.
+     * Runs a task in parallel returning it returned result.
+     * <p> This call will wait until such task is completed.</p>
+     * @param threads number of threads requested. 0 would result in using a system default,
+     *                usually the host number of CPU cores.
+     * @param supplier the task to run.
+     * @param <T> the type of the return.
+     * @return whatever the input task returns in the end, it can be {@code null}.
+     * @throws GATKException if the run was interrupted or resulted in a checked exception. Unchecked exceptions and Error
+     *   progragate as they are.
      */
-    public static void truncate(final List<?> list, final int maxLength) {
-        Utils.nonNull(list);
-        ParamUtils.isPositiveOrZero(maxLength, "new maximum length");
-        if (maxLength == 0) { // special quicker case when ml == 0.
-            list.clear();
-        } else {
-            final int length = list.size();
-            if (maxLength < length) {  // if not we are done.
-                list.subList(maxLength, length).clear();
+    public static <T> T runInParallel(final int threads, final Supplier<T> supplier) {
+        final ForkJoinPool threadPool = threads == 0 ? new ForkJoinPool() : new ForkJoinPool(threads);
+        try {
+            return threadPool.submit(supplier::get).get();
+        } catch (final InterruptedException e) {
+            throw new GATKException("task interrupted", e);
+        } catch (final ExecutionException e) {
+            final Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            } else if (cause instanceof Error) {
+                throw (Error) cause;
+            } else {
+                throw new GATKException("exception when executing parallel task ", cause);
             }
         }
-    }
-
-    public static void flip(final byte[] array, final int from, final int to) {
-        for (int i = from, j = to -1; i < j; i++, j--) {
-            final byte b = array[i];
-            array[i] = array[j];
-            array[j] = b;
-        }
-    }
-
-    public static boolean deleteFileTree(final File base) {
-        if (base.isFile()) { // quick return if ordinary file.
-            return base.delete();
-        }
-        final Deque<File> toDelete = new ArrayDeque<>();
-        final Deque<File> toVisit = new ArrayDeque<>();
-        toVisit.push(base);
-        while (!toVisit.isEmpty()) {
-            final File next = toVisit.pop();
-            toDelete.push(next);
-            final File[] subFiles = next.listFiles();
-            if (subFiles != null) {
-                for (final File sub : subFiles) {
-                    toVisit.push(sub);
-                }
-            }
-        }
-        boolean result = true;
-        while (!toDelete.isEmpty()) {
-            result = result & toDelete.pop().delete();
-        }
-        return result;
     }
 }

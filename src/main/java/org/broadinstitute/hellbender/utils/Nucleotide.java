@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.utils;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import com.google.common.collect.Sets;
+
+import java.util.*;
 
 /**
  * Represents the nucleotide alphabet with support for IUPAC ambiguity codes.
@@ -102,9 +102,9 @@ public enum Nucleotide {
     public static final Nucleotide INVALID = X;
 
     /**
-     * List of the standard (non-redundant) nucleotide values in their preferred alphabetical order.
+     * Set of the standard (non-redundant) nucleotide values in their preferred alphabetical order.
      */
-    public static final List<Nucleotide> STANDARD_BASES = Collections.unmodifiableList(Arrays.asList(A, C, G, T));
+    public static final Set<Nucleotide> STANDARD_BASES = Sets.immutableEnumSet(A, C, G, T);
 
     // Since calling values() is costly (creates a new array every time) and often we do it just to find out the
     // total number of constants is best to cache it in a constant.

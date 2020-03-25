@@ -6,14 +6,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PairHMMInputScoreImputation;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.Closeable;
 import java.util.Arrays;
@@ -233,6 +230,7 @@ public abstract class PairHMM implements Closeable{
         for(final GATKRead read : processedReads){
             final PairHMMInputScoreImputation inputScoreImputation = inputScoreImputator.impute(read);
             final byte[] readBases = read.getBases();
+
             final byte[] readQuals = read.getBaseQualities();
             final byte[] readInsQuals = inputScoreImputation.insOpenPenalties();
             final byte[] readDelQuals = inputScoreImputation.delOpenPenalties();

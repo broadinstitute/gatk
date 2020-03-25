@@ -999,6 +999,30 @@ public final class AlignmentUtilsUnitTest {
         return tests.toArray(new Object[][]{});
     }
 
+    @DataProvider(name = "AppendClippedElementsFromOriginalCigarData")
+    public Object[][] testAppendClippedElementsFromOriginalCigar() {
+        List<Object[]> tests = new ArrayList<>();
+        tests.add(new Object[]{"30M", "30M", "30M"});
+        tests.add(new Object[]{"30M", "15M6I15M", "15M6I15M"});
+        tests.add(new Object[]{"5S30M", "30M", "5S30M"});
+        tests.add(new Object[]{"5H30M", "30M", "5H30M"});
+        tests.add(new Object[]{"5H5S30M", "30M", "5H5S30M"});
+        tests.add(new Object[]{"30M5H", "30M", "30M5H"});
+        tests.add(new Object[]{"30M5S", "30M", "30M5S"});
+        tests.add(new Object[]{"10H30M5S5H", "30M", "10H30M5S5H"});
+        tests.add(new Object[]{"10H10M6D6M6D50M5S5H", "10M6I50M", "10H10M6I50M5S5H"});
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "AppendClippedElementsFromOriginalCigarData")
+    public void testAppendClippedElementsFromOriginalCigar(final String originalCigarString, final String shiftedCigarString, final String expectedString) {
+        final Cigar originalCigar = TextCigarCodec.decode(originalCigarString);
+        final Cigar shiftedCigar = TextCigarCodec.decode(shiftedCigarString);
+        final Cigar expectedCigar = TextCigarCodec.decode(expectedString);
+        final Cigar actualCigar = AlignmentUtils.appendClippedElementsFromCigarToCigar(shiftedCigar, originalCigar);
+        Assert.assertEquals(actualCigar, expectedCigar);
+    }
+
     @Test(dataProvider = "ApplyCigarToCigarData", enabled = !DEBUG)
     public void testApplyCigarToCigar(final String firstToSecondString, final String secondToThirdString, final String expectedCigarString) {
         final Cigar firstToSecond = TextCigarCodec.decode(firstToSecondString);

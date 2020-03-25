@@ -3,8 +3,10 @@ package org.broadinstitute.hellbender.utils;
 import com.google.common.collect.Iterators;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -31,46 +33,41 @@ public class IntervalPileupUnitTest extends GATKBaseTest {
             .map(SimpleInterval::new)
             .toArray(SimpleInterval[]::new);
 
-    @DataProvider(name="randomAndFixedIntervalData")
+    @DataProvider(name="sampledAndFixedIntervalData")
     public Iterator<Object[]> randomAndFixedIntervalData() {
         final Iterator<Object[]> fixed = Arrays.stream(fixedIntervalData()).iterator();
-        final Iterator<Object[]> random = randomIntervalData(29, 100, 99999,25);
-        final Iterator<Object[]> random2 = randomIntervalData(31, 1, 99,25);
-        final Iterator<Object[]> random3 = randomIntervalData(7, 0, 0,10);
+        final Iterator<Object[]> sampled = sampledData();
 
-        return Iterators.concat(fixed, random, random2, random3);
+        return Iterators.concat(fixed, sampled);
     }
 
-    public Iterator<Object[]> randomIntervalData(final int seed, final int minReads, final int maxReads, final int size) {
-        final int chr20Length = 63025520; // hardwired length values for convenience... better upload the dictionary.
-        final int chr21Length = 48129895;
+    @DataProvider(name = "sampledData")
+    public Iterator<Object[]> sampledData() {
         final Path reference = IOUtils.getPath(TEST_REFERENCE_FILE);
+        final int TELOMERE_SKIP = 20_000;
+        final int SITES_PER_SEQ = 100;
         final ReferenceDataSource ref = new ReferenceFileSource(reference);
-        final Path alignment = IOUtils.getPath(TEST_ALIGNMENT_FILE);
-        final ReadsDataSource readsDataSource = new ReadsDataSource(alignment);
-        final Random rdn = new Random(seed);
-        return Stream.generate(() -> {
-                final int chrNumber = rdn.nextInt(2) + 20;
-                final int length = chrNumber == 20 ? chr20Length : chr21Length;
-                final int position = rdn.nextInt(length) + 1;
-                final int margin = rdn.nextInt(5) * rdn.nextInt(101);
-                final int start = Math.max(1, position - margin);
-                final int end = Math.min(length, position + margin);
-                return new SimpleInterval("" + chrNumber, start, end);
-               })
-            .map(si -> new Object[] {si, Utils.stream(readsDataSource.query(si)).collect(Collectors.toList()),  new ReferenceBases(ref.queryAndPrefetch(si).getBases(), si)})
-            .filter(data -> {
-                @SuppressWarnings("unchecked")
-                final List<GATKRead> reads = (List<GATKRead>) data[1];
-                return reads.size() >= minReads && reads.size() <= maxReads;
-            })
-            .limit(size)
-            .iterator();
-
-
+        final List<Object[]> result = new ArrayList<>(SITES_PER_SEQ * ref.getSequenceDictionary().getSequences().size());
+        final int[] MARGINS = new int[] {5, 50, 100, 300}; // alternate with this.
+        for (final SAMSequenceRecord sequenceRecord : ref.getSequenceDictionary().getSequences())  {
+            final int spacing = (sequenceRecord.getSequenceLength() - 2 * TELOMERE_SKIP) / SITES_PER_SEQ;
+            for (int i = 0; i < SITES_PER_SEQ; i++) {
+                final int position = TELOMERE_SKIP + i * spacing;
+                final int margin = MARGINS[i % MARGINS.length];
+                final int start = Math.max(1, position - margin); // it should not go below 1 due to the telomere_skip but just being paranoic.
+                final int end = Math.min(sequenceRecord.getSequenceLength(), position + margin);
+                final SimpleInterval interval = new SimpleInterval(sequenceRecord.getSequenceName(), start, end);
+                final Path alignment = IOUtils.getPath(TEST_ALIGNMENT_FILE);
+                final ReadsDataSource readsDataSource = new ReadsPathDataSource(alignment);
+                final List<GATKRead> reads = Utils.stream(readsDataSource.query(interval)).collect(Collectors.toList());
+                final ReferenceBases refBases = new ReferenceBases(ref.queryAndPrefetch(interval).getBases(), interval);
+                result.add(new Object[] { interval, reads, refBases});
+            }
+        }
+        return result.iterator();
     }
 
-    @Test(dataProvider = "randomAndFixedIntervalData")
+    @Test(dataProvider = "sampledAndFixedIntervalData")
     public void testInterval(@SuppressWarnings("unused")
                              final SimpleInterval interval,
                              final List<GATKRead> reads,
@@ -87,8 +84,9 @@ public class IntervalPileupUnitTest extends GATKBaseTest {
         for (int i = 0; i < actual.height(); i++) {
             for (int j = 0; j < actual.width(); j++) {
                 try {
-                    Assert.assertEquals((char) actual.baseAt(i, j), (char) expected.baseAt(i, j),
-                            String.format("(%d, %d)", i, j));
+                    Assert.assertEquals(actual.baseAt(i, j), expected.baseAt(i, j),
+                            String.format("(%d, %d) (%d, %d)", i, j, (int) actual.baseAt(i, j), (int) expected.baseAt(i, j) ));
+
                     Assert.assertEquals(actual.qualAt(i, j), expected.qualAt(i, j),
                             String.format("(%d, %d)", i, j));
                     Assert.assertEquals(actual.hasInsertAt(i,j), expected.hasInsertAt(i,j),String.format("(%d, %d)", i, j));
@@ -133,7 +131,7 @@ public class IntervalPileupUnitTest extends GATKBaseTest {
         final Path reference = IOUtils.getPath(TEST_REFERENCE_FILE);
         final ReferenceDataSource ref = new ReferenceFileSource(reference);
         final Path alignment = IOUtils.getPath(TEST_ALIGNMENT_FILE);
-        final ReadsDataSource readsDataSource = new ReadsDataSource(alignment);
+        final ReadsDataSource readsDataSource = new ReadsPathDataSource(alignment);
         return Arrays.stream(FIXED_TEST_INTERVALS)
                 .map(si -> new Object[] {si, Utils.stream(readsDataSource.query(si)).collect(Collectors.toList()),  new ReferenceBases(ref.queryAndPrefetch(si).getBases(), si)})
                 .toArray(Object[][]::new);
@@ -195,9 +193,9 @@ class TestIntervalPileup implements IntervalPileup {
         final GATKRead read = reads.get(row);
         final int refPosition = column + referenceBases.getInterval().getStart();
         if (refPosition < read.getStart()) {
-            return (byte) '-';
+            return (byte) -1;
         } else if (refPosition > read.getEnd()) {
-            return (byte) '-';
+            return (byte) -1;
         } else {
             final int baseOffset =  matchReferencePosition(read.getCigar(), read.getStart(), refPosition);
             return baseOffset < 0 ? ((byte)'-') : read.getBase(baseOffset);

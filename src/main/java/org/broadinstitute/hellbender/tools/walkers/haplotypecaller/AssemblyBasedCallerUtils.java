@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrParamUtils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
 import org.broadinstitute.hellbender.utils.fragments.FragmentUtils;
@@ -51,6 +52,7 @@ public final class AssemblyBasedCallerUtils {
     public static final String SUPPORTED_ALLELES_TAG="XA";
     public static final String CALLABLE_REGION_TAG = "CR";
     public static final String ALIGNMENT_REGION_TAG = "AR";
+    public static final String READ_ORIGINAL_ALIGNMENT_KEY = "originalAlignment";
     public static final Function<Haplotype, Double> HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY = h -> {
         final Cigar cigar = h.getCigar();
         final int referenceTerm = (h.isReference() ? 1 : 0);
@@ -89,11 +91,12 @@ public final class AssemblyBasedCallerUtils {
 
     public static void finalizeRegion(final AssemblyRegion region,
                                       final boolean errorCorrectReads,
-                                      final boolean skipSoftClips,
+                                      final boolean dontUseSoftClippedBases,
                                       final byte minTailQuality,
                                       final SAMFileHeader readsHeader,
                                       final SampleList samplesList,
-                                      final boolean correctOverlappingBaseQualities) {
+                                      final boolean correctOverlappingBaseQualities,
+                                      final boolean softClipLowQualityEnds) {
         if ( region.isFinalized() ) {
             return;
         }
@@ -102,9 +105,10 @@ public final class AssemblyBasedCallerUtils {
         final List<GATKRead> readsToUse = region.getReads().stream()
                 // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
                 // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
-                .map(read -> skipSoftClips || ! ReadUtils.hasWellDefinedFragmentSize(read) ?
+                .map(read -> dontUseSoftClippedBases || ! ReadUtils.hasWellDefinedFragmentSize(read) ?
                     ReadClipper.hardClipSoftClippedBases(read) : ReadClipper.revertSoftClippedBases(read))
-                .map(read -> ReadClipper.hardClipLowQualEnds(read, minTailQualityToUse))
+                .map(read -> softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(read, minTailQualityToUse) :
+                        ReadClipper.hardClipLowQualEnds(read, minTailQualityToUse))
                 .filter(read -> read.getStart() <= read.getEnd())
                 .map(read -> read.isUnmapped() ? read : ReadClipper.hardClipAdaptorSequence(read))
                 .filter(read ->  !read.isEmpty() && read.getCigar().getReadLength() > 0)
@@ -196,7 +200,10 @@ public final class AssemblyBasedCallerUtils {
         final double log10GlobalReadMismappingRate = likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? Double.NEGATIVE_INFINITY
                 : QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
 
-        return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.dontUseDragstrPairHMMScores ? null : likelihoodArgs.dragstrParams, likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, likelihoodArgs.pcrErrorModel, likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD);
+        return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(likelihoodArgs.dragstrParams),
+                likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, likelihoodArgs.pcrErrorModel,
+                likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD, likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant,
+                likelihoodArgs.expectedErrorRatePerBase, !likelihoodArgs.disableSymmetricallyNormalizeAllelesToReference, likelihoodArgs.disableCapReadQualitiesToMapQ);
     }
 
     public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args,
@@ -248,7 +255,7 @@ public final class AssemblyBasedCallerUtils {
                                                   final ReadThreadingAssembler assemblyEngine,
                                                   final SmithWatermanAligner aligner,
                                                   final boolean correctOverlappingBaseQualities){
-        finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, correctOverlappingBaseQualities);
+        finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, correctOverlappingBaseQualities, argumentCollection.softClipLowQualityEnds);
         if( argumentCollection.assemblerArgs.debugAssembly) {
             logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getPaddedSpan() + ")");
         }
@@ -532,9 +539,10 @@ public final class AssemblyBasedCallerUtils {
      * @param mergedVC The merged variant context for the locus, which includes all active alternate alleles merged to a single reference allele
      * @param loc The active locus being genotyped
      * @param haplotypes Haplotypes for the current active region
+     * @param emitSpanningDels If true will map spanning events to a * allele instead of reference // TODO add a test for this behavior
      * @return
      */
-    public static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC, final int loc, final List<Haplotype> haplotypes) {
+    public static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC, final int loc, final List<Haplotype> haplotypes, final boolean emitSpanningDels) {
 
         final Map<Allele, List<Haplotype>> result = new LinkedHashMap<>();
 
@@ -584,12 +592,18 @@ public final class AssemblyBasedCallerUtils {
                     }
 
                 } else {
-                    // the event starts prior to the current location, so it's a spanning deletion
-                    if (! result.containsKey(Allele.SPAN_DEL)) {
-                        result.put(Allele.SPAN_DEL, new ArrayList<>());
+                    if (emitSpanningDels) {
+                        // the event starts prior to the current location, so it's a spanning deletion
+                        if (!result.containsKey(Allele.SPAN_DEL)) {
+                            result.put(Allele.SPAN_DEL, new ArrayList<>());
+                        }
+                        result.get(Allele.SPAN_DEL).add(h);
+                        // there might be a del+ins at the site in question and this would miss one of them unless its a continue
+                        break; //Why is there a break here? Shouldn't this be a continue? Why should the first spanning event overlap?A
+                    } else {
+                        result.get(ref).add(h);
+                        break;
                     }
-                    result.get(Allele.SPAN_DEL).add(h);
-                    break;
                 }
             }
 

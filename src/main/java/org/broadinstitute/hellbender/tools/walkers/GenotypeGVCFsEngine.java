@@ -9,6 +9,7 @@ import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
@@ -16,7 +17,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -121,10 +121,10 @@ public class GenotypeGVCFsEngine
     {
         final List<VariantContext> variantsToProcess = getVariantSubsetToProcess(loc, variants);
 
-        if (dragStrParams == null || !genotypeArgs.dontUseDragstrPriors) {
+        if (dragStrParams == null || genotypeArgs.dontUseDragstrPriors) {
             ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
         } else {
-            ref.setWindow(dragStrParams.maximumPeriod() * dragStrParams.maximumRepeats(), dragStrParams.maximumPeriod() * dragStrParams.maximumRepeats());
+            ref.setWindow(dragStrParams.maximumLengthInBasePairs(), dragStrParams.maximumLengthInBasePairs());
         }
         genotypingEngine.setReferenceContext(ref);
         final VariantContext mergedVC = merger.merge(variantsToProcess, loc, ref.getBase(), true, false);
@@ -366,7 +366,7 @@ public class GenotypeGVCFsEngine
      */
     private StandardCallerArgumentCollection createMinimalArgs(final boolean forceOutput) {
         final StandardCallerArgumentCollection args = new StandardCallerArgumentCollection();
-        args.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
+        args.genotypeArgs = genotypeArgs.clone();
 
         //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to args separately
         //Note: GATK3 uses OutputMode.EMIT_ALL_CONFIDENT_SITES when includeNonVariants is requested

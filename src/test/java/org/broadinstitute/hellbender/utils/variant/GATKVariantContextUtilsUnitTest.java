@@ -645,6 +645,29 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         }
     }
 
+    @DataProvider(name = "ReverseClippingPositionTestProvider")
+    public Object[][] makeReverseClippingPositionTestProvider() {
+        // pair clipping
+        new ReverseClippingPositionTestProvider(0, "ATT", "CCG");
+        new ReverseClippingPositionTestProvider(1, "ATT", "CCT");
+        new ReverseClippingPositionTestProvider(2, "ATT", "CTT");
+        new ReverseClippingPositionTestProvider(2, "ATT", "ATT");  // cannot completely clip allele
+
+        // triplets
+        new ReverseClippingPositionTestProvider(0, "ATT", "CTT", "CGG");
+        new ReverseClippingPositionTestProvider(1, "ATT", "CTT", "CGT"); // the T can go
+        new ReverseClippingPositionTestProvider(2, "ATT", "CTT", "CTT"); // both Ts can go
+
+        return ReverseClippingPositionTestProvider.getTests(ReverseClippingPositionTestProvider.class);
+    }
+
+    @Test(dataProvider = "ReverseClippingPositionTestProvider")
+    public void testReverseClippingPositionTestProvider(ReverseClippingPositionTestProvider cfg) {
+        int result = GATKVariantContextUtils.computeReverseClipping(cfg.alleles, cfg.ref.getBytes());
+        Assert.assertEquals(result, cfg.expectedClip);
+    }
+
+
     // --------------------------------------------------------------------------------
     //
     // test splitting into bi-allelics
@@ -941,6 +964,52 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     // test forward clipping
     //
     // --------------------------------------------------------------------------------
+
+    @DataProvider(name = "ForwardClippingData")
+    public Object[][] makeForwardClippingData() {
+        List<Object[]> tests = new ArrayList<>();
+
+        // this functionality can be adapted to provide input data for whatever you might want in your data
+        tests.add(new Object[]{Collections.singletonList("A"), -1});
+        tests.add(new Object[]{Collections.singletonList("<DEL>"), -1});
+        tests.add(new Object[]{Arrays.asList("A", "C"), -1});
+        tests.add(new Object[]{Arrays.asList("AC", "C"), -1});
+        tests.add(new Object[]{Arrays.asList("A", "G"), -1});
+        tests.add(new Object[]{Arrays.asList("A", "T"), -1});
+        tests.add(new Object[]{Arrays.asList("GT", "CA"), -1});
+        tests.add(new Object[]{Arrays.asList("GT", "CT"), -1});
+        tests.add(new Object[]{Arrays.asList("ACC", "AC"), 0});
+        tests.add(new Object[]{Arrays.asList("ACGC", "ACG"), 1});
+        tests.add(new Object[]{Arrays.asList("ACGC", "ACG"), 1});
+        tests.add(new Object[]{Arrays.asList("ACGC", "ACGA"), 2});
+        tests.add(new Object[]{Arrays.asList("ACGC", "AGC"), 0});
+        tests.add(new Object[]{Arrays.asList("A", "<DEL>"), -1});
+        for ( int len = 0; len < 50; len++ )
+            tests.add(new Object[]{Arrays.asList("A" + new String(Utils.dupBytes((byte)'C', len)), "C"), -1});
+
+        tests.add(new Object[]{Arrays.asList("A", "T", "C"), -1});
+        tests.add(new Object[]{Arrays.asList("AT", "AC", "AG"), 0});
+        tests.add(new Object[]{Arrays.asList("AT", "AC", "A"), -1});
+        tests.add(new Object[]{Arrays.asList("AT", "AC", "ACG"), 0});
+        tests.add(new Object[]{Arrays.asList("AC", "AC", "ACG"), 0});
+        tests.add(new Object[]{Arrays.asList("AC", "ACT", "ACG"), 0});
+        tests.add(new Object[]{Arrays.asList("ACG", "ACGT", "ACGTA"), 1});
+        tests.add(new Object[]{Arrays.asList("ACG", "ACGT", "ACGCA"), 1});
+
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "ForwardClippingData")
+    public void testForwardClipping(final List<String> alleleStrings, final int expectedClip) {
+        final List<Allele> alleles = alleleStrings.stream()
+                .map(Allele::create)
+                .collect(Collectors.toList());
+
+        for ( final List<Allele> myAlleles : Utils.makePermutations(alleles, alleles.size(), false)) {
+            final int actual = GATKVariantContextUtils.computeForwardClipping(myAlleles);
+            Assert.assertEquals(actual, expectedClip);
+        }
+    }
 
     @DataProvider(name = "ClipAlleleTest")
     public Object[][] makeClipAlleleTest() {

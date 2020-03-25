@@ -1,13 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.Collections;
@@ -70,21 +71,27 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<StandardCall
 
     @Override
     public VariantContext calculateGenotypes(final VariantContext vc) {
-        if (dragstrParams == null || getConfiguration().genotypeArgs.dontUseDragstrPriors || !GATKVariantContextUtils.containsInlineIndel(vc)) {
-            return calculateGenotypes(vc, null, Collections.emptyList());
-        } else if (referenceContext != null) {
-            final SimpleInterval interval = new SimpleInterval(vc.getContig(), Math.max(1, vc.getStart() - dragstrParams.maximumPeriod() * dragstrParams.maximumRepeats()), vc.getStart() - dragstrParams.maximumPeriod() * dragstrParams.maximumRepeats());
+        if (dragstrParams == null || getConfiguration().genotypeArgs.dontUseDragstrPriors || !GATKVariantContextUtils.containsInlineIndel(vc) || referenceContext == null) {
+            final GenotypePriorCalculator gpc = GenotypePriorCalculator.assumingHW(configuration.genotypeArgs);
+            return calculateGenotypes(vc, gpc, Collections.emptyList());
+        } else {
+
+            final Locatable limits = referenceContext.hasBackingDataSource()
+                    ? referenceContext.getSequenceRecord()
+                    : referenceContext.getWindow();
+            final SimpleInterval interval = new SimpleInterval(vc.getContig(),
+                    Math.max(limits.getStart(), vc.getStart() - dragstrParams.maximumLengthInBasePairs()),
+                    Math.min(limits.getEnd(),  vc.getStart() - dragstrParams.maximumLengthInBasePairs()));
+
 
             final byte[] bases = referenceContext.getBases(interval);
             final int startOffset = vc.getStart() - interval.getStart();
-            final DragstrUtils.STRSequenceAnalyzer analyzer = DragstrUtils.repeatPeriodAndCounts(bases, dragstrParams.maximumPeriod(), startOffset, startOffset + 1);
-            final int period = analyzer.mostRepeatedPeriod(startOffset);
-            final int repeats = analyzer.numberOfMostRepeats(startOffset);
+            final DragstrReferenceAnalyzer analyzer = DragstrReferenceAnalyzer.of(bases, startOffset, startOffset + 1, dragstrParams.maximumPeriod());
+            final int period = analyzer.period(startOffset);
+            final int repeats = analyzer.repeatLength(startOffset);
 
-            final AlleleFrequencyCalculator afc = dragstrParams.getAFCalculator(period, repeats, vc.getMaxPloidy(2), getConfiguration().genotypeArgs.snpHeterozygosity, getConfiguration().genotypeArgs.dragstrPriorScale);
-            return  calculateGenotypes(vc, afc, Collections.emptyList());
-        } else {
-            return  calculateGenotypes(vc, null, Collections.emptyList());
+            final GenotypePriorCalculator gpc = GenotypePriorCalculator.givenDragstrParams(dragstrParams, period, repeats, Math.log10(getConfiguration().genotypeArgs.snpHeterozygosity), 2.0);
+            return  calculateGenotypes(vc, gpc, Collections.emptyList());
         }
     }
 

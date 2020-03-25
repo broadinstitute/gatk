@@ -385,15 +385,6 @@ public final class IOUtils {
         return makeReaderMaybeGzipped(in, path.toString().endsWith(".gz"));
     }
 
-    public static InputStream makeInputStreamMaybeGzipped(final String path) throws IOException {
-        final InputStream raw = BucketUtils.openFile(path);
-        if (!path.endsWith(".gz")) {
-            return raw;
-        } else {
-            return makeZippedInputStream(raw);
-        }
-    }
-
     /**
      * makes a reader for an inputStream wrapping it in an appropriate unzipper if necessary
      * @param zipped is this stream zipped
