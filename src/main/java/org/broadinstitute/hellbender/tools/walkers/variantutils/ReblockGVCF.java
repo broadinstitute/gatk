@@ -200,7 +200,7 @@ public final class ReblockGVCF extends VariantWalker {
         hcArgs.standardArgs.annotateAllSitesWithPLs = true;
         hcArgs.standardArgs.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
         hcArgs.emitReferenceConfidence = ReferenceConfidenceMode.GVCF;   //this is important to force emission of all alleles at a multiallelic site
-        return new HaplotypeCallerGenotypingEngine(hcArgs, samples, true);
+        return new HaplotypeCallerGenotypingEngine(hcArgs, samples, true, false);
 
     }
 
