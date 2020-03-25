@@ -79,7 +79,7 @@ task PathseqPipeline {
 
   command <<<
     set -e
-    export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+    export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk4_jar_override}
       gatk --java-options "-Xmx${command_mem}m" \
       PathSeqPipelineSpark \
       --input ${input_bam} \

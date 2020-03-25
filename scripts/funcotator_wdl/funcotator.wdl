@@ -174,7 +174,7 @@ task Funcotate {
 
     command <<<
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk_override}
 
         # =======================================
         # Hack to validate our WDL inputs:

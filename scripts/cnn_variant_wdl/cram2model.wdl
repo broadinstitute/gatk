@@ -159,9 +159,9 @@ task WriteTensors {
     Int command_mem = machine_mem - 1000
     command {
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk_override}
 
-        mkdir "/root/tensors/"
+        mkdir "/gatk/tensors/"
 
         gatk --java-options "-Xmx${command_mem}m" \
         CNNVariantWriteTensors \
@@ -170,10 +170,10 @@ task WriteTensors {
         -truth-vcf ${truth_vcf} \
         -truth-bed ${truth_bed} \
         -tensor-type ${tensor_type} \
-        -output-tensor-dir "/root/tensors/" \
+        -output-tensor-dir "/gatk/tensors/" \
         -bam-file ${input_bam}
         
-        tar -czf "tensors.tar.gz" "/root/tensors/"
+        tar -czf "tensors.tar.gz" "/gatk/tensors/"
     }
 
     output {
@@ -208,7 +208,7 @@ task TrainModel {
     Int command_mem = machine_mem - 1000
     command {
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk_override}
 
         for tensors in ${sep=' ' tar_tensors}  ; do
             tar -xzf $tensors 

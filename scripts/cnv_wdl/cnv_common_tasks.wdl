@@ -29,7 +29,7 @@ task PreprocessIntervals {
 
     command <<<
         set -eu
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk4_jar_override}
 
         gatk --java-options "-Xmx~{command_mem_mb}m" PreprocessIntervals \
             ~{"-L " + intervals} \
@@ -84,7 +84,7 @@ task AnnotateIntervals {
 
     command <<<
         set -eu
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk4_jar_override}
 
         gatk --java-options "-Xmx~{command_mem_mb}m" AnnotateIntervals \
             -L ~{intervals} \
@@ -145,7 +145,7 @@ task FilterIntervals {
 
     command <<<
         set -eu
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk4_jar_override}
 
         gatk --java-options "-Xmx~{command_mem_mb}m" FilterIntervals \
             -L ~{intervals} \
@@ -230,7 +230,7 @@ task CollectCounts {
 
     command <<<
         set -eu
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk4_jar_override}
 
         case ~{format_} in
             HDF5 | TSV | TSV_GZ)
@@ -313,7 +313,7 @@ task CollectAllelicCounts {
 
     command <<<
         set -eu
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk4_jar_override}
 
         gatk --java-options "-Xmx~{command_mem_mb}m" CollectAllelicCounts \
             -L ~{common_sites} \
@@ -370,7 +370,7 @@ task ScatterIntervals {
         set -eu
         # IntervalListTools will fail if the output directory does not exist, so we create it
         mkdir ~{output_dir_}
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk4_jar_override}
 
         # IntervalListTools behaves differently when scattering to a single or multiple shards, so we do some handling in bash
 
@@ -448,7 +448,7 @@ task PostprocessGermlineCNVCalls {
 
     command <<<
         set -eu
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk4_jar_override}
 
         sharded_interval_lists_array=(~{sep=" " sharded_interval_lists})
 

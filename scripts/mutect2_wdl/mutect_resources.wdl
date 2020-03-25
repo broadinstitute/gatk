@@ -73,7 +73,7 @@ task SelectIntervals {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk_override}
         gatk --java-options "-Xmx${command_mem}g" SelectVariants -V ${input_vcf} ${"-L " + intervals} -O selected.vcf --lenient
     }
 
@@ -129,7 +129,7 @@ task MakeAlleleFrequencyOnlyVcf {
     # Run our command:
     command {
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk_override}
 
         # Save off the header for later:
         grep '^#' ${input_vcf} > header &
@@ -195,7 +195,7 @@ task SelectCommonBiallelicSNPs {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk_override}
 
         gatk --java-options "-Xmx${command_mem}g" SelectVariants \
             -V ${input_vcf} \

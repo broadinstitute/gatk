@@ -190,7 +190,7 @@ task LiftoverVcfTask {
      # Run our command:
      command <<<
          set -e
-         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+         export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk_override}
 
         startTime=`date +%s.%N`
         echo "StartTime: $startTime" > ${timing_output_file}

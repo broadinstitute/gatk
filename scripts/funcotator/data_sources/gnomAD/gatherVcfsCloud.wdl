@@ -86,7 +86,7 @@ task GatherVcfsCloud {
 
      command <<<
          set -e
-         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+         export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk_override}
 
          gatk --java-options "-Xmx${command_mem}m -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" \
             GatherVcfsCloud \

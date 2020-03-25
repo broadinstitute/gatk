@@ -409,7 +409,7 @@ task M2 {
   command <<<
       set -e
 
-      export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+      export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk_override}
 
       # We need to create these files regardless, even if they stay empty
       touch bamout.bam
@@ -485,7 +485,7 @@ task Filter {
   command <<<
       set -e
 
-      export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+      export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk_override}
 
       # We need to create these files regardless, even if they stay empty
       touch bamout.bam
@@ -532,7 +532,7 @@ task MergeStats {
   command{
     set -e
 
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+    export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk_override}
 
     gatk MergeMutectStats --stats ~{shifted_stats} --stats ~{non_shifted_stats} -O raw.combined.stats
   }
