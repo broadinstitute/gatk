@@ -13,6 +13,8 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.read.*;
 
+import java.io.File;
+
 /**
  * Left-aligns indels in read data
  *
@@ -53,7 +55,7 @@ import org.broadinstitute.hellbender.utils.read.*;
 public final class LeftAlignIndels extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,doc="Output BAM")
-    private String output;
+    private String OUTPUT;
 
     private SAMFileGATKReadWriter outputWriter = null;
 
@@ -64,19 +66,25 @@ public final class LeftAlignIndels extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(IOUtils.getPath(output), true);
+        outputWriter = createSAMWriter(IOUtils.getPath(OUTPUT), true);
     }
 
     @Override
     public void apply( GATKRead read, ReferenceContext ref, FeatureContext featureContext ) {
-        // we can not deal with screwy records, and reads with a single cigar element are a trivial case
-        if ( read.isUnmapped() || read.numCigarElements() <= 1 ) {
+        // we can not deal with screwy records
+        if ( read.isUnmapped() || read.numCigarElements() == 0 ) {
             outputWriter.addRead(read);
             return;
         }
 
-        final Cigar newCigar = AlignmentUtils.leftAlignIndels(read.getCigar(), ref.getBases(), read.getBases(), 0);
-        read.setCigar(newCigar);
+        // move existing indels (for 1 indel reads only) to leftmost position within identical sequence
+        int numBlocks = AlignmentUtils.getNumAlignmentBlocks(read);
+        if ( numBlocks == 2 ) {
+            // We checked in onTraversalStart() that a reference is present, so ref.get() is safe
+            Cigar newCigar = AlignmentUtils.leftAlignIndel(CigarUtils.trimReadToUnclippedBases(read.getCigar()), ref.getBases(), read.getBases(), 0, 0, true);
+            newCigar = CigarUtils.reclipCigar(newCigar, read);
+            read.setCigar(newCigar);
+        }
 
         outputWriter.addRead(read);
     }

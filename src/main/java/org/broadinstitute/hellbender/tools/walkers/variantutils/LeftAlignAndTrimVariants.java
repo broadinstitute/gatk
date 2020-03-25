@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
-import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -14,8 +17,6 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
-import org.broadinstitute.hellbender.utils.IndexRange;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -27,8 +28,6 @@ import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Left-align indels in a variant callset
@@ -124,7 +123,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     public static final String KEEP_ORIGINAL_AC_LONG_NAME = "keep-original-ac";
     public static final String MAX_INDEL_LENGTH_LONG_NAME = "max-indel-length";
 
-    public static final int DEFAULT_MAX_LEADING_BASES= 1000;
+    private static final int DEFAULT_MAX_LEADING_BASES= 1000;
 
     @VisibleForTesting
     static final int DEFAULT_MAX_INDEL_SIZE = 200;
@@ -176,17 +175,39 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     private boolean suppressReferencePath = false;
 
     private VariantContextWriter vcfWriter = null;
+    private int numRealignedVariants;
+    private int numVariantsSplit;
+    private int numVariantsSplitTo;
+    private int numVariantsTrimmed;
+    @VisibleForTesting
+    int numSkippedForLength;
+    @VisibleForTesting
+    int longestSkippedVariant;
+    private int furthestEndOfEarlierVariant;
+    private String currentContig;
 
-    VariantContext lastVariant;
-
+    /**
+     * Set up the VCF writer, samples
+     */
     @Override
     public void onTraversalStart() {
+        numRealignedVariants = 0;
+        numVariantsSplit = 0;
+        numVariantsSplitTo = 0;
+        numVariantsTrimmed = 0;
+        longestSkippedVariant = 0;
+        furthestEndOfEarlierVariant = 0;
+        numSkippedForLength = 0;
         final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
         final SortedSet<String> vcfSamples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
 
         // Initialize VCF header lines
-        final Path refPath = referenceArguments.getReferencePath();
-        final Set<VCFHeaderLine> actualLines = VcfUtils.updateHeaderContigLines(createVCFHeaderLineList(vcfHeaders), refPath, getReferenceDictionary(), suppressReferencePath);
+        final Set<VCFHeaderLine> headerLines = createVCFHeaderLineList(vcfHeaders);
+        Set<VCFHeaderLine> actualLines = null;
+        SAMSequenceDictionary sequenceDictionary = null;
+        Path refPath = referenceArguments.getReferencePath();
+        sequenceDictionary = this.getReferenceDictionary();
+        actualLines = VcfUtils.updateHeaderContigLines(headerLines, refPath, sequenceDictionary, suppressReferencePath);
 
         vcfWriter = createVCFWriter(outFile);
         vcfWriter.writeHeader(new VCFHeader(actualLines, vcfSamples));
@@ -217,23 +238,21 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      */
     @Override
     public void apply(VariantContext vc, ReadsContext readsContext, ReferenceContext ref, FeatureContext featureContext) {
+        if (!vc.getContig().equals(currentContig)) {
+            // if we are on a new contig reset furthestEndOfEarlierVariant
+            currentContig = vc.getContig();
+            furthestEndOfEarlierVariant = 0;
+        }
         final List<VariantContext> vcList = splitMultiallelics ? GATKVariantContextUtils.splitVariantContextToBiallelics(vc, false,
                 GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, keepOriginalChrCounts) : Collections.singletonList(vc);
 
-        for (final VariantContext splitVariant : vcList) {
-            final List<Integer> indelLengths = splitVariant.getIndelLengths();
-            final int indelLength = indelLengths == null ? 0 : indelLengths.stream().map(Math::abs).max(Integer::compareTo).orElse(0);
+        if (vcList.size() > 1) {
+            numVariantsSplit++;
+            numVariantsSplitTo += vcList.size();
+        }
 
-            if (indelLength > maxIndelSize) {
-                logger.info(String.format("%s (%d) at position %s:%d; skipping that record. Set --max-indel-length >= %d",
-                        "Indel is too long", indelLength, splitVariant.getContig(), splitVariant.getStart(), indelLength));
-                lastVariant = splitVariant;
-                vcfWriter.add(splitVariant);
-            } else {
-                final int distanceToLastVariant = (lastVariant != null && splitVariant.contigsMatch(lastVariant)) ? splitVariant.getStart() - lastVariant.getEnd() : Integer.MAX_VALUE;
-                lastVariant = leftAlignAndTrim(splitVariant, ref, Math.min(maxLeadingBases, distanceToLastVariant - 1), !dontTrimAlleles);
-                vcfWriter.add(lastVariant);
-            }
+        for (final VariantContext v : vcList) {
+            numRealignedVariants += trimAlign(v, ref);
         }
     }
 
@@ -252,7 +271,23 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      */
     @Override
     public Object onTraversalSuccess() {
-        return "SUCCESS";
+        if (numVariantsSplit > 0) {
+            String splitMessage = numVariantsSplit + " multiallelic " + (numVariantsSplit == 1 ? " variant " : " variants ") + " split into " + numVariantsSplitTo + " biallelic variants";
+            logger.info(splitMessage);
+        }
+        if (numVariantsTrimmed > 0) {
+            String trimMessage = numVariantsTrimmed + (numVariantsTrimmed == 1 ? " variant " : " variants ") + " trimmed";
+            logger.info(trimMessage);
+        }
+        if (numSkippedForLength > 0) {
+            String lengthMessage = numSkippedForLength + (numSkippedForLength == 1 ? " variant " : " variants ") + " skipped because the reference allele was too long.  " +
+                    "The longest had a reference allele length of " + longestSkippedVariant + ".  To not skip these variants set --max-indel-length >= " + longestSkippedVariant;
+            logger.info(lengthMessage);
+
+        }
+        String msg = numRealignedVariants + (numRealignedVariants == 1 ? " variant " : " variants ") + "left aligned";
+        logger.info(msg);
+        return null;
     }
 
     /**
@@ -266,6 +301,50 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     }
 
     /**
+     * Trim, align and write out the vc.
+     *
+     * @param vc  Input VC with variants to left align
+     * @param ref Reference context
+     * @return Number of records left-aligned (0 or 1)
+     */
+    protected int trimAlign(final VariantContext vc, final ReferenceContext ref) {
+        final int refLength = vc.getReference().length();
+
+        // ignore if the reference length is greater than the maxIndelSize
+        if (refLength > maxIndelSize) {
+            logger.info(String.format("%s (%d) at position %s:%d; skipping that record. Set --max-indel-length >= %d",
+                    "Reference allele is too long", refLength, vc.getContig(), vc.getStart(), refLength));
+            numSkippedForLength++;
+            if (refLength > longestSkippedVariant) {
+                longestSkippedVariant = refLength;
+            }
+            //still write out variant, just don't try to left align
+            vcfWriter.add(vc);
+            return 0;
+        }
+
+        // optionally don't trim VC
+        final VariantContext v = dontTrimAlleles ? vc : GATKVariantContextUtils.trimAlleles(vc, true, true);
+
+        if (!v.equals(vc)) {
+            numVariantsTrimmed++;
+        }
+
+        // align the VC
+        final VariantContext alignedV = leftAlign(v, ref);
+
+        // write out new VC
+        vcfWriter.add(alignedV);
+
+        if (alignedV.getEnd() > furthestEndOfEarlierVariant) {
+            furthestEndOfEarlierVariant = alignedV.getEnd();
+        }
+
+        // number of records left aligned
+        return (v.equals(alignedV) ? 0 : 1);
+    }
+
+    /**
      * Main routine workhorse. By definition, it will only take biallelic vc's. Splitting into multiple alleles has to be
      * handled by calling routine.
      *
@@ -273,56 +352,127 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      * @param ref Reference context
      * @return new VC.
      */
-    @VisibleForTesting
-    static VariantContext leftAlignAndTrim(final VariantContext vc, final ReferenceContext ref, final int maxLeadingBases, final boolean trim) {
-        if (!vc.isIndel() || maxLeadingBases <= 0) {
+    protected VariantContext leftAlign(final VariantContext vc, final ReferenceContext ref) {
+        if (!vc.isSimpleIndel()) {
             return vc;
         }
 
+        // get the indel length
+        final int indelLength = Math.abs(vc.getIndelLengths().get(0));
 
-        for(int leadingBases = Math.min(maxLeadingBases, 10); leadingBases <= maxLeadingBases; leadingBases = Math.min(2*leadingBases, maxLeadingBases)) {
-            final int refStart = Math.max(vc.getStart() - leadingBases, 1);
-
-            // reference sequence starting before the variant (to give space for left-alignment) and ending at the variant end
-            final byte[] refSeq = ref.getBases(new SimpleInterval(vc.getContig(), refStart, vc.getEnd()));
-
-            final int variantOffsetInRef = vc.getStart() - refStart;
-
-            final List<byte[]> sequences = vc.getAlleles().stream().map(a -> {
-                final byte[] result = new byte[variantOffsetInRef + a.length()];
-                System.arraycopy(refSeq, 0, result, 0, variantOffsetInRef);
-                System.arraycopy(a.getBases(), 0, result, variantOffsetInRef, a.length());
-                return result;
-            }).collect(Collectors.toList());
-
-            final List<IndexRange> alleleRanges = vc.getAlleles().stream()
-                    .map(a -> new IndexRange(variantOffsetInRef + 1, variantOffsetInRef + a.length()))  // +1 to ignore the shared base in front
-                    .collect(Collectors.toList());
-
-            // note that this also shifts the index ranges as a side effect, so below they can be used to output allele bases
-            final Pair<Integer, Integer> shifts = AlignmentUtils.normalizeAlleles(sequences, alleleRanges, variantOffsetInRef, trim);
-
-            if (shifts.getLeft() == 0 && shifts.getRight() == 0) {
-                return vc;
-            } else if (shifts.getLeft() == variantOffsetInRef && leadingBases < maxLeadingBases) {
-                continue;
+        // check that indel isn't too long
+        if (indelLength > maxIndelSize) {
+            logger.info(String.format("%s (%d) at position %s:%d; skipping that record. Set --max-indel-length >= %d",
+                    "Indel is too long", indelLength, vc.getContig(), vc.getStart(), indelLength));
+            numSkippedForLength++;
+            if (indelLength > longestSkippedVariant) {
+                longestSkippedVariant = indelLength;
             }
-
-            final Map<Allele, Allele> alleleMap = IntStream.range(0, alleleRanges.size()).boxed()
-                    .collect(Collectors.toMap(
-                            n -> vc.getAlleles().get(n),
-                            n -> Allele.create(Arrays.copyOfRange(sequences.get(n), variantOffsetInRef - shifts.getLeft(), variantOffsetInRef - shifts.getRight() + vc.getAlleles().get(n).length()), n == 0)));
-
-            final GenotypesContext newGenotypes = GenotypesContext.create(vc.getNSamples());
-            for (final Genotype genotype : vc.getGenotypes()) {
-                final List<Allele> newAlleles = genotype.getAlleles().stream().map(a -> alleleMap.getOrDefault(a, Allele.NO_CALL)).collect(Collectors.toList());
-                newGenotypes.add(new GenotypeBuilder(genotype).alleles(newAlleles).make());
-            }
-
-            return new VariantContextBuilder(vc).start(vc.getStart() - shifts.getLeft()).stop(vc.getEnd() - shifts.getRight())
-                    .alleles(alleleMap.values()).genotypes(newGenotypes).make();
+            //still write out variant, just don't try to left align
+            return vc;
         }
 
+        int leadingBases = Math.max(50, indelLength);
+
+        while (leadingBases < maxLeadingBases) {
+            ref.setWindow(leadingBases, maxIndelSize);
+            final byte[] refSeq = ref.getBases();
+
+            // create an indel haplotype.
+            //
+            final int originalIndex = vc.getStart() - ref.getWindow().getStart() + 1;
+            final byte[] originalIndel = makeHaplotype(vc, refSeq, originalIndex, indelLength);
+            // create a CIGAR string to represent the event
+            ArrayList<CigarElement> elements = new ArrayList<CigarElement>();
+            elements.add(new CigarElement(originalIndex, CigarOperator.M));
+            elements.add(new CigarElement(indelLength, vc.isSimpleDeletion() ? CigarOperator.D : CigarOperator.I));
+            elements.add(new CigarElement(refSeq.length - originalIndex, CigarOperator.M));
+            Cigar originalCigar = new Cigar(elements);
+
+            // align no further left than base after previous variant
+            int leftmostAllowedAlignment = furthestEndOfEarlierVariant - ref.getWindow().getStart() + 2;
+            // left align the CIGAR
+            Cigar newCigar = AlignmentUtils.leftAlignIndel(originalCigar, refSeq, originalIndel, 0, 0, leftmostAllowedAlignment, true);
+            if (newCigar.equals(originalCigar)) {
+                return vc;
+            }
+            if (newCigar.getCigarElement(0).getLength() != refSeq.length && newCigar.getCigarElement(0).getOperator() == CigarOperator.M) {
+                int difference = originalIndex - newCigar.getCigarElement(0).getLength();
+                VariantContext newVC = new VariantContextBuilder(vc).start(vc.getStart() - difference).stop(vc.getEnd() - difference).make();
+
+                final int indelIndex = originalIndex - difference;
+                final byte[] newBases = new byte[indelLength + 1];
+                newBases[0] = refSeq[indelIndex - 1];
+                System.arraycopy((vc.isSimpleDeletion() ? refSeq : originalIndel), indelIndex, newBases, 1, indelLength);
+                final Allele newAllele = Allele.create(newBases, vc.isSimpleDeletion());
+                newVC = updateAllele(newVC, newAllele);
+                // overwrite default return value with new left-aligned VC
+                return newVC;
+            }
+            // if we have left aligned to the beginning of the reference window, double leadingBases length and try again
+            leadingBases *= 2;
+        }
+        //if we have made it here we have failed to align the indel before reaching the maximum number of leading Bases
+        logger.info("Indel left aligned to beginning of allowed reference window.  Please set --maxLeadingBases to greater than " + maxLeadingBases +
+                "and try again if you would like to align this indel");
         return vc;
     }
+
+    protected VariantContext updateAllele(final VariantContext vc, final Allele newAllele) {
+        // create a mapping from original allele to new allele
+        HashMap<Allele, Allele> alleleMap = new HashMap<Allele, Allele>(vc.getAlleles().size());
+        if (newAllele.isReference()) {
+            alleleMap.put(vc.getReference(), newAllele);
+            alleleMap.put(vc.getAlternateAllele(0), Allele.create(newAllele.getBases()[0], false));
+        } else {
+            alleleMap.put(vc.getReference(), Allele.create(newAllele.getBases()[0], true));
+            alleleMap.put(vc.getAlternateAllele(0), newAllele);
+        }
+
+        // create new Genotype objects
+        GenotypesContext newGenotypes = GenotypesContext.create(vc.getNSamples());
+        for (final Genotype genotype : vc.getGenotypes()) {
+            List<Allele> newAlleles = new ArrayList<Allele>();
+            for (Allele allele : genotype.getAlleles()) {
+                Allele newA = alleleMap.get(allele);
+                if (newA == null)
+                    newA = Allele.NO_CALL;
+                newAlleles.add(newA);
+            }
+            newGenotypes.add(new GenotypeBuilder(genotype).alleles(newAlleles).make());
+        }
+
+        return new VariantContextBuilder(vc).alleles(alleleMap.values()).genotypes(newGenotypes).make();
+    }
+
+    /**
+     * Make a haplotype from a given alt allele, using bases in input reference, index of an input reference
+     *
+     * @param vc          Input VC - will use only alt allele from it
+     * @param ref         Ref bases
+     * @param indexOfRef  Index in ref where to create indel
+     * @param indelLength Indel length
+     * @return Haplotype, containing the reference and the indel
+     */
+    private static byte[] makeHaplotype(VariantContext vc, byte[] ref, int indexOfRef, int indelLength) {
+        byte[] hap = new byte[ref.length + (indelLength * (vc.isSimpleDeletion() ? -1 : 1))];
+
+        // add the bases before the indel
+        System.arraycopy(ref, 0, hap, 0, indexOfRef);
+        int currentPos = indexOfRef;
+
+        // take care of the indel
+        if (vc.isSimpleDeletion()) {
+            indexOfRef += indelLength;
+        } else {
+            System.arraycopy(vc.getAlternateAllele(0).getBases(), 1, hap, currentPos, indelLength);
+            currentPos += indelLength;
+        }
+
+        // add the bases after the indel
+        System.arraycopy(ref, indexOfRef, hap, currentPos, ref.length - indexOfRef);
+
+        return hap;
+    }
+
 }
