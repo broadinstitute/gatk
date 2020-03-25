@@ -1,11 +1,11 @@
 version 1.0
 
-import "AlignAndCall.wdl" as AlignAndCall
+import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignAndCall/versions/12/plain-WDL/descriptor" as AlignAndCall
 
 workflow MitochondriaPipeline {
 
   meta {
-    description: "Takes in fully aligned hg38 bam and outputs VCF of SNP/Indel calls on the mitochondria."
+    description: "Takes in an hg38 bam or cram and outputs VCF of SNP/Indel calls on the mitochondria."
   }
 
   input {
@@ -45,20 +45,21 @@ workflow MitochondriaPipeline {
     File mt_shifted_bwt
     File mt_shifted_pac
     File mt_shifted_sa
-    File blacklisted_sites_shifted
-    File blacklisted_sites_shifted_index
 
     File shift_back_chain
 
     File control_region_shifted_reference_interval_list
     File non_control_region_interval_list
 
+    String? requester_pays_project
     File? gatk_override
     String? m2_extra_args
     String? m2_filter_extra_args
     Float? vaf_filter_threshold
     Float? f_score_beta
+    Float? verifyBamID
     Boolean compress_output_vcf = false
+    Int? max_low_het_sites
 
     #Optional runtime arguments
     Int? preemptible_tries
@@ -82,6 +83,7 @@ workflow MitochondriaPipeline {
       ref_fasta = ref_fasta,
       ref_fasta_index = ref_fasta_index,
       ref_dict = ref_dict,
+      requester_pays_project = requester_pays_project,
       gatk_override = gatk_override,
       preemptible_tries = preemptible_tries
   }
@@ -115,16 +117,16 @@ workflow MitochondriaPipeline {
       mt_shifted_bwt = mt_shifted_bwt,
       mt_shifted_pac = mt_shifted_pac,
       mt_shifted_sa = mt_shifted_sa,
-      blacklisted_sites_shifted = blacklisted_sites_shifted,
-      blacklisted_sites_shifted_index = blacklisted_sites_shifted_index,
       shift_back_chain = shift_back_chain,
       gatk_override = gatk_override,
       m2_extra_args = m2_extra_args,
       m2_filter_extra_args = m2_filter_extra_args,
       vaf_filter_threshold = vaf_filter_threshold,
       f_score_beta = f_score_beta,
+      verifyBamID = verifyBamID,
       compress_output_vcf = compress_output_vcf,
       max_read_length = max_read_length,
+      max_low_het_sites = max_low_het_sites,
       preemptible_tries = preemptible_tries
   }
 
@@ -146,6 +148,16 @@ workflow MitochondriaPipeline {
       shifted_ref_fasta_index = mt_shifted_fasta_index,
       shifted_ref_dict = mt_shifted_dict
   }
+  
+  call SplitMultiAllelicSites {
+    input:
+      input_vcf = AlignAndCall.out_vcf,
+      ref_fasta = mt_fasta,
+      ref_fasta_index = mt_fasta_index,
+      ref_dict = mt_dict,
+      gatk_override = gatk_override,
+      preemptible_tries = preemptible_tries
+  }
 
   output {
     File subset_bam = SubsetBamToChrM.output_bam
@@ -154,6 +166,9 @@ workflow MitochondriaPipeline {
     File mt_aligned_bai = AlignAndCall.mt_aligned_bai
     File out_vcf = AlignAndCall.out_vcf
     File out_vcf_index = AlignAndCall.out_vcf_index
+    File split_vcf = SplitMultiAllelicSites.split_vcf
+    File split_vcf_index = SplitMultiAllelicSites.split_vcf_index
+    File input_vcf_for_haplochecker = AlignAndCall.input_vcf_for_haplochecker
     File duplicate_metrics = AlignAndCall.duplicate_metrics
     File coverage_metrics = AlignAndCall.coverage_metrics
     File theoretical_sensitivity_metrics = AlignAndCall.theoretical_sensitivity_metrics
@@ -171,6 +186,7 @@ task SubsetBamToChrM {
     File input_bai
     String contig_name
     String basename = basename(basename(input_bam, ".cram"), ".bam")
+    String? requester_pays_project
     File? ref_fasta
     File? ref_fasta_index
     File? ref_dict
@@ -204,6 +220,7 @@ task SubsetBamToChrM {
       -L ~{contig_name} \
       --read-filter MateOnSameContigOrNoMappedMateReadFilter \
       --read-filter MateUnmappedAndUnmappedReadFilter \
+      ~{"--gcs-project-for-requester-pays " + requester_pays_project} \
       -I ~{input_bam} \
       -O ~{basename}.bam
   >>>
@@ -335,4 +352,37 @@ task CoverageAtEveryBase {
   output {
     File table = "per_base_coverage.tsv"
   }
+}
+
+task SplitMultiAllelicSites {
+  input {
+    File ref_fasta
+    File ref_fasta_index
+    File ref_dict
+    File input_vcf
+    Int? preemptible_tries
+    File? gatk_override
+  }
+
+  command {
+    set -e
+    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+    gatk LeftAlignAndTrimVariants \
+      -R ~{ref_fasta} \
+      -V ~{input_vcf} \
+      -O split.vcf \
+      --split-multi-allelics \
+      --dont-trim-alleles \
+      --keep-original-ac
+  }
+  output {
+    File split_vcf = "split.vcf"
+    File split_vcf_index = "split.vcf.idx"
+  }
+  runtime {
+      docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+      memory: "3 MB"
+      disks: "local-disk 20 HDD"
+      preemptible: select_first([preemptible_tries, 5])
+  } 
 }

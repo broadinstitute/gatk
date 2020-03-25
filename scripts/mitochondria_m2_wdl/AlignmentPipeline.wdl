@@ -165,6 +165,7 @@ task AlignAndMarkDuplicates {
 task GetBwaVersion {
   meta {
     description: "Gets version of BWA"
+    volatile: true
   }
   command {
     # not setting set -o pipefail here because /bwa has a rc=1 and we dont want to allow rc=1 to succeed because
