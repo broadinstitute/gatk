@@ -106,6 +106,8 @@ def run(args):
             _find_learning_rate(args)
         elif 'find_learning_rate_and_train' == args.mode:
             args.learning_rate = _find_learning_rate(args)
+            if not args.learning_rate:
+                raise ValueError('Could not find learning rate.')
             train_multimodal_multitask(args)
         else:
             raise ValueError('Unknown mode:', args.mode)

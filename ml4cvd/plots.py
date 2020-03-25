@@ -1219,7 +1219,10 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
     logging.info(f"Saved T-SNE plot at: {figure_path}")
 
 
-def plot_find_learning_rate(learning_rates: List[float], losses: List[float], smoothed_losses: List[float], picked_learning_rate: float, figure_path: str):
+def plot_find_learning_rate(
+    learning_rates: List[float], losses: List[float], smoothed_losses: List[float],
+    picked_learning_rate: Optional[float], figure_path: str,
+):
     plt.figure(figsize=(2 * SUBPLOT_SIZE, SUBPLOT_SIZE))
     plt.title('Learning rate finder')
     cutoff = smoothed_losses[0]
@@ -1228,7 +1231,8 @@ def plot_find_learning_rate(learning_rates: List[float], losses: List[float], sm
     learning_rates = np.log(learning_rates) / np.log(10)
     plt.plot(learning_rates, losses, label='Loss', c='r')
     plt.plot(learning_rates, smoothed_losses, label='Smoothed loss', c='b')
-    plt.axvline(np.log(picked_learning_rate) / np.log(10), label=f'Learning rate found {picked_learning_rate:.2E}', color='g', linestyle='--')
+    if picked_learning_rate is not None:
+        plt.axvline(np.log(picked_learning_rate) / np.log(10), label=f'Learning rate found {picked_learning_rate:.2E}', color='g', linestyle='--')
     plt.xlabel('Log_10 learning rate')
     plt.legend()
     plt.savefig(os.path.join(figure_path, f'find_learning_rate{IMAGE_EXT}'))
