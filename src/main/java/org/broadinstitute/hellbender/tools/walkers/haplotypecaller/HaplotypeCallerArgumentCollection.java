@@ -119,6 +119,20 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
             optional = true)
     public boolean disableOptimizations = false;
 
+    /**
+     * These arguments are associated with DRAGEN-GATK
+     */
+    @Advanced
+    @Argument(fullName = "apply-bqd", doc = "If enabled this argument will apply the DRAGEN-GATK BaseQualityDropout model to the genotyping model for filtering sites due to Linked Error mode.", optional = true)
+    public boolean applyBQD = true;
+    @Advanced
+    @Argument(fullName = "apply-frd", doc = "If enabled this argument will apply the DRAGEN-GATK ForeignReadDetection model to the genotyping model for filtering sites.", optional = true)
+    public boolean applyFRD = false;
+    @Advanced
+    @Argument(fullName = "transform-dragen-mapping-quality", doc = "If enabled this argument will map DRAGEN aligner aligned reads with mapping quality <=250 to scale up to MQ 50", optional = true)
+    public boolean transformDRAGENMapQ = false;
+
+
     @Hidden
     @Argument(fullName = "keep-rg", doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)
     public String keepRG = null;
