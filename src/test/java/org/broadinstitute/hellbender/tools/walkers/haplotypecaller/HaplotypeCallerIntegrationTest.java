@@ -1295,6 +1295,29 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    // the order of adjacent deletion and insertion events is arbitary, hence the locus of an insertion can equally well
+    // be assigned to the beginning or end of an adjacent deletion.  However, assigning to the beginning of the deletion
+    // creates a single event that looks like a MNP or complicated event eg ACG -> TTGT.  There is nothing wrong with this -- indeed
+    // it is far preferable to calling two events -- however GenomicsDB as of March 2020 does not support MNPs.  Once it does,
+    // this test will not be necessary.
+    @Test
+    public void testAdjacentIndels() {
+        final File bam = new File(TEST_FILES_DIR, "issue_6473_adjacent_indels.bam");
+        final String interval = "17:7578000-7578500";
+
+        final File output = createTempFile("output", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(bam)
+                .addReference(b37Reference)
+                .addInterval(interval)
+                .addOutput(output);
+        runCommandLine(args);
+
+        Assert.assertTrue(VariantContextTestUtils.streamVcf(output)
+                .allMatch(vc -> vc.isBiallelic() && (vc.getReference().length() == 1 || vc.getAlternateAllele(0).length() == 1)));
+    }
+
     /**
      * Helper method for testMaxAlternateAlleles
      *
