@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -75,8 +76,8 @@ public final class AlignmentUtils {
         Utils.nonNull(aligner);
         if ( referenceStart < 1 ) { throw new IllegalArgumentException("reference start much be >= 1 but got " + referenceStart); }
 
-        // compute the smith-waterman alignment of read -> haplotype
-        final SmithWatermanAlignment swPairwiseAlignment = aligner.align(haplotype.getBases(), originalRead.getBases(), CigarUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
+        // compute the smith-waterman alignment of read -> haplotype //TODO use more efficient than the read clipper here
+        final SmithWatermanAlignment swPairwiseAlignment = aligner.align(haplotype.getBases(), ReadClipper.hardClipSoftClippedBases(originalRead).getBases(), CigarUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
         if ( swPairwiseAlignment.getAlignmentOffset() == -1 ) {
             // sw can fail (reasons not clear) so if it happens just don't realign the read
             return originalRead;
@@ -110,20 +111,29 @@ public final class AlignmentUtils {
 
         // the SW Cigar does not contain the hard clips of the original read
         final Cigar originalCigar = originalRead.getCigar();
-        final CigarElement firstElement = originalCigar.getFirstCigarElement();
-        final CigarElement lastElement = originalCigar.getLastCigarElement();
+        int firstIndex = 0;
+        int lastIndex = originalCigar.numCigarElements() - 1;
+        CigarElement firstElement = originalCigar.getFirstCigarElement();
+        CigarElement lastElement = originalCigar.getLastCigarElement();
         final List<CigarElement> readToRefCigarElementsWithHardClips = new ArrayList<>();
-        if (firstElement.getOperator() == CigarOperator.HARD_CLIP) {
+        int softClippedBases = 0;
+        while (firstElement.getOperator().isClipping() && firstIndex != lastIndex) {
+            if (firstElement.getOperator()== CigarOperator.SOFT_CLIP) {softClippedBases+= firstElement.getLength();}
             readToRefCigarElementsWithHardClips.add(firstElement);
+            // TODO add a test for this behavior on soft and hardclipped reads
+            firstElement = originalCigar.getCigarElement(++firstIndex);
         }
         readToRefCigarElementsWithHardClips.addAll(readToRefCigar.getCigarElements());
-        if (lastElement.getOperator() == CigarOperator.HARD_CLIP) {
+        while (lastElement.getOperator().isClipping() && firstIndex != lastIndex)  {
+            if (lastElement.getOperator()== CigarOperator.SOFT_CLIP) {softClippedBases+= lastElement.getLength();}
             readToRefCigarElementsWithHardClips.add(lastElement);
+            // TODO add a test for this behavior on soft and hardclipped reads
+            lastElement = originalCigar.getCigarElement(--lastIndex);
         }
 
         read.setCigar(new Cigar(readToRefCigarElementsWithHardClips));
 
-        if ( readToRefCigar.getReadLength() != read.getLength() ) {
+        if ( readToRefCigar.getReadLength() + softClippedBases != read.getLength() ) {
             throw new GATKException("Cigar " + readToRefCigar + " with read length " + readToRefCigar.getReadLength()
                     + " != read length " + read.getLength() + " for read " + read.toString() + "\nhapToRef " + haplotypeToRef + " length " + haplotypeToRef.getReadLength() + "/" + haplotypeToRef.getReferenceLength()
                     + "\nreadToHap " + swCigar + " length " + swCigar.getReadLength() + "/" + swCigar.getReferenceLength());

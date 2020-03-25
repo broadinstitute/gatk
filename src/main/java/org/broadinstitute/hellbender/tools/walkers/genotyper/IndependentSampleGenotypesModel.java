@@ -15,7 +15,7 @@ import java.util.List;
  * This class delegates genotyping to allele count- and ploidy-dependent {@link GenotypeLikelihoodCalculator}s
  * under the assumption that sample genotypes are independent conditional on their population frequencies.
  */
-public final class IndependentSampleGenotypesModel {
+public final class IndependentSampleGenotypesModel implements GenotypersModel {
     private static final int DEFAULT_CACHE_PLOIDY_CAPACITY = 10;
     private static final int DEFAULT_CACHE_ALLELE_CAPACITY = 50;
 
@@ -36,6 +36,7 @@ public final class IndependentSampleGenotypesModel {
         calculators = new GenotypeLikelihoodCalculators();
     }
 
+    @Override
     @SuppressWarnings({"unchecked", "rawtypes"})
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");

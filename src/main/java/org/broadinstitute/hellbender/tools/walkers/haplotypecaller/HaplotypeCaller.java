@@ -13,6 +13,9 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
+import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
+import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
@@ -160,6 +163,11 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public boolean useVariantAnnotations() { return true;}
+
+    @Override
+    public ReadTransformer makePostReadFilterTransformer() {
+        return super.makePostReadFilterTransformer().andThen(hcArgs.transformDRAGENMapQ ? new DRAGENMappingQualityReadTransformer() : ReadTransformer.identity());
+    }
 
     /**
      * If we are in reference confidence mode we want to filter the annotations as there are certain annotations in the standard
