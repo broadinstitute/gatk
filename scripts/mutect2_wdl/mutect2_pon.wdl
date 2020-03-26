@@ -29,7 +29,7 @@ workflow Mutect2_Panel {
     String pon_name
 
     Int? min_contig_size
-    Int? num_contigs
+    Int? create_panel_scatter_count
 
     # runtime
     String gatk_docker
@@ -79,8 +79,8 @@ workflow Mutect2_Panel {
             ref_fasta = ref_fasta,
             ref_fai = ref_fai,
             ref_dict = ref_dict,
-            scatter_count = select_first([num_contigs, 24]),
-            split_intervals_extra_args = "--subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION --min-contig-size " + contig_size,
+            scatter_count = select_first([create_panel_scatter_count, 24]),
+            split_intervals_extra_args = "--dont-mix-contigs --min-contig-size " + contig_size,
             runtime_params = standard_runtime
     }
 
