@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.IntervalList;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -98,6 +99,23 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testDontMixContigs() {
+        final int scatterCount = 5;
+        final File outputDir = createTempDir("output");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInterval("20:1000000-2000000")
+                .addInterval("21:1000000-2000000")
+                .addReference(b37Reference)
+                .add(SplitIntervals.SCATTER_COUNT_SHORT_NAME, scatterCount)
+                .add(SplitIntervals.DONT_MIX_CONTIGS_LONG_NAME, true)
+                .addOutput(outputDir);
+        runCommandLine(args);
+        verifyScatteredFilesExist(scatterCount + 1, outputDir, SplitIntervals.DEFAULT_EXTENSION);
+        checkTotalSize(scatterCount + 1, outputDir, 2000002, SplitIntervals.DEFAULT_EXTENSION);
+    }
+
+    @Test
     public void testNoIntervals() {
         final int scatterCount = 5;
         final File outputDir = createTempDir("output");
@@ -159,6 +177,13 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
     private static void checkIntervalSizes(final int scatterCount, final File outputDir, final int expectedTotalLength, String extension) {
         final int splitLength = expectedTotalLength / scatterCount;
         getExpectedScatteredFiles(scatterCount, outputDir, extension).forEach(f -> Assert.assertEquals(readIntervals(f).stream().mapToInt(SimpleInterval::size).sum(), splitLength, 100));
+    }
+
+    private static void checkTotalSize(final int scatterCount, final File outputDir, final int expectedTotalLength, String extension) {
+        final int totalLength = getExpectedScatteredFiles(scatterCount, outputDir, extension)
+                .mapToInt(f -> readIntervals(f).stream().mapToInt(SimpleInterval::size).sum())
+                .sum();
+        Assert.assertEquals(totalLength, expectedTotalLength);
     }
 
 }
