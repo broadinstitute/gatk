@@ -23,7 +23,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
 
     public static final String GQ_BAND_LONG_NAME = "gvcf-gq-bands";
     public static final String GQ_BAND_SHORT_NAME = "GQB";
-    public static final String CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME = "correct-overlapping-quality";
+
     public static final String OUTPUT_BLOCK_LOWER_BOUNDS = "floor-blocks";
 
 
@@ -150,7 +150,11 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName = DO_NOT_RUN_PHYSICAL_PHASING_LONG_NAME,  doc = "Disable physical phasing", optional = true)
     public boolean doNotRunPhysicalPhasing = false;
 
-    @Argument(fullName = CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME)
+    /**
+     * Base quality is capped at half of PCR error rate for bases where read and mate overlap, to account for full correlation of PCR errors at these bases.  This argument disables that correction.
+     */
+    @Advanced
+    @Argument(fullName = DO_NOT_CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME, doc = "Disable overlapping base quality correction")
     public boolean doNotCorrectOverlappingBaseQualities = false;
 
     @Advanced
