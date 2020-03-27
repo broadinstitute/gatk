@@ -327,7 +327,7 @@ public final class CollectFragmentCounts extends ReadWalker {
             //count how many bases in alignmentIntervals are not covered by any feature
             final List<Interval> overlappingIntervals = features.stream().map(p -> new Interval (p.getRight().getContig(), p.getRight().getStart(), p.getRight().getEnd())).collect(Collectors.toList());
 
-            final int uncoveredBases = countUncoveredBases(alignmentIntervals, overlappingIntervals);
+           // final int uncoveredBases = countUncoveredBases(alignmentIntervals, overlappingIntervals);
 
 
             for (final Pair<FeatureCoverage, Gff3BaseData> feature : features) {
@@ -369,51 +369,51 @@ public final class CollectFragmentCounts extends ReadWalker {
         }
     }
 
-    private int countUncoveredBases(final List<Interval> countingIntervals, final List<Interval> coveringIntervals) {
-        if (coveringIntervals.isEmpty()) {
-            return (int)Interval.countBases(countingIntervals);
-        }
-        //make sure sorted
-        Collections.sort(countingIntervals);
-        Collections.sort(coveringIntervals);
-
-        Iterator<Interval> countingIntervalsIterator = countingIntervals.iterator();
-        Iterator<Interval> coveringIntervalsIterator = coveringIntervals.iterator();
-
-        int uncoveredBases = 0;
-        Interval currentCoveringInterval = coveringIntervalsIterator.next();
-        while (countingIntervalsIterator.hasNext()) {
-            final Interval currentCountingInterval = countingIntervalsIterator.next();
-            int currentIntervalCoveredUntil = currentCountingInterval.getStart(); //we will move through the currentCountingInterval
-            //get to correct contig, or last covering interval
-            while (!currentCoveringInterval.getContig().equals(currentCountingInterval.getContig()) && coveringIntervalsIterator.hasNext()) {
-                 currentCoveringInterval = coveringIntervalsIterator.next();
-            }
-
-            //seek until end of currentCoveringInterval is at or past currentCountingIntervalPos
-            while (currentCoveringInterval.getContig().equals(currentCountingInterval.getContig()) && currentCoveringInterval.getEnd() < currentIntervalCoveredUntil && coveringIntervalsIterator.hasNext()) {
-                currentCoveringInterval = coveringIntervalsIterator.next();
-            }
-
-            //if currentCoveringInterval start is past end of currentCountingInterval, continue
-            if (!currentCoveringInterval.getContig().equals(currentCountingInterval.getContig()) || currentCoveringInterval.getStart() > currentCountingInterval.getEnd()) {
-                continue;
-            }
-
-            if (currentCoveringInterval.getStart() > currentIntervalCoveredUntil) {
-                uncoveredBases += currentCoveringInterval.getStart() - currentIntervalCoveredUntil;
-            }
-
-            if (currentIntervalCoveredUntil <= currentCoveringInterval.getEnd()) {
-                currentIntervalCoveredUntil = currentCoveringInterval.getEnd() + 1;
-            }
-
-            if (currentIntervalCoveredUntil > )
-
-
-        }
-
-    }
+//    private int countUncoveredBases(final List<Interval> countingIntervals, final List<Interval> coveringIntervals) {
+//        if (coveringIntervals.isEmpty()) {
+//            return (int)Interval.countBases(countingIntervals);
+//        }
+//        //make sure sorted
+//        Collections.sort(countingIntervals);
+//        Collections.sort(coveringIntervals);
+//
+//        Iterator<Interval> countingIntervalsIterator = countingIntervals.iterator();
+//        Iterator<Interval> coveringIntervalsIterator = coveringIntervals.iterator();
+//
+//        int uncoveredBases = 0;
+//        Interval currentCoveringInterval = coveringIntervalsIterator.next();
+//        while (countingIntervalsIterator.hasNext()) {
+//            final Interval currentCountingInterval = countingIntervalsIterator.next();
+//            int currentIntervalCoveredUntil = currentCountingInterval.getStart(); //we will move through the currentCountingInterval
+//            //get to correct contig, or last covering interval
+//            while (!currentCoveringInterval.getContig().equals(currentCountingInterval.getContig()) && coveringIntervalsIterator.hasNext()) {
+//                 currentCoveringInterval = coveringIntervalsIterator.next();
+//            }
+//
+//            //seek until end of currentCoveringInterval is at or past currentCountingIntervalPos
+//            while (currentCoveringInterval.getContig().equals(currentCountingInterval.getContig()) && currentCoveringInterval.getEnd() < currentIntervalCoveredUntil && coveringIntervalsIterator.hasNext()) {
+//                currentCoveringInterval = coveringIntervalsIterator.next();
+//            }
+//
+//            //if currentCoveringInterval start is past end of currentCountingInterval, continue
+//            if (!currentCoveringInterval.getContig().equals(currentCountingInterval.getContig()) || currentCoveringInterval.getStart() > currentCountingInterval.getEnd()) {
+//                continue;
+//            }
+//
+//            if (currentCoveringInterval.getStart() > currentIntervalCoveredUntil) {
+//                uncoveredBases += currentCoveringInterval.getStart() - currentIntervalCoveredUntil;
+//            }
+//
+//            if (currentIntervalCoveredUntil <= currentCoveringInterval.getEnd()) {
+//                currentIntervalCoveredUntil = currentCoveringInterval.getEnd() + 1;
+//            }
+//
+//            if (currentIntervalCoveredUntil > )
+//
+//
+//        }
+//
+//    }
 
     @Override
     public Object onTraversalSuccess() {
