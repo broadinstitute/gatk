@@ -121,7 +121,7 @@ public class GenotypeGVCFsEngine
     {
         final List<VariantContext> variantsToProcess = getVariantSubsetToProcess(loc, variants);
 
-        if (dragStrParams == null || !genotypeArgs.dontUseDragstrPriors) {
+        if (dragStrParams == null || genotypeArgs.dontUseDragstrPriors) {
             ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
         } else {
             ref.setWindow(dragStrParams.maximumPeriod() * dragStrParams.maximumRepeats(), dragStrParams.maximumPeriod() * dragStrParams.maximumRepeats());

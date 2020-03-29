@@ -61,12 +61,15 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     private static final String ALLELE_SPECIFIC_DIRECTORY = toolsTestDir + "walkers/annotator/allelespecific";
 
     private static <T> void assertForEachElementInLists(final List<T> actual, final List<T> expected, final BiConsumer<T, T> assertion) {
-        Assert.assertEquals(actual.size(), expected.size(), "different number of elements in lists:\n"
-                + actual.stream().map(Object::toString).collect(Collectors.joining("\n","actual:\n","\n"))
-            +  expected.stream().map(Object::toString).collect(Collectors.joining("\n","expected:\n","\n")));
-        for (int i = 0; i < actual.size(); i++) {
+
+        final int minSize = Math.min(actual.size(), expected.size());
+        for (int i = 0; i < minSize; i++) {
             assertion.accept(actual.get(i), expected.get(i));
         }
+        Assert.assertEquals(actual.size(), expected.size(), String.format("different number of elements in lists: actual is %d but expected is %d\n", actual.size(), expected.size())
+                + actual.stream().map(Object::toString).limit(3).collect(Collectors.joining("\n","actual:\n","\n")) + (actual.size() > 3 ? "...\n" : "")
+                +  expected.stream().map(Object::toString).limit(3).collect(Collectors.joining("\n","expected:\n","\n")) + (expected.size() > 3 ? "...\n" : ""));
+
     }
 
     @DataProvider(name = "gvcfsToGenotype")
@@ -284,7 +287,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream(IOUtils.getPath(expected.getAbsolutePath())));
         final List<String> attributesToFilter = Stream.concat(ATTRIBUTES_WITH_JITTER.stream(), ATTRIBUTES_TO_IGNORE.stream()).collect(Collectors.toList());
-        runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, NO_EXTRA_ARGS, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER, header), reference);
+        runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, Collections.singletonList("--tumor-lod-to-emit 4.24"), (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER, header), reference);
     }
 
     @Test(dataProvider = "gvcfsToGenotype")
@@ -333,8 +336,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     private void runGenotypeGVCFSAndAssertSomething(File input, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
-        runGenotypeGVCFSAndAssertSomething(input.getAbsolutePath(), expected, additionalArguments, assertion, reference
-        );
+            runGenotypeGVCFSAndAssertSomething(input.getAbsolutePath(), expected, additionalArguments, assertion, reference
+            );
     }
 
     private void runGenotypeGVCFSAndAssertSomething(String input, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
@@ -356,7 +359,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         try {
             assertForEachElementInLists(actualVC, expectedVC, assertion);
         } catch (final AssertionError error) {
-            throw error;
+                throw error;
         }
     }
 
