@@ -16,6 +16,10 @@ public class SimpleLocatableMetadata implements LocatableMetadata {
         this.sequenceDictionary = Utils.nonNull(sequenceDictionary);
     }
 
+    public SimpleLocatableMetadata(final LocatableMetadata metadata) {
+        this.sequenceDictionary = Utils.nonNull(metadata).getSequenceDictionary();
+    }
+
     @Override
     public SAMSequenceDictionary getSequenceDictionary() {
         return sequenceDictionary;

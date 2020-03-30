@@ -4,7 +4,10 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.OverlapDetector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ModeledSegmentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
@@ -54,7 +57,7 @@ public final class MultidimensionalModeller {
      * and number of burn-in samples for Markov-Chain Monte Carlo model fitting.
      * An initial model fit is performed.
      */
-    public MultidimensionalModeller(final MultidimensionalSegmentCollection multidimensionalSegments,
+    public MultidimensionalModeller(final SimpleIntervalCollection segments,
                                     final CopyRatioCollection denoisedCopyRatios,
                                     final AllelicCountCollection allelicCounts,
                                     final AlleleFractionPrior alleleFractionPrior,
@@ -63,15 +66,17 @@ public final class MultidimensionalModeller {
                                     final int numSamplesAlleleFraction,
                                     final int numBurnInAlleleFraction) {
         Utils.validateArg(Stream.of(
-                Utils.nonNull(multidimensionalSegments).getMetadata(),
                 Utils.nonNull(denoisedCopyRatios).getMetadata(),
                 Utils.nonNull(allelicCounts).getMetadata()).distinct().count() == 1,
                 "Metadata from all inputs must match.");
-        ParamUtils.isPositive(multidimensionalSegments.size(), "Number of segments must be positive.");
-        metadata = multidimensionalSegments.getMetadata();
-        currentSegments = new SimpleIntervalCollection(
-                new SimpleLocatableMetadata(metadata.getSequenceDictionary()),
-                multidimensionalSegments.getIntervals());
+        Utils.validateArg(Stream.of(
+                segments.getMetadata().getSequenceDictionary(),
+                denoisedCopyRatios.getMetadata().getSequenceDictionary(),
+                allelicCounts.getMetadata().getSequenceDictionary()).distinct().count() == 1,
+                "Sequence dictionaries from all inputs must match.");
+        ParamUtils.isPositive(segments.size(), "Number of segments must be positive.");
+        metadata = denoisedCopyRatios.getMetadata();
+        currentSegments = segments;
         this.denoisedCopyRatios = denoisedCopyRatios;
         copyRatioMidpointOverlapDetector = denoisedCopyRatios.getMidpointOverlapDetector();
         this.allelicCounts = allelicCounts;
