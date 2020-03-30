@@ -5,12 +5,11 @@ import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.MultidimensionalSegmentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.MultidimensionalSegment;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.annotations.Test;
 
@@ -70,7 +69,7 @@ public final class MultidimensionalModellerUnitTest extends GATKBaseTest {
                 metadata, globalParametersAF, numSegments, averageHetsPerSegment, averageDepthAF, rng);
 
         //we introduce extra segments, which we will later merge to test similar-segment merging
-        final MultidimensionalSegmentCollection oversegmentedSegments = new MultidimensionalSegmentCollection(
+        final SimpleIntervalCollection oversegmentedSegments = new SimpleIntervalCollection(
                 metadata,
                 constructOversegmentedSegments(simulatedDataCR, simulatedDataAF));
 
@@ -85,14 +84,14 @@ public final class MultidimensionalModellerUnitTest extends GATKBaseTest {
         AlleleFractionModellerUnitTest.assertAlleleFractionPosteriorCenters(modeller.getAlleleFractionModeller(), simulatedDataAF);
     }
 
-    private List<MultidimensionalSegment> constructOversegmentedSegments(final CopyRatioSimulatedData simulatedDataCR,
-                                                                         final AlleleFractionSimulatedData simulatedDataAF) {
+    private static List<SimpleInterval> constructOversegmentedSegments(final CopyRatioSimulatedData simulatedDataCR,
+                                                                       final AlleleFractionSimulatedData simulatedDataAF) {
         final int numSegments = simulatedDataCR.getData().getNumSegments();
         final List<String> contigs = simulatedDataCR.getData().getSegments().getRecords().stream()
                 .map(SimpleInterval::getContig)
                 .distinct()
                 .collect(Collectors.toList());
-        final List<MultidimensionalSegment> segments = new ArrayList<>(2 * numSegments);    //we split every real segment into two
+        final List<SimpleInterval> segments = new ArrayList<>(2 * numSegments);    //we split every real segment into two
         for (int segmentIndex = 0; segmentIndex < numSegments; segmentIndex++) {
             final String contig = contigs.get(segmentIndex);
             final List<CopyRatio> copyRatiosInSegment =
@@ -108,16 +107,10 @@ public final class MultidimensionalModellerUnitTest extends GATKBaseTest {
             final int numPointsCR = copyRatiosInSegment.size();
             final int numPointsAF = allelicCountsInSegment.size();
             final int numPointsMinHalf = Math.min(numPointsCR, numPointsAF) / 2;
-            segments.add(new MultidimensionalSegment(
-                    new SimpleInterval(contig, 1, numPointsMinHalf),
-                    copyRatiosInSegment.subList(0, numPointsMinHalf + 1),
-                    allelicCountsInSegment.subList(0, numPointsMinHalf + 1)));
+            segments.add(new SimpleInterval(contig, 1, numPointsMinHalf));
             //add the remaining points to another segment
             final int numPointsMax = Math.max(numPointsCR, numPointsAF);
-            segments.add(new MultidimensionalSegment(
-                    new SimpleInterval(contig, numPointsMinHalf + 1, numPointsMax),
-                    copyRatiosInSegment.subList(numPointsMinHalf + 1, numPointsCR),
-                    allelicCountsInSegment.subList(numPointsMinHalf + 1, numPointsAF)));
+            segments.add(new SimpleInterval(contig, numPointsMinHalf + 1, numPointsMax));
         }
         return segments;
     }

@@ -5,6 +5,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.annotation.AnnotationKey;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.annotation.AnnotationMap;
@@ -29,7 +30,7 @@ import java.util.stream.Collectors;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class AnnotatedIntervalCollection extends AbstractLocatableCollection<LocatableMetadata, AnnotatedInterval> {
+public final class AnnotatedIntervalCollection extends AbstractLocatableCollection<SimpleLocatableMetadata, AnnotatedInterval> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
      * CONTIG, START, END; columns headers for additional annotations can be specified
@@ -91,7 +92,7 @@ public final class AnnotatedIntervalCollection extends AbstractLocatableCollecti
     public AnnotatedIntervalCollection(final LocatableMetadata metadata,
                                        final List<AnnotatedInterval> annotatedIntervals) {
         super(
-                metadata,
+                new SimpleLocatableMetadata(metadata),
                 annotatedIntervals,
                 getColumns(getAnnotationKeys(annotatedIntervals)),
                 getAnnotatedIntervalRecordFromDataLineDecoder(getAnnotationKeys(annotatedIntervals)),

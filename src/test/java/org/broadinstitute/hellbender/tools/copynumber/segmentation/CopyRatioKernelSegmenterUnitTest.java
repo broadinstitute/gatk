@@ -4,11 +4,10 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioSegmentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenterUnitTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
@@ -34,18 +33,18 @@ public final class CopyRatioKernelSegmenterUnitTest extends GATKBaseTest {
     @DataProvider(name = "dataCopyRatioKernelSegmenter")
     public Object[][] dataCopyRatioKernelSegmenter() {
         final int numPoints = 1000;
+        final double noiseLevel = 0.1;
 
         final Random rng = new Random(RANDOM_SEED);
-        rng.setSeed(RANDOM_SEED);
         final List<Double> dataGaussian = IntStream.range(0, numPoints).boxed()
-                .map(i -> Math.abs(i / 100 - 5) + 0.1 * rng.nextGaussian())
+                .map(i -> Math.abs(i / 100 - 5) + noiseLevel * rng.nextGaussian())
                 .collect(Collectors.toList());             //changepoints at 99, 199, 299, 399, 499, 599, 699, 799, 899
 
         final List<SimpleInterval> intervals = IntStream.range(0, numPoints).boxed()
                 .map(i -> new SimpleInterval(
                         Integer.toString(i / 250 + 1),  //start a new chromosome every 250 points, which adds additional changepoints
                         (i % 250) * 10 + 1,
-                        (i % 250) * 10 + 10))         //intervals for copy-ratio data points have length = 10
+                        (i % 250) * 10 + 10))           //intervals for copy-ratio data points have length = 10
                 .collect(Collectors.toList());
 
         final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(
@@ -62,22 +61,22 @@ public final class CopyRatioKernelSegmenterUnitTest extends GATKBaseTest {
                         .map(i -> new CopyRatio(intervals.get(i), dataGaussian.get(i)))
                         .collect(Collectors.toList()));
 
-        final CopyRatioSegmentCollection segmentsExpected =
-                new CopyRatioSegmentCollection(
+        final SimpleIntervalCollection segmentsExpected =
+                new SimpleIntervalCollection(
                         metadata,
                         Arrays.asList(
-                                new CopyRatioSegment(new SimpleInterval("1", 1, 1000), denoisedCopyRatios.getRecords().subList(0, 100)),
-                                new CopyRatioSegment(new SimpleInterval("1", 1001, 2000), denoisedCopyRatios.getRecords().subList(100, 200)),
-                                new CopyRatioSegment(new SimpleInterval("1", 2001, 2500), denoisedCopyRatios.getRecords().subList(200, 250)),
-                                new CopyRatioSegment(new SimpleInterval("2", 1, 500), denoisedCopyRatios.getRecords().subList(250, 300)),
-                                new CopyRatioSegment(new SimpleInterval("2", 501, 1500), denoisedCopyRatios.getRecords().subList(300, 400)),
-                                new CopyRatioSegment(new SimpleInterval("2", 1501, 2500), denoisedCopyRatios.getRecords().subList(400, 500)),
-                                new CopyRatioSegment(new SimpleInterval("3", 1, 1000), denoisedCopyRatios.getRecords().subList(500, 600)),
-                                new CopyRatioSegment(new SimpleInterval("3", 1001, 2000), denoisedCopyRatios.getRecords().subList(600, 700)),
-                                new CopyRatioSegment(new SimpleInterval("3", 2001, 2500), denoisedCopyRatios.getRecords().subList(700, 750)),
-                                new CopyRatioSegment(new SimpleInterval("4", 1, 500), denoisedCopyRatios.getRecords().subList(750, 800)),
-                                new CopyRatioSegment(new SimpleInterval("4", 501, 1500), denoisedCopyRatios.getRecords().subList(800, 900)),
-                                new CopyRatioSegment(new SimpleInterval("4", 1501, 2500), denoisedCopyRatios.getRecords().subList(900, 1000))));
+                                new SimpleInterval("1", 1, 1000),
+                                new SimpleInterval("1", 1001, 2000),
+                                new SimpleInterval("1", 2001, 2500),
+                                new SimpleInterval("2", 1, 500),
+                                new SimpleInterval("2", 501, 1500),
+                                new SimpleInterval("2", 1501, 2500),
+                                new SimpleInterval("3", 1, 1000),
+                                new SimpleInterval("3", 1001, 2000),
+                                new SimpleInterval("3", 2001, 2500),
+                                new SimpleInterval("4", 1, 500),
+                                new SimpleInterval("4", 501, 1500),
+                                new SimpleInterval("4", 1501, 2500)));
 
         return new Object[][]{
                 {denoisedCopyRatios, segmentsExpected}
@@ -86,7 +85,7 @@ public final class CopyRatioKernelSegmenterUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "dataCopyRatioKernelSegmenter")
     public void testCopyRatioKernelSegmenter(final CopyRatioCollection denoisedCopyRatios,
-                                             final CopyRatioSegmentCollection segmentsExpected) {
+                                             final SimpleIntervalCollection segmentsExpected) {
         final int maxNumChangepointsPerChromosome = 25;
         final double kernelVariance = 0.;
         final int kernelApproximationDimension = 20;
@@ -94,7 +93,7 @@ public final class CopyRatioKernelSegmenterUnitTest extends GATKBaseTest {
         final double numChangepointsPenaltyLinearFactor = 2.;
         final double numChangepointsPenaltyLogLinearFactor = 2.;
 
-        final CopyRatioSegmentCollection segments = new CopyRatioKernelSegmenter(denoisedCopyRatios)
+        final SimpleIntervalCollection segments = new CopyRatioKernelSegmenter(denoisedCopyRatios)
                 .findSegmentation(maxNumChangepointsPerChromosome, kernelVariance, kernelApproximationDimension,
                         windowSizes, numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor);
         Assert.assertEquals(segments, segmentsExpected);
