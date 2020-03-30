@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class DRAGENBQDGenotypesModel implements GenotypersModel {
     private static final int DEFAULT_CACHE_PLOIDY_CAPACITY = 10;
@@ -128,8 +129,8 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(sampleIndex));
             final double[] ployidyModelGenotypeLikelihoods = likelihoodsCalculator.rawGenotypeLikelihoods(sampleLikelihoods);
 //
-//            System.out.println("Genotyping model results for alleles before being modified");
-//            System.out.println(Arrays.toString(ployidyModelGenotypeLikelihoods));
+            System.out.println("\n Vanilla resutls:");
+            System.out.println(Arrays.toString(ployidyModelGenotypeLikelihoods));
 
             // TODO these must be instantiated as something real
             double[] BQDCallResults = null;
@@ -139,16 +140,15 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
                 double forwardHomopolymerAdjustment = FRDBQDUtils.computeForwardHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent);
                 double reverseHomopolymerAdjustment = FRDBQDUtils.computeReverseHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent);
                 BQDCallResults = likelihoodsCalculator.calculateBQDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment, calculators);
-//                System.out.println("Genotyping model results for genotypes given BQD results");
-//                System.out.println(Arrays.toString(BQDCallResults));
+                System.out.println("BQD results:");
+                System.out.println(Arrays.toString(BQDCallResults));
             }
             if (computeFRD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
-//                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods,
-//                        strandForward.stream().filter(r -> r.getIndexInLikelihoodsObject() != -1).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
-//                        strandReverse.stream().filter(r -> r.getIndexInLikelihoodsObject() != -1).collect(Collectors.toList()),
-//                        34.77);
-//                System.out.println("Genotyping model results for genotypes given FRD results");
-//                System.out.println(Arrays.toString(FRDCallResults));
+                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods,
+                        Stream.of(strandForward, strandReverse).flatMap(list -> list.stream()).filter(r -> r.getIndexInLikelihoodsObject() != -1).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
+                        34.77, calculators);
+                System.out.println("FRD results:");
+                System.out.println(Arrays.toString(FRDCallResults));
             }
 
             //make synthesized likelihoods object (NOTE that we can do this since for invalid model GT fields we simply infinity out the result in the array)
@@ -238,6 +238,10 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
         @Override
         public String toString() {
             return "Read: "+underlyingRead.toString()+" index: "+indexInLikelihoodsObject+" at unclipped end: "+unclippedEnd+" with base quality "+(hasValidBaseQuality() ? getBaseQuality() : -1);
+        }
+
+        public boolean isReverseStrand() {
+            return underlyingRead.isReverseStrand();
         }
     }
 

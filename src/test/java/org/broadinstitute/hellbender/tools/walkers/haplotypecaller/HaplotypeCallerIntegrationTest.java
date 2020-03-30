@@ -370,18 +370,39 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in GVCF mode is < 99% (" +  concordance + ")");
     }
 
+//    @Test
+//    public void testBQDLocalchr15InDebugger() {
+//        final File output = createTempFile("test", ".vcf");
+//
+//        final String[] args = {
+//                "-I", "/Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/G96832.NA12878.chr15.bam",
+//                "-O", output.getAbsolutePath(),
+//                "-R", "/Users/emeryj/hellbender/references/Homo_sapiens_assembly19.fasta",
+//                "-L", "15"
+//        };
+//
+//        runCommandLine(args);
+//    }
+
     @Test
-    public void testBQDLocalchr15InDebugger() {
+    public void testFRDOnThisFileInDebugger() {
         final File output = createTempFile("test", ".vcf");
 
         final String[] args = {
-                "-I", "/Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/G96832.NA12878.chr15.bam",
-                "-O", output.getAbsolutePath(),
-                "-R", "/Users/emeryj/hellbender/references/Homo_sapiens_assembly19.fasta",
-                "-L", "15"
+                "-I", "/Users/emeryj/hellbender/DRAGENMatlab/frdbqd/example/SRA056922_hs37d5_xmapq.bam",
+                "--bam-output", "SRABAMOUTPUT.bamout.bqd.bam",
+                "--output", output.getAbsolutePath(),
+                "--intervals", "1:219277167",
+                "--interval-padding", "500",
+                "--transform-dragen-mapping-quality",
+                "--reference", "/Users/emeryj/hellbender/references/human_g1k_v37.fasta",
+                "--disable-read-filter", "MappingQualityAvailableReadFilter",
+//                "--min-base-quality-score", "1"
+                "--soft-clip-low-quality-ends"
         };
-
         runCommandLine(args);
+
+        System.out.println("foo");
     }
 
     @Test

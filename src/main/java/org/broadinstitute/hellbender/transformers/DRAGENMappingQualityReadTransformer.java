@@ -25,7 +25,7 @@ public final class DRAGENMappingQualityReadTransformer implements ReadTransforme
     public int mapValue(final int val) {
         for (int i = 1; i < mQTableX.length; i++) {
             if (val <= mQTableX[i]) {
-                final double xfactor = 1.0*(mQTableX[i] - mQTableX[i-1]) / (val - mQTableX[i-1]);
+                final double xfactor = 1.0*(val - mQTableX[i-1]) / (mQTableX[i] - mQTableX[i-1]) ;
                 return  mQTableY[i-1] + (int)(xfactor * (mQTableY[i] - mQTableY[i-1]));
             }
         }
@@ -34,13 +34,18 @@ public final class DRAGENMappingQualityReadTransformer implements ReadTransforme
     }
 
     //TODO figure out how to prevent multiple mappings of a read....
+    // Or we just won't worry about it
     @Override
     public GATKRead apply( final GATKRead read ) {
-        if (read.hasAttribute(EXTENDED_MAPPING_QUALITY_READ_TAG)) {
-            int extendedMQ = read.getAttributeAsInteger(EXTENDED_MAPPING_QUALITY_READ_TAG);
-            int mappedMQ = mapValue(extendedMQ);
-            read.setMappingQuality(mappedMQ);
-        }
+        int oldMQ = read.getMappingQuality();
+        int mappedMQ = mapValue(oldMQ);
+        read.setMappingQuality(mappedMQ);
+
+//        if (read.hasAttribute(EXTENDED_MAPPING_QUALITY_READ_TAG)) {
+//            int extendedMQ = read.getAttributeAsInteger(EXTENDED_MAPPING_QUALITY_READ_TAG);
+//            int mappedMQ = mapValue(extendedMQ);
+//            read.setMappingQuality(mappedMQ);
+//        }
         return read;
     }
 }
