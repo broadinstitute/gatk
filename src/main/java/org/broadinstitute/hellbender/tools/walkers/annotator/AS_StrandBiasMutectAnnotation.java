@@ -19,8 +19,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Adds the strand bias table annotation for use in mutect filters
+ */
 public class AS_StrandBiasMutectAnnotation extends InfoFieldAnnotation implements StandardMutectAnnotation, AlleleSpecificAnnotation {
     private final static Logger logger = LogManager.getLogger(StrandBiasBySample.class);
+
     @Override
     public Map<String, Object> annotate(ReferenceContext ref, VariantContext vc, AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         Utils.nonNull(vc);

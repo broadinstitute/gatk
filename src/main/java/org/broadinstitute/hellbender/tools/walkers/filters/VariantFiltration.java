@@ -344,11 +344,11 @@ public final class VariantFiltration extends VariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext ref, final FeatureContext featureContext) {
         if (applyForAllele) {
-            List<VariantContext> filtered = splitMultiAllelics(variant).stream().map(vc -> filter(vc, new FeatureContext(featureContext, new SimpleInterval(vc.getContig(), vc.getStart(), vc.getEnd())))).collect(Collectors.toList());
+            final List<VariantContext> filtered = splitMultiAllelics(variant).stream().map(vc -> filter(vc, new FeatureContext(featureContext, new SimpleInterval(vc.getContig(), vc.getStart(), vc.getEnd())))).collect(Collectors.toList());
             // get filters for each allele
-            List<Set<String>> alleleFilters = filtered.stream().map(filteredvc -> filteredvc.getFilters()).collect(Collectors.toList());
+            final List<Set<String>> alleleFilters = filtered.stream().map(filteredvc -> filteredvc.getFilters()).collect(Collectors.toList());
             // add in the AS_FilterStatus and set the variant filters
-            VariantContext filteredVC = AlleleFilterUtils.addAlleleAndComputeSiteFilters(variant, alleleFilters);
+            final VariantContext filteredVC = AlleleFilterUtils.addAlleleAndComputeSiteFilters(variant, alleleFilters);
             writer.add(filteredVC);
         } else {
             writer.add(filter(variant, featureContext));
@@ -356,7 +356,7 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     private List<VariantContext> splitMultiAllelics(VariantContext vc) {
-        List<VariantContext> results = new ArrayList<>();
+        final List<VariantContext> results = new ArrayList<>();
         final VariantContextBuilder vcb = new VariantContextBuilder("SimpleSplit", vc.getContig(), vc.getStart(), vc.getEnd(),
                     Arrays.asList(vc.getReference(), Allele.NO_CALL));
         vc.getAlternateAlleles().forEach(allele -> results.add(GATKVariantContextUtils.trimAlleles(

@@ -10,6 +10,9 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Common strand bias utilities used by allele specific strand bias annotators
+ */
 public class StrandBiasUtils {
     public static final int FORWARD = 0;
     public static final int REVERSE = 1;

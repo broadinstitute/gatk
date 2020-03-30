@@ -23,8 +23,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
-        summary = "",
-        oneLineSummary = "",
+        summary = "Uses the median autosomal coverage and the allele depth to determine whether the allele might be a NuMT",
+        oneLineSummary = "Uses the median autosomal coverage and the allele depth to determine whether the allele might be a NuMT",
         programGroup = VariantFilteringProgramGroup.class
 )
 

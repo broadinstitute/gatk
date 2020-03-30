@@ -604,19 +604,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                                 Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME) // weak_evidence, strand_bias, strict_stand|low_allele_frac, possible_numt
 
                         )}
-//                {NA12878_MITO_GVCF, 0.5, Arrays.asList("MT:1", "MT:37", "MT:40", "MT:152", "MT:157"), Arrays.asList(
-//                        Collections.emptySet(),
-//                        Collections.emptySet(),
-//                        Collections.emptySet(),
-//                        Collections.emptySet(),
-//                        ImmutableSet.of(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME)),
-//                        Arrays.asList(
-//                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS), //".",
-//                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.SITE_LEVEL_FILTERS), //"weak_evidence, base_qual, strand_bias|.",
-//                                Arrays.asList(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS), // "possible_numt|.",
-//                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.SITE_LEVEL_FILTERS), //".|weak_evidence, base_qual, strand_bias, low_allele_frac|.",
-//                                Arrays.asList(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS) // "possible_numt|."
-//                        )}
         };
     }
 

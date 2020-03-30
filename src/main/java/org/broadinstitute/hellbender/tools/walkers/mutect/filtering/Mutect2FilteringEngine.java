@@ -102,15 +102,6 @@ public class Mutect2FilteringEngine {
         return ADs;
     }
 
-    // TODO verify not needed and remove
-//    public int[] sumStrandCountsOverSamples(final VariantContext vc, final boolean includeTumor, final boolean includeNormal) {
-//        final int[] result = new int[4];
-//        vc.getGenotypes().stream().filter(g -> (includeTumor && isTumor(g)) || (includeNormal && isNormal(g)))
-//                .filter(g -> g.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY))
-//                .map(g -> StrandBiasTest.getStrandCounts(g)).forEach(sbbs -> new IndexRange(0, 4).forEach(n -> result[n] += sbbs[n]));
-//        return result;
-//    }
-
     public double[] weightedAverageOfTumorAFs(final VariantContext vc) {
         final MutableDouble totalWeight = new MutableDouble(0);
         final double[] AFs = new double[vc.getNAlleles() - 1];

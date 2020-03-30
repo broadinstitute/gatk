@@ -32,7 +32,7 @@ public final class ErrorProbabilities {
 
         // if vc has symbolic alleles, remove them from each filter list
         alleleProbabilitiesByFilter.replaceAll((k, v) -> GATKVariantContextUtils.removeDataForSymbolicAltAlleles(vc, v));
-        LinkedHashMap<ErrorType, List<List<Double>>> probabilitiesByAllelesForEachFilter = alleleProbabilitiesByFilter.entrySet().stream().collect(
+        final LinkedHashMap<ErrorType, List<List<Double>>> probabilitiesByAllelesForEachFilter = alleleProbabilitiesByFilter.entrySet().stream().collect(
                 groupingBy(entry -> entry.getKey().errorType(), LinkedHashMap::new, mapping(entry -> entry.getValue(), toList())));
         // convert the data so we have a list of probabilities by allele instead of filter
         probabilitiesByAllelesForEachFilter.replaceAll((k, v) -> ErrorProbabilities.transpose(v));
@@ -71,7 +71,7 @@ public final class ErrorProbabilities {
     }
 
     private LinkedHashMap<Mutect2Filter, List<Double>> getPartitionedProbabilitiesByFilter(boolean variantOnly) {
-        Map<Boolean, LinkedHashMap<Mutect2Filter, List<Double>>> groups =
+        final Map<Boolean, LinkedHashMap<Mutect2Filter, List<Double>>> groups =
                 alleleProbabilitiesByFilter.entrySet().stream().collect(Collectors.partitioningBy(
                         entry -> Mutect2VariantFilter.class.isAssignableFrom(entry.getKey().getClass()),
                         toMap(Map.Entry::getKey, Map.Entry::getValue, (a,b) -> a, LinkedHashMap::new)));
@@ -84,7 +84,7 @@ public final class ErrorProbabilities {
             return list;
         }
         Utils.validateArg(list.stream().map(List::size).distinct().count() == 1, "lists are not the same size");
-        List<Iterator<T>> iterList = list.stream().map(it -> it.iterator()).collect(toList());
+        final List<Iterator<T>> iterList = list.stream().map(it -> it.iterator()).collect(toList());
         return IntStream.range(0, list.get(0).size())
                 .mapToObj(n -> iterList.stream()
                         .filter(it -> it.hasNext())

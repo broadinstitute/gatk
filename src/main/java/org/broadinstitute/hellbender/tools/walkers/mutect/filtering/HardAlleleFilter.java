@@ -7,6 +7,9 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Base class for Hard filters that are applied at the allele level
+ */
 public abstract class HardAlleleFilter extends Mutect2AlleleFilter {
     @Override
     public List<Double> calculateErrorProbabilityForAlleles(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {

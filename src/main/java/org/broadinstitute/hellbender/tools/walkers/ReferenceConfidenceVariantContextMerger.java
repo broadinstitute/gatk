@@ -35,7 +35,7 @@ public final class ReferenceConfidenceVariantContextMerger {
     private static final GenotypeLikelihoodCalculators calculators = new GenotypeLikelihoodCalculators();
     private static VCFHeader vcfInputHeader = null;
     protected final VariantAnnotatorEngine annotatorEngine;
-    protected final boolean doSomaticMerge;
+    private final boolean doSomaticMerge;
     protected boolean dropSomaticFilteringAnnotations;
     protected final OneShotLogger oneShotAnnotationLogger = new OneShotLogger(this.getClass());
     protected final OneShotLogger oneShotHeaderLineLogger = new OneShotLogger(this.getClass());
@@ -656,7 +656,7 @@ public final class ReferenceConfidenceVariantContextMerger {
      *
      * @param originalList    the array containing the pre-parsed, original TLOD(s)
      * @param indexesOfRelevantAlleles the indexes of the original alleles corresponding to the new alleles
-     * @return array of new annotation values, may be null
+     * @return a List of new annotation values, may be null
      */
     @VisibleForTesting
     public static <T> List<T> generateAnnotationValueVector(VCFHeaderLineCount alleleCount,

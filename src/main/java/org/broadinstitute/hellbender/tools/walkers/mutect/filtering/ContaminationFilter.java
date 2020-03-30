@@ -52,14 +52,14 @@ public class ContaminationFilter extends Mutect2AlleleFilter {
                     GATKVCFConstants.POPULATION_AF_KEY, () -> new double[]{Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY}, Double.POSITIVE_INFINITY);
             final double[] alleleFrequencies = MathUtils.applyToArray(negativeLog10AlleleFrequencies, x -> Math.pow(10,-x));
 
-            SomaticClusteringModel model = filteringEngine.getSomaticClusteringModel();
+            final SomaticClusteringModel model = filteringEngine.getSomaticClusteringModel();
             final double[] logSomaticLikelihoodPerAllele = Arrays.stream(altADs).mapToDouble(altCount -> model.logLikelihoodGivenSomatic(totalAD, altCount)).toArray();
 
-            double[] singleContaminantLikelihoodPerAllele = new double[alleleFrequencies.length];
-            double[] manyContaminantLikelihoodPerAllele = new double[alleleFrequencies.length];
-            double[] logContaminantLikelihoodPerAllele = new double[alleleFrequencies.length];
-            double[] logOddsOfRealVsContaminationPerAllele = new double[alleleFrequencies.length];
-            double[] posteriorProbOfContaminationPerAllele = new double[alleleFrequencies.length];
+            final double[] singleContaminantLikelihoodPerAllele = new double[alleleFrequencies.length];
+            final double[] manyContaminantLikelihoodPerAllele = new double[alleleFrequencies.length];
+            final double[] logContaminantLikelihoodPerAllele = new double[alleleFrequencies.length];
+            final double[] logOddsOfRealVsContaminationPerAllele = new double[alleleFrequencies.length];
+            final double[] posteriorProbOfContaminationPerAllele = new double[alleleFrequencies.length];
             new IndexRange(0,alleleFrequencies.length).forEach(i -> {
                 singleContaminantLikelihoodPerAllele[i] = 2 * alleleFrequencies[i] * (1 - alleleFrequencies[i]) * MathUtils.binomialProbability(totalAD,  altADs[i], contamination /2)
                         + MathUtils.square(alleleFrequencies[i]) * MathUtils.binomialProbability(totalAD,  altADs[i], contamination);

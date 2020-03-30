@@ -8,6 +8,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Base class for all Mutect2Filters
+ */
 public abstract class Mutect2Filter {
     // by default do nothing, but we may override to allow some filters to learn their parameters in the first pass of {@link FilterMutectCalls}
     protected void accumulateDataForLearning(final VariantContext vc, final ErrorProbabilities errorProbabilities, final Mutect2FilteringEngine filteringEngine) { }
@@ -24,7 +27,9 @@ public abstract class Mutect2Filter {
     protected abstract List<String> requiredInfoAnnotations();
 
     /**
-     *
+     * Should be overridden by the implementing class to return the probability that the allele should
+     * filtered out. For filters that only apply at the site level, the same probability should be
+     * returned for every alt allele
      * @param vc
      * @param filteringEngine
      * @param referenceContext
@@ -32,7 +37,7 @@ public abstract class Mutect2Filter {
      */
     public abstract List<Double> errorProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext);
 
-        // weighted median -- what's the lowest posterior probability that accounts for samples with half of the total alt depth
+    // weighted median -- what's the lowest posterior probability that accounts for samples with half of the total alt depth
     protected static double weightedMedianPosteriorProbability(List<ImmutablePair<Integer, Double>> depthsAndPosteriors) {
         final int totalAltDepth = depthsAndPosteriors.stream().mapToInt(ImmutablePair::getLeft).sum();
 

@@ -9,6 +9,13 @@ import java.util.List;
 public abstract class Mutect2VariantFilter extends Mutect2Filter {
     public Mutect2VariantFilter() { }
 
+    /**
+     * Converts the single probability calculated for the site to be the probability for each allele
+     * @param vc
+     * @param filteringEngine
+     * @param referenceContext
+     * @return
+     */
     @Override
     public List<Double> errorProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
         int numAltAlleles = vc.getNAlleles() - 1;

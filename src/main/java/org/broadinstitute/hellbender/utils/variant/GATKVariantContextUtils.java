@@ -1547,9 +1547,6 @@ public final class GATKVariantContextUtils {
                     }
                 }
 
-                //TODO: split allele-specific filters (which are comma-delimited, as applied by VQSR)
-
-
                 // subset INFO field annotations if available if genotype is called
                 if (genotypeAssignmentMethodUsed != GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS &&
                         genotypeAssignmentMethodUsed != GenotypeAssignmentMethod.SET_TO_NO_CALL)
