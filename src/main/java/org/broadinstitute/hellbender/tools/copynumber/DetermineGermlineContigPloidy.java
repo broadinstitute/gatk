@@ -108,7 +108,7 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  *     counts files, and all contigs appearing in the input counts files must have a corresponding entry in the priors
  *     table. The order of contigs is immaterial in the priors table. The highest ploidy state is determined by the
  *     prior table (3 in the above example). A ploidy state can be strictly forbidden by setting its prior probability
- *     to 0. For example, the X contig in the above example can only assume 0 and 1 ploidy states.</p>
+ *     to 0. For example, the Y contig in the above example can only assume 0 and 1 ploidy states.</p>
  *
  *     <p>The tool output in the COHORT mode will contain two subdirectories, one ending with "-model" and the other
  *     ending with "-calls". The model subdirectory contains the inferred parameters of the ploidy model, which may
