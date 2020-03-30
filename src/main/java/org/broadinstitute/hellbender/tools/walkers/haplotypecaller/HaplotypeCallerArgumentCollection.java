@@ -130,7 +130,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public boolean applyFRD = true;
     @Advanced
     @Argument(fullName = "transform-dragen-mapping-quality", doc = "If enabled this argument will map DRAGEN aligner aligned reads with mapping quality <=250 to scale up to MQ 50", optional = true)
-    public boolean transformDRAGENMapQ = false;
+    public boolean transformDRAGENMapQ = true;
 
 
     @Hidden
