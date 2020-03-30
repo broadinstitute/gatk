@@ -65,7 +65,7 @@ import java.util.stream.Collectors;
  *     </li>
  * </ul>
  *
- * <h3>Usage example</h3>
+ * <h3>Usage examples</h3>
  *
  * <pre>
  *     gatk PlotDenoisedCopyRatios \
