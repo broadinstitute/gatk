@@ -263,7 +263,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 //                System.out.println("\nBoth Strands: ");
                 final double maxLog10FBothStrands = computeFRDModelForStrandData(readContainers, c -> true, offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted, gtAllelePrior);
 
-                System.out.println("gtAlleleIndex : "+gtAlleleIndex+ " fAlleleIndex: "+fAlleleIndex +"forwards: "+maxLog10FForwardsStrand+" reverse: "+maxLog10FReverseStrand+" both: "+maxLog10FBothStrands);
+//                System.out.println("gtAlleleIndex : "+gtAlleleIndex+ " fAlleleIndex: "+fAlleleIndex +"forwards: "+maxLog10FForwardsStrand+" reverse: "+maxLog10FReverseStrand+" both: "+maxLog10FBothStrands);
                 outputArray[indexForGT] = Math.max(outputArray[indexForGT], maxLog10FForwardsStrand);
                 outputArray[indexForGT] = Math.max(outputArray[indexForGT], maxLog10FReverseStrand);
                 outputArray[indexForGT] = Math.max(outputArray[indexForGT], maxLog10FBothStrands);
@@ -358,7 +358,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             localMaxLpspi = Math.max(localMaxLpspi, LPsi);
 
             //TODO allele priors at this stage are somewhat confusing,
-            System.out.println("localMaxLpspi: " + localMaxLpspi + " for lpf: "+lpf+" index: "+counter++);
+//            System.out.println("localMaxLpspi: " + localMaxLpspi + " for lpf: "+lpf+" index: "+counter++);
             maxLpspi = Math.max(maxLpspi, localMaxLpspi);
         }
 
