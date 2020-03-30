@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
  *     </li>
  * </ul>
  *
- * <h3>Output</h3>
+ * <h3>Outputs</h3>
  *
  * <ul>
  *     <li>

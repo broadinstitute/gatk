@@ -11,7 +11,10 @@ import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCall
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.IntegerCopyNumberSegment;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Helper class for {@link PostprocessGermlineCNVCalls} for single-sample postprocessing of segmented

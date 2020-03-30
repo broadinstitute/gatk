@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
  *     </li>
  * </ul>
  *
- * <h3>Output</h3>
+ * <h3>Outputs</h3>
  *
  * <ul>
  *     <li>
@@ -73,7 +73,7 @@ import java.util.stream.Collectors;
  *     </li>
  * </ul>
  *
- * <h3>Usage example</h3>
+ * <h3>Usage examples</h3>
  *
  * <pre>
  *     gatk CollectReadCounts \
