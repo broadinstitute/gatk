@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.io.Serializable;
 
 /**
- * Wrapper to load a reference sequence from the Google Genomics API, or a file stored on HDFS or locally.
+ * Wrapper to load a reference sequence from a file stored on HDFS, GCS, or locally.
  *
  * This class needs to subclassed by test code, so it cannot be declared final.
  */
@@ -31,7 +31,7 @@ public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializ
     protected ReferenceMultiSparkSource() {};
 
     /**
-     * @param referencePathSpecifier the name of the reference (if using the Google Genomics API), or a path to the reference file
+     * @param referencePathSpecifier local path or URL to the reference file
      * @param referenceWindowFunction the custom reference window function used to map reads to desired reference bases
      */
     public ReferenceMultiSparkSource( final GATKPathSpecifier referencePathSpecifier,

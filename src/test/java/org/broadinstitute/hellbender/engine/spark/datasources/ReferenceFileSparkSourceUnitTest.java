@@ -16,7 +16,7 @@ import java.nio.file.Path;
 public class ReferenceFileSparkSourceUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.MissingReference.class)
-    public void testMissingReferenceFile() throws IOException {
+    public void testMissingReferenceFile() {
         new ReferenceFileSparkSource(
                 new GATKPathSpecifier(GATKBaseTest.getSafeNonExistentFile("NonExistentReference.fasta").toString()));
     }

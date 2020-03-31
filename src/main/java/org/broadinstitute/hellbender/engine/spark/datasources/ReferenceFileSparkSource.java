@@ -10,7 +10,6 @@ import java.nio.file.Path;
 import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.io.IOException;
@@ -46,7 +45,7 @@ public class ReferenceFileSparkSource implements ReferenceSparkSource, Serializa
 
     private synchronized Path getReferencePath() {
         if (null == referencePath) {
-            this.referencePath = IOUtils.getPath(referenceUri.toString());
+            this.referencePath = (new GATKPathSpecifier(referenceUri.toString()).toPath());
         }
         return referencePath;
     }
