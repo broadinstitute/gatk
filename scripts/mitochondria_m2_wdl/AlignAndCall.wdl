@@ -260,8 +260,9 @@ workflow AlignAndCall {
 task GetContamination {
   input {
     File input_vcf
-      # runtime
-    Int? preemptible_tries}
+    # runtime
+    Int? preemptible_tries
+  }
 
   Int disk_size = ceil(size(input_vcf, "GB")) + 20
 
