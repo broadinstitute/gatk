@@ -15,10 +15,13 @@ import htsjdk.samtools.util.CoordMath;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.tribble.gff.Gff3BaseData;
+import htsjdk.tribble.gff.Gff3Codec;
 import htsjdk.tribble.gff.Gff3Feature;
 import htsjdk.tribble.gff.Gff3FeatureImpl;
+import htsjdk.tribble.readers.LineIterator;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.spark.sql.catalyst.expressions.In;
@@ -179,11 +182,8 @@ public final class CollectFragmentCounts extends ReadWalker {
         validateArguments();
         //this check is currently redundant, since the master dictionary is taken from the reads;
         //however, if any other dictionary is added in the future, such a check should be performed
-
-
-        logger.info("Collecting read counts...");
-
-        final SAMSequenceDictionary dict = getMasterSequenceDictionary();
+        getHeaderForReads().getSequenceDictionary();
+        final SAMSequenceDictionary dict = getBestAvailableSequenceDictionary();
         if (dict == null) {
             throw new GATKException("sequence dictionary must be specified (" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME + ").");
         }
@@ -204,6 +204,8 @@ public final class CollectFragmentCounts extends ReadWalker {
                 feature.getAncestors().stream().filter(f -> grouping_type.contains(f.getType())).map(Gff3Feature::getBaseData).forEach(b -> addGroupingFeature(b, overlapBaseData));
             }
         }
+
+        logger.info("Collecting read counts...");
     }
 
     private void addGroupingFeature(final Gff3BaseData groupingBaseData, final Gff3BaseData overlappingBaseData) {
