@@ -108,7 +108,7 @@ public final class SplitReads extends ReadWalker {
     @Override
     public void onTraversalStart() {
         IOUtil.assertDirectoryIsWritable(OUTPUT_DIRECTORY);
-        if ( readArguments.getReadFiles().size() != 1 ) {
+        if ( readArguments.getReadPathSpecifiers().size() != 1 ) {
             throw new UserException("This tool only accepts a single SAM/BAM/CRAM as input");
         }
 
@@ -156,8 +156,8 @@ public final class SplitReads extends ReadWalker {
             SAMFileWriterFactory samFileWriterFactory,
             SAMFileHeader samFileHeaderIn,
             final String keyName) {
-        final String base = FilenameUtils.getBaseName(readArguments.getReadFiles().get(0).getName());
-        final String extension = "." + FilenameUtils.getExtension(readArguments.getReadFiles().get(0).getName());
+        final String base = FilenameUtils.getBaseName(readArguments.getReadPathSpecifiers().get(0).getURI().getSchemeSpecificPart());
+        final String extension = "." + FilenameUtils.getExtension(readArguments.getReadPathSpecifiers().get(0).getURI().getSchemeSpecificPart());
         final File outFile = new File(OUTPUT_DIRECTORY, base + keyName + extension);
         return createSAMWriter(outFile, true);
     }

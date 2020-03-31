@@ -112,9 +112,9 @@ public final class SortSamSparkIntegrationTest extends CommandLineProgramTest {
         this.runCommandLine(args);
 
         final ReadsSparkSource source = new ReadsSparkSource(SparkContextFactory.getTestSparkContext());
-        final JavaRDD<GATKRead> reads = source.getParallelReads(actualOutputFile.getAbsolutePath(), referenceFile == null ? null : new GATKPathSpecifier(referenceFile.getAbsolutePath()));
+        final JavaRDD<GATKRead> reads = source.getParallelReads(new GATKPathSpecifier(actualOutputFile.getAbsolutePath()), referenceFile == null ? null : new GATKPathSpecifier(referenceFile.getAbsolutePath()));
 
-        final SAMFileHeader header = source.getHeader(actualOutputFile.getAbsolutePath(),
+        final SAMFileHeader header = source.getHeader(new GATKPathSpecifier(actualOutputFile.getAbsolutePath()),
                 referenceFileName == null ? null : new GATKPathSpecifier(referenceFile.getAbsolutePath()));
 
         final List<SAMRecord> reloadedReads = reads.collect().stream().map(read -> read.convertToSAMRecord(header)).collect(Collectors.toList());

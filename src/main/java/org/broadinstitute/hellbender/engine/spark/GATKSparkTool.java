@@ -151,7 +151,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
-    private LinkedHashMap<String, SAMFileHeader> readInputs;
+    private LinkedHashMap<GATKPathSpecifier, SAMFileHeader> readInputs;
     private ReferenceMultiSparkSource referenceSource;
     private SAMSequenceDictionary referenceDictionary;
     private List<SimpleInterval> userIntervals;
@@ -323,31 +323,31 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
         JavaRDD<GATKRead> output = null;
         ReadsSparkSource source = readsSource;
-        for (String input : readInputs.keySet()) {
+        for (final GATKPathSpecifier inputPathSpecifier : readInputs.keySet()) {
             if (output == null) {
-                output = getGatkReadJavaRDD(traversalParameters, source, input);
+                output = getGatkReadJavaRDD(traversalParameters, source, inputPathSpecifier);
             } else {
-                output = output.union(getGatkReadJavaRDD(traversalParameters, source, input));
+                output = output.union(getGatkReadJavaRDD(traversalParameters, source, inputPathSpecifier));
             }
         }
         return output;
     }
 
-    protected JavaRDD<GATKRead> getGatkReadJavaRDD(TraversalParameters traversalParameters, ReadsSparkSource source, String input) {
+    protected JavaRDD<GATKRead> getGatkReadJavaRDD(TraversalParameters traversalParameters, ReadsSparkSource source, GATKPathSpecifier inputSpecifier) {
         JavaRDD<GATKRead> output;
         // TODO: This if statement is a temporary hack until #959 gets resolve
-        if (input.endsWith(".adam")) {
+        if (inputSpecifier.getURIString().endsWith(".adam")) {
             try {
-                output = source.getADAMReads(input, traversalParameters, getHeaderForReads());
+                output = source.getADAMReads(inputSpecifier, traversalParameters, getHeaderForReads());
             } catch (IOException e) {
-                throw new UserException("Failed to read ADAM file " + input, e);
+                throw new UserException("Failed to read ADAM file " + inputSpecifier, e);
             }
 
         } else {
             if (hasCramInput() && !hasReference()){
                 throw UserException.MISSING_REFERENCE_FOR_CRAM;
             }
-            output = source.getParallelReads(input, referenceArguments.getReferenceSpecifier(), traversalParameters, bamPartitionSplitSize, useNio);
+            output = source.getParallelReads(inputSpecifier, referenceArguments.getReferenceSpecifier(), traversalParameters, bamPartitionSplitSize, useNio);
         }
         return output;
     }
@@ -414,7 +414,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
      */
     private boolean hasCramInput() {
-        return readArguments.getReadFiles().stream().anyMatch(IOUtils::isCramFile);
+        return readArguments.getReadPathSpecifiers().stream().anyMatch(IOUtils::isCramFile);
     }
 
     /**
@@ -506,18 +506,23 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * Returns the name of the source of reads data. It can be a file name or URL.
      */
+    //TODO: change return type to GATKPathSpecifier (get rid of String and List in return type)
     protected List<String> getReadSourceName(){
         if (readInputs.size() > 1) {
-            throw new GATKException("Multiple ReadsDataSources specificed but a single source requested by the tool");
+            throw new GATKException("Multiple ReadsDataSources specified but a single source requested by the tool");
         }
-        return new ArrayList<>(readInputs.keySet());
+        return readInputs.keySet().stream().map(GATKPathSpecifier::getRawInputString).collect(Collectors.toList());
     }
 
     /**
-     * Returns a map of read input to header.
+     * Returns the header for a given input.
      */
-    protected LinkedHashMap<String, SAMFileHeader> getReadSourceHeaderMap(){
-        return readInputs;
+    protected SAMFileHeader getHeaderForInputPath(final GATKPathSpecifier inputPathSpecifier){
+        final SAMFileHeader header = readInputs.get(inputPathSpecifier);
+        if (header == null) {
+            throw new GATKException(String.format("Input %s not present in tool inputs", inputPathSpecifier.getRawInputString()));
+        }
+        return header;
     }
 
     /**
@@ -556,17 +561,17 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Does nothing if no reads inputs are present.
      */
     private void initializeReads(final JavaSparkContext sparkContext) {
-        if ( readArguments.getReadFilesNames().isEmpty() ) {
+        if ( readArguments.getReadPathSpecifiers().isEmpty() ) {
             return;
         }
 
-        if (getReadInputMergingPolicy() == ReadInputMergingPolicy.doNotMerge && readArguments.getReadFilesNames().size() != 1 ) {
+        if (getReadInputMergingPolicy() == ReadInputMergingPolicy.doNotMerge && readArguments.getReadPathSpecifiers().size() != 1 ) {
             throw new UserException("Sorry, we only support a single reads input for for this spark tool.");
         }
 
         readInputs = new LinkedHashMap<>();
         readsSource = new ReadsSparkSource(sparkContext, readArguments.getReadValidationStringency());
-        for (String input : readArguments.getReadFilesNames()) {
+        for (final GATKPathSpecifier input : readArguments.getReadPathSpecifiers()) {
             readInputs.put(input, readsSource.getHeader(input, referenceArguments.getReferenceSpecifier()));
         }
         readsHeader = createHeaderMerger().getMergedHeader();

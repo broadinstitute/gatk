@@ -57,10 +57,10 @@ public final class IOUtils {
     private static final Pattern GENOMICSDB_URI_PATTERN = Pattern.compile("^" + GENOMIC_DB_URI_SCHEME + "(\\.?)(.*)(://)(.*)");
 
     /**
-     * Returns true if the file's extension is CRAM.
+     * Returns true if the GATKPathSpecifier's extension is CRAM.
      */
-    public static boolean isCramFile(final File inputFile) {
-        return isCramFileName(inputFile.getName());
+    public static boolean isCramFile(final GATKPathSpecifier pathSpec) {
+        return pathSpec != null && FileExtensions.CRAM.equalsIgnoreCase("." + FilenameUtils.getExtension(pathSpec.getURI().getPath()));
     }
 
     /**

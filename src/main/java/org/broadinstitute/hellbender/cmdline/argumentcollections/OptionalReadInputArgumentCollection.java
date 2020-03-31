@@ -2,12 +2,13 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * An argument collection for use with tools that accept zero or more input files containing reads
@@ -21,28 +22,15 @@ public final class OptionalReadInputArgumentCollection extends ReadInputArgument
             doc = "BAM/SAM/CRAM file containing reads",
             optional = true,
             common = true)
-    private List<String> readFilesNames = new ArrayList<>();
+    private List<GATKPathSpecifier> readInputNames = new ArrayList<>();
 
-    @Override
-    public List<File> getReadFiles() {
-        ArrayList<File> ret = new ArrayList<>();
-        for (String fn : readFilesNames) {
-            ret.add(new File(fn));
-        }
-        return ret;
-    }
+    /**
+     * Get the list of BAM/SAM/CRAM files specified at the command line.
+     * Paths are the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
+     */
+    public List<GATKPathSpecifier> getReadPathSpecifiers() { return Collections.unmodifiableList(readInputNames);}
 
-    @Override
     public List<Path> getReadPaths() {
-        ArrayList<Path> ret = new ArrayList<>();
-        for (String fn : readFilesNames) {
-            ret.add(IOUtils.getPath(fn));
-        }
-        return ret;
-    }
-
-    @Override
-    public List<String> getReadFilesNames() {
-        return new ArrayList<>(readFilesNames);
-    }
+        return getReadPathSpecifiers().stream().map(GATKPathSpecifier::toPath).collect(Collectors.toList());
+    };
 }

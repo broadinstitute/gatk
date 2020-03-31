@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
@@ -30,12 +31,19 @@ public abstract class ReadInputArgumentCollection implements Serializable {
     protected ValidationStringency readValidationStringency = ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY;
 
     @Argument(fullName = StandardArgumentDefinitions.READ_INDEX_LONG_NAME, shortName = StandardArgumentDefinitions.READ_INDEX_SHORT_NAME,
-              doc = "Indices to use for the read inputs. If specified, an index must be provided for every read input " +
+            doc = "Indices to use for the read inputs. If specified, an index must be provided for every read input " +
                     "and in the same order as the read inputs. If this argument is not specified, the path to the index " +
                     "for each input will be inferred automatically.",
-              common = true,
-              optional = true)
+            common = true,
+            optional = true)
+    //TODO: Update this arg as well...
     protected List<String> readIndices;
+
+    /**
+     * Get the list of BAM/SAM/CRAM files specified at the command line.
+     * Paths are the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
+     */
+    public abstract List<GATKPathSpecifier> getReadPathSpecifiers();
 
     /**
      * Get the list of BAM/SAM/CRAM files specified at the command line.
@@ -57,16 +65,6 @@ public abstract class ReadInputArgumentCollection implements Serializable {
 
         return readIndices.stream().map(index -> IOUtils.getPath(index)).collect(Collectors.toList());
     }
-
-    /**
-     * Get the list of BAM/SAM/CRAM files specified at the command line
-     */
-    public abstract List<File> getReadFiles();
-
-    /**
-     * Get the list of BAM/SAM/CRAM filenames specified at the command line
-     */
-    public abstract List<String> getReadFilesNames();
 
     /**
      * Get the read validation stringency specified at the command line, or the default value if none was specified

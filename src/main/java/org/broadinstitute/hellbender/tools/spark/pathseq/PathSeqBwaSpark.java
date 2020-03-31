@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -145,12 +146,12 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
                                                              final ReadsSparkSource readsSource) {
         if (path == null) return null;
         if (BucketUtils.fileExists(path)) {
-            final SAMFileHeader header = readsSource.getHeader(path, null);
+            final SAMFileHeader header = readsSource.getHeader(new GATKPathSpecifier(path), null);
             if (header.getSequenceDictionary() != null && !header.getSequenceDictionary().isEmpty()) {
                 throw new UserException.BadInput("Input BAM should be unaligned, but found one or more sequences in the header.");
             }
             PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.microbeDictionary);
-            final JavaRDD<GATKRead> reads = readsSource.getParallelReads(path, null, null, bamPartitionSplitSize);
+            final JavaRDD<GATKRead> reads = readsSource.getParallelReads(new GATKPathSpecifier(path), null, null, bamPartitionSplitSize);
             return new Tuple2<>(header, reads);
         }
         logger.warn("Could not find file " + path + ". Skipping...");
@@ -204,7 +205,7 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        if (!readArguments.getReadFiles().isEmpty()) {
+        if (!readArguments.getReadPathSpecifiers().isEmpty()) {
             throw new UserException.BadInput("Please use --paired-input or --unpaired-input instead of --input");
         }
         Utils.validateArg((outputPaired == null || IOUtils.isBamFileName(outputPaired)) && (outputUnpaired == null || IOUtils.isBamFileName(outputUnpaired)), "Only BAM output is supported");
