@@ -1,19 +1,18 @@
 {
-  "PathSeqPipelineWorkflow.sample_name": "sample",
-  "PathSeqPipelineWorkflow.input_bam": "gs://my-bucket/sample.bam",
+  "PathSeqThreeStageWorkflow.sample_name": "sample",
+  "PathSeqThreeStageWorkflow.input_bam_or_cram": "gs://my-bucket/sample.bam",
 
-  "PathSeqPipelineWorkflow.is_host_aligned": false,
-  "PathSeqPipelineWorkflow.min_clipped_read_length": 60,
-  "PathSeqPipelineWorkflow.filter_duplicates": true,
-  "PathSeqPipelineWorkflow.min_score_identity": 0.90,
-  "PathSeqPipelineWorkflow.identity_margin": 0.02,
-  "PathSeqPipelineWorkflow.divide_by_genome_length": true,
+  "PathSeqThreeStageWorkflow.is_host_aligned": false,
+  "PathSeqThreeStageWorkflow.min_clipped_read_length": 60,
+  "PathSeqThreeStageWorkflow.filter_duplicates": true,
+  "PathSeqThreeStageWorkflow.min_score_identity": 0.90,
+  "PathSeqThreeStageWorkflow.identity_margin": 0.02,
+  "PathSeqThreeStageWorkflow.divide_by_genome_length": true,
 
-  "PathSeqPipelineWorkflow.filter_bwa_image": "gs://my-bucket/references/pathseq_host.fa.img",
-  "PathSeqPipelineWorkflow.kmer_file": "gs://my-bucket/references/pathseq_host.bfi",
-  "PathSeqPipelineWorkflow.microbe_bwa_image": "gs://my-bucket/references/pathseq_microbe.fa.img",
-  "PathSeqPipelineWorkflow.microbe_fasta": "gs://my-bucket/references/pathseq_microbe.fa",
-  "PathSeqPipelineWorkflow.microbe_fasta_dict": "gs://my-bucket/references/pathseq_microbe.dict",
-  "PathSeqPipelineWorkflow.taxonomy_file": "gs://my-bucket/references/pathseq_taxonomy.db",
-  "PathSeqPipelineWorkflow.gatk_docker": "broadinstitute/gatk:4.0.0.0"
+  "PathSeqThreeStageWorkflow.filter_bwa_image": "gs://my-bucket/references/pathseq_host.fa.img",
+  "PathSeqThreeStageWorkflow.kmer_file": "gs://my-bucket/references/pathseq_host.bfi",
+  "PathSeqThreeStageWorkflow.microbe_bwa_image": "gs://my-bucket/references/pathseq_microbe.fa.img",
+  "PathSeqThreeStageWorkflow.microbe_dict": "gs://my-bucket/references/pathseq_microbe.dict",
+  "PathSeqThreeStageWorkflow.taxonomy_file": "gs://my-bucket/references/pathseq_taxonomy.db",
+  "PathSeqThreeStageWorkflow.gatk_docker": "broadinstitute/gatk:4.1.0.0"
 }
