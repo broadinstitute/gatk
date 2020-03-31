@@ -36,8 +36,7 @@ public abstract class ReadInputArgumentCollection implements Serializable {
                     "for each input will be inferred automatically.",
             common = true,
             optional = true)
-    //TODO: Update this arg as well...
-    protected List<String> readIndices;
+    protected List<GATKPathSpecifier> readIndices;
 
     /**
      * Get the list of BAM/SAM/CRAM files specified at the command line.
@@ -63,7 +62,7 @@ public abstract class ReadInputArgumentCollection implements Serializable {
             return null;
         }
 
-        return readIndices.stream().map(index -> IOUtils.getPath(index)).collect(Collectors.toList());
+        return readIndices.stream().map(GATKPathSpecifier::toPath).collect(Collectors.toList());
     }
 
     /**
