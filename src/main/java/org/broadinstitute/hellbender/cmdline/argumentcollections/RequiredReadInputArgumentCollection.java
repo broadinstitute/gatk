@@ -27,5 +27,5 @@ public final class RequiredReadInputArgumentCollection extends ReadInputArgument
 
     public List<Path> getReadPaths() {
         return getReadPathSpecifiers().stream().map(GATKPathSpecifier::toPath).collect(Collectors.toList());
-    };
+    }
 }

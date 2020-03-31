@@ -504,14 +504,14 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     }
 
     /**
-     * Returns the name of the source of reads data. It can be a file name or URL.
+     * Returns the name of the source of reads data. It can be a file name or URL. Throws if the tool has more
+     * than one source.
      */
-    //TODO: change return type to GATKPathSpecifier (get rid of String and List in return type)
-    protected List<String> getReadSourceName(){
+    protected String getReadSourceName(){
         if (readInputs.size() > 1) {
             throw new GATKException("Multiple ReadsDataSources specified but a single source requested by the tool");
         }
-        return readInputs.keySet().stream().map(GATKPathSpecifier::getRawInputString).collect(Collectors.toList());
+        return readInputs.keySet().stream().findFirst().get().toString();
     }
 
     /**
