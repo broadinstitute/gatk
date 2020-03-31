@@ -126,19 +126,15 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     public static final String PAIRED_OUTPUT_LONG_NAME = "paired-output";
-    public static final String PAIRED_OUTPUT_SHORT_NAME = "PO";
     public static final String UNPAIRED_OUTPUT_LONG_NAME = "unpaired-output";
-    public static final String UNPAIRED_OUTPUT_SHORT_NAME = "UO";
 
     @Argument(doc = "Output BAM containing only paired reads",
             fullName = PAIRED_OUTPUT_LONG_NAME,
-            shortName = PAIRED_OUTPUT_SHORT_NAME,
             optional = true)
     public String outputPaired = null;
 
     @Argument(doc = "Output BAM containing only unpaired reads",
             fullName = UNPAIRED_OUTPUT_LONG_NAME,
-            shortName = UNPAIRED_OUTPUT_SHORT_NAME,
             optional = true)
     public String outputUnpaired = null;
 
@@ -153,8 +149,10 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
+        final SAMFileHeader readsHeader = getHeaderForReads();
+        filterArgs.validateFilterArguments(readsHeader);
         filterArgs.doReadFilterArgumentWarnings(getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class), logger);
-        final SAMFileHeader header = PSUtils.checkAndClearHeaderSequences(getHeaderForReads(), filterArgs, logger);
+        final SAMFileHeader header = PSUtils.checkAndClearHeaderSequences(readsHeader, filterArgs, logger);
 
         final JavaRDD<GATKRead> reads = getReads();
         final PSFilter filter = new PSFilter(ctx, filterArgs, header);

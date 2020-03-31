@@ -3,15 +3,13 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
-import org.broadinstitute.hellbender.utils.SerializableFunction;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.api.java.JavaRDD;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
+import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -21,9 +19,8 @@ import java.util.stream.Collectors;
 public final class PSBwaUtils {
 
     static void addReferenceSequencesToHeader(final SAMFileHeader header,
-                                              final String referencePath,
-                                              final SerializableFunction<GATKRead, SimpleInterval> windowFunction) {
-        final List<SAMSequenceRecord> refSeqs = getReferenceSequences(referencePath, windowFunction);
+                                              final String referenceDictionaryPath) {
+        final List<SAMSequenceRecord> refSeqs = getReferenceSequences(referenceDictionaryPath);
         for (final SAMSequenceRecord rec : refSeqs) {
             if (header.getSequence(rec.getSequenceName()) == null) {
                 header.addSequence(rec);
@@ -31,13 +28,8 @@ public final class PSBwaUtils {
         }
     }
 
-    private static List<SAMSequenceRecord> getReferenceSequences(final String referencePath,
-                                                                 final SerializableFunction<GATKRead, SimpleInterval> windowFunction) {
-        final ReferenceMultiSparkSource referenceSource = new ReferenceMultiSparkSource(referencePath, windowFunction);
-        final SAMSequenceDictionary referenceDictionary = referenceSource.getReferenceSequenceDictionary(null);
-        if (referenceDictionary == null) {
-            throw new UserException.MissingReferenceDictFile(referencePath);
-        }
+    private static List<SAMSequenceRecord> getReferenceSequences(final String referenceDictionaryPath) {
+        final SAMSequenceDictionary referenceDictionary = ReferenceUtils.loadFastaDictionary(new File(referenceDictionaryPath));
         return referenceDictionary.getSequences();
     }
 

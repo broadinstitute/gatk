@@ -210,7 +210,8 @@ public final class PSFilter implements AutoCloseable {
         filterLogger.logPrimaryReads(reads);
 
         if (filterArgs.alignedInput) {
-            reads = reads.filter(new ReadFilterSparkifier(new HostAlignmentReadFilter(filterArgs.minIdentity)));
+            final Set<String> contigsToIgnoreSet = Collections.unmodifiableSet(new HashSet<>(filterArgs.alignmentContigsToIgnore));
+            reads = reads.filter(new ReadFilterSparkifier(new HostAlignmentReadFilter(filterArgs.minIdentity, contigsToIgnoreSet)));
         }
         filterLogger.logReadsAfterPrealignedHostFilter(reads);
 
