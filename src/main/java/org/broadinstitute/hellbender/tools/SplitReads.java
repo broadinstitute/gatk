@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -158,7 +159,7 @@ public final class SplitReads extends ReadWalker {
             final String keyName) {
         final String base = FilenameUtils.getBaseName(readArguments.getReadPathSpecifiers().get(0).getURI().getSchemeSpecificPart());
         final String extension = "." + FilenameUtils.getExtension(readArguments.getReadPathSpecifiers().get(0).getURI().getSchemeSpecificPart());
-        final File outFile = new File(OUTPUT_DIRECTORY, base + keyName + extension);
+        final GATKPathSpecifier outFile = new GATKPathSpecifier(new File(OUTPUT_DIRECTORY, base + keyName + extension).getAbsolutePath());
         return createSAMWriter(outFile, true);
     }
 

@@ -74,7 +74,7 @@ public final class IOUtils {
      * Returns true if the file's extension is CRAM.
      */
     public static boolean isCramFileName(final String inputFileName) {
-        return FileExtensions.CRAM.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
+        return isCramFile(new GATKPathSpecifier(inputFileName));
     }
 
     /**
