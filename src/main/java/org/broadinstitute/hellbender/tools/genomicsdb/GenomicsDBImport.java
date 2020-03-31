@@ -144,7 +144,7 @@ import java.util.stream.Collectors;
  *      --genomicsdb-update-workspace-path my_database \
  *      --tmp-dir=/path/to/large/tmp \
  *  </pre>
- *  In the incremental import case, no intervals are specified in the command because the tool will use the same 
+ *  In the incremental import case, no intervals are specified in the command because the tool will use the same
  *  intervals used in the initial import. Sample map is also supported for incremental import
  *
  *  Get Picard-style interval_list from existing workspace
@@ -428,7 +428,7 @@ public final class GenomicsDBImport extends GATKTool {
                 getIntervalsFromExistingWorkspace = true;
             }
         }
-        
+
     }
 
     private void assertOverwriteWorkspaceAndIncrementalImportMutuallyExclusive() {
@@ -731,8 +731,6 @@ public final class GenomicsDBImport extends GATKTool {
         if (getIntervalsFromExistingWorkspace) {
            return;
         }
-        // Force the progress meter to update after every batch
-        progressMeter.setRecordsBetweenTimeChecks(1L);
 
         final int sampleCount = sampleNameToVcfPath.size();
         final int updatedBatchSize = (batchSize == DEFAULT_ZERO_BATCH_SIZE) ? sampleCount : batchSize;

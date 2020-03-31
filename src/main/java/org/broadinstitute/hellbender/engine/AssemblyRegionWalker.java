@@ -158,10 +158,6 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
 
         CountingReadFilter countedFilter = makeReadFilter();
 
-        // Since we're processing regions rather than individual reads, tell the progress
-        // meter to check the time more frequently (every 10 regions instead of every 1000 regions).
-        progressMeter.setRecordsBetweenTimeChecks(10L);
-
         for ( final MultiIntervalLocalReadShard readShard : readShards ) {
             // Since reads in each shard are lazily fetched, we need to pass the filter and transformers to the window
             // instead of filtering the reads directly here

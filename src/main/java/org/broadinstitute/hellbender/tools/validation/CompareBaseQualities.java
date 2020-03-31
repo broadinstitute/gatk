@@ -6,18 +6,19 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.SecondaryOrSupplementarySkippingIterator;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Advanced;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.PositionalArguments;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.*;
-import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
-import org.broadinstitute.hellbender.engine.ProgressMeter;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.progressmeter.LocatableProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 
-import java.io.*;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -138,7 +139,7 @@ public final class CompareBaseQualities extends PicardCommandLineProgram {
 
         final CompareMatrix finalMatrix = new CompareMatrix(staticQuantizedMapping);
 
-        final ProgressMeter progressMeter = new ProgressMeter(1.0);
+        final LocatableProgressMeter progressMeter = new LocatableProgressMeter(1.0);
         progressMeter.start();
 
         while (it1.hasCurrent() && it2.hasCurrent()) {

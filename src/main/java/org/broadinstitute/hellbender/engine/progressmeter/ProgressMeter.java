@@ -1,46 +1,38 @@
-package org.broadinstitute.hellbender.engine;
+package org.broadinstitute.hellbender.engine.progressmeter;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.util.Locatable;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.function.LongSupplier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 /**
  * A basic progress meter to print out the number of records processed (and other metrics) during a traversal
  * at a configurable time interval.
  *
  * Clients set the update interval at construction, which controls how many seconds must elapse
- * before printing an update. Then call {@link #start} at traversal start, {@link #update(Locatable)}
+ * before printing an update. Then call {@link #start} at traversal start, {@link #update(T)}
  * after processing each record from the primary input, and {@link #stop} at traversal end to print
  * summary statistics.
  *
- * Note that {@link #start} must only be called once, before any {@link #update(Locatable)}.
- * Note no {@link #update(Locatable)} must be called after {@link #stop}.
+ * Note that {@link #start} must only be called once, before any {@link #update(T)}.
+ * Note no {@link #update(T)} must be called after {@link #stop}.
  *
  * All output is made at INFO level via log4j.
  */
-public final class ProgressMeter {
-    protected static final Logger logger = LogManager.getLogger(ProgressMeter.class);
+public abstract class ProgressMeter<T> {
+    private static final Logger logger = LogManager.getLogger(ProgressMeter.class);
 
     /**
      * By default, we output a line to the logger after this many seconds have elapsed
      */
     public static final double DEFAULT_SECONDS_BETWEEN_UPDATES = 10.0;
-
-    /**
-     * We check the current time every time we process this many records,
-     * by default (to cut down on the number of system calls)
-     */
-    public static final long DEFAULT_RECORDS_BETWEEN_TIME_CHECKS = 1000L;
-
-    /**
-     * By default, we use this function to get the current time
-     */
-    public static final LongSupplier DEFAULT_TIME_FUNCTION = System::currentTimeMillis;
 
     /**
      * Number of milliseconds in a second
@@ -58,15 +50,9 @@ public final class ProgressMeter {
     public static final String DEFAULT_RECORD_LABEL = "records";
 
     /**
-     * We output a line to the logger after this many seconds have elapsed
+     * We output a line to the logger after approximately this many milliseconds have elapsed
      */
-    private double secondsBetweenUpdates;
-
-    /**
-     * We check the current time every time we process this many records
-     * (to cut down on the number of system calls)
-     */
-    private long recordsBetweenTimeChecks = DEFAULT_RECORDS_BETWEEN_TIME_CHECKS;
+    private long millisecondsBetweenUpdates;
 
     /**
      * Total records processed
@@ -74,41 +60,31 @@ public final class ProgressMeter {
     private long numRecordsProcessed = 0L;
 
     /**
-     * Our start timestamp in milliseconds as returned by our {@link #timeFunction}
+     * Our start timestamp in milliseconds as returned by our {@link #getTime()}
      */
     private long startTimeMs = 0L;
 
     /**
-     * Current timestamp in milliseconds as returned by our {@link #timeFunction}.
-     *
-     * Updated only every {@link #recordsBetweenTimeChecks} records to cut down
-     * on system calls.
+     * Current timestamp in milliseconds as returned by our {@link #getTime()}.
      */
     private long currentTimeMs = 0L;
 
     /**
-     * Timestamp in milliseconds as returned by our {@link #timeFunction} of the last time
+     * Timestamp in milliseconds as returned by {@link #getTime()} of the last time
      * we outputted a progress line to the logger
      */
     private long lastPrintTimeMs = 0L;
 
     /**
-     * The genomic location of the most recently processed record, or null if the most recent record had no location.
-     * Updated only when we actually output a line to the logger.
+     * The most recently processed record, or null if the most recent update was a null.
      */
-    private Locatable currentLocus = null;
+    private T currentRecord = null;
 
     /**
      * The number of times we've outputted a status line to the logger via {@link #printProgress}.
      * We keep track of this only for unit-testing purposes.
      */
     private long numLoggerUpdates = 0L;
-
-    /**
-     * Function that returns the current time in milliseconds (defaults to {@link #DEFAULT_TIME_FUNCTION}).
-     * Should only be customized for unit testing purposes.
-     */
-    private LongSupplier timeFunction;
 
     /**
      * Keeps track of whether the progress meter has ever been started.
@@ -126,49 +102,31 @@ public final class ProgressMeter {
     private String recordLabel = DEFAULT_RECORD_LABEL;
 
     /**
-     * Create a progress meter with the default update interval of {@link #DEFAULT_SECONDS_BETWEEN_UPDATES} seconds
-     * and the default time function {@link #DEFAULT_TIME_FUNCTION}.
+     * Timer to run updates in the background
+     */
+    private final ScheduledExecutorService scheduler;
+
+    /**
+     * Create a progress meter with the default update interval of {@link #DEFAULT_SECONDS_BETWEEN_UPDATES} seconds.
      */
     public ProgressMeter() {
         this(DEFAULT_SECONDS_BETWEEN_UPDATES);
     }
 
     /**
-     * Create a progress meter with a custom update interval and the default time function {@link #DEFAULT_TIME_FUNCTION}
+     * Create a progress meter with a custom update interval.
      *
      * @param secondsBetweenUpdates number of seconds that should elapse before outputting a line to the logger
      */
     public ProgressMeter( final double secondsBetweenUpdates ) {
-        this(secondsBetweenUpdates, DEFAULT_TIME_FUNCTION);
-    }
-
-    /**
-     * Create a progress meter with a custom update interval and a custom function for getting the current
-     * time in milliseconds.
-     *
-     * Providing your own time function is only useful in unit tests -- in normal usage
-     * clients should call one of the other constructors.
-     *
-     * @param secondsBetweenUpdates number of seconds that should elapse before outputting a line to the logger
-     * @param timeFunction function that returns the current time in milliseconds.
-     */
-    @VisibleForTesting
-    ProgressMeter( final double secondsBetweenUpdates, final LongSupplier timeFunction ) {
-        Utils.nonNull(timeFunction);
         Utils.validateArg(secondsBetweenUpdates > 0, "secondsBetweenUpdates must be > 0.0");
         this.started = false;
         this.stopped = false;
-        this.secondsBetweenUpdates = secondsBetweenUpdates;
-        this.timeFunction = timeFunction;
-    }
+        this.millisecondsBetweenUpdates = (long)(secondsBetweenUpdates*(double)MILLISECONDS_PER_SECOND);
+        Utils.validate(millisecondsBetweenUpdates > 0, "millisecondsBetweenUpdates must be > 0");
 
-    /**
-     * Set the number of records we need to process before we check the current time
-     *
-     * @param recordsBetweenTimeChecks number of records we need to process before we check the current time
-     */
-    public void setRecordsBetweenTimeChecks( final long recordsBetweenTimeChecks ) {
-        this.recordsBetweenTimeChecks = recordsBetweenTimeChecks;
+        this.scheduler = Executors.newScheduledThreadPool(1,
+                new ThreadFactoryBuilder().setDaemon(true).setNameFormat("Progress Meter").build());
     }
 
     /**
@@ -185,54 +143,53 @@ public final class ProgressMeter {
      * Start the progress meter and produce preliminary output such as column headings.
      * @throws IllegalStateException if the meter has been started before or has been stopped already
      */
-    public void start() {
+    public synchronized void start() {
         Utils.validate( !started, "the progress meter has been started already");
         Utils.validate( !stopped, "the progress meter has been stopped already");
         started = true;
         logger.info("Starting traversal");
         printHeader();
 
-        startTimeMs = timeFunction.getAsLong();
+        startTimeMs = getTime();
         currentTimeMs = startTimeMs;
         lastPrintTimeMs = startTimeMs;
         numRecordsProcessed = 0L;
         numLoggerUpdates = 0L;
-        currentLocus = null;
+        currentRecord = null;
+
+        scheduler.scheduleAtFixedRate(this::printProgress, millisecondsBetweenUpdates, millisecondsBetweenUpdates, TimeUnit.MILLISECONDS);
+    }
+
+    private long getTime() {
+        return System.currentTimeMillis();
     }
 
     /**
      * Signal to the progress meter that an additional record has been processed. Will output
-     * statistics to the logger roughly every {@link #secondsBetweenUpdates} seconds.
+     * statistics to the logger roughly every {@link #millisecondsBetweenUpdates} milliseconds.
      *
      * @param currentLocus the genomic location of the record just processed or null if the most recent record had no location.
      * @throws IllegalStateException if the meter has not been started yet or has been stopped already
      */
-    public void update( final Locatable currentLocus ) {
+    public synchronized void update( final T currentLocus ) {
         Utils.validate(started, "the progress meter has not been started yet");
         Utils.validate( !stopped, "the progress meter has been stopped already");
         ++numRecordsProcessed;
-        if ( numRecordsProcessed % recordsBetweenTimeChecks == 0 ) {
-            currentTimeMs = timeFunction.getAsLong();
-            this.currentLocus = currentLocus;
-
-            if ( secondsSinceLastPrint() >= secondsBetweenUpdates ) {
-                printProgress();
-                lastPrintTimeMs = currentTimeMs;
-            }
-        }
+        this.currentRecord = currentLocus;
     }
 
     /**
      * Stop the progress meter and output summary statistics to the logger
      * @throws IllegalStateException if the meter has not been started yet or has been stopped already
      */
-    public void stop() {
+    public synchronized void stop() {
         Utils.validate(started, "the progress meter has not been started yet");
         Utils.validate( !stopped, "the progress meter has been stopped already");
         this.stopped = true;
-        currentTimeMs = timeFunction.getAsLong();
+        currentTimeMs = getTime();
         // Output progress a final time at the end
         printProgress();
+        scheduler.shutdown();
         logger.info(String.format("Traversal complete. Processed %d total %s in %.1f minutes.", numRecordsProcessed, recordLabel, elapsedTimeInMinutes()));
     }
 
@@ -249,11 +206,22 @@ public final class ProgressMeter {
     /**
      * Output traversal statistics to the logger.
      */
-    private void printProgress() {
+    private synchronized void printProgress() {
+        currentTimeMs = getTime();
+        lastPrintTimeMs = currentTimeMs;
         ++numLoggerUpdates;
         logger.info(String.format("%20s  %15.1f  %20d  %15.1f",
-                                  currentLocusString(), elapsedTimeInMinutes(), numRecordsProcessed, processingRate()));
+                                  formatRecord(currentRecord), elapsedTimeInMinutes(), numRecordsProcessed, processingRate()));
     }
+
+    /**
+     * Format the current record into a string for printing.  This should ideally give the user some information about
+     * the state of progress.
+     *
+     * @param currentRecord the most recent update the ProgressMeter has recieved.
+     * @return a String summarizing the state of progress from this given record.
+     */
+    protected abstract String formatRecord(final T currentRecord);
 
     /**
      * @return the total minutes elapsed since we called {@link #start}
@@ -279,12 +247,8 @@ public final class ProgressMeter {
 
     /**
      * @return number of records we're processing per minute, on average
-     *
-     * This is only accurate at set polling intervals and should not be
-     * called directly except in tests.
      */
-    @VisibleForTesting
-    double processingRate() {
+    private double processingRate() {
         return numRecordsProcessed / elapsedTimeInMinutes();
     }
 
@@ -297,11 +261,11 @@ public final class ProgressMeter {
     }
 
     /**
-     * @return genomic location of the most recent record formatted for output to the logger
+     * @return number of records that have been processed by the progress meter (for unit testing purposes)
      */
-    private String currentLocusString() {
-        return currentLocus != null ? currentLocus.getContig() + ":" + currentLocus.getStart() :
-                                      "unmapped";
+    @VisibleForTesting
+    long getNumRecordsProcessed(){
+        return numRecordsProcessed;
     }
 
     /**

@@ -26,6 +26,8 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.engine.progressmeter.LocatableProgressMeter;
+import org.broadinstitute.hellbender.engine.progressmeter.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
@@ -217,10 +219,10 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Progress meter to print out traversal statistics. Subclasses must invoke
-     * {@link ProgressMeter#update(Locatable)} after each record processed from
+     * {@link LocatableProgressMeter#update(Locatable)} after each record processed from
      * the primary input in their {@link #traverse} method.
      */
-    protected ProgressMeter progressMeter;
+    protected LocatableProgressMeter progressMeter;
 
     /**
      * Return the list of GATKCommandLinePluginDescriptors to be used for this tool.
@@ -713,7 +715,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
         checkToolRequirements();
 
-        progressMeter = new ProgressMeter(secondsBetweenProgressUpdates);
+        progressMeter = new LocatableProgressMeter(secondsBetweenProgressUpdates);
         progressMeter.setRecordLabel(getProgressMeterRecordLabel());
     }
 
