@@ -37,15 +37,17 @@ public final class DRAGENMappingQualityReadTransformer implements ReadTransforme
     // Or we just won't worry about it
     @Override
     public GATKRead apply( final GATKRead read ) {
-        int oldMQ = read.getMappingQuality();
-        int mappedMQ = mapValue(oldMQ);
-        read.setMappingQuality(mappedMQ);
 
-//        if (read.hasAttribute(EXTENDED_MAPPING_QUALITY_READ_TAG)) {
-//            int extendedMQ = read.getAttributeAsInteger(EXTENDED_MAPPING_QUALITY_READ_TAG);
-//            int mappedMQ = mapValue(extendedMQ);
-//            read.setMappingQuality(mappedMQ);
-//        }
+        // TODO these two ssteps are unnecessary. They can both happen but this time I would like to apply both in every case so nothing falls through the cracks.
+        if (read.hasAttribute(EXTENDED_MAPPING_QUALITY_READ_TAG)) {
+            int extendedMQ = read.getAttributeAsInteger(EXTENDED_MAPPING_QUALITY_READ_TAG);
+            int mappedMQ = mapValue(extendedMQ);
+            read.setMappingQuality(mappedMQ);
+        } else {
+            int oldMQ = read.getMappingQuality();
+            int mappedMQ = mapValue(oldMQ);
+            read.setMappingQuality(mappedMQ);
+        }
         return read;
     }
 }
