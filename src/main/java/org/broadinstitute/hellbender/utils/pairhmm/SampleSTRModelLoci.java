@@ -26,6 +26,7 @@ import picard.cmdline.programgroups.ReferenceProgramGroup;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         programGroup = ReferenceProgramGroup.class,
@@ -56,6 +57,10 @@ public class SampleSTRModelLoci extends GATKTool {
 
     @Argument(fullName="max-repeats", doc="maximum STR repeat sampled", optional = true, minValue = 1, maxValue = 20)
     private int maxRepeat = 20;
+
+    @Argument(fullName="down-sample", doc="target number of STR sites per period, repeat-count combination. The default of 0 indicates no down-sampling", optional = true, minValue = 0)
+    private int downSample = 0;
+
 
     @Override
     public boolean requiresReference() {
@@ -91,7 +96,9 @@ public class SampleSTRModelLoci extends GATKTool {
 
     public void onShutdown() {
         try {
-            Utils.deleteFileTree(tempDir);
+            if (tempDir != null) {
+                Utils.deleteFileTree(tempDir);
+            }
             if (sortedOutputWriter != null) {
                 sortedOutputWriter.close();
             }
@@ -124,7 +131,7 @@ public class SampleSTRModelLoci extends GATKTool {
             throw new UserException.CouldNotCreateOutputFile(tempDir, ex);
         }
         progressMeter.stop();
-        logger.info("Finishing reference sampling. Proceeding to splitting each period case by repeat count");
+        logger.info("Finished reference sampling. Proceeding to splitting each period case by repeat count");
         for (int i = 1; i <= maxPeriod; i++) {
             progressMeter = new ProgressMeter(secondsBetweenProgressUpdates);
             progressMeter.setRecordLabel("Splitting cases with period " + i + " by repeat count");
@@ -133,9 +140,46 @@ public class SampleSTRModelLoci extends GATKTool {
             progressMeter.stop();
             logger.info("Done with period " + i);
         }
+        if (downSample > 0) {
+            logger.info("Downsampling period, repeat-count case to a maximum of " + downSample + " each.");
+            for (int i = 1; i <= maxPeriod; i++) {
+                for (int r = 1; r <= maxRepeat; r++) {
+                    downSampleLociByRepeat(i, r);
+                }
+            }
+        }
         logger.info("Composing output zip");
         composeOutputZip();
     }
+
+    private void downSampleLociByRepeat(int period, int repeatCount) {
+        final File periodDir = new File(tempDir, "" + period);
+        final File inFile = new File(periodDir, repeatCount + ".bin");
+        final List<DragstrLocus> all;
+        try (final BinaryTableReader<DragstrLocus> reader = DragstrLocus.binaryReader(new FileInputStream(inFile))) {
+            all = reader.stream().collect(Collectors.toList());
+        } catch (final Exception ex) {
+            throw new UserException.CouldNotCreateOutputFile(inFile, "temporary period loci downsample failed");
+        }
+        if (all.size() > downSample) {
+            final long bit = decimationTable.decimationBit(period, repeatCount);
+            long mask = 1 << bit;
+            List<DragstrLocus> result = all;
+            while (result.size() > downSample) {
+                final long filterMask = mask;
+                result = result.stream()
+                        .filter(locus -> (locus.getMask() & filterMask) == 0L)
+                        .collect(Collectors.toList());
+                mask <<= 1;
+            }
+            logger.info("Down-sampling period " + period + " repeat count " + repeatCount + " from " + all.size() + " (> " + downSample + ") to " + result.size());
+            try (final BinaryTableWriter<DragstrLocus> writer = DragstrLocus.binaryWriter(inFile)) {
+                writer.writeAll(result);
+            } catch (final Exception ex) {
+                throw new UserException.CouldNotCreateOutputFile(inFile, "temporary period loci downsample failed");
+            }
+        }
+     }
 
     private void initializeMasks(final SAMSequenceDictionary dictionary) {
         nextMasks = new long[dictionary.getSequences().size()][maxPeriod + 1][maxRepeat + 1];
@@ -161,7 +205,6 @@ public class SampleSTRModelLoci extends GATKTool {
                 progressMeter.update(next.getStartInterval(getReferenceDictionary(), 0));
                 final BinaryTableWriter<DragstrLocus> writer = writers.get(effectiveRepeats - 1);
                 writer.write(next);
-
             }
         } catch (final Exception ex) {
             throw new UserException.CouldNotCreateOutputFile(lociFile, "temporary period loci splitting failed");

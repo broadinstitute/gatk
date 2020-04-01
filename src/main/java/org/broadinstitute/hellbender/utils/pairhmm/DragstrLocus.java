@@ -45,6 +45,8 @@ public class DragstrLocus {
         return new DragstrLocus(chrIdx, start, end, mask, unit.clone(), repeatCount);
     }
 
+    public long getMask() { return mask; }
+
     public long getStart() {
         return start;
     }

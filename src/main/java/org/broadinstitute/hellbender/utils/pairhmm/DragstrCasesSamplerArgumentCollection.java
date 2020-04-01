@@ -4,6 +4,12 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 
 public class DragstrCasesSamplerArgumentCollection {
+
+    @Argument(fullName = DragstrConstants.USE_ALL_EVIDENCE_FULL_NAME,
+            doc = "do not sample, simply use all cases available (slow for not downsampled STR loci sets)",
+            optional = true)
+    public boolean useAllEvidence = false;
+
     @Argument(fullName = DragstrConstants.RANDOM_SEED_ARGUMENT_FULL_NAME,
             doc = "random number generator base seed",
             optional = true)

@@ -30,7 +30,7 @@ import java.util.zip.ZipFile;
         summary = "Determine the presence of STR in a reference sequence",
         oneLineSummary = "Determines the presence of STR in a reference sequence"
 )
-public class EstimateDragstrModelParameters extends GATKTool {
+public class EstimateSTRModelParameters extends GATKTool {
 
     @ArgumentCollection
     private final DragstrCasesSamplerArgumentCollection dragstrCasesSamplerArgumentCollection = new DragstrCasesSamplerArgumentCollection();

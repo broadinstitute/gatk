@@ -184,11 +184,20 @@ public class STRDecimationTable {
             if (bestPeriodRepeats >= periodCounts.length) {
                 return false;
             } else {
-                final long count = periodCounts[(int) bestPeriodRepeats]++;
                 final long left = mask;
                 final long right = decimationMask[bestPeriod][(int) bestPeriodRepeats];
                 return ((int) left & (int) right) != 0 || ((left >> 32) & (right >> 32)) != 0;
             }
+        }
+    }
+
+    public long decimationBit(int period, int repeatCount) {
+        if (period >= decimationMatrix.length) {
+            return 0;
+        } else if (repeatCount >= decimationMatrix[period].length) {
+            return 0;
+        } else {
+            return decimationMatrix[period][repeatCount];
         }
     }
 }

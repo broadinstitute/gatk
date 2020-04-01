@@ -7,6 +7,7 @@ public final class DragstrConstants {
     public static final String DRAGSTRINFO_KEY = "DRAGstrInfo";
     public static final String DRAGSTRPARAMS_KEY = "DRAGstrParams";
 
+    public static final String USE_ALL_EVIDENCE_FULL_NAME = "use-all-evidence";
     public static final String MAX_PERIOD_ARGUMENT_FULL_NAME = "max-period";
     public static final String MAX_REPEATS_ARGUMENT_FULL_NAME = "max-repeats";
     public static final String RANDOM_SEED_ARGUMENT_FULL_NAME = "random-seed";
