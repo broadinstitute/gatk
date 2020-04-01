@@ -691,6 +691,14 @@ public final class IOUtils {
         }
     }
 
+    public static PrintStream makePrintStreamMaybeGzipped(final String path, final OutputStream os) throws IOException {
+        if (path.endsWith(".gz")) {
+            return new PrintStream(new GZIPOutputStream(os));
+        } else {
+            return new PrintStream(os);
+        }
+    }
+
     /**
      * Creates a temp file that will be deleted on exit
      *

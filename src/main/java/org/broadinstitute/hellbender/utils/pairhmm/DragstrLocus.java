@@ -18,17 +18,21 @@ public class DragstrLocus {
 
     private final int chromosomeIndex;
     private final long start;
+    private final long end;
     private final int repeats;
     private final byte[] unit;
+    private final long mask;
 
-    private DragstrLocus(final int chrIdx, final long start, final byte[] unit, final int repeats) {
+    private DragstrLocus(final int chrIdx, final long start, final long end, final long mask, final byte[] unit, final int repeats) {
         chromosomeIndex = chrIdx;
         this.start = start;
+        this.end = end;
         this.unit = unit;
         this.repeats = repeats;
+        this.mask = mask;
     }
 
-    public static DragstrLocus make(final int chrIdx, final long start, final byte[] unit, final int repeatCount) {
+    public static DragstrLocus make(final int chrIdx, final long start, final long end, final long mask, final byte[] unit, final int repeatCount) {
         ParamUtils.isPositiveOrZero(chrIdx, "chromosome index");
         ParamUtils.isPositive(start, "start position");
         final byte[] unitCloned = Utils.nonNull(unit).clone();
@@ -38,7 +42,7 @@ public class DragstrLocus {
             }
         }
         ParamUtils.isPositive(repeatCount, "repeat count");
-        return new DragstrLocus(chrIdx, start, unit.clone(), repeatCount);
+        return new DragstrLocus(chrIdx, start, end, mask, unit.clone(), repeatCount);
     }
 
     public long getStart() {
@@ -71,6 +75,8 @@ public class DragstrLocus {
             protected void writeRecord(final DragstrLocus record, final DataOutput output) throws IOException {
                 output.writeShort(record.chromosomeIndex);
                 output.writeLong(record.start);
+                output.writeLong(record.end);
+                output.writeLong(record.mask);
                 output.writeByte(record.unit.length);
                 output.write(record.unit);
                 output.writeByte(record.repeats);
@@ -90,24 +96,27 @@ public class DragstrLocus {
             protected DragstrLocus readRecord(final PushbackDataInput input) throws IOException {
                 final int chrIdx = input.readUnsignedShort();
                 final long start = input.readLong();
+                final long end = input.readLong();
+                final long mask = input.readLong();
                 final int unitLength =  input.readUnsignedByte();
                 final byte[] unit = new byte[unitLength];
                 input.readFully(unit);
                 final int repeats = input.readUnsignedByte();
-                return new DragstrLocus(chrIdx, start, unit, repeats);
+                return new DragstrLocus(chrIdx, start, end, mask, unit, repeats);
             }
         };
     }
 
     public static TableWriter<DragstrLocus> textWriter(final OutputStream out) throws IOException {
         return new TableWriter<DragstrLocus>(new OutputStreamWriter(out),
-                TableColumnCollection.make("chridx", "start", "end", "length", "repeats", "unit")) {
+                TableColumnCollection.make("chridx", "start", "end", "mask", "length", "repeats", "unit")) {
 
             @Override
             protected void composeLine(final DragstrLocus record, final DataLine dataLine) {
                 dataLine.append(record.chromosomeIndex)
                         .append(record.start)
-                        .append(record.start + record.unit.length * record.repeats - 1)
+                        .append(record.end)
+                        .append(record.mask)
                         .append(record.unit.length)
                         .append(record.repeats)
                         .append(new String(record.unit));
@@ -126,10 +135,11 @@ public class DragstrLocus {
                 final int chridx = seq.getSequenceIndex();
                 final long start = dataLine.getLong("start");
                 final long end = dataLine.getLong("end");
+                final long mask = dataLine.getLong("mask");
                 final int length = dataLine.getInt("length");
                 final int repeats = dataLine.getInt("repeats");
                 final byte[] unit = dataLine.get("unit").getBytes();
-                final DragstrLocus site = new DragstrLocus(chridx, start, unit, repeats);
+                final DragstrLocus site = new DragstrLocus(chridx, start, end, mask, unit, repeats);
                 if (site.getEnd() != end) {
                     throw formatException("end is not what is expected");
                 } else if (site.getPeriod() != length) {
@@ -151,8 +161,9 @@ public class DragstrLocus {
                 final long end = dataLine.getLong("end");
                 final int length = dataLine.getInt("length");
                 final int repeats = dataLine.getInt("repeats");
+                final long mask = dataLine.getLong("mask");
                 final byte[] unit = dataLine.get("unit").getBytes();
-                final DragstrLocus site = new DragstrLocus(chridx, start, unit, repeats);
+                final DragstrLocus site = new DragstrLocus(chridx, start, end, mask, unit, repeats);
                 if (site.getEnd() != end) {
                     throw formatException("end is not what is expected");
                 } else if (site.getPeriod() != length) {

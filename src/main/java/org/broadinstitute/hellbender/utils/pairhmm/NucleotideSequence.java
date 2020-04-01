@@ -20,11 +20,20 @@ public interface NucleotideSequence {
         return new String(bytes);
     }
 
+    default int copyBytesAt(byte[] dest, int destOffset, long location, final int length) {
+        final long seqLength = this.length();
+        int i, j;
+        long k;
+        for (i = 0, j = destOffset, k = location; i < length && k <= seqLength; i++, k++, j++) {
+            dest[j] = byteAt(k);
+        }
+        return i;
+    }
+
     default byte[] bytesAt(long location, final int length) {
         final byte[] result = new byte[length];
-
-        for (int i = 0; i < length; i++, location++) {
-            result[i] = byteAt(location);
+        if (copyBytesAt(result, 0, location, length) != length) {
+            throw new IllegalArgumentException("go beyond the end of the sequence");
         }
         return result;
     }
