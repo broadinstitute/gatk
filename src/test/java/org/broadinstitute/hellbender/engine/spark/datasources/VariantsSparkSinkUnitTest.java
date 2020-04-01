@@ -269,7 +269,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     private static InputStream openFile(String path) throws IOException {
         Utils.nonNull(path);
         InputStream inputStream;
-        if (BucketUtils.isCloudStorageUrl(path)) {
+        if (BucketUtils.isGcsUrl(path)) {
             java.nio.file.Path p = BucketUtils.getPathOnGcs(path);
             inputStream = java.nio.file.Files.newInputStream(p);
         } else if (BucketUtils.isHadoopUrl(path)) {

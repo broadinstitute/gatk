@@ -1,27 +1,25 @@
 package org.broadinstitute.hellbender.tools;
 
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.HttpMethod;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrationTest {
 
@@ -63,21 +61,22 @@ public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrati
                new SimpleInterval("3", 1_000_003, 1_000_100),
                 new SimpleInterval("20", 1_099_000, 1_100_000));
 
-        final List<SimpleInterval> cramIntervals = Arrays.asList(new SimpleInterval("20", 1_099_000, 1_100_000));
+        final List<SimpleInterval> cramIntervals = Arrays.asList(new SimpleInterval("20", 9_999_902, 10_000_000));
         return new Object[][]{
-                {bucketPathToPublicHttpUrl(bam), bucketPathToPublicHttpUrl(bai), bam, bai, largeFileIntervals},
-                {toSignedUrl(bam), toSignedUrl(bai), bam, bai, largeFileIntervals},
-                {bucketPathToPublicHttpUrl(cram), bucketPathToPublicHttpUrl(crai), cram, crai, cramIntervals},
-                {toSignedUrl(cram), toSignedUrl(crai), cram, crai, cramIntervals}
+                {BucketUtils.bucketPathToPublicHttpUrl(bam), BucketUtils.bucketPathToPublicHttpUrl(bai), bam, bai, largeFileIntervals, 528L},
+                {BucketUtils.createSignedUrlToGcsObject(bam, 1L), BucketUtils.createSignedUrlToGcsObject(bai, 1L), bam, bai, largeFileIntervals, 528L},
+                {BucketUtils.bucketPathToPublicHttpUrl(cram), BucketUtils.bucketPathToPublicHttpUrl(crai), cram, crai, cramIntervals, 112L},
+                {BucketUtils.createSignedUrlToGcsObject(cram, 1L), BucketUtils.createSignedUrlToGcsObject(crai, 1L), cram, crai, cramIntervals, 112L}
 
         };
     }
 
     @Test(groups = {"cloud", "bucket"}, dataProvider = "getHttpPaths")
-    public void testHttpPaths(String reads, String index, String nonHttpReads, String nonHttpIndex, List<SimpleInterval> intervals) throws IOException {
+    public void testHttpPaths(String reads, String index, String nonHttpReads, String nonHttpIndex, List<SimpleInterval> intervals, long expectedNumberOfReads) throws IOException {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         final File out = createTempFile("out", ".bam");
-        System.out.println("reading http");
+        // this test reads tiny amounts of data from multiple places, if you don't set the prefetcher to a lower number
+        // it loads large amounts of data that slows the test down significantly for no good reason
         args.addInput(reads)
                 .add(StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, 1)
                 .add(StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_LONG_NAME, 1)
@@ -87,7 +86,6 @@ public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrati
         intervals.forEach(args::addInterval);
         runCommandLine(args);
 
-        System.out.println("reading gs");
         final ArgumentsBuilder args2 = new ArgumentsBuilder();
         final File out2 = createTempFile("out", ".bam");
         args2.addInput(nonHttpReads)
@@ -99,19 +97,12 @@ public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrati
         intervals.forEach(args2::addInterval);
         runCommandLine(args2);
 
+        try(final ReadsDataSource reader = new ReadsDataSource(out.toPath())){
+            final long count = Utils.stream(reader).count();
+            Assert.assertEquals( count, expectedNumberOfReads);
+        }
+
         SamAssertionUtils.assertEqualBamFiles(out, out2, false, ValidationStringency.DEFAULT_STRINGENCY);
-    }
-
-    public static String toSignedUrl(String path) {
-        final Storage storage = StorageOptions.getDefaultInstance().getService();
-        final BlobInfo info = BlobInfo.newBuilder(BucketUtils.getBucket(path), BucketUtils.getPathWithoutBucket(path)).build();
-        return storage.signUrl(info, 1L, TimeUnit.HOURS,
-                Storage.SignUrlOption.httpMethod(HttpMethod.GET)
-        ).toString();
-    }
-
-    public static String bucketPathToPublicHttpUrl(String path){
-        return String.format("https://storage.googleapis.com/%s/%s", BucketUtils.getBucket(path), BucketUtils.getPathWithoutBucket(path));
     }
 
 }

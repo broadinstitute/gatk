@@ -222,15 +222,15 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
             }
 
             Function<SeekableByteChannel, SeekableByteChannel> wrapper =
-                (BucketUtils.isCloudStorageUrl(samPath)
+                (BucketUtils.isEligibleForPrefetching(samPath)
                     ? cloudWrapper
                     : Function.identity());
             // if samIndices==null then we'll guess the index name from the file name.
             // If the file's on the cloud, then the search will only consider locations that are also
             // in the cloud.
             Function<SeekableByteChannel, SeekableByteChannel> indexWrapper =
-                ((samIndices != null && BucketUtils.isCloudStorageUrl(samIndices.get(samCount))
-                 || (samIndices == null && BucketUtils.isCloudStorageUrl(samPath)))
+                ((samIndices != null && BucketUtils.isEligibleForPrefetching(samIndices.get(samCount))
+                 || (samIndices == null && BucketUtils.isEligibleForPrefetching(samPath)))
                     ? cloudIndexWrapper
                     : Function.identity());
 

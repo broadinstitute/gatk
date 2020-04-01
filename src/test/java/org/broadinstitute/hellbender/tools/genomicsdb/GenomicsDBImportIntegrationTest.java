@@ -382,7 +382,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static List<String> resolveLargeFilesAsCloudURIs(final List<String> filenames){
         return filenames.stream()
                 .map( filename -> filename.replace(publicTestDir, getGCPTestInputPath()))
-                .peek( filename -> Assert.assertTrue(BucketUtils.isCloudStorageUrl(filename)))
+                .peek( filename -> Assert.assertTrue(BucketUtils.isGcsUrl(filename)))
                 .collect(Collectors.toList());
     }
 

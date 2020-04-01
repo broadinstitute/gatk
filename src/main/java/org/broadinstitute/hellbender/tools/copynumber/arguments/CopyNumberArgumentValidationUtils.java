@@ -109,7 +109,7 @@ public final class CopyNumberArgumentValidationUtils {
             logger.info(String.format("Retrieving intervals from read-count file (%s)...", readCountPath));
         }
 
-        final SimpleCountCollection readCounts = BucketUtils.isCloudStorageUrl(readCountPath)
+        final SimpleCountCollection readCounts = BucketUtils.isGcsUrl(readCountPath)
                 ? SimpleCountCollection.readFromGCS(readCountPath)
                 : SimpleCountCollection.read(new File(readCountPath));
         final SAMSequenceDictionary sequenceDictionary = readCounts.getMetadata().getSequenceDictionary();
@@ -143,7 +143,7 @@ public final class CopyNumberArgumentValidationUtils {
                     final String inputReadCountPath = inputReadCountPaths.get(sampleIndex);
                     logger.info(String.format("Aggregating read-count file %s (%d / %d)",
                             inputReadCountPath, sampleIndex + 1, numSamples));
-                    final SimpleCountCollection subsetReadCounts = BucketUtils.isCloudStorageUrl(inputReadCountPath)
+                    final SimpleCountCollection subsetReadCounts = BucketUtils.isGcsUrl(inputReadCountPath)
                             ? SimpleCountCollection.readOverlappingSubsetFromGCS(inputReadCountPath, mergedIntervalSubset)
                             : SimpleCountCollection.readAndSubset(new File(inputReadCountPath), intervalSubset);
                     if (!CopyNumberArgumentValidationUtils.isSameDictionary(
