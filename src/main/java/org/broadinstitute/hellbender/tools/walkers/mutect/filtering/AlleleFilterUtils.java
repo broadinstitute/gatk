@@ -112,12 +112,11 @@ public class AlleleFilterUtils {
         if (invalidatePreviousFilters) {
             vcb.unfiltered();
         }
-        Set<String> siteFilters = newAlleleFilters.stream().skip(1)
+        Set<String> siteFiltersToAdd = newAlleleFilters.stream().skip(1)
                 .collect(()->new HashSet<>(newAlleleFilters.get(0)), Set::retainAll, Set::retainAll);
-        if (siteFilters.isEmpty() && !invalidatePreviousFilters) {
+        siteFiltersToAdd.stream().forEach(filter -> vcb.filter(filter));
+        if ((vcb.getFilters() == null || vcb.getFilters().isEmpty()) && !invalidatePreviousFilters) {
             vcb.passFilters();
-        } else {
-            siteFilters.stream().forEach(filter -> vcb.filter(filter));
         }
         return vcb.make();
     }
