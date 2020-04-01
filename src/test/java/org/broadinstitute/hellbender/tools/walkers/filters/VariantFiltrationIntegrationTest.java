@@ -63,6 +63,19 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     }
 
     @Test
+    public void testMaskWithFilters() throws IOException {
+        final String maskName = "blacklisted_site";
+        final String mask = "--apply-allele-specific-filters --mask " + new File(getToolTestDataDir() + "blacklistedMask.bed").getAbsolutePath();
+        final String expected = "testVariantFiltration_testMaskWithFilters.vcf";
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString("filtered.vcf", " -mask-name " + maskName + " " + mask),
+                Arrays.asList(getToolTestDataDir() + "expected/" + expected)
+        );
+
+        spec.executeTest("testMask", this);
+    }
+
+    @Test
     public void testMaskReversed() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString("vcfexample2.vcf", " -mask-name outsideGoodSites -filter-not-in-mask --mask:BED " + getToolTestDataDir() + "goodMask.bed"),

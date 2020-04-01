@@ -348,7 +348,7 @@ public final class VariantFiltration extends VariantWalker {
             // get filters for each allele
             final List<Set<String>> alleleFilters = filtered.stream().map(filteredvc -> filteredvc.getFilters()).collect(Collectors.toList());
             // add in the AS_FilterStatus and set the variant filters
-            final VariantContext filteredVC = AlleleFilterUtils.addAlleleAndComputeSiteFilters(variant, alleleFilters);
+            final VariantContext filteredVC = AlleleFilterUtils.addAlleleAndSiteFilters(variant, alleleFilters, invalidatePreviousFilters);
             writer.add(filteredVC);
         } else {
             writer.add(filter(variant, featureContext));

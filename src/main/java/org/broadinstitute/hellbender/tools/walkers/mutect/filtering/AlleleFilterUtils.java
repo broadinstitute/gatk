@@ -2,12 +2,9 @@ package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.vcf.VCFConstants;
-import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import shaded.cloud_nio.com.google.errorprone.annotations.Var;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -55,7 +52,7 @@ public class AlleleFilterUtils {
         List<List<String>> updatedFilters = alleleFilters.stream().map(filters -> {
             Boolean filtered = isFilteredIt.next();
             if (filtered) {
-                return addFilter(filters, filterName);
+                return addAlleleFilters(filters, Collections.singletonList(filterName));
             }
             else return filters;
         }).collect(Collectors.toList());
@@ -63,42 +60,64 @@ public class AlleleFilterUtils {
     }
 
     /**
-     * Adds the new filter to the list of current filters. Takes care of replacing the SITE keyword
+     * Adds the new filters to the list of current filters. Takes care of replacing the SITE keyword
      * if there were no previous filters
-     * @param currentFilters the current list of filter for the allele
-     * @param newFilter the new filter to add
-     * @return the new list of filters
+     * @param currentAlleleFilters the current list of filter for the allele
+     * @param newFilters the new filters to add
+     * @return the updated list of filters
      */
-    protected static List<String> addFilter(List<String> currentFilters, String newFilter) {
-        if (currentFilters.size() == 1 && currentFilters.contains(GATKVCFConstants.SITE_LEVEL_FILTERS)) {
-            return Collections.singletonList(newFilter);
+    protected static List<String> addAlleleFilters(List<String> currentAlleleFilters, List<String> newFilters) {
+        if (newFilters.isEmpty()) {
+            return currentAlleleFilters;
+        } else if (currentAlleleFilters.isEmpty() || (currentAlleleFilters.size() == 1 && currentAlleleFilters.contains(GATKVCFConstants.SITE_LEVEL_FILTERS))) {
+            // new filters is not empty and there are no filters currently set for the allele
+            return newFilters;
         } else {
-            List<String> updated = new ArrayList<>();
-            updated.addAll(currentFilters);
-            updated.add(newFilter);
-            return updated;
+            LinkedHashSet<String> updated = new LinkedHashSet<>();
+            updated.addAll(currentAlleleFilters);
+            updated.addAll(newFilters);
+            return updated.stream().collect(Collectors.toList());
         }
+
     }
 
     /**
+     * Adds the new allele filters to the existing allele filters in the vc. Computes whether there are
+     * new site filters and updates the filter in the vc. If there are no site filters, sets filters to pass
      * Sets the filters for each allele and calculates the intersection of the allele filters to set on the variant.
      * PASS if the intersection is empty.
-     * @param vc The variant context to build from, however it assumes all relevant filters are set in the alleleFilters collection
-     * @param alleleFilters filters to be applied to each allele, the intersection of these filters are applied at the site level
+     * @param vc The variant context to add the filters to, both at the allele and site level
+     * @param newAlleleFilters filters to be applied to each allele, the intersection of these filters are applied at the site level
+     * @param invalidatePreviousFilters whether existing filters should be removed
      * @return The updated variant context
      */
-    public static VariantContext addAlleleAndComputeSiteFilters(VariantContext vc, List<Set<String>> alleleFilters) {
-        String encodedFilters = AlleleFilterUtils.encodeASFilters(alleleFilters.stream().map(
-                af -> af.isEmpty() ? Collections.singletonList(GATKVCFConstants.SITE_LEVEL_FILTERS) : af.stream().collect(Collectors.toList())).collect(Collectors.toList()));
+    public static VariantContext addAlleleAndSiteFilters(VariantContext vc, List<Set<String>> newAlleleFilters, boolean invalidatePreviousFilters) {
+        if (newAlleleFilters.isEmpty()) {
+            return vc;
+        }
+        List<List<String>> currentAlleleFilters = decodeASFilters(vc);
+        if (!currentAlleleFilters.isEmpty() && newAlleleFilters.size() != currentAlleleFilters.size()) {
+            // log an error
+            return vc;
+        }
+
+        if (currentAlleleFilters.isEmpty() || invalidatePreviousFilters) {
+            currentAlleleFilters = new ArrayList<>(Collections.nCopies(newAlleleFilters.size(), Collections.singletonList(GATKVCFConstants.SITE_LEVEL_FILTERS)));
+        }
+        ListIterator<List<String>> currentAlleleFiltersIt = currentAlleleFilters.listIterator();
+        List<List<String>> updatedAlleleFilters = newAlleleFilters.stream().map(newfilters -> addAlleleFilters(currentAlleleFiltersIt.next(), newfilters.stream().collect(Collectors.toList()))).collect(Collectors.toList());
+        String encodedFilters = encodeASFilters(updatedAlleleFilters);
         VariantContextBuilder vcb = new VariantContextBuilder(vc).attribute(GATKVCFConstants.AS_FILTER_STATUS_KEY, encodedFilters);
 
-        Set<String> siteFilters = alleleFilters.stream().skip(1)
-                .collect(()->new HashSet<>(alleleFilters.get(0)), Set::retainAll, Set::retainAll);
-
-        if (!siteFilters.isEmpty()) {
-            vcb.filters(siteFilters);
-        } else {
+        if (invalidatePreviousFilters) {
+            vcb.unfiltered();
+        }
+        Set<String> siteFilters = newAlleleFilters.stream().skip(1)
+                .collect(()->new HashSet<>(newAlleleFilters.get(0)), Set::retainAll, Set::retainAll);
+        if (siteFilters.isEmpty() && !invalidatePreviousFilters) {
             vcb.passFilters();
+        } else {
+            siteFilters.stream().forEach(filter -> vcb.filter(filter));
         }
         return vcb.make();
     }
