@@ -812,7 +812,6 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return SAMFileWriter
      */
     public final SAMFileGATKReadWriter createSAMWriter(final GATKPathSpecifier outputPathSpecifier, final boolean preSorted) {
-        final Path outputPath = outputPathSpecifier.toPath();
         final boolean isCramFile = IOUtils.isCramFile(outputPathSpecifier);
         if (!hasReference() && isCramFile) {
             throw UserException.MISSING_REFERENCE_FOR_CRAM;
@@ -820,7 +819,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
         return new SAMFileGATKReadWriter(
             ReadUtils.createCommonSAMWriter(
-                outputPath,
+                outputPathSpecifier.toPath(),
                 referenceArguments.getReferencePath(),
                 getHeaderForSAMWriter(),
                 preSorted,

@@ -256,7 +256,7 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
         try (PrintStream stream = new PrintStream(new FileOutputStream(destination))) {
             printSimplifiedGraph(stream, true, pruneFactor);
         } catch ( final FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(destination, e);
+            throw new UserException.CouldNotReadInputFile(destination.getAbsolutePath(), e);
         }
     }
     private final void printSimplifiedGraph(final PrintStream graphWriter, final boolean writeHeader, final int pruneFactor) {

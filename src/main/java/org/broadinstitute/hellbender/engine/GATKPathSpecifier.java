@@ -80,7 +80,7 @@ public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, 
 
             return inputStream;
         } catch (IOException e) {
-            throw new UserException.CouldNotReadInputFile(getRawInputString(), e);
+            throw new UserException.CouldNotReadInputFile(this, "Can't create input stream", e);
         }
     }
 
