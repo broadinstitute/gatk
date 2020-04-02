@@ -60,7 +60,7 @@ public class ShiftFasta extends GATKTool {
     public static final String SHIFT_OFFSET_LIST = "shift-offset-list";
     @Argument(fullName = SHIFT_OFFSET_LIST,
             doc="Number of bases to skip in the reference before starting the shifted reference. For example, if 300 is specified, the new fasta will start at the 301th base (count starting at 1)." +
-    "If not specified, the contig will be shifted by half the number of bases. To skip the shifting of a contig, specify 0 in the list.")
+    "If not specified, the contig will be shifted by half the number of bases. To skip the shifting of a contig, specify 0 in the list.", optional = true)
     private List<Integer> shiftOffsets = null;
 
     public static final String LINE_WIDTH_LONG_NAME = "line-width";
