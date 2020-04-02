@@ -6,6 +6,10 @@
 # If you break the environment, you are responsible for fixing it and also owe the last developer who left this in a reasonable state a beverage of their choice.
 # (This may be yourself, and you'll appreciate that beverage while you tinker with dependencies!)
 #
+# When changing dependencies or versions in this file, check to see if the "supportedPythonPackages" DataProvider
+# used by the testGATKPythonEnvironmentPackagePresent test in PythonEnvironmentIntegrationTest needs to be updated
+# to reflect the changes.
+#
 name: $condaEnvName
 channels:
 # if channels other than conda-forge are added and the channel order is changed (note that conda channel_priority is currently set to flexible),
