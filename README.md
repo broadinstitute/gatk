@@ -76,10 +76,11 @@ releases of the toolkit.
    docker client, which can be found on the [docker website](https://www.docker.com/get-docker).
 * Python Dependencies:<a name="python"></a>
     * GATK4 uses the [Conda](https://conda.io/docs/index.html) package manager to establish and manage the
-      Python environment and dependencies required by GATK tools that have a Python dependency. The ```gatk``` environment, 
+      Python environment and dependencies required by GATK tools that have a Python dependency. This environment also 
+      includes the R dependencies used for plotting in some of the tools. The ```gatk``` environment 
       requires hardware with AVX support for tools that depend on TensorFlow (e.g. CNNScoreVariant). The GATK Docker image 
       comes with the ```gatk``` environment pre-configured.
-    * To establish the  environment when not using the Docker image, a conda environment must first be "created", and
+    * To establish the environment when not using the Docker image, a conda environment must first be "created", and
       then "activated":
         * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed (Miniconda is sufficient).
         * To "create" the conda environment:
@@ -302,24 +303,7 @@ You can download and run pre-built versions of GATK4 from the following places:
   * Dataproc Spark clusters are configured with [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) so you can omit the "--num-executors" argument and let YARN handle it automatically.
 
 #### <a name="R">Using R to generate plots</a>
-Certain GATK tools may optionally generate plots if R is installed.  We recommend **R v3.2.5** if you want to produce plots.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convenience rather than a primary output.
-
-R installation is not part of the gradle build.  See http://cran.r-project.org/ for general information on installing R for your system.
-* for ubuntu see these [ubuntu specific instructions](http://cran.r-project.org/bin/linux/ubuntu/README)
-* for OSX we recommend installation through [homebrew](http://brew.sh/)
-```
-brew install R
-```
-
-The plotting R scripts require certain R packages to be installed. You can install these by running `scripts/docker/gatkbase/install_R_packages.R`.  Either run it as superuser to force installation into the sites library or run interactively and create a local library.
-```
-sudo Rscript scripts/docker/gatkbase/install_R_packages.R
-```
-**or**
-```
-R 
-source("scripts/docker/gatkbase/install_R_packages.R")
-```
+Certain GATK tools may optionally generate plots using the R installation provided within the conda environment.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convenience rather than a primary output.
 
 #### <a name="tab_completion">Bash Command-line Tab Completion (BETA)</a>
 
@@ -393,7 +377,7 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
     * Test report is in `build/reports/tests/test/index.html`.
     * What will happen depends on the value of the `TEST_TYPE` environment variable: 
        * unset or any other value         : run non-cloud unit and integration tests, this is the default
-       * `cloud`, `unit`, `integration`, `spark`, `python`   : run only the cloud, unit, integration, python, or Spark tests
+       * `cloud`, `unit`, `integration`, `conda`, `spark`   : run only the cloud, unit, integration, conda (python + R), or Spark tests
        * `all`                            : run the entire test suite
     * Cloud tests require being logged into `gcloud` and authenticated with a project that has access
       to the cloud test data.  They also require setting several certain environment variables.

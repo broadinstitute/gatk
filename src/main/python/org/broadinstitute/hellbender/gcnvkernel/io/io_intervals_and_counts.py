@@ -38,9 +38,9 @@ def load_read_counts_tsv_file(read_counts_tsv_file: str,
     if return_interval_list:
         interval_list_pd = counts_pd[list(interval_dtypes_dict.keys())]
         interval_list = _convert_interval_list_pandas_to_gcnv_interval_list(interval_list_pd, read_counts_tsv_file)
-        return sample_name, counts_pd[io_consts.count_column_name].as_matrix(), interval_list
+        return sample_name, counts_pd[io_consts.count_column_name].to_numpy(), interval_list
     else:
-        return sample_name, counts_pd[io_consts.count_column_name].as_matrix(), None
+        return sample_name, counts_pd[io_consts.count_column_name].to_numpy(), None
 
 
 def load_interval_list_tsv_file(interval_list_tsv_file: str,
