@@ -196,16 +196,23 @@ public final class CollectFragmentCounts extends ReadWalker {
                 if(!overlap_type.contains(feature.getType())) {
                     continue;
                 }
-                final Gff3BaseData overlapBaseData = feature.getBaseData();
+                final Gff3BaseData overlapBaseData = shrinkBaseData(feature.getBaseData());
                 if (grouping_type.contains(feature.getType())) {
                     addGroupingFeature(overlapBaseData, overlapBaseData);
                 }
 
-                feature.getAncestors().stream().filter(f -> grouping_type.contains(f.getType())).map(Gff3Feature::getBaseData).forEach(b -> addGroupingFeature(b, overlapBaseData));
+                feature.getAncestors().stream().filter(f -> grouping_type.contains(f.getType())).map(Gff3Feature::getBaseData).map(this::shrinkBaseData).forEach(b -> addGroupingFeature(b, overlapBaseData));
             }
         }
 
         logger.info("Collecting read counts...");
+    }
+
+    private Gff3BaseData shrinkBaseData(final Gff3BaseData baseData) {
+        //remove all but gene_id_key attributes
+        final Map<String, String> shrunkAttributes = baseData.getAttributes().entrySet().stream().filter(e -> e.getKey().equals(gene_id_key)).collect(Collectors.toMap(Map.Entry::getKey,Map.Entry::getValue));
+        final Gff3BaseData shrunkBaseData = new Gff3BaseData(baseData.getContig(), baseData.getSource(), baseData.getType(), baseData.getStart(), baseData.getEnd(), baseData.getStrand(), baseData.getPhase(), shrunkAttributes);
+        return shrunkBaseData;
     }
 
     private void addGroupingFeature(final Gff3BaseData groupingBaseData, final Gff3BaseData overlappingBaseData) {
@@ -268,7 +275,7 @@ public final class CollectFragmentCounts extends ReadWalker {
             final List<AlignmentBlock> readAlignmentBlocks = rec.getAlignmentBlocks();
 
             for( final AlignmentBlock block : readAlignmentBlocks) {
-                alignmentIntervals.add(new Interval(read.getContig(), block.getReferenceStart(), block.getReferenceStart()+block.getLength()));
+                alignmentIntervals.add(new Interval(read.getContig(), block.getReferenceStart(), block.getReferenceStart()+block.getLength() - 1));
             }
 
             boolean overlapsMate = false;
@@ -278,7 +285,7 @@ public final class CollectFragmentCounts extends ReadWalker {
                 }
                 final List<AlignmentBlock> mateAlignmentBlocks = SAMUtils.getMateAlignmentBlocks(rec);
                 for( final AlignmentBlock block : mateAlignmentBlocks) {
-                    final Interval alignmentBlockInterval = new Interval(read.getMateContig(), block.getReferenceStart(), block.getReferenceStart()+block.getLength());
+                    final Interval alignmentBlockInterval = new Interval(read.getMateContig(), block.getReferenceStart(), block.getReferenceStart()+block.getLength() - 1);
                     alignmentIntervals.add(alignmentBlockInterval);
 
                     if (!overlapsMate && read.overlaps(alignmentBlockInterval)) {
@@ -345,6 +352,9 @@ public final class CollectFragmentCounts extends ReadWalker {
             final int nGroupingFeaturesCovered = overlapsByGroupingFeatures.size();
             for (final Map.Entry<FeatureCoverage, Set<Gff3BaseData>> overlapsByGroupingFeature : overlapsByGroupingFeatures.entrySet()) {
                 final FeatureCoverage featureCoverage = overlapsByGroupingFeature.getKey();
+                if(featureCoverage.baseData.getId().equals("ENSG00000221344")) {
+                    System.out.println("hi");
+                }
                 final boolean isSense = !featureCoverage.isStranded || featureCoverage.baseData.getStrand() == fragmentStrand;
                 float maxCounts = (float)1.0/(float)nGroupingFeaturesCovered;
 //                float maxCounts = 0;
