@@ -1,18 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.fasta;
 
-import com.google.common.primitives.Bytes;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.FastaReferenceWriter;
 import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKTool;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -23,6 +19,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
+import java.util.ListIterator;
 
 /**
  * Create a fasta with the bases shifted by offset
@@ -59,9 +57,11 @@ public class ShiftFasta extends GATKTool {
             doc = "Path to write the shift_back file to")
     protected String shiftBackOutput;
 
-    public static final String SHIFT_OFFSET = "shift-offset";
-    @Argument(fullName = SHIFT_OFFSET, doc="Number of bases to skip in the reference before starting the shifted reference. For example, if 300 is specified, the new fasta will start at the 301th base (count starting at 1)")
-    private int shiftOffset;
+    public static final String SHIFT_OFFSET_LIST = "shift-offset-list";
+    @Argument(fullName = SHIFT_OFFSET_LIST,
+            doc="Number of bases to skip in the reference before starting the shifted reference. For example, if 300 is specified, the new fasta will start at the 301th base (count starting at 1)." +
+    "If not specified, the contig will be shifted by half the number of bases. To skip the shifting of a contig, specify 0 in the list.")
+    private List<Integer> shiftOffsets = null;
 
     public static final String LINE_WIDTH_LONG_NAME = "line-width";
     @Argument(fullName= LINE_WIDTH_LONG_NAME, doc="Maximum length of sequence to write per line", optional=true)
@@ -71,8 +71,7 @@ public class ShiftFasta extends GATKTool {
     FastaReferenceWriter refWriter;
     FileWriter chainFileWriter;
 
-    // TODO how to get the header for the fasta
-    // TODO can we get the bases per line from the original fasta
+    int chainId = 0;
 
     @Override
     public boolean requiresReference() {
@@ -83,6 +82,7 @@ public class ShiftFasta extends GATKTool {
     public void onTraversalStart() {
         refSource = referenceArguments.getReferencePath() != null ? ReferenceDataSource.of(referenceArguments.getReferencePath()) : null;
         final Path path = IOUtils.getPath(output);
+        chainId = 1;
         try {
             refWriter = new FastaReferenceWriterBuilder()
                     .setFastaFile(path)
@@ -101,21 +101,30 @@ public class ShiftFasta extends GATKTool {
             // TODO fix this??
             throw new UserException.BadInput("Reference length is too long");
         }
-        // TODO make this not mito specific
-        SAMSequenceRecord seq = refSource.getSequenceDictionary().getSequence(0);
-        byte[] bases = refSource.queryAndPrefetch(new SimpleInterval(seq.getSequenceName(), 1, (int) refDict.getReferenceLength())).getBases();
-        byte[] basesAtEnd = Arrays.copyOfRange(bases, shiftOffset, bases.length);
-        byte[] basesAtStart = Arrays.copyOf(bases, shiftOffset);
-        int shiftBackOffset = bases.length - shiftOffset;
-        try {
-            refWriter.startSequence(seq.getSequenceName(), basesPerLine);
-            refWriter.appendBases(basesAtEnd).appendBases(basesAtStart);
-            chainFileWriter.append(createChainString(seq.getSequenceName(), shiftBackOffset, (int) refLengthLong, shiftOffset, bases.length, 0, shiftBackOffset, 1));
-            chainFileWriter.append("\n" + shiftBackOffset + "\n\n");
-            chainFileWriter.append(createChainString(seq.getSequenceName(), shiftOffset - 1, (int) refLengthLong, 0, shiftOffset, shiftBackOffset, bases.length, 2));
-            chainFileWriter.append("\n" + shiftOffset + "\n");
-        } catch (IOException e) {
-            throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
+        List<SAMSequenceRecord> contigs = refSource.getSequenceDictionary().getSequences();
+        final ListIterator<Integer> shiftOffsetsIt = (shiftOffsets != null && shiftOffsets.size() == contigs.size()) ?
+                shiftOffsets.listIterator() : null;
+        refSource.getSequenceDictionary().getSequences().forEach(seq -> shiftContig(seq, shiftOffsetsIt));
+    }
+
+    protected void shiftContig(SAMSequenceRecord seq, ListIterator<Integer> shiftOffsetsIt) {
+        int contigLength = seq.getSequenceLength();
+        int shiftOffset = shiftOffsetsIt == null ? contigLength/2 : shiftOffsetsIt.next();
+        if (shiftOffset != 0) {
+            byte[] bases = refSource.queryAndPrefetch(new SimpleInterval(seq.getSequenceName(), 1, contigLength)).getBases();
+            byte[] basesAtEnd = Arrays.copyOfRange(bases, shiftOffset, bases.length);
+            byte[] basesAtStart = Arrays.copyOf(bases, shiftOffset);
+            int shiftBackOffset = bases.length - shiftOffset;
+            try {
+                refWriter.startSequence(seq.getSequenceName(), basesPerLine);
+                refWriter.appendBases(basesAtEnd).appendBases(basesAtStart);
+                chainFileWriter.append(createChainString(seq.getSequenceName(), shiftBackOffset, contigLength, shiftOffset, bases.length, 0, shiftBackOffset, chainId++));
+                chainFileWriter.append("\n" + shiftBackOffset + "\n\n");
+                chainFileWriter.append(createChainString(seq.getSequenceName(), shiftOffset - 1, contigLength, 0, shiftOffset, shiftBackOffset, bases.length, chainId++));
+                chainFileWriter.append("\n" + shiftOffset + "\n");
+            } catch (IOException e) {
+                throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
+            }
         }
     }
 
