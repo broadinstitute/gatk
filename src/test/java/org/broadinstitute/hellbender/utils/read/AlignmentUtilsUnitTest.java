@@ -802,7 +802,7 @@ public final class AlignmentUtilsUnitTest {
                         final String originalCigarWithClips = (leadingSoftClips > 0 ? leadingSoftClips + "S" : "") + originalCigar + (trailingSoftClips > 0 ? trailingSoftClips + "S" : "");
                         final String expectedCigarWithClips = (leadingSoftClips > 0 ? leadingSoftClips + "S" : "") + expectedCigar + (trailingSoftClips > 0 ? trailingSoftClips + "S" : "");
 
-                        final Cigar result = AlignmentUtils.leftAlignIndels(TextCigarCodec.decode(originalCigarWithClips), refBases, readBases, extraRefInFront + leadingSoftClips);
+                        final Cigar result = AlignmentUtils.leftAlignIndels(TextCigarCodec.decode(originalCigarWithClips), refBases, readBases, extraRefInFront + leadingSoftClips).getCigar();
                         Assert.assertEquals(result.toString(), expectedCigarWithClips);
                     }
                 }

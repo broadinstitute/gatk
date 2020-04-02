@@ -101,11 +101,10 @@ public final class AlignmentUtils {
         final Cigar haplotypeToRef = trimCigarByBases(rightPaddedHaplotypeVsRefCigar, readToHaplotypeSWAlignment.getAlignmentOffset(), rightPaddedHaplotypeVsRefCigar.getReadLength() - 1).getCigar();
 
         final Cigar readToRefCigar = applyCigarToCigar(swCigar, haplotypeToRef);
-        final Cigar leftAlignedReadToRefCigar = leftAlignIndels(readToRefCigar, refHaplotype.getBases(), originalRead.getBases(), readStartOnReferenceHaplotype);
-
+        final CigarBuilder.Result leftAlignedReadToRefCigarResult = leftAlignIndels(readToRefCigar, refHaplotype.getBases(), originalRead.getBases(), readStartOnReferenceHaplotype);
+        final Cigar leftAlignedReadToRefCigar = leftAlignedReadToRefCigarResult.getCigar();
         // it's possible that left-alignment shifted a deletion to the beginning of a read and removed it, shifting the first aligned base to the right
-        final int leadingDeletions = readToRefCigar.getReferenceLength() - leftAlignedReadToRefCigar.getReferenceLength();
-        read.setPosition(read.getContig(), readStartOnReference + leadingDeletions);
+        read.setPosition(read.getContig(), readStartOnReference + leftAlignedReadToRefCigarResult.getLeadingDeletionBasesRemoved());
 
         // the SW Cigar does not contain the hard clips of the original read
         final Cigar originalCigar = originalRead.getCigar();
@@ -687,11 +686,11 @@ public final class AlignmentUtils {
      * @param readStart  0-based alignment start position on ref
      * @return a non-null cigar, in which the indels are guaranteed to be placed at the leftmost possible position across a repeat (if any)
      */
-    public static Cigar leftAlignIndels(final Cigar cigar, final byte[] ref, final byte[] read, final int readStart) {
+    public static CigarBuilder.Result leftAlignIndels(final Cigar cigar, final byte[] ref, final byte[] read, final int readStart) {
         ParamUtils.isPositiveOrZero(readStart, "read start within reference base array must be non-negative");
 
         if (cigar.getCigarElements().stream().noneMatch(elem -> elem.getOperator().isIndel())) {
-            return cigar;
+            return new CigarBuilder.Result(cigar, 0, 0);
         }
 
         // we need reference bases from the start of the read to the rightmost indel
@@ -746,7 +745,7 @@ public final class AlignmentUtils {
         resultRightToLeft.add(new CigarElement(readIndelRange.size(), CigarOperator.INSERTION));
 
         Utils.validateArg(readIndelRange.getStart() == 0, "Given cigar does not account for all bases of the read");
-        return new CigarBuilder().addAll(Lists.reverse(resultRightToLeft)).make();
+        return new CigarBuilder().addAll(Lists.reverse(resultRightToLeft)).makeAndRecordDeletionsRemovedResult();
     }
 
     /**
@@ -945,15 +944,17 @@ public final class AlignmentUtils {
         Utils.validateArg(end >= start, () -> "end " + end + " is before start " + start);
         final CigarBuilder newElements = new CigarBuilder();
 
-        int elementStart;   // inclusive
+        // these variables track the inclusive start and exclusive end of the current cigar element in reference (if byReference) or read (otherwise) coordinates
+        int elementStart;           // inclusive
         int elementEnd = 0;         // exclusive -- start of next element
         for ( final CigarElement elt : cigar.getCigarElements() ) {
             elementStart = elementEnd;
             elementEnd = elementStart + (byReference ? lengthOnReference(elt) : lengthOnRead(elt));
 
-            if (elementEnd < start || (elementEnd == start && elementStart < start)) {  // this logic is to preserve initial insertions
+            // we are careful to include zero-length elements at both ends, that is, elements with elementStart == elementEnd == start and elementStart == elementEnd == end + 1
+            if (elementEnd < start || (elementEnd == start && elementStart < start)) {
                 continue;
-            } else if (elementStart > end) {
+            } else if (elementStart > end && elementEnd > end + 1) {
                 break;
             }
 

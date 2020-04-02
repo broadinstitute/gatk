@@ -98,11 +98,21 @@ public final class Haplotype extends Allele {
             return null;
         }
 
-        // note: trimCigarByReference does not remove leading indels, while getBasesCoveringRefInterval does remove bases
-        // of leading indels.  We must remove leading indels from the Cigar manually.
+        // note: trimCigarByReference does not remove leading or trailing indels, while getBasesCoveringRefInterval does remove bases
+        // of leading and trailing insertions.  We must remove leading and trailing insertions from the Cigar manually.
+        // we keep leading and trailing deletions because these are necessary for haplotypes to maintain consistent reference coordinates
         final Cigar newCigar = AlignmentUtils.trimCigarByReference(getCigar(), newStart, newStop).getCigar();
-        final Cigar leadingIndelTrimmedNewCigar = newCigar.getFirstCigarElement().getOperator().consumesReferenceBases() ? newCigar :
-                new CigarBuilder().addAll(newCigar.getCigarElements().subList(1, newCigar.numCigarElements())).make();
+        final boolean leadingInsertion = !newCigar.getFirstCigarElement().getOperator().consumesReferenceBases();
+        final boolean trailingInsertion = !newCigar.getLastCigarElement().getOperator().consumesReferenceBases();
+        final int firstIndexToKeepInclusive = leadingInsertion ? 1 : 0;
+        final int lastIndexToKeepExclusive = newCigar.numCigarElements() - (trailingInsertion ? 1 : 0);
+
+        if (lastIndexToKeepExclusive <= firstIndexToKeepInclusive) {    // edge case of entire cigar is insertion
+            return null;
+        }
+
+        final Cigar leadingIndelTrimmedNewCigar = !(leadingInsertion || trailingInsertion)  ? newCigar :
+                new CigarBuilder(false).addAll(newCigar.getCigarElements().subList(firstIndexToKeepInclusive, lastIndexToKeepExclusive)).make();
 
         final Haplotype ret = new Haplotype(newBases, isReference());
         ret.setCigar(leadingIndelTrimmedNewCigar);
@@ -186,12 +196,13 @@ public final class Haplotype extends Allele {
     /**
      * Set the cigar of this haplotype to cigar.
      *
-     * Note that this function consolidates the cigar, so that 1M1M1I1M1M => 2M1I2M
+     * This method consolidates the cigar, so that 1M1M1I1M1M => 2M1I2M.  It does not remove leading or trailing deletions
+     * because haplotypes, unlike reads, are pegged to a specific reference start and end.
      *
      * @param cigar a cigar whose readLength == length()
      */
     public void setCigar( final Cigar cigar ) {
-        this.cigar = new CigarBuilder().addAll(cigar).make();
+        this.cigar = new CigarBuilder(false).addAll(cigar).make();
         Utils.validateArg( this.cigar.getReadLength() == length(), () -> "Read length " + length() + " not equal to the read length of the cigar " + cigar.getReadLength() + " " + this.cigar);
     }
 

@@ -186,7 +186,14 @@ public final class CigarUtils {
     }
 
     /**
-     * Calculate the cigar elements for this path against the reference sequence
+     * Calculate the cigar elements for this path against the reference sequence.
+     *
+     * This assumes that the reference and alt sequence are haplotypes derived from a de Bruijn graph or SeqGraph and have the same
+     * ref source and ref sink vertices.  That is, the alt sequence start and end are assumed anchored to the reference start and end, which
+     * occur at the ends of the padded assembly region.  Hence, unlike read alignment, there is no concept of a start or end coordinate here.
+     * Furthermore, it is important to note that in the rare case that the alt cigar begins or ends with a deletion, we must keep the leading
+     * or trailing deletion in order to maintain the original reference span of the alt haplotype.  This can occur, for example, when the ref
+     * haplotype starts with N repeats of a long sequence and the alt haplotype starts with N-1 repeats.
      *
      * @param aligner
      * @param refSeq the reference sequence that all of the bases in this path should align to
@@ -227,7 +234,6 @@ public final class CigarUtils {
             return null;
         }
 
-
         // cut off the padding bases
         final int baseStart = SW_PAD.length();
         final int baseEnd = paddedPath.length() - SW_PAD.length() - 1; // -1 because it's inclusive
@@ -245,7 +251,26 @@ public final class CigarUtils {
             nonStandard.add(new CigarElement(trimmedTrailingDeletions, CigarOperator.D));
         }
 
-        return AlignmentUtils.leftAlignIndels(nonStandard, refSeq, altSeq, trimmedLeadingDeletions);
+        final CigarBuilder.Result leftAlignmentResult = AlignmentUtils.leftAlignIndels(nonStandard, refSeq, altSeq, trimmedLeadingDeletions);
+
+        // we must account for possible leading deletions removed when trimming the padding and when left-aligning
+        // trailing deletions removed when trimming have already been restored for left-alignment, but left-alingment may have removed them again.
+        final int totalLeadingDeletionsRemoved = trimmedLeadingDeletions + leftAlignmentResult.getLeadingDeletionBasesRemoved();
+        final int totalTrailingDeletionsRemoved = leftAlignmentResult.getTrailingDeletionBasesRemoved();
+
+        if (totalLeadingDeletionsRemoved == 0 && totalTrailingDeletionsRemoved == 0) {
+            return leftAlignmentResult.getCigar();
+        } else {
+            final List<CigarElement> resultElements = new ArrayList<>();
+            if (totalLeadingDeletionsRemoved > 0) {
+                resultElements.add(new CigarElement(totalLeadingDeletionsRemoved, CigarOperator.D));
+            }
+            resultElements.addAll(leftAlignmentResult.getCigar().getCigarElements());
+            if (totalTrailingDeletionsRemoved > 0) {
+                resultElements.add(new CigarElement(totalTrailingDeletionsRemoved, CigarOperator.D));
+            }
+            return new Cigar(resultElements);
+        }
     }
 
     /**

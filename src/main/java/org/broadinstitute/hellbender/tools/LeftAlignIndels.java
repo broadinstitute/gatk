@@ -75,8 +75,12 @@ public final class LeftAlignIndels extends ReadWalker {
             return;
         }
 
-        final Cigar newCigar = AlignmentUtils.leftAlignIndels(read.getCigar(), ref.getBases(), read.getBases(), 0);
-        read.setCigar(newCigar);
+        final CigarBuilder.Result result = AlignmentUtils.leftAlignIndels(read.getCigar(), ref.getBases(), read.getBases(), 0);
+
+        read.setCigar(result.getCigar());
+        if (result.getLeadingDeletionBasesRemoved() > 0) {
+            read.setPosition(read.getContig(), read.getStart() + result.getLeadingDeletionBasesRemoved());
+        }
 
         outputWriter.addRead(read);
     }
