@@ -10,6 +10,7 @@ def parse_args_train():
 
     parser.add_argument('--vcf', help='Input VCF path', required=True)
     parser.add_argument('--coverage-file', help='Table of sample mean per-base coverage', required=True)
+    parser.add_argument('--samples-file', help='List of sample ids', required=True)
     parser.add_argument('--output-name', help='Output VCF base name', required=True)
     parser.add_argument('--output-dir', help='Output VCF directory', default='.')
 

@@ -1,12 +1,15 @@
 import logging
 import os
+import numpy as np
 import pandas as pd
 from pysam import VariantFile
 import torch
 
+from gatktool import tool
+
 from . import constants
 from .constants import SVTypes
-from .preprocess import create_tensors, compute_preprocessed_tensors
+from .preprocess import compute_preprocessed_tensors
 from .model import SVGenotyperData
 
 
@@ -51,17 +54,52 @@ def read_vcf(vcf_path: str, svtype: SVTypes):
     return vids_list, samples_list, gt_list, data_list, cnlp_list, svlen_list, svtype_list
 
 
-def load_data(vcf_path: str, mean_coverage_path: str, svtype: SVTypes, num_states: int, depth_dilution_factor: float,
+def load_batch(batch_size: int,
+               device: str):
+    vid_list = []
+    pe_list = []
+    sr1_list = []
+    sr2_list = []
+    ncn_list = []
+    cnlp_list = []
+    for _ in range(batch_size):
+        fifo_line = tool.readDataFIFO()
+        fifo_data = fifo_line.split('\t')
+        vid_list.append(fifo_data[0])
+        pe_list.append([int(x)] for x in fifo_data[1].split(';'))
+        sr1_list.append([int(x)] for x in fifo_data[2].split(';'))
+        sr2_list.append([int(x)] for x in fifo_data[3].split(';'))
+        ncn_list.append([int(x)] for x in fifo_data[4].split(';'))
+        cnlp_list.append([int(x)] for x in fifo_data[5].split(';'))
+    vid_np = np.asarray(vid_list)
+    pe_t = torch.tensor(pe_list, device=device)
+    sr1_t = torch.tensor(sr1_list, device=device)
+    sr2_t = torch.tensor(sr2_list, device=device)
+    ncn_t = torch.tensor(ncn_list, device=device)
+    cnlp_t = torch.tensor(cnlp_list, device=device)
+    return vid_np, pe_t, sr1_t, sr2_t, ncn_t, cnlp_t
+
+
+def load_data(batch_size: int,
+              mean_coverage_path: str,
+              samples_path: str,
+              svtype: SVTypes,
+              num_states: int,
+              depth_dilution_factor: float,
               device: str = 'cpu'):
     mean_count_df = pd.read_csv(mean_coverage_path, sep='\t', header=None, index_col=0)
-    vids_list, samples_list, gt_list, data_list, cnlp_list, svlen_list, svtype_list = read_vcf(vcf_path=vcf_path, svtype=svtype)
-    if len(vids_list) == 0:
-        return None, None, None
-    gt_t, pe_t, sr1_t, sr2_t, ncn_t, cnlp_t, svlen_t, svtype_t, mean_count_t = create_tensors(
-        gt_list, data_list, cnlp_list, svlen_list, svtype_list, mean_count_df, device)
-    data = compute_preprocessed_tensors(num_states, svtype, depth_dilution_factor, pe_t, sr1_t, sr2_t, mean_count_t,
-                                        cnlp_t, ncn_t, device)
-    return vids_list, samples_list, data
+    mean_count_t = torch.from_numpy(mean_count_df.values).to(device=device).squeeze(-1)
+    samples_np = np.loadtxt(samples_path)
+    vids_np, pe_t, sr1_t, sr2_t, ncn_t, cnlp_t = load_batch(batch_size=batch_size, device=device)
+    if vids_np.shape[0] == 0:
+        return None
+    pe_t, sr1_t, sr2_t, depth_t, rd_gt_prob_t = compute_preprocessed_tensors(num_states, svtype, depth_dilution_factor,
+                                                                             pe_t, sr1_t, sr2_t, mean_count_t, cnlp_t,
+                                                                             ncn_t, device)
+    return SVGenotyperData(svtype, vids_np, samples_np, pe_t, sr1_t, sr2_t, depth_t, rd_gt_prob_t)
+
+
+def validate_mean_count(mean_count_df, samples_np):
 
 
 def write_vcf(input_vcf_path: str, output_vcf_path: str, output_data: dict, global_stats: dict):

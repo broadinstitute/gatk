@@ -13,11 +13,17 @@ from .constants import SVTypes
 
 class SVGenotyperData(object):
     def __init__(self,
+                 svtype: SVTypes,
+                 vids: np.ndarray,
+                 samples: np.ndarray,
                  pe_t: torch.Tensor,
                  sr1_t: torch.Tensor,
                  sr2_t: torch.Tensor,
                  depth_t: torch.Tensor,
                  rd_gt_prob_t: torch.Tensor):
+        self.svtype = svtype
+        self.vids = vids
+        self.samples = samples
         self.pe_t = pe_t
         self.sr1_t = sr1_t
         self.sr2_t = sr2_t

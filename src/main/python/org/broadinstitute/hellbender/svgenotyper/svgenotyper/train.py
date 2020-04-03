@@ -30,12 +30,19 @@ def create_scheduler(lr_min: float, lr_init: float, lr_decay: float, beta1: floa
 
 def run_training(model: SVGenotyperPyroModel,
                  data: SVGenotyperData,
-                 args):
+                 max_iter: int,
+                 lr_min: float,
+                 lr_init: float,
+                 lr_decay: float,
+                 adam_beta1: float,
+                 adam_beta2: float,
+                 iter_log_freq: int,
+                 jit: bool):
     logging.info("Initializing model...")
     pyro.clear_param_store()
-    scheduler = create_scheduler(lr_min=args.lr_min, lr_init=args.lr_init, lr_decay=args.lr_decay,
-                                 beta1=args.adam_beta1, beta2=args.adam_beta2)
-    if args.jit:
+    scheduler = create_scheduler(lr_min=lr_min, lr_init=lr_init, lr_decay=lr_decay,
+                                 beta1=adam_beta1, beta2=adam_beta2)
+    if jit:
         loss = JitTraceEnum_ELBO()
     else:
         loss = TraceEnum_ELBO()
@@ -43,21 +50,24 @@ def run_training(model: SVGenotyperPyroModel,
     logging.info("Running model training...")
     # Run training loop.  Use try to allow for keyboard interrupt.
     try:
-        for epoch in range(args.max_iter):
+        for epoch in range(max_iter):
             # Train, and keep track of training loss.
             total_epoch_loss = train_epoch(svi=svi, data=data, epoch=epoch, scheduler=scheduler)
             model.loss['epoch'].append(epoch)
             model.loss['elbo'].append(-total_epoch_loss)
-            if (epoch + 1) % args.iter_log_freq == 0:
+            if (epoch + 1) % iter_log_freq == 0:
                 logging.info("[epoch %04d]  training loss: %.4f" % (epoch + 1, total_epoch_loss))
-        logging.info("Training procedure complete after {:d} epochs, loss: {:.4f}".format(args.max_iter, total_epoch_loss))
+        logging.info("Training procedure complete after {:d} epochs, loss: {:.4f}".format(max_iter, total_epoch_loss))
 
     # Exception allows program to continue after ending training prematurely.
     except KeyboardInterrupt:
         logging.info("Training procedure stopped by keyboard interrupt.")
 
 
-def run(args):
+def run(args: dict,
+        batch_size: int,
+        svtype_str: str,
+        default_dtype: torch.dtype = torch.float32):
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(levelname)-8s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
@@ -65,32 +75,33 @@ def run(args):
     pyro.distributions.enable_validation(True)
     pyro.clear_param_store()
 
-    np.random.seed(args.random_seed)
-    torch.random.manual_seed(args.random_seed)
-    pyro.set_rng_seed(args.random_seed)
+    torch.set_default_dtype(default_dtype)
 
-    for svtype in [SVTypes.DEL, SVTypes.DUP, SVTypes.INS, SVTypes.INV]:
-        model = SVGenotyperPyroModel(svtype=svtype, k=args.num_states, mu_eps_pe=args.eps_pe, mu_eps_sr1=args.eps_sr1,
-                                     mu_eps_sr2=args.eps_sr2, mu_lambda_pe=args.lambda_pe, mu_lambda_sr1=args.lambda_sr1,
-                                     mu_lambda_sr2=args.lambda_sr2, var_phi_pe=args.phi_pe, var_phi_sr1=args.phi_sr1,
-                                     var_phi_sr2=args.phi_sr2, mu_eta_q=args.eta_q, mu_eta_r=args.eta_r,
-                                     device=args.device)
-        vids_list, sample_ids_list, data = io.load_data(vcf_path=args.vcf,
-                                                        mean_coverage_path=args.coverage_file,
-                                                        svtype=svtype,
-                                                        num_states=model.k,
-                                                        depth_dilution_factor=args.depth_dilution_factor,
-                                                        device=args.device)
-        if data is None:
-            logging.info("No records of type {:s} found.".format(str(svtype.name)))
-        else:
-            logging.info("Training {:s} with {:d} variants and {:d} samples...".format(str(svtype.name), data.pe_t.shape[0], data.pe_t.shape[1]))
-            run_training(model=model, data=data, args=args)
-            save_data(svtype=svtype, model=model, data=data, args=args, vids=vids_list, sample_ids=sample_ids_list)
+    np.random.seed(args['random_seed'])
+    torch.random.manual_seed(args['random_seed'])
+    pyro.set_rng_seed(args['random_seed'])
+
+    svtype = SVTypes[svtype_str]
+    model = SVGenotyperPyroModel(svtype=svtype, k=args['num_states'], mu_eps_pe=args['eps_pe'], mu_eps_sr1=args['eps_sr1'],
+                                 mu_eps_sr2=args['eps_sr2'], mu_lambda_pe=args['lambda_pe'], mu_lambda_sr1=args['lambda_sr1'],
+                                 mu_lambda_sr2=args['lambda_sr2'], var_phi_pe=args['phi_pe'], var_phi_sr1=args['phi_sr1'],
+                                 var_phi_sr2=args['phi_sr2'], mu_eta_q=args['eta_q'], mu_eta_r=args['eta_r'],
+                                 device=args['device'])
+    data = io.load_data(batch_size=batch_size, mean_coverage_path=args['coverage_file'], samples_path=args['samples_file'],
+                        svtype=svtype, num_states=None, depth_dilution_factor=args['depth_dilution_factor'],
+                        device=args['device'])
+    if data is None:
+        logging.info("No records of type {:s} found.".format(str(svtype.name)))
+    else:
+        logging.info("Training {:s} with {:d} variants and {:d} samples...".format(str(svtype.name), data.pe_t.shape[0], data.pe_t.shape[1]))
+        run_training(model=model, data=data, max_iter=args['max_iter'], lr_min=args['lr_min'], lr_init=args['lr_init'],
+                     lr_decay=args['lr_decay'], adam_beta1=args['adam_beta1'], adam_beta2=args['adam_beta2'],
+                     iter_log_freq=args['iter_log_freq'], jit=args['jit'])
+        save_data(svtype=svtype, model=model, data=data, args=args, vids=data.vids, sample_ids=data.samples)
 
 
 def save_data(svtype: SVTypes, model: SVGenotyperPyroModel, data: SVGenotyperData, args: dict, vids: list, sample_ids: list):
-    base_path = os.path.join(args.output_dir, args.output_name + "." + svtype.name)
+    base_path = os.path.join(args['output_dir'], args['output_name'] + "." + svtype.name)
     io.save_tensors(data=data, base_path=base_path)
     io.save_list(data=vids, path=base_path + ".vids.list")
     io.save_list(data=sample_ids, path=base_path + ".sample_ids.list")

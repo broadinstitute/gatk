@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import torch
 
 from . import constants
@@ -7,36 +6,7 @@ from .constants import SVTypes
 from .model import SVGenotyperData
 
 
-def create_tensors(gt_list: list,
-                   data_list: list,
-                   cnlp_list: list,
-                   svlen_list: list,
-                   svtype_list: list,
-                   mean_count_df: pd.DataFrame,
-                   device_name: str,
-                   default_dtype: torch.dtype = torch.float32):
-    device = torch.device(device_name)
-    torch.set_default_dtype(default_dtype)
-
-    data_np = np.array(data_list)
-    gt_np = np.array(gt_list)
-    cnlp_np = np.array(cnlp_list)
-
-    gt_t = torch.from_numpy(gt_np).long()
-    pe_t = torch.from_numpy(data_np[..., constants.INPUT_GENOTYPE_FIELDS.index('PE')]).to(dtype=torch.get_default_dtype(), device=device)
-    sr1_t = torch.from_numpy(data_np[..., constants.INPUT_GENOTYPE_FIELDS.index('SSR')]).to(dtype=torch.get_default_dtype(), device=device)
-    sr2_t = torch.from_numpy(data_np[..., constants.INPUT_GENOTYPE_FIELDS.index('ESR')]).to(dtype=torch.get_default_dtype(), device=device)
-    ncn_t = torch.from_numpy(data_np[..., constants.INPUT_GENOTYPE_FIELDS.index('NCN')]).long().to(device=device)
-    cnlp_t = torch.from_numpy(cnlp_np).to(dtype=torch.get_default_dtype(), device=device)
-
-    svlen_t = torch.from_numpy(np.array(svlen_list)).to(dtype=torch.get_default_dtype(), device=device)
-    svtype_t = torch.from_numpy(np.array(svtype_list)).long().to(device=device).squeeze(-1)
-    mean_count_t = torch.from_numpy(mean_count_df.values).to(dtype=torch.get_default_dtype(), device=device).squeeze(-1)
-
-    return gt_t, pe_t, sr1_t, sr2_t, ncn_t, cnlp_t, svlen_t, svtype_t, mean_count_t
-
-
-def compute_preprocessed_tensors(k: int,
+def compute_preprocessed_tensors(num_states: int,
                                  svtype: SVTypes,
                                  depth_dilution_factor: float,
                                  pe_t: torch.Tensor,
@@ -65,9 +35,9 @@ def compute_preprocessed_tensors(k: int,
         filled_index = torch.arange(cn_prob_states, device=device).repeat(n, m, 1)
         hom_ref_prob = torch.where(filled_index >= ncn_t.unsqueeze(-1), cn_prob_t, filled_zeros).sum(dim=-1).unsqueeze(-1)
         probs_list = [hom_ref_prob]
-        for i in range(1, k - 1):
+        for i in range(1, num_states - 1):
             probs_list.append(torch.where(filled_index == ncn_t.unsqueeze(-1) - i, cn_prob_t, filled_zeros).sum(dim=-1).unsqueeze(-1))
-        probs_list.append(torch.where(filled_index <= ncn_t.unsqueeze(-1) - k + 1, cn_prob_t, filled_zeros).sum(dim=-1).unsqueeze(-1))
+        probs_list.append(torch.where(filled_index <= ncn_t.unsqueeze(-1) - num_states + 1, cn_prob_t, filled_zeros).sum(dim=-1).unsqueeze(-1))
         rd_gt_prob_t = torch.cat(probs_list, dim=-1)
         del filled_zeros, filled_index, probs_list
     elif svtype == SVTypes.DUP:
@@ -78,16 +48,16 @@ def compute_preprocessed_tensors(k: int,
         filled_index = torch.arange(cn_prob_states, device=device).repeat(n, m, 1)
         hom_ref_prob = torch.where(filled_index <= ncn_t.unsqueeze(-1), cn_prob_t, filled_zeros).sum(dim=-1).unsqueeze(-1)
         probs_list = [hom_ref_prob]
-        for i in range(1, k - 1):
+        for i in range(1, num_states - 1):
             probs_list.append(torch.where(filled_index == ncn_t.unsqueeze(-1) + i, cn_prob_t, filled_zeros).sum(dim=-1).unsqueeze(-1))
-        probs_list.append(torch.where(filled_index >= ncn_t.unsqueeze(-1) + k - 1, cn_prob_t, filled_zeros).sum(dim=-1).unsqueeze(-1))
+        probs_list.append(torch.where(filled_index >= ncn_t.unsqueeze(-1) + num_states - 1, cn_prob_t, filled_zeros).sum(dim=-1).unsqueeze(-1))
         rd_gt_prob_t = torch.cat(probs_list, dim=-1)
         del filled_zeros, filled_index, probs_list
     else:
         # TODO: we only use CNLP values from the VCF for CNVs
-        rd_gt_prob_t = torch.ones((cn_prob_t.shape[0], cn_prob_t.shape[1], k), device=device) / float(k)
+        rd_gt_prob_t = torch.ones((cn_prob_t.shape[0], cn_prob_t.shape[1], num_states), device=device) / float(num_states)
 
     rd_gt_prob_t += depth_dilution_factor
     rd_gt_prob_t = rd_gt_prob_t / rd_gt_prob_t.sum(dim=-1).unsqueeze(-1)
 
-    return SVGenotyperData(pe_t, sr1_t, sr2_t, depth_t, rd_gt_prob_t)
+    return pe_t, sr1_t, sr2_t, depth_t, rd_gt_prob_t

@@ -144,10 +144,10 @@ public final class SVCopyNumberPosteriors extends VariantWalker {
     )
     private boolean genotypeDepthCalls = false;
 
-    public final int COPY_NEUTRAL_PRIOR_BASIS_LENGTH = 1000;
-    final String COPY_NUMBER_LOG_POSTERIORS_KEY = "CNLP";
-    final String NEUTRAL_COPY_NUMBER_KEY = "NCN";
-    public final List<StructuralVariantType> CNV_TYPES = Lists.newArrayList(StructuralVariantType.DEL, StructuralVariantType.DUP);
+    public static final int COPY_NEUTRAL_PRIOR_BASIS_LENGTH = 1000;
+    public static final String COPY_NUMBER_LOG_POSTERIORS_KEY = "CNLP";
+    public static final String NEUTRAL_COPY_NUMBER_KEY = "NCN";
+    public static final List<StructuralVariantType> CNV_TYPES = Lists.newArrayList(StructuralVariantType.DEL, StructuralVariantType.DUP);
 
     private final Map<String,IntervalTree<Object>> whitelistedIntervalTreeMap = new HashMap<>();
     private int numCopyStates;
