@@ -1,6 +1,8 @@
 version 1.0
 
-import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignAndCall/versions/12/plain-WDL/descriptor" as AlignAndCall
+import "AlignAndCall.wdl" as AlignAndCall
+
+#import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignAndCall/versions/12/plain-WDL/descriptor" as AlignAndCall
 
 workflow MitochondriaPipeline {
 

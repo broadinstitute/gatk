@@ -1,6 +1,8 @@
 version 1.0
 
-import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignmentPipeline/versions/1/plain-WDL/descriptor" as AlignAndMarkDuplicates
+import "AlignmentPipeline" as AlignAndMarkDuplicates
+
+#import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignmentPipeline/versions/1/plain-WDL/descriptor" as AlignAndMarkDuplicates
 
 workflow AlignAndCall {
   meta {
@@ -424,8 +426,6 @@ task M2 {
     String? m2_extra_args
     Boolean? make_bamout
     Boolean compress
-    File? gga_vcf
-    File? gga_vcf_idx
     File? gatk_override
     # runtime
     Int? mem
@@ -446,7 +446,6 @@ task M2 {
   }
   parameter_meta {
     input_bam: "Aligned Bam"
-    gga_vcf: "VCF for genotype given alleles mode"
   }
   command <<<
       set -e
@@ -459,7 +458,6 @@ task M2 {
       gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
         -R ~{ref_fasta} \
         -I ~{input_bam} \
-        ~{"--genotyping-mode GENOTYPE_GIVEN_ALLELES --alleles " + gga_vcf} \
         --read-filter MateOnSameContigOrNoMappedMateReadFilter \
         --read-filter MateUnmappedAndUnmappedReadFilter \
         -O ~{output_vcf} \
