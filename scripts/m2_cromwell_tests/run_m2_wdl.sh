@@ -55,4 +55,4 @@ sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_m
 echo "Running Mitochondria M2 WDL through cromwell"
 ln -fs $WORKING_DIR/gatk/scripts/mitochondria_m2_wdl/AlignAndCall.wdl
 ln -fs $WORKING_DIR/gatk/scripts/mitochondria_m2_wdl/AlignmentPipeline.wdl
-sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl -i $WORKING_DIR/gatk/scripts/m2_cromwell_tests/test_mitochondria_m2_wdl_mod.json -m $WORKING_DIR/test_mitochondria_m2_wdl.metadata
+sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl -i $WORKING_DIR/test_mitochondria_m2_wdl_mod.json -m $WORKING_DIR/test_mitochondria_m2_wdl.metadata
