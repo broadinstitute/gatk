@@ -21,6 +21,7 @@ from ml4cvd.TensorMap import Interpretation
 from ml4cvd.optimizers import find_learning_rate
 from ml4cvd.defines import TENSOR_EXT, MODEL_EXT
 from ml4cvd.tensor_map_maker import write_tensor_maps
+from ml4cvd.tensor_writer_partners import write_tensors_partners
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
 from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf
@@ -47,6 +48,8 @@ def run(args):
             write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id)
         elif 'tensorize_ecg_pngs' == args.mode:
             write_tensors_from_ecg_pngs(args.tensors, args.xml_folder, args.min_sample_id, args.max_sample_id)
+        elif 'tensorize_partners' == args.mode:
+            write_tensors_partners(args.id, args.xml_folder, args.output_folder, args.tensors)
         elif 'explore' == args.mode:
             explore(args)
         elif 'train' == args.mode:

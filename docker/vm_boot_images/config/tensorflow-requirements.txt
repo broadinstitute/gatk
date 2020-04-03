@@ -17,3 +17,6 @@ notebook
 pytest
 tensorflow-addons
 numcodecs
+beautifulsoup4
+lxml
+xmltodict
