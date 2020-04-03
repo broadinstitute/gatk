@@ -55,6 +55,7 @@ workflow MitochondriaPipeline {
 
     String? requester_pays_project
     File? gatk_override
+    String? gatk_docker_override
     String? m2_extra_args
     String? m2_filter_extra_args
     Float? vaf_filter_threshold
@@ -87,6 +88,7 @@ workflow MitochondriaPipeline {
       ref_dict = ref_dict,
       requester_pays_project = requester_pays_project,
       gatk_override = gatk_override,
+      gatk_docker_override = gatk_docker_override,
       preemptible_tries = preemptible_tries
   }
 
@@ -121,6 +123,7 @@ workflow MitochondriaPipeline {
       mt_shifted_sa = mt_shifted_sa,
       shift_back_chain = shift_back_chain,
       gatk_override = gatk_override,
+      gatk_docker_override = gatk_docker_override,
       m2_extra_args = m2_extra_args,
       m2_filter_extra_args = m2_filter_extra_args,
       vaf_filter_threshold = vaf_filter_threshold,
@@ -158,6 +161,7 @@ workflow MitochondriaPipeline {
       ref_fasta_index = mt_fasta_index,
       ref_dict = mt_dict,
       gatk_override = gatk_override,
+      gatk_docker_override = gatk_docker_override,
       preemptible_tries = preemptible_tries
   }
 
@@ -194,6 +198,7 @@ task SubsetBamToChrM {
     File? ref_dict
 
     File? gatk_override
+    String? gatk_docker_override
 
     # runtime
     Int? preemptible_tries
@@ -229,7 +234,7 @@ task SubsetBamToChrM {
   runtime {
     memory: "3 GB"
     disks: "local-disk " + disk_size + " HDD"
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+    docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
     preemptible: select_first([preemptible_tries, 5])
   }
   output {
@@ -364,6 +369,7 @@ task SplitMultiAllelicSites {
     File input_vcf
     Int? preemptible_tries
     File? gatk_override
+    String? gatk_docker_override
   }
 
   command {
@@ -382,7 +388,7 @@ task SplitMultiAllelicSites {
     File split_vcf_index = "split.vcf.idx"
   }
   runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])

@@ -39,6 +39,7 @@ workflow AlignAndCall {
     File shift_back_chain
 
     File? gatk_override
+    String? gatk_docker_override
     String? m2_extra_args
     String? m2_filter_extra_args
     Float? vaf_filter_threshold
@@ -109,6 +110,7 @@ workflow AlignAndCall {
       ref_dict = mt_dict,
       compress = compress_output_vcf,
       gatk_override = gatk_override,
+      gatk_docker_override = gatk_docker_override,
       # Everything is called except the control region.
       m2_extra_args = select_first([m2_extra_args, ""]) + " -L chrM:576-16024 ",
       mem = M2_mem,
@@ -124,6 +126,7 @@ workflow AlignAndCall {
       ref_dict = mt_shifted_dict,
       compress = compress_output_vcf,
       gatk_override = gatk_override,
+      gatk_docker_override = gatk_docker_override,
       # Everything is called except the control region.
       m2_extra_args = select_first([m2_extra_args, ""]) + " -L chrM:8025-9144 ",
       mem = M2_mem,
@@ -146,6 +149,7 @@ workflow AlignAndCall {
       shifted_stats = CallShiftedMt.stats,
       non_shifted_stats = CallMt.stats,
       gatk_override = gatk_override,
+      gatk_docker_override = gatk_docker_override,
       preemptible_tries = preemptible_tries
   }
 
@@ -160,6 +164,7 @@ workflow AlignAndCall {
       ref_dict = mt_dict,
       compress = compress_output_vcf,
       gatk_override = gatk_override,
+      gatk_docker_override = gatk_docker_override,
       m2_extra_filtering_args = m2_filter_extra_args,
       max_alt_allele_count = 4,
       vaf_filter_threshold = 0,
@@ -177,7 +182,8 @@ workflow AlignAndCall {
       ref_fai = mt_fasta_index,
       ref_dict = mt_dict,
       filtered_vcf = InitialFilter.filtered_vcf,
-      gatk_override = gatk_override
+      gatk_override = gatk_override,
+      gatk_docker_override = gatk_docker_override
   }
 
   call GetContamination {
@@ -202,6 +208,7 @@ workflow AlignAndCall {
       ref_dict = mt_dict,
       compress = compress_output_vcf,
       gatk_override = gatk_override,
+      gatk_docker_override = gatk_docker_override,
       m2_extra_filtering_args = m2_filter_extra_args,
       max_alt_allele_count = 4,
       vaf_filter_threshold = vaf_filter_threshold,
@@ -220,6 +227,7 @@ workflow AlignAndCall {
         ref_dict = mt_dict,
         autosomal_coverage = autosomal_coverage,
         gatk_override = gatk_override,
+        gatk_docker_override = gatk_docker_override,
         compress = compress_output_vcf,
         preemptible_tries = preemptible_tries
     }
@@ -235,6 +243,7 @@ workflow AlignAndCall {
       ref_dict = mt_dict,
       max_low_het_sites = max_low_het_sites,
       gatk_override = gatk_override,
+      gatk_docker_override = gatk_docker_override,
       compress = compress_output_vcf,
       preemptible_tries = preemptible_tries
   }
@@ -428,6 +437,7 @@ task M2 {
     Boolean compress
     File? gatk_override
     # runtime
+    String? gatk_docker_override
     Int? mem
     Int? preemptible_tries
   }
@@ -469,7 +479,7 @@ task M2 {
         --max-mnp-distance 0
   >>>
   runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
       memory: machine_mem + " MB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -511,6 +521,7 @@ task Filter {
     File blacklisted_sites_index
 
     File? gatk_override
+    String? gatk_docker_override
 
   # runtime
     Int? preemptible_tries
@@ -557,7 +568,7 @@ task Filter {
 
   >>>
   runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
       memory: "4 MB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -576,6 +587,7 @@ task MergeStats {
     File non_shifted_stats
     Int? preemptible_tries
     File? gatk_override
+    String? gatk_docker_override
   }
 
   command{
@@ -589,7 +601,7 @@ task MergeStats {
     File stats = "raw.combined.stats"
   }
   runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -604,6 +616,7 @@ task SplitMultiAllelicsAndRemoveNonPassSites {
     File filtered_vcf
     Int? preemptible_tries
     File? gatk_override
+    String? gatk_docker_override
   }
 
   command {
@@ -627,7 +640,7 @@ task SplitMultiAllelicsAndRemoveNonPassSites {
     File vcf_for_haplochecker = "splitAndPassOnly.vcf"
   }
   runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -643,6 +656,7 @@ task FilterNuMTs {
     Float? autosomal_coverage
     Int? preemptible_tries
     File? gatk_override
+    String? gatk_docker_override
     Boolean compress
   }
   
@@ -669,7 +683,7 @@ task FilterNuMTs {
     File numt_filtered_vcf_idx = "~{output_vcf_index}"
   }
   runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -685,6 +699,7 @@ task FilterLowHetSites {
     Int? max_low_het_sites
     Int? preemptible_tries
     File? gatk_override
+    String? gatk_docker_override
     Boolean compress
   }
 
@@ -708,7 +723,7 @@ task FilterLowHetSites {
     File final_filtered_vcf_idx = "~{output_vcf_index}"
   }
   runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])
