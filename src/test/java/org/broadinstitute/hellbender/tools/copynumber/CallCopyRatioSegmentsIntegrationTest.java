@@ -4,7 +4,6 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioSegmentCollection;
-import org.broadinstitute.hellbender.tools.funcotator.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -35,8 +34,5 @@ public final class CallCopyRatioSegmentsIntegrationTest extends CommandLineProgr
         final File legacySegmentFile = CallCopyRatioSegments.createCalledLegacySegmentsFile(outputFile);
         Assert.assertTrue(legacySegmentFile.exists());
         Assert.assertTrue(legacySegmentFile.length() > 0);
-
-        final AnnotatedIntervalCollection annotatedIntervalCollection = AnnotatedIntervalCollection.create(legacySegmentFile.toPath(), null);
-        Assert.assertEquals(annotatedIntervalCollection.getRecords().size(), 4);
     }
 }
