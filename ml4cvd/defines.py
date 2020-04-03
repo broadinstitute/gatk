@@ -108,7 +108,7 @@ ECG_IDX_2_CHAR = {
 
 TENSOR_MAPS_FILE_NAME = 'tensor_maps_by_script'
 
-#BigQuery tables
+# BigQuery tables
 SQL_DATASET = "ukbb7089_201904"
 DICTIONARY_TABLE = SQL_DATASET+".dictionary"
 CODING_TABLE = SQL_DATASET+".coding"

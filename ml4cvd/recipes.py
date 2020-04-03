@@ -25,6 +25,7 @@ from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, pr
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
 from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
+from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
@@ -431,7 +432,7 @@ def test_multimodal_scalar_tasks(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     p = os.path.join(args.output_folder, args.id + '/')
-    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
+    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_in, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
 
 
 def compare_multimodal_multitask_models(args):
@@ -456,7 +457,7 @@ def _make_tmap_nan_on_fail(tmap):
     Builds a copy TensorMap with a tensor_from_file that returns nans on errors instead of raising an error
     """
     new_tmap = copy.deepcopy(tmap)
-    new_tmap.validator = lambda _, x: x  # prevent failure caused by validator
+    new_tmap.validator = lambda _, x, hd5: x  # prevent failure caused by validator
 
     def _tff(tm, hd5, dependents=None):
         try:
@@ -472,7 +473,7 @@ def infer_multimodal_multitask(args):
     stats = Counter()
     tensor_paths_inferred = {}
     inference_tsv = os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv')
-    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     if args.variational:
         model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
     else:
@@ -499,8 +500,9 @@ def infer_multimodal_multitask(args):
         inference_writer.writerow(header)
 
         while True:
-            input_data, true_label, tensor_path = next(generate_test)
-            if tensor_path[0] in tensor_paths_inferred:
+            batch = next(generate_test)
+            input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            if tensor_paths[0] in tensor_paths_inferred:
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
 
@@ -508,33 +510,33 @@ def infer_multimodal_multitask(args):
             if len(no_fail_tmaps_out) == 1:
                 prediction = [prediction]
 
-            csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
+            csv_row = [os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')]  # extract sample id
             for y, tm in zip(prediction, no_fail_tmaps_out):
                 if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-                    if ((tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0])
-                            or np.isnan(true_label[tm.output_name()][0][0])):
+                    if ((tm.sentinel is not None and tm.sentinel == output_data[tm.output_name()][0][0])
+                            or np.isnan(output_data[tm.output_name()][0][0])):
                         csv_row.append("NA")
                     else:
-                        csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
+                        csv_row.append(str(tm.rescale(output_data[tm.output_name()])[0][0]))
                 elif len(tm.shape) == 1 and tm.is_categorical():
                     for k, i in tm.channel_map.items():
                         csv_row.append(str(y[0][tm.channel_map[k]]))
-                        actual = true_label[tm.output_name()][0][i]
+                        actual = output_data[tm.output_name()][0][i]
                         csv_row.append("NA" if np.isnan(actual) else str(actual))
 
             inference_writer.writerow(csv_row)
-            tensor_paths_inferred[tensor_path[0]] = True
+            tensor_paths_inferred[tensor_paths[0]] = True
             stats['count'] += 1
             if stats['count'] % 250 == 0:
-                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
+                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
 
 def infer_hidden_layer_multimodal_multitask(args):
     stats = Counter()
     args.num_workers = 0
     inference_tsv = os.path.join(args.output_folder, args.id, 'hidden_inference_' + args.id + '.tsv')
-    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
@@ -555,20 +557,21 @@ def infer_hidden_layer_multimodal_multitask(args):
         inference_writer.writerow(header)
 
         while True:
-            input_data, _, tensor_path = next(generate_test)
-            if tensor_path[0] in stats:
+            batch = next(generate_test)
+            input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            if tensor_paths[0] in stats:
                 logging.info(f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
 
-            sample_id = os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')
+            sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
             prediction = embed_model.predict(input_data)
             prediction = np.reshape(prediction, (latent_dimensions,))
             csv_row = [sample_id] + [f'{prediction[i]}' for i in range(latent_dimensions)]
             inference_writer.writerow(csv_row)
-            stats[tensor_path[0]] += 1
+            stats[tensor_paths[0]] += 1
             stats['count'] += 1
             if stats['count'] % 500 == 0:
-                logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_path[0]}")
+                logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_paths[0]}")
 
 
 def train_shallow_model(args):
@@ -593,8 +596,9 @@ def train_char_model(args):
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
     )
-    test_batch, _, test_paths = next(generate_test)
-    sample_from_char_model(char_model, test_batch, test_paths)
+    batch = next(generate_test)
+    input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
+    sample_from_char_model(char_model, input_data, tensor_paths)
 
     output_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
@@ -679,7 +683,7 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_
     return performance_metrics
 
 
-def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_maps_out, steps, hidden_layer, plot_path, alpha):
+def _predict_scalars_and_evaluate_from_generator(model, generate_test, tensor_maps_in, tensor_maps_out, steps, hidden_layer, plot_path, alpha):
     layer_names = [layer.name for layer in model.layers]
     model_predictions = [tm.output_name() for tm in tensor_maps_out if tm.output_name() in layer_names]
     scalar_predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}
@@ -689,15 +693,16 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
     embeddings = []
     test_paths = []
     for i in range(steps):
-        batch_data, batch_labels, batch_paths = next(test_generator)
-        y_predictions = model.predict(batch_data)
-        test_paths.extend(batch_paths)
+        batch = next(generate_test)
+        input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+        y_predictions = model.predict(input_data)
+        test_paths.extend(tensor_paths)
         if hidden_layer in layer_names:
-            x_embed = embed_model_predict(model, args.tensor_maps_in, hidden_layer, batch_data, 2)
+            x_embed = embed_model_predict(model, tensor_maps_in, hidden_layer, input_data, 2)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
 
         for tm_output_name in test_labels:
-            test_labels[tm_output_name].extend(np.copy(batch_labels[tm_output_name]))
+            test_labels[tm_output_name].extend(np.copy(output_data[tm_output_name]))
 
         for y, tm_output_name in zip(y_predictions, model_predictions):
             if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
@@ -810,10 +815,11 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
 
     predictions = defaultdict(dict)
     for j in range(steps):
-        input_data, labels, paths = next(generator)
-        test_paths.extend(paths)
+        batch = next(generator)
+        input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+        test_paths.extend(tensor_paths)
         for tl in test_labels:
-            test_labels[tl].extend(np.copy(labels[tl]))
+            test_labels[tl].extend(np.copy(output_data[tl]))
 
         for model_name, model_file in zip(models, models_inputs_outputs):
             # We can feed 'model.predict()' the entire input data because it knows what subset to use

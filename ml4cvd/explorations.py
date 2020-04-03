@@ -23,7 +23,7 @@ matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order 
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.tensor_generators import TensorGenerator
+from ml4cvd.tensor_generators import TensorGenerator, BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, evaluate_predictions, subplot_rocs, subplot_scatters
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP
@@ -440,8 +440,9 @@ def infer_with_pixels(args):
         inference_writer.writerow(header)
 
         while True:
-            input_data, true_label, tensor_path = next(generate_test)
-            if tensor_path[0] in tensor_paths_inferred:
+            batch = next(generate_test)
+            input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            if tensor_paths[0] in tensor_paths_inferred:
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
 
@@ -449,35 +450,35 @@ def infer_with_pixels(args):
             if len(args.tensor_maps_out) == 1:
                 prediction = [prediction]
 
-            csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
+            csv_row = [os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')]  # extract sample id
             for y, tm in zip(prediction, args.tensor_maps_out):
                 if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-                    if tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0]:
+                    if tm.sentinel is not None and tm.sentinel == output_data[tm.output_name()][0][0]:
                         csv_row.append("NA")
                     else:
-                        csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
+                        csv_row.append(str(tm.rescale(output_data[tm.output_name()])[0][0]))
                 elif len(tm.shape) == 1 and tm.is_categorical():
                     for k in tm.channel_map:
                         csv_row.append(str(y[0][tm.channel_map[k]]))
-                        csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
+                        csv_row.append(str(output_data[tm.output_name()][0][tm.channel_map[k]]))
                 elif tm.name in ['mri_systole_diastole_8_segmented', 'sax_all_diastole_segmented']:
                     csv_row.append(f"{pix_tm.rescale(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0][0]):0.3f}")
                     csv_row.append(f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["background"]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.1f}')
+                    csv_row.append(f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.1f}')
                     csv_row.append(f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["ventricle"]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.1f}')
+                    csv_row.append(f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.1f}')
                     csv_row.append(f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["myocardium"]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}')
+                    csv_row.append(f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}')
                     if tm.name == 'sax_all_diastole_segmented':
-                        background_counts = np.count_nonzero(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]] == 0, axis=(0, 1, 2))
+                        background_counts = np.count_nonzero(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]] == 0, axis=(0, 1, 2))
                         csv_row.append(f'{np.count_nonzero(background_counts):0.0f}')
 
             inference_writer.writerow(csv_row)
-            tensor_paths_inferred[tensor_path[0]] = True
+            tensor_paths_inferred[tensor_paths[0]] = True
             stats['count'] += 1
             if stats['count'] % 250 == 0:
-                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
+                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
 
 def _sample_with_heat(preds, temperature=1.0):

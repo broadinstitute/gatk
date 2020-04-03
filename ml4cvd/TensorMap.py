@@ -280,7 +280,7 @@ class TensorMap(object):
         )
 
     def postprocess_tensor(self, np_tensor, augment: bool, hd5: h5py.File):
-        self.validator(self, np_tensor, hd5=hd5)
+        self.validator(self, np_tensor, hd5)
         np_tensor = self.apply_augmentations(np_tensor, augment)
         np_tensor = self.normalize(np_tensor)
         return self.discretize(np_tensor)
