@@ -228,7 +228,7 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
      *
      * NOTE: To reiterate, this takes a CONFIG file, not the actual data file to be read.
      *
-     * TODO: This method should be inside an abstract superclass.  {@link XsvLocatableTableCodec} and {@link org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCodec} should inherit.  See https://github.com/broadinstitute/gatk/issues/4580
+     * TODO: This method should be inside an abstract superclass.  {@link XsvLocatableTableCodec} and {@link org.broadinstitute.hellbender.tools.funcotator.utils.annotatedinterval.AnnotatedIntervalCodec} should inherit.  See https://github.com/broadinstitute/gatk/issues/4580
      *
      * @param configFilePathString {@link String} containing the path to the configuration file to check.  Never {@code null}.
      * @param dataFilePathString {@link String} containing the path to the backing data file to check.  Never {@code null}.

@@ -8,7 +8,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.funcotator.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;

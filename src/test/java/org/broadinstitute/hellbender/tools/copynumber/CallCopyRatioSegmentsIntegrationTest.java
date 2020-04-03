@@ -4,7 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioSegmentCollection;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.tools.funcotator.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

@@ -19,7 +19,7 @@ import org.broadinstitute.hellbender.engine.FeatureWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.funcotator.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;

@@ -13,7 +13,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.funcotator.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.funcotator.AnnotatedIntervalToSegmentVariantContextConverter;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;

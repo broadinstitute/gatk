@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval;
+package org.broadinstitute.hellbender.tools.funcotator.utils.annotatedinterval;
 
 import htsjdk.samtools.SAMFileHeader;
 
