@@ -216,15 +216,6 @@ public final class PSFilter implements AutoCloseable {
         return reads.mapPartitions(itr -> (new PSBwaFilter(indexFileName, minIdentity, minSeedLength, numThreads, false)).apply(itr));
     }
 
-    private static void validateIgnoredContigs(final List<String> contigs, final SAMSequenceDictionary dictionary) {
-        final Set<String> contigsToIgnoreSet = new HashSet<>();
-        for (final String contig : contigsToIgnoreSet) {
-            if (dictionary.getSequence(contig) == null) {
-                throw new UserException.MissingContigInSequenceDictionary(contig, dictionary);
-            }
-        }
-    }
-
     /**
      * Main PathSeq filtering method. See PathSeqFilterSpark for an overview.
      * Returns a tuple containing the paired reads and unpaired reads as separate RDDs.
