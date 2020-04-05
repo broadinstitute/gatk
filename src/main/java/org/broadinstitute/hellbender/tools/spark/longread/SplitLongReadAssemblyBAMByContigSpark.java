@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.longread;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.VoidFunction;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -18,7 +17,6 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
-import scala.Tuple2;
 
 import java.util.Arrays;
 import java.util.List;
@@ -59,45 +57,34 @@ public class SplitLongReadAssemblyBAMByContigSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        final MyFunction myFunction = new MyFunction(getHeaderForReads(), outdir);
-        getReads()
+        final SAMFileHeader headerForReads = getHeaderForReads();
+        final String outdirToMakeSerializerHappy = this.outdir;
+
+        getUnfilteredReads()
                 .groupBy(GATKRead::getName)
-                .foreach(myFunction);
-    }
+                .foreach(tigNameAndAlignments -> {
 
-    private static class MyFunction implements VoidFunction<Tuple2<String, Iterable<GATKRead>>> {
-        private static final long serialVersionUID = 1L;
+                    final String tigName = tigNameAndAlignments._1();
+                    final Iterable<GATKRead> alignments = tigNameAndAlignments._2();
 
-        private final SAMFileHeader headerForReads;
-        private final String outputDir;
+                    Utils.stream( alignments )
+                            .filter(read -> !read.isSecondaryAlignment())
+                            .filter(read -> !read.isSupplementaryAlignment())
+                            .findFirst()
+                            .orElseThrow(() -> new GATKException("no primary alignment for read " + tigName));
 
-        MyFunction(final SAMFileHeader headerForReads, final String outputDir) {
-            this.headerForReads = headerForReads;
-            this.outputDir = outputDir;
-        }
+                    final String output = outdirToMakeSerializerHappy
+                            + (outdirToMakeSerializerHappy.endsWith("/") ? "" : "/")
+                            + tigName + ".bam";
 
-        @Override
-        public void call(final Tuple2<String, Iterable<GATKRead>> pair) throws Exception {
-            final String readName = pair._1();
-            final Iterable<GATKRead> gatkReads = pair._2();
-            final String output = outputDir + (outputDir.endsWith("/") ? "" : "/") + readName + ".bam";
-            Utils.stream( gatkReads )
-                    .filter(read -> !read.isSecondaryAlignment())
-                    .filter(read -> !read.isSupplementaryAlignment())
-                    .findFirst()
-                    .orElseThrow(() -> new GATKException("no primary alignment for read " + readName));
-            try (final SAMFileGATKReadWriter outputWriter = new SAMFileGATKReadWriter(
-                    ReadUtils.createCommonSAMWriter(
-                            IOUtils.getPath(output),
-                            null,
-                            headerForReads,
-                            false,
-                            true,
-                            false
-                    )
-            )){
-                gatkReads.forEach(outputWriter::addRead);
-            }
-        }
+                    try ( final SAMFileGATKReadWriter outputWriter =
+                                 new SAMFileGATKReadWriter(
+                                         ReadUtils.createCommonSAMWriter(IOUtils.getPath(output), null,
+                                                 headerForReads,false, true, false)
+                                 )
+                    ) {
+                        alignments.forEach(outputWriter::addRead);
+                    }
+                });
     }
 }
