@@ -12,12 +12,4 @@ import java.io.IOException;
 public interface ReferenceSparkSource {
     ReferenceBases getReferenceBases(SimpleInterval interval) throws IOException;
     SAMSequenceDictionary getReferenceSequenceDictionary(SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException;
-
-    /**
-     * Returns whether this reference source can be used with Spark broadcast.
-     * Currently, only {@link ReferenceTwoBitSparkSource} is compatible with the Spark broadcast implementation.
-     */
-    default public boolean isCompatibleWithSparkBroadcast(){
-        return this instanceof ReferenceTwoBitSparkSource;
-    }
 }

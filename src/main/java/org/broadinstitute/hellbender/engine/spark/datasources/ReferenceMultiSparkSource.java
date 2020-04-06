@@ -65,14 +65,6 @@ public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializ
     }
 
     /**
-     * Returns whether this reference source can be used with Spark broadcast.
-     */
-    @Override
-    public boolean isCompatibleWithSparkBroadcast(){
-        return referenceSource.isCompatibleWithSparkBroadcast();
-    }
-
-    /**
      * @return the custom reference window function used to map reads to desired reference bases
      */
     public SerializableFunction<GATKRead, SimpleInterval> getReferenceWindowFunction() {
