@@ -62,8 +62,6 @@ public class EstimateSTRModelParameters extends GATKTool {
         return true;
     }
 
-
-
     @Override
     public void traverse() {
         final DragstrModelEstimator estimator = new DragstrModelEstimator(dragstrModelEstimatorArgumentCollection);

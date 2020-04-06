@@ -18,31 +18,24 @@ public class DragstrLocus {
 
     private final int chromosomeIndex;
     private final long start;
-    private final long end;
-    private final int repeats;
-    private final byte[] unit;
-    private final long mask;
+    private final byte period;
+    private final short length;
+    private final int mask;
 
-    private DragstrLocus(final int chrIdx, final long start, final long end, final long mask, final byte[] unit, final int repeats) {
+    private DragstrLocus(final int chrIdx, final long start, final byte period, final short length, final int mask) {
         chromosomeIndex = chrIdx;
         this.start = start;
-        this.end = end;
-        this.unit = unit;
-        this.repeats = repeats;
+        this.period = period;
+        this.length = length;
         this.mask = mask;
     }
 
-    public static DragstrLocus make(final int chrIdx, final long start, final long end, final long mask, final byte[] unit, final int repeatCount) {
+    public static DragstrLocus make(final int chrIdx, final long start, final byte period, final short length, final int mask) {
         ParamUtils.isPositiveOrZero(chrIdx, "chromosome index");
         ParamUtils.isPositive(start, "start position");
-        final byte[] unitCloned = Utils.nonNull(unit).clone();
-        for (final byte base : unit) {
-            if (!Nucleotide.decode(base).isStandard()) {
-                throw new IllegalArgumentException("bad bases in " + new String(unit));
-            }
-        }
-        ParamUtils.isPositive(repeatCount, "repeat count");
-        return new DragstrLocus(chrIdx, start, end, mask, unit.clone(), repeatCount);
+        ParamUtils.isPositive(period, "period");
+        ParamUtils.isPositive(length, "length");
+        return new DragstrLocus(chrIdx, start, period, length, mask);
     }
 
     public long getMask() { return mask; }
@@ -52,23 +45,15 @@ public class DragstrLocus {
     }
 
     public long getEnd() {
-        return start + unit.length * repeats - 1;
+        return start + length - 1;
     }
 
     public int getPeriod() {
-        return unit.length;
-    }
-
-    byte[] getUnitUnsafe() {
-        return unit;
-    }
-
-    public byte[] getUnit() {
-        return unit.clone();
+        return period;
     }
 
     public int getRepeats() {
-        return repeats;
+        return length / period;
     }
 
     public static BinaryTableWriter<DragstrLocus> binaryWriter(final OutputStream out, final String path) {
@@ -77,11 +62,9 @@ public class DragstrLocus {
             protected void writeRecord(final DragstrLocus record, final DataOutput output) throws IOException {
                 output.writeShort(record.chromosomeIndex);
                 output.writeLong(record.start);
-                output.writeLong(record.end);
-                output.writeLong(record.mask);
-                output.writeByte(record.unit.length);
-                output.write(record.unit);
-                output.writeByte(record.repeats);
+                output.writeByte(record.period);
+                output.writeShort(record.length);
+                output.writeInt(record.mask);
             }
         };
     }
@@ -98,30 +81,25 @@ public class DragstrLocus {
             protected DragstrLocus readRecord(final PushbackDataInput input) throws IOException {
                 final int chrIdx = input.readUnsignedShort();
                 final long start = input.readLong();
-                final long end = input.readLong();
-                final long mask = input.readLong();
-                final int unitLength =  input.readUnsignedByte();
-                final byte[] unit = new byte[unitLength];
-                input.readFully(unit);
-                final int repeats = input.readUnsignedByte();
-                return new DragstrLocus(chrIdx, start, end, mask, unit, repeats);
+                final byte period = input.readByte();
+                final short length = input.readShort();
+                final int mask = input.readInt();
+                return new DragstrLocus(chrIdx, start, period, length, mask);
             }
         };
     }
 
     public static TableWriter<DragstrLocus> textWriter(final OutputStream out) throws IOException {
         return new TableWriter<DragstrLocus>(new OutputStreamWriter(out),
-                TableColumnCollection.make("chridx", "start", "end", "mask", "length", "repeats", "unit")) {
+                TableColumnCollection.make("chridx", "start", "period", "length", "mask")) {
 
             @Override
             protected void composeLine(final DragstrLocus record, final DataLine dataLine) {
                 dataLine.append(record.chromosomeIndex)
                         .append(record.start)
-                        .append(record.end)
-                        .append(record.mask)
-                        .append(record.unit.length)
-                        .append(record.repeats)
-                        .append(new String(record.unit));
+                        .append(record.period)
+                        .append(record.length)
+                        .append(record.mask);
             }
         };
     }
@@ -136,45 +114,15 @@ public class DragstrLocus {
                 final SAMSequenceRecord seq = dictionary.getSequence(chr);
                 final int chridx = seq.getSequenceIndex();
                 final long start = dataLine.getLong("start");
-                final long end = dataLine.getLong("end");
-                final long mask = dataLine.getLong("mask");
-                final int length = dataLine.getInt("length");
-                final int repeats = dataLine.getInt("repeats");
-                final byte[] unit = dataLine.get("unit").getBytes();
-                final DragstrLocus site = new DragstrLocus(chridx, start, end, mask, unit, repeats);
-                if (site.getEnd() != end) {
-                    throw formatException("end is not what is expected");
-                } else if (site.getPeriod() != length) {
-                    throw formatException("unit length is not what is expected");
-                }
+                final byte period = dataLine.getByte("period");
+                final short length = (short) dataLine.getInt("length");
+                final int mask = dataLine.getInt("mask");
+                final DragstrLocus site = new DragstrLocus(chridx, start, period, length, mask);
                 return site;
             }
         };
     }
 
-    public static TableReader<DragstrLocus> textReader(final InputStream in) throws IOException {
-        return new TableReader<DragstrLocus>(new InputStreamReader(in)) {
-
-            @Override
-            protected DragstrLocus createRecord(final DataLine dataLine) {
-
-                final int chridx = dataLine.getInt("chridx");
-                final long start = dataLine.getLong("start");
-                final long end = dataLine.getLong("end");
-                final int length = dataLine.getInt("length");
-                final int repeats = dataLine.getInt("repeats");
-                final long mask = dataLine.getLong("mask");
-                final byte[] unit = dataLine.get("unit").getBytes();
-                final DragstrLocus site = new DragstrLocus(chridx, start, end, mask, unit, repeats);
-                if (site.getEnd() != end) {
-                    throw formatException("end is not what is expected");
-                } else if (site.getPeriod() != length) {
-                    throw formatException("unit length is not what is expected");
-                }
-                return site;
-            }
-        };
-    }
 
 
     @Override
@@ -184,12 +132,12 @@ public class DragstrLocus {
 
     @Override
     public int hashCode() {
-        return ((((((chromosomeIndex * 31) + repeats) * 31) + (int) start) * 31 + Arrays.hashCode(unit)));
+        return ((((((chromosomeIndex * 31) + length) * 31) + (int) start) * 31 + period));
     }
 
     public boolean equals(final DragstrLocus other) {
         return other == this || (other.chromosomeIndex == this.chromosomeIndex &&
-                other.repeats == this.repeats && other.start == this.start && equalUnits(this.unit, other.unit));
+                other.length == length && other.start == this.start && this.period == other.period);
     }
 
     private static boolean equalUnits(byte[] a, byte[] b) {

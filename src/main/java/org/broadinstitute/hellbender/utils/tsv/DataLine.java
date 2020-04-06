@@ -840,4 +840,20 @@ public final class DataLine {
     public long getLineNumber() {
         return lineNumber;
     }
+
+    public byte getByte(final int index) {
+        try {
+            return Byte.parseByte(get(index));
+        } catch (final NumberFormatException ex) {
+            throw formatErrorFactory.apply(String.format("expected byte value for column %s but found %s", columns.nameAt(index), get(index)));
+        }
+    }
+
+    public byte getByte(final String column) {
+        return getByte(columnIndex(column));
+    }
+
+    public byte getByte() {
+        return getByte(nextIndex++);
+    }
 }

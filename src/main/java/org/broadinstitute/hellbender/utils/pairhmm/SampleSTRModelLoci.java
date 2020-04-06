@@ -70,7 +70,7 @@ public class SampleSTRModelLoci extends GATKTool {
     private File tempDir;
 
     private long[][] totalCounts;
-    private long[][][] nextMasks;
+    private int[][][] nextMasks;
 
     private long[][] emittedCounts;
 
@@ -182,9 +182,9 @@ public class SampleSTRModelLoci extends GATKTool {
      }
 
     private void initializeMasks(final SAMSequenceDictionary dictionary) {
-        nextMasks = new long[dictionary.getSequences().size()][maxPeriod + 1][maxRepeat + 1];
+        nextMasks = new int[dictionary.getSequences().size()][maxPeriod + 1][maxRepeat + 1];
         for (int i = 0; i < nextMasks.length; i++) {
-            for (final long[] masks : nextMasks[i]) {
+            for (final int[] masks : nextMasks[i]) {
                 Arrays.fill(masks, i);
             }
         }
@@ -353,9 +353,9 @@ public class SampleSTRModelLoci extends GATKTool {
         throws IOException
     {
         final int effectiveRepeats = Math.min(maxRepeat, best.repeats);
-        final long mask = nextMasks[seqNumber][best.period][effectiveRepeats]++;
+        final int mask = nextMasks[seqNumber][best.period][effectiveRepeats]++;
         if (!decimationTable.decimate(mask, best.period, best.repeats)) {
-            final DragstrLocus locus = DragstrLocus.make(seqNumber, best.start, best.end, nextMasks[seqNumber][best.period][effectiveRepeats], unit, best.repeats);
+            final DragstrLocus locus = DragstrLocus.make(seqNumber, best.start, (byte) best.period, (short) (best.end - best.start + 1), mask);
             final BinaryTableWriter<DragstrLocus> outTable = output.get(best.period - 1);
             outTable.write(locus);
             if (sortedOutputPath != null) {
