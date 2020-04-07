@@ -49,7 +49,7 @@ def run(args):
         elif 'tensorize_ecg_pngs' == args.mode:
             write_tensors_from_ecg_pngs(args.tensors, args.xml_folder, args.min_sample_id, args.max_sample_id)
         elif 'tensorize_partners' == args.mode:
-            write_tensors_partners(args.id, args.xml_folder, args.output_folder, args.tensors)
+            write_tensors_partners(args.xml_folder, args.tensors)
         elif 'explore' == args.mode:
             explore(args)
         elif 'train' == args.mode:

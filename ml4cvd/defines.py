@@ -24,6 +24,7 @@ IMAGE_EXT = '.png'
 PDF_EXT = '.pdf'
 TENSOR_EXT = '.hd5'
 MODEL_EXT = '.h5'
+XML_EXT = '.xml'
 
 STOP_CHAR = '!'
 JOIN_CHAR = '_'
