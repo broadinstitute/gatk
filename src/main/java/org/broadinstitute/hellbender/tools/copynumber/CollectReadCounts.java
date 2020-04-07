@@ -213,11 +213,11 @@ public final class CollectReadCounts extends ReadWalker {
      * A simple wrapper around {@link OverlapDetector} to provide naive caching and ensure that overlap sets
      * only contain a single interval.
      */
-    private final class CachedOverlapDetector<T extends Locatable> {
+    public static final class CachedOverlapDetector<T extends Locatable> {
         private final OverlapDetector<T> overlapDetector;
         private T cachedResult;
 
-        CachedOverlapDetector(final List<T> intervals) {
+        public CachedOverlapDetector(final List<T> intervals) {
             Utils.nonEmpty(intervals);
             this.overlapDetector = OverlapDetector.create(intervals);
             //double check that intervals do not overlap
@@ -231,7 +231,7 @@ public final class CollectReadCounts extends ReadWalker {
          * this may slightly save on lookup time.
          * @return {@code null} if no interval overlaps {@code locatable}
          */
-        T getOverlap(final Locatable locatable) {
+        public T getOverlap(final Locatable locatable) {
             if (IntervalUtils.overlaps(cachedResult, locatable)) {
                 return cachedResult;
             }

@@ -31,6 +31,10 @@ public abstract class ReadWalker extends WalkerBase {
         return true;
     }
 
+    public int getReadNumberLimit(){
+        return Integer.MAX_VALUE;
+    }
+
     @Override
     public String getProgressMeterRecordLabel() { return "reads"; }
 
@@ -91,6 +95,7 @@ public abstract class ReadWalker extends WalkerBase {
         // Supply reference bases spanning each read, if a reference is available.
         final CountingReadFilter countedFilter = makeReadFilter();
         getTransformedReadStream(countedFilter)
+                .limit(getReadNumberLimit())
                 .forEach(read -> {
                     final SimpleInterval readInterval = getReadInterval(read);
                     apply(read,

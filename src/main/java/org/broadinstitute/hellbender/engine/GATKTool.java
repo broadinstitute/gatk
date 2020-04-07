@@ -177,6 +177,10 @@ public abstract class GATKTool extends CommandLineProgram {
         return reference;
     }
 
+    public ReferenceDataSource iDontCareGimmeReferenceDataSource(){
+        return reference;
+    }
+
     /**
      * Get the {@link ReadsDataSource} for this {@link GATKTool}.
      * Will throw a {@link GATKException} if the reads are null.

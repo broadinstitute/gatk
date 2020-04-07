@@ -105,8 +105,7 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
 
         // Experiment: only keep duplex
         if (duplexOnly){
-            final List<String> molecularIDs = DuplicateSet.getMolecularIDs(duplicateSet.getReads());
-            return molecularIDs.size() != 2;
+            return duplicateSet.isSimplex();
         }
 
         return false;

@@ -115,8 +115,14 @@ public class DuplicateSet {
         return SimpleInterval.isValid(contig, fragmentStart, fragmentEnd);
     }
 
-    public static List<String> getMolecularIDs(final List<GATKRead> reads) {
-        return reads.stream().map(r -> r.getAttributeAsString(DuplicateSet.FGBIO_MOLECULAR_IDENTIFIER_TAG))
-                .distinct().collect(Collectors.toList());
+    public boolean isDuplex(){
+        return reads.stream()
+                .map(r -> r.getAttributeAsString(DuplicateSet.FGBIO_MOLECULAR_IDENTIFIER_TAG))
+                .distinct()
+                .count() == 2;
+    }
+
+    public boolean isSimplex(){
+        return ! isDuplex();
     }
 }
