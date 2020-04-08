@@ -16,8 +16,6 @@ import org.testng.annotations.Test;
 import picard.util.IntervalList.IntervalListScatterMode;
 
 import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.List;
 import java.util.stream.Collectors;

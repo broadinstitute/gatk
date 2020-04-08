@@ -138,13 +138,13 @@ public class SplitIntervals extends GATKTool {
         final List<IntervalList> scatteredFinal = !dontMixContigs ? scattered :
                 scattered.stream().flatMap(il -> il.getIntervals().stream()
                         .collect(Collectors.groupingBy(Interval::getContig)).entrySet().stream()    // group each interval list into sublists
-                .sorted(Comparator.comparingInt(entry -> sequenceDictionary.getSequenceIndex(entry.getKey())))  // sort entries by contig
-                 .map(entry -> entry.getValue()) // discard the keys and just keep the lists of intervals
-                .map(list -> {
-                    final IntervalList singleContigList = new IntervalList(sequenceDictionary);
-                    singleContigList.addall(list);
-                    return singleContigList;
-                })  // turn the intervals back into an IntervalList
+                        .sorted(Comparator.comparingInt(entry -> sequenceDictionary.getSequenceIndex(entry.getKey())))  // sort entries by contig
+                        .map(entry -> entry.getValue()) // discard the keys and just keep the lists of intervals
+                        .map(list -> {
+                            final IntervalList singleContigList = new IntervalList(sequenceDictionary);
+                            singleContigList.addall(list);
+                            return singleContigList;
+                        })  // turn the intervals back into an IntervalList
                 ).collect(Collectors.toList());
 
         final DecimalFormat formatter = new DecimalFormat("0000");
