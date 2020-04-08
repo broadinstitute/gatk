@@ -4,6 +4,7 @@ import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 import com.google.cloud.storage.contrib.nio.SeekableByteChannelPrefetcher;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -14,7 +15,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,33 +32,35 @@ public final class BucketUtilsTest extends GATKBaseTest {
     }
 
     @Test(groups={"bucket"})
-    public void testIsCloudStorageURL(){
+    public void testIsGcsUrl(){
         Assert.assertTrue(BucketUtils.isGcsUrl("gs://abucket/bucket"));
         Assert.assertFalse(BucketUtils.isGcsUrl("hdfs://namenode/path/to/file"));
         Assert.assertFalse(BucketUtils.isGcsUrl("localFile"));
-
-        Assert.assertTrue(BucketUtils.isEligibleForPrefetching(Paths.get(URI.create("gs://abucket/bucket"))));
-        // We cannot run this one because the HDFS provider looks for the "namenode" machine
-        // and throws an exception.
-        //Assert.assertFalse(BucketUtils.isCloudStorageUrl(Paths.get(URI.create("hdfs://namenode/path/to/file"))));
-        Assert.assertFalse(BucketUtils.isEligibleForPrefetching(Paths.get("localFile")));
-
-        // this does not throw NullPointerException.
-        String x = "" + null + "://";
+        Assert.assertFalse(BucketUtils.isGcsUrl("https://www.somewhere.com"));
     }
 
     @DataProvider
-    public Object[][] gettPathsFromDifferentSources(){
+    public Object[][] getVariousPathsForPrefetching(){
         return new Object[][]{
-                {IOUtils.getPath("localFile"), false},
-
+                {"localFile", false},
+                {"files:///local/file", false},
+                {"http://www.somewhere.com", true},
+                {"https://www.somewhere.com", true},
+               // {"hdfs://namenode/path/to/file", false}, skip this because it fails when namenode doesn't exist
+                {"gs://abucket/bucket", true}
         };
     }
 
-    @Test(groups="bucket", dataProvider = "getPathsFromDifferentSources")
-    public void testIsEligibleForPrefetching(Path path, boolean expectedResult){
-        Assert.assertEquals(BucketUtils.isEligibleForPrefetching(path), expectedResult);
+    @Test(groups="bucket", dataProvider = "getVariousPathsForPrefetching")
+    public void testIsEligibleForPrefetching(String path, boolean isPrefetchable){
+        Assert.assertEquals(BucketUtils.isEligibleForPrefetching(IOUtils.getPath(path)), isPrefetchable);
     }
+
+    @Test(groups="bucket", dataProvider = "getVariousPathsForPrefetching")
+    public void testIsEligibleForPrefetchingWithPathSpecifier(String path, boolean isPrefetchable){
+        Assert.assertEquals(BucketUtils.isEligibleForPrefetching(new GATKPathSpecifier(path)), isPrefetchable);
+    }
+
 
     @Test
     public void testGetCloudStorageConfiguration() {
@@ -74,6 +76,8 @@ public final class BucketUtilsTest extends GATKBaseTest {
         Assert.assertFalse(BucketUtils.isHadoopUrl("gs://abucket/bucket"));
         Assert.assertTrue(BucketUtils.isHadoopUrl("hdfs://namenode/path/to/file"));
         Assert.assertFalse(BucketUtils.isHadoopUrl("localFile"));
+        Assert.assertFalse(BucketUtils.isHadoopUrl("http://www.somewhere.com"));
+        Assert.assertFalse(BucketUtils.isHadoopUrl("https://www.somewhere.com"));
     }
 
     @Test
@@ -81,6 +85,8 @@ public final class BucketUtilsTest extends GATKBaseTest {
         Assert.assertTrue(BucketUtils.isRemoteStorageUrl("gs://abucket/bucket"));
         Assert.assertTrue(BucketUtils.isRemoteStorageUrl("hdfs://namenode/path/to/file"));
         Assert.assertFalse(BucketUtils.isRemoteStorageUrl("localFile"));
+        Assert.assertTrue(BucketUtils.isRemoteStorageUrl("http://www.somewhere.com"));
+        Assert.assertTrue(BucketUtils.isRemoteStorageUrl("https://www.somewhere.com"));
     }
 
     @Test
@@ -88,6 +94,8 @@ public final class BucketUtilsTest extends GATKBaseTest {
         Assert.assertTrue(BucketUtils.isFileUrl("file:///somefile/something"));
         Assert.assertTrue(BucketUtils.isFileUrl("file:/something"));
         Assert.assertFalse(BucketUtils.isFileUrl("gs://abucket"));
+        Assert.assertFalse(BucketUtils.isRemoteStorageUrl("http://www.somewhere.com"));
+        Assert.assertFalse(BucketUtils.isRemoteStorageUrl("https://www.somewhere.com"));
     }
 
     @Test
@@ -124,7 +132,7 @@ public final class BucketUtilsTest extends GATKBaseTest {
     }
 
     @Test(groups={"bucket"})
-    public void testGetPathOnGcsDirectory() throws Exception {
+    public void testGetPathOnGcsDirectory() {
         final String dirPath = "gs://bucket/my/dir/";
         final Path pathOnGcs = BucketUtils.getPathOnGcs(dirPath);
         Assert.assertEquals(pathOnGcs.toUri().toString(), dirPath);

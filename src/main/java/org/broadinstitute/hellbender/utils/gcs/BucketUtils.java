@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
+import com.google.cloud.hadoop.gcsio.GoogleCloudStorageFileSystem;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.HttpMethod;
 import com.google.cloud.storage.Storage;
@@ -43,10 +44,9 @@ import java.util.function.Function;
  * Utilities for dealing with google buckets.
  */
 public final class BucketUtils {
-    public static final String GCS_SCHEME = "gs";
-    public static final String GCS_PREFIX = GCS_SCHEME + "://";
-    public static final String HTTP_PREFIX = "http://";
-    public static final String HTTPS_PREFIX = "https://";
+    public static final String GCS_PREFIX = GoogleCloudStorageFileSystem.SCHEME + "://";
+    public static final String HTTP_PREFIX = HttpFileSystemProvider.SCHEME + "://";
+    public static final String HTTPS_PREFIX = HttpsFileSystemProvider.SCHEME +"://";
     public static final String HDFS_PREFIX = "hdfs://";
 
     // slashes omitted since hdfs paths seem to only have 1 slash which would be weirder to include than no slashes
@@ -69,18 +69,30 @@ public final class BucketUtils {
      */
     public static boolean isEligibleForPrefetching(final GATKPathSpecifier pathSpec) {
         Utils.nonNull(pathSpec);
-        final String scheme = pathSpec.getScheme();
-        return scheme.equals(GCS_SCHEME) || scheme.equals(HttpFileSystemProvider.SCHEME) || scheme.equals(HttpsFileSystemProvider.SCHEME);
-    }
+        return isEligibleForPrefetching(pathSpec.getScheme());
+     }
 
     /**
      * @param path path to inspect
      * @return true if this {@code Path} represents a remote storage system which may benefit from prefetching (gcs or http(s))
      */
     public static boolean isEligibleForPrefetching(final java.nio.file.Path path) {
-        // the initial "" protects us against a null scheme
-        final String prefix = "" + path.toUri().getScheme() + "://";
-        return prefix.equals(GCS_PREFIX) || prefix.equals(HTTP_PREFIX) || prefix.equals(HTTPS_PREFIX);
+        Utils.nonNull(path);
+        return isEligibleForPrefetching(path.toUri().getScheme());
+    }
+
+    private static boolean isEligibleForPrefetching(final String scheme){
+        return scheme != null
+                && (scheme.equals(GoogleCloudStorageFileSystem.SCHEME)
+                || scheme.equals(HttpFileSystemProvider.SCHEME)
+                || scheme.equals(HttpsFileSystemProvider.SCHEME));
+    }
+
+    /**
+     * @return true Iif the given path is an http or https Url.
+     */
+    public static boolean isHttpUrl(String path){
+        return path.startsWith(HTTP_PREFIX) || path.startsWith(HTTPS_PREFIX);
     }
 
     /**
@@ -91,10 +103,10 @@ public final class BucketUtils {
     }
 
     /**
-     * Returns true if the given path is a GCS or HDFS (Hadoop filesystem) URL.
+     * Returns true if the given path is a GCS, HDFS (Hadoop filesystem), or Http(s) URL.
      */
     public static boolean isRemoteStorageUrl(String path) {
-        return isGcsUrl(path) || isHadoopUrl(path);
+        return isGcsUrl(path) || isHadoopUrl(path) || isHttpUrl(path);
     }
 
     /**
@@ -103,7 +115,7 @@ public final class BucketUtils {
      * @return an absolute file path if the original path was a relative file path, otherwise the original path
      */
     public static String makeFilePathAbsolute(String path){
-        if (isGcsUrl(path) || isHadoopUrl(path) || isFileUrl(path)){
+        if (isGcsUrl(path) || isHadoopUrl(path) || isFileUrl(path) || isHttpUrl(path)){
             return path;
         } else {
             return new File(path).getAbsolutePath();
