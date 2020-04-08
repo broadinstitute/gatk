@@ -392,7 +392,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-I", "/Users/emeryj/hellbender/DRAGENMatlab/frdbqd/example/SRA056922_hs37d5_xmapq.bam",
                 "--bam-output", "SRABAMOUTPUT.bamout.bqd.bam",
                 "--output", output.getAbsolutePath(),
-                "--intervals", "1:102130523",
+                "--intervals", "1:182436299",
                 "--interval-padding", "500",
                 "--transform-dragen-mapping-quality",
                 "--reference", "/Users/emeryj/hellbender/references/human_g1k_v37.fasta",
