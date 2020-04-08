@@ -94,8 +94,8 @@ public final class BucketUtilsTest extends GATKBaseTest {
         Assert.assertTrue(BucketUtils.isFileUrl("file:///somefile/something"));
         Assert.assertTrue(BucketUtils.isFileUrl("file:/something"));
         Assert.assertFalse(BucketUtils.isFileUrl("gs://abucket"));
-        Assert.assertFalse(BucketUtils.isRemoteStorageUrl("http://www.somewhere.com"));
-        Assert.assertFalse(BucketUtils.isRemoteStorageUrl("https://www.somewhere.com"));
+        Assert.assertFalse(BucketUtils.isFileUrl("http://www.somewhere.com"));
+        Assert.assertFalse(BucketUtils.isFileUrl("https://www.somewhere.com"));
     }
 
     @Test
@@ -108,7 +108,7 @@ public final class BucketUtilsTest extends GATKBaseTest {
     }
 
     @Test
-    public void testDeleteLocal() throws IOException, GeneralSecurityException {
+    public void testDeleteLocal() throws IOException {
         File dest = createTempFile("temp-fortest",".txt");
         try (FileWriter fw = new FileWriter(dest)){
             fw.write("Goodbye, cruel world!");
@@ -118,7 +118,7 @@ public final class BucketUtilsTest extends GATKBaseTest {
     }
 
     @Test(groups={"bucket"})
-    public void testCopyAndDeleteGCS() throws IOException, GeneralSecurityException {
+    public void testCopyAndDeleteGCS() throws IOException {
         final String src = publicTestDir + "empty.vcf";
         File dest = createTempFile("copy-empty", ".vcf");
         final String intermediate = BucketUtils.randomRemotePath(getGCPTestStaging(), "test-copy-empty", ".vcf");
