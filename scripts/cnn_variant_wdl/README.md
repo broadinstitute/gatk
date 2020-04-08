@@ -4,7 +4,7 @@
 These workflows take advantage of GATK's CNN tool which uses a deep learning 
 approach to filter variants based on Convolutional Neural Networks. 
 
-Please read the following discussion to learn more about the CNN tool: [Deep Learning in GATK4](https://gatkforums.broadinstitute.org/gatk/discussion/10996/deep-learning-in-gatk4).
+Please read the following post to learn more about the CNN tool: [Deep Learning in GATK4](https://github.com/broadinstitute/gatk-docs/blob/3333b5aacfd3c48a87b60047395e1febc98c21f9/blog-2012-to-2019/2017-12-21-Deep_learning_in_GATK4.md).
 
 ### cram2filtered.wdl
 This workflow takes an input CRAM/BAM to call variants with HaplotypeCaller
