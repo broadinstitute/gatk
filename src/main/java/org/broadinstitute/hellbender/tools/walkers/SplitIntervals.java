@@ -19,6 +19,7 @@ import picard.util.IntervalList.IntervalListScatterer;
 
 import java.io.File;
 import java.text.DecimalFormat;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -81,6 +82,8 @@ public class SplitIntervals extends GATKTool {
     public static final String SUBDIVISION_MODE_SHORT_NAME = "mode";
     public static final String SUBDIVISION_MODE_lONG_NAME = "subdivision-mode";
 
+    public static final String DONT_MIX_CONTIGS_LONG_NAME = "dont-mix-contigs";
+
     public static final String MIN_CONTIG_SIZE_LONG_NAME = "min-contig-size";
 
     public static final String INTERVAL_FILE_EXTENSION_FULL_NAME = "extension";
@@ -106,6 +109,9 @@ public class SplitIntervals extends GATKTool {
     @Argument(doc = "Extension to use when writing interval files", fullName = INTERVAL_FILE_EXTENSION_FULL_NAME, optional = true)
     public String extension = DEFAULT_EXTENSION;
 
+    @Argument(doc = "Scattered interval files do not contain intervals from multiple contigs.  This is applied after the initial scatter, so that the requested scatter count is a lower bound on the number of actual scattered files.", fullName = DONT_MIX_CONTIGS_LONG_NAME, optional = true)
+    public boolean dontMixContigs = false;
+
     @Override
     public void onTraversalStart() {
         ParamUtils.isPositive(scatterCount, "scatter-count must be > 0.");
@@ -128,8 +134,21 @@ public class SplitIntervals extends GATKTool {
         final IntervalListScatterer scatterer = subdivisionMode.make();
         final List<IntervalList> scattered = scatterer.scatter(intervalList, scatterCount);
 
+        // optionally split interval lists that contain intervals from multiple contigs
+        final List<IntervalList> scatteredFinal = !dontMixContigs ? scattered :
+                scattered.stream().flatMap(il -> il.getIntervals().stream()
+                        .collect(Collectors.groupingBy(Interval::getContig)).entrySet().stream()    // group each interval list into sublists
+                        .sorted(Comparator.comparingInt(entry -> sequenceDictionary.getSequenceIndex(entry.getKey())))  // sort entries by contig
+                        .map(entry -> entry.getValue()) // discard the keys and just keep the lists of intervals
+                        .map(list -> {
+                            final IntervalList singleContigList = new IntervalList(sequenceDictionary);
+                            singleContigList.addall(list);
+                            return singleContigList;
+                        })  // turn the intervals back into an IntervalList
+                ).collect(Collectors.toList());
+
         final DecimalFormat formatter = new DecimalFormat("0000");
-        IntStream.range(0, scattered.size()).forEach(n -> scattered.get(n).write(new File(outputDir, formatter.format(n) + extension)));
+        IntStream.range(0, scatteredFinal.size()).forEach(n -> scatteredFinal.get(n).write(new File(outputDir, formatter.format(n) + extension)));
     }
 
     @Override
