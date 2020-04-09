@@ -72,7 +72,7 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
      * TODO
      */
     @Argument(fullName="enable-dynamic-read-disqualification-for-genotyping", doc="Will enable less strict read disqualification low base quality reads")
-    public boolean enableDynamicReadDisqualification = true;
+    public boolean enableDynamicReadDisqualification = false;
 
     /**
      * TODO
