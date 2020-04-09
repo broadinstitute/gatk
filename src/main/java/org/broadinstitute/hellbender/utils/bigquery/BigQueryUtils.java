@@ -338,6 +338,10 @@ public class BigQueryUtils {
         final TableResult result;
         try {
             result = queryJob.getQueryResults();
+
+            long bytesProcessed = ((JobStatistics.QueryStatistics) queryJob.getStatistics()).getTotalBytesProcessed();
+            logger.info(String.format("Actual %s MB scanned", bytesProcessed/1000000));
+
         }
         catch (final InterruptedException ex) {
             throw new GATKException("Interrupted while waiting for query job to complete", ex);
@@ -380,6 +384,9 @@ public class BigQueryUtils {
                 queryString;
 
         final TableResult result = executeQuery(queryStringIntoTempTable, runQueryInBatchMode);
+
+        final Table tableInfo = getBigQueryEndPoint().getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
+        logger.info(String.format("Query temp table created with %s rows and %s bytes in size", tableInfo.getNumRows(), tableInfo.getNumBytes()));
 
         return new StorageAPIAvroReader(projectID, tempTableDataset, tempTableName, fieldsToRetrieve);
     }
