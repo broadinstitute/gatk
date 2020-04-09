@@ -121,7 +121,7 @@ public class ShiftFasta extends GATKTool {
                 chainFileWriter.append(createChainString(seq.getSequenceName(), shiftBackOffset, contigLength, shiftOffset, bases.length, 0, shiftBackOffset, chainId++));
                 chainFileWriter.append("\n" + shiftBackOffset + "\n\n");
                 chainFileWriter.append(createChainString(seq.getSequenceName(), shiftOffset - 1, contigLength, 0, shiftOffset, shiftBackOffset, bases.length, chainId++));
-                chainFileWriter.append("\n" + shiftOffset + "\n");
+                chainFileWriter.append("\n" + shiftOffset + "\n\n");
             } catch (IOException e) {
                 throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
             }
