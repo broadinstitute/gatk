@@ -36,7 +36,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     private static final Logger logger = LogManager.getLogger(HaplotypeCallerGenotypingEngine.class);
 
 
-    private final DRAGENBQDGenotypesModel genotypingModel;
+    private final GenotypersModel genotypingModel;
 
     private final PloidyModel ploidyModel;
     private final ReferenceConfidenceMode referenceConfidenceMode;
