@@ -16,6 +16,7 @@ TAG=$( git rev-parse --short HEAD )
 CONTEXT="docker/vm_boot_images/"
 CPU_ONLY="false"
 PUSH_TO_GCR="false"
+PUSH_TO_LATEST="false"
 
 BASE_IMAGE_GPU="tensorflow/tensorflow:2.1.0-gpu-py3"
 BASE_IMAGE_CPU="tensorflow/tensorflow:2.1.0-py3"
@@ -61,7 +62,7 @@ USAGE_MESSAGE
 
 ################### OPTION PARSING #######################################
 
-while getopts ":d:t:chp" opt ; do
+while getopts ":d:t:chpP" opt ; do
     case ${opt} in
         h)
             usage
@@ -78,6 +79,9 @@ while getopts ":d:t:chp" opt ; do
             ;;
         p)
             PUSH_TO_GCR="true"
+            ;;
+        P)
+            PUSH_TO_LATEST="true"
             ;;
         :)
             echo -e "${RED}ERROR: Option -${OPTARG} requires an argument.${NC}" 1>&2
@@ -113,8 +117,13 @@ docker build ${CONTEXT} \
     --tag "${REPO}:${LATEST_TAG}" \
     --network host \
 
-if [[ ${PUSH_TO_GCR} == "true" ]]; then
+if [[ ${PUSH_TO_LATEST} == "true" ]]; then
     echo -e "${BLUE}Pushing the image '${REPO}' to Google Container Registry with tags '${TAG}' and '${LATEST_TAG}'...${NC}"
     docker push ${REPO}:${TAG}
     docker push ${REPO}:${LATEST_TAG}
+fi
+
+if [[ ${PUSH_TO_GCR} == "true" ]]; then
+    echo -e "${BLUE}Pushing the image '${REPO}' to Google Container Registry with tags '${TAG}'...${NC}"
+    docker push ${REPO}:${TAG}
 fi

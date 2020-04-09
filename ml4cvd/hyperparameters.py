@@ -227,7 +227,8 @@ def optimize_mri_sax_architecture(args):
     dense_layers_sets = [[16], [24], [32], [48], [16, 64], [8, 128], [16, 64, 128]]
     activation = ['leaky', 'prelu', 'relu', 'elu']
     conv_dilate = [True, False]
-    conv_bn = [True, False]
+    conv_normalize = ['', 'batch_norm']
+    conv_type = ['conv', 'separable', 'depth']
     pool_type = ['max', 'average']
     space = {
         'pool_x': hp.quniform('pool_x', 2, 8, 2),
@@ -237,8 +238,9 @@ def optimize_mri_sax_architecture(args):
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
         'conv_dilate': hp.choice('conv_dilate', conv_dilate),
+        'conv_normalize': hp.choice('conv_normalize', conv_normalize),
+        'conv_type': hp.choice('conv_type', conv_type),
         'activation': hp.choice('activation', activation),
-        'conv_bn': hp.choice('conv_bn', conv_bn),
         'pool_type': hp.choice('pool_type', pool_type),
         'block_size': hp.quniform('block_size', 1, 6, 1),
     }
@@ -247,8 +249,9 @@ def optimize_mri_sax_architecture(args):
         'dense_blocks': dense_blocks_sets,
         'dense_layers': dense_layers_sets,
         'conv_dilate': conv_dilate,
+        'conv_normalize': conv_normalize,
+        'conv_type': conv_type,
         'activation': activation,
-        'conv_bn': conv_bn,
         'pool_type': pool_type,
     }
     hyperparameter_optimizer(args, space, param_lists)

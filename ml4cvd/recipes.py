@@ -45,7 +45,7 @@ def run(args):
                 args.max_sample_id, args.min_values,
             )
         elif 'tensorize_pngs' == args.mode:
-            write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id)
+            write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id, args.x, args.y)
         elif 'tensorize_ecg_pngs' == args.mode:
             write_tensors_from_ecg_pngs(args.tensors, args.xml_folder, args.min_sample_id, args.max_sample_id)
         elif 'tensorize_partners' == args.mode:
@@ -113,6 +113,8 @@ def run(args):
             if not args.learning_rate:
                 raise ValueError('Could not find learning rate.')
             train_multimodal_multitask(args)
+        elif 'tokenize' == args.mode:
+            tokenize_tensor_maps(args)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
@@ -591,8 +593,13 @@ def train_shallow_model(args):
 
 
 def train_char_model(args):
+    args.num_workers = 0
+    logging.info(f'Number of workers forced to 0 for character emitting LSTM model.')
     base_model = make_multimodal_multitask_model(**args.__dict__)
-    model, char_model = make_character_model_plus(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.model_layers)
+    model, char_model = make_character_model_plus(
+        args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.language_layer,
+        args.language_prefix, args.model_layers,
+    )
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
 
     model = train_model_from_generators(
@@ -658,6 +665,20 @@ def saliency_maps(args):
         for channel in tm.channel_map:
             gradients = saliency_map(in_tensor, model, tm.output_name(), tm.channel_map[channel])
             plot_saliency_maps(in_tensor, gradients, os.path.join(args.output_folder, f'{args.id}/saliency_maps/{tm.name}_{channel}'))
+
+
+def tokenize_tensor_maps(args):
+    characters = set()
+    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    for path in tensor_paths:
+        with h5py.File(path, "r") as hd5:
+            for tm in filter(lambda tm: tm.is_language, args.tensor_maps_out):
+                text = str(tm.tensor_from_file(tm, hd5, dependents={}))
+                characters += set(text)
+    logging.info(f'Total characters: {len(characters)}')
+    char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
+    index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
+    logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, alpha):
@@ -923,5 +944,5 @@ def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_l
 
 
 if __name__ == '__main__':
-    args = parse_args()
-    run(args)  # back to the top
+    arguments = parse_args()
+    run(arguments)  # back to the top

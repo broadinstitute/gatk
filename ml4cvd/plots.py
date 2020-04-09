@@ -28,6 +28,7 @@ from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 
 from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
+from sksurv.metrics import concordance_index_censored
 
 import seaborn as sns
 from biosppy.signals import ecg
@@ -119,9 +120,15 @@ def evaluate_predictions(
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
-    elif tm.is_cox_proportional_hazard():
-        plot_survival(y_predictions, y_truth, title, prefix=folder)
-        plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
+    elif tm.is_survival_curve():
+        plot_survival(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder)
+        plot_survival_curves(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder, paths=test_paths)
+    elif tm.is_time_to_event():
+        c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
+        concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
+        logging.info(f"{[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
+        new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
@@ -332,60 +339,66 @@ def subplot_comparison_scatters(
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
+def plot_survival(prediction, truth, title, days_window, prefix='./figures/', paths=None):
     c_index, concordant, discordant, tied_risk, tied_time = concordance_index(prediction, truth)
     logging.info(f"C-index:{c_index} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-    logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
-    logging.info(f"Sick per step is: {np.sum(truth[:, intervals:], axis=0)} out of {truth.shape[0]}")
+
+    cumulative_sick = np.cumsum(np.sum(truth[:, intervals:], axis=0))
+    cumulative_censored = (truth.shape[0]-np.sum(truth[:, :intervals], axis=0))-cumulative_sick
+    alive_per_step = np.sum(truth[:, :intervals], axis=0)
+    sick_per_step = np.sum(truth[:, intervals:], axis=0)
+    survivorship = np.cumprod(1 - (sick_per_step / alive_per_step))
+    logging.info(f"Sick per step is: {sick_per_step} out of {truth.shape[0]}")
     logging.info(f"Predicted sick per step is: {list(map(int, np.sum(1-prediction[:, :intervals], axis=0)))} out of {truth.shape[0]}")
-    logging.info(f"Cumulative sick at each step is: {np.cumsum(np.sum(truth[:, intervals:], axis=0))} out of {truth.shape[0]}")
+    logging.info(f"Survivors at each step is: {alive_per_step} out of {truth.shape[0]}")
+    logging.info(f"Cumulative Censored: {cumulative_censored} or {np.max(truth[:, :intervals]+truth[:, intervals:])}")
     predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
-    true_proportion = np.cumsum(np.sum(truth[:, intervals:], axis=0)) / truth.shape[0]
-    logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
     if paths is not None:
         pass
     plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.3f}')
-    plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - true_proportion, marker='o', label='True Proportion')
+    plt.plot(range(0, days_window, 1 + days_window // intervals), survivorship, marker='o', label='Survivorship')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
-    plt.title(title + '\n')
+    plt.title(f'{title} Enrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]}, Failed: {cumulative_sick[-1]}\n')
     plt.legend(loc="upper right")
 
     figure_path = os.path.join(prefix, 'proportional_hazards_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
-    logging.info("Try to save survival plot at: {}".format(figure_path))
+    logging.info(f'Try to save survival plot at: {figure_path}')
     plt.savefig(figure_path)
     return {}
 
 
-def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=50, paths=None):
+def plot_survival_curves(prediction, truth, title, days_window, prefix='./figures/', num_curves=30, paths=None):
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
     predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)
     sick = np.sum(truth[:, intervals:], axis=-1)
+    censor_periods = np.argmin(truth[:, :intervals], axis=-1)
     x_days = range(0, days_window, 1 + days_window // intervals)
     cur_sick = 0
     cur_healthy = 0
     min_sick = num_curves * 0.1
     for i in range(truth.shape[0]):
         p = os.path.basename(paths[i]).replace(TENSOR_EXT, "")
-        last_prob = predicted_survivals[i, -1]
         if sick[i] == 1:
             sick_period = np.argmax(truth[i, intervals:])
             sick_day = sick_period*(days_window // intervals)
-            plt.plot(x_days, predicted_survivals[i], label=f'sick:{p} p:{last_prob:0.2f}', color='red')
+            plt.plot(x_days[:sick_period+2], predicted_survivals[i, :sick_period+2], label=f'Failed:{p} p:{predicted_survivals[i, sick_period]:0.2f}', color='red')
             plt.text(sick_day, predicted_survivals[i, sick_period], f'Diagnosed day:{sick_day} id:{p}')
             cur_sick += 1
             if cur_sick >= min_sick and i >= num_curves:
                 break
+        elif censor_periods[i] != 0:  # individual was censored before failure
+            plt.plot(x_days[:censor_periods[i]], predicted_survivals[i, :censor_periods[i]], label=f'Censored:{p} p:{predicted_survivals[i, censor_periods[i]]:0.2f}', color='blue')
         elif cur_healthy < num_curves:
-            plt.plot(x_days, predicted_survivals[i], label=f'id:{p} p:{last_prob:0.2f}', color='green')
+            plt.plot(x_days, predicted_survivals[i], label=f'Survived:{p} p:{predicted_survivals[i, -1]:0.2f}', color='green')
             cur_healthy += 1
     plt.title(title + '\n')
-    plt.legend(loc="upper right")
+    plt.legend(loc="lower left")
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Survival Curve Prediction')
     figure_path = os.path.join(prefix, 'survival_curves_' + title + IMAGE_EXT)
@@ -1132,7 +1145,7 @@ def get_fpr_tpr_roc_pred(y_pred, test_truth, labels):
     tpr = dict()
     roc_auc = dict()
 
-    for k in labels.keys():
+    for k in labels:
         cur_idx = labels[k]
         aser = roc_curve(test_truth[:, cur_idx], y_pred[:, cur_idx])
         fpr[labels[k]], tpr[labels[k]], _ = aser

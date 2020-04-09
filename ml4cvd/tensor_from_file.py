@@ -11,10 +11,10 @@ import numpy as np
 import vtk.util.numpy_support
 from tensorflow.keras.utils import to_categorical
 
-from ml4cvd.metrics import weighted_crossentropy
+from ml4cvd.metrics import weighted_crossentropy, cox_hazard_loss
 from ml4cvd.tensor_writer_ukbb import tensor_path
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
-from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP
 from ml4cvd.defines import StorageType, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 from ml4cvd.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP
@@ -108,7 +108,7 @@ def _build_tensor_from_file(file_name: str, target_column: str, normalization: b
     return tensor_from_file
 
 
-def _survival_tensor(start_date_key, day_window):
+def _survival_tensor(start_date_key: str, day_window: int, incidence_only: bool = False):
     def _survival_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         assess_date = str2date(str(hd5[start_date_key][0]))
         has_disease = 0   # Assume no disease if the tensor does not have the dataset
@@ -118,7 +118,7 @@ def _survival_tensor(start_date_key, day_window):
         if tm.name + '_date' in hd5['dates']:
             censor_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
         elif 'phenotype_censor' in hd5['dates']:
-            censor_date = str2date(str(hd5['dates/phenotype_censor']))
+            censor_date = str2date(str(hd5['dates/phenotype_censor'][0]))
         else:
             raise ValueError(f'No date found for survival {tm.name}')
 
@@ -130,10 +130,36 @@ def _survival_tensor(start_date_key, day_window):
             survival_then_censor[i] = float(cur_date < censor_date)
             survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
             if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
+                if incidence_only:
+                    raise ValueError(f'{tm.name} ignores prior diagnoses.')
                 survival_then_censor[intervals] = has_disease
         return survival_then_censor
 
     return _survival_tensor_from_file
+
+
+def cox_tensor_from_file(start_date_key: str, incidence_only: bool = False):
+    def _cox_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        assess_date = str2date(str(hd5[start_date_key][0]))
+        has_disease = 0   # Assume no disease if the tensor does not have the dataset
+        if tm.name in hd5['categorical']:
+            has_disease = int(hd5['categorical'][tm.name][0])
+
+        if tm.name + '_date' in hd5['dates']:
+            censor_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
+        elif 'phenotype_censor' in hd5['dates']:
+            censor_date = str2date(str(hd5['dates/phenotype_censor'][0]))
+        else:
+            raise ValueError(f'No date found for survival {tm.name}')
+
+        if incidence_only and censor_date <= assess_date:
+            raise ValueError(f'{tm.name} only considers incident diagnoses')
+
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        tensor[0] = has_disease
+        tensor[1] = (censor_date - assess_date).days
+        return tensor
+    return _cox_tensor_from_file
 
 
 def _age_in_years_tensor(date_key, birth_key='continuous/34_Year-of-birth_0_0'):
@@ -323,7 +349,6 @@ def _hr_achieved(tm: TensorMap, hd5: h5py.File, dependents=None):
 
 TMAPS: Dict[str, TensorMap] = dict()
 
-
 TMAPS['ecg-bike-hrr'] = TensorMap(
     'hrr', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
     normalization={'mean': 30.55, 'std': 12.81},
@@ -399,42 +424,64 @@ TMAPS['ecg-bike-hr-achieved'] = TensorMap(
     tensor_from_file=_hr_achieved,
 )
 
-TMAPS['ecg_rest_afib_hazard'] = TensorMap(
-    'atrial_fibrillation_or_flutter', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-    tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5),
-)
-TMAPS['ecg_rest_cad_hazard'] = TensorMap(
-    'coronary_artery_disease',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-    tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5),
-)
-TMAPS['ecg_rest_hyp_hazard'] = TensorMap(
-    'hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-    tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5),
-)
-TMAPS['ecg_rest_cad_hazard'] = TensorMap(
-    'coronary_artery_disease',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-    tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5),
-)
+DAYS_IN_5_YEARS = 365 * 5
 TMAPS['enroll_cad_hazard'] = TensorMap(
-    'coronary_artery_disease',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-    tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10),
+    'coronary_artery_disease', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
 TMAPS['enroll_hyp_hazard'] = TensorMap(
-    'hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-    tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10),
+    'hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
 TMAPS['enroll_afib_hazard'] = TensorMap(
-    'atrial_fibrillation_or_flutter',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-    tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10),
+    'atrial_fibrillation_or_flutter', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
 TMAPS['enroll_chol_hazard'] = TensorMap(
-    'hypercholesterolemia',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-    tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10),
+    'hypercholesterolemia', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
 TMAPS['enroll_diabetes2_hazard'] = TensorMap(
-    'diabetes_type_2',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-    tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10),
+    'diabetes_type_2', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
+TMAPS['enroll_diabetes2_hazard_incident'] = TensorMap(
+    'diabetes_type_2', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+)
+TMAPS['enroll_hyp_hazard_5'] = TensorMap(
+    'hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+)
+TMAPS['enroll_hyp_hazard_5_incident'] = TensorMap(
+    'hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+)
+TMAPS['enroll_cad_hazard_5_incident'] = TensorMap(
+    'coronary_artery_disease_soft', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+)
+TMAPS['enroll_cad_hazard_5'] = TensorMap(
+    'coronary_artery_disease_soft', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+)
+TMAPS['enroll_mi_hazard_5'] = TensorMap(
+    'myocardial_infarction', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+)
+TMAPS['enroll_mi_hazard_5_incident'] = TensorMap(
+    'myocardial_infarction', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+)
+
+TMAPS['cox_mi'] = TensorMap('myocardial_infarction', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
+TMAPS['cox_mi_incident'] = TensorMap('myocardial_infarction', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
+TMAPS['cox_hyp'] = TensorMap('hypertension', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
+TMAPS['cox_hyp_incident'] = TensorMap('hypertension', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
+TMAPS['cox_cad'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
+TMAPS['cox_cad_incident'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
+TMAPS['cox_cad'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
+TMAPS['cox_cad_incident'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
 
 
 def _warp_ecg(ecg):
@@ -1581,10 +1628,17 @@ TMAPS['cine_sax_b6_192_1'] = TensorMap(
 def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri'):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        for i in range(tm.shape[-2]):
-            categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(i+1))
+        if path_prefix == 'ukb_liver_mri':
+            categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, f'{dicom_key_prefix}1')
             categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
-            tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
+            tensor[..., :] = _pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
+        elif tm.axes() == 4:
+            for i in range(tm.shape[-2]):
+                categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, f'{dicom_key_prefix}{i+1}')
+                categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
+                tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
+        else:
+            raise ValueError(f'No method to get segmented slices for TensorMap: {tm}')
         return tensor
     return _segmented_dicom_tensor_from_file
 
@@ -1640,20 +1694,32 @@ TMAPS['cine_segmented_ao_dist'] = TensorMap(
     'cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(160, 192, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP,
 )
+TMAPS['liver_shmolli_segmented'] = TensorMap(
+    'liver_shmolli_segmented', Interpretation.CATEGORICAL, shape=(288, 384, len(MRI_LIVER_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slices('liver_shmolli_segmented_annotated_', path_prefix='ukb_liver_mri'),
+    channel_map=MRI_LIVER_SEGMENTED_CHANNEL_MAP,
+)
 
 
 def _make_fallback_tensor_from_file(tensor_keys):
     def fallback_tensor_from_file(tm, hd5, dependents={}):
         for k in tensor_keys:
             if k in hd5:
-                tensor = np.array(hd5[k], dtype=np.float32)
-                return tensor
+                return _pad_or_crop_array_to_shape(tm.shape, np.array(hd5[k], dtype=np.float32))
         raise ValueError(f'No fallback tensor found from keys: {tensor_keys}')
     return fallback_tensor_from_file
 
 
 TMAPS['shmolli_192i_both'] = TensorMap(
     'shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
+    tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']),
+)
+TMAPS['shmolli_192i_both_4d'] = TensorMap(
+    'shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7, 1),
+    tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']),
+)
+TMAPS['shmolli_192i_both_instance1'] = TensorMap(
+    'shmolli_192i_instance1', Interpretation.CONTINUOUS, shape=(288, 384, 1),
     tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']),
 )
 TMAPS['shmolli_192i_liver_only'] = TensorMap(

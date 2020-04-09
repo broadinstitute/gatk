@@ -6,6 +6,7 @@ import tensorflow.keras.backend as K
 
 from sklearn.metrics import roc_curve, auc, average_precision_score
 
+
 from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, logcosh, cosine_similarity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
 STRING_METRICS = [
@@ -152,6 +153,53 @@ def pearson(y_true, y_pred):
     return pearson_correlation
 
 
+def _make_riskset(follow_up_times):
+    # sort in descending order
+    follow_up_times_np = tf.make_ndarray(tf.make_tensor_proto(follow_up_times))
+    o = np.argsort(-follow_up_times_np)
+    n_samples = follow_up_times_np.shape[0]
+    risk_set = np.zeros((n_samples, n_samples))
+
+    for i_start, i_sort in enumerate(o):
+        time_i_start = follow_up_times_np[i_sort]
+        k = i_start
+        while k < n_samples and time_i_start <= follow_up_times_np[o[k]]:
+            k += 1
+        risk_set[i_sort, o[:k]] = True
+    risk_set_tf = tf.convert_to_tensor(risk_set)
+    return risk_set_tf
+
+
+def _softmax_masked(risk_scores, mask, axis=0, keepdims=None):
+    """Compute logsumexp across `axis` for entries where `mask` is true."""
+    mask_f = K.cast(mask, risk_scores.dtype)
+    risk_scores_masked = risk_scores * mask_f
+    # for numerical stability, subtract the maximum value before taking the exponential
+    amax = K.max(risk_scores_masked, axis=axis, keepdims=True)
+    risk_scores_shift = risk_scores_masked - amax
+
+    exp_masked = K.exp(risk_scores_shift) * mask_f
+    exp_sum = K.sum(exp_masked, axis=axis, keepdims=True)
+    output = amax + K.log(exp_sum)
+    if not keepdims:
+        output = K.squeeze(output, axis=axis)
+    return output
+
+
+@tf.function
+def cox_hazard_loss(y_true, y_pred):
+    # move batch dimension to the end so predictions get broadcast row-wise when multiplying by riskset
+    pred_t = K.transpose(y_pred[:, 0])
+    events = y_true[:, 0]
+    follow_up_times = y_true[:, 1]
+    # compute log of sum over risk set for each row
+    rr = _softmax_masked(pred_t, _make_riskset(follow_up_times), axis=1, keepdims=True)
+
+    losses = events * (rr - y_pred[:, 0])
+    loss = K.mean(losses)
+    return loss
+
+
 def survival_likelihood_loss(n_intervals):
     """Create custom Keras loss function for neural network survival model.
 
@@ -178,11 +226,9 @@ def survival_likelihood_loss(n_intervals):
         Returns
             Vector of losses for this minibatch.
         """
-        survival_likelihood = y_true[:, 0:n_intervals] * y_pred[:, 0:n_intervals]  # Loss only for intervals that were survived
-        survival_likelihood += 1. - y_true[:, 0:n_intervals]
-        failure_likelihood = K.maximum(y_true[:, n_intervals:2 * n_intervals], 0) * (1.-y_true[:, 0:n_intervals]) * (1.-y_pred[:, 0:n_intervals])  # Loss only for individuals who failed
-        failure_likelihood += y_true[:, 0:n_intervals]  # No failure loss if interval was survived
-        failure_likelihood += (1-K.maximum(y_true[:, n_intervals:2 * n_intervals], 0)) * (1. - y_true[:, 0:n_intervals])  # No failure loss if censored before failure
+        failure_likelihood = 1. - (y_true[:, n_intervals:] * y_pred[:, 0:n_intervals])  # Loss only for individuals who failed
+        survival_likelihood = y_true[:, 0:n_intervals] * y_pred[:, 0:n_intervals]  # Loss for intervals that were survived
+        survival_likelihood += 1. - y_true[:, 0:n_intervals]  # No survival loss if interval was censored or failed
         return K.sum(-K.log(K.clip(K.concatenate((survival_likelihood, failure_likelihood)), K.epsilon(), None)), axis=-1)  # return -log likelihood
 
     return loss

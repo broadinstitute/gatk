@@ -153,6 +153,8 @@ def parse_args():
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
     )
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
+    parser.add_argument('--language_layer', default='ecg_rest_text', help='Name of TensorMap for learning language models (eg train_char_model).')
+    parser.add_argument('--language_prefix', default='ukb_ecg_rest', help='Path prefix for a TensorMap to learn language models (eg train_char_model)')
     parser.add_argument('--variational', default=False, action='store_true', help='Make the embed layer variational. No U-connections.')
 
     # Training and Hyper-Parameter Optimization Parameters
@@ -193,6 +195,7 @@ def parse_args():
     parser.add_argument('--random_seed', default=12878, type=int, help='Random seed to use throughout run.  Always use np.random.')
     parser.add_argument('--write_pngs', default=False, action='store_true', help='Write pngs of slices.')
     parser.add_argument('--debug', default=False, action='store_true', help='Run in debug mode.')
+    parser.add_argument('--eager', default=False, action='store_true', help='Run tensorflow functions in eager execution mode (helpful for debugging).')
     parser.add_argument('--inspect_model', default=False, action='store_true', help='Plot model architecture, measure inference and training speeds.')
     parser.add_argument('--inspect_show_labels', default=True, action='store_true', help='Plot model architecture with labels for each layer.')
     parser.add_argument('--alpha', default=0.5, type=float, help='Alpha transparency for t-SNE plots must in [0.0-1.0].')
@@ -249,7 +252,7 @@ def _process_args(args):
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
-    needed_tensor_maps = args.input_tensors + args.output_tensors + [args.sample_weight] if args.sample_weight else []
+    needed_tensor_maps = args.input_tensors + args.output_tensors + [args.sample_weight] if args.sample_weight else args.input_tensors + args.output_tensors
     args.tensor_maps_in = [_get_tmap(it, needed_tensor_maps) for it in args.input_tensors]
     args.sample_weight = _get_tmap(args.sample_weight, needed_tensor_maps) if args.sample_weight else None
     if args.sample_weight:
@@ -276,3 +279,7 @@ def _process_args(args):
 
     logging.info(f"Command Line was: {command_line}")
     logging.info(f"Total TensorMaps: {len(TMAPS)} Arguments are {args}")
+
+    if args.eager:
+        import tensorflow as tf
+        tf.config.experimental_run_functions_eagerly(True)
