@@ -156,6 +156,20 @@ public class Evoquer extends GATKTool {
     private String filteringFQTableName = null;
 
     @Argument(
+            fullName = "use-cohort-extract-table",
+            doc = "Use the cohort extraction table in big query to retrieve results",
+            optional = true
+    )
+    private boolean useCohortExtractTempTable = false;
+
+    @Argument(
+            fullName = "cohort-extract-table",
+            doc = "Fully qualified name of the table to use for cohort extraction",
+            optional = true
+    )
+    private String cohortExtractTableName = null;
+
+    @Argument(
             fullName = "use-model-feature-extract-query",
             doc = "Use the VQSR model feature extraction query against BigQuery",
             optional = true
@@ -289,7 +303,9 @@ public class Evoquer extends GATKTool {
                     sampleTableName,
                     doLocalSort,
                     useCohortExtractQuery,
+                    useCohortExtractTempTable,
                     filteringFQTableName,
+                    cohortExtractTableName,
                     useModelFeatureExtractQuery,
                     trainingSitesOnly,
                     localSortMaxRecordsInRam,
