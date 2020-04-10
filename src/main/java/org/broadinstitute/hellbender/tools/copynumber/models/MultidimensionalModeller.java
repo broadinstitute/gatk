@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.OverlapDetector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ModeledSegmentCollection;
@@ -21,7 +22,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Represents a segmented model for copy ratio and allele fraction.
@@ -65,17 +65,17 @@ public final class MultidimensionalModeller {
                                     final int numBurnInCopyRatio,
                                     final int numSamplesAlleleFraction,
                                     final int numBurnInAlleleFraction) {
-        Utils.validateArg(Stream.of(
-                Utils.nonNull(denoisedCopyRatios).getMetadata(),
-                Utils.nonNull(allelicCounts).getMetadata()).distinct().count() == 1,
-                "Metadata from all inputs must match.");
-        Utils.validateArg(Stream.of(
-                segments.getMetadata().getSequenceDictionary(),
-                denoisedCopyRatios.getMetadata().getSequenceDictionary(),
-                allelicCounts.getMetadata().getSequenceDictionary()).distinct().count() == 1,
-                "Sequence dictionaries from all inputs must match.");
+        Utils.nonNull(segments);
+        Utils.nonNull(denoisedCopyRatios);
+        Utils.nonNull(allelicCounts);
+        Utils.nonNull(alleleFractionPrior);
+        ParamUtils.isPositiveOrZero(numBurnInCopyRatio, "Number of burn-in copy-ratio samples must be non-negative.");
+        Utils.validateArg(numBurnInCopyRatio < numSamplesCopyRatio, "Number of copy-ratio samples must be greater than number of burn-in copy-ratio samples.");
+        ParamUtils.isPositiveOrZero(numBurnInAlleleFraction, "Number of burn-in allele-fraction samples must be non-negative.");
+        Utils.validateArg(numBurnInAlleleFraction < numSamplesAlleleFraction, "Number of allele-fraction samples must be greater than number of burn-in allele-fraction samples.");
+        metadata = CopyNumberArgumentValidationUtils.getValidatedMetadata(denoisedCopyRatios, allelicCounts);
+        CopyNumberArgumentValidationUtils.getValidatedSequenceDictionary(segments, denoisedCopyRatios, allelicCounts);
         ParamUtils.isPositive(segments.size(), "Number of segments must be positive.");
-        metadata = denoisedCopyRatios.getMetadata();
         currentSegments = segments;
         this.denoisedCopyRatios = denoisedCopyRatios;
         copyRatioMidpointOverlapDetector = denoisedCopyRatios.getMidpointOverlapDetector();
