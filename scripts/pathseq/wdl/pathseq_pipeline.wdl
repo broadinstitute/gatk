@@ -87,6 +87,7 @@ workflow PathSeqPipeline {
   Float frac_non_host_reads = 1.0
 
   # Filtering options
+  Array[String]? host_contigs_to_ignore
   Boolean? filter_duplicates
   Boolean? skip_quality_filters
   Int? host_min_identity
@@ -201,6 +202,7 @@ workflow PathSeqPipeline {
       frac_non_host_reads=frac_non_host_reads,
       gather_metrics=gather_filter_metrics,
       is_host_aligned=is_host_aligned,
+      host_contigs_to_ignore=host_contigs_to_ignore,
       filter_duplicates=filter_duplicates,
       skip_quality_filters=skip_quality_filters,
       min_clipped_read_length=min_clipped_read_length,
@@ -426,6 +428,7 @@ task PathSeqFilter {
   File? filter_bwa_image
 
   Boolean is_host_aligned
+  Array[String]? host_contigs_to_ignore
   Boolean gather_metrics
   # Optimizes disk space if provided
   Float frac_non_host_reads = 1.0
@@ -482,6 +485,7 @@ task PathSeqFilter {
       --unpaired-output ${unpaired_bam_output_path} \
       --is-host-aligned ${is_host_aligned}  \
       --verbosity ${verbosity} \
+      ${if defined(host_contigs_to_ignore) then "--ignore-alignment-contigs " else ""} ${sep=" --ignore-alignment-contigs " host_contigs_to_ignore} \
       ${if gather_metrics then "--filter-metrics ${filter_metrics_output_path}" else ""} \
       ${if defined(kmer_file) then "--kmer-file ${kmer_file}" else ""} \
       ${if defined(filter_bwa_image) then "--filter-bwa-image ${filter_bwa_image}" else ""} \
