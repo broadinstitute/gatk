@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -31,7 +32,7 @@ public class SVClusterEngine extends LocatableClusterEngine<SVCallRecordWithEvid
         final SVCallRecordWithEvidence exampleCall = cluster.iterator().next();
         final int length = exampleCall.getContig().equals(exampleCall.getEndContig()) && !exampleCall.getType().equals(StructuralVariantType.INS) ? medianEnd - medianStart : exampleCall.getLength();
         final List<String> algorithms = cluster.stream().flatMap(v -> v.getAlgorithms().stream()).distinct().collect(Collectors.toList());
-        final Set<String> clusterSamples = cluster.stream().flatMap(v -> v.getSamples().stream()).collect(Collectors.toSet());
+        final List<Genotype> clusterSamples = cluster.stream().flatMap(v -> v.getGenotypes().stream()).collect(Collectors.toList());
 
         final int newStart;
         final int newEnd;
@@ -98,10 +99,10 @@ public class SVClusterEngine extends LocatableClusterEngine<SVCallRecordWithEvid
     @Override
     protected SVCallRecordWithEvidence deduplicateIdenticalItems(final Collection<SVCallRecordWithEvidence> items) {
         if (items.isEmpty()) return null;
-        final Set<String> samples = items.stream()
-                .map(SVCallRecordWithEvidence::getSamples)
+        final List<Genotype> genotypes = items.stream()
+                .map(SVCallRecordWithEvidence::getGenotypes)
                 .flatMap(Collection::stream)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
         final List<String> algorithms = items.stream()
                 .map(SVCallRecordWithEvidence::getAlgorithms)
                 .flatMap(Collection::stream)
@@ -118,7 +119,7 @@ public class SVClusterEngine extends LocatableClusterEngine<SVCallRecordWithEvid
                 example.getType(),
                 example.getLength(),
                 algorithms,
-                samples,
+                genotypes,
                 example.getStartSplitReadSites(),
                 example.getEndSplitReadSites(),
                 example.getDiscordantPairs());

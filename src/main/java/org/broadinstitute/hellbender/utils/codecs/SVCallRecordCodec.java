@@ -4,6 +4,7 @@ import com.google.common.base.Splitter;
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 
@@ -39,7 +40,7 @@ public class SVCallRecordCodec extends AsciiFeatureCodec<SVCallRecord> {
                 StructuralVariantType.valueOf(tokens.get(6)),
                 Integer.parseInt(tokens.get(7)),
                 Arrays.asList(tokens.get(8)),
-                Collections.singleton(tokens.get(9))
+                Collections.singletonList(new GenotypeBuilder().name(tokens.get(9)).make())
         );
     }
 

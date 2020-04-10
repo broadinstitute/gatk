@@ -119,7 +119,7 @@ public class SVEvidenceCollector {
             final List<DiscordantPairEvidence> discordantPairs = getDiscordantPairs(call, discordantPairIntervalOverlapDetector);
             callWithEvidence = new SVCallRecordWithEvidence(
                     call.getContig(), call.getStart(), call.getStartStrand(), call.getEndContig(), call.getEnd(), call.getEndStrand(),
-                    call.getType(), call.getLength(), call.getAlgorithms(), call.getSamples(), call.getStartSplitReadSites(), call.getEndSplitReadSites(), discordantPairs);
+                    call.getType(), call.getLength(), call.getAlgorithms(), call.getGenotypes(), call.getStartSplitReadSites(), call.getEndSplitReadSites(), discordantPairs);
         }
         if (progressMeter != null) {
             progressMeter.update(call.getStartAsInterval());
@@ -138,7 +138,7 @@ public class SVEvidenceCollector {
             final List<SplitReadSite> startSitesList = computeSites(startSplitReads, call.getStartStrand());
             callWithEvidence = new SVCallRecordWithEvidence(
                     call.getContig(), call.getStart(), call.getStartStrand(), call.getEndContig(), call.getEnd(), call.getEndStrand(),
-                    call.getType(), call.getLength(), call.getAlgorithms(), call.getSamples(), startSitesList, call.getEndSplitReadSites(), call.getDiscordantPairs());
+                    call.getType(), call.getLength(), call.getAlgorithms(), call.getGenotypes(), startSitesList, call.getEndSplitReadSites(), call.getDiscordantPairs());
         }
         if (progressMeter != null) {
             progressMeter.update(call.getStartAsInterval());
@@ -157,7 +157,7 @@ public class SVEvidenceCollector {
             final List<SplitReadSite> endSitesList = computeSites(endSplitReads, call.getEndStrand());
             refinedCall = new SVCallRecordWithEvidence(
                     call.getContig(), call.getStart(), call.getStartStrand(), call.getEndContig(), call.getEnd(), call.getEndStrand(),
-                    call.getType(), call.getLength(), call.getAlgorithms(), call.getSamples(), call.getStartSplitReadSites(), endSitesList, call.getDiscordantPairs());
+                    call.getType(), call.getLength(), call.getAlgorithms(), call.getGenotypes(), call.getStartSplitReadSites(), endSitesList, call.getDiscordantPairs());
         }
         if (progressMeter != null) {
             progressMeter.update(call.getEndAsInterval());
