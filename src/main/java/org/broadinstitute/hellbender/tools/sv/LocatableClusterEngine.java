@@ -68,6 +68,7 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
             currentContig = item.getContig();
             idToItemMap.put(currentItemId, item);
             seedCluster(currentItemId);
+            currentItemId++;
             return;
         }
 

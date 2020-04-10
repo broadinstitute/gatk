@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.variant.variantcontext.Genotype;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -13,11 +14,16 @@ import java.util.stream.Collectors;
 
 public class SVDepthOnlyCallDefragmenter extends LocatableClusterEngine<SVCallRecordWithEvidence> {
 
-    private final double MIN_SAMPLE_OVERLAP = 0.9;
+    private final double minSampleOverlap;
     private final double PADDING_FRACTION = 0.2;
 
     public SVDepthOnlyCallDefragmenter(final SAMSequenceDictionary dictionary) {
+        this(dictionary, 0.9);
+    }
+
+    public SVDepthOnlyCallDefragmenter(final SAMSequenceDictionary dictionary, double minSampleOverlap) {
         super(dictionary, CLUSTERING_TYPE.SINGLE_LINKAGE);
+        this.minSampleOverlap = minSampleOverlap;
     }
 
     @Override
@@ -27,9 +33,9 @@ public class SVDepthOnlyCallDefragmenter extends LocatableClusterEngine<SVCallRe
         final SVCallRecordWithEvidence exampleCall = cluster.iterator().next();
         final int length = newEnd - newStart;
         final List<String> algorithms = cluster.stream().flatMap(v -> v.getAlgorithms().stream()).distinct().collect(Collectors.toList());
-        final Set<String> clusterSamples = cluster.stream().flatMap(v -> v.getSamples().stream()).collect(Collectors.toSet());
+        final List<Genotype> clusterGenotypes = cluster.stream().flatMap(v -> v.getGenotypes().stream()).collect(Collectors.toList());
         return new SVCallRecordWithEvidence(exampleCall.getContig(), newStart, exampleCall.getStartStrand(),
-                exampleCall.getEndContig(), newEnd, exampleCall.getEndStrand(), exampleCall.getType(), length, algorithms, clusterSamples,
+                exampleCall.getEndContig(), newEnd, exampleCall.getEndStrand(), exampleCall.getType(), length, algorithms, clusterGenotypes,
                 exampleCall.getStartSplitReadSites(), exampleCall.getEndSplitReadSites(), exampleCall.getDiscordantPairs());
     }
 
@@ -42,7 +48,7 @@ public class SVDepthOnlyCallDefragmenter extends LocatableClusterEngine<SVCallRe
         final Set<String> sharedSamples = new HashSet<>(a.getSamples());
         sharedSamples.retainAll(b.getSamples());
         final double sampleOverlap = Math.min(sharedSamples.size() / (double) a.getSamples().size(), sharedSamples.size() / (double) b.getSamples().size());
-        if (sampleOverlap < MIN_SAMPLE_OVERLAP) return false;
+        if (sampleOverlap < minSampleOverlap) return false;
         return getClusteringInterval(a, null)
                 .overlaps(getClusteringInterval(b, null));
     }

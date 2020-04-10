@@ -19,15 +19,16 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVSegmentVariantComposer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
-import org.broadinstitute.hellbender.tools.sv.CNVClusterEngine;
-import org.broadinstitute.hellbender.tools.sv.SVCallRecordWithSampleCalls;
+import org.broadinstitute.hellbender.tools.sv.SVClusterEngine;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordWithEvidence;
 import org.broadinstitute.hellbender.tools.sv.SVDepthOnlyCallDefragmenter;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.io.File;
 import java.util.*;
@@ -45,7 +46,7 @@ public class JointCNVSegmentation extends MultiVariantWalkerGroupedOnStart {
     private VariantContextWriter vcfWriter;
     private SAMSequenceDictionary dictionary;
     private SVDepthOnlyCallDefragmenter defragmenter;
-    private CNVClusterEngine clusterEngine;
+    private SVClusterEngine clusterEngine;
 
     private String currentContig;
 
@@ -61,8 +62,8 @@ public class JointCNVSegmentation extends MultiVariantWalkerGroupedOnStart {
             throw new UserException("Reference sequence dictionary required");
         }
 
-        defragmenter = new SVDepthOnlyCallDefragmenter(dictionary);
-        clusterEngine = new CNVClusterEngine(dictionary);
+        defragmenter = new SVDepthOnlyCallDefragmenter(dictionary, 0.0);
+        clusterEngine = new SVClusterEngine(dictionary);
 
         vcfWriter = getVCFWriter();
     }
@@ -74,6 +75,7 @@ public class JointCNVSegmentation extends MultiVariantWalkerGroupedOnStart {
 
         final Set<VCFHeaderLine> headerLines = new LinkedHashSet<>(inputVCFHeader.getMetaDataInInputOrder());
         headerLines.addAll(getDefaultToolVCFHeaderLines());
+        headerLines.add(GATKSVVCFHeaderLines.getInfoLine(GATKSVVCFConstants.SVLEN));
 
         VariantContextWriter writer = createVCFWriter(outputFile);
 
@@ -102,10 +104,9 @@ public class JointCNVSegmentation extends MultiVariantWalkerGroupedOnStart {
             currentContig = variantContexts.get(0).getContig(); //variantContexts should have identical start, so choose 0th arbitrarily
         } else if (!variantContexts.get(0).getContig().equals(currentContig)) {
             processClusters();
-        } else {
-            for (final VariantContext vc : variantContexts) {
-                defragmenter.add(SVCallRecordWithSampleCalls.create(vc));
-            }
+        }
+        for (final VariantContext vc : variantContexts) {
+            defragmenter.add(new SVCallRecordWithEvidence(SVCallRecord.create(vc)));
         }
     }
 
@@ -137,9 +138,14 @@ public class JointCNVSegmentation extends MultiVariantWalkerGroupedOnStart {
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sample);
             if (call.getSamples().contains(sample)) {
                 genotypeBuilder.alleles(Lists.newArrayList(refAllele, altAllele));
-                genotypeBuilder.attribute(GermlineCNVSegmentVariantComposer.CN, call.getCopyState(sample));
+                final Genotype currentGenotype = call.getGenotypes().stream().filter(g -> g.getSampleName().equals(sample)).collect(Collectors.toList()).get(0);
+                if (currentGenotype.hasAnyAttribute(GermlineCNVSegmentVariantComposer.CN)) {
+                    genotypeBuilder.attribute(GermlineCNVSegmentVariantComposer.CN, currentGenotype.getExtendedAttribute(GermlineCNVSegmentVariantComposer.CN));
+                }
+
             } else {
                 genotypeBuilder.alleles(Lists.newArrayList(refAllele, refAllele));
+                genotypeBuilder.attribute(GermlineCNVSegmentVariantComposer.CN, HomoSapiensConstants.DEFAULT_PLOIDY);
             }
             genotypes.add(genotypeBuilder.make());
         }
