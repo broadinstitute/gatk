@@ -760,3 +760,120 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
                 name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=days_window, tensor_from_file=tff)
 
     return name2tensormap
+
+
+def _cardiac_surgery_str2date(input_date: str) -> datetime.datetime:
+    return datetime.datetime.strptime(input_date, "%d%b%Y")
+
+
+def build_cardiac_surgery_outcome_tensor_from_file(
+    file_name: str,
+    patient_column: str = "medrecn",
+    outcome_column: str = "mtopd",
+    start_column: str = "surgdt",
+    delimiter: str = ",",
+    day_window: int = 30,
+) -> Callable:
+    """Build a tensor_from_file function for outcomes given CSV of patients.
+
+    The tensor_from_file function returned here should be used
+    with CATEGORICAL TensorMaps to classify patients by disease state.
+
+    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
+    :param patient_column: The header name of the column of patient ids
+    :param diagnosis_date_column: The header name of the column of disease diagnosis dates
+    :param start_column: The header name of the column of surgery dates
+    :param delimiter: The delimiter separating columns of the TSV or CSV
+    :return: The tensor_from_file function to provide to TensorMap constructors
+    """
+    error = None
+    try:
+        with open(file_name, "r", encoding="utf-8") as f:
+            reader = csv.reader(f, delimiter=delimiter)
+            header = next(reader)
+            patient_index = header.index(patient_column)
+            date_index = header.index(start_column)
+            outcome_index = header.index(outcome_column)
+            date_surg_table = {}
+            patient_table = {}
+            for row in reader:
+                try:
+                    patient_key = int(row[patient_index])
+                    patient_table[patient_key] = int(row[outcome_index])
+                    date_surg_table[patient_key] = _cardiac_surgery_str2date(
+                        row[date_index]
+                    )
+                    if len(patient_table) % 1000 == 0:
+                        logging.debug(f"Processed: {len(patient_table)} patient rows.")
+                except ValueError as e:
+                    logging.warning(f"val err {e}")
+
+    except FileNotFoundError as e:
+        error = e
+
+    logging.info(
+        f"Done processing {outcome_column}. Got {len(patient_table)} patient rows."
+    )
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        if error:
+            raise error
+
+        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        file_split = os.path.basename(hd5.filename).split("-")
+        mrn = file_split[0]
+        mrn_int = int(mrn)
+
+        if mrn_int not in patient_table:
+            raise KeyError(f"MRN not in STS outcomes CSV")
+
+        ecg_date = _partners_str2date(
+            _decompress_data(
+                data_compressed=hd5["acquisitiondate"][()],
+                dtype=hd5["acquisitiondate"].attrs["dtype"],
+            )
+        )
+
+        # Convert ecg_date from datetime.date to datetime.datetime
+        ecg_date = datetime.datetime.combine(ecg_date, datetime.time.min)
+
+        # If the date of surgery - date of ECG is > time window, skip it
+        if date_surg_table[mrn_int] - ecg_date > datetime.timedelta(days=day_window):
+            raise ValueError(f"ECG out of time window")
+
+        categorical_data[patient_table[mrn_int]] = 1.0
+        return categorical_data
+
+    return tensor_from_file
+
+
+def build_cardiac_surgery_tensor_maps(
+    needed_tensor_maps: List[str],
+) -> Dict[str, TensorMap]:
+    name2tensormap: Dict[str:TensorMap] = {}
+    outcome2column = {
+        "death": "mtopd",
+        "stroke": "cnstrokp",
+        "renal_failure": "crenfail",
+        "prolonged_ventilation": "crenfail",
+        "dsw_infection": "deepsterninf",
+        "reoperation": "reop",
+        "any_morbidity": "anymorbidity",
+        "long_stay": "llos",
+    }
+
+    for outcome in outcome2column:
+        name = f"outcome_{outcome}"
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
+                file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
+                outcome_column=outcome2column[outcome],
+                day_window=30,
+            )
+            name2tensormap[name] = TensorMap(
+                name,
+                Interpretation.CATEGORICAL,
+                channel_map=_outcome_channels(outcome),
+                tensor_from_file=tensor_from_file_fxn,
+            )
+    return name2tensormap
