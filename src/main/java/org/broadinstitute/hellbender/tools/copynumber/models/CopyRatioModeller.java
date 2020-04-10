@@ -108,8 +108,7 @@ public final class CopyRatioModeller {
      * @param numSamples    total number of samples per posterior
      * @param numBurnIn     number of burn-in samples to discard
      */
-    void fitMCMC(final int numSamples,
-                        final int numBurnIn) {
+    void fitMCMC(final int numSamples, final int numBurnIn) {
         ParamUtils.isPositiveOrZero(numBurnIn, "Number of burn-in samples must be non-negative.");
         Utils.validateArg(numBurnIn < numSamples, "Number of samples must be greater than number of burn-in samples.");
 

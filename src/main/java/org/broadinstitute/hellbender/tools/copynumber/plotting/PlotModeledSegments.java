@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStanda
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ModeledSegmentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.ModeledSegment;
@@ -200,8 +201,9 @@ public final class PlotModeledSegments extends CommandLineProgram {
         allelicCounts = inputAllelicCountsFile == null ? null : new AllelicCountCollection(inputAllelicCountsFile);
         modeledSegments = new ModeledSegmentCollection(inputModeledSegmentsFile);
 
-        //get sample name from input files (consistency check is performed)
-        final String sampleName = getSampleName();
+        final SampleLocatableMetadata metadata = CopyNumberArgumentValidationUtils.getValidatedMetadata(
+                modeledSegments, denoisedCopyRatios, allelicCounts);
+        final String sampleName = metadata.getSampleName();
 
         //perform a basic check on the total number of copy-ratio intervals/allele-fraction sites per contig
         //(we do not check the number of intervals/sites overlapping each segment, in order to be robust against future
@@ -209,16 +211,8 @@ public final class PlotModeledSegments extends CommandLineProgram {
         validateNumPointsPerContig();
 
         //validate sequence dictionaries and load contig names and lengths into a LinkedHashMap
-        final SAMSequenceDictionary sequenceDictionary = modeledSegments.getMetadata().getSequenceDictionary();
+        final SAMSequenceDictionary sequenceDictionary = metadata.getSequenceDictionary();
         final SAMSequenceDictionary sequenceDictionaryToPlot = ReferenceUtils.loadFastaDictionary(inputSequenceDictionaryFile);
-        if (denoisedCopyRatios != null) {
-            Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(denoisedCopyRatios.getMetadata().getSequenceDictionary(), sequenceDictionary),
-                    "Sequence dictionary contained in denoised-copy-ratios file does not match that contained in other input files.");
-        }
-        if (allelicCounts != null) {
-            Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(allelicCounts.getMetadata().getSequenceDictionary(), sequenceDictionary),
-                    "Sequence dictionary contained in allelic-counts file does not match that contained in other input files.");
-        }
         PlottingUtils.validateSequenceDictionarySubset(sequenceDictionary, sequenceDictionaryToPlot);
         final Map<String, Integer> contigLengthMap = PlottingUtils.getContigLengthMap(sequenceDictionaryToPlot, minContigLength, logger);
 
@@ -250,18 +244,6 @@ public final class PlotModeledSegments extends CommandLineProgram {
                 inputSequenceDictionaryFile);
         Utils.nonEmpty(outputPrefix);
         CopyNumberArgumentValidationUtils.validateAndPrepareOutputDirectories(outputDir);
-    }
-
-    private String getSampleName() {
-        if (inputDenoisedCopyRatiosFile != null) {
-            Utils.validateArg(denoisedCopyRatios.getMetadata().equals(modeledSegments.getMetadata()),
-                    "Metadata in input files do not all match.");
-        }
-        if (inputAllelicCountsFile != null) {
-            Utils.validateArg(allelicCounts.getMetadata().equals(modeledSegments.getMetadata()),
-                    "Metadata in input files do not all match.");
-        }
-        return modeledSegments.getMetadata().getSampleName();
     }
 
     private void validateNumPointsPerContig() {

@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.tools.copynumber.DenoiseReadCounts;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.Resource;
@@ -153,11 +154,12 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
         Utils.validateArg(standardizedCopyRatios.getIntervals().equals(denoisedCopyRatios.getIntervals()),
                 "Intervals in input files must be identical.");
 
-        //get sample name from input files (consistency check of metadata is performed)
-        final String sampleName = getSampleName(standardizedCopyRatios, denoisedCopyRatios);
+        final SampleLocatableMetadata metadata = CopyNumberArgumentValidationUtils.getValidatedMetadata(
+                standardizedCopyRatios, denoisedCopyRatios);
+        final String sampleName = metadata.getSampleName();
 
         //validate sequence dictionaries and load contig names and lengths into a LinkedHashMap
-        final SAMSequenceDictionary sequenceDictionary = standardizedCopyRatios.getMetadata().getSequenceDictionary();
+        final SAMSequenceDictionary sequenceDictionary = metadata.getSequenceDictionary();
         final SAMSequenceDictionary sequenceDictionaryToPlot = ReferenceUtils.loadFastaDictionary(inputSequenceDictionaryFile);
         PlottingUtils.validateSequenceDictionarySubset(sequenceDictionary, sequenceDictionaryToPlot);
         final Map<String, Integer> contigLengthMap = PlottingUtils.getContigLengthMap(sequenceDictionaryToPlot, minContigLength, logger);
@@ -183,13 +185,6 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
                 inputSequenceDictionaryFile);
         Utils.nonEmpty(outputPrefix);
         CopyNumberArgumentValidationUtils.validateAndPrepareOutputDirectories(outputDir);
-    }
-
-    private static String getSampleName(final CopyRatioCollection standardizedCopyRatios,
-                                 final CopyRatioCollection denoisedCopyRatios) {
-        Utils.validateArg(standardizedCopyRatios.getMetadata().equals(denoisedCopyRatios.getMetadata()),
-                "Metadata in input files must be identical.");
-        return standardizedCopyRatios.getMetadata().getSampleName();
     }
 
     /**
