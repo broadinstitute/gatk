@@ -209,17 +209,33 @@ public final class HaplotypeUnitTest extends GATKBaseTest {
         }
     }
 
-    // If trimming starts at position p and there is an insertion before p (i.e. the first aligned base is at p), make sure
-    // that the insertion is excluded in the cigar and the bases of the resulting trimmed haplotype
-    @Test
-    public void testTrimLeadingInsertion() {
-        //The first GT is an insertion
-        final Haplotype haplotype = new Haplotype("ACGTACGT".getBytes(), new SimpleInterval("1", 1, 6));
-        haplotype.setCigar(TextCigarCodec.decode("2M2I4M"));
-        final Haplotype trimmed = haplotype.trim(new SimpleInterval("1", 3, 6));
-        Assert.assertEquals(trimmed.getStartPosition(), 3);
-        Assert.assertEquals(trimmed.getCigar().toString(), "4M");
-        Assert.assertEquals(trimmed.getBaseString(), "ACGT");
+    @DataProvider(name = "TrimmingDataWithLeadingAndTrailingInsertions")
+    public Object[][] makeTrimmingDataWithLeadingAndTrailingInsertions() {
+        // order is: String bases, String cigar, int start, int stop, String expectedTrimmedCigar, String expectedTrimmedBases
+        // start (inclusive ie the trimmed haplotype includes it) and stop (inclusive ie the trimmed haplotype includes it) are
+        // zero-based ref coordinates relative to the alignment start of the untrimmed haplotype
+        return new Object[][] {
+                // the first GT is an insertion in the following examples
+                {"ACGTACGT", "2M2I4M", 1, 5, "1M2I4M", "CGTACGT"},      // no leading insertion
+                {"ACGTACGT", "2M2I4M", 2, 5, "4M", "ACGT"},             // leading insertion removed
+                {"ACGTACGT", "2M2I4M", 3, 5, "3M", "CGT"},              // no leading insertion
+                {"ACGTACGT", "2M2I4M", 0, 2, "2M2I1M", "ACGTA"},        // no trailing insertion
+                {"ACGTACGT", "2M2I4M", 0, 1, "2M", "AC"},               // trailing insertion removed
+        };
+    }
+
+    // leading and trailing insertions should be excluded from trimmed haplotypes
+    @Test(dataProvider = "TrimmingDataWithLeadingAndTrailingInsertions")
+    public void testTrimLeadingAndTrailingInsertions(final String bases, final String cigar, final int start, final int stop, final String expectedTrimmedCigar, final String expectedTrimmedBases) {
+        final int offset = 10;
+        final Cigar untrimmedCigar = TextCigarCodec.decode(cigar);
+        final Haplotype haplotype = new Haplotype(bases.getBytes(), new UnvalidatingGenomeLoc("20", 0, offset, offset + untrimmedCigar.getReferenceLength() - 1));
+        haplotype.setAlignmentStartHapwrtRef(offset);
+        haplotype.setCigar(untrimmedCigar);
+
+        final Haplotype trimmed = haplotype.trim(new SimpleInterval("20", offset + start, offset + stop));
+        Assert.assertEquals(trimmed.getCigar().toString(), expectedTrimmedCigar);
+        Assert.assertEquals(trimmed.getBaseString(), expectedTrimmedBases);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

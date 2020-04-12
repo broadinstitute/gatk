@@ -92,6 +92,8 @@ public final class Haplotype extends Allele {
 
         final int newStart = loc.getStart() - this.genomeLocation.getStart();
         final int newStop = newStart + loc.getEnd() - loc.getStart();
+
+        // note: the following returns null if the bases covering the ref interval start or end in a deletion.
         final byte[] newBases = AlignmentUtils.getBasesCoveringRefInterval(newStart, newStop, getBases(), 0, getCigar());
 
         if ( newBases == null || newBases.length == 0 ) { // we cannot meaningfully chop down the haplotype, so return null

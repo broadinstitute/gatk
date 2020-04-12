@@ -1321,6 +1321,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     // this test has a reference with 8 repeats of a 28-mer and an alt with 7 repeats.  This deletion left-aligns to the
     // beginning of the padded assembly region, and an exception occurs if we carelessly drop the leading deletion from
     // the alt haplotype's cigar.  This is a regression test for https://github.com/broadinstitute/gatk/issues/6533.
+    // In addition to testing that no error is thrown, we also check that the 28-base deletion is called
     @Test
     public void testLeadingDeletionInAltHaplotype() {
         final File bam = new File(TEST_FILES_DIR, "alt-haplotype-leading-deletion.bam");
@@ -1333,6 +1334,11 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 .addInterval("10:128360000-128362000")
                 .addOutput(output);
         runCommandLine(args);
+
+        final boolean has28BaseDeletion = VariantContextTestUtils.streamVcf(output)
+                .anyMatch(vc -> vc.getStart() == 128361367 && vc.getAlternateAlleles().stream().anyMatch(a -> a.length() == vc.getReference().length() - 28));
+
+        Assert.assertTrue(has28BaseDeletion);
     }
 
     /**
