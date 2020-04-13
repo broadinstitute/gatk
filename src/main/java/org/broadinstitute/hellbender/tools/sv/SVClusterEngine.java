@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.sv;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.StructuralVariantType;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -172,6 +173,6 @@ public class SVClusterEngine extends LocatableClusterEngine<SVCallRecordWithEvid
     }
 
     public static boolean isDepthOnlyCall(final SVCallRecordWithEvidence call) {
-        return call.getAlgorithms().size() == 1 && call.getAlgorithms().get(0).equals(SVCluster.DEPTH_ALGORITHM);
+        return call.getAlgorithms().size() == 1 && call.getAlgorithms().get(0).equals(GATKSVVCFConstants.DEPTH_ALGORITHM);
     }
 }

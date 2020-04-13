@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVSegmentVariantComposer;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.SVCallRecordCodec;
@@ -30,11 +31,11 @@ public class SVCallRecord implements Feature {
     private Set<String> samples;
 
     private final static List<String> nonDepthCallerAttributes = Arrays.asList(
-            SVCluster.END_CONTIG_ATTRIBUTE,
-            SVCluster.ALGORITHMS_ATTRIBUTE,
-            SVCluster.STRANDS_ATTRIBUTE,
-            SVCluster.SVLEN_ATTRIBUTE,
-            SVCluster.SVTYPE_ATTRIBUTE
+            VCFConstants.END_KEY,
+            GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE,
+            GATKSVVCFConstants.STRANDS_ATTRIBUTE,
+            GATKSVVCFConstants.SVLEN,
+            GATKSVVCFConstants.SVTYPE
     );
 
     public static SVCallRecord create(final VariantContext variant) {
@@ -47,11 +48,11 @@ public class SVCallRecord implements Feature {
         final String endContig = startContig; //HACK
         final int end = variant.getAttributeAsInt(VCFConstants.END_KEY, variant.getStart());
         final StructuralVariantType type = variant.getStructuralVariantType();
-        final List<String> algorithms = variant.getAttributeAsStringList(SVCluster.ALGORITHMS_ATTRIBUTE, SVCluster.DEPTH_ALGORITHM);
+        final List<String> algorithms = variant.getAttributeAsStringList(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, GATKSVVCFConstants.DEPTH_ALGORITHM);
         if (algorithms.isEmpty()) {//HACK
-            algorithms.add(SVCluster.DEPTH_ALGORITHM);
+            algorithms.add(GATKSVVCFConstants.DEPTH_ALGORITHM);
         }
-        final String strands = variant.getAttributeAsString(SVCluster.STRANDS_ATTRIBUTE, "0");
+        final String strands = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, "0");
         /*
         if (strands.length() != 2) {
             throw new IllegalArgumentException("Strands field is not 2 characters long");
@@ -84,7 +85,7 @@ public class SVCallRecord implements Feature {
                 .filter(g -> Integer.valueOf((String)g.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QS)) >= minQuality)
                 .collect(Collectors.toList());
         if (passing.isEmpty()) return null;
-        final List<String> algorithms = Collections.singletonList(SVCluster.DEPTH_ALGORITHM);
+        final List<String> algorithms = Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM);
 
         //TODO : use new vcfs to get actual allele
         final int copyNumber = Integer.valueOf((String)variant.getGenotypes().get(0).getExtendedAttribute(GermlineCNVSegmentVariantComposer.CN));

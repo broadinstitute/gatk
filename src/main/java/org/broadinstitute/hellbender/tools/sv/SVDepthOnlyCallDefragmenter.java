@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Genotype;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -88,7 +89,7 @@ public class SVDepthOnlyCallDefragmenter extends LocatableClusterEngine<SVCallRe
     public static boolean isDepthOnlyCall(final SVCallRecord call) {
         if (call.getAlgorithms().isEmpty()) return false;
         for (final String alg : call.getAlgorithms()) {
-            if (!alg.equals(SVCluster.DEPTH_ALGORITHM)) return false;
+            if (!alg.equals(GATKSVVCFConstants.DEPTH_ALGORITHM)) return false;
         }
         return true;
     }
