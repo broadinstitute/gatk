@@ -214,7 +214,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
     //TODO this WILLLL need to handle indel priors
     public <A extends Allele> double[] calculateFRDLikelihoods(LikelihoodMatrix<GATKRead, A> sampleLikelihoods,
                                                                final List<DRAGENBQDGenotypesModel.DragenReadContainer> readContainers,
-                                                               final double snipAprioriHet, final GenotypeLikelihoodCalculators calculators) {
+                                                               final double snipAprioriHet, final double indelAprioriHet, final GenotypeLikelihoodCalculators calculators) {
         //TODO put a very stringent check that we have not invalidated the cache because we will be relying on it to get home in the storm
         // First we invalidate the cache
         Utils.validate(sampleLikelihoods == cachedLikelihoodsObject, "There was a mismatch between the sample stored by the genotyper and the one requesed for BQD, this will result in invalid genotyping");
@@ -232,12 +232,13 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             if (sampleLikelihoods.getAllele(fAlleleIndex).isSymbolic() ) {
                 continue;
             }
+            boolean isIndel = sampleLikelihoods.getAllele(fAlleleIndex).length() != refAllele.length();
 
             final int offsetForReadLikelihoodGivenAlleleIndex = alleleDataSize * fAlleleIndex + readCount;
 
             // Here we generate a set of the critical log10(P(F)) values that we will iterate over
             final Set<Double> criticalThresholds = new HashSet<>();
-            computeCriticalValues(criticalThresholds, readContainers, fAlleleIndex == 0 ? 0 : snipAprioriHet/-10); // simplified in line with DRAGEN, uses 1 alleledist for both snp and indels
+            computeCriticalValues(criticalThresholds, readContainers, fAlleleIndex == 0 ? 0 : (isIndel? indelAprioriHet : snipAprioriHet)/-10); // simplified in line with DRAGEN, uses 1 alleledist for both snp and indels
             final List<Double> criticalThresholdsSorted = criticalThresholds.stream().sorted(Double::compareTo).collect(Collectors.toList());
 //            System.out.println("fIndex: "+fAlleleIndex+" criticalValues: \n"+criticalThresholds.stream().map(d -> Double.toString(d)).collect(Collectors.joining("\n")));
 

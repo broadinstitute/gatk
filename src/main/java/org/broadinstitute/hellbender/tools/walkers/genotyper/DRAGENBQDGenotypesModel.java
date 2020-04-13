@@ -9,6 +9,8 @@ import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -31,17 +33,19 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
     private final boolean computeBQD;
     private final boolean computeFRD;
     private final int allelePadding;
+    private final DragstrParams dragstrParams;
 
     // We keep a fallback model in mind... this might want to be adjusted as implementation workds
     private final IndependentSampleGenotypesModel fallbackModel;
 
-    public DRAGENBQDGenotypesModel(final boolean useBQDModel, final boolean useFRDModel, final int allelePadding) { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY, useBQDModel, useFRDModel, allelePadding); }
+    public DRAGENBQDGenotypesModel(final boolean useBQDModel, final boolean useFRDModel, final int allelePadding, final DragstrParams dragstrParams) { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY, useBQDModel, useFRDModel, allelePadding,  dragstrParams); }
 
     /**
      *  Initialize model with given maximum allele count and ploidy for caching
      */
     public DRAGENBQDGenotypesModel(final int calculatorCachePloidyCapacity, final int calculatorCacheAlleleCapacity,
-                                   final boolean useBQDModel, final boolean useFRDModel, final int allelePadding) {
+                                   final boolean useBQDModel, final boolean useFRDModel, final int allelePadding,
+                                   final DragstrParams dragstrParams) {
         fallbackModel = new IndependentSampleGenotypesModel(calculatorCachePloidyCapacity, calculatorCacheAlleleCapacity);
         cachePloidyCapacity = calculatorCachePloidyCapacity;
         cacheAlleleCountCapacity = calculatorCacheAlleleCapacity;
@@ -50,11 +54,12 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
         this.computeBQD = useBQDModel;
         this.computeFRD = useFRDModel;
         this.allelePadding = allelePadding;
+        this.dragstrParams = dragstrParams;
     }
 
 //    @Override TODO unify the two calling infrastructures
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data, byte[] paddedReference, int offsetForRefIntoEvent) {
+    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data, byte[] paddedReference, int offsetForRefIntoEvent, final DragstrUtils.STRSequenceAnalyzer dragstrs) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 
@@ -63,6 +68,15 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 //        if (FRDBQDUtils.containsInsertionOrDeletion(genotypingAlleles) || data.numberOfAlleles() > 3) {
 //            return fallbackModel.calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent);
 //        }
+
+        double api;
+        if (dragstrs !=  null) {
+            final int period = dragstrs.mostRepeatedPeriod(offsetForRefIntoEvent);
+            final int repeats = dragstrs.numberOfMostRepeats(offsetForRefIntoEvent);
+            api = dragstrParams.api(period, repeats);
+        } else {
+            api = 34.77;
+        }
 
         final AlleleListPermutation<A> permutation = data.permutation(genotypingAlleles);
         final AlleleLikelihoodMatrixMapper<A> alleleLikelihoodMatrixMapper = new AlleleLikelihoodMatrixMapper(permutation);
@@ -146,7 +160,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             if (computeFRD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
                 FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods,
                         Stream.of(strandForward, strandReverse).flatMap(list -> list.stream()).filter(r -> r.getIndexInLikelihoodsObject() != -1).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
-                        34.77, calculators);
+                        34.77, api, calculators);
 //                System.out.println("FRD results:");
 //                System.out.println(Arrays.toString(FRDCallResults));
             }
