@@ -131,6 +131,9 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Advanced
     @Argument(fullName = "transform-dragen-mapping-quality", doc = "If enabled this argument will map DRAGEN aligner aligned reads with mapping quality <=250 to scale up to MQ 50", optional = true)
     public boolean transformDRAGENMapQ = false;
+    @Advanced
+    @Argument(fullName = "mapping-quality-threshold", doc = "Control the threshold for dicounting reads from genotyping/calling due to mapping quality")
+    public int mappingQualityThreshold = HaplotypeCallerEngine.DEFAULT_READ_QUALITY_FILTER_THRESHOLD;
 
 
     @Hidden

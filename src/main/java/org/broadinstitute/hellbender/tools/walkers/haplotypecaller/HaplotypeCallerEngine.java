@@ -136,7 +136,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * Reads with mapping quality lower than this number won't be considered for genotyping, even if they have
      * passed earlier filters (e.g. the walkers' own min MQ filter).
      */
-    private static final int READ_QUALITY_FILTER_THRESHOLD = 20;
+    public static final int DEFAULT_READ_QUALITY_FILTER_THRESHOLD = 20;
 
     private static final List<VariantContext> NO_CALLS = Collections.emptyList();
 
@@ -324,9 +324,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     /**
      * @return the default set of read filters for use with the HaplotypeCaller
      */
-    public static List<ReadFilter> makeStandardHCReadFilters() {
+    public static List<ReadFilter> makeStandardHCReadFilters(final int mappingQualityThreshold) {
         List<ReadFilter> filters = new ArrayList<>();
-        filters.add(new MappingQualityReadFilter(READ_QUALITY_FILTER_THRESHOLD));
+        filters.add(new MappingQualityReadFilter(mappingQualityThreshold));
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPED);
         filters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
@@ -731,7 +731,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final Set<GATKRead> readsToRemove = new LinkedHashSet<>();
         for( final GATKRead rec : activeRegion.getReads() ) {
-            if( rec.getLength() < READ_LENGTH_FILTER_THRESHOLD || rec.getMappingQuality() < READ_QUALITY_FILTER_THRESHOLD || ! ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE.test(rec) || (hcArgs.keepRG != null && !rec.getReadGroup().equals(hcArgs.keepRG)) ) {
+            if( rec.getLength() < READ_LENGTH_FILTER_THRESHOLD || rec.getMappingQuality() < hcArgs.mappingQualityThreshold || ! ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE.test(rec) || (hcArgs.keepRG != null && !rec.getReadGroup().equals(hcArgs.keepRG)) ) {
                 readsToRemove.add(rec);
             }
         }

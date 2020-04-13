@@ -60,9 +60,9 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 
         // for right now, don't handle any deletions whatsoever
         // Also for right now lets not worry too much abotu alleles.
-        if (FRDBQDUtils.containsInsertionOrDeletion(genotypingAlleles) || data.numberOfAlleles() > 3) {
-            return fallbackModel.calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent);
-        }
+//        if (FRDBQDUtils.containsInsertionOrDeletion(genotypingAlleles) || data.numberOfAlleles() > 3) {
+//            return fallbackModel.calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent);
+//        }
 
         final AlleleListPermutation<A> permutation = data.permutation(genotypingAlleles);
         final AlleleLikelihoodMatrixMapper<A> alleleLikelihoodMatrixMapper = new AlleleLikelihoodMatrixMapper(permutation);

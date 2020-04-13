@@ -229,8 +229,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 
         for(int fAlleleIndex = 0; fAlleleIndex < sampleLikelihoods.numberOfAlleles(); fAlleleIndex++) {
             // We only want to make calls on SNPs for now todo this will change
-           final boolean isFSNP = sampleLikelihoods.getAllele(fAlleleIndex).length() == refAllele.length() && !sampleLikelihoods.getAllele(fAlleleIndex).isSymbolic();
-            if (!isFSNP) {
+            if (sampleLikelihoods.getAllele(fAlleleIndex).isSymbolic() ) {
                 continue;
             }
 
@@ -238,7 +237,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 
             // Here we generate a set of the critical log10(P(F)) values that we will iterate over
             final Set<Double> criticalThresholds = new HashSet<>();
-            computeCriticalValues(criticalThresholds, readContainers, fAlleleIndex == 0 ? 0 : snipAprioriHet/-10);
+            computeCriticalValues(criticalThresholds, readContainers, fAlleleIndex == 0 ? 0 : snipAprioriHet/-10); // simplified in line with DRAGEN, uses 1 alleledist for both snp and indels
             final List<Double> criticalThresholdsSorted = criticalThresholds.stream().sorted(Double::compareTo).collect(Collectors.toList());
 //            System.out.println("fIndex: "+fAlleleIndex+" criticalValues: \n"+criticalThresholds.stream().map(d -> Double.toString(d)).collect(Collectors.joining("\n")));
 
