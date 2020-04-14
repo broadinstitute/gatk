@@ -23,7 +23,7 @@ import java.security.GeneralSecurityException;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-public final class BucketUnitUtilsTest extends GATKBaseTest {
+public final class BucketUtilsUnitTest extends GATKBaseTest {
 
     static {
         BucketUtils.setGlobalNIODefaultOptions(
@@ -38,9 +38,16 @@ public final class BucketUnitUtilsTest extends GATKBaseTest {
         Assert.assertFalse(BucketUtils.isGcsUrl("localFile"));
         Assert.assertFalse(BucketUtils.isGcsUrl("https://www.somewhere.com"));
         Assert.assertFalse(BucketUtils.isGcsUrl("http://www.somewhere.com"));
-        Assert.assertFalse(BucketUtils.isGcsUrl("https://www.somewhere.com"));
     }
 
+    @Test
+    public void testIsHttpUrl(){
+        Assert.assertFalse(BucketUtils.isHttpUrl("gs://abucket/bucket"));
+        Assert.assertFalse(BucketUtils.isHttpUrl("hdfs://namenode/path/to/file"));
+        Assert.assertFalse(BucketUtils.isHttpUrl("localFile"));
+        Assert.assertTrue(BucketUtils.isHttpUrl("https://www.somewhere.com"));
+        Assert.assertTrue(BucketUtils.isHttpUrl("http://www.somewhere.com"));
+    }
     @DataProvider
     public Object[][] getVariousPathsForPrefetching(){
         return new Object[][]{
@@ -262,7 +269,7 @@ public final class BucketUnitUtilsTest extends GATKBaseTest {
 
     @Test(groups="cloud")
     public void testBucketPathToPublicHttpUrl(){
-        final String gcsPathString = "gs://hellbender/test/resources/nio/big.txt"; //note this doesn't actually check the existanc
+        final String gcsPathString = "gs://hellbender/test/resources/nio/big.txt";
         Assert.assertTrue(Files.exists(IOUtils.getPath(gcsPathString)), "Test file is missing: "+ gcsPathString);
         final String publicHttpLink = BucketUtils.bucketPathToPublicHttpUrl(gcsPathString);
         Assert.assertEquals(publicHttpLink, "https://storage.googleapis.com/hellbender/test/resources/nio/big.txt");
