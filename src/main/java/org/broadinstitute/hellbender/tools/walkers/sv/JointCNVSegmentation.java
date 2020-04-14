@@ -50,6 +50,11 @@ public class JointCNVSegmentation extends MultiVariantWalkerGroupedOnStart {
 
     private String currentContig;
 
+    public static final String MIN_QUALITY_LONG_NAME = "minimum-qs-score";
+
+    @Argument(fullName = MIN_QUALITY_LONG_NAME, doc = "Minimum QS score to combine a variant segment")
+    private int minQS = 20;
+
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="The combined output file", optional=false)
@@ -87,12 +92,6 @@ public class JointCNVSegmentation extends MultiVariantWalkerGroupedOnStart {
     }
 
     /**
-     * This method must be implemented by tool authors.
-     * <p>
-     * This is the primary traversal for any MultiVariantWalkerGroupedOnStart walkers. Will traverse over input variant contexts
-     * and call #apply() exactly once for each unique reference start position. All variants starting at each locus
-     * across source files will be grouped and passed as a list of VariantContext objects.
-     *
      * @param variantContexts  VariantContexts from driving variants with matching start positon
      *                         NOTE: This will never be empty
      * @param referenceContext ReferenceContext object covering the reference of the longest spanning VariantContext
@@ -106,13 +105,14 @@ public class JointCNVSegmentation extends MultiVariantWalkerGroupedOnStart {
             processClusters();
         }
         for (final VariantContext vc : variantContexts) {
-            defragmenter.add(new SVCallRecordWithEvidence(SVCallRecord.create(vc)));
+            defragmenter.add(new SVCallRecordWithEvidence(SVCallRecord.createDepthOnlyFromGCNV(vc, minQS)));
         }
     }
 
     private void processClusters() {
         final List<SVCallRecordWithEvidence> defragmentedCalls = defragmenter.getOutput();
         defragmentedCalls.stream().forEachOrdered(clusterEngine::add);
+        //defragmented calls may still be overlapping, so run the clustering engine to combine based on reciprocal overlap
         final List<SVCallRecordWithEvidence> clusteredCalls = clusterEngine.getOutput();
         write(clusteredCalls);
     }

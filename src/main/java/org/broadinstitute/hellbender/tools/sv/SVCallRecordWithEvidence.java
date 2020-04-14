@@ -14,7 +14,6 @@ public class SVCallRecordWithEvidence extends SVCallRecord {
     private final List<SplitReadSite> startSplitReadSites;
     private final List<SplitReadSite> endSplitReadSites;
     private final List<DiscordantPairEvidence> discordantPairs;
-    private final Map<String, Integer> samplesWithCopyState;
 
     public SVCallRecordWithEvidence(final SVCallRecord record) {
         super(record.getContig(), record.getStart(), record.getStartStrand(), record.getEndContig(), record.getEnd(),
@@ -22,7 +21,6 @@ public class SVCallRecordWithEvidence extends SVCallRecord {
         this.startSplitReadSites = Collections.emptyList();
         this.endSplitReadSites = Collections.emptyList();
         this.discordantPairs = Collections.emptyList();
-        this.samplesWithCopyState = Collections.emptyMap();
     }
 
     public SVCallRecordWithEvidence(final String startContig,
@@ -48,7 +46,6 @@ public class SVCallRecordWithEvidence extends SVCallRecord {
         this.startSplitReadSites = startSplitReadSites;
         this.endSplitReadSites = endSplitReadSites;
         this.discordantPairs = discordantPairs;
-        this.samplesWithCopyState = Collections.emptyMap();
     }
 
     public List<DiscordantPairEvidence> getDiscordantPairs() {
@@ -63,11 +60,21 @@ public class SVCallRecordWithEvidence extends SVCallRecord {
         return endSplitReadSites;
     }
 
-    public int getCopyState(final String sample) {
-        if (samplesWithCopyState.keySet().contains(sample)) {
-            return samplesWithCopyState.get(sample);
-        } else {
-            return -1;
+    @Override
+    public boolean equals(final Object obj) {
+        if (!super.equals(obj)) {
+            return false;
         }
+        if (this.getClass() != obj.getClass()) {
+            return false;
+        }
+        final SVCallRecordWithEvidence b = (SVCallRecordWithEvidence)obj;
+        boolean areEqual = this.getDiscordantPairs().containsAll(b.getDiscordantPairs());
+        areEqual &= b.getDiscordantPairs().containsAll(this.getDiscordantPairs());
+        areEqual &= this.getEndSplitReadSites().containsAll(b.getEndSplitReadSites());
+        areEqual &= b.getEndSplitReadSites().containsAll(this.getEndSplitReadSites());
+        areEqual &= this.getStartSplitReadSites().containsAll(b.getStartSplitReadSites());
+        areEqual &= b.getStartSplitReadSites().containsAll(this.getStartSplitReadSites());
+        return areEqual;
     }
 }

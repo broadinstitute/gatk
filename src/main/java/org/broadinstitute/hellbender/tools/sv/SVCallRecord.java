@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
@@ -11,9 +10,12 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.SVCallRecordCodec;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SVCallRecord implements Feature {
@@ -28,7 +30,7 @@ public class SVCallRecord implements Feature {
     private int length;
     private final List<String> algorithms;
     private final List<Genotype> genotypes;
-    private Set<String> samples;
+    private LinkedHashSet<String> samples;
 
     private final static List<String> nonDepthCallerAttributes = Arrays.asList(
             VCFConstants.END_KEY,
@@ -40,20 +42,14 @@ public class SVCallRecord implements Feature {
 
     public static SVCallRecord create(final VariantContext variant) {
         Utils.nonNull(variant);
-        //TODO -- put me back
-        //Utils.validate(variant.getAttributes().keySet().containsAll(nonDepthCallerAttributes), "Call is missing attributes");
+        Utils.validate(variant.getAttributes().keySet().containsAll(nonDepthCallerAttributes), "Call is missing attributes");
         final String startContig = variant.getContig();
         final int start = variant.getStart();
-        //final String endContig = variant.getAttributeAsString(SVCluster.END_CONTIG_ATTRIBUTE, "NA");
-        final String endContig = startContig; //HACK
+        final String endContig = variant.getAttributeAsString(GATKSVVCFConstants.END_CONTIG_ATTRIBUTE, "NA");
         final int end = variant.getAttributeAsInt(VCFConstants.END_KEY, variant.getStart());
         final StructuralVariantType type = variant.getStructuralVariantType();
         final List<String> algorithms = variant.getAttributeAsStringList(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, GATKSVVCFConstants.DEPTH_ALGORITHM);
-        if (algorithms.isEmpty()) {//HACK
-            algorithms.add(GATKSVVCFConstants.DEPTH_ALGORITHM);
-        }
         final String strands = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, "0");
-        /*
         if (strands.length() != 2) {
             throw new IllegalArgumentException("Strands field is not 2 characters long");
         }
@@ -65,16 +61,9 @@ public class SVCallRecord implements Feature {
         if (!endStrandChar.equals(SVCallRecordCodec.STRAND_PLUS) && !endStrandChar.equals(SVCallRecordCodec.STRAND_MINUS)) {
             throw new IllegalArgumentException("Valid end strand not found");
         }
-
         final boolean startStrand = startStrandChar.equals(SVCallRecordCodec.STRAND_PLUS);
         final boolean endStrand = endStrandChar.equals(SVCallRecordCodec.STRAND_PLUS);
-        final int length = variant.getAttributeAsInt(SVCluster.SVLEN_ATTRIBUTE, 0);
-        */
-        final boolean startStrand = true;
-        final boolean endStrand = true;
-        final int length = end - start + 1;
-
-
+        final int length = variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
         return new SVCallRecord(startContig, start, startStrand, endContig, end, endStrand, type, length, algorithms, variant.getGenotypes());
     }
 
@@ -112,16 +101,15 @@ public class SVCallRecord implements Feature {
                         final int length,
                         final List<String> algorithms,
                         final List<Genotype> genotypes) {
-        //TODO -- put these back or clean them up
-        /*Utils.nonNull(startContig);
+        Utils.nonNull(startContig);
         Utils.nonNull(endContig);
         Utils.nonNull(type);
         Utils.nonNull(algorithms);
-        Utils.nonNull(samples);
+        Utils.nonNull(genotypes);
         Utils.nonEmpty(algorithms);
-        Utils.nonEmpty(samples);
+        Utils.nonEmpty(genotypes);
         Utils.containsNoNull(algorithms, "Encountered null algorithm");
-        Utils.containsNoNull(samples, "Encountered null sample");*/
+        Utils.containsNoNull(genotypes, "Encountered null genotype");
         this.startContig = startContig;
         this.start = start;
         this.startStrand = startStrand;
@@ -135,7 +123,7 @@ public class SVCallRecord implements Feature {
         this.samples = genotypes.stream()
                 .filter(Genotype::isCalled)
                 .map(Genotype::getSampleName)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     @Override
@@ -191,5 +179,37 @@ public class SVCallRecord implements Feature {
 
     public SimpleInterval getEndAsInterval() {
         return new SimpleInterval(endContig, end, end + 1);
+    }
+
+    @Override
+    public boolean equals(final Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (this.getClass() != obj.getClass()) {
+            return false;
+        }
+        final SVCallRecord b = (SVCallRecord) obj;
+        boolean areEqual = this.getContig().equals(b.getContig());
+        areEqual &= this.getStart() == b.getStart();
+        areEqual &= this.getStartStrand() == b.getStartStrand();
+
+        areEqual &= this.getEndContig() == b.getEndContig();
+        areEqual &= this.getEnd() == b.getEnd();
+        areEqual &= this.getEndStrand() == b.getEndStrand();
+
+        areEqual &= this.getType() == b.getType();
+        areEqual &= this.getLength() == b.getLength();
+
+        areEqual &= this.getAlgorithms().containsAll(b.getAlgorithms());
+        areEqual &= b.getAlgorithms().containsAll(this.getAlgorithms());
+
+        areEqual &= this.getSamples().containsAll(b.getSamples());
+        areEqual &= b.getSamples().containsAll(this.getSamples());
+
+        areEqual &= this.getGenotypes().containsAll(b.getGenotypes());
+        areEqual &= b.getGenotypes().containsAll(this.getGenotypes());
+
+        return areEqual;
     }
 }

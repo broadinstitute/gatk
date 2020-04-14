@@ -40,6 +40,7 @@ public class SVCallRecordCodec extends AsciiFeatureCodec<SVCallRecord> {
                 StructuralVariantType.valueOf(tokens.get(6)),
                 Integer.parseInt(tokens.get(7)),
                 Arrays.asList(tokens.get(8)),
+                //TODO: these aren't going to load because they're "uncalled"
                 Collections.singletonList(new GenotypeBuilder().name(tokens.get(9)).make())
         );
     }

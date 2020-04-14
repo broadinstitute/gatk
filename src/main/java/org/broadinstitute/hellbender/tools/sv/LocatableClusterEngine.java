@@ -85,7 +85,7 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
     }
 
     public List<T> deduplicateItems(final List<T> items) {
-        final List<T> sortedItems = sortItemsByStart(items, dictionary);
+        final List<T> sortedItems = IntervalUtils.sortLocatablesBySequenceDictionary(items, dictionary);
         final List<T> deduplicatedList = new ArrayList<>();
         int i = 0;
         while (i < sortedItems.size()) {
@@ -112,12 +112,17 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
         return deduplicatedList;
     }
 
+    /**
+     * Add a new {@param <T>} to the current clusters and determine which are complete
+     * @param item to be added
+     * @return the IDs for clusters that are complete and ready for processing
+     */
     private List<Integer> cluster(final T item) {
         // Get list of item IDs from active clusters that cluster with this item
         final Set<Long> linkedItemIds = idToItemMap.entrySet().stream()
                 .filter(other -> other.getKey().intValue() != currentItemId && clusterTogether(item, other.getValue()))
                 .map(Map.Entry::getKey)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         // Find clusters to which this item belongs, and which active clusters we're definitely done with
         int clusterIndex = 0;
@@ -128,7 +133,7 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
             final SimpleInterval clusterInterval = cluster._1;
             final List<Long> clusterItemIds = cluster._2;
             if (item.getStart() > clusterInterval.getEnd()) {
-                clusterIdsToProcess.add(clusterIndex);
+                clusterIdsToProcess.add(clusterIndex);  //this cluster is complete -- process it when we're done
             } else {
                 if (clusteringType.equals(CLUSTERING_TYPE.SINGLE_LINKAGE)) {
                     final int n = (int) clusterItemIds.stream().filter(linkedItemIds::contains).count();
@@ -153,7 +158,7 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
         for (final int index : clustersToAdd) {
             addToCluster(index, currentItemId);
         }
-        // Create new cliques
+        // Create new clusters/cliques
         for (final int index : clustersToSeedWith) {
             seedWithExistingCluster(currentItemId, index, linkedItemIds);
         }
@@ -220,6 +225,12 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
         currentClusters.add(new Tuple2<>(getClusteringInterval(seed, null), newCluster));
     }
 
+    /**
+     * Create a new cluster
+     * @param seedId    itemId
+     * @param existingClusterIndex
+     * @param clusteringIds
+     */
     private void seedWithExistingCluster(final Long seedId, final int existingClusterIndex, final Set<Long> clusteringIds) {
         final T seed = validateItemIndex(seedId);
         final List<Long> existingCluster = currentClusters.get(existingClusterIndex)._2;
@@ -253,6 +264,12 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
         return cluster;
     }
 
+    /**
+     * Add the item specified by {@param itemId} to the cluster specified by {@param clusterIndex}
+     * and expand the clustering interval
+     * @param clusterIndex
+     * @param itemId
+     */
     private void addToCluster(final int clusterIndex, final long itemId) {
         final T item = idToItemMap.get(itemId);
         if (item == null) {
@@ -273,10 +290,5 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
             currentClusters.remove(clusterIndex);
             currentClusters.add(clusterIndex, new Tuple2<>(clusteringStartInterval, clusterItems));
         }
-    }
-
-    private List<T> sortItemsByStart(final Collection<T> items,
-                                    final SAMSequenceDictionary dictionary) {
-        return items.stream().sorted(IntervalUtils.getDictionaryOrderComparator(dictionary)).collect(Collectors.toList());
     }
 }

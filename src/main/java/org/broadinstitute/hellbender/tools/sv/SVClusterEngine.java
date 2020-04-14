@@ -99,7 +99,9 @@ public class SVClusterEngine extends LocatableClusterEngine<SVCallRecordWithEvid
 
     @Override
     protected SVCallRecordWithEvidence deduplicateIdenticalItems(final Collection<SVCallRecordWithEvidence> items) {
-        if (items.isEmpty()) return null;
+        if (items.isEmpty()) {
+            return null;
+        }
         final List<Genotype> genotypes = items.stream()
                 .map(SVCallRecordWithEvidence::getGenotypes)
                 .flatMap(Collection::stream)
