@@ -16,9 +16,9 @@ public class ReferenceMultiSparkSourceUnitTest extends GATKBaseTest {
     public Object[][] getReferenceTestCases() {
         return new Object[][] {
                 { twoBitRefURL, false },
-                { "file:///" + twoBitRefURL, false },
+                { "file://" + twoBitRefURL, false },
                 { hg38Reference, true }, // gzipped
-                { "file:///" + hg38Reference, true }, // gzipped
+                { "file://" + hg38Reference, true }, // gzipped
                 { GCS_b37_CHR20_21_REFERENCE_2BIT, false },
                 { GCS_b37_CHR20_21_REFERENCE, true },
                 // dummy query params at the end to make sure URI.getPath does the right thing
