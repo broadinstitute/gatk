@@ -10,14 +10,12 @@ import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 
@@ -57,14 +55,14 @@ public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrati
         final String bai = "gs://hellbender/test/resources/benchmark/CEUTrio.HiSeq.WEx.b37.NA12892.bam.bai";
         final String cram = "gs://hellbender/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram";
         final String crai = "gs://hellbender/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram.bai";
-        final List<SimpleInterval> largeFileIntervals = Arrays.asList(new SimpleInterval("3",1_000_000, 1_000_001),
+        final List<SimpleInterval> bamIntervals = Arrays.asList(new SimpleInterval("3",1_000_000, 1_000_001),
                new SimpleInterval("3", 1_000_003, 1_000_100),
                 new SimpleInterval("20", 1_099_000, 1_100_000));
 
         final List<SimpleInterval> cramIntervals = Arrays.asList(new SimpleInterval("20", 9_999_902, 10_000_000));
         return new Object[][]{
-                {BucketUtils.bucketPathToPublicHttpUrl(bam), BucketUtils.bucketPathToPublicHttpUrl(bai), bam, bai, largeFileIntervals, 528L},
-                {BucketUtils.createSignedUrlToGcsObject(bam, 1L), BucketUtils.createSignedUrlToGcsObject(bai, 1L), bam, bai, largeFileIntervals, 528L},
+                {BucketUtils.bucketPathToPublicHttpUrl(bam), BucketUtils.bucketPathToPublicHttpUrl(bai), bam, bai, bamIntervals, 528L},
+                {BucketUtils.createSignedUrlToGcsObject(bam, 1L), BucketUtils.createSignedUrlToGcsObject(bai, 1L), bam, bai, bamIntervals, 528L},
                 {BucketUtils.bucketPathToPublicHttpUrl(cram), BucketUtils.bucketPathToPublicHttpUrl(crai), cram, crai, cramIntervals, 112L},
                 {BucketUtils.createSignedUrlToGcsObject(cram, 1L), BucketUtils.createSignedUrlToGcsObject(crai, 1L), cram, crai, cramIntervals, 112L}
 

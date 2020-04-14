@@ -23,7 +23,7 @@ import java.security.GeneralSecurityException;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-public final class BucketUtilsTest extends GATKBaseTest {
+public final class BucketUnitUtilsTest extends GATKBaseTest {
 
     static {
         BucketUtils.setGlobalNIODefaultOptions(
@@ -37,16 +37,17 @@ public final class BucketUtilsTest extends GATKBaseTest {
         Assert.assertFalse(BucketUtils.isGcsUrl("hdfs://namenode/path/to/file"));
         Assert.assertFalse(BucketUtils.isGcsUrl("localFile"));
         Assert.assertFalse(BucketUtils.isGcsUrl("https://www.somewhere.com"));
+        Assert.assertFalse(BucketUtils.isGcsUrl("http://www.somewhere.com"));
+        Assert.assertFalse(BucketUtils.isGcsUrl("https://www.somewhere.com"));
     }
 
     @DataProvider
     public Object[][] getVariousPathsForPrefetching(){
         return new Object[][]{
                 {"localFile", false},
-                {"files:///local/file", false},
+                {"file:///local/file", false},
                 {"http://www.somewhere.com", true},
                 {"https://www.somewhere.com", true},
-               // {"hdfs://namenode/path/to/file", false}, skip this because it fails when namenode doesn't exist
                 {"gs://abucket/bucket", true}
         };
     }
@@ -61,6 +62,10 @@ public final class BucketUtilsTest extends GATKBaseTest {
         Assert.assertEquals(BucketUtils.isEligibleForPrefetching(new GATKPathSpecifier(path)), isPrefetchable);
     }
 
+    @Test
+    public void testIsEligibleForPrefetchingHdfs(){
+        Assert.assertFalse(BucketUtils.isEligibleForPrefetching(new GATKPathSpecifier("hdfs://namenode/path/to/file")));
+    }
 
     @Test
     public void testGetCloudStorageConfiguration() {
@@ -69,6 +74,21 @@ public final class BucketUtilsTest extends GATKBaseTest {
         CloudStorageConfiguration config = BucketUtils.getCloudStorageConfiguration(mockReopens, mockProject);
         Assert.assertEquals(config.maxChannelReopens(), mockReopens);
         Assert.assertEquals(config.userProject(), mockProject);
+    }
+
+    @DataProvider
+    public Object[][] getPathsForAbsoluteness(){
+        return new Object[][]{
+                {"some/relative/path", false},
+                {"file:///someAbsolutePath", true},
+                {"https://some.relative.path.com", true}
+        };
+    }
+
+    @Test(dataProvider = "getPathsForAbsoluteness")
+    public void testMakeFilePathAbsolute(String path, boolean isAbsolute){
+        final String absolutized = BucketUtils.makeFilePathAbsolute(path);
+        Assert.assertEquals(absolutized.equals(path), isAbsolute, absolutized + " vs " + path);
     }
 
     @Test
@@ -85,6 +105,7 @@ public final class BucketUtilsTest extends GATKBaseTest {
         Assert.assertTrue(BucketUtils.isRemoteStorageUrl("gs://abucket/bucket"));
         Assert.assertTrue(BucketUtils.isRemoteStorageUrl("hdfs://namenode/path/to/file"));
         Assert.assertFalse(BucketUtils.isRemoteStorageUrl("localFile"));
+        Assert.assertFalse(BucketUtils.isRemoteStorageUrl("file:///absolutelylocal/file"));
         Assert.assertTrue(BucketUtils.isRemoteStorageUrl("http://www.somewhere.com"));
         Assert.assertTrue(BucketUtils.isRemoteStorageUrl("https://www.somewhere.com"));
     }
@@ -231,7 +252,7 @@ public final class BucketUtilsTest extends GATKBaseTest {
 
         final String signed = BucketUtils.createSignedUrlToGcsObject(gcsPathString, 1);
         final Path path = IOUtils.getPath(signed);
-        Assert.assertTrue(signed.startsWith("https://"), "path doesn't star with https, " + signed);
+        Assert.assertTrue(signed.startsWith("https://"), "path doesn't start with https, " + signed);
         Assert.assertTrue(signed.contains("big.txt"), "path is missing blob name, "+ signed);
         Assert.assertTrue(Files.exists(path), "path doesn't exist: " + signed);
         try(final Stream<String> lines = Files.lines(path))  {
@@ -242,8 +263,9 @@ public final class BucketUtilsTest extends GATKBaseTest {
     @Test(groups="cloud")
     public void testBucketPathToPublicHttpUrl(){
         final String gcsPathString = "gs://hellbender/test/resources/nio/big.txt"; //note this doesn't actually check the existanc
+        Assert.assertTrue(Files.exists(IOUtils.getPath(gcsPathString)), "Test file is missing: "+ gcsPathString);
         final String publicHttpLink = BucketUtils.bucketPathToPublicHttpUrl(gcsPathString);
         Assert.assertEquals(publicHttpLink, "https://storage.googleapis.com/hellbender/test/resources/nio/big.txt");
-
+        Assert.assertTrue(Files.exists(IOUtils.getPath(publicHttpLink)));
     }
 }

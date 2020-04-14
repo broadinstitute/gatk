@@ -89,7 +89,7 @@ public final class BucketUtils {
     }
 
     /**
-     * @return true Iif the given path is an http or https Url.
+     * @return true if the given path is an http or https Url.
      */
     public static boolean isHttpUrl(String path){
         return path.startsWith(HTTP_PREFIX) || path.startsWith(HTTPS_PREFIX);
