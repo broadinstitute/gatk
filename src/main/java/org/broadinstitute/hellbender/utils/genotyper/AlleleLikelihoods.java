@@ -8,10 +8,12 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.collections.ListUtils;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
 import java.util.function.Function;
@@ -368,6 +370,36 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             final int evidenceCount = evidenceBySampleIndex.get(s).size();
             for (int r = 0; r < evidenceCount; r++) {
                 normalizeLikelihoodsPerEvidence(maximumLikelihoodDifferenceCap, sampleValues, s, r);
+            }
+        }
+    }
+
+    /**
+     * Adjusts likelihoods so that for each unit of evidence, the best allele likelihood is 0 and caps the minimum likelihood
+     * of any allele for each unit of evidence based on the maximum alternative allele likelihood which is tied to the mapping quality of the read.
+     *
+     *
+     * @throws IllegalArgumentException if {@code maximumDifferenceWithBestAlternative} is not 0 or less.
+     */
+    public void normalizeLikelihoodsByReadMQAsPhred() {
+
+        final int alleleCount = alleles.numberOfAlleles();
+        if (alleleCount == 0){ // trivial case there is no alleles.
+            return;
+        } else if (alleleCount == 1) {
+            return;
+        }
+
+        for (int s = 0; s < valuesBySampleIndex.length; s++) {
+            final double[][] sampleValues = valuesBySampleIndex[s];
+            final int evidenceCount = evidenceBySampleIndex.get(s).size();
+            //BIG TODO THIS IS CURRENTLY PEGGED TO GATK READS
+            final List<EVIDENCE> sampleEvidence = sampleEvidence(s);
+
+            for (int r = 0; r < evidenceCount; r++) {
+                final double phredLikelihood = QualityUtils.qualToErrorProbLog10(((GATKRead)sampleEvidence.get(r)).getMappingQuality());
+
+                normalizeLikelihoodsPerEvidence(phredLikelihood, sampleValues, s, r);
             }
         }
     }

@@ -45,9 +45,11 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
     private final PairHMM pairHMM;
 
+    // DRAGEN-GATK related parameters
     private final DragstrParams dragstrParams;
     private final boolean dynamicDisqualification;
     private final double readDisqualificationScale;
+    private final boolean useMapQAsPhredMismappingRate;
 
     public enum PCRErrorModel {
         /** no specialized PCR error model will be applied; if base insertion/deletion qualities are present they will be used */
@@ -101,7 +103,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final PairHMM.Implementation hmmType,
                                               final double log10globalReadMismappingRate,
                                               final PCRErrorModel pcrErrorModel) {
-        this( constantGCP, dragstrParams, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR);
+        this( constantGCP, dragstrParams, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, false);
     }
 
     /**
@@ -129,7 +131,8 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final PCRErrorModel pcrErrorModel,
                                               final byte baseQualityScoreThreshold,
                                               final boolean dynamicReadDisqualificaiton,
-                                              final double readDisqualificationScale) {
+                                              final double readDisqualificationScale,
+                                              final boolean useMapQAsPhredMismappingRate) {
         Utils.nonNull(hmmType, "hmmType is null");
         Utils.nonNull(pcrErrorModel, "pcrErrorModel is null");
         if (constantGCP < 0){
@@ -145,6 +148,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         this.pairHMM = hmmType.makeNewHMM(arguments);
         this.dynamicDisqualification = dynamicReadDisqualificaiton;
         this.readDisqualificationScale = readDisqualificationScale;
+        this.useMapQAsPhredMismappingRate = useMapQAsPhredMismappingRate;
 
         initializePCRErrorModel();
 
@@ -177,7 +181,11 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             computeReadLikelihoods(result.sampleMatrix(i));
         }
 
-        result.normalizeLikelihoods(log10globalReadMismappingRate);
+        if (useMapQAsPhredMismappingRate) {
+            result.normalizeLikelihoodsByReadMQAsPhred();
+        } else {
+            result.normalizeLikelihoods(log10globalReadMismappingRate);
+        }
         if (dynamicDisqualification) {
             result.filterPoorlyModeledEvidence(daynamicLog10MinLiklihoodModel(readDisqualificationScale, log10MinTrueLikelihood(EXPECTED_ERROR_RATE_PER_BASE)));
         } else {

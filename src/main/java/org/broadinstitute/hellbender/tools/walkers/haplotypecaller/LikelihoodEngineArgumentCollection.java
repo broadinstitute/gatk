@@ -68,6 +68,10 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Argument(fullName="phred-scaled-global-read-mismapping-rate", doc="The global assumed mismapping rate for reads", optional = true)
     public int phredScaledGlobalReadMismappingRate = 45;
 
+    @Advanced
+    @Argument(fullName ="mapping-qyality-based-read-mismapping-rate", doc= "If true this will limit the phred scaled likelihood for a read based on its MQ score", optional = true)
+    public boolean mapQBasedReadMismappingRateAdjustment = false;
+
     /**
      * TODO
      */
