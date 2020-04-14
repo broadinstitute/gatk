@@ -40,9 +40,7 @@ def write_tensors_partners(xml_folder: str, tensors: str) -> None:
     mrn_xmls_map = _get_mrn_xmls_map(xml_folder, n_jobs=n_jobs)
 
     logging.info('Converting XMLs into HD5s')
-    num_xml_converted, num_hd5_written = _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map, tensors, n_jobs=n_jobs)
-
-    logging.info(f'Skipped {sum([len(v) for k, v in mrn_xmls_map.items()]) - num_xml_converted} duplicate XMLs')
+    _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map, tensors, n_jobs=n_jobs)
 
 
 def _map_mrn_to_xml(fpath_xml: str) -> Union[Tuple[str, str], None]:
@@ -289,9 +287,10 @@ def _get_max_voltage(voltage: Dict[str, np.ndarray]) -> float:
     return max_voltage
 
 
-def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool:
+def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> int:
+    # Return 1 if converted, 0 if ecg was bad or -1 if ecg was a duplicate
     # Set flag to check if we should convert to hd5
-    convert = True
+    convert = 1
 
     # Extract text data from XML into dict
     text_data = _text_from_xml(fpath_xml)
@@ -301,13 +300,13 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
     # If XML is empty, remove the XML file and set convert to false
     if (os.stat(fpath_xml).st_size == 0 or not text_data):
         os.remove(fpath_xml)
-        convert = False
+        convert = 0
         logging.warning(f'Conversion of {fpath_xml} failed! XML is empty.')
     else:
         # Check if patient already has an ECG at given date and time
         if ecg_dt in hd5.keys():
             logging.warning(f'Conversion of {fpath_xml} skipped. Converted XML already exists in HD5.')
-            convert = False
+            convert = -1
 
         # Extract voltage from XML
         try:
@@ -315,7 +314,8 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
 
             # If the max voltage value is 0, do not convert
             if _get_max_voltage(voltage) == 0:
-                convert = False
+                logging.warning(f'Conversion of {fpath_xml} failed! Maximum voltage is 0.')
+                convert = 0
 
         # If there is no voltage, or the XML is poorly formed,
         # the function will throw an exception, and we mark 'convert' to False
@@ -323,10 +323,10 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
         # we catch XMLs filled with gibberish
         except (IndexError, ExpatError):
             logging.warning(f'Conversion of {fpath_xml} failed! Voltage is empty or badly formatted.')
-            convert = False
+            convert = 0
 
     # If convert is still true up to here, make the hd5
-    if convert:
+    if convert == 1:
 
         # Define keys for cleaned reads
         key_read_md = 'diagnosis_md'
@@ -380,17 +380,21 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
     return convert
 
 
-def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str, hd5_prefix: str) -> Tuple[int, int]:
+def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str, hd5_prefix: str) -> Tuple[int, int, int]:
     fpath_hd5 = os.path.join(dir_hd5, f'{mrn}{TENSOR_EXT}')
     num_xml_converted = 0
+    num_dupe_skipped = 0
     num_src_in_hd5 = 0
     num_ecg_in_hd5 = 0
 
     with h5py.File(fpath_hd5, 'a') as hd5:
         hd5_ecg = hd5[hd5_prefix] if hd5_prefix in hd5.keys() else hd5.create_group(hd5_prefix)
         for fpath_xml in fpath_xmls:
-            if _convert_xml_to_hd5(fpath_xml, fpath_hd5, hd5_ecg):
+            converted = _convert_xml_to_hd5(fpath_xml, fpath_hd5, hd5_ecg)
+            if converted == 1:
                 num_xml_converted += 1
+            elif converted == -1:
+                num_dupe_skipped += 1
         num_ecg_in_hd5 = len(hd5_ecg.keys())
 
         # If there are no ECGs in HD5, delete ECG group
@@ -409,18 +413,20 @@ def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str, hd5_
 
     num_hd5_written = 1 if num_xml_converted else 0
 
-    return (num_hd5_written, num_xml_converted)
+    return (num_hd5_written, num_xml_converted, num_dupe_skipped)
 
 
-def _convert_mrn_xmls_to_hd5_wrapper(mrn_xml_map: Dict[str, List[str]], dir_hd5: str,
-                                     hd5_prefix: str = 'partners_ecg_rest', n_jobs: int = -1) -> Tuple[int, int]:
+def _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map: Dict[str, List[str]], dir_hd5: str, hd5_prefix: str = 'partners_ecg_rest', n_jobs: int = -1):
+    tot_xml = sum([len(v) for k, v in mrn_xmls_map.items()])
     os.makedirs(dir_hd5, exist_ok=True)
-    converted = Parallel(n_jobs=n_jobs)(delayed(_convert_mrn_xmls_to_hd5)(mrn, fpath_xmls, dir_hd5, hd5_prefix) for mrn, fpath_xmls in mrn_xml_map.items())
+    converted = Parallel(n_jobs=n_jobs)(delayed(_convert_mrn_xmls_to_hd5)(mrn, fpath_xmls, dir_hd5, hd5_prefix) for mrn, fpath_xmls in mrn_xmls_map.items())
     num_hd5 = sum([x[0] for x in converted])
     num_xml = sum([x[1] for x in converted])
-    logging.info(f"Converted {num_xml} XMLs to {num_hd5} HD5s at {dir_hd5}")
+    num_dup = sum([x[2] for x in converted])
 
-    return (num_xml, num_hd5)
+    logging.info(f"Converted {num_xml} XMLs to {num_hd5} HD5s at {dir_hd5}")
+    logging.info(f"Skipped {num_dup} duplicate XMLs")
+    logging.info(f"Skipped {tot_xml - num_dup - num_xml} malformed XMLs")
 
 
 class XmlElementParser(ABC):

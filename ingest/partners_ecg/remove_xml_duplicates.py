@@ -2,6 +2,7 @@ import os
 import hashlib
 import logging
 import argparse
+import datetime
 from timeit import default_timer as timer
 
 
@@ -13,6 +14,16 @@ def _parse_args():
                         help="Path to directory containing organized source XMLs")
 
     args = parser.parse_args()
+
+    # This is temporary becuase I can't figure out how to import load_config from ml4cvd.logger
+    now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s",
+                        handlers=[
+                            logging.FileHandler(f"{now_str}_remove_xml_duplicates_log.txt"),
+                            logging.StreamHandler()
+                        ])
+
     return args
 
 
