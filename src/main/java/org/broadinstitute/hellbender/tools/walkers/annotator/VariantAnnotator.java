@@ -200,14 +200,12 @@ public class VariantAnnotator extends VariantWalker {
         Set<VCFHeaderLine> hInfo = new HashSet<>();
         hInfo.addAll(annotatorEngine.getVCFAnnotationDescriptions(false));
         hInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
+        hInfo = VcfUtils.updateHeaderContigLines(
+                hInfo,
+                hasReference() ? referenceArguments.getReferencePath() : null,
+                hasReference() ? getReferenceDictionary() : getBestAvailableSequenceDictionary(),
+                false);
 
-        if (hasReference()) {
-            hInfo = VcfUtils.updateHeaderContigLines(
-                    hInfo,
-                    referenceArguments.getReferencePath(),
-                    getReferenceDictionary(),
-                    false);
-        }
         vcfWriter = createVCFWriter(outputFile);
         vcfWriter.writeHeader(new VCFHeader(hInfo, samples));
     }

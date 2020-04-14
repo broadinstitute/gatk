@@ -202,7 +202,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     }
 
     private static CachingIndexedFastaSequenceFile getReferenceReader(ReferenceInputArgumentCollection referenceArguments) {
-        return new CachingIndexedFastaSequenceFile(referenceArguments.getReferencePath());
+        return new CachingIndexedFastaSequenceFile(referenceArguments.getReferenceSpecifier());
     }
 
     @Override
