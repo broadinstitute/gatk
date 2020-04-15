@@ -373,8 +373,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             // a query by interval is attempted.
             final boolean requireIndex = false;
 
-            // Only apply the wrappers if the feature input is on Google Cloud Storage
-            if (BucketUtils.isCloudStorageUrl(featureInput)) {
+            // Only apply the wrappers if the feature input is in a remote location which will benefit from prefetching.
+            if (BucketUtils.isEligibleForPrefetching(featureInput)) {
                 return AbstractFeatureReader.getFeatureReader(absoluteRawPath, null, codec, requireIndex, cloudWrapper, cloudIndexWrapper);
             } else {
                 return AbstractFeatureReader.getFeatureReader(absoluteRawPath, null, codec, requireIndex, Utils.identityFunction(), Utils.identityFunction());

@@ -170,7 +170,7 @@ public final class ReadsSparkSource implements Serializable {
      */
     public SAMFileHeader getHeader(final String filePath, final String referencePath) {
         // GCS case
-        if (BucketUtils.isCloudStorageUrl(filePath)) {
+        if (BucketUtils.isGcsUrl(filePath)) {
             try (ReadsDataSource readsDataSource = new ReadsDataSource(IOUtils.getPath(filePath))) {
                 return readsDataSource.getHeader();
             }
