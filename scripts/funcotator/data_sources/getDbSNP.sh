@@ -14,7 +14,7 @@ MINARGS=0
 MAXARGS=0
 
 FTP_BASE_URL='ftp://ftp.ncbi.nih.gov/snp/organisms/'
-BUILD_NUMBER='150'
+BUILD_NUMBER='151'
 
 DATA_SOURCE_NAME="dbSNP"
 OUT_DIR_NAME='dbsnp'
@@ -22,9 +22,9 @@ OUT_DIR_NAME='dbsnp'
 SRC_FILE_BASE_NAME="All_"
 #SRC_FILE_BASE_NAME="common_all_"
 
-SRC_FILE_REGEX="${SRC_FILE_BASE_NAME}\\d+.vcf.gz\\s*\$"
-MD5_FILE_REGEX="${SRC_FILE_BASE_NAME}\\d+.vcf.gz.md5\\s*\$"
-TBI_FILE_REGEX="${SRC_FILE_BASE_NAME}\\d+.vcf.gz.tbi\\s*\$"
+SRC_FILE_REGEX="${SRC_FILE_BASE_NAME}[0-9][0-9]*.vcf.gz[ \\t]*\$"
+MD5_FILE_REGEX="${SRC_FILE_BASE_NAME}[0-9][0-9]*.vcf.gz.md5[ \\t]*\$"
+TBI_FILE_REGEX="${SRC_FILE_BASE_NAME}[0-9][0-9]*.vcf.gz.tbi[ \\t]*\$"
 
 ################################################################################
 
@@ -154,57 +154,60 @@ function downloadAndVerifyVcfFiles() {
 
     curl ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/ 2>/dev/null > ${listingFile}
 
-    vcfFile=$( cat ${listingFile} | awk '{print $9}' | grep -E ${SRC_FILE_REGEX} )
-    tbiFile=$( cat ${listingFile} | awk '{print $9}' | grep -E ${TBI_FILE_REGEX} )
-    md5File=$( cat ${listingFile} | awk '{print $9}' | grep -E ${MD5_FILE_REGEX} )
+    vcfFile=$( cat ${listingFile} | awk '{print $9}' | grep -E "${SRC_FILE_REGEX}" )
+    tbiFile=$( cat ${listingFile} | awk '{print $9}' | grep -E "${TBI_FILE_REGEX}" )
+    md5File=$( cat ${listingFile} | awk '{print $9}' | grep -E "${MD5_FILE_REGEX}" )
 
     echo "${indentSpace}Retrieving MD5 sum file: ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${md5File} ... "
     wget ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${md5File}
 
     # Get the VCF file, then make sure that the contig names are correct for HG19 (if applicable)
     echo "${indentSpace}Retrieving VCF file: ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${vcfFile} ... "
-    if [[ "${filePrefix}" == "hg19" ]] ; then
-        curl ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${vcfFile} | gunzip | sed -e 's#^\([0-9][0-9]*\)#chr\1#' -e 's#^MT#chrM#' -e 's#^X#chrX#' -e 's#^Y#chrY#' | bgzip > ${vcfFile}
-    else
-        wget ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${vcfFile}
+    curl ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${vcfFile} | gunzip | sed -e 's#^\([0-9][0-9]*\)#chr\1#' -e 's#^MT#chrM#' -e 's#^X#chrX#' -e 's#^Y#chrY#' | bgzip > ${vcfFile}
 
-        echo "${indentSpace}Retrieving VCF Index file: ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${tbiFile} ... "
-        wget ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${tbiFile}
+		# We can no longer verify the MD5sum because we have to change the file contents.
+		# Uncomment the following block when we can once again verify contents:
+    #if [[ "${filePrefix}" != "hg19" ]] ; then
 
-        # We can only verify the checksum with hg38 because we modify the hg19 file as we stream it in:
-        echo "${indentSpace}Verifying VCF checksum ..."
-        if [[ "$(uname)" == "Darwin" ]] ; then
-            which md5sum-lite &> /dev/null
-            r=$?
-            if [ $r == 0 ] ; then
-                checksum=$( md5sum-lite ${vcfFile} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
-                expected=$( head -n1 ${md5File} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
+    #    wget ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${vcfFile}
 
-                if [[ "${checksum}" != "${expected}" ]] ; then
-                    error "DOWNLOADED FILE IS CORRUPT!  (${checksum} != ${expected})"
-                    error "FAILING"
-                    exit 4
-                fi
-            else
-                error "Unable to validate md5sum of file: cannot locate 'md5sum-lite'.  Use these data with caution."
-            fi
-        else
-            which md5sum &> /dev/null
-            r=$?
-            if [ $r == 0 ] ; then
-                checksum=$( md5sum ${vcfFile} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
-                expected=$( head -n1 ${md5File} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
+    #    echo "${indentSpace}Retrieving VCF Index file: ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${tbiFile} ... "
+    #    wget ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${tbiFile}
 
-                if [[ "${checksum}" != "${expected}" ]] ; then
-                    error "DOWNLOADED FILE IS CORRUPT!  (${checksum} != ${expected})"
-                    error "FAILING"
-                    exit 4
-                fi
-            else
-                error "Unable to validate md5sum of file: cannot locate 'md5sum'.  Use these data with caution."
-            fi
-        fi
-    fi
+    #    # We can only verify the checksum with hg38 because we modify the hg19 file as we stream it in:
+    #    echo "${indentSpace}Verifying VCF checksum ..."
+    #    if [[ "$(uname)" == "Darwin" ]] ; then
+    #        which md5sum-lite &> /dev/null
+    #        r=$?
+    #        if [ $r == 0 ] ; then
+    #            checksum=$( md5sum-lite ${vcfFile} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
+    #            expected=$( head -n1 ${md5File} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
+
+    #            if [[ "${checksum}" != "${expected}" ]] ; then
+    #                error "DOWNLOADED FILE IS CORRUPT!  (${checksum} != ${expected})"
+    #                error "FAILING"
+    #                exit 4
+    #            fi
+    #        else
+    #            error "Unable to validate md5sum of file: cannot locate 'md5sum-lite'.  Use these data with caution."
+    #        fi
+    #    else
+    #        which md5sum &> /dev/null
+    #        r=$?
+    #        if [ $r == 0 ] ; then
+    #            checksum=$( md5sum ${vcfFile} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
+    #            expected=$( head -n1 ${md5File} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
+
+    #            if [[ "${checksum}" != "${expected}" ]] ; then
+    #                error "DOWNLOADED FILE IS CORRUPT!  (${checksum} != ${expected})"
+    #                error "FAILING"
+    #                exit 4
+    #            fi
+    #        else
+    #            error "Unable to validate md5sum of file: cannot locate 'md5sum'.  Use these data with caution."
+    #        fi
+    #    fi
+    #fi
 
     # Now put it in the right place and clean up:
     echo "${indentSpace}Creating output directory ..."
@@ -282,6 +285,8 @@ curl ftp://ftp.ncbi.nih.gov/snp/organisms/ 2>/dev/null > ${tmpListing}
 # Get the link for HG19:
 echo "Processing HG19 ..."
 hg19Version=$( cat ${tmpListing} | awk '{print $9}' | grep 'human' | grep 'GRCh37' | grep "b${BUILD_NUMBER}" )
+echo "Found HG19 version: ${hg19Version}"
+echo "Downloading ..."
 
 downloadAndVerifyVcfFiles ${hg19Version} ${OUT_DIR_NAME}/hg19 "hg19"
 
@@ -289,6 +294,8 @@ downloadAndVerifyVcfFiles ${hg19Version} ${OUT_DIR_NAME}/hg19 "hg19"
 # Get the link for HG38:
 echo "Processing HG38 ..."
 hg38Version=$( cat ${tmpListing} | awk '{print $9}' | grep 'human' | grep 'GRCh38' | grep "b${BUILD_NUMBER}" )
+echo "Found HG38 version: ${hg38Version}"
+echo "Downloading ..."
 
 downloadAndVerifyVcfFiles ${hg38Version} ${OUT_DIR_NAME}/hg38 "hg38"
 
@@ -297,7 +304,7 @@ echo -e "\033[1;33;40m#                                                         
 echo -e "\033[1;33;40m# \033[1;5;37;41mWARNING\033[0;0m: You \033[4;37;40mMUST\033[0;0m index the VCF files for \033[4;37;40mHG19\033[0;0m #\033[0;0m"
 echo -e "\033[1;33;40m#             before using this data source.                                     #\033[0;0m"
 echo -e "\033[1;33;40m#                                                                                #\033[0;0m"
-echo -e "\033[1;33;40m#             Use gatk IndexFeatureFile <GTF_FILE>                               #\033[0;0m"
+echo -e "\033[1;33;40m#             Use gatk IndexFeatureFile -I <VCF_FILE>                            #\033[0;0m"
 echo -e "\033[1;33;40m#                                                                                #\033[0;0m"
 echo -e "\033[1;33;40m##################################################################################\033[0;0m"
 

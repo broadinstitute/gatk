@@ -48,6 +48,7 @@ doClean=false
 
 REF_VER=hg19
 OUT_FORMAT=VCF
+useV16DataSources=false
 useAOUDataSources=false
 useCloudDataSources=false
 
@@ -56,6 +57,7 @@ MANUAL_MODE=false
 ################################################################################
 
 # Change this to point to your funcotator data sources folder:
+DATA_SOURCES_PATH_16=/Users/jonn/Development/funcotator_dataSources.v1.6.20190124s
 DATA_SOURCES_PATH=/Users/jonn/Development/funcotator_dataSources_latest
 DATA_SOURCES_PATH_GERMLINE=/Users/jonn/Development/funcotator_dataSources_germline_latest
 HG19=/Users/jonn/Development/references/Homo_sapiens_assembly19.fasta
@@ -90,6 +92,7 @@ function usage()
   echo -e "  -19                                         run with hg19 data sources/reference/input file"
   echo -e "                                              (default)"
   echo -e "  -38                                         run with hg38 data sources/reference/input file"
+  echo -e "  -v16                                        use the Funcotator v1.6 data sources."
   echo -e "  -MAF                                        create MAF output"
   echo -e "  -VCF                                        create VCF output (default)"
   echo -e "  -cloud                                      use cloud data sources"
@@ -182,6 +185,9 @@ while [ $# -gt 0 ] ; do
     ;;
     -MAF)
     OUT_FORMAT=MAF
+    ;;
+    -v16)
+    useV16DataSources=true
     ;;
     -AOU)
     useAOUDataSources=true
@@ -288,6 +294,7 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
 
   if [[ "${REF_VER}" == "hg19" ]] ; then
     INPUT=/Users/jonn/Development/NON_PUBLIC/0816201804HC0_R01C01.vcf
+    #INPUT=/Users/jonn/Development/funcotator_debugging/problem_variant_fixed.vcf
     #INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestVariantSet1.vcf
     #INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestVariantSet2.vcf
     #INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestHg19Large.vcf
@@ -305,11 +312,14 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
 		#INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestVariantSetHG38.vcf
     #INPUT=/Users/jonn/Development/tmp/cohort24_23_seg.subset.vcf
     #INPUT=/Users/jonn/Development/gatk/tmp.38.vcf
-    INPUT=/Users/jonn/Development/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/badDataOneAlleleDepthValue_hg38.vcf
+    #INPUT=/Users/jonn/Development/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/badDataOneAlleleDepthValue_hg38.vcf
     REF=$HG38
   fi
 
   # Use the AOU data sources if we need them:
+	$useV16DataSources && echo "Using v1.6 data sources." && DATA_SOURCES_PATH=${DATA_SOURCES_PATH_16}
+  
+	# Use the AOU data sources if we need them:
   $useAOUDataSources && echo "Using AOU data sources." && DATA_SOURCES_PATH=/Users/jonn/Development/funcotator_dataSources_germline_latest
 
   # Use cloud data sources if we need them:
