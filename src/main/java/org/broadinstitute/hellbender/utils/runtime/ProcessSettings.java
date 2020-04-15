@@ -17,6 +17,7 @@ public final class ProcessSettings {
     private final InputStreamSettings stdinSettings;
     private final OutputStreamSettings stdoutSettings;
     private final OutputStreamSettings stderrSettings;
+    private boolean cleanUpTemps;
 
     /**
      * @param command Command line to run.

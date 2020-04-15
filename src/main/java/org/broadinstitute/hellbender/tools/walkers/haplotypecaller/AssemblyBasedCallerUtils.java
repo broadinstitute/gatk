@@ -216,11 +216,6 @@ public final class AssemblyBasedCallerUtils {
         return new SimpleInterval(region.getPaddedSpan().getContig(), padLeft, padRight);
     }
 
-    public static CachingIndexedFastaSequenceFile createReferenceReader(final GATKPath referenceInput) {
-        // fasta reference reader to supplement the edges of the reference sequence
-        return new CachingIndexedFastaSequenceFile(referenceInput.toPath());
-    }
-
     /**
      * Instantiates the appropriate likelihood calculation engine.
      *

@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.tribble.Feature;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVSegmentVariantComposer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -63,28 +66,82 @@ public class SVCallRecord implements Feature {
         return new SVCallRecord(startContig, start, startStrand, endContig, end, endStrand, type, length, algorithms, variant.getGenotypes());
     }
 
+    /**
+     *
+     * @param variant single-sample variant from a gCNV segments VCF
+     * @param minQuality drop events with quality lower than this
+     * @return a new SVCallRecord, may be null
+     */
     public static SVCallRecord createDepthOnlyFromGCNV(final VariantContext variant, final double minQuality) {
         Utils.nonNull(variant);
-        final List<Genotype> passing = variant.getGenotypes().stream()
-                .filter(Genotype::isCalled)
-                .filter(g -> Integer.valueOf((String)g.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QS)) >= minQuality)
-                .collect(Collectors.toList());
-        if (passing.isEmpty()) return null;
+
+        if (variant.getGenotypes().size() == 1) {
+            //only cluster good variants
+            final Genotype g = variant.getGenotypes().get(0);
+            if (g.isHomRef() || (g.isNoCall() && !g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT))
+                    || Integer.valueOf((String) g.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QS)) < minQuality
+                    || isNullCall(g)) {
+                return null;
+            }
+        }
+
+
         final List<String> algorithms = Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM);
 
-        //TODO : use new vcfs to get actual allele
-        final int copyNumber = Integer.valueOf((String)variant.getGenotypes().get(0).getExtendedAttribute(GermlineCNVSegmentVariantComposer.CN));
-        if (copyNumber == 2) return null;
-        final boolean isDel = copyNumber < 2;
+        boolean isDel = false;
+        for (final Genotype g : variant.getGenotypes()) {
+            if (g.isHomRef() || (g.isNoCall() && !g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT))) {
+                continue;
+            }
+            if (variant.getReference().equals(Allele.REF_N)) {  //old segments VCFs had ref Ns and genotypes that didn't reflect ploidy accurately
+                if (g.getAlleles().stream().anyMatch(a -> a.equals(GATKSVVCFConstants.DEL_ALLELE))) {
+                    isDel = true;
+                } else if (g.getAlleles().stream().anyMatch(a -> a.equals(GATKSVVCFConstants.DUP_ALLELE))) {
+                    isDel = false;
+                } else if (g.getAlleles().stream().allMatch(a -> a.isNoCall())) {
+                    if (g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
+                        isDel = (Integer.parseInt(g.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT).toString()) < g.getPloidy());
+                    } else {
+                        throw new IllegalStateException("Genotype for sample " + g.getSampleName() + " at " + variant.getContig() + ":" + variant.getStart() + " had no CN attribute and will be dropped.");
+                    }
+                } else {
+                    throw new IllegalArgumentException("Segment VCF schema expects <DEL>, <DUP>, and no-call allele, but found "
+                            + g.getAllele(0) + " at " + variant.getContig() + ":" + variant.getStart());
+                }
+            } else {  //for spec-compliant VCFs (i.e. with non-N ref allele) we can just trust the ALT
+                isDel = (variant.getAlternateAlleles().contains(GATKSVVCFConstants.DEL_ALLELE)
+                        && !variant.getAlternateAlleles().contains(GATKSVVCFConstants.DUP_ALLELE));
+            }
+        }
+
         final boolean startStrand = isDel ? true : false;
         final boolean endStrand = isDel ? false : true;
-        final StructuralVariantType type = isDel ? StructuralVariantType.DEL : StructuralVariantType.DUP;
+        final StructuralVariantType type;
+        if (!variant.getReference().equals(Allele.REF_N) && variant.getAlternateAlleles().contains(GATKSVVCFConstants.DUP_ALLELE)
+                && variant.getAlternateAlleles().contains(GATKSVVCFConstants.DEL_ALLELE)) {
+            type = StructuralVariantType.CNV;
+        } else {
+            type = isDel ? StructuralVariantType.DEL : StructuralVariantType.DUP;
+        }
 
         final String startContig = variant.getContig();
         final int start = variant.getStart();
-        final int end = variant.getEnd() + 1; // TODO this is a bug with gCNV vcf generation
+        final int end = variant.getEnd();
         final int length = end - start;
-        return new SVCallRecord(startContig, start, startStrand, startContig, end, endStrand, type, length, algorithms, passing);
+        return new SVCallRecord(startContig, start, startStrand, startContig, end, endStrand, type, length, algorithms,
+                new ArrayList<>(variant.getGenotypes()));
+    }
+
+    /**
+     *
+     * @param g
+     * @return true if this is a call on a missing contig
+     */
+    private static boolean isNullCall(final Genotype g) {
+        return g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)
+                && Integer.parseInt(g.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT).toString()) == 0
+                && g.isNoCall();
+
     }
 
     public SVCallRecord(final String startContig,
@@ -117,7 +174,7 @@ public class SVCallRecord implements Feature {
         this.algorithms = algorithms;
         this.genotypes = genotypes;
         this.samples = genotypes.stream()
-                .filter(Genotype::isCalled)
+                .filter(g -> g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) //skip no-calls that don't have copy number (i.e. not dupe no-calls)
                 .map(Genotype::getSampleName)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
@@ -153,6 +210,10 @@ public class SVCallRecord implements Feature {
         return type;
     }
 
+    public boolean isCNV() {
+        return type == StructuralVariantType.CNV || type == StructuralVariantType.DEL || type == StructuralVariantType.DUP;
+    }
+
     public int getLength() {
         return length;
     }
@@ -170,11 +231,11 @@ public class SVCallRecord implements Feature {
     }
 
     public SimpleInterval getStartAsInterval() {
-        return new SimpleInterval(startContig, start, start + 1);
+        return new SimpleInterval(startContig, start, start);
     }
 
     public SimpleInterval getEndAsInterval() {
-        return new SimpleInterval(endContig, end, end + 1);
+        return new SimpleInterval(endContig, end, end);
     }
 
     @Override
@@ -186,9 +247,12 @@ public class SVCallRecord implements Feature {
             return false;
         }
         final SVCallRecord b = (SVCallRecord) obj;
-        boolean areEqual = this.getContig().equals(b.getContig());
-        areEqual &= this.getStart() == b.getStart();
-        areEqual &= this.getStartStrand() == b.getStartStrand();
+
+        //quick check
+        if (!this.getContig().equals(b.getContig())) return false;
+        if (this.getStart() != b.getStart()) return false;
+
+        boolean areEqual = this.getStartStrand() == b.getStartStrand();
 
         areEqual &= this.getEndContig() == b.getEndContig();
         areEqual &= this.getEnd() == b.getEnd();

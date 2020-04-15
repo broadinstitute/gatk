@@ -316,7 +316,7 @@ public class VariantEval extends MultiVariantWalker {
         // Just list the modules, and exit quickly.
         if (LIST) { variantEvalUtils.listModulesAndExit(); }
 
-        sampleDB = initializeSampleDB();
+        sampleDB = SampleDB.createSampleDBFromPedigreeAndDataSources(pedigreeFile, getSamplesForVariants(), PedigreeValidationType.STRICT);
 
         comps.addAll(compsProvided);
         compsProvided.forEach(x -> inputToNameMap.put(x, x.hasUserSuppliedName() ? x.getName() : StandardArgumentDefinitions.COMPARISON_SHORT_NAME));
@@ -816,22 +816,6 @@ public class VariantEval extends MultiVariantWalker {
 
     public boolean ignoreAC0Sites() {
         return ! keepSitesWithAC0;
-    }
-
-    /**
-     * Entry-point function to initialize the samples database from input data
-     */
-    private SampleDB initializeSampleDB() {
-        final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
-        if (pedigreeFile != null)
-            sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
-
-        Collection<String> samples = getSamplesForVariants();
-        if (samples != null) {
-            sampleDBBuilder.addSamplesFromSampleNames(samples);
-        }
-
-        return sampleDBBuilder.getFinalSampleDB();
     }
 
     public SampleDB getSampleDB() {

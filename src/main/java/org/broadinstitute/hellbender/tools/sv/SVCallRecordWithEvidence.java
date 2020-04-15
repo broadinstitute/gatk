@@ -79,4 +79,8 @@ public class SVCallRecordWithEvidence extends SVCallRecord {
     public int hashCode() {
         return Objects.hash(super.hashCode(), discordantPairs, endSplitReadSites, startSplitReadSites);
     }
+
+    String prettyPrint() {
+        return getContig() + ":" + getStart() + "-" + getEnd();
+    }
 }

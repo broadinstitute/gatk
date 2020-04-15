@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -21,14 +22,14 @@ public final class IndexUtilsUnitTest extends GATKBaseTest {
     @DataProvider(name= "okFeatureFiles")
     public Object[][] okFeatureFiles() {
         return new Object[][] {
-                { new File(getToolTestDataDir(), "test_variants_for_index.vcf")},
-                { new File(getToolTestDataDir(), "test_variants_for_index.g.vcf")},
-                { new File(getToolTestDataDir(), "test_bed_for_index.bed")},
+                { IOUtils.getPath(getToolTestDataDir() + "test_variants_for_index.vcf")},
+                { IOUtils.getPath(getToolTestDataDir() + "test_variants_for_index.g.vcf")},
+                { IOUtils.getPath(getToolTestDataDir() + "test_bed_for_index.bed")},
         };
     }
 
     @Test(dataProvider = "okFeatureFiles")
-    public void testLoadIndex(final File featureFile) throws Exception {
+    public void testLoadIndex(final Path featureFile) throws Exception {
         final Index index = IndexUtils.loadTribbleIndex(featureFile);
         Assert.assertNotNull(index);
     }
@@ -36,12 +37,12 @@ public final class IndexUtilsUnitTest extends GATKBaseTest {
     @DataProvider(name= "okFeatureFilesTabix")
     public Object[][] okFeatureFilesTabix() {
         return new Object[][] {
-                { new File(getToolTestDataDir(), "test_variants_for_index.vcf.bgz")},
+                { IOUtils.getPath(getToolTestDataDir() + "test_variants_for_index.vcf.bgz")},
         };
     }
 
     @Test(dataProvider = "okFeatureFilesTabix")
-    public void testLoadTabixIndex(final File featureFile) throws Exception {
+    public void testLoadTabixIndex(final Path featureFile) throws Exception {
         final Index index = IndexUtils.loadTabixIndex(featureFile);
         Assert.assertNotNull(index);
     }
@@ -49,14 +50,14 @@ public final class IndexUtilsUnitTest extends GATKBaseTest {
     @DataProvider(name= "failTabixIndexFiles")
     public Object[][] failTabixIndexFiles() {
         return new Object[][] {
-                { new File(getToolTestDataDir(), "test_variants_for_index.vcf")},
-                { new File(getToolTestDataDir(), "test_variants_for_index.g.vcf")},
-                { new File(getToolTestDataDir(), "test_bed_for_index.bed")},
+                { IOUtils.getPath(getToolTestDataDir() + "test_variants_for_index.vcf")},
+                { IOUtils.getPath(getToolTestDataDir() + "test_variants_for_index.g.vcf")},
+                { IOUtils.getPath(getToolTestDataDir() + "test_bed_for_index.bed")},
         };
     }
 
     @Test(dataProvider = "failTabixIndexFiles")
-    public void testFailLoadTabixIndex(final File featureFile) throws Exception {
+    public void testFailLoadTabixIndex(final Path featureFile) throws Exception {
         final Index index = IndexUtils.loadTabixIndex(featureFile);
         Assert.assertNull(index);
     }
@@ -64,12 +65,12 @@ public final class IndexUtilsUnitTest extends GATKBaseTest {
     @DataProvider(name= "failTribbleIndexFiles")
     public Object[][] failTribbleIndexFiles() {
         return new Object[][] {
-                { new File(getToolTestDataDir(), "test_variants_for_index.vcf.bgz")},
+                { IOUtils.getPath(getToolTestDataDir() + "test_variants_for_index.vcf.bgz")},
         };
     }
 
     @Test(dataProvider = "failTribbleIndexFiles")
-    public void testFailLoadTribbleIndex(final File featureFile) throws Exception {
+    public void testFailLoadTribbleIndex(final Path featureFile) throws Exception {
         final Index index = IndexUtils.loadTribbleIndex(featureFile);
         Assert.assertNull(index);
     }
@@ -86,46 +87,45 @@ public final class IndexUtilsUnitTest extends GATKBaseTest {
         Files.copy(featureFile.toPath(), tmpFeatureFilePath);
         Files.copy(featureFileIdx.toPath(), tmpFeatureFileIdxPath);
 
-        final File tmpVcf= tmpFeatureFilePath.toFile();
         Thread.sleep(1000L); //wait a second
         tmpFeatureFilePath.toFile().setLastModified(System.currentTimeMillis()); //touch the file but not the index
-        final Index index = IndexUtils.loadTribbleIndex(tmpVcf);
+        final Index index = IndexUtils.loadTribbleIndex(tmpFeatureFilePath);
         Assert.assertNotNull(index);
         //this should NOT blow up (files newer than indices are tolerated)
     }
 
     @Test
     public void testLoadIndex_noIndex() throws Exception {
-        final File featureFile = new File(getToolTestDataDir(), "test_variants_for_index.noIndex.vcf");
+        final Path featureFile = IOUtils.getPath(getToolTestDataDir() + "test_variants_for_index.noIndex.vcf");
         final Index index = IndexUtils.loadTribbleIndex(featureFile);
         Assert.assertNull(index);
     }
 
     @Test
     public void testCheckIndexModificationTime() throws Exception {
-        final File vcf = new File(getToolTestDataDir(), "test_variants_for_index.vcf");
-        final File vcfIdx = new File(getToolTestDataDir(), "test_variants_for_index.vcf.idx");
-        final Index index = IndexFactory.loadIndex(vcfIdx.getAbsolutePath());
+        final Path vcf = IOUtils.getPath(getToolTestDataDir() + "test_variants_for_index.vcf");
+        final Path vcfIdx = IOUtils.getPath(getToolTestDataDir() + "test_variants_for_index.vcf.idx");
+        final Index index = IndexFactory.loadIndex(vcfIdx.toUri().toString());
         IndexUtils.checkIndexVersionAndModificationTime(vcf, vcfIdx, index);//no blowup
     }
 
     @Test
     public void testCreateSequenceDictionaryFromTribbleIndex() throws Exception {
-        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(getToolTestDataDir(), "test_variants_for_index.vcf"));
+        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(IOUtils.getPath(getToolTestDataDir() + "test_variants_for_index.vcf"));
         final Set<String> contigs = dict.getSequences().stream().map(s -> s.getSequenceName()).collect(Collectors.toSet());
         Assert.assertEquals(contigs, Sets.newHashSet("1", "2", "3", "4"));
     }
 
     @Test
     public void testCreateSequenceDictionaryFromTabixIndex() throws Exception {
-        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(getToolTestDataDir(), "test_variants_for_index.vcf.bgz"));
+        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(IOUtils.getPath(getToolTestDataDir() + "test_variants_for_index.vcf.bgz"));
         final Set<String> contigs = dict.getSequences().stream().map(s -> s.getSequenceName()).collect(Collectors.toSet());
         Assert.assertEquals(contigs, Sets.newHashSet("1", "2", "3", "4"));
     }
 
     @Test
     public void testIsSequenceDictionaryFromIndexPositive() throws Exception {
-        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(getToolTestDataDir(), "test_variants_for_index.vcf"));
+        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(IOUtils.getPath(getToolTestDataDir() + "test_variants_for_index.vcf"));
         Assert.assertTrue(IndexUtils.isSequenceDictionaryFromIndex(dict));
     }
 

@@ -960,8 +960,8 @@ public final class MathUtils {
     /**
      * Compute the median of a list of numbers
      *
-     * If values.length is even, this will be the middle value when the elements are sorted
-     * If values.length is odd then it will be the mean of the two values closest to the middle.
+     * If values.length is odd, this will be the middle value when the elements are sorted
+     * If values.length is even then it will be the mean of the two values closest to the middle.
      *
      * @param values a list of numbers
      * @return the median element of values

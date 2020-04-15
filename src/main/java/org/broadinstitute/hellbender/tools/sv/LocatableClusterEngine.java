@@ -2,9 +2,7 @@ package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import scala.Tuple2;
 
 import java.util.*;
@@ -12,6 +10,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public abstract class LocatableClusterEngine<T extends Locatable> {
+
+    protected final TreeMap<GenomeLoc, Integer> genomicToBinMap;
+    protected final List<GenomeLoc> coverageIntervals;
+    final GenomeLocParser parser;
 
     public enum CLUSTERING_TYPE {
         SINGLE_LINKAGE,
@@ -27,7 +29,7 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
     private String currentContig;
 
 
-    public LocatableClusterEngine(final SAMSequenceDictionary dictionary, final CLUSTERING_TYPE clusteringType) {
+    public LocatableClusterEngine(final SAMSequenceDictionary dictionary, final CLUSTERING_TYPE clusteringType, final List<GenomeLoc> coverageIntervals) {
         this.dictionary = dictionary;
         this.clusteringType = clusteringType;
         this.currentClusters = new LinkedList<>();
@@ -35,6 +37,18 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
         this.outputBuffer = new ArrayList<>();
         currentItemId = 0;
         currentContig = null;
+
+        parser = new GenomeLocParser(this.dictionary);
+        if (coverageIntervals != null) {
+            this.coverageIntervals = coverageIntervals;
+            genomicToBinMap = new TreeMap<>();
+            for (int i = 0; i < coverageIntervals.size(); i++) {
+                genomicToBinMap.put(coverageIntervals.get(i),i);
+            }
+        } else {
+            genomicToBinMap = null;
+            this.coverageIntervals = null;
+        }
     }
 
     abstract protected boolean clusterTogether(final T a, final T b);
@@ -45,7 +59,12 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
 
     public List<T> getOutput() {
         flushClusters();
-        final List<T> output = deduplicateItems(outputBuffer);
+        final List<T> output;
+        if (clusteringType == CLUSTERING_TYPE.MAX_CLIQUE) {
+            output = deduplicateItems(outputBuffer);
+        } else {
+            output = new ArrayList<>(outputBuffer);
+        }
         outputBuffer.clear();
         return output;
     }
@@ -132,17 +151,17 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
         for (final Tuple2<SimpleInterval, List<Long>> cluster : currentClusters) {
             final SimpleInterval clusterInterval = cluster._1;
             final List<Long> clusterItemIds = cluster._2;
-            if (item.getStart() > clusterInterval.getEnd()) {
+            if (getClusteringInterval(item, null).getStart() > clusterInterval.getEnd()) {
                 clusterIdsToProcess.add(clusterIndex);  //this cluster is complete -- process it when we're done
             } else {
-                if (clusteringType.equals(CLUSTERING_TYPE.SINGLE_LINKAGE)) {
+                if (clusteringType.equals(CLUSTERING_TYPE.MAX_CLIQUE)) {
                     final int n = (int) clusterItemIds.stream().filter(linkedItemIds::contains).count();
                     if (n == clusterItemIds.size()) {
                         clustersToAdd.add(clusterIndex);
                     } else if (n > 0) {
                         clustersToSeedWith.add(clusterIndex);
                     }
-                } else if (clusteringType.equals(CLUSTERING_TYPE.MAX_CLIQUE)) {
+                } else if (clusteringType.equals(CLUSTERING_TYPE.SINGLE_LINKAGE)) {
                     final boolean matchesCluster = clusterItemIds.stream().anyMatch(linkedItemIds::contains);
                     if (matchesCluster) {
                         clustersToAdd.add(clusterIndex);
@@ -235,7 +254,7 @@ public abstract class LocatableClusterEngine<T extends Locatable> {
         final T seed = validateItemIndex(seedId);
         final List<Long> existingCluster = currentClusters.get(existingClusterIndex)._2;
         final List<Long> validClusterIds = existingCluster.stream().filter(clusteringIds::contains).collect(Collectors.toList());
-        final List<Long> newCluster = new ArrayList<>(1 + existingCluster.size());
+        final List<Long> newCluster = new ArrayList<>(1 + validClusterIds.size());
         newCluster.addAll(validClusterIds);
         newCluster.add(seedId);
         currentClusters.add(new Tuple2<>(getClusteringInterval(seed, currentClusters.get(existingClusterIndex)._1), newCluster));

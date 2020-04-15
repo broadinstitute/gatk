@@ -401,10 +401,16 @@ public final class StreamingProcessController extends ProcessControllerBase<Capt
     private class ProcessJournal {
         private File journalingFile = null;
         private FileWriter journalingFileWriter;
+        private boolean cleanUpJournal = false;
 
         public void enable(final String commandString) {
+            enable(commandString, false);
+        }
+
+        public void enable(final String commandString, final boolean cleanUpJournal) {
             final String journalingFileName = String.format("gatkStreamingProcessJournal-%d.txt", new Random().nextInt());
             journalingFile = new File(journalingFileName);
+            this.cleanUpJournal = cleanUpJournal;
             try {
                 journalingFileWriter = new FileWriter(journalingFile);
                 journalingFileWriter.write("Initial process command line: ");
@@ -485,6 +491,9 @@ public final class StreamingProcessController extends ProcessControllerBase<Capt
                     writeLogMessage("Shutting down journal normally");
                     journalingFileWriter.flush();
                     journalingFileWriter.close();
+                    if (cleanUpJournal) {
+                        journalingFile.delete();
+                    }
                 }
             } catch (IOException e) {
                 throw new GATKException(String.format("Error closing streaming process journaling file %s", journalingFile.getAbsolutePath()), e);

@@ -52,7 +52,7 @@ public final class DiscordantPairEvidence implements Feature {
         if (startContig.equals(endContig)) {
             return end;
         } else {
-            return start + 1;
+            return start;
         }
     }
 

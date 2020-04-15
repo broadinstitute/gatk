@@ -735,4 +735,10 @@ public final class VariantContextTestUtils {
         gb.GQ(MathUtils.secondSmallestMinusSmallest(PPs, gq));
         return vcb.genotypes(gb.make()).id(VCFConstants.EMPTY_ID_FIELD).make();
     }
+
+    public static String keyForVariant(final VariantContext variant) {
+        final int end = variant.hasAttribute(VCFConstants.END_KEY) ? Integer.parseInt(variant.getAttribute(VCFConstants.END_KEY).toString()) : variant.getEnd();
+        return String.format("%s:%d-%d %s, %s", variant.getContig(), variant.getStart(), end, variant.getReference(),
+                variant.getAlternateAlleles().stream().map(Allele::getDisplayString).sorted().collect(Collectors.toList()));
+    }
 }

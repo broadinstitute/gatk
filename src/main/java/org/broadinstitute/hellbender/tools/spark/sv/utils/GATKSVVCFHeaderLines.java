@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import htsjdk.variant.vcf.*;
+import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVSegmentVariantComposer;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -21,7 +22,7 @@ public final class GATKSVVCFHeaderLines {
 
     private static final Map<String, VCFInfoHeaderLine> infoLines = new LinkedHashMap<>(30);
     private static final Map<String, VCFFormatHeaderLine> formatLines = new LinkedHashMap<>(5);
-    private static final Map<String, VCFFilterHeaderLine> filterLines = new LinkedHashMap<>(2);
+    private static final Map<String, VCFFilterHeaderLine> filterLines = new LinkedHashMap<>(4);
 
 
     private static void addFormatLine(final VCFFormatHeaderLine line) {
@@ -51,15 +52,15 @@ public final class GATKSVVCFHeaderLines {
     static {
 
         addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
-                GATKSVVCFConstants.SYMB_ALT_ALLELE_INV, "Inversion of reference sequence"));
+                GATKSVVCFConstants.SYMB_ALT_STRING_INV, "Inversion of reference sequence"));
         addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
-                GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL, "Deletion relative to the reference"));
+                GATKSVVCFConstants.SYMB_ALT_STRING_DEL, "Deletion relative to the reference"));
         addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
-                GATKSVVCFConstants.SYMB_ALT_ALLELE_INS, "Insertion of novel sequence relative to the reference"));
+                GATKSVVCFConstants.SYMB_ALT_STRING_INS, "Insertion of novel sequence relative to the reference"));
         addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
-                GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP, "Region of elevated copy number relative to the reference"));
+                GATKSVVCFConstants.SYMB_ALT_STRING_DUP, "Region of elevated copy number relative to the reference"));
         addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
-                GATKSVVCFConstants.SYMB_ALT_ALLELE_INVDUP, "Region of elevated copy number relative to the reference, with some copies inverted"));
+                GATKSVVCFConstants.SYMB_ALT_STRING_INVDUP, "Region of elevated copy number relative to the reference, with some copies inverted"));
         addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
                 GATKSVVCFConstants.CPX_SV_SYB_ALT_ALLELE_STR, "Complex rearrangement of reference sequence"));
 
@@ -262,6 +263,12 @@ public final class GATKSVVCFHeaderLines {
 
             addFilterLine(new VCFFilterHeaderLine(GATKSVVCFConstants.ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY,
                     "Assembly evidence based record that whose " + GATKSVVCFConstants.MAPPING_QUALITIES + " value is lower than user specified threshold"));
+
+            addFilterLine(new VCFFilterHeaderLine(GATKSVVCFConstants.LOW_QS_SCORE_FILTER_KEY,
+                    "Depth-only copy number record whose " + GermlineCNVSegmentVariantComposer.QS + " value is lower than user specified threshold"));
+
+            addFilterLine(new VCFFilterHeaderLine(GATKSVVCFConstants.FREQUENCY_FILTER_KEY,
+                    "Depth-only copy number record whose " + VCFConstants.ALLELE_FREQUENCY_KEY + " value is higher than user specified threshold"));
         }
     }
 }

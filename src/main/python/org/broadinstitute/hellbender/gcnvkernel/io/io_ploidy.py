@@ -63,11 +63,13 @@ class SamplePloidyWriter:
                  ploidy_workspace: PloidyWorkspace,
                  ploidy_model: PloidyModel,
                  ploidy_model_approx: pm.MeanField,
+                 ploidy_gq_filter: int,
                  output_path: str):
         self.ploidy_config = ploidy_config
         self.ploidy_workspace = ploidy_workspace
         self.ploidy_model = ploidy_model
         self.ploidy_model_approx = ploidy_model_approx
+        self.ploidy_gq_filter = ploidy_gq_filter
         self.output_path = output_path
         (self._approx_var_set, self._approx_mu_map,
          self._approx_std_map) = io_commons.extract_mean_field_posterior_parameters(self.ploidy_model_approx)
@@ -121,6 +123,10 @@ class SamplePloidyWriter:
             log_q_ploidy_jk = self.ploidy_workspace.log_q_ploidy_sjk.get_value(borrow=True)[si, :, :]
             for j in range(self.ploidy_workspace.num_contigs):
                 ploidy_j[j], ploidy_genotyping_quality_j[j] = model_commons.perform_genotyping(log_q_ploidy_jk[j, :])
+                if ploidy_genotyping_quality_j[j] < self.ploidy_gq_filter:
+                    ploidy_j[j] = np.argmax(self.ploidy_config.contig_ploidy_prior_map.get(j))
+                    _logger.warning("Ploidy call for contig at index {0} is lower quality than the specified GQ "
+                                    "threshold of {1}.  Using ploidy from highest prior instead.".format(j, self.ploidy_gq_filter))
 
             # generate sample ploidy metadata
             sample_ploidy_metadata = SamplePloidyMetadata(

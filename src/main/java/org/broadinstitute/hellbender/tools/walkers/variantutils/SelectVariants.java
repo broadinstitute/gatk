@@ -501,7 +501,7 @@ public final class SelectVariants extends VariantWalker {
         }
 
         if (mendelianViolations) {
-            sampleDB = initializeSampleDB();
+            sampleDB = SampleDB.createSampleDBFromPedigree(pedigreeFile);
             mv = new MendelianViolation(mendelianViolationQualThreshold, false, true);
         }
 
@@ -866,16 +866,6 @@ public final class SelectVariants extends VariantWalker {
 
         return headerLines;
     }
-
-    /**
-     * Entry-point function to initialize the samples database from input data
-     */
-    private SampleDB initializeSampleDB() {
-        final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
-        sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
-        return sampleDBBuilder.getFinalSampleDB();
-    }
-
 
     /**
      * Invert logic if specified

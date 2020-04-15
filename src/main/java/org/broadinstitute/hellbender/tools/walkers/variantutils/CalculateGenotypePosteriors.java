@@ -270,7 +270,7 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
     public void onTraversalStart() {
         vcfWriter = createVCFWriter(out);
 
-        final SampleDB sampleDB = initializeSampleDB();
+        final SampleDB sampleDB = SampleDB.createSampleDBFromPedigree(pedigreeFile);
 
         // Get list of samples to include in the output
         final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
@@ -321,17 +321,6 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
 
         options = new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(globalPriorSnp, globalPriorIndel,
                         !ignoreInputSamples, !defaultToAC, ignoreInputSamplesForMissingResources, useFlatPriorsForIndels);
-    }
-
-    /**
-     * Entry-point function to initialize the samples database from input data
-     */
-    private SampleDB initializeSampleDB() {
-        final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
-        if (pedigreeFile != null) {
-            sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
-        }
-        return sampleDBBuilder.getFinalSampleDB();
     }
 
     @Override

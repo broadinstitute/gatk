@@ -3,13 +3,13 @@ package org.broadinstitute.hellbender.utils.reference;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMTextHeaderCodec;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.BufferedLineReader;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -93,5 +93,14 @@ public final class ReferenceUtils {
         }
 
         return header.getSequenceDictionary();
+    }
+
+    public static CachingIndexedFastaSequenceFile createReferenceReader(final GATKPath referenceInput) {
+        // fasta reference reader to supplement the edges of the reference sequence
+        return new CachingIndexedFastaSequenceFile(referenceInput.toPath());
+    }
+
+    public static byte[] getRefBaseAtPosition(final ReferenceSequenceFile reference, final String contig, final int start) {
+        return reference.getSubsequenceAt(contig, start, start).getBases();
     }
 }

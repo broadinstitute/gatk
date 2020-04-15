@@ -528,7 +528,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 args -> args.add(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true));
 
         final List<VariantContext> variants = VariantContextTestUtils.streamVcf(unfilteredVcf).collect(Collectors.toList());
-        final List<String> variantKeys = variants.stream().map(Mutect2IntegrationTest::keyForVariant).collect(Collectors.toList());
+        final List<String> variantKeys = variants.stream().map(VariantContextTestUtils::keyForVariant).collect(Collectors.toList());
 
         final List<String> expectedKeys = Arrays.asList(
                 "chrM:152-152 T*, [C]",
@@ -689,7 +689,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(result.getLeft().getMetaDataLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG) != null);
 
         final List<VariantContext> variants = result.getRight();
-        final Map<String, VariantContext> variantMap = variants.stream().collect(Collectors.toMap(Mutect2IntegrationTest::keyForVariant, Function.identity()));
+        final Map<String, VariantContext> variantMap = variants.stream().collect(Collectors.toMap(VariantContextTestUtils::keyForVariant, Function.identity()));
         final List<String> variantKeys = new ArrayList<>(variantMap.keySet());
 
         final List<String> expectedKeys = Arrays.asList(
@@ -702,7 +702,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "chrM:750-750 A*, [<NON_REF>, G]");
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
         //First entry should be a homRef block
-        Assert.assertTrue(keyForVariant(variants.get(0)).contains("*, [<NON_REF>]"));
+        Assert.assertTrue(VariantContextTestUtils.keyForVariant(variants.get(0)).contains("*, [<NON_REF>]"));
 
         final ArgumentsBuilder validateVariantsArgs = new ArgumentsBuilder()
                 .add("R", MITO_REF.getAbsolutePath())
@@ -719,7 +719,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final Pair<VCFHeader, List<VariantContext>> result_noThreshold = VariantContextTestUtils.readEntireVCFIntoMemory(unthresholded.getAbsolutePath());
 
-        final Map<String, VariantContext> variantMap2 = result_noThreshold.getRight().stream().collect(Collectors.toMap(Mutect2IntegrationTest::keyForVariant, Function.identity()));
+        final Map<String, VariantContext> variantMap2 = result_noThreshold.getRight().stream().collect(Collectors.toMap(VariantContextTestUtils::keyForVariant, Function.identity()));
 
         //TLODs for variants should not change too much for variant allele, should change significantly for non-ref
         // however, there are edge cases where this need not be true (this might indicate the need to fix our
@@ -831,11 +831,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runMutect2(DREAM_1_TUMOR, outputVcf, "20:10000000-13000000", b37Reference, Optional.empty(),
                 args -> args.add(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_LONG_NAME, bamout));
         Assert.assertTrue(bamout.exists());
-    }
-
-    private static String keyForVariant(final VariantContext variant) {
-        return String.format("%s:%d-%d %s, %s", variant.getContig(), variant.getStart(), variant.getEnd(), variant.getReference(),
-                variant.getAlternateAlleles().stream().map(Allele::getDisplayString).sorted().collect(Collectors.toList()));
     }
 
     @Test

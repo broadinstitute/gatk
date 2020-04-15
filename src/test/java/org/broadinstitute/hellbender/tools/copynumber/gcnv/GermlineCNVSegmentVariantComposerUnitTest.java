@@ -1,14 +1,18 @@
 package org.broadinstitute.hellbender.tools.copynumber.gcnv;
 
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.IntegerCopyNumberSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.IntegerCopyNumberSegmentCollectionUnitTest;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.IntegerCopyNumberSegment;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -27,7 +31,8 @@ import java.util.Set;
 public final class GermlineCNVSegmentVariantComposerUnitTest extends GATKBaseTest {
     @Test(dataProvider = "variantCompositionSettings")
     public void testVariantComposition(final int refAutosomalCopyNumber,
-                                       final Set<String> allosomalContigs) {
+                                       final Set<String> allosomalContigs,
+                                       final ReferenceSequenceFile reference) {
         /* read a segments collection */
         final IntegerCopyNumberSegmentCollection collection = new IntegerCopyNumberSegmentCollection(
                 IntegerCopyNumberSegmentCollectionUnitTest.TEST_INTEGER_COPY_NUMBER_SEGMENTS_FILE);
@@ -36,7 +41,7 @@ public final class GermlineCNVSegmentVariantComposerUnitTest extends GATKBaseTes
                 collection.getMetadata().getSequenceDictionary(), false);
         final GermlineCNVSegmentVariantComposer variantComposer = new GermlineCNVSegmentVariantComposer(
                 writer, IntegerCopyNumberSegmentCollectionUnitTest.EXPECTED_SAMPLE_NAME,
-                new IntegerCopyNumberState(refAutosomalCopyNumber), allosomalContigs);
+                new IntegerCopyNumberState(refAutosomalCopyNumber), allosomalContigs, reference);
 
         /* compose segments and assert correctness */
         for (final IntegerCopyNumberSegment segment: collection.getRecords()) {
@@ -48,22 +53,43 @@ public final class GermlineCNVSegmentVariantComposerUnitTest extends GATKBaseTes
             final Genotype gt = var.getGenotype(IntegerCopyNumberSegmentCollectionUnitTest.EXPECTED_SAMPLE_NAME);
 
             /* assert allele correctness */
-            final Allele actualAllele = gt.getAlleles().get(0);
             final int refCopyNumber = allosomalContigs.contains(segment.getContig())
                     ? segment.getBaselineIntegerCopyNumberState().getCopyNumber()
                     : refAutosomalCopyNumber;
-            final Allele expectedAllele;
-            if (segment.getCallIntegerCopyNumberState().getCopyNumber() > refCopyNumber) {
-                expectedAllele = GermlineCNVSegmentVariantComposer.DUP_ALLELE;
-            } else if (segment.getCallIntegerCopyNumberState().getCopyNumber() < refCopyNumber) {
-                expectedAllele = GermlineCNVSegmentVariantComposer.DEL_ALLELE;
-            } else {
-                expectedAllele = GermlineCNVSegmentVariantComposer.REF_ALLELE;
+            if (segment.getBaselineIntegerCopyNumberState().getCopyNumber() != 0) {
+                Assert.assertEquals(gt.getPloidy(), refCopyNumber);  //ploidy should match the autosomal reference copy number in the event that there's an aneuploidy
             }
-            Assert.assertEquals(actualAllele, expectedAllele);
-            Assert.assertTrue(var.getAlleles().size() == (expectedAllele.equals(GermlineCNVSegmentVariantComposer.REF_ALLELE) ? 1 : 2));
-            Assert.assertTrue(var.getAlleles().contains(Allele.REF_N));
-            Assert.assertTrue(var.getAlleles().contains(expectedAllele));
+            final Allele expectedAllele;
+            if (segment.getCallIntegerCopyNumberState().getCopyNumber() == refCopyNumber) {
+                Assert.assertEquals(var.getAlternateAlleles().size(), 0);
+                Assert.assertTrue(gt.isHomRef());
+            } else if (segment.getCallIntegerCopyNumberState().getCopyNumber() > refCopyNumber) {
+                final Allele actualAllele = var.getAlternateAllele(0);
+                Assert.assertEquals(var.getAlternateAlleles().size(), 1);
+                expectedAllele = GATKSVVCFConstants.DUP_ALLELE;
+                Assert.assertEquals(actualAllele, expectedAllele);
+                if (refCopyNumber > 1) {
+                    Assert.assertTrue(gt.getAlleles().stream().allMatch(a -> a.equals(Allele.NO_CALL)));
+                } else {
+                    Assert.assertEquals(gt.getAllele(0), GATKSVVCFConstants.DUP_ALLELE);
+                }
+            } else { //if (segment.getCallIntegerCopyNumberState().getCopyNumber() < refCopyNumber) {
+                final Allele actualAllele = var.getAlternateAllele(0);
+                Assert.assertEquals(var.getAlternateAlleles().size(), 1);
+                expectedAllele = GATKSVVCFConstants.DEL_ALLELE;
+                Assert.assertEquals(actualAllele, expectedAllele);
+            }
+
+            Assert.assertEquals(var.getAlleles().size(), gt.isHomRef() ? 1 : 2);
+
+            //if a reference is supplied, use that to get the reference allele
+            if (reference == null) {
+                Assert.assertEquals(var.getReference(), Allele.REF_N);
+            } else {
+                Assert.assertFalse(var.getReference().isSymbolic());
+                Assert.assertEquals(var.getReference().getBaseString().length(), 1);
+                Assert.assertEquals(var.getReference().getBases(), ReferenceUtils.getRefBaseAtPosition(reference, var.getContig(), var.getStart()));
+            }
 
             /* assert correctness of quality metrics */
             Assert.assertEquals(
@@ -84,10 +110,11 @@ public final class GermlineCNVSegmentVariantComposerUnitTest extends GATKBaseTes
     @DataProvider(name = "variantCompositionSettings")
     public Object[][] getVariantCompositionSettings() {
         return new Object[][] {
-                {2, new HashSet<>(Arrays.asList("X", "Y"))},
-                {2, new HashSet<>()},
-                {3, new HashSet<>()},
-                {1, new HashSet<>(Arrays.asList("1", "X"))},
+                {2, new HashSet<>(Arrays.asList("X", "Y")), null},
+                {2, new HashSet<>(), null},
+                {3, new HashSet<>(), null},
+                {1, new HashSet<>(Arrays.asList("1", "X")), null},
+                {2, new HashSet<>(Arrays.asList("X","Y")), ReferenceUtils.createReferenceReader(new GATKPath(GATKBaseTest.b37Reference))}
         };
     }
 }
