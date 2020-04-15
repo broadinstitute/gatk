@@ -380,6 +380,23 @@ public final class GATKVariantContextUtils {
         }
     }
 
+    /**
+     *
+     * @param ploidy
+     * @param allele
+     * @return (return a single no-call allele for ploidy 0, as on Y for females)
+     */
+    public static List<Allele> makePloidyLengthAlleleList(final int ploidy, final Allele allele) {
+        if (ploidy == 0) {
+            return Arrays.asList(Allele.NO_CALL);
+        }
+        final List<Allele> repeatedList = new ArrayList<>();
+        for (int i = 0; i < ploidy; i++) {
+            repeatedList.add(allele);
+        }
+        return repeatedList;
+    }
+
     public static void makeGenotypeCall(final int ploidy,
                                         final GenotypeBuilder gb,
                                         final GenotypeAssignmentMethod assignmentMethod,

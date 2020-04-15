@@ -70,7 +70,7 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
     // Public Static Members:
 
     private static final String COMMENT_DELIMITER = "#";
-    private static final String SAM_FILE_HEADER_LINE_START = "@";
+    public static final String SAM_FILE_HEADER_LINE_START = "@";
 
     public static final String SAM_FILE_HEADER_START = "@HD\tVN:";
 

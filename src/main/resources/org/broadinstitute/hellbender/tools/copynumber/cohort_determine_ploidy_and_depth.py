@@ -54,6 +54,12 @@ group.add_argument("--output_calls_path",
                    help="Output path to write posteriors")
 
 # optional arguments
+group.add_argument("--ploidy_correction_gq_threshold",
+                   type=int,
+                   required=False,
+                   default=0,
+                   help="If ploidy GQ falls below this threshold, replace with the (first) most likely ploidy for the contig")
+
 gcnvkernel.PloidyModelConfig.expose_args(parser)
 
 # override some inference parameters
@@ -127,4 +133,5 @@ if __name__ == "__main__":
     # sample sample-specific posteriors
     gcnvkernel.io_ploidy.SamplePloidyWriter(ploidy_config, ploidy_workspace,
                                             ploidy_task.continuous_model, ploidy_task.continuous_model_approx,
+                                            args.ploidy_correction_gq_threshold,
                                             args.output_calls_path)()

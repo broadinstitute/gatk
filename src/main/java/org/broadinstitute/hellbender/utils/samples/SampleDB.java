@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.samples;
 
+import org.broadinstitute.hellbender.engine.GATKPath;
+
 import java.util.*;
 
 /**
@@ -16,6 +18,27 @@ public final class SampleDB {
      * Package private for use by SampleDBBuilder .
      */
     SampleDB() {}
+
+    public static SampleDB createSampleDBFromPedigree(final GATKPath pedigreeFile, final PedigreeValidationType strictness) {
+        return createSampleDBFromPedigreeAndDataSources(pedigreeFile, null, strictness);
+    }
+
+    public static SampleDB createSampleDBFromPedigree(final GATKPath pedigreeFile) {
+        return createSampleDBFromPedigree(pedigreeFile, PedigreeValidationType.STRICT);
+    }
+
+    public static SampleDB createSampleDBFromPedigreeAndDataSources(final GATKPath pedigreeFile, final Collection<String> samples, final PedigreeValidationType strictness) {
+        final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(strictness);
+        if (pedigreeFile != null) {
+            sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
+        }
+
+        if (samples != null) {
+            sampleDBBuilder.addSamplesFromSampleNames(samples);
+        }
+
+        return sampleDBBuilder.getFinalSampleDB();
+    }
 
     /**
      * Protected function to add a single sample to the database

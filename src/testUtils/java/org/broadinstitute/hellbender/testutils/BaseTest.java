@@ -388,6 +388,14 @@ public abstract class BaseTest {
         }
     }
 
+    public static void assertEqualsIntSmart(final int actual, final int expected, final int tolerance, final String message) {
+        final double delta = Math.abs(actual - expected);
+        final double ratio = Math.abs(actual / expected - 1.0);
+        Assert.assertTrue(delta < tolerance || ratio < tolerance, "expected = " + expected + " actual = " + actual
+                + " not within tolerance " + tolerance
+                + (message == null ? "" : "message: " + message));
+    }
+
 
     /**
      * captures {@link System#out} while runnable is executing

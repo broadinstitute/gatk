@@ -164,6 +164,7 @@ workflow CNVGermlineCohortWorkflow {
       #### arguments for QC ####
       ##########################
       Int maximum_number_events_per_sample
+      Int maximum_number_pass_events_per_sample
     }
 
     Array[Pair[String, String]] normal_bams_and_bais = zip(normal_bams, normal_bais)
@@ -349,7 +350,8 @@ workflow CNVGermlineCohortWorkflow {
                 genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf,
                 entity_id = CollectCounts.entity_id[sample_index],
                 maximum_number_events = maximum_number_events_per_sample,
-                gatk_docker = gatk_docker,
+                maximum_number_pass_events = maximum_number_pass_events_per_sample,
+                bash_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts
         }
     }
@@ -369,6 +371,43 @@ workflow CNVGermlineCohortWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
+    call WritePathList as WritePloidyCalls {
+    	input:
+        	file_paths = [DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar],
+            outfile = "contig_ploidy_calls_tar.paths.list"
+    }
+
+    call WritePathMatrix as WriteGCNVCalls {
+    	input:
+            path_matrix = GermlineCNVCallerCohortMode.gcnv_call_tars,
+            outfile = "gcnv_call_tars.paths.list"
+    }
+
+    call WritePathList as WriteSegments {
+    	input:
+        	file_paths = PostprocessGermlineCNVCalls.genotyped_segments_vcf,
+            outfile = "genotyped_segments_vcf.paths.list"
+    }
+
+    call WritePathList as WriteSegmentIndexes {
+    	input:
+        	file_paths = PostprocessGermlineCNVCalls.genotyped_segments_vcf_index,
+            outfile = "genotyped_segments_vcf_index.paths.list"
+    }
+
+    call WritePathList as WriteIntervals {
+    	input:
+        	file_paths = PostprocessGermlineCNVCalls.genotyped_intervals_vcf,
+            outfile = "genotyped_intervals_vcf.paths.list"
+    }
+
+    call WritePathList as WriteIntervalIndexes {
+    	input:
+        	file_paths = PostprocessGermlineCNVCalls.genotyped_intervals_vcf_index,
+            outfile = "genotyped_intervals_vcf_index.paths.list"
+    }
+
+
     output {
         File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
         Array[File] read_counts_entity_ids = CollectCounts.entity_id
@@ -376,17 +415,35 @@ workflow CNVGermlineCohortWorkflow {
         File? annotated_intervals = AnnotateIntervals.annotated_intervals
         File filtered_intervals = FilterIntervals.filtered_intervals
         File contig_ploidy_model_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_model_tar
+        File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar
+        File contig_ploidy_calls_tar_path_list = WritePloidyCalls.path_list
         Array[File] sample_contig_ploidy_calls_tars = ScatterPloidyCallsBySample.sample_contig_ploidy_calls_tar
         Array[File] gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar
         Array[Array[File]] gcnv_calls_tars = GermlineCNVCallerCohortMode.gcnv_call_tars
+        File gcnv_calls_tars_path_list = WriteGCNVCalls.path_list
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCohortMode.gcnv_tracking_tar
+
         Array[File] genotyped_intervals_vcfs = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
+        File genotyped_intervals_vcfs_path_list = WriteIntervals.path_list
+        Array[File] genotyped_intervals_vcf_indexes = PostprocessGermlineCNVCalls.genotyped_intervals_vcf_index
+        File genotyped_intervals_vcf_indexes_path_list = WriteIntervalIndexes.path_list
         Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
+        File genotyped_segments_vcfs_path_list = WriteSegments.path_list
+        Array[File] genotyped_segments_vcf_indexes = PostprocessGermlineCNVCalls.genotyped_segments_vcf_index
+        File genotyped_segments_vcf_indexes_path_list = WriteSegmentIndexes.path_list
+
         Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
         Array[File] sample_qc_status_files = CollectSampleQualityMetrics.qc_status_file
         Array[String] sample_qc_status_strings = CollectSampleQualityMetrics.qc_status_string
         File model_qc_status_file = CollectModelQualityMetrics.qc_status_file
         String model_qc_string = CollectModelQualityMetrics.qc_status_string
+        Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
+
+        Array[File] gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar
+        Array[File] calling_configs = GermlineCNVCallerCohortMode.calling_config_json
+        Array[File] denoising_configs = GermlineCNVCallerCohortMode.denoising_config_json
+        Array[File] gcnvkernel_version = GermlineCNVCallerCohortMode.gcnvkernel_version_json
+        Array[File] sharded_interval_lists = GermlineCNVCallerCohortMode.sharded_interval_list
     }
 }
 
@@ -619,5 +676,71 @@ task GermlineCNVCallerCohortMode {
         File denoising_config_json = "~{output_dir_}/~{cohort_entity_id}-calls/denoising_config.json"
         File gcnvkernel_version_json = "~{output_dir_}/~{cohort_entity_id}-calls/gcnvkernel_version.json"
         File sharded_interval_list = "~{output_dir_}/~{cohort_entity_id}-calls/interval_list.tsv"
+    }
+}
+
+task WritePathList {
+    input {
+    	Array[String] file_paths
+        String outfile
+
+        # Runtime parameters
+        String docker = "python:latest"
+        Int machine_mem_gb = 7
+        Int disk_space_gb = 100
+        Int preemptible_attempts = 3
+    }
+
+    command <<<
+    set -oe pipefail
+
+    python << CODE
+    file_paths = ['~{sep="','" file_paths}']
+
+    with open("path_list.txt", "w") as fi:
+      for i in range(len(file_paths)):
+        fi.write(file_paths[i] + "\n")
+
+    CODE
+    mv path_list.txt ~{outfile}
+    >>>
+
+    runtime {
+      docker: docker
+      memory: machine_mem_gb + " GB"
+      disks: "local-disk " + disk_space_gb + " HDD"
+      preemptible: 3
+    }
+
+    output {
+        File path_list = outfile
+    }
+}
+
+task WritePathMatrix {
+    input {
+        Array[Array[String]] path_matrix
+        String outfile
+    }
+
+    # Runtime parameters
+    String docker = "python:latest"
+    Int machine_mem_gb = 7
+    Int disk_space_gb = 100
+    Int preemptible_attempts = 3
+
+    command<<<
+        mv ~{write_tsv(path_matrix)} ~{outfile}
+    >>>
+
+    runtime {
+      docker: docker
+      memory: machine_mem_gb + " GB"
+      disks: "local-disk " + disk_space_gb + " HDD"
+      preemptible: 3
+    }
+
+    output {
+        File path_list = outfile
     }
 }

@@ -49,6 +49,7 @@ import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -186,7 +187,7 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
         vcfWriter.writeHeader(vcfHeader);
         bamHeader = getHeaderForReads();
         samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(bamHeader)));
-        referenceReader = AssemblyBasedCallerUtils.createReferenceReader(Utils.nonNull(referenceArguments.getReferenceSpecifier()));
+        referenceReader = ReferenceUtils.createReferenceReader(Utils.nonNull(referenceArguments.getReferenceSpecifier()));
         assemblyEngine = MTAC.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs, true);
         haplotypeBAMWriter = bamOutputPath == null ? Optional.empty() :

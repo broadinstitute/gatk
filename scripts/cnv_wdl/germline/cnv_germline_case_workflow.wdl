@@ -127,6 +127,7 @@ workflow CNVGermlineCaseWorkflow {
       #### arguments for QC ####
       ##########################
       Int maximum_number_events_per_sample
+      Int maximum_number_pass_events_per_sample
     }
 
     Array[Pair[String, String]] normal_bams_and_bais = zip(normal_bams, normal_bais)
@@ -256,7 +257,8 @@ workflow CNVGermlineCaseWorkflow {
                 genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf,
                 entity_id = CollectCounts.entity_id[sample_index],
                 maximum_number_events = maximum_number_events_per_sample,
-                gatk_docker = gatk_docker,
+                maximum_number_pass_events = maximum_number_pass_events_per_sample,
+                bash_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts
         }
     }
@@ -276,11 +278,13 @@ workflow CNVGermlineCaseWorkflow {
         Array[File] sample_contig_ploidy_calls_tars = ScatterPloidyCallsBySample.sample_contig_ploidy_calls_tar
         Array[Array[File]] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_call_tars
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCaseMode.gcnv_tracking_tar
-        Array[File] genotyped_intervals_vcf = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
-        Array[File] genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf
-        Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
+        Array[File] genotyped_intervals_vcfs = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
+        Array[File] genotyped_intervals_vcf_indexes = PostprocessGermlineCNVCalls.genotyped_intervals_vcf_index
+        Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
+        Array[File] genotyped_segments_vcf_indexes = PostprocessGermlineCNVCalls.genotyped_segments_vcf_index
         Array[File] qc_status_files = CollectSampleQualityMetrics.qc_status_file
         Array[String] qc_status_strings = CollectSampleQualityMetrics.qc_status_string
+        Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
     }
 }
 

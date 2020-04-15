@@ -31,6 +31,7 @@
   "CNVGermlineCaseScatteredWorkflow.gcnv_max_copy_number": 3,
   "CNVGermlineCaseScatteredWorkflow.gcnv_max_calling_iters": 1,
   "CNVGermlineCaseScatteredWorkflow.maximum_number_events_per_sample": 120,
+  "CNVGermlineCaseScatteredWorkflow.maximum_number_pass_events_per_sample": 10,
   "CNVGermlineCaseScatteredWorkflow.cpu_for_determine_germline_contig_ploidy": 1,
   "CNVGermlineCaseScatteredWorkflow.cpu_for_germline_cnv_caller": 1,
   "CNVGermlineCaseScatteredWorkflow.ref_fasta_dict": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.dict",

@@ -17,7 +17,7 @@ import java.util.function.Function;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class IntegerCopyNumberSegmentCollection extends AbstractSampleLocatableCollection<IntegerCopyNumberSegment> {
+public class IntegerCopyNumberSegmentCollection extends AbstractSampleLocatableCollection<IntegerCopyNumberSegment> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
      * CONTIG, START, END, NUM_POINTS, CALL_COPY_NUMBER, BASELINE_COPY_NUMBER,
@@ -38,7 +38,7 @@ public final class IntegerCopyNumberSegmentCollection extends AbstractSampleLoca
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
 
-    private static final Function<DataLine, IntegerCopyNumberSegment> INTEGER_COPY_NUMBER_SEGMENT_RECORD_DECODER = dataLine -> {
+    static final Function<DataLine, IntegerCopyNumberSegment> INTEGER_COPY_NUMBER_SEGMENT_RECORD_DECODER = dataLine -> {
         final String contig = dataLine.get(IntegerCopyNumberSegmentTableColumn.CONTIG);
         final int start = dataLine.getInt(IntegerCopyNumberSegmentTableColumn.START);
         final int end = dataLine.getInt(IntegerCopyNumberSegmentTableColumn.END);
@@ -56,7 +56,7 @@ public final class IntegerCopyNumberSegmentCollection extends AbstractSampleLoca
                 numPoints, qualitySomeCalled, qualityAllCalled, qualityStart, qualityEnd);
     };
 
-    private static final BiConsumer<IntegerCopyNumberSegment, DataLine> INTEGER_COPY_NUMBER_SEGMENT_RECORD_ENCODER =
+    static final BiConsumer<IntegerCopyNumberSegment, DataLine> INTEGER_COPY_NUMBER_SEGMENT_RECORD_ENCODER =
             (integerCopyNumberSegment, dataLine) ->
                     dataLine.append(integerCopyNumberSegment.getContig())
                             .append(integerCopyNumberSegment.getStart())
@@ -75,7 +75,7 @@ public final class IntegerCopyNumberSegmentCollection extends AbstractSampleLoca
     }
 
     public IntegerCopyNumberSegmentCollection(final SampleLocatableMetadata metadata,
-                                              final List<IntegerCopyNumberSegment> integerCopyNumberSegmentList) {
+                                                            final List<IntegerCopyNumberSegment> integerCopyNumberSegmentList) {
         super(metadata, integerCopyNumberSegmentList, IntegerCopyNumberSegmentTableColumn.COLUMNS,
                 INTEGER_COPY_NUMBER_SEGMENT_RECORD_DECODER, INTEGER_COPY_NUMBER_SEGMENT_RECORD_ENCODER);
     }

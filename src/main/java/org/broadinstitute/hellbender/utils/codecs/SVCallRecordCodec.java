@@ -14,7 +14,7 @@ import java.util.List;
 
 public class SVCallRecordCodec extends AsciiFeatureCodec<SVCallRecord> {
 
-    public static final String FORMAT_SUFFIX = ".tsv.gz";
+    public static final String FORMAT_SUFFIX = ".sv_calls.tsv.gz";
     public static final String COL_DELIMITER = "\t";
     public static String STRAND_PLUS = "+";
     public static String STRAND_MINUS = "-";

@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MultiVariantInputArgumentCollection;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -44,7 +45,7 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
      */
     @Override
     protected final void onStartup() {
-        super.onStartup();
+       super.onStartup();
 
         if ( hasUserSuppliedIntervals() ) {
             drivingVariants.setIntervalsForTraversal(userIntervals);
@@ -57,6 +58,16 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
      */
     protected MultiVariantInputArgumentCollection getMultiVariantInputArgumentCollection() {
         return new MultiVariantInputArgumentCollection.DefaultMultiVariantInputArgumentCollection();
+    }
+
+    /**
+     * Should this tool cross-validate the sequence dictionaries for input feature files? If a large number of inputs are expected,
+     * the tools should override to return false and require a reference.
+     *
+     * @return true if this tool should check all input feature files' contigs against each other, otherwise false
+     */
+    public boolean doDictionaryCrossValidation() {
+        return true;
     }
 
     @Override
@@ -76,10 +87,16 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
                 }
         );
 
+        final boolean skipDictionaryValidation = !seqValidationArguments.performSequenceDictionaryValidation() || !doDictionaryCrossValidation();
+        if (skipDictionaryValidation && !hasReference() && getMasterSequenceDictionary() == null) {
+            logger.warn("Input feature file dictionaries cannot be validated.  For safety, please specify a reference or " +
+                    "a master sequence dictionary with `--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME + "`");
+        }
+
         // Create a (MultiVariantDataSource) FeatureDataSource for the driving variants inputs using the
         // cache lookahead value from getDrivingVariantCacheLookAheadBases()
         drivingVariants = new MultiVariantDataSource(drivingVariantsFeatureInputs, getDrivingVariantCacheLookAheadBases(), cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                                     referenceArguments.getReferencePath());
+                                                     referenceArguments.getReferencePath(), skipDictionaryValidation);
 
         // Note: the intervals for the driving variants are set in onStartup()
     }

@@ -145,7 +145,8 @@ class HMMSegmentationQualityCalculator:
         """
         assert start_index >= 0
         assert end_index < self.num_sites
-        assert end_index >= start_index
+        assert end_index >= start_index, \
+            "Start index {0} exceeds end index {1}".format(start_index, end_index)
         assert all(isinstance(item, int) and 0 <= item < self.num_states for item in allowed_states), \
             "The set of allowed states must be integers and in range [0, {0}]".format(self.num_states - 1)
         constrained_alpha_first_c = self.alpha_tc[start_index, allowed_states]
