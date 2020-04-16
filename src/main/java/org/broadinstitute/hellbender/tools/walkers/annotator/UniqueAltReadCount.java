@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  *
  * <p>This annotation does not require or use any BAM file duplicate flags or UMI information, just the read alignments.</p>
  */
-@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of non-duplicate-insert ALT reads (UNIQ_ALT_READ_COUNT)")
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of non-duplicate-insert ALT reads (AS_UNIQ_ALT_READ_COUNT)")
 public class UniqueAltReadCount extends InfoFieldAnnotation implements AlleleSpecificAnnotation {
     public static final String KEY = GATKVCFConstants.AS_UNIQUE_ALT_READ_SET_COUNT_KEY;
 

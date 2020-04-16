@@ -236,7 +236,7 @@ public final class VariantFiltration extends VariantWalker {
     @Argument(fullName=NO_CALL_GTS_LONG_NAME, optional=true, doc="Set filtered genotypes to no-call")
     public boolean setFilteredGenotypesToNocall = false;
 
-    @Argument(fullName=ALLELE_SPECIFIC_LONG_NAME, optional=true, doc="Set mask at the allele level")
+    @Argument(fullName=ALLELE_SPECIFIC_LONG_NAME, optional=true, doc="Set mask at the allele level. This option is not compatible with clustering.")
     public boolean applyForAllele = false;
 
     // JEXL expressions for the filters
