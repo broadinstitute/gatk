@@ -4,27 +4,25 @@ import os
 
 from facets_overview.generic_feature_statistics_generator import GenericFeatureStatisticsGenerator
 
-FACETS_ABSOLUTE_URL = 'https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html'
-FACETS_RELATIVE_URL = 'facets-jupyter.html'
+FACETS_DEPENDENCIES = {
+  'facets_html': 'https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html',
+  'webcomponents_js': 'https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/1.3.3/webcomponents-lite.js',
+}
 
-FACETS_HTML = FACETS_ABSOLUTE_URL
 if 'GOOGLE_PROJECT' in os.environ:  # This is Terra.
-  # Terra notebook Content Security Policy prohibits importing this HTML from
+  # Terra notebook Content Security Policy prohibits pulling these files from
   # a remote location, so this code depends on the fact we can refer to it
   # from a location relative to the notebook.
-  if not os.path.exists(FACETS_RELATIVE_URL):
-    # If this is our Terra Docker image, the file is available locally.
-    docker_image_path = os.path.join(
-        os.environ['JUPYTER_HOME'],
-        'custom',
-        FACETS_RELATIVE_URL,
-    )
-    if os.path.exists(docker_image_path):
-      os.system('ln -s ' + docker_image_path)
-    else:
-      os.system('wget --no-clobber ' + FACETS_ABSOLUTE_URL)
-  FACETS_HTML = FACETS_RELATIVE_URL
-
+  for dep, url in FACETS_DEPENDENCIES.items():
+    if not os.path.exists(os.path.basename(url)):
+      # If this is our Terra Docker image, the file is available locally.
+      docker_image_path = os.path.join(os.environ['JUPYTER_HOME'], 'custom', os.path.basename(url))
+      if os.path.exists(docker_image_path):
+        os.system('ln -s ' + docker_image_path)
+      else:
+        os.system('wget --no-clobber ' + url)
+    # Update dictionary to replace absolute url with relative url.
+    FACETS_DEPENDENCIES[dep] = os.path.basename(url)
 
 class FacetsOverview(object):
   """Methods for Facets Overview notebook integration."""
@@ -44,12 +42,17 @@ class FacetsOverview(object):
     """Html representation of Facets Overview for use in a Jupyter notebook."""
     protostr = base64.b64encode(self._proto.SerializeToString()).decode('utf-8')
     html_template = '''
+        <script src="{webcomponents_js}"></script>
         <link rel="import" href="{facets_html}">
         <facets-overview id="overview_elem"></facets-overview>
         <script>
           document.querySelector("#overview_elem").protoInput = "{protostr}";
         </script>'''
-    html = html_template.format(facets_html=FACETS_HTML, protostr=protostr)
+    html = html_template.format(
+      facets_html=FACETS_DEPENDENCIES['facets_html'],
+      webcomponents_js=FACETS_DEPENDENCIES['webcomponents_js'],
+      protostr=protostr,
+    )
     return html
 
 
@@ -63,13 +66,15 @@ class FacetsDive(object):
   def _repr_html_(self):
     """Html representation of Facets Dive for use in a Jupyter notebook."""
     html_template = """
+        <script src="{webcomponents_js}"></script>
         <link rel="import" href="{facets_html}">
         <facets-dive id="dive_elem" height="{height}"></facets-dive>
         <script>
           document.querySelector("#dive_elem").data = {data};
         </script>"""
     html = html_template.format(
-        facets_html=FACETS_HTML,
+        facets_html=FACETS_DEPENDENCIES['facets_html'],
+        webcomponents_js=FACETS_DEPENDENCIES['webcomponents_js'],
         data=self._data.to_json(orient='records'),
         height=self.height,
     )

@@ -72,7 +72,8 @@ RUN pip3 install --upgrade \
 # file, we create a symlink to it so that the notebook-relative URL
 # ./facets-jupyter.html will load.
 RUN cd $JUPYTER_HOME/custom \
-  && wget https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html
+  && wget https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html \
+  && wget https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/1.3.3/webcomponents-lite.js
 
 # Make pip install to a user directory, instead of a system directory which
 # requires root. This is useful so `pip install` commands can be run in the

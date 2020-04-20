@@ -158,11 +158,9 @@ def view_submissions(count=10, table='uk-biobank-sek-data.ml_results.annotations
 
     # format the query string
     query_string = '''SELECT * FROM `{table}`
-WHERE annotator = '{annotator}'
 ORDER BY annotation_timestamp DESC
 LIMIT {count}'''.format(
         table=table,
-        annotator=os.getenv('OWNER_EMAIL'),
         count=str(count)
     )
 

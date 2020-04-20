@@ -21,3 +21,7 @@ numcodecs
 beautifulsoup4
 lxml
 xmltodict
+altair
+facets-overview
+plotnine
+vega
