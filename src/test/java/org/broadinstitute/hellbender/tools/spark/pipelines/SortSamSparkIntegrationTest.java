@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.BaseTest;
@@ -85,7 +86,7 @@ public final class SortSamSparkIntegrationTest extends CommandLineProgramTest {
         SamAssertionUtils.assertSamsEqual(actualOutputFile, expectedOutputFile, ValidationStringency.DEFAULT_STRINGENCY, referenceFile);
 
         //test sorting matches htsjdk
-        try(ReadsDataSource in = new ReadsPathDataSource(actualOutputFile.toPath(), factory )) {
+        try(ReadsDataSource in = new ReadsPathDataSource(IOUtils.toGATKPath(actualOutputFile), factory )) {
             BaseTest.assertSorted(Utils.stream(in).map(read -> read.convertToSAMRecord(in.getHeader())).iterator(), sortOrder.getComparatorInstance());
         }
     }

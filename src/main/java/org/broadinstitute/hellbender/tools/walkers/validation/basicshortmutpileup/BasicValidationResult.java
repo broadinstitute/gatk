@@ -120,7 +120,7 @@ public class BasicValidationResult implements Locatable {
 
     //----- The following two public static methods read and write files
     public static void write(final List<BasicValidationResult> records, final File file) {
-        try (final BasicValidationResult.BasicValidationResultTableWriter writer = new BasicValidationResult.BasicValidationResultTableWriter(IOUtils.fileToPath(file))) {
+        try (final BasicValidationResult.BasicValidationResultTableWriter writer = new BasicValidationResult.BasicValidationResultTableWriter(IOUtils.toPath(file))) {
             writer.writeHeaderIfApplies();
             writer.writeAllRecords(records);
         } catch (final IOException e){
@@ -129,7 +129,7 @@ public class BasicValidationResult implements Locatable {
     }
 
     public static List<BasicValidationResult> read(final File file) {
-        try(final BasicValidationResult.BasicValidationResultTableReader reader = new BasicValidationResult.BasicValidationResultTableReader(IOUtils.fileToPath(file))) {
+        try(final BasicValidationResult.BasicValidationResultTableReader reader = new BasicValidationResult.BasicValidationResultTableReader(IOUtils.toPath(file))) {
             return reader.toList();
         } catch (final IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", file));

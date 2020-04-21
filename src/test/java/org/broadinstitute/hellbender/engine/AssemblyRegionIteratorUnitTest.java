@@ -54,7 +54,7 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
      */
     @Test(dataProvider = "testCorrectRegionsHaveCorrectReadsAndSizeData")
     public void testRegionsHaveCorrectReadsAndSize( final String reads, final String reference, final List<SimpleInterval> shardIntervals, final int minRegionSize, final int maxRegionSize, final int assemblyRegionPadding ) throws IOException {
-        try (final ReadsDataSource readsSource = new ReadsPathDataSource(IOUtils.getPath(reads));
+        try (final ReadsDataSource readsSource = new ReadsPathDataSource(new GATKPath(reads));
              final ReferenceDataSource refSource = ReferenceDataSource.of(IOUtils.getPath(reference));
              final ReferenceSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(IOUtils.getPath(b37_reference_20_21));
         ) {
@@ -104,7 +104,7 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
                     previousRead = currentRead;
                 }
 
-                try ( final ReadsDataSource innerReadsSource = new ReadsPathDataSource(IOUtils.getPath(reads)) ) {
+                try ( final ReadsDataSource innerReadsSource = new ReadsPathDataSource(new GATKPath(reads)) ) {
                     final List<GATKRead> regionExpectedReads = Lists.newArrayList(innerReadsSource.query(regionInterval)).stream().filter(combinedReadFilter).collect(Collectors.toList());
 
                     final List<GATKRead> actualNotInExpected = new ArrayList<>();

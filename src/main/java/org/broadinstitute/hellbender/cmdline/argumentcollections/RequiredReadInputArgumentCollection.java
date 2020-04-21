@@ -20,5 +20,6 @@ public final class RequiredReadInputArgumentCollection extends ReadInputArgument
      * Get the list of BAM/SAM/CRAM inputs specified at the command line.
      * GATKPath is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
-    public List<GATKPath> getReadPathSpecifiers() { return Collections.unmodifiableList(readFilesNames);}
+    @Override
+    public List<GATKPath> getRawReadPathSpecifiers() { return Collections.unmodifiableList(readFilesNames);}
 }

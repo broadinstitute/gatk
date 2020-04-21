@@ -39,7 +39,7 @@ public class ContaminationRecord {
 
     //----- The following two public static methods read and write contamination files
     public static void writeToFile(final List<ContaminationRecord> records, final File outputTable) {
-        try ( ContaminationRecord.ContaminationTableWriter writer = new ContaminationRecord.ContaminationTableWriter(IOUtils.fileToPath(outputTable)) ) {
+        try ( ContaminationRecord.ContaminationTableWriter writer = new ContaminationRecord.ContaminationTableWriter(IOUtils.toPath(outputTable)) ) {
             writer.writeAllRecords(records);
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while writing to %s.", outputTable));
@@ -47,7 +47,7 @@ public class ContaminationRecord {
     }
 
     public static List<ContaminationRecord> readFromFile(final File tableFile) {
-        try( ContaminationTableReader reader = new ContaminationTableReader(IOUtils.fileToPath(tableFile)) ) {
+        try( ContaminationTableReader reader = new ContaminationTableReader(IOUtils.toPath(tableFile)) ) {
             return reader.toList();
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));

@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -48,7 +49,7 @@ public class HaplotypeCallerEngineUnitTest extends GATKBaseTest {
                 new SimpleInterval("20", 10001019, 10001019)
         );
 
-        try (final ReadsDataSource reads = new ReadsPathDataSource(testBam.toPath());
+        try (final ReadsDataSource reads = new ReadsPathDataSource(IOUtils.toGATKPath(testBam));
              final ReferenceDataSource ref = new ReferenceFileSource(reference);
              final CachingIndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(reference)) {
 

@@ -63,7 +63,7 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
     }
 
     private static void assertReadsAreInCoordinatishOrder(final File bam) {
-        try(final ReadsDataSource reads = new ReadsPathDataSource(bam.toPath())){
+        try(final ReadsDataSource reads = new ReadsPathDataSource(IOUtils.toGATKPath(bam))){
             final Iterator<GATKRead> iter = reads.iterator();
             GATKRead previous = null;
             final ReadCoordinateComparator comparator = new ReadCoordinateComparator(reads.getHeader());
@@ -117,7 +117,7 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
         final File actual = copyLocally(bamOut, "actual");
 
         //assert that the output has the right number of reads and they're ordered correctly
-        try( ReadsDataSource reader = new ReadsPathDataSource(actual.toPath())){
+        try( ReadsDataSource reader = new ReadsPathDataSource(IOUtils.toGATKPath(actual))){
             Assert.assertEquals(Iterators.size(reader.iterator()), 1838);
         }
 

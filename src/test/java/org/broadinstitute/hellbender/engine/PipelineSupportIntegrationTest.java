@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.testng.Assert;
@@ -18,8 +19,8 @@ public class PipelineSupportIntegrationTest extends GATKBaseTest {
         File output = createTempFile("testOutput",".bam");
         BaseTest.runProcess(ProcessController.getThreadLocal(), new String[]{"/bin/sh","-c"," ./gatk SortSam -I "+INPUT_BAM+" -O /dev/stdout -SO coordinate " +
                 "| ./gatk SetNmMdAndUqTags -I /dev/stdin -O "+ output.getAbsolutePath()+ " --CREATE_INDEX true -R "+b37_reference_20_21});//.split(" "));
-        try (ReadsDataSource inputReads = new ReadsPathDataSource(new File(INPUT_BAM).toPath());
-             ReadsDataSource outputReads = new ReadsPathDataSource(output.toPath())) {
+        try (ReadsDataSource inputReads = new ReadsPathDataSource(new GATKPath(INPUT_BAM));
+             ReadsDataSource outputReads = new ReadsPathDataSource(IOUtils.toGATKPath(output))) {
             Assert.assertTrue(inputReads.iterator().hasNext());
             Assert.assertTrue(outputReads.iterator().hasNext());
             final int[] count = {0};
