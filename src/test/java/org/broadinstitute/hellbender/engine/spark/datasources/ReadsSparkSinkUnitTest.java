@@ -9,6 +9,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -172,11 +173,13 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
     private void assertSingleShardedWritingWorks(String inputBam, String referenceFile, String outputPath, String outputPartsPath, boolean writeBai, boolean writeSbi, long sbiGranularity) throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
-        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, referenceFile);
-        SAMFileHeader header = readSource.getHeader(inputBam, referenceFile);
+        final GATKPathSpecifier referencePath = referenceFile == null ? null : new GATKPathSpecifier(referenceFile);
 
-        ReadsSparkSink.writeReads(ctx, outputPath, referenceFile, rddParallelReads, header, ReadsWriteFormat.SINGLE, 0, outputPartsPath, writeBai, writeSbi, true, sbiGranularity);
+        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, referencePath);
+        SAMFileHeader header = readSource.getHeader(inputBam, referencePath);
+
+        ReadsSparkSink.writeReads(ctx, outputPath, referencePath, rddParallelReads, header, ReadsWriteFormat.SINGLE, 0, outputPartsPath, writeBai, writeSbi, true, sbiGranularity);
 
         // check that a bai file is created
         if (IOUtils.isBamFileName(outputPath) && writeBai) {
@@ -190,7 +193,7 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
             Assert.assertEquals(sbi.getGranularity(), sbiGranularity);
         }
 
-        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputPath, referenceFile);
+        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputPath, referencePath);
         final List<GATKRead> writtenReads = rddParallelReads2.collect();
 
         assertReadsAreSorted(header, writtenReads);
@@ -214,19 +217,21 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
         final File outputFile = createTempFile(outputFileName, outputFileExtension);
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
-        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, referenceFile);
-        rddParallelReads = rddParallelReads.repartition(2); // ensure that the output is in two shards
-        SAMFileHeader header = readSource.getHeader(inputBam, referenceFile);
+        final GATKPathSpecifier referencePath = referenceFile == null ? null : new GATKPathSpecifier(referenceFile);
 
-        ReadsSparkSink.writeReads(ctx, outputFile.getAbsolutePath(), referenceFile, rddParallelReads, header, ReadsWriteFormat.SHARDED, 0, null, false, sbiGranularity);
+        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, referencePath);
+        rddParallelReads = rddParallelReads.repartition(2); // ensure that the output is in two shards
+        SAMFileHeader header = readSource.getHeader(inputBam, referencePath);
+
+        ReadsSparkSink.writeReads(ctx, outputFile.getAbsolutePath(), referencePath, rddParallelReads, header, ReadsWriteFormat.SHARDED, 0, null, false, sbiGranularity);
         int shards = outputFile.listFiles((dir, name) -> !name.startsWith(".") && !name.startsWith("_")).length;
         Assert.assertEquals(shards, 2);
         // check that no local .crc files are created
         int crcs = outputFile.listFiles((dir, name) -> name.startsWith(".") && name.endsWith(".crc")).length;
         Assert.assertEquals(crcs, 0);
 
-        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile.getAbsolutePath(), referenceFile);
+        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile.getAbsolutePath(), referencePath);
         // reads are not globally sorted, so don't test that
         Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
     }

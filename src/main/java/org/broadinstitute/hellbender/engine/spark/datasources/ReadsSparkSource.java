@@ -3,15 +3,13 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.ValidationStringency;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.parquet.avro.AvroParquetInputFormat;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -38,8 +36,6 @@ public final class ReadsSparkSource implements Serializable {
     private transient final JavaSparkContext ctx;
     private ValidationStringency validationStringency = ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY;
 
-    private static final Logger logger = LogManager.getLogger(ReadsSparkSource.class);
-
     public ReadsSparkSource(final JavaSparkContext ctx) { this.ctx = ctx; }
 
     public ReadsSparkSource(final JavaSparkContext ctx, final ValidationStringency validationStringency)
@@ -48,54 +44,53 @@ public final class ReadsSparkSource implements Serializable {
         this.validationStringency = validationStringency;
     }
 
-
     /**
      * Loads Reads using Hadoop-BAM. For local files, readFileName must have the fully-qualified path,
      * i.e., file:///path/to/bam.bam.
      * @param readFileName file to load
-     * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
+     * @param referencePathSpecifier GATKPathSpecifier for reference or null if not available. Reference is required for CRAM files.
      * @param traversalParameters parameters controlling which reads to include. If <code>null</code> then all the reads (both mapped and unmapped) will be returned.
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final TraversalParameters traversalParameters) {
-        return getParallelReads(readFileName, referencePath, traversalParameters, 0);
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final GATKPathSpecifier referencePathSpecifier, final TraversalParameters traversalParameters) {
+        return getParallelReads(readFileName, referencePathSpecifier, traversalParameters, 0);
     }
 
     /**
      * Loads Reads using Hadoop-BAM. For local files, bam must have the fully-qualified path,
      * i.e., file:///path/to/bam.bam.
      * @param readFileName file to load
-     * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
+     * @param referencePathSpecifier GATKPathSpecifier for reference or null if not available. Reference is required for CRAM files.
      * @param traversalParameters parameters controlling which reads to include. If <code>null</code> then all the reads (both mapped and unmapped) will be returned.
      * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions. A value of zero means
      *                  use the default split size (determined by the Hadoop input format, typically the size of one HDFS block).
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final TraversalParameters traversalParameters, final long splitSize) {
-        return getParallelReads(readFileName, referencePath, traversalParameters, splitSize, false);
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final GATKPathSpecifier referencePathSpecifier, final TraversalParameters traversalParameters, final long splitSize) {
+        return getParallelReads(readFileName, referencePathSpecifier, traversalParameters, splitSize, false);
     }
 
     /**
      * Loads Reads using Hadoop-BAM. For local files, bam must have the fully-qualified path,
      * i.e., file:///path/to/bam.bam.
      * @param readFileName file to load
-     * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
+     * @param referencePathSpecifier GATKPathSpecifier for reference or null if not available. Reference is required for CRAM files.
      * @param traversalParameters parameters controlling which reads to include. If <code>null</code> then all the reads (both mapped and unmapped) will be returned.
      * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions. A value of zero means
      *                  use the default split size (determined by the Hadoop input format, typically the size of one HDFS block).
      * @param useNio whether to use NIO or the Hadoop filesystem for reading files
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final TraversalParameters traversalParameters, final long splitSize, final boolean useNio) {
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final GATKPathSpecifier referencePathSpecifier, final TraversalParameters traversalParameters, final long splitSize, final boolean useNio) {
         try {
-            String cramReferencePath = checkCramReference(ctx, readFileName, referencePath);
+            final GATKPathSpecifier cramReferencePathSpec = checkCramReference(ctx, readFileName, referencePathSpecifier);
             HtsjdkReadsTraversalParameters<SimpleInterval> tp = traversalParameters == null ? null :
                     new HtsjdkReadsTraversalParameters<>(traversalParameters.getIntervalsForTraversal(), traversalParameters.traverseUnmappedReads());
             HtsjdkReadsRdd htsjdkReadsRdd = HtsjdkReadsRddStorage.makeDefault(ctx)
                     .useNio(useNio)
                     .splitSize((int) splitSize)
                     .validationStringency(validationStringency)
-                    .referenceSourcePath(cramReferencePath)
+                    .referenceSourcePath(cramReferencePathSpec == null ? null : cramReferencePathSpec.getRawInputString())
                     .read(readFileName, tp);
             JavaRDD<GATKRead> reads = htsjdkReadsRdd.getReads()
                     .map(read -> (GATKRead) SAMRecordToGATKReadAdapter.headerlessReadAdapter(read))
@@ -118,24 +113,24 @@ public final class ReadsSparkSource implements Serializable {
      * Loads Reads using Hadoop-BAM. For local files, readFileName must have the fully-qualified path,
      * i.e., file:///path/to/bam.bam.
      * @param readFileName file to load
-     * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
+     * @param referencePathSpecifier Reference path or null if not available. Reference is required for CRAM files.
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath) {
-        return getParallelReads(readFileName, referencePath, 0);
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final GATKPathSpecifier referencePathSpecifier) {
+        return getParallelReads(readFileName, referencePathSpecifier, 0);
     }
 
     /**
      * Loads Reads using Hadoop-BAM. For local files, readFileName must have the fully-qualified path,
      * i.e., file:///path/to/bam.bam.
      * @param readFileName file to load
-     * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
+     * @param referencePathSpecifier Reference path or null if not available. Reference is required for CRAM files.
      * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions. A value of zero means
      *                  use the default split size (determined by the Hadoop input format, typically the size of one HDFS block).
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, int splitSize) {
-        return getParallelReads(readFileName, referencePath, null /* all reads */, splitSize);
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final GATKPathSpecifier referencePathSpecifier, int splitSize) {
+        return getParallelReads(readFileName, referencePathSpecifier, null /* all reads */, splitSize);
     }
 
     /**
@@ -165,10 +160,10 @@ public final class ReadsSparkSource implements Serializable {
     /**
      * Loads the header using Hadoop-BAM.
      * @param filePath path to the bam.
-     * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
+     * @param referencePathSpecifier Reference path or null if not available. Reference is required for CRAM files.
      * @return the header for the bam.
      */
-    public SAMFileHeader getHeader(final String filePath, final String referencePath) {
+    public SAMFileHeader getHeader(final String filePath, final GATKPathSpecifier referencePathSpecifier) {
         // GCS case
         if (BucketUtils.isGcsUrl(filePath)) {
             try (ReadsDataSource readsDataSource = new ReadsDataSource(IOUtils.getPath(filePath))) {
@@ -178,10 +173,10 @@ public final class ReadsSparkSource implements Serializable {
 
         // local file or HDFs case
         try {
-            String cramReferencePath = checkCramReference(ctx, filePath, referencePath);
+            final GATKPathSpecifier cramReferencePathSpec = checkCramReference(ctx, filePath, referencePathSpecifier);
             return HtsjdkReadsRddStorage.makeDefault(ctx)
                     .validationStringency(validationStringency)
-                    .referenceSourcePath(cramReferencePath)
+                    .referenceSourcePath(cramReferencePathSpec == null ? null : cramReferencePathSpec.getRawInputString())
                     .read(filePath)
                     .getHeader();
         } catch (IOException | IllegalArgumentException e) {
@@ -191,21 +186,20 @@ public final class ReadsSparkSource implements Serializable {
 
     /**
      * Check that for CRAM the reference is set to a file that exists and is not 2bit.
-     * @return the <code>referencePath</code> or <code>null</code> if not CRAM
+     * @return a <code>GATKPathSpecifier</code> or <code>null</code> if not CRAM
      */
-    static String checkCramReference(final JavaSparkContext ctx, final String filePath, final String referencePath) {
+    static GATKPathSpecifier checkCramReference(final JavaSparkContext ctx, final String filePath, final GATKPathSpecifier referencePathSpecifier) {
         if (IOUtils.isCramFileName(filePath)) {
-            if (referencePath == null) {
+            if (referencePathSpecifier == null) {
                 throw new UserException.MissingReference("A reference is required for CRAM input");
-            } else if (ReferenceTwoBitSparkSource.isTwoBit(referencePath)) { // htsjdk can't handle 2bit reference files
+            } else if (ReferenceTwoBitSparkSource.isTwoBit(referencePathSpecifier)) { // htsjdk can't handle 2bit reference files
                 throw new UserException("A 2bit file cannot be used as a CRAM file reference");
             } else {
-                final Path refPath = new Path(referencePath);
-                if (!SparkUtils.pathExists(ctx, refPath)) {
-                    throw new UserException.MissingReference("The specified fasta file (" + referencePath + ") does not exist.");
+                if (!SparkUtils.hadoopPathExists(ctx, referencePathSpecifier.getURI())) {
+                    throw new UserException.MissingReference("The specified fasta file (" + referencePathSpecifier + ") does not exist.");
                 }
             }
-            return referencePath;
+            return referencePathSpecifier;
         }
         return null;
     }

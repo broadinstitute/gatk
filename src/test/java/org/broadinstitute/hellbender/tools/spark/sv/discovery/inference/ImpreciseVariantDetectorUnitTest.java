@@ -6,6 +6,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
@@ -32,7 +33,7 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
 
 
     private final Logger localLogger = LogManager.getLogger(ImpreciseVariantDetectorUnitTest.class);
-    private static String twoBitRefURL = publicTestDir + "large/human_g1k_v37.20.21.2bit";
+    private static GATKPathSpecifier twoBitRefURL = new GATKPathSpecifier(publicTestDir + "large/human_g1k_v37.20.21.2bit");
 
     @DataProvider(name = "evidenceTargetLinksAndVariants")
     public Object[][] getEvidenceTargetLinksAndVariants() {

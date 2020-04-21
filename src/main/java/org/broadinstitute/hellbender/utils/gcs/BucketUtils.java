@@ -47,7 +47,8 @@ public final class BucketUtils {
     public static final String GCS_PREFIX = GoogleCloudStorageFileSystem.SCHEME + "://";
     public static final String HTTP_PREFIX = HttpFileSystemProvider.SCHEME + "://";
     public static final String HTTPS_PREFIX = HttpsFileSystemProvider.SCHEME +"://";
-    public static final String HDFS_PREFIX = "hdfs://";
+    public static final String HDFS_SCHEME = "hdfs";
+    public static final String HDFS_PREFIX = HDFS_SCHEME + "://";
 
     // slashes omitted since hdfs paths seem to only have 1 slash which would be weirder to include than no slashes
     public static final String FILE_PREFIX = "file:";
@@ -98,6 +99,13 @@ public final class BucketUtils {
     /**
      * Returns true if the given path is a HDFS (Hadoop filesystem) URL.
      */
+    public static boolean isHadoopUrl(GATKPathSpecifier pathSpecifier) {
+        return pathSpecifier == null ? false : pathSpecifier.getURI().getScheme().equals(HDFS_SCHEME);
+    }
+
+    /**
+     * Returns true if the given path is a HDFS (Hadoop filesystem) URL.
+     */
     public static boolean isHadoopUrl(String path) {
         return path.startsWith(HDFS_PREFIX);
     }
@@ -142,7 +150,7 @@ public final class BucketUtils {
                 FileSystem fs = file.getFileSystem(new Configuration());
                 inputStream = fs.open(file);
             } else {
-                 inputStream = new FileInputStream(path);
+                inputStream = new FileInputStream(path);
             }
 
             if(IOUtil.hasBlockCompressedExtension(path)){
