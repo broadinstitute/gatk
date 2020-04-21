@@ -112,6 +112,13 @@ def main(args):
             print("   --java-options 'OPTION1[ OPTION2=Y ... ]'   optional - pass the given string of options to the ")
             print("                 java JVM at runtime.  ")
             print("                 Java options MUST be passed inside a single string with space-separated values.")
+            print("")
+            print("   --debug-port <number> sets up a Java VM debug agent to listen to debugger connections on a")
+            print("                         particular port number. This in turn will add the necessary java VM arguments")
+            print("                         so that you don't need to explicitly indicate these using --java-options.") 
+            print("   --debug-suspend       sets the Java VM debug agent up so that the run get immediatelly suspended")
+            print("                         waiting for a debugger to connect. By default the port number is 5005 but")
+            print("                         can be customized using --debug-port")
             sys.exit(0)
 
         if len(args) == 1 and args[0] == "--list":
@@ -121,6 +128,22 @@ def main(args):
         if dryRun:
             dryRun = True
             args.remove("--dry-run")
+
+
+        debugPort = getValueForArgument(args, "--debug-port")
+        if debugPort is not None:
+            i = args.index("--debug-port")
+            del args[i]
+            del args[i]
+
+        debugSuspend = "--debug-suspend" in args
+        if debugSuspend:
+            debugSuspend = True
+            i = args.index("--debug-suspend")
+            del args[i]
+            if debugPort is None:
+                debugPort = 5005
+  
 
         javaOptions = getValueForArgument(args, "--java-options")
         if javaOptions is not None:
@@ -149,7 +172,7 @@ def main(args):
             del sparkArgs[i] #and its parameter
             gatkArgs += ["--spark-master", sparkMaster]
 
-        runGATK(sparkRunner, sparkSubmitCommand, dryRun, gatkArgs, sparkArgs, javaOptions)
+        runGATK(sparkRunner, sparkSubmitCommand, dryRun, gatkArgs, sparkArgs, javaOptions, debugPort, debugSuspend)
 
     except GATKLaunchException as e:
         sys.stderr.write(str(e)+"\n")
@@ -177,12 +200,19 @@ def getGCloudSubmitCommand(gcloudCmd):
     else:
         return gcloudCmd
 
-def getLocalGatkRunCommand(javaOptions):
+def getLocalGatkRunCommand(javaOptions, debugPort, debugSuspend):
     localJarFromEnv = getJarFromEnv(GATK_LOCAL_JAR_ENV_VARIABLE)
 
     # Add java options to our packaged local jar options
     if javaOptions is not None:
         PACKAGED_LOCAL_JAR_OPTIONS.extend(javaOptions.split())
+
+    if debugPort is not None:
+        if debugSuspend: 
+            PACKAGED_LOCAL_JAR_OPTIONS.extend(["-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=" + str(debugPort)])
+        else:
+            PACKAGED_LOCAL_JAR_OPTIONS.extend(["-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=" + str(debugPort)])
+            
 
     if localJarFromEnv is not None:
         return formatLocalJarCommand(localJarFromEnv)
@@ -322,9 +352,9 @@ def cacheJarOnGCS(jar, dryRun):
             return jar
 
 
-def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs, javaOptions):
+def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs, javaOptions, debugPort, debugSuspend):
     if sparkRunner is None or sparkRunner == "LOCAL":
-        cmd = getLocalGatkRunCommand(javaOptions) + gatkArgs + sparkArgs
+        cmd = getLocalGatkRunCommand(javaOptions, debugPort, debugSuspend) + gatkArgs + sparkArgs
         runCommand(cmd, dryrun)
     elif sparkRunner == "SPARK":
         sparkSubmitCmd = getSparkSubmitCommand(suppliedSparkSubmitCommand)
