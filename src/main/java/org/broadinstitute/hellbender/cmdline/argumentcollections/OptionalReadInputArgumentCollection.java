@@ -24,24 +24,6 @@ public final class OptionalReadInputArgumentCollection extends ReadInputArgument
     private List<String> readFilesNames = new ArrayList<>();
 
     @Override
-    public List<File> getReadFiles() {
-        ArrayList<File> ret = new ArrayList<>();
-        for (String fn : readFilesNames) {
-            ret.add(new File(fn));
-        }
-        return ret;
-    }
-
-    @Override
-    public List<Path> getReadPaths() {
-        ArrayList<Path> ret = new ArrayList<>();
-        for (String fn : readFilesNames) {
-            ret.add(IOUtils.getPath(fn));
-        }
-        return ret;
-    }
-
-    @Override
     public List<String> getReadFilesNames() {
         return new ArrayList<>(readFilesNames);
     }

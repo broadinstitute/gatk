@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.read.ReadConstants;
 import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,12 +39,6 @@ public abstract class ReadInputArgumentCollection implements Serializable {
     protected List<String> readIndices;
 
     /**
-     * Get the list of BAM/SAM/CRAM files specified at the command line.
-     * Paths are the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
-     */
-    public abstract List<Path> getReadPaths();
-
-    /**
      * @return The list of indices to be used with the read inputs, or {@code null} if none were specified and the indices should be
      *         inferred automatically.
      *
@@ -55,13 +50,27 @@ public abstract class ReadInputArgumentCollection implements Serializable {
             return null;
         }
 
-        return readIndices.stream().map(index -> IOUtils.getPath(index)).collect(Collectors.toList());
+        return readIndices.stream().map(IOUtils::getPath).collect(Collectors.toList());
     }
 
     /**
      * Get the list of BAM/SAM/CRAM files specified at the command line
      */
-    public abstract List<File> getReadFiles();
+    public List<File> getReadFiles(){
+        return getReadFilesNames().stream()
+                .map(File::new)
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    /**
+     * Get the list of BAM/SAM/CRAM files specified at the command line.
+     * Paths are the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
+     */
+    public List<Path> getReadPaths(){
+        return getReadFilesNames().stream()
+                .map(IOUtils::getPath)
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
 
     /**
      * Get the list of BAM/SAM/CRAM filenames specified at the command line
