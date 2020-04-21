@@ -73,7 +73,8 @@ public abstract class Mutect2AlleleFilter extends Mutect2Filter {
 
 
     /**
-     * Returns a list for each alternate allele which is the probability that the allele should be filtered out.
+     * Returns a list of probabilities, one for each alternate allele which is the probability that the allele should be filtered out.
+     * An empty list is returned when the filter is not/can not be evaluated.
      * @param vc
      * @param filteringEngine
      * @param referenceContext
