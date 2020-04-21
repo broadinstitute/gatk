@@ -62,9 +62,9 @@ public class ReferenceTwoBitSparkSourceUnitTest extends GATKBaseTest {
     public Object[][] getReferenceTestCases() {
         return new Object[][] {
                 { twoBitRefURL, true },
-                { "file:///" + twoBitRefURL, true },
+                { "file://" + twoBitRefURL, true },
                 { hg38Reference, false }, // gzipped
-                { "file:///" + hg38Reference, false }, // gzipped
+                { "file://" + hg38Reference, false }, // gzipped
                 { GCS_b37_CHR20_21_REFERENCE_2BIT, true },
                 { GCS_b37_CHR20_21_REFERENCE, false },
                 // dummy query params at the end to make sure URI.getPath does the right thing
