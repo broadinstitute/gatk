@@ -124,9 +124,9 @@ mv $( find ./build/libs/ -name "gatk*testDependencies.jar" ) ${STAGING_ABSOLUTE_
 
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
 if [ -n "${IS_PUSH}" ]; then
-    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --squash --build-arg ZIPPATH=./unzippedJar .
+    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --squash --build-arg UID=$(whoami) --build-arg UID=$(id -u) --build-arg GID=$(id -g) --build-arg ZIPPATH=./unzippedJar .
 else
-    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg ZIPPATH=./unzippedJar .
+    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg UID=$(whoami) --build-arg UID=$(id -u) --build-arg GID=$(id -g) --build-arg ZIPPATH=./unzippedJar .
 fi
 
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
@@ -144,8 +144,8 @@ if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
     cp build.gradle build.gradle.backup
     cp scripts/docker/dockertest.gradle .
 
-	echo docker run ${REMOVE_CONTAINER_STRING} -v  ${STAGING_ABSOLUTE_PATH}:/gatkCloneMountPoint -v  ${STAGING_ABSOLUTE_PATH}/testJars:/jars -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
-    docker run ${REMOVE_CONTAINER_STRING} -v  ${STAGING_ABSOLUTE_PATH}:/gatkCloneMountPoint -v  ${STAGING_ABSOLUTE_PATH}/testJars:/jars -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
+	echo docker run ${REMOVE_CONTAINER_STRING} -v  ${STAGING_ABSOLUTE_PATH}:/gatk/gatkCloneMountPoint -v  ${STAGING_ABSOLUTE_PATH}/testJars:/gatk/jars -t ${REPO_PRJ}:${GITHUB_TAG} bash /gatk/run_unit_tests.sh
+    docker run ${REMOVE_CONTAINER_STRING} -v  ${STAGING_ABSOLUTE_PATH}:/gatk/gatkCloneMountPoint -v  ${STAGING_ABSOLUTE_PATH}/testJars:/gatk/jars -t ${REPO_PRJ}:${GITHUB_TAG} bash /gatk/run_unit_tests.sh
 	echo " Unit tests passed..."
 	mv build.gradle.backup build.gradle
 fi

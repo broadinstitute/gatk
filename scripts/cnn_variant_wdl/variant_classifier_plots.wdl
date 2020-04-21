@@ -125,7 +125,7 @@ task MakeTables {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk_override}
 
         gatk --java-options "-Xmx${command_mem}m" \
             UpdateVcfSequenceDictionary \
@@ -205,7 +205,7 @@ task MakeTableNoTruth {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk_override}
 
         gatk --java-options "-Xmx${command_mem}m" \
             VariantsToTable \

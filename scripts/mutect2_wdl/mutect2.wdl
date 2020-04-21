@@ -476,7 +476,7 @@ task SplitIntervals {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         mkdir interval-files
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" SplitIntervals \
@@ -569,7 +569,7 @@ task M2 {
     command <<<
         set -e
 
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk_override}
 
         # We need to create these files regardless, even if they stay empty
         touch bamout.bam
@@ -660,7 +660,7 @@ task MergeVCFs {
     # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
     command {
         set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeVcfs -I ~{sep=' -I ' input_vcfs} -O ~{output_vcf}
     }
 
@@ -695,7 +695,7 @@ task MergeBamOuts {
         # This command block assumes that there is at least one file in bam_outs.
         #  Do not call this task if len(bam_outs) == 0
         set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherBamFiles \
             -I ~{sep=" -I " bam_outs} -O unsorted.out.bam -R ~{ref_fasta}
 
@@ -733,7 +733,7 @@ task MergeStats {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
 
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeMutectStats \
@@ -765,7 +765,7 @@ task MergePileupSummaries {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherPileupSummaries \
         --sequence-dictionary ~{ref_dict} \
@@ -801,7 +801,7 @@ task LearnReadOrientationModel {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{command_mem}m" LearnReadOrientationModel \
             -I ~{sep=" -I " f1r2_tar_gz} \
@@ -835,7 +835,7 @@ task CalculateContamination {
     command {
         set -e
 
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" CalculateContamination -I ~{tumor_pileups} \
         -O contamination.table --tumor-segmentation segments.table ~{"-matched " + normal_pileups}
@@ -889,7 +889,7 @@ task Filter {
     command {
         set -e
 
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" FilterMutectCalls -V ~{unfiltered_vcf} \
             -R ~{ref_fasta} \
@@ -955,7 +955,7 @@ task FilterAlignmentArtifacts {
     command {
         set -e
 
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{command_mem}m" FilterAlignmentArtifacts \
             -R ~{ref_fasta} \
@@ -1049,7 +1049,7 @@ task Funcotate {
 
      command <<<
          set -e
-         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
          # Extract our data sources:
          echo "Extracting data sources zip file..."

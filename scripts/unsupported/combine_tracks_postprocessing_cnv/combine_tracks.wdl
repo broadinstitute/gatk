@@ -232,7 +232,7 @@ task CombineTracks {
 	command <<<
 	    
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk4_jar_override}
 
 		echo "======= Germline Tagging "
 		gatk --java-options "-Xmx${command_mem}m" \
@@ -417,7 +417,7 @@ task MergeSegmentByAnnotation {
 	command <<<
 
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk4_jar_override}
 
 		echo "======= Merging "
 		gatk --java-options "-Xmx${command_mem}m" \
@@ -648,7 +648,7 @@ task PrepareForACSConversion {
 	command <<<
 
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=${default="/gatk/gatk.jar" gatk4_jar_override}
 
 		echo "======= Merging GATK Model Seg and GATK Segment caller file "
     	gatk --java-options "-Xmx${command_mem}m" \

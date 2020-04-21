@@ -146,7 +146,7 @@ task FuncotateSegments {
 
     command <<<
         set -eu
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk4_jar_override}
 
          # Extract our data sources:
          echo "Extracting data sources zip file..."

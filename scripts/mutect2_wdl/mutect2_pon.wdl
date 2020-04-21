@@ -143,7 +143,7 @@ task CreatePanel {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         gatk GenomicsDBImport --genomicsdb-workspace-path pon_db -R ~{ref_fasta} -V ~{sep=' -V ' input_vcfs} -L ~{intervals}
 

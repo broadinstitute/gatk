@@ -202,7 +202,7 @@ task CreateReadCountPanelOfNormals {
 
     command <<<
         set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk4_jar_override}
 
         gatk --java-options "-Xmx~{command_mem_mb}m" CreateReadCountPanelOfNormals \
             --input ~{sep=" --input " read_count_files} \

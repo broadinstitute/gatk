@@ -99,6 +99,7 @@ Currently, this is a bit manual.
 sudo docker pull broadinstitute/gatk
 sudo docker run -i -t broadinstitute/gatk:latest
 
+# TODO THIS NEEDS TO BE UPDATED?
 # On the docker prompt
 cd /root/gatk
 ./gradlew test
