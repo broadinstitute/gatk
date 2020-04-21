@@ -51,7 +51,11 @@
 						</#if>
 					</td>
 					<!--<td>${arg.type}</td> -->
-					<td>${arg.defaultValue!"NA"}</td>
+					<#if arg.defaultValue != "null" && arg.defaultValue != "[]" && arg.defaultValue != "\"\"">
+						<td>${arg.defaultValue}</td>
+					<#else>
+						<td></td>
+					</#if>
 					<td>${arg.summary}</td>
 				</tr>
 			</#list>
