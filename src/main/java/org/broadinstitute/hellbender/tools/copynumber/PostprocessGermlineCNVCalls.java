@@ -32,10 +32,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -246,7 +243,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     public void onStartup() {
         super.onStartup();
         /* check for successful import of gcnvkernel */
-        PythonScriptExecutor.checkPythonEnvironmentForPackage("gcnvkernel");
+        PythonScriptExecutor.checkPythonEnvironmentForPackage("numpy");
     }
 
     /**
@@ -317,6 +314,8 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                 "The interval lists found in model and call shards do not match. Make sure that the calls and model " +
                         "paths are provided in matching order.");
         sortedIntervalCollections = sortedIntervalCollectionsFromCalls;
+
+        checkForSingletonIntervalAbsence(sortedIntervalCollections);
 
         /* assert that allosomal contigs are contained in the SAM sequence dictionary */
         final Set<String> allContigs = sequenceDictionary.getSequences().stream()
@@ -653,5 +652,26 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
             unsortedIntervalCollectionsFromModels = getIntervalCollectionsFromPaths(inputUnsortedModelShardPaths);
         }
         return unsortedIntervalCollectionsFromModels;
+    }
+
+    /**
+     * Validate that the union of shard's interval lists does not have singleton intervals, i.e. intervals that
+     * are the only ones on their corresponding contigs.
+     */
+    private void checkForSingletonIntervalAbsence(final List<SimpleIntervalCollection> intervalCollections){
+        final List<SimpleInterval> concatenatedIntervalList = new ArrayList<>();
+        IntStream.range(0, numShards).forEach(i -> {
+            concatenatedIntervalList.addAll(intervalCollections.get(i).getIntervals());
+        });
+
+        final Map<String, Long> contigToCountMap = concatenatedIntervalList.stream()
+                .collect(Collectors.groupingBy(SimpleInterval::getContig, Collectors.counting()));
+        contigToCountMap.keySet().forEach(c -> {
+            if (contigToCountMap.get(c) == 1) {
+                throw new IllegalArgumentException(
+                        String.format("Records contain a singleton interval on contig (%s)." +
+                                " Please run FilterIntervals tool first.", c));
+            }
+        });
     }
 }

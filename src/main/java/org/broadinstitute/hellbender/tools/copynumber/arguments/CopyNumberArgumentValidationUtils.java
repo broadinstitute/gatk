@@ -22,10 +22,7 @@ import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.OptionalInt;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;

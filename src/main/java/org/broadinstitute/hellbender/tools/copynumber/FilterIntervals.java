@@ -40,15 +40,16 @@ import java.util.stream.IntStream;
  * {@link CollectReadCounts}, outputs a filtered Picard interval list.  The set intersection of intervals from the
  * specified intervals, the annotated intervals, and the first count file will be taken as the initial set of intervals
  * on which to perform filtering.  Parameters for filtering based on the annotations and counts can be adjusted.
- * Annotation-based filters will be applied first, followed by count-based filters.  The result may be passed via -L to
- * other tools (e.g., {@link DetermineGermlineContigPloidy} and {@link GermlineCNVCaller}) to mask intervals from
- * analysis.
+ * Annotation-based filters will be applied first, followed by count-based filters. In the end, any singleton intervals
+ * (i.e. those being by themselves on their corresponding contigs) found after applying other filters will be filtered
+ * out.  The result may be passed via -L to other tools (e.g., {@link DetermineGermlineContigPloidy} and
+ * {@link GermlineCNVCaller}) to mask intervals from analysis.
  *
  * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
-           Intervals to be filtered (typically, the bins output by {@link PreprocessIntervals}).
+ *         Intervals to be filtered (typically, the bins output by {@link PreprocessIntervals}).
  *         The argument {@code interval-merging-rule} must be set to {@link IntervalMergingRule#OVERLAPPING_ONLY}
  *         and all other common arguments for interval padding or merging must be set to their defaults.
  *         A blacklist of regions in which intervals should always be filtered (regardless of other annotation-based
@@ -430,6 +431,17 @@ public final class FilterIntervals extends CommandLineProgram {
                     extremeCountFilterMinimumPercentile, extremeCountFilterMaximumPercentile, extremeCountFilterPercentageOfSamples,
                     countNumberPassing(mask), numIntersectedIntervals));
         }
+
+        //finally, filter intervals that are solitary in their corresponding contigs
+        final Map<String, Long> contigToCountMap = IntStream.range(0, numIntersectedIntervals)
+                .filter(i -> !mask[i]).mapToObj(i -> intersectedIntervals.getRecords().get(i))
+                .collect(Collectors.groupingBy(SimpleInterval::getContig, Collectors.counting()));
+        IntStream.range(0, numIntersectedIntervals).filter(i -> !mask[i]).forEach(i -> {
+            final long value = contigToCountMap.get(intersectedIntervals.getRecords().get(i).getContig());
+            if (value <= 1) {
+                mask[i] = true;
+            }
+        });
 
         logger.info(String.format("%d / %d intervals passed all filters...", countNumberPassing(mask), numIntersectedIntervals));
 
