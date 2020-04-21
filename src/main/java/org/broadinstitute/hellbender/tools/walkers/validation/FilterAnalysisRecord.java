@@ -60,7 +60,7 @@ public class FilterAnalysisRecord {
     }
 
     public static List<FilterAnalysisRecord> readFromFile(final File tableFile) {
-        return readFromPath(IOUtils.fileToPath(tableFile));
+        return readFromPath(IOUtils.toPath(tableFile));
     }
 
     public static List<FilterAnalysisRecord> readFromPath(final Path tablePath) {

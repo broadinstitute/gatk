@@ -44,7 +44,7 @@ public class MinorAlleleFractionRecord implements Locatable {
 
     //----- The following two public static methods read and write contamination files
     public static void writeToFile(final String sample, final List<MinorAlleleFractionRecord> records, final File outputTable) {
-        try ( MinorAlleleFractionTableWriter writer = new MinorAlleleFractionTableWriter(IOUtils.fileToPath(outputTable)) ) {
+        try ( MinorAlleleFractionTableWriter writer = new MinorAlleleFractionTableWriter(IOUtils.toPath(outputTable)) ) {
             writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
             writer.writeAllRecords(records);
         } catch (IOException e){
@@ -53,7 +53,7 @@ public class MinorAlleleFractionRecord implements Locatable {
     }
 
     public static ImmutablePair<String, List<MinorAlleleFractionRecord>> readFromFile(final File tableFile) {
-        return readFromPath(IOUtils.fileToPath(tableFile));
+        return readFromPath(IOUtils.toPath(tableFile));
     }
 
     public static ImmutablePair<String, List<MinorAlleleFractionRecord>> readFromPath(final Path tablePath) {

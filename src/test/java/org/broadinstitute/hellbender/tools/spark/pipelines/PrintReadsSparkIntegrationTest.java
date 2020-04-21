@@ -35,7 +35,7 @@ public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsInte
         // This is a technically incorrectly sam with a header indicating that it is coordinate sorted when it is actually
         // queryname sorted. If the ordering is the same after PrintReadsSpark then it means we aren't automatically sorting the output.
         final File inBam = new File(getTestDataDir(), "print_reads.mismatchedHeader.sam");
-        try (ReadsDataSource ds = new ReadsPathDataSource(inBam.toPath())){
+        try (ReadsDataSource ds = new ReadsPathDataSource(IOUtils.toGATKPath(inBam))){
             Assert.assertEquals(ds.getHeader().getSortOrder(), SAMFileHeader.SortOrder.coordinate);
         }
         final File outBam = GATKBaseTest.createTempFile("print_reads", ".bam");

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.consensus;
 
 import htsjdk.samtools.SAMTag;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -27,7 +28,7 @@ public class DownsampleByDuplicateSetIntegrationTest extends CommandLineProgramT
                 .add(DownsampleByDuplicateSet.FRACTION_TO_KEEP_NAME, "1.0");
         runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
 
-        try (final ReadsDataSource readsDataSource = new ReadsPathDataSource(Paths.get(out.getAbsolutePath()))) {
+        try (final ReadsDataSource readsDataSource = new ReadsPathDataSource(new GATKPath(out.getAbsolutePath()))) {
             final Iterator<GATKRead> iterator = readsDataSource.iterator();
             while (iterator.hasNext()) {
                 // Make sure that the read and its mate are next to each other in the file
@@ -54,8 +55,8 @@ public class DownsampleByDuplicateSetIntegrationTest extends CommandLineProgramT
                     .add("O", out.getAbsolutePath());
             runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
 
-            try(final ReadsDataSource originalBam = new ReadsPathDataSource(Paths.get(NA12878_GROUPED));
-                final ReadsDataSource downsampledBam = new ReadsPathDataSource(Paths.get(out.getAbsolutePath()))){
+            try(final ReadsDataSource originalBam = new ReadsPathDataSource(new GATKPath(NA12878_GROUPED));
+                final ReadsDataSource downsampledBam = new ReadsPathDataSource(new GATKPath(out.getAbsolutePath()))){
 
                 final int originalMoleculeCount = countDuplicateSets(originalBam);
                 final int downsampledMoleculeCount = countDuplicateSets(downsampledBam);

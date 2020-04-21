@@ -30,7 +30,7 @@ public class MutectStats {
     //----- The following two public static methods read and write contamination files
     public static void writeToFile(final List<MutectStats> records, final File outputTable) {
         try ( MutectStats.MutectStatsWriter writer = new MutectStats.MutectStatsWriter(
-            IOUtils.fileToPath(outputTable)) ) {
+            IOUtils.toPath(outputTable)) ) {
             writer.writeAllRecords(records);
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while writing to %s.", outputTable));
@@ -39,7 +39,7 @@ public class MutectStats {
 
     public static List<MutectStats> readFromFile(final File tableFile) {
         try( MutectStats.MutectStatsReader reader = new MutectStats.MutectStatsReader(
-            IOUtils.fileToPath(tableFile)) ) {
+            IOUtils.toPath(tableFile)) ) {
             return reader.toList();
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));

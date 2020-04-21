@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -96,7 +97,7 @@ public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrati
         intervals.forEach(args2::addInterval);
         runCommandLine(args2);
 
-        try(final ReadsDataSource reader = new ReadsPathDataSource(out.toPath())){
+        try(final ReadsDataSource reader = new ReadsPathDataSource(IOUtils.toGATKPath(out))){
             final long count = Utils.stream(reader).count();
             Assert.assertEquals( count, expectedNumberOfReads);
         }

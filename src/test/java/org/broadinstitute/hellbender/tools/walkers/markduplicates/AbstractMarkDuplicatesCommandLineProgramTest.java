@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.testutils.testers.MarkDuplicatesSparkTester;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -445,7 +446,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         args.addInput(getTestFile("supplementaryReadUnmappedmate.bam"));
         runCommandLine(args);
 
-        try ( final ReadsDataSource outputReadsSource = new ReadsPathDataSource(output.toPath()) ) {
+        try (final ReadsDataSource outputReadsSource = new ReadsPathDataSource(IOUtils.toGATKPath(output)) ) {
             final List<GATKRead> actualReads = new ArrayList<>();
             for ( final GATKRead read : outputReadsSource ) {
                 Assert.assertFalse(read.isDuplicate());

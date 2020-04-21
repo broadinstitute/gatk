@@ -38,7 +38,7 @@ public class MixingFraction {
 
     public static List<MixingFraction> readMixingFractions(final File file) {
         IOUtils.canReadFile(file);
-        try (final MixingFractionReader reader = new MixingFractionReader(IOUtils.fileToPath(file))) {
+        try (final MixingFractionReader reader = new MixingFractionReader(IOUtils.toPath(file))) {
             return reader.toList();
         } catch (final FileNotFoundException ex) {
             throw new UserException.CouldNotReadInputFile("Mixing fraction table file not found.", ex);
@@ -48,7 +48,7 @@ public class MixingFraction {
     }
 
     public static void writeMixingFractions(List<MixingFraction> mixingFractions, final File file) {
-        try (MixingFractionWriter writer = new MixingFractionWriter(IOUtils.fileToPath(file))) {
+        try (MixingFractionWriter writer = new MixingFractionWriter(IOUtils.toPath(file))) {
             writer.writeAllRecords(mixingFractions);
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while trying to create output file %s.", file));

@@ -4,15 +4,19 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecordQueryNameComparator;
 import htsjdk.samtools.SAMTag;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 
 
 public class ReadQueryNameComparatorUnitTest extends GATKBaseTest {
@@ -32,7 +36,7 @@ public class ReadQueryNameComparatorUnitTest extends GATKBaseTest {
         final List<GATKRead> reads = new ArrayList<>();
         SAMFileHeader header;
 
-        try ( final ReadsDataSource readsSource = new ReadsPathDataSource(IOUtils.getPath(inputBam)) ) {
+        try ( final ReadsDataSource readsSource = new ReadsPathDataSource(new GATKPath(inputBam)) ) {
             header = readsSource.getHeader();
 
             for ( GATKRead read : readsSource ) {

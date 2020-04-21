@@ -1051,7 +1051,38 @@ public final class IOUtils {
      * @param toConvert File to convert to a Path
      * @return a Path, or null if the input was null.
      */
-    public static Path fileToPath(File toConvert) {
+    public static Path toPath(File toConvert) {
         return (null == toConvert ? null : toConvert.toPath());
     }
+
+    /**
+     * Convert GATKPath to Path, returning null if input was null.
+     *
+     * @param toConvert GATKPath to convert to a Path
+     * @return a Path, or null if the input was null.
+     */
+    public static Path toPath(GATKPath toConvert){
+        return (null == toConvert ? null : toConvert.toPath());
+    }
+
+    /**
+     * Convert Path to GATKPath, returning null if input was null.
+     *
+     * @param toConvert Path to convert to GATKPath
+     * @return a Path, or null if the input was null.
+     */
+    public static GATKPath toGATKPath(Path toConvert){
+        return null == toConvert ? null : new GATKPath(toConvert.toUri().toString());
+    }
+
+    /**
+     * Convert Path to GATKPath, returning null if input was null.
+     *
+     * @param toConvert Path to convert to GATKPath
+     * @return a Path, or null if the input was null.
+     */
+    public static GATKPath toGATKPath(File toConvert){
+        return null == toConvert ? null : new GATKPath(toConvert.getAbsolutePath().toString());
+    }
+
 }

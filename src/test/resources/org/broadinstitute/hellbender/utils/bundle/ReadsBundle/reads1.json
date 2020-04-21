@@ -1,0 +1,4 @@
+{
+  "reads":{"path":"a file", "fileType":"bam"},
+  "index":{"path":"an index", "fileType":"bai"}
+}

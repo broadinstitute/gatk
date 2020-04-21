@@ -77,7 +77,7 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
         this.recordToDataLineEncoder = Utils.nonNull(recordToDataLineEncoder);
         Utils.nonEmpty(mandatoryColumns.names());
 
-        try (final RecordCollectionReader reader = new RecordCollectionReader(IOUtils.fileToPath(inputFile))) {
+        try (final RecordCollectionReader reader = new RecordCollectionReader(IOUtils.toPath(inputFile))) {
             metadata = MetadataUtils.fromHeader(reader.getHeader(), getMetadataType());
             TableUtils.checkMandatoryColumns(reader.columns(), mandatoryColumns, UserException.BadInput::new);
             records = ImmutableList.copyOf(reader.stream().iterator());     //avoid creation of an intermediate list

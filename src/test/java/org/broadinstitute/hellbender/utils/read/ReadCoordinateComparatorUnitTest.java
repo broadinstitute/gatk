@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -31,7 +32,7 @@ public final class ReadCoordinateComparatorUnitTest extends GATKBaseTest {
         final List<GATKRead> reads = new ArrayList<>();
         SAMFileHeader header = null;
 
-        try ( final ReadsDataSource readsSource = new ReadsPathDataSource(IOUtils.getPath(inputBam)) ) {
+        try ( final ReadsDataSource readsSource = new ReadsPathDataSource(new GATKPath(inputBam)) ) {
             header = readsSource.getHeader();
 
             for ( GATKRead read : readsSource ) {

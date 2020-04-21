@@ -4,6 +4,8 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.SequenceUtil;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -107,7 +109,7 @@ public final class ReadTestUtils {
     public static Pair<SAMFileHeader, List<GATKRead>> readEntireBamIntoMemory(final String bamPath) {
         Utils.nonNull(bamPath);
 
-        try ( final ReadsDataSource bamReader = new ReadsPathDataSource(Paths.get(bamPath)) ) {
+        try ( final ReadsDataSource bamReader = new ReadsPathDataSource(new GATKPath(bamPath)) ) {
             final SAMFileHeader header = bamReader.getHeader();
 
             final List<GATKRead> reads = new ArrayList<>();

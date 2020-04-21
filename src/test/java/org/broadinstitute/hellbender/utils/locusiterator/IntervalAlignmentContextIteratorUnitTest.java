@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.locusiterator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -140,7 +141,7 @@ public class IntervalAlignmentContextIteratorUnitTest extends GATKBaseTest {
     private List<AlignmentContext> getAlignmentContexts(final List<SimpleInterval> locusIntervals, final String bamPath) {
         final List<String> sampleNames = Collections.singletonList("NA12878");
 
-        final ReadsDataSource gatkReads = new ReadsPathDataSource(IOUtils.getPath(bamPath));
+        final ReadsDataSource gatkReads = new ReadsPathDataSource(new GATKPath(bamPath));
         final SAMFileHeader header = gatkReads.getHeader();
         final Stream<GATKRead> filteredReads = Utils.stream(gatkReads).filter(new WellformedReadFilter(header).and(new ReadFilterLibrary.MappedReadFilter()));
 
