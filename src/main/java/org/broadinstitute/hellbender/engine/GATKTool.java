@@ -104,10 +104,12 @@ public abstract class GATKTool extends CommandLineProgram {
     public boolean addOutputVCFCommandLine = true;
 
     // default value of 40MB based on a test with CountReads (it's 5x faster than no prefetching)
-    @Argument(fullName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable).", optional=true)
+    @Argument(fullName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable).", optional=true, minValue = 0, minRecommendedValue = 1, maxRecommendedValue = 40)
     public int cloudPrefetchBuffer = getDefaultCloudPrefetchBufferSize();
 
-    @Argument(fullName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable). Defaults to cloudPrefetchBuffer if unset.", optional=true)
+    @Argument(fullName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_SHORT_NAME,
+            doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable). Defaults to -1 which causes it to use the same value as --" + StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME + ".",
+            optional=true, minValue = -1)
     public int cloudIndexPrefetchBuffer = getDefaultCloudIndexPrefetchBufferSize();
 
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_BAM_INDEX_CACHING_LONG_NAME,
