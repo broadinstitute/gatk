@@ -1357,7 +1357,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         final boolean hasGQ0call = VariantContextTestUtils.streamVcf(output)
-                .anyMatch(vc -> vc.getStart() == 11315390 && vc.getGenotype(0).hasGQ() && vc.getGenotype(0).getGQ() == 0);
+                .anyMatch(vc -> vc.getStart() == 11315390 && vc.getGenotype(0).getPloidy() == 1 &&
+                        vc.getGenotype(0).hasGQ() && vc.getGenotype(0).getGQ() == 0);
 
         Assert.assertTrue(hasGQ0call);
     }
