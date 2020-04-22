@@ -848,8 +848,6 @@ public abstract class GATKTool extends CommandLineProgram {
      * the vcfOutput's extension, using the best available sequence dictionary for
      * this tool, and default index, leniency and md5 generation settings.
      *
-     * Deprecated, use {@link #createVCFWriter(Path)} instead.
-     *
      * @param outFile output GATKPathSpecifier for this writer. May not be null.
      * @returns VariantContextWriter must be closed by the caller
      */

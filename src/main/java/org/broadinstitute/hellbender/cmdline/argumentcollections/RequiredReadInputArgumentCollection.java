@@ -24,8 +24,4 @@ public final class RequiredReadInputArgumentCollection extends ReadInputArgument
      * Paths are the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
     public List<GATKPathSpecifier> getReadPathSpecifiers() { return Collections.unmodifiableList(readFilesNames);}
-
-    public List<Path> getReadPaths() {
-        return getReadPathSpecifiers().stream().map(GATKPathSpecifier::toPath).collect(Collectors.toList());
-    }
 }
