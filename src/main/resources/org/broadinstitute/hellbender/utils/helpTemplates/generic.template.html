@@ -51,7 +51,11 @@
 						</#if>
 					</td>
 					<!--<td>${arg.type}</td> -->
-					<td>${arg.defaultValue!"NA"}</td>
+					<#if arg.defaultValue != "null" && arg.defaultValue != "[]" && arg.defaultValue != "\"\"">
+						<td>${arg.defaultValue}</td>
+					<#else>
+						<td></td>
+					</#if>
 					<td>${arg.summary}</td>
 				</tr>
 			</#list>
@@ -61,7 +65,7 @@
 	<#macro argumentDetails arg>
 		<hr style="border-bottom: dotted 1px #C0C0C0;" />
 		<h3><a name="${arg.name}">${arg.name} </a>
-			<#if arg.synonyms??> / <small>${arg.synonyms}</small></#if>
+			<#if arg.synonyms?? && arg.synonyms != "NA"> / <small>${arg.synonyms}</small></#if>
 		</h3>
 		<p class="args">
 			<b>${arg.summary}</b><br />
