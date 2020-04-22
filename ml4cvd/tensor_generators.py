@@ -44,15 +44,14 @@ class _ShufflePaths(Iterator):
 
     def __init__(self, paths: List[Path]):
         self.paths = paths
-        self.paths.sort()
+        np.random.shuffle(self.paths)
         self.idx = 0
 
     def __next__(self):
         if self.idx >= len(self.paths):
             self.idx = 0
-        path = self.paths[self.idx]
-        if self.idx == 0:
             np.random.shuffle(self.paths)
+        path = self.paths[self.idx]
         self.idx += 1
         return path
 
@@ -139,6 +138,14 @@ class TensorGenerator:
                 process.start()
                 self.workers.append(process)
         logging.info(f"Started {i} {self.name.replace('_', ' ')}s with cache size {self.cache_size/1e9}GB.")
+
+    def set_worker_paths(self, paths: List[Path]):
+        """In the single worker case, set the worker's paths."""
+        if not self._started:
+            self._init_workers()
+        if not self.run_on_main_thread:
+            raise ValueError('Cannot sort paths of multiprocessing workers. num_workers must be 0.')
+        self.worker_instances[0].path_iter.paths = paths
 
     def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
         if not self._started:

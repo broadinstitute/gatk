@@ -474,10 +474,14 @@ def _make_tmap_nan_on_fail(tmap):
     return new_tmap
 
 
+def inference_file_name(output_folder: str, id_: str) -> str:
+    return os.path.join(output_folder, id_, 'inference_' + id_ + '.tsv')
+
+
 def infer_multimodal_multitask(args):
     stats = Counter()
-    tensor_paths_inferred = {}
-    inference_tsv = os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv')
+    tensor_paths_inferred = set()
+    inference_tsv = inference_file_name(args.output_folder, args.id)
     tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     if args.variational:
         model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
@@ -489,6 +493,7 @@ def infer_multimodal_multitask(args):
         1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
         cache_size=0, keep_paths=True, mixup=args.mixup_alpha,
     )
+    generate_test.set_worker_paths(tensor_paths)
     with open(inference_tsv, mode='w') as inference_file:
         # TODO: csv.DictWriter is much nicer for this
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -508,6 +513,7 @@ def infer_multimodal_multitask(args):
             batch = next(generate_test)
             input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
             if tensor_paths[0] in tensor_paths_inferred:
+                next(generate_test)  # this prints end of epoch info
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
 
@@ -531,22 +537,27 @@ def infer_multimodal_multitask(args):
                         csv_row.append("NA" if np.isnan(actual) else str(actual))
 
             inference_writer.writerow(csv_row)
-            tensor_paths_inferred[tensor_paths[0]] = True
+            tensor_paths_inferred.add(tensor_paths[0])
             stats['count'] += 1
             if stats['count'] % 250 == 0:
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
 
+def hidden_inference_file_name(output_folder: str, id_: str) -> str:
+    return os.path.join(output_folder, id_, 'hidden_inference_' + id_ + '.tsv')
+
+
 def infer_hidden_layer_multimodal_multitask(args):
     stats = Counter()
     args.num_workers = 0
-    inference_tsv = os.path.join(args.output_folder, args.id, 'hidden_inference_' + args.id + '.tsv')
+    inference_tsv = hidden_inference_file_name(args.output_folder, args.id)
     tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
         cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha,
     )
+    generate_test.set_worker_paths(tensor_paths)
     if args.variational:
         full_model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
     else:
@@ -565,6 +576,7 @@ def infer_hidden_layer_multimodal_multitask(args):
             batch = next(generate_test)
             input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
             if tensor_paths[0] in stats:
+                next(generate_test)  # this prints end of epoch info
                 logging.info(f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
 
