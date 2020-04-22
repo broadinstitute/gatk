@@ -291,7 +291,7 @@ public final class GATKVariantContextUtils {
 
                 final List<Allele> finalAlleles = alleleCounts.asAlleleList(allelesToUse);
                 if (finalAlleles.contains(Allele.NON_REF_ALLELE)) {
-                    gb.alleles(GATKVariantContextUtils.noCallAlleles(2));
+                    gb.alleles(GATKVariantContextUtils.noCallAlleles(originalGT.size()));
                     gb.PL(new int[genotypeLikelihoods.length]);
                 } else {
                     gb.alleles(finalAlleles);
