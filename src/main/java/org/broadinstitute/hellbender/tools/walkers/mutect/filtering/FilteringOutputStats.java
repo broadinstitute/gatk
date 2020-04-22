@@ -3,8 +3,9 @@ package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 import java.nio.file.Path;
 import org.apache.commons.lang3.mutable.MutableDouble;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.utils.IndexRange;
 
-import java.io.File;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,37 +20,42 @@ public class FilteringOutputStats {
     private double FPs = 0;
     private double FNs = 0;
 
-    private Map<Mutect2VariantFilter, MutableDouble> filterFPs;
-    private Map<Mutect2VariantFilter, MutableDouble> filterFNs;
+    private Map<Mutect2Filter, MutableDouble> filterFPs;
+    private Map<Mutect2Filter, MutableDouble> filterFNs;
 
-    private final List<Mutect2VariantFilter> filters;
+    private final List<Mutect2Filter> filters;
 
-    public FilteringOutputStats(final List<Mutect2VariantFilter> filters) {
+    public FilteringOutputStats(final List<Mutect2Filter> filters) {
         this.filters = filters;
         filterFPs = makeEmptyFilterCounts();
         filterFNs = makeEmptyFilterCounts();
     }
 
     public void recordCall(final ErrorProbabilities errorProbabilities, final double threshold) {
-        final double errorProbability = errorProbabilities.getErrorProbability();
-        final boolean filtered = errorProbability > threshold;
+        final List<Double> probabilitiesPerAllele = errorProbabilities.getCombinedErrorProbabilities();
+        final List<Boolean> isFiltered = probabilitiesPerAllele.stream().map(p -> p > threshold).collect(Collectors.toList());
 
-        if (filtered) {
-            FNs += 1 - errorProbability;
-        } else {
-            pass++;
-            FPs += errorProbability;
-            TPs += 1 - errorProbability;
-        }
-
-        for (final Map.Entry<Mutect2VariantFilter, Double> entry : errorProbabilities.getProbabilitiesByFilter().entrySet()) {
-            final double filterArtifactProbability = entry.getValue();
-            if (filterArtifactProbability > Mutect2FilteringEngine.EPSILON && filterArtifactProbability > threshold - Mutect2FilteringEngine.EPSILON) {
-                filterFNs.get(entry.getKey()).add(1 - errorProbability);
-            } else if (!filtered) {
-                filterFPs.get(entry.getKey()).add(filterArtifactProbability);
+        probabilitiesPerAllele.stream().forEach(p -> {
+            if (p > threshold) {
+                FNs += 1.0 - p;
+            } else {
+                pass++;
+                FPs += p;
+                TPs += 1 - p;
             }
-        }
+        });
+
+        new IndexRange(0, probabilitiesPerAllele.size()).forEach(i -> {
+            errorProbabilities.getProbabilitiesByFilter().entrySet().stream().forEach(entry -> {
+                double alleleProb = entry.getValue().get(i);
+                if (alleleProb > Mutect2FilteringEngine.EPSILON && alleleProb > threshold - Mutect2FilteringEngine.EPSILON) {
+                    filterFNs.get(entry.getKey()).add(1 - probabilitiesPerAllele.get(i));
+                } else if (!isFiltered.get(i)) {
+                    filterFPs.get(entry.getKey()).add(alleleProb);
+                }
+            });
+        });
+
     }
 
     public void writeFilteringStats(final Path filteringStats, final double threshold, List<Pair<String, String>> clusteringMetadata) {
@@ -64,7 +70,7 @@ public class FilteringOutputStats {
         FilterStats.writeM2FilterSummary(filterStats, filteringStats, clusteringMetadata, threshold, pass, TPs, FPs, FNs);
     }
 
-    private Map<Mutect2VariantFilter, MutableDouble> makeEmptyFilterCounts() {
+    private Map<Mutect2Filter, MutableDouble> makeEmptyFilterCounts() {
         return filters.stream().collect(Collectors.toMap(f -> f, f -> new MutableDouble(0)));
     }
 

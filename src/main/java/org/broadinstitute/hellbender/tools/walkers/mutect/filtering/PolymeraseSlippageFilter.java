@@ -75,7 +75,7 @@ public class PolymeraseSlippageFilter extends Mutect2VariantFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() {
+    protected List<String> requiredInfoAnnotations() {
         return Arrays.asList(GATKVCFConstants.REPEATS_PER_ALLELE_KEY, GATKVCFConstants.REPEAT_UNIT_KEY);
     }
 }

@@ -36,6 +36,9 @@ cd $WORKING_DIR/gatk/scripts/
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" m2_cromwell_tests/test_m2_wdl_multi.json >$WORKING_DIR/test_m2_wdl_multi_mod.json
 echo "JSON FILE (modified) ======="
 cat $WORKING_DIR/test_m2_wdl_multi_mod.json
+sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" m2_cromwell_tests/test_mitochondria_m2_wdl.json >$WORKING_DIR/test_mitochondria_m2_wdl_mod.json
+echo "JSON FILE (modified) ======="
+cat $WORKING_DIR/test_mitochondria_m2_wdl_mod.json
 echo "=================="
 
 # Create the tumor-only json by using the pair_list_tumor_only file
@@ -52,4 +55,4 @@ sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_m
 echo "Running Mitochondria M2 WDL through cromwell"
 ln -fs $WORKING_DIR/gatk/scripts/mitochondria_m2_wdl/AlignAndCall.wdl
 ln -fs $WORKING_DIR/gatk/scripts/mitochondria_m2_wdl/AlignmentPipeline.wdl
-sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl -i $WORKING_DIR/gatk/scripts/m2_cromwell_tests/test_mitochondria_m2_wdl.json -m $WORKING_DIR/test_mitochondria_m2_wdl.metadata
+sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl -i $WORKING_DIR/test_mitochondria_m2_wdl_mod.json -m $WORKING_DIR/test_mitochondria_m2_wdl.metadata

@@ -7,24 +7,26 @@ import org.broadinstitute.hellbender.tools.walkers.mutect.clustering.SomaticClus
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-public class TumorEvidenceFilter extends Mutect2VariantFilter {
+public class TumorEvidenceFilter extends Mutect2AlleleFilter {
     @Override
     public ErrorType errorType() { return ErrorType.SEQUENCING; }
 
     @Override
-    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+    protected List<Double> calculateErrorProbabilityForAlleles(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext)
+    {
         final double[] tumorLods = Mutect2FilteringEngine.getTumorLogOdds(vc);
         final int[] ADs = filteringEngine.sumADsOverSamples(vc, true, false);
-        final int maxIndex = MathUtils.maxElementIndex(tumorLods);
-        final int altCount = ADs[maxIndex + 1];
         final int totalCount = (int) MathUtils.sum(ADs);
+        SomaticClusteringModel model = filteringEngine.getSomaticClusteringModel();
 
-        return filteringEngine.getSomaticClusteringModel()
-                .probabilityOfSequencingError(new Datum(tumorLods[maxIndex], 0, 0, altCount, totalCount, SomaticClusteringModel.indelLength(vc, maxIndex)));
+        return IntStream.range(0, tumorLods.length).mapToObj(i ->
+                new Datum(tumorLods[i], 0, 0, ADs[i+1], totalCount, SomaticClusteringModel.indelLength(vc, i)))
+                .map(model::probabilityOfSequencingError).collect(Collectors.toList());
+
     }
 
     @Override
@@ -38,6 +40,6 @@ public class TumorEvidenceFilter extends Mutect2VariantFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY); }
 
 }

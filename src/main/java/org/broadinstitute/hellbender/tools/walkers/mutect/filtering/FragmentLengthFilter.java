@@ -30,5 +30,5 @@ public class FragmentLengthFilter extends HardFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY); }
 }

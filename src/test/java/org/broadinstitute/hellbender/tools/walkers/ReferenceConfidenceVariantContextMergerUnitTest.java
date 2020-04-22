@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -76,77 +77,15 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
         Assert.assertEquals(ReferenceConfidenceVariantContextMerger.getBestDepthValue(genotype), expectedDepth);
     }
 
-
     @Test
     public void testGenerateADWithNewAlleles() {
 
         final int[] originalAD = new int[] {1,2,0};
         final int[] indexesOfRelevantAlleles = new int[] {0,1,2,2};
 
-        final int[] newAD = ReferenceConfidenceVariantContextMerger.generateAD(originalAD, indexesOfRelevantAlleles);
+        final int[] newAD = AlleleSubsettingUtils.generateAD(originalAD, indexesOfRelevantAlleles);
         Assert.assertEquals(newAD, new int[]{1,2,0,0});
     }
-
-
-    @Test(expectedExceptions = UserException.class)
-    public void testGetIndexesOfRelevantAllelesWithNoALT() {
-        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine(), new VCFHeader());
-
-        final List<Allele> alleles1 = new ArrayList<>(1);
-        alleles1.add(Allele.create("A", true));
-        final List<Allele> alleles2 = new ArrayList<>(1);
-        alleles2.add(Allele.create("A", true));
-        GenotypeBuilder builder = new GenotypeBuilder();
-        merger.getIndexesOfRelevantAlleles(alleles1, alleles2, -1, builder.make());
-        Assert.fail("We should have thrown an exception because the <ALT> allele was not present");
-    }
-
-    @Test(dataProvider = "getIndexesOfRelevantAllelesData")
-    public void testGetIndexesOfRelevantAlleles(final int allelesIndex, final List<Allele> allAlleles) {
-        final List<Allele> myAlleles = new ArrayList<>(3);
-        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine(), new VCFHeader());
-
-        // always add the reference and <ALT> alleles
-        myAlleles.add(allAlleles.get(0));
-        myAlleles.add(Allele.NON_REF_ALLELE);
-        // optionally add another alternate allele
-        if ( allelesIndex > 0 )
-            myAlleles.add(allAlleles.get(allelesIndex));
-
-        GenotypeBuilder builder = new GenotypeBuilder();
-
-        final int[] indexes = merger.getIndexesOfRelevantAlleles(myAlleles, allAlleles, -1, builder.make());
-
-        Assert.assertEquals(indexes.length, allAlleles.size());
-
-        for ( int i = 0; i < allAlleles.size(); i++ ) {
-            if ( i == 0 )
-                Assert.assertEquals(indexes[i], 0);    // ref should always match
-            else if ( i == allelesIndex )
-                Assert.assertEquals(indexes[i], 2);    // allele
-            else
-                Assert.assertEquals(indexes[i], 1);    // <ALT>
-        }
-    }
-
-    // This test asserts that when we us getINdexesOfRelevantAlleles in the case where there are multiple spanning deletions
-    // that we remap the PL indexes according to the BEST spanning deletion instead of the first one, which can happen if
-    // there were multiple spanning deletion alleles which are replaced with the same symbolic alleles before being fed to
-    // referenceConfidenceVariantContextMerger.
-    @Test (dataProvider = "getIndexesOfRelevantAllelesDataSpanningDels")
-    public void testGetIndexesOfRelevantAllelesMultiSpanningDel(final List<Allele> allelesToFind, final List<Allele> allAlleles, final Genotype g, final int expectedIndex) {
-        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine(), new VCFHeader());
-
-        final int[] indexes = merger.getIndexesOfRelevantAlleles(allAlleles, allelesToFind,-1, g);
-
-        Assert.assertEquals(indexes.length, allelesToFind.size());
-
-        // Asserting that the expected index for the spanning deletion allele corresponds to the most likely one according to the PL
-        Assert.assertEquals(indexes[0], 0);    // ref should always match
-        Assert.assertEquals(indexes[1], expectedIndex);    // allele
-        Assert.assertEquals(indexes[2], 4);    // <ALT>
-    }
-
 
     @DataProvider(name = "referenceConfidenceMergeData")
     public Object[][] makeReferenceConfidenceMergeData() {
@@ -265,55 +204,6 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
                 new VariantContextBuilder(VCbase).alleles(A_C_G).genotypes(
                         new GenotypeBuilder("A_C_G.test2").PL(new int[]{40, 20, 30, 20, 10, 30}).alleles(noCalls).make(),
                         new GenotypeBuilder("A_C_G.test").PL(new int[]{40, 20, 30, 20, 10, 30}).alleles(noCalls).make()).make()});
-
-        return tests.toArray(new Object[][]{});
-    }
-    @DataProvider(name = "getIndexesOfRelevantAllelesData")
-    public Object[][] makeGetIndexesOfRelevantAllelesData() {
-        final int totalAlleles = 5;
-        final List<Allele> alleles = new ArrayList<>(totalAlleles);
-        alleles.add(Allele.create("A", true));
-        for ( int i = 1; i < totalAlleles; i++ )
-            alleles.add(Allele.create(Utils.dupChar('A', i + 1), false));
-
-        final List<Object[]> tests = new ArrayList<>();
-
-        for ( int alleleIndex = 0; alleleIndex < totalAlleles; alleleIndex++ ) {
-            tests.add(new Object[]{alleleIndex, alleles});
-        }
-
-        return tests.toArray(new Object[][]{});
-    }
-
-    @DataProvider(name = "getIndexesOfRelevantAllelesDataSpanningDels")
-    public Object[][] makeGetIndexesOfRelevantAllelesDataSpanningDels() {
-        final int totalAlleles = 5;
-        final List<Allele> alleles = new ArrayList<>(totalAlleles);
-        alleles.add(Allele.create("A", true));
-        alleles.add(Allele.create("*", false));
-        alleles.add(Allele.create("*", false));
-        alleles.add(Allele.create("*", false));
-        alleles.add(Allele.NON_REF_ALLELE);
-
-        final List<Allele> suballeles = new ArrayList<>();
-        suballeles.add(Allele.create("A", true));
-        suballeles.add(Allele.create("*", false));
-
-        Genotype firstAltBest = new GenotypeBuilder("sampleName").alleles(suballeles).PL(new double[]{0, 0, 30, 0, 0, 20, 0, 0, 0, 10,
-                0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0}).make();
-        Genotype secondAltBest = new GenotypeBuilder("sampleName").alleles(suballeles).PL(new double[]{0, 0, 20, 0, 0, 30, 0, 0, 0, 10,
-                0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0}).make();
-        Genotype thirdAltBest = new GenotypeBuilder("sampleName").alleles(suballeles).PL(new double[]{0, 0, 20, 0, 0, 10, 0, 0, 0, 30,
-                0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0}).make();
-        Genotype altsTied = new GenotypeBuilder("sampleName").alleles(suballeles).PL(new double[]{0, 0, 20, 0, 0, 30, 0, 0, 0, 30,
-                0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0}).make();
-
-        final List<Object[]> tests = new ArrayList<>();
-
-        tests.add(new Object[]{alleles.stream().distinct().collect(Collectors.toList()), alleles, firstAltBest, 1});
-        tests.add(new Object[]{alleles.stream().distinct().collect(Collectors.toList()), alleles, secondAltBest, 2});
-        tests.add(new Object[]{alleles.stream().distinct().collect(Collectors.toList()), alleles, thirdAltBest, 3});
-        tests.add(new Object[]{alleles.stream().distinct().collect(Collectors.toList()), alleles, altsTied, 2});
 
         return tests.toArray(new Object[][]{});
     }

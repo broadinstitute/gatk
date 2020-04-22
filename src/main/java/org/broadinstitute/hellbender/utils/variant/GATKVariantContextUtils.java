@@ -3,20 +3,21 @@ package org.broadinstitute.hellbender.utils.variant;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.TribbleException;
+import htsjdk.utils.ValidationUtils;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFSimpleHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import htsjdk.variant.vcf.*;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -1400,6 +1401,108 @@ public final class GATKVariantContextUtils {
         return new VariantContextBuilder(name, contig, start, start+length-1, alleles).make();
     }
 
+    public static List<VariantContext> splitSomaticVariantContextToBiallelics(final VariantContext vc, final boolean trimLeft, final VCFHeader outputHeader) {
+        Utils.nonNull(vc);
+
+        if (!vc.isVariant() || vc.isBiallelic()) {
+            // non variant or biallelics already satisfy the contract
+            return Collections.singletonList(vc);
+        } else {
+            final List<VariantContext> biallelics = new LinkedList<>();
+
+            List<String> attrsSpecialFormats = new ArrayList<String>(Arrays.asList(GATKVCFConstants.AS_FILTER_STATUS_KEY, GATKVCFConstants.AS_SB_TABLE_KEY));
+            List<Map<String, Object>> attributesByAllele = splitAttributesIntoPerAlleleLists(vc, attrsSpecialFormats, outputHeader);
+            splitASSBTable(vc, attributesByAllele);
+            splitASFilters(vc, attributesByAllele);
+
+            ListIterator<Map<String, Object>> attributesByAlleleIterator = attributesByAllele.listIterator();
+
+            for (final Allele alt : vc.getAlternateAlleles()) {
+                final VariantContextBuilder builder = new VariantContextBuilder(vc);
+
+                // make biallelic alleles
+                final List<Allele> alleles = Arrays.asList(vc.getReference(), alt);
+                builder.alleles(alleles);
+                Map<String, Object> attributes = attributesByAlleleIterator.next();
+                builder.attributes(attributes);
+
+                // now add the allele specific filters to the variant context
+                String filters = (String) attributes.get(GATKVCFConstants.AS_FILTER_STATUS_KEY);
+                // checking for . and PASS should be able to be removed. these were temporarily used to indicate no allele specific filter
+                if (filters != null && !filters.isEmpty() && !filters.equals(VCFConstants.EMPTY_INFO_FIELD) && !filters.equals(GATKVCFConstants.SITE_LEVEL_FILTERS) && !filters.equals((VCFConstants.PASSES_FILTERS_v4))) {
+                    AnnotationUtils.decodeAnyASList(filters).stream().forEach(filter -> builder.filter(filter));
+                }
+
+                int alleleIndex = vc.getAlleleIndex(alt);
+                builder.genotypes(AlleleSubsettingUtils.subsetSomaticAlleles(outputHeader, vc.getGenotypes(), alleles, new int[]{0, alleleIndex}));
+                final VariantContext trimmed = trimAlleles(builder.make(), trimLeft, true);
+                biallelics.add(trimmed);
+            }
+            return biallelics;
+        }
+    }
+
+    public static void splitASSBTable(VariantContext vc, List<Map<String, Object>> attrsByAllele) {
+        List<String> sbs = StrandBiasUtils.getSBsForAlleles(vc).stream().map(ints -> StrandBiasUtils.encode(ints)).collect(Collectors.toList());
+        new IndexRange(1, sbs.size()).forEach(i -> {
+            String newattrs = String.join(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM, new ArrayList<String>(Arrays.asList(sbs.get(0), sbs.get(i))));
+            attrsByAllele.get(i - 1).put(GATKVCFConstants.AS_SB_TABLE_KEY, newattrs);
+        });
+    }
+
+    public static void splitASFilters(VariantContext vc, List<Map<String, Object>> attrsByAllele) {
+        // the reason we are getting as list and then joining on , is because the default getAttributeAsString for a list will add spaces between items which we don't
+        // want to have to trim out later in the code
+        String asfiltersStr = String.join(",", vc.getCommonInfo().getAttributeAsStringList(GATKVCFConstants.AS_FILTER_STATUS_KEY, GATKVCFConstants.SITE_LEVEL_FILTERS));
+        List<String> filtersList = AnnotationUtils.decodeAnyASListWithRawDelim(asfiltersStr);
+        new IndexRange(0, filtersList.size()).forEach(i -> attrsByAllele.get(i).put(GATKVCFConstants.AS_FILTER_STATUS_KEY, filtersList.get(i)));
+    }
+
+    public static List<Map<String, Object>> splitAttributesIntoPerAlleleLists(VariantContext vc, List<String> skipAttributes, VCFHeader outputHeader) {
+        List<Map<String, Object>> results = new ArrayList<>(vc.getNAlleles()-1);
+        vc.getAlternateAlleles().forEach(alt -> results.add(new HashMap<>()));
+
+        Map<String, Object> attributes = vc.getAttributes();
+        attributes.entrySet().stream().filter(entry -> !skipAttributes.contains(entry.getKey())).forEachOrdered(entry -> {
+            String key = entry.getKey();
+            // default to unbounded in case header is not found
+            VCFHeaderLineCount countType = VCFHeaderLineCount.UNBOUNDED;
+            try {
+                VCFInfoHeaderLine header = outputHeader.getInfoHeaderLine(key);
+                countType = header.getCountType();
+            } catch (IllegalStateException ex) {
+                // this happens for DP if we use GATKVCFHeaderLines.getInfoLine(key)
+                // shouldn't happen now that we use the generated output header
+                logger.warn("Could not find header info for key " + key);
+            }
+            // override count type for this attribute
+            if (key.equals(GATKVCFConstants.REPEATS_PER_ALLELE_KEY)) {
+                countType = VCFHeaderLineCount.R;
+            }
+            List<Object> attr;
+            switch (countType) {
+                case A:
+                    attr = vc.getCommonInfo().getAttributeAsList(key);
+                    ValidationUtils.validateArg(attr.size() == results.size(), "Incorrect attribute size for " + key);
+                    new IndexRange(0, attr.size()).forEach(i -> results.get(i).put(key, attr.get(i)));
+                    break;
+                case R:
+                    attr = vc.getCommonInfo().getAttributeAsList(key);
+                    ValidationUtils.validateArg(attr.size() == vc.getNAlleles(), "Incorrect attribute size for " + key);
+                    new IndexRange(1, attr.size()).forEach(i -> {
+                        List<Object> newattrs = new ArrayList<Object>(Arrays.asList(attr.get(0), attr.get(i)));
+                        results.get(i-1).put(key, newattrs);
+                    });
+                    break;
+                default:
+                    results.forEach(altMap -> altMap.put(key, entry.getValue()));
+
+            }
+
+        });
+        return results;
+    }
+
     /**
      * Split variant context into its biallelic components if there are more than 2 alleles
      * <p>
@@ -1941,6 +2044,37 @@ public final class GATKVariantContextUtils {
 
         return true;
     }
+
+    public static <T> List<T> removeDataForSymbolicAltAlleles(VariantContext vc, List<T> data) {
+        return removeDataForSymbolicAlleles(vc, data, false);
+    }
+
+    public static <T> List<T> removeDataForSymbolicAlleles(VariantContext vc, List<T> data) {
+        return removeDataForSymbolicAlleles(vc, data, true);
+    }
+
+    protected static <T> List<T> removeDataForSymbolicAlleles(VariantContext vc, List<T> data, boolean dataContainsReference) {
+        if (vc.hasSymbolicAlleles()) {
+            List<Allele> symbolicAlleles = vc.getAlternateAlleles().stream().filter(allele -> allele.isSymbolic()).collect(Collectors.toList());
+            // convert allele index to index for data
+            int offset = dataContainsReference ? 0 : 1;
+            List<Integer> symAltIndexes = vc.getAlleleIndices(symbolicAlleles).stream().map(i -> i-offset).collect(Collectors.toList());
+            return removeItemsByIndex(data, symAltIndexes);
+        } else {
+            return data;
+        }
+    }
+
+    public static <T> List<T> removeItemsByIndex(List<T> data, List<Integer> indexesToRemove) {
+        List<T> updated = new ArrayList<>();
+        new IndexRange(0, data.size()).forEach(i -> {
+            if (!indexesToRemove.contains(i)) {
+                updated.add(data.get(i));
+            }
+        });
+        return updated;
+    }
+
 
 }
 
