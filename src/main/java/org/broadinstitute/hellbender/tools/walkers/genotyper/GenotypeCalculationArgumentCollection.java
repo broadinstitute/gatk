@@ -19,6 +19,8 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public static final String NUM_REF_SAMPLES_LONG_NAME = "num-reference-samples-if-no-call";
     public static final String MAX_ALTERNATE_ALLELES_LONG_NAME = "max-alternate-alleles";
     public static final String MAX_GENOTYPE_COUNT_LONG_NAME = "max-genotype-count";
+    public static final String SAMPLE_PLOIDY_SHORT_NAME = "ploidy";
+    public static final String SAMPLE_PLOIDY_LONG_NAME = "sample-ploidy";
 
     public static final double DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
     public static final int DEFAULT_MAX_ALTERNATE_ALLELES = 6;
@@ -147,7 +149,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     /**
      *   Sample ploidy - equivalent to number of chromosomes per pool. In pooled experiments this should be = # of samples in pool * individual sample ploidy
      */
-    @Argument(shortName="ploidy", fullName="sample-ploidy", doc="Ploidy (number of chromosomes) per sample. For pooled data, set to (Number of samples in each pool * Sample Ploidy).", optional=true)
+    @Argument(shortName = SAMPLE_PLOIDY_SHORT_NAME, fullName = SAMPLE_PLOIDY_LONG_NAME, doc="Ploidy (number of chromosomes) per sample. For pooled data, set to (Number of samples in each pool * Sample Ploidy).", optional=true)
     public int samplePloidy = HomoSapiensConstants.DEFAULT_PLOIDY;
 
     /**

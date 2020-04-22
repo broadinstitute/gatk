@@ -1341,6 +1341,28 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(has28BaseDeletion);
     }
 
+    @Test
+    public void testHaploidNoCall() {
+        final File bam = new File(TEST_FILES_DIR, "haploidNoCallSnippet.bam");
+
+        final File output = createTempFile("output", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(bam)
+                .addReference(hg38Reference)
+                .addInterval("chrY:11315390")
+                .add(AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString())
+                .add(GenotypeCalculationArgumentCollection.SAMPLE_PLOIDY_SHORT_NAME, 1)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final boolean hasGQ0call = VariantContextTestUtils.streamVcf(output)
+                .anyMatch(vc -> vc.getStart() == 11315390 && vc.getGenotype(0).getPloidy() == 1 &&
+                        vc.getGenotype(0).hasGQ() && vc.getGenotype(0).getGQ() == 0);
+
+        Assert.assertTrue(hasGQ0call);
+    }
+
     /**
      * Helper method for testMaxAlternateAlleles
      *
