@@ -68,8 +68,10 @@ final sparkVersion = System.getProperty('spark.version', '2.4.5')
 final scalaVersion = System.getProperty('scala.version', '2.11')
 final hadoopVersion = System.getProperty('hadoop.version', '3.2.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
+
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.3.2')
 final bigQueryVersion = System.getProperty('bigQuery.version', '1.117.1')
+
 final guavaVersion = System.getProperty('guava.version', '27.1-jre')
 final testNGVersion = '7.0.0'
 
@@ -362,8 +364,6 @@ dependencies {
     compile 'org.broadinstitute:gatk-bwamem-jni:1.0.4'
     compile 'org.broadinstitute:gatk-fermilite-jni:1.2.0'
 
-    compile 'org.broadinstitute:http-nio:0.1.0-rc1'
-
     // Required for COSMIC Funcotator data source:
     compile 'org.xerial:sqlite-jdbc:3.20.1'
     
@@ -416,6 +416,9 @@ def createGatkSymlinks(destinationDir, archivePath, suffix, baseJarName, seconda
     createSymlinks(archivePath.getAbsolutePath(), symlinkLocation)
     createSymlinks(archivePath.getAbsolutePath(), symlinkLocation2)
 }
+
+final isRelease = Boolean.getBoolean("release")
+version = (isRelease ? gitVersion() : gitVersion() + "-SNAPSHOT").replaceAll(".dirty", "")
 
 logger.info("build for version:" + version)
 group = 'org.broadinstitute'
