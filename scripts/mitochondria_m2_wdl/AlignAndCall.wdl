@@ -13,6 +13,7 @@ workflow AlignAndCall {
     File unmapped_bam
     Float? autosomal_coverage
     String sample_name
+    String base_name
 
     File mt_dict
     File mt_fasta
@@ -159,6 +160,7 @@ workflow AlignAndCall {
       raw_vcf_index = LiftoverAndCombineVcfs.merged_vcf_index,
       raw_vcf_stats = MergeStats.stats,
       sample_name = sample_name,
+      base_name = base_name,
       ref_fasta = mt_fasta,
       ref_fai = mt_fasta_index,
       ref_dict = mt_dict,
@@ -203,6 +205,7 @@ workflow AlignAndCall {
       contamination_minor = GetContamination.minor_level,
       verifyBamID = verifyBamID,
       sample_name = sample_name,
+      base_name = base_name,
       ref_fasta = mt_fasta,
       ref_fai = mt_fasta_index,
       ref_dict = mt_dict,
@@ -523,6 +526,7 @@ task Filter {
     Boolean compress
     Float? vaf_cutoff
     String sample_name
+    String base_name
 
     String? m2_extra_filtering_args
     Int max_alt_allele_count
@@ -546,7 +550,7 @@ task Filter {
     Int? preemptible_tries
   }
 
-  String output_vcf = sub(sample_name, "(0x20 | 0x9 | 0xD | 0xA)+", "_") + if compress then ".vcf.gz" else ".vcf"
+  String output_vcf = base_name + if compress then ".vcf.gz" else ".vcf"
   String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
   Float ref_size = size(ref_fasta, "GB") + size(ref_fai, "GB")
   Int disk_size = ceil(size(raw_vcf, "GB") + ref_size) + 20
