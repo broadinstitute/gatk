@@ -10,6 +10,8 @@ option_list = list(
     make_option(c("--denoised_copy_ratios_file"), dest="denoised_copy_ratios_file", action="store"),
     make_option(c("--contig_names"), dest="contig_names", action="store"),      #string with elements separated by "CONTIG_DELIMITER"
     make_option(c("--contig_lengths"), dest="contig_lengths", action="store"),  #string with elements separated by "CONTIG_DELIMITER"
+    make_option(c("--maximum_copy_ratio"), dest="maximum_copy_ratio", action="store", type="double"),
+    make_option(c("--point_size_copy_ratio"), dest="point_size_copy_ratio", action="store", type="double"),
     make_option(c("--output_dir"), dest="output_dir", action="store"),
     make_option(c("--output_prefix"), dest="output_prefix", action="store"))
 
@@ -20,6 +22,8 @@ standardized_copy_ratios_file = opt[["standardized_copy_ratios_file"]]
 denoised_copy_ratios_file = opt[["denoised_copy_ratios_file"]]
 contig_names_string = opt[["contig_names"]]
 contig_lengths_string = opt[["contig_lengths"]]
+maximum_copy_ratio = opt[["maximum_copy_ratio"]]
+point_size_copy_ratio = opt[["point_size_copy_ratio"]]
 output_dir = opt[["output_dir"]]
 output_prefix = opt[["output_prefix"]]
 
@@ -62,28 +66,20 @@ WriteDenoisingPlots = function(sample_name, standardized_copy_ratios_file, denoi
     pre_color_blue = "#3B5DFF"
     post_color_green = "#4FC601"
 
-    #plot over full range
+    #plot up to maximum_copy_ratio (or full range, if maximum_copy_ratio = Infinity)
     denoising_plot_file = file.path(output_dir, paste(output_prefix, ".denoised.png", sep=""))
     png(denoising_plot_file, 12, 7, units="in", type="cairo", res=300, bg="white")
     par(mfrow=c(2, 1), cex=0.75, las=1)
-    SetUpPlot(sample_name, "standardized copy ratio", 0, max(standardized_copy_ratios_df[["COPY_RATIO"]]), paste("median absolute deviation = ", round(standardizedMAD, 3), sep=""), contig_names, contig_starts, contig_ends, FALSE)
-    PlotCopyRatios(standardized_copy_ratios_df, pre_color_blue, contig_names, contig_starts)
-    SetUpPlot(sample_name, "denoised copy ratio", 0, max(denoised_copy_ratios_df[["COPY_RATIO"]]), paste("median absolute deviation = ", round(denoisedMAD, 3), sep=""), contig_names, contig_starts, contig_ends, TRUE)
-    PlotCopyRatios(denoised_copy_ratios_df, post_color_green, contig_names, contig_starts)
-    dev.off()
-
-    #plot up to CR = 4
-    denoising_limit_plot_file = file.path(output_dir, paste(output_prefix, ".denoisedLimit4.png", sep=""))
-    png(denoising_limit_plot_file, 12, 7, units="in", type="cairo", res=300, bg="white")
-    par(mfrow=c(2, 1), cex=0.75, las=1)
-    SetUpPlot(sample_name, "standardized copy ratio", 0, 4, paste("median absolute deviation = ", round(standardizedMAD, 3), sep=""), contig_names, contig_starts, contig_ends, FALSE)
-    PlotCopyRatios(standardized_copy_ratios_df, pre_color_blue, contig_names, contig_starts)
-    SetUpPlot(sample_name, "denoised copy ratio", 0, 4, paste("median absolute deviation = ", round(denoisedMAD, 3), sep=""), contig_names, contig_starts, contig_ends, TRUE)
-    PlotCopyRatios(denoised_copy_ratios_df, post_color_green, contig_names, contig_starts)
+    maximum_standardized_copy_ratio = if(is.finite(maximum_copy_ratio)) maximum_copy_ratio else 1.05 * max(standardized_copy_ratios_df[["COPY_RATIO"]])
+    SetUpPlot(sample_name, "standardized copy ratio", 0, maximum_standardized_copy_ratio, paste("median absolute deviation = ", round(standardizedMAD, 3), sep=""), contig_names, contig_starts, contig_ends, FALSE)
+    PlotCopyRatios(standardized_copy_ratios_df, pre_color_blue, contig_names, contig_starts, point_size_copy_ratio)
+    maximum_denoised_copy_ratio = if(is.finite(maximum_copy_ratio)) maximum_copy_ratio else 1.05 * max(denoised_copy_ratios_df[["COPY_RATIO"]])
+    SetUpPlot(sample_name, "denoised copy ratio", 0, maximum_denoised_copy_ratio, paste("median absolute deviation = ", round(denoisedMAD, 3), sep=""), contig_names, contig_starts, contig_ends, TRUE)
+    PlotCopyRatios(denoised_copy_ratios_df, post_color_green, contig_names, contig_starts, point_size_copy_ratio)
     dev.off()
 
     #check for created files and quit with error code if not found
-    if (!all(file.exists(c(denoising_plot_file, denoising_limit_plot_file)))) {
+    if (!all(file.exists(c(denoising_plot_file)))) {
         quit(save="no", status=1, runLast=FALSE)
     }
 }
