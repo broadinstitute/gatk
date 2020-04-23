@@ -25,6 +25,9 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Argument(fullName="dragstr-params-path", doc="location of the DRAGstr model parameters for STR error correction used in the Pair HMM. When provided, it overrides other PCR error correcting mechanisms", optional = true)
     public DragstrParams dragstrParams = null;
 
+    @Argument(fullName="dragstr-het-hom-ratio", doc="het to hom prior ratio use with DRAGstr on", optional = true)
+    public int dragstrHetHomRatio = 2;
+
     @Argument(fullName="dont-use-dragstr-pair-hmm-scores", doc="disable DRAGstr pair-hmm score when dragstr-params-path was provided", optional = false)
     public boolean dontUseDragstrPairHMMScores = false;
 
