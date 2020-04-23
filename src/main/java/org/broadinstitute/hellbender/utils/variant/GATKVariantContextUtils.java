@@ -274,7 +274,7 @@ public final class GATKVariantContextUtils {
             gb.alleles(best);
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
             if (afc == null) {
-                throw new GATKException("cannot uses posteriors with a allele frequency calculator present");
+                throw new GATKException("cannot uses posteriors without a allele frequency calculator present");
             } else {
                 final double[] relativeFreqs = afc.getPriorFrequencies(AlleleList.newList(allelesToUse));
                 for (int i = 0; i < relativeFreqs.length; i++) {
