@@ -64,7 +64,7 @@ public class StorageAPIAvroReader implements GATKAvroReader {
             if (rowRestriction != null) {
                 readOptions.setRowRestriction(rowRestriction);
             }
-                    
+
             final ReadOptions.TableReadOptions tableReadOptions = readOptions.build();
 
             final Storage.CreateReadSessionRequest.Builder builder = Storage.CreateReadSessionRequest.newBuilder()
