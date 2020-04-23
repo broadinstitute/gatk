@@ -100,7 +100,6 @@ workflow MitochondriaPipeline {
 
   String base_name = basename(SubsetBamToChrM.output_bam, ".bam")
 
-
   call AlignAndCall.AlignAndCall as AlignAndCall {
     input:
       unmapped_bam = RevertSam.unmapped_bam,
@@ -161,6 +160,7 @@ workflow MitochondriaPipeline {
   call SplitMultiAllelicSites {
     input:
       input_vcf = AlignAndCall.out_vcf,
+      base_name = base_name,
       ref_fasta = mt_fasta,
       ref_fasta_index = mt_fasta_index,
       ref_dict = mt_dict,
