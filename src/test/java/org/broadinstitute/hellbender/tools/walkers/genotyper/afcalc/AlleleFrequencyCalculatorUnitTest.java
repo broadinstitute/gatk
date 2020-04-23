@@ -41,7 +41,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
 
     @Test
     public void testSymmetries() {
-        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 0.1, 0.1, DEFAULT_PLOIDY);
+        final VariationalAlleleFrequencyCalculator afCalc = new VariationalAlleleFrequencyCalculator(1, 0.1, 0.1, DEFAULT_PLOIDY);
         final List<Allele> alleles = Arrays.asList(A,B,C);
         final Genotype AA = genotypeWithObviousCall(DIPLOID, TRIALLELIC, new int[] {0,2}, FAIRLY_CONFIDENT_PL);
         final Genotype BB = genotypeWithObviousCall(DIPLOID, TRIALLELIC, new int[] {1,2}, FAIRLY_CONFIDENT_PL);
@@ -74,7 +74,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
 
     @Test
     public void testMLECounts() {
-        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 1, 1, DEFAULT_PLOIDY);
+        final VariationalAlleleFrequencyCalculator afCalc = new VariationalAlleleFrequencyCalculator(1, 1, 1, DEFAULT_PLOIDY);
         final List<Allele> alleles = Arrays.asList(A,B,C);
         final Genotype AA = genotypeWithObviousCall(DIPLOID, TRIALLELIC, new int[] {0,2}, FAIRLY_CONFIDENT_PL);
         final Genotype BB = genotypeWithObviousCall(DIPLOID, TRIALLELIC, new int[] {1,2}, FAIRLY_CONFIDENT_PL);
@@ -110,7 +110,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         // prior corresponding to 1000 observations of ref, 1 of a SNP
         // for this test, we want many pseudocounts in the prior because the new AF calculator learns the allele frequency
         // and we don't want the complication of the posterior being differetn from the prior
-        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1000, 1, 1, DEFAULT_PLOIDY);    //prior corresponding to 1000 observations of ref, 1 of a SNP
+        final VariationalAlleleFrequencyCalculator afCalc = new VariationalAlleleFrequencyCalculator(1000, 1, 1, DEFAULT_PLOIDY);    //prior corresponding to 1000 observations of ref, 1 of a SNP
         final List<Allele> alleles = Arrays.asList(A,B);
 
         // for FAIRLY_CONFIDENT_PL = 20, this genotype has about 100 times greater likelihood to be het than hom ref
@@ -136,7 +136,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
     @Test
     public void testManyVeryConfidentSamples() {
         // flat prior to simplify back-of-the-envelope calculations
-        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 1, 1, DEFAULT_PLOIDY);
+        final VariationalAlleleFrequencyCalculator afCalc = new VariationalAlleleFrequencyCalculator(1, 1, 1, DEFAULT_PLOIDY);
         final List<Allele> alleles = Arrays.asList(A,B,C);
 
 
@@ -166,7 +166,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
 
     @Test
     public void testApproximateMultiplicativeConfidence() {
-        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 1, 1, DEFAULT_PLOIDY);    //flat prior -- we will choose genotypes such that the posterior remains flat
+        final VariationalAlleleFrequencyCalculator afCalc = new VariationalAlleleFrequencyCalculator(1, 1, 1, DEFAULT_PLOIDY);    //flat prior -- we will choose genotypes such that the posterior remains flat
         final List<Allele> alleles = Arrays.asList(A,B);
 
         final Genotype AA = genotypeWithObviousCall(DIPLOID, BIALLELIC, new int[] {0,2}, FAIRLY_CONFIDENT_PL);
@@ -193,7 +193,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
 
     @Test
     public void testManyRefSamplesDontKillGoodVariant() {
-        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 0.1, 0.1, DEFAULT_PLOIDY);
+        final VariationalAlleleFrequencyCalculator afCalc = new VariationalAlleleFrequencyCalculator(1, 0.1, 0.1, DEFAULT_PLOIDY);
         final List<Allele> alleles = Arrays.asList(A,B);
         final Genotype AA = genotypeWithObviousCall(DIPLOID, BIALLELIC, new int[] {0,2}, EXTREMELY_CONFIDENT_PL);
         final Genotype AB = genotypeWithObviousCall(DIPLOID, BIALLELIC, new int[] {0,1,1,1}, EXTREMELY_CONFIDENT_PL);
@@ -211,7 +211,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
     @Test
     public void testSpanningDeletionIsNotConsideredVariant() {
         final int ploidy = 2;
-        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
+        final VariationalAlleleFrequencyCalculator afCalc = new VariationalAlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
         final List<Allele> alleles = Arrays.asList(A, B, Allele.SPAN_DEL);
 
         // some pls that have high likelihood for span del allele but not for the SNP (B)
@@ -264,7 +264,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
     @Test
     public void testPresenceOfUnlikelySpanningDeletionDoesntAffectResults() {
         final int ploidy = 2;
-        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
+        final VariationalAlleleFrequencyCalculator afCalc = new VariationalAlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
         final List<Allele> allelesWithoutSpanDel = Arrays.asList(A, B);
         final List<Allele> allelesWithSpanDel = Arrays.asList(A, B, Allele.SPAN_DEL);
         
@@ -284,7 +284,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
     @Test
     public void testSpanningDeletionWithVeryUnlikelyAltAllele() {
         final int ploidy = 4;
-        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
+        final VariationalAlleleFrequencyCalculator afCalc = new VariationalAlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
         final List<Allele> alleles = Arrays.asList(A, Allele.SPAN_DEL, B);
 
         // make PLs that don't support the alt allele
@@ -298,7 +298,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
     public void testSingleSampleBiallelicShortcut() {
         // in the haploid case, if the AF calc has equal pseudocounts of ref and alt, the posterior is proportional to the likelihoods:
         for (final double pseudocount : new double[] { 1, 5, 10} ) {
-            final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(pseudocount, pseudocount, pseudocount, DEFAULT_PLOIDY);
+            final VariationalAlleleFrequencyCalculator afCalc = new VariationalAlleleFrequencyCalculator(pseudocount, pseudocount, pseudocount, DEFAULT_PLOIDY);
             for (int pl : new int[]{10, 100, 1000}) {
                 final double[] log10Likelihoods = new double[]{0, pl / 10.0};
                 final double result = afCalc.calculateSingleSampleBiallelicNonRefPosterior(log10Likelihoods, false);
@@ -309,7 +309,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
 
         // in the diploid case, we roughly multiply the prior by the likelihoods -- it's not exact because the allele frequency is a random variable and not a single value
         for (final double heterozygosity : new double[] {0.1, 0.01, 0.001}) {
-            final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(100, 100*heterozygosity, 100*heterozygosity, DEFAULT_PLOIDY);
+            final VariationalAlleleFrequencyCalculator afCalc = new VariationalAlleleFrequencyCalculator(100, 100*heterozygosity, 100*heterozygosity, DEFAULT_PLOIDY);
             for (int pl : new int[]{10, 100, 1000}) {
                 final double log10Likelihood = pl / 10.0;
                 final double[] log10Likelihoods = new double[]{0, log10Likelihood, -100}; //assume hom alt is very unlikely
