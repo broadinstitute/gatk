@@ -371,10 +371,14 @@ task SplitMultiAllelicSites {
     File ref_fasta_index
     File ref_dict
     File input_vcf
+    String base_name
     Int? preemptible_tries
     File? gatk_override
     String? gatk_docker_override
   }
+
+  String output_vcf = base_name + ".final.split.vcf"
+  String output_vcf_index = output_vcf + ".idx"
 
   command {
     set -e
@@ -382,14 +386,14 @@ task SplitMultiAllelicSites {
     gatk LeftAlignAndTrimVariants \
       -R ~{ref_fasta} \
       -V ~{input_vcf} \
-      -O split.vcf \
+      -O ~{output_vcf} \
       --split-multi-allelics \
       --dont-trim-alleles \
       --keep-original-ac
   }
   output {
-    File split_vcf = "split.vcf"
-    File split_vcf_index = "split.vcf.idx"
+    File split_vcf = "~{output_vcf}"
+    File split_vcf_index = "~{output_vcf}"
   }
   runtime {
       docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
