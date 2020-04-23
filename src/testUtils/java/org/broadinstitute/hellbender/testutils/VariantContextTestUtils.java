@@ -699,6 +699,18 @@ public final class VariantContextTestUtils {
         return gb.make();
     }
 
+    public static Genotype makeSomaticNuMTGenotype(final int altAlleleCount) {
+        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF, REF));
+        gb.DP(100 + altAlleleCount);
+        gb.AD(new int[]{100, altAlleleCount});
+        return gb.make();
+    }
+
+    public static VariantContext makeSomaticNuMTVariant(final int altAlleleCount) {
+        final VariantContextBuilder vcb = new VariantContextBuilder("test", CHR1, 100000, 100000, Arrays.asList(REF, ALT));
+        return vcb.genotypes(makeSomaticNuMTGenotype(altAlleleCount)).make();
+    }
+
     public static VariantContext makeHomRefAlt(final int start) {
         final VariantContextBuilder vcb = new VariantContextBuilder("test", CHR1, start, start, Arrays.asList(REF, ALT));
         return makeVariantContext(vcb, Arrays.asList(REF, REF), 0);
