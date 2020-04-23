@@ -67,11 +67,11 @@ final barclayVersion = System.getProperty('barclay.version','2.1.0')
 final sparkVersion = System.getProperty('spark.version', '2.4.4')
 final scalaVersion = System.getProperty('scala.version', '2.11')
 final hadoopVersion = System.getProperty('hadoop.version', '3.2.1')
-final disqVersion = System.getProperty('disq.version','0.3.3')
-final genomicsdbVersion = System.getProperty('genomicsdb.version','1.1.2.2')
+final disqVersion = System.getProperty('disq.version','0.3.5')
+final genomicsdbVersion = System.getProperty('genomicsdb.version','1.2.1')
 final bigQueryVersion = System.getProperty('bigQuery.version', '1.69.0')
 final guavaVersion = System.getProperty('guava.version', '27.1-jre')
-final testNGVersion = '6.11'
+final testNGVersion = '7.0.0'
 
 // Using the shaded version to avoid conflicts between its protobuf dependency
 // and that of Hadoop/Spark (either the one we reference explicitly, or the one
@@ -360,6 +360,8 @@ dependencies {
     compile 'org.broadinstitute:gatk-bwamem-jni:1.0.4'
     compile 'org.broadinstitute:gatk-fermilite-jni:1.2.0'
 
+    compile 'org.broadinstitute:http-nio:0.1.0-rc1'
+
     // Required for COSMIC Funcotator data source:
     compile 'org.xerial:sqlite-jdbc:3.20.1'
     
@@ -413,8 +415,8 @@ def createGatkSymlinks(destinationDir, archivePath, suffix, baseJarName, seconda
     createSymlinks(archivePath.getAbsolutePath(), symlinkLocation2)
 }
 
-final isRelease = Boolean.getBoolean("release")
-version = (isRelease ? gitVersion() : gitVersion() + "-SNAPSHOT").replaceAll(".dirty", "")
+// TODO was this added for a reason or was it removed from master
+//version = (isRelease ? gitVersion() : gitVersion() + "-SNAPSHOT").replaceAll(".dirty", "")
 
 logger.info("build for version:" + version)
 group = 'org.broadinstitute'
