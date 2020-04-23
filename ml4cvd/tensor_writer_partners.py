@@ -48,7 +48,7 @@ def _map_mrn_to_xml(fpath_xml: str) -> Union[Tuple[str, str], None]:
         for line in f:
             match = re.match(r'.*<PatientID>(.*)</PatientID>.*', line)
             if match:
-                mrn = _clean_mrn(match.group(1))
+                mrn = _clean_mrn(match.group(1), fallback='bad_mrn')
                 return (mrn, fpath_xml)
     logging.warning(f'No PatientID found at {fpath_xml}')
     return None
@@ -78,7 +78,7 @@ def _get_mrn_xmls_map(xml_folder: str, n_jobs: int) -> Dict[str, List[str]]:
     return mrn_xml_dict
 
 
-def _clean_mrn(mrn: str) -> str:
+def _clean_mrn(mrn: str, fallback: str) -> str:
     # TODO additional cleaning like o->0, |->1
     try:
         clean = re.sub(r'[^0-9]', '', mrn)
@@ -87,8 +87,8 @@ def _clean_mrn(mrn: str) -> str:
             raise ValueError()
         return str(clean)
     except ValueError:
-        logging.warning(f'Could not clean MRN "{mrn}" to an int. Using "bad_mrn".')
-        return 'bad_mrn'
+        logging.warning(f'Could not clean MRN "{mrn}" to an int. Falling back to "{fallback}".')
+        return fallback
 
 
 def _clean_read_text(text: str) -> str:
@@ -145,15 +145,17 @@ def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
     ecg_data = dict()
 
     # Define tags that we want to find and use SoupStrainer to speed up search
-    tags = ['patientdemographics',
-            'testdemographics',
-            'order',
-            'restingecgmeasurements',
-            'originalrestingecgmeasurements',
-            'intervalmeasurementtimeresolution',
-            'intervalmeasurementamplituderesolution',
-            'diagnosis',
-            'originaldiagnosis']
+    tags = [
+        'patientdemographics',
+        'testdemographics',
+        'order',
+        'restingecgmeasurements',
+        'originalrestingecgmeasurements',
+        'intervalmeasurementtimeresolution',
+        'intervalmeasurementamplituderesolution',
+        'diagnosis',
+        'originaldiagnosis',
+    ]
     strainer = SoupStrainer(tags)
 
     # Use lxml parser, which makes all tags lower case
@@ -254,8 +256,10 @@ def _parse_soup_diagnosis(input_from_soup: PageElement) -> str:
         return parsed_text
 
 
-def _compress_and_save_data(hd5: h5py.Group, name: str, data: Union[str, np.ndarray],
-                            dtype: str, method: str = 'zstd', compression_opts: int = 19) -> None:
+def _compress_and_save_data(
+    hd5: h5py.Group, name: str, data: Union[str, np.ndarray],
+    dtype: str, method: str = 'zstd', compression_opts: int = 19,
+) -> None:
     # Define codec
     codec = numcodecs.zstd.Zstd(level=compression_opts)
 
@@ -348,7 +352,7 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> int:
         key_mrn_clean = 'patientid_clean'
         mrn_clean = None
         if 'patientid' in text_data.keys():
-            mrn_clean = _clean_mrn(text_data['patientid'])
+            mrn_clean = _clean_mrn(text_data['patientid'], fallback='')
 
         gp = hd5.create_group(ecg_dt)
 
@@ -508,8 +512,10 @@ class LeadDataElementParser(XmlElementParser):
 
     def start_element(self, name, attrs, context):
         self.clearData()
-        if name in (ElementParser.lead_id_tag, ElementParser.unit_tag,
-                    ElementParser.bit_tag, ElementParser.waveform_data_tag):
+        if name in (
+            ElementParser.lead_id_tag, ElementParser.unit_tag,
+            ElementParser.bit_tag, ElementParser.waveform_data_tag,
+        ):
             context.setState(ElementParser(self))
 
     def end_element(self, name, context):

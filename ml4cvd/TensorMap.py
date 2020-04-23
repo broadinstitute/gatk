@@ -51,6 +51,12 @@ class Interpretation(Enum):
         return str.lower(super().__str__().split('.')[1])
 
 
+class TimeSeriesOrder(Enum):
+    NEWEST = 'NEWEST'
+    OLDEST = 'OLDEST'
+    RANDOM = 'RANDOM'
+
+
 def _convert_old_normalization(normalization: Optional[Dict]) -> Optional[Normalizer]:
     """
     For backward compatibility. New TensorMaps should use a Normalizer.
@@ -101,6 +107,8 @@ class TensorMap(object):
         normalization: Optional[Normalizer] = None,
         annotation_units: Optional[int] = 32,
         tensor_from_file: Optional[Callable] = None,
+        time_series_limit: Optional[int] = None,
+        time_series_order: Optional[TimeSeriesOrder] = TimeSeriesOrder.NEWEST,
         discretization_bounds: Optional[List[float]] = None,
     ):
         """TensorMap constructor
@@ -127,6 +135,8 @@ class TensorMap(object):
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
+        :param time_series_limit: If set, indicates dynamic shaping and sets the maximum number of tensors in a time series to use
+        :param time_series_order: When selecting tensors in a time series, use newest, oldest, or randomly ordered tensors
         :param discretization_bounds: List of floats that delineate the boundaries of the bins that will be used
                                           for producing categorical values from continuous values
         """
@@ -152,6 +162,8 @@ class TensorMap(object):
         self.dependent_map = dependent_map
         self.annotation_units = annotation_units
         self.tensor_from_file = tensor_from_file
+        self.time_series_limit = time_series_limit
+        self.time_series_order = time_series_order
         self.discretization_bounds = discretization_bounds
 
         # Infer loss from interpretation
@@ -179,10 +191,11 @@ class TensorMap(object):
             self.activation = 'sigmoid'
 
         # Infer shape from channel map or interpretation
-        if self.shape is None and self.is_time_to_event():
-            self.shape = (2,)
-        elif self.shape is None:
-            self.shape = (len(channel_map),)
+        if self.shape is None:
+            self.shape = (2,) if self.is_time_to_event() else (len(channel_map),)
+            # Setting time_series_limit indicates dynamic shaping which is always accompanied by 1st dim of None
+            if self.time_series_limit is not None:
+                self.shape = (None,) + self.shape
 
         if self.discretization_bounds is not None:
             self.input_shape = self.shape

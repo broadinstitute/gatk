@@ -16,6 +16,9 @@ class StorageType(Enum):
 
 
 DATE_FORMAT = '%Y-%m-%d_%H-%M-%S'
+PARTNERS_DATE_FORMAT = '%m-%d-%Y'
+PARTNERS_TIME_FORMAT = '%H:%M:%S'
+PARTNERS_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
 EPS = 1e-7
 
