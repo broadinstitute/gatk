@@ -363,32 +363,32 @@ public class BigQueryUtils {
         return bytesProcessed;
     }
 
-    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID) {
-
-        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, false);
-    }
-
-    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID, final boolean runQueryInBatchMode) {
-        final String tempTableDataset = "temp_tables";
-        final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
-        final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
-
-        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString);
-        logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
-
-        final String queryStringIntoTempTable = "CREATE TABLE `" + tempTableFullyQualified + "`\n" +
-                "OPTIONS(\n" +
-                "  expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)\n" +
-                ") AS\n" +
-                queryString;
-
-        final TableResult result = executeQuery(queryStringIntoTempTable, runQueryInBatchMode);
-
-        final Table tableInfo = getBigQueryEndPoint().getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
-        logger.info(String.format("Query temp table created with %s rows and %s bytes in size", tableInfo.getNumRows(), tableInfo.getNumBytes()));
-
-        return new StorageAPIAvroReader(projectID, tempTableDataset, tempTableName, fieldsToRetrieve);
-    }
+//    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID) {
+//
+//        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, false);
+//    }
+//
+//    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID, final boolean runQueryInBatchMode) {
+//        final String tempTableDataset = "temp_tables";
+//        final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
+//        final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
+//
+//        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString);
+//        logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
+//
+//        final String queryStringIntoTempTable = "CREATE TABLE `" + tempTableFullyQualified + "`\n" +
+//                "OPTIONS(\n" +
+//                "  expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)\n" +
+//                ") AS\n" +
+//                queryString;
+//
+//        final TableResult result = executeQuery(queryStringIntoTempTable, runQueryInBatchMode);
+//
+//        final Table tableInfo = getBigQueryEndPoint().getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
+//        logger.info(String.format("Query temp table created with %s rows and %s bytes in size", tableInfo.getNumRows(), tableInfo.getNumBytes()));
+//
+//        return new StorageAPIAvroReader(projectID, tempTableDataset, tempTableName, fieldsToRetrieve);
+//    }
 
     private static class SimpleRowReader {
 
