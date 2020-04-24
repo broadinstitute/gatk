@@ -27,7 +27,8 @@ def _get_ecg_dates(tm, hd5):
         np.random.shuffle(dates)
     else:
         raise ValueError(f'Unknown option "{tm.time_series_order}" passed for which tensors to use in multi tensor HD5')
-    dates = dates[-tm.time_series_limit:] # If num_tensors is 0, get all tensors
+    start_idx = tm.time_series_limit if tm.time_series_limit is not None else 1
+    dates = dates[-start_idx:] # If num_tensors is 0, get all tensors
     dates.sort(reverse=True)
     return dates
 
@@ -82,7 +83,7 @@ def make_voltage(population_normalize: float = None):
                     path = _make_hd5_path(tm, ecg_date, cm)
                     voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                     voltage = _resample_voltage(voltage, shape[1] if dynamic else shape[0])
-                    slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.tm.channel_map[cm])
+                    slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
                     tensor[slices] = voltage
                 except KeyError:
                     pass
