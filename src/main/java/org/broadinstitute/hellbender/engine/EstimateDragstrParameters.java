@@ -7,7 +7,6 @@ import htsjdk.samtools.util.IntervalUtil;
 import htsjdk.samtools.util.Locatable;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -39,7 +38,7 @@ import java.util.zip.ZipFile;
         oneLineSummary = "summary",
         programGroup = ExampleProgramGroup.class
 )
-public class ReadBufferWalkerSpark extends GATKSparkTool {
+public class EstimateDragstrParameters extends GATKTool {
 
     @Argument(optional = true)
     private int padding = 0;
@@ -49,7 +48,6 @@ public class ReadBufferWalkerSpark extends GATKSparkTool {
 
     @Argument(shortName="sites", fullName="sampling-loci-path", doc="location of the zip that contains the sampling sites for the reference")
     private String lociPath;
-    
 
 
     private SAMSequenceDictionary dictionary;
@@ -104,7 +102,7 @@ public class ReadBufferWalkerSpark extends GATKSparkTool {
     public boolean requiresReads() { return true; }
 
     @Override
-    public void runTool(JavaSparkContext ctx) {
+    public void traverse() {
         dictionary = getBestAvailableSequenceDictionary();
         stageLociData();
 
