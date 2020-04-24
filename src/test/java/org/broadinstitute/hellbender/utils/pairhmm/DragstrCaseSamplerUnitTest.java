@@ -33,7 +33,7 @@ public class DragstrCaseSamplerUnitTest {
         final ReadsDataSource readsDataSource = new ReadsDataSource(new File(TEST_BAM).toPath());
         final DragstrModelEstimator estimator = new DragstrModelEstimator(new DragstrModelEstimatorArgumentCollection());
         final DragstrCasesSampler sampler = new DragstrCasesSampler(new DragstrCasesSamplerArgumentCollection(), referenceDataSource, readsDataSource);
-        final DragstrLocus locus = DragstrLocus.make(chridx, pos, unit.getBytes(), repeats);
+        final DragstrLocus locus = DragstrLocus.make(chridx, pos, (byte) unit.getBytes().length, (short) (repeats * unit.length()), 0);
         final DragstrModelEstimator.RepeatCases cases = estimator.createPeriodCases(unit.length(), 20, 10).getRepeatCases(repeats);
         sampler.sample(cases, Collections.singletonList(locus));
         Assert.assertEquals(cases.size(), 1);

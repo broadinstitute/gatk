@@ -33,6 +33,8 @@ public final class DragstrConstants {
     public static final int DEFAULT_SAMPLING_MAX_BQ_EXCEPTIONS_ALLOWED = 2;
     public static final int DEFAULT_SAMPLING_MIN_NON_REF_CONTAINING_CASE_COUNT = 200;
     public static final int DEFAULT_SAMPLING_MIN_CASE_COUNT = 400;
+    public static final String MIN_DEPTH_ARGUMENT_FULL_NAME = "minimum-depth";
+    public static final String MIN_DEPTH_ARGUMENT_SHORT_NAME = "md" ;
 
 
     @Argument(fullName = SAMPLING_MIN_BQ_THRESHOLD_ARGUMENT_FULL_NAME,

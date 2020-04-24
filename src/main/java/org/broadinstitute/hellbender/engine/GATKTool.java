@@ -10,6 +10,7 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -376,6 +377,21 @@ public abstract class GATKTool extends CommandLineProgram {
             final ReadTransformer preTransformer = makePreReadFilterTransformer();
             final ReadTransformer postTransformer = makePostReadFilterTransformer();
             return Utils.stream(reads)
+                    .map(preTransformer)
+                    .filter(filter)
+                    .map(postTransformer);
+        }
+        // returns an empty Stream if there are no reads
+        return Stream.empty();
+    }
+
+    protected Stream<GATKRead> getTransformedReadStream(final SimpleInterval interval, final ReadFilter filter) {
+        // if has reads, return an transformed/filtered/transformed stream
+        if (hasReads()) {
+            final ReadTransformer preTransformer = makePreReadFilterTransformer();
+            final ReadTransformer postTransformer = makePostReadFilterTransformer();
+
+            return interval == null ? Utils.stream(reads) : Utils.stream(reads.query(interval))
                     .map(preTransformer)
                     .filter(filter)
                     .map(postTransformer);

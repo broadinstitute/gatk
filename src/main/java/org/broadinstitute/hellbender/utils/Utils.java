@@ -1155,6 +1155,10 @@ public final class Utils {
         };
     }
 
+    public static <T> Stream<T> stream(final Enumeration<T> enumeration) {
+        return Utils.stream(Iterators.forEnumeration(enumeration));
+    }
+
     public static <T> Stream<T> stream(final Iterable<T> iterable) {
         return StreamSupport.stream(iterable.spliterator(), false);
     }

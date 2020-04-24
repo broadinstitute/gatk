@@ -6,10 +6,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * A Red-Black tree with intervals for keys.
@@ -1058,4 +1055,5 @@ public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>
             return new SVIntervalTree<>(kryo, input);
         }
     }
+
 }

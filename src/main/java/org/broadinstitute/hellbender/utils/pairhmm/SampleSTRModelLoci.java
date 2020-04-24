@@ -14,7 +14,6 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKTool;
-import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
@@ -48,9 +47,9 @@ public class SampleSTRModelLoci extends GATKTool {
     private String outputPath = null;
 
     @Argument(doc = "name of output file to dump entries sorted by coordinates",
-              fullName = "sorted-output", optional = true)
+              fullName = "text-output", optional = true)
     @Hidden
-    private String sortedOutputPath = null;
+    private String textOutputPath  = null;
 
     @Argument(fullName="max-period", doc="maximum STR period sampled", optional = true, minValue = 1, maxValue = 10)
     private int maxPeriod = 8;
@@ -74,7 +73,7 @@ public class SampleSTRModelLoci extends GATKTool {
 
     private long[][] emittedCounts;
 
-    private PrintWriter sortedOutputWriter;
+    private PrintWriter textOutputWriter;
 
     public void onStartup() {
         super.onStartup();
@@ -89,7 +88,7 @@ public class SampleSTRModelLoci extends GATKTool {
             throw new GATKException("could not create temporary disk space: could not create tempdir");
         }
 
-        sortedOutputWriter = sortedOutputPath == null ? null : new PrintWriter(new OutputStreamWriter(BucketUtils.createFile(sortedOutputPath)));
+        textOutputWriter = textOutputPath == null ? null : new PrintWriter(new OutputStreamWriter(BucketUtils.createFile(textOutputPath)));
         totalCounts = new long[maxPeriod + 1][maxRepeat + 1];
         emittedCounts = new long[maxPeriod + 1][maxRepeat + 1];
     }
@@ -99,8 +98,8 @@ public class SampleSTRModelLoci extends GATKTool {
             if (tempDir != null) {
                 Utils.deleteFileTree(tempDir);
             }
-            if (sortedOutputWriter != null) {
-                sortedOutputWriter.close();
+            if (textOutputWriter != null) {
+                textOutputWriter.close();
             }
         } finally {
             super.onShutdown();
@@ -111,9 +110,11 @@ public class SampleSTRModelLoci extends GATKTool {
     public void traverse() {
         final SAMSequenceDictionary dictionary = Utils.nonNull(getReferenceDictionary());
         final File tempDir = this.tempDir;
+        final File allFile = new File(tempDir, "all.bin");
+        final File allIndexFile = new File(tempDir, "all.idx");
         initializeMasks(dictionary);
-        try (final AutoCloseableList<BinaryTableWriter<DragstrLocus>> allSitesWriter
-                     = AutoCloseableList.of(maxPeriod, i -> createDragstrLocusWriter(tempDir, "period_" + (i + 1) + ".bin"))) {
+        try (final BinaryTableWriter<DragstrLocus> allSitesWriter
+                     = DragstrLocus.binaryWriter(allFile, allIndexFile)) {
             if (!intervalArgumentCollection.intervalsSpecified()) {
                 for (final SAMSequenceRecord sequence : dictionary.getSequences()) {
                     traverse(sequence.getSequenceIndex(), sequence, 1, sequence.getSequenceLength(), allSitesWriter, decimationTable);
@@ -124,30 +125,13 @@ public class SampleSTRModelLoci extends GATKTool {
                     traverse(sequence.getSequenceIndex(), sequence, interval.getStart(), interval.getEnd(), allSitesWriter, decimationTable);
                 }
             }
-            if (sortedOutputWriter != null) {
-                sortedOutputWriter.flush();
+            if (textOutputWriter != null) {
+                textOutputWriter.flush();
             }
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile(tempDir, ex);
         }
         progressMeter.stop();
-        logger.info("Finished reference sampling. Proceeding to splitting each period case by repeat count");
-        for (int i = 1; i <= maxPeriod; i++) {
-            progressMeter = new ProgressMeter(secondsBetweenProgressUpdates);
-            progressMeter.setRecordLabel("Splitting cases with period " + i + " by repeat count");
-            progressMeter.start();
-            splitPeriodLociByRepeat(i);
-            progressMeter.stop();
-            logger.info("Done with period " + i);
-        }
-        if (downSample > 0) {
-            logger.info("Downsampling period, repeat-count case to a maximum of " + downSample + " each.");
-            for (int i = 1; i <= maxPeriod; i++) {
-                for (int r = 1; r <= maxRepeat; r++) {
-                    downSampleLociByRepeat(i, r);
-                }
-            }
-        }
         logger.info("Composing output zip");
         composeOutputZip();
     }
@@ -190,30 +174,6 @@ public class SampleSTRModelLoci extends GATKTool {
         }
     }
 
-    private void splitPeriodLociByRepeat(final int period) {
-        final File lociFile = new File(tempDir, "period_" + period + ".bin");
-        final File periodDir = new File(tempDir, "" + period);
-        if (!periodDir.mkdir()) {
-            throw new UserException.CouldNotCreateOutputFile(periodDir, "create period loci split directory");
-        }
-        try (final BinaryTableReader<DragstrLocus> reader = DragstrLocus.binaryReader(new FileInputStream(lociFile));
-             final AutoCloseableList<BinaryTableWriter<DragstrLocus>> writers =
-                     AutoCloseableList.of(maxRepeat, i -> createDragstrLocusWriter(periodDir, "" + (i+1) + ".bin"))) {
-            while (reader.hasNext()) {
-                final DragstrLocus next = reader.next();
-                final int effectiveRepeats = next.getRepeats() > maxRepeat ? maxRepeat : next.getRepeats();
-                progressMeter.update(next.getStartInterval(getReferenceDictionary(), 0));
-                final BinaryTableWriter<DragstrLocus> writer = writers.get(effectiveRepeats - 1);
-                writer.write(next);
-            }
-        } catch (final Exception ex) {
-            throw new UserException.CouldNotCreateOutputFile(lociFile, "temporary period loci splitting failed");
-        }
-        if (!lociFile.delete()) {
-            throw new GATKException("could not delete temporary file " + lociFile);
-        }
-    }
-
     private void composeOutputZip() {
         final byte[] buffer = new byte[1 << 16];
         try (final ZipArchiveOutputStream output = new JarArchiveOutputStream(BucketUtils.createFile(outputPath))) {
@@ -227,19 +187,26 @@ public class SampleSTRModelLoci extends GATKTool {
     }
 
     private void composeLociFiles(byte[] buffer, ZipArchiveOutputStream output) throws IOException {
-        for (int i = 1; i <= maxPeriod; i++) {
-            for (int j = 1; j <= maxRepeat; j++) {
-                final File inFile = new File(new File(tempDir, "" + i), "" + j + ".bin");
-                output.putArchiveEntry(new ZipArchiveEntry("" + i + "/" + j + ".bin"));
-                final InputStream inStream = new FileInputStream(inFile);
-                int len;
-                while ((len = inStream.read(buffer)) > 0) {
-                    output.write(buffer, 0, len);
-                }
-                inStream.close();
-                output.closeArchiveEntry();
-            }
+
+        final File inFile = new File(tempDir, "all.bin");
+        output.putArchiveEntry(new ZipArchiveEntry("all.bin"));
+        final InputStream inStream = new FileInputStream(inFile);
+        int len;
+        while ((len = inStream.read(buffer)) > 0) {
+            output.write(buffer, 0, len);
         }
+        inStream.close();
+        output.closeArchiveEntry();
+
+        final File indexFile = new File(tempDir, "all.idx");
+        final InputStream indexInStream = new FileInputStream(indexFile);
+        output.putArchiveEntry(new ZipArchiveEntry("all.idx"));
+        while ((len = indexInStream.read(buffer)) > 0) {
+            output.write(buffer, 0, len);
+        }
+        indexInStream.close();
+        output.closeArchiveEntry();
+
     }
 
     private void saveReferenceDictionary(final ZipArchiveOutputStream output) throws IOException {
@@ -282,16 +249,7 @@ public class SampleSTRModelLoci extends GATKTool {
         output.closeArchiveEntry();
     }
 
-    private static BinaryTableWriter<DragstrLocus> createDragstrLocusWriter(final File outDir, final String name) {
-        try {
-            final File outFile = new File(outDir, name);
-            return DragstrLocus.binaryWriter(outFile);
-        } catch (final IOException  e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    private void traverse(final int seqNumber, final SAMSequenceRecord sequence, final long seqStart, final long seqEnd, final AutoCloseableList<BinaryTableWriter<DragstrLocus>> output, final STRDecimationTable decimationTable)
+    private void traverse(final int seqNumber, final SAMSequenceRecord sequence, final long seqStart, final long seqEnd, final BinaryTableWriter<DragstrLocus> output, final STRDecimationTable decimationTable)
         throws IOException
     {
         final String id = sequence.getSequenceName();
@@ -349,20 +307,19 @@ public class SampleSTRModelLoci extends GATKTool {
         }
     }
 
-    private void emitOrDecimateSTR(final int seqNumber, final String seqId, final BestPeriod best, final AutoCloseableList<BinaryTableWriter<DragstrLocus>> output, final STRDecimationTable decimationTable, final byte[] unit)
+    private void emitOrDecimateSTR(final int seqNumber, final String seqId, final BestPeriod best, final BinaryTableWriter<DragstrLocus> output, final STRDecimationTable decimationTable, final byte[] unit)
         throws IOException
     {
         final int effectiveRepeats = Math.min(maxRepeat, best.repeats);
         final int mask = nextMasks[seqNumber][best.period][effectiveRepeats]++;
         if (!decimationTable.decimate(mask, best.period, best.repeats)) {
             final DragstrLocus locus = DragstrLocus.make(seqNumber, best.start, (byte) best.period, (short) (best.end - best.start + 1), mask);
-            final BinaryTableWriter<DragstrLocus> outTable = output.get(best.period - 1);
-            outTable.write(locus);
-            if (sortedOutputPath != null) {
-                sortedOutputWriter.println("refId " + seqNumber + ", position " + (best.start - 1));
-                sortedOutputWriter.println("  mask: " + mask);
-                sortedOutputWriter.println("  length: " + (best.end - best.start + 1));
-                sortedOutputWriter.println("  period: " + best.period + ", length " + effectiveRepeats);
+            output.write(locus);
+            if (textOutputPath != null) {
+                textOutputWriter.println("refId " + seqNumber + ", position " + (best.start - 1));
+                textOutputWriter.println("  mask: " + mask);
+                textOutputWriter.println("  length: " + (best.end - best.start + 1));
+                textOutputWriter.println("  period: " + best.period + ", length " + effectiveRepeats);
             }
             progressMeter.update(new SimpleInterval(seqId, (int) best.start, (int) best.start));
             emittedCounts[best.period][effectiveRepeats]++;

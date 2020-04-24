@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
-import org.broadinstitute.hellbender.utils.Utils;
-
 import java.io.*;
 
 public abstract class BinaryTableWriter<R> implements AutoCloseable {
 
-    private final DataOutputStream dataOut;
+    protected final DataOutputStream dataOut;
+
+    private final ByteCounterOutputStream byteCounter;
 
     private String path;
 
@@ -21,8 +21,13 @@ public abstract class BinaryTableWriter<R> implements AutoCloseable {
     }
 
     public BinaryTableWriter(final OutputStream out, final String path) {
-        dataOut = new DataOutputStream(Utils.nonNull(out));
+        byteCounter = new ByteCounterOutputStream(out);
+        dataOut = new DataOutputStream(byteCounter);
         this.path = path;
+    }
+
+    public long offset() {
+        return byteCounter.count();
     }
 
     public String getPath() {
@@ -51,5 +56,47 @@ public abstract class BinaryTableWriter<R> implements AutoCloseable {
 
     public long getCounter() {
         return counter;
+    }
+
+    private static class ByteCounterOutputStream extends OutputStream {
+        private final OutputStream out;
+        private long count;
+
+        long count() {
+            return count;
+        }
+
+        private ByteCounterOutputStream(OutputStream out) {
+            this.out = out;
+            this.count = 0;
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            out.write(b);
+            count++;
+        }
+
+        @Override
+        public void write(byte[] b) throws IOException {
+            out.write(b);
+            count += b.length;
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            out.write(b, off, len);
+            count += len;
+        }
+
+        @Override
+        public void flush() throws IOException {
+            out.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            out.close();
+        }
     }
 }

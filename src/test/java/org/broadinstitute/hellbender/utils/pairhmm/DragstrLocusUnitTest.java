@@ -60,7 +60,7 @@ public class DragstrLocusUnitTest {
             final byte[] unit = randomDNA.nextBases(unitLength);
             final int repeatCount = rdn.nextInt(40) + 1;
             final long start = rdn.nextInt(lengths[chrIdx]) + 1;
-            final DragstrLocus locus = DragstrLocus.make(chrIdx, start, unit, repeatCount);
+            final DragstrLocus locus = DragstrLocus.make(chrIdx, start, (byte) unitLength, (short)(repeatCount * unitLength), i);
             result.add(locus);
 
         }

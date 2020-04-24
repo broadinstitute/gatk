@@ -5,6 +5,25 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 
 public class DragstrCasesSamplerArgumentCollection {
 
+
+    @Argument(fullName = DragstrConstants.MAX_PERIOD_ARGUMENT_FULL_NAME,
+              doc = "maximum period considered in STR analysis",
+              optional = true)
+    public int maxPeriod = 8;
+
+    @Argument(fullName = DragstrConstants.MAX_REPEATS_ARGUMENT_FULL_NAME,
+              doc = "maximum repeat count considered in STR analysis",
+              optional = true)
+    public int maxRepeats = 20;
+
+    @Argument(fullName = DragstrConstants.MIN_DEPTH_ARGUMENT_FULL_NAME,
+              shortName = DragstrConstants.MIN_DEPTH_ARGUMENT_SHORT_NAME,
+              doc = "Minimum coverage to consider a locus for sampling",
+              optional = true)
+    public int minDepth;
+
+    public int locusSamplig;
+
     @Argument(fullName = DragstrConstants.USE_ALL_EVIDENCE_FULL_NAME,
             doc = "do not sample, simply use all cases available (slow for not downsampled STR loci sets)",
             optional = true)

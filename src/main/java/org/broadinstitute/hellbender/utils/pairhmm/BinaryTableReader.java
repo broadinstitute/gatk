@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
+import org.apache.commons.io.input.NullInputStream;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import javax.swing.*;
@@ -26,6 +27,15 @@ public abstract class BinaryTableReader<R> implements AutoCloseable, Iterator<R>
             } catch (final IOException ex) {
                 throw source != null ? new UserException.CouldNotReadInputFile(source)
                                      : new UserException.CouldNotReadInputFile("unknown source");
+            }
+        };
+    }
+
+    public static <E> BinaryTableReader<E> emptyReader() {
+        return new BinaryTableReader<E>(new NullInputStream(0), "null") {
+            @Override
+            protected E readRecord(PushbackDataInput input) throws IOException {
+                return null;
             }
         };
     }
