@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -32,7 +33,9 @@ public class NuMTFilterTool extends VariantWalker {
     public static final String MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME = "autosomal-coverage";
     public static final String MAX_NUMT_COPIES_IN_AUTOSOME_LONG_NAME = "max-numt-autosomal-copies";
     private static final double DEFAULT_MEDIAN_AUTOSOMAL_COVERAGE = 0;
-    private static final double DEFAULT_MAX_NUMT_AUTOSOMAL_COPIES = 4;
+
+    @VisibleForTesting
+    static final double DEFAULT_MAX_NUMT_AUTOSOMAL_COPIES = 4;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -58,9 +61,14 @@ public class NuMTFilterTool extends VariantWalker {
         vcfWriter = createVCFWriter(new File(outputVcf));
         vcfWriter.writeHeader(header);
         if (maxNuMTAutosomalCopies > 0 && medianAutosomalCoverage > 0) {
-            final PoissonDistribution autosomalCoverage = new PoissonDistribution(medianAutosomalCoverage * maxNuMTAutosomalCopies / 2.0);
-            maxAltDepthCutoff = autosomalCoverage.inverseCumulativeProbability(1 - LOWER_BOUND_PROB);
+            maxAltDepthCutoff = getMaxAltDepthCutoff(maxNuMTAutosomalCopies, medianAutosomalCoverage);
         }
+    }
+
+    @VisibleForTesting
+    static int getMaxAltDepthCutoff(final double maxNuMTAutosomalCopies, final double medianAutosomalCoverage) {
+        final PoissonDistribution autosomalCoverage = new PoissonDistribution(medianAutosomalCoverage * maxNuMTAutosomalCopies / 2.0);
+        return autosomalCoverage.inverseCumulativeProbability(1 - LOWER_BOUND_PROB);
     }
 
     public List<Integer> getData(Genotype g) {
