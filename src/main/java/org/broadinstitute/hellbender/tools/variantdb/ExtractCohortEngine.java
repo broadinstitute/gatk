@@ -236,7 +236,7 @@ public class ExtractCohortEngine {
         // Note that we remove NON_REF in our variantContextMerger if the GnarlyGenotyper is disabled, but
         // keep NON_REF around if the GnarlyGenotyper is enabled. This is because the GnarlyGenotyper expects
         // the NON_REF allele to still be present, and will give incorrect results if it's not.
-        final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], false, true);
+        final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], true, false);
 
 
         final VariantContext finalVC = filteringTableRef != null ? mergedVC : filterVariants(mergedVC);
@@ -324,7 +324,9 @@ public class ExtractCohortEngine {
 
 
         for ( final String columnName : columnNames ) {
-            if ( SchemaConstants.REQUIRED_FIELDS.contains(columnName) || columnName.equals(SchemaConstants.POSITION_FIELD_NAME) ) {
+            if ( SchemaConstants.REQUIRED_FIELDS.contains(columnName) ||
+                    columnName.equals(SchemaConstants.POSITION_FIELD_NAME) ||
+                    columnName.equals(SchemaConstants.CHROM_FIELD_NAME) ) {
                 continue;
             }
 
