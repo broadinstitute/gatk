@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.variantdb;
 
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import org.apache.avro.generic.GenericRecord;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -10,17 +10,12 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
-import org.broadinstitute.hellbender.utils.bigquery.GATKAvroReader;
-import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollectionCodec;
-import org.broadinstitute.hellbender.utils.localsort.EvoquerSortingCollection;
 
 import java.util.*;
 
@@ -119,14 +114,23 @@ public class ExtractCohort extends GATKTool {
     protected void onStartup() {
         super.onStartup();
 
-//        final VariantAnnotatorEngine annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
+        //TODO verify what we really need here
+        final VariantAnnotatorEngine annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
 
         vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
+
+        TableReference sampleTableRef = new TableReference(sampleTableName, SchemaConstants.SAMPLE_FIELDS);
+        Set<String> sampleNames = ExtractCohortBQ.populateSampleNames(sampleTableRef, printDebugInformation);
+
+        VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary());
+
         engine = new ExtractCohortEngine(
                 projectID,
                 vcfWriter,
+                header,
+                annotationEngine,
                 reference,
-                sampleTableName,
+                sampleNames,
                 cohortTable,
                 filteringFQTableName,
                 localSortMaxRecordsInRam,
@@ -134,7 +138,7 @@ public class ExtractCohort extends GATKTool {
                 vqsLodSNPThreshold,
                 vqsLodINDELThreshold,
                 progressMeter);
-        vcfWriter.writeHeader(CommonCode.generateVcfHeader());
+        vcfWriter.writeHeader(header);
     }
 
     @Override

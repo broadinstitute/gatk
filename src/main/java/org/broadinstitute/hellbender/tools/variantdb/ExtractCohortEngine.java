@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.variantdb;
 
-import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.TableResult;
 import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -9,17 +7,18 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.spark.sql.catalog.Table;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.IndexRange;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.GATKAvroReader;
 import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
@@ -37,7 +36,7 @@ public class ExtractCohortEngine {
 
     private final boolean printDebugInformation;
     private final int localSortMaxRecordsInRam;
-    private final TableReference sampleTableRef;
+//    private final TableReference sampleTableRef;
     private final TableReference cohortTableRef;
     private final TableReference filteringTableRef;
     private final ReferenceDataSource refSource;
@@ -65,10 +64,10 @@ public class ExtractCohortEngine {
 
     public ExtractCohortEngine(final String projectID,
                                final VariantContextWriter vcfWriter,
-//                               final Set<VCFHeaderLine> toolDefaultVCFHeaderLines,
-//                               final VariantAnnotatorEngine annotationEngine,
+                               final VCFHeader vcfHeader,
+                               final VariantAnnotatorEngine annotationEngine,
                                final ReferenceDataSource refSource,
-                               final String sampleTableName,
+                               final Set<String> sampleNames,
                                final String cohortTableName,
                                final String filteringTableName,
                                final int localSortMaxRecordsInRam,
@@ -81,7 +80,7 @@ public class ExtractCohortEngine {
         this.projectID = projectID;
         this.vcfWriter = vcfWriter;
         this.refSource = refSource;
-        this.sampleTableRef = new TableReference(sampleTableName, SchemaConstants.SAMPLE_FIELDS);
+        this.sampleNames = sampleNames;
         this.cohortTableRef = new TableReference(cohortTableName, SchemaConstants.COHORT_FIELDS);
         this.filteringTableRef = filteringTableName == null ? null : new TableReference(filteringTableName, SchemaConstants.YNG_FIELDS);
         this.printDebugInformation = printDebugInformation;
@@ -95,7 +94,6 @@ public class ExtractCohortEngine {
 
     public void traverse() {
         final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef);
-        sampleNames = ExtractCohortBQ.populateSampleNames(sampleTableRef, printDebugInformation);
         createVariantsFromUngroupedTableResult(storageAPIAvroReader);
     }
 
@@ -136,13 +134,15 @@ public class ExtractCohortEngine {
 
         final List<GenericRecord> currentPositionRecords = new ArrayList<>(sampleNames.size() * 2);
         long currentPosition = -1;
+        String currentContig = "";
 
         for ( final GenericRecord sortedRow : sortingCollection ) {
             final long rowPosition = Long.parseLong(sortedRow.get(SchemaConstants.POSITION_FIELD_NAME).toString());
+            currentContig = sortedRow.get(SchemaConstants.CHROM_FIELD_NAME).toString();
 
             if ( rowPosition != currentPosition && currentPosition != -1 ) {
                 ++totalNumberOfSites;
-                processSampleRecordsForPosition(currentPosition, contig, currentPositionRecords, columnNames);
+                processSampleRecordsForPosition(currentPosition, currentContig, currentPositionRecords, columnNames);
 
                 currentPositionRecords.clear();
             }
@@ -153,7 +153,7 @@ public class ExtractCohortEngine {
 
         if ( ! currentPositionRecords.isEmpty() ) {
             ++totalNumberOfSites;
-            processSampleRecordsForPosition(currentPosition, contig, currentPositionRecords, columnNames);
+            processSampleRecordsForPosition(currentPosition, currentContig, currentPositionRecords, columnNames);
         }
     }
 
@@ -236,7 +236,7 @@ public class ExtractCohortEngine {
         // Note that we remove NON_REF in our variantContextMerger if the GnarlyGenotyper is disabled, but
         // keep NON_REF around if the GnarlyGenotyper is enabled. This is because the GnarlyGenotyper expects
         // the NON_REF allele to still be present, and will give incorrect results if it's not.
-        final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], true, false, true);
+        final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], false, true);
 
 
         final VariantContext finalVC = filteringTableRef != null ? mergedVC : filterVariants(mergedVC);
@@ -405,8 +405,4 @@ public class ExtractCohortEngine {
 
         return builder.make();
     }
-
-    }
-
-
 }

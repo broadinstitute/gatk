@@ -11,18 +11,17 @@ import java.util.Set;
 //TODO rename this or get rid of it. a place holder for now
 public class CommonCode {
 
-    public static VCFHeader generateVcfHeader() { //final Set<VCFHeaderLine> defaultHeaderLines,
-//                                        final SAMSequenceDictionary sequenceDictionary) {
+    public static VCFHeader generateVcfHeader(Set<String> sampleNames,//) { //final Set<VCFHeaderLine> defaultHeaderLines,
+                                        final SAMSequenceDictionary sequenceDictionary) {
         final Set<VCFHeaderLine> headerLines = new HashSet<>();
 
         headerLines.addAll( getEvoquerVcfHeaderLines() );
 //        headerLines.addAll( defaultHeaderLines );
 
-        //TODO where do we really want to add sample names?
-//        final VCFHeader header = new VCFHeader(headerLines, sampleNames);
-//        header.setSequenceDictionary(sequenceDictionary);
+        final VCFHeader header = new VCFHeader(headerLines, sampleNames);
+        header.setSequenceDictionary(sequenceDictionary);
 
-        return new VCFHeader((headerLines));
+        return header;
     }
 
 

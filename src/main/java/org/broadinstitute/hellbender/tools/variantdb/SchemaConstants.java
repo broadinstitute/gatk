@@ -8,7 +8,8 @@ import java.util.List;
 public class SchemaConstants {
 
     public static final String POSITION_FIELD_NAME = "position";
-    public static final String VALUES_ARRAY_FIELD_NAME = "values";
+    public static final String CHROM_FIELD_NAME = "chrom";
+    public static final String LOCATION_FIELD_NAME = "location";
 
     public static final String SAMPLE_FIELD_NAME = "sample";
     public static final String SAMPLE_ID_FIELD_NAME = "sample_id";
@@ -26,9 +27,9 @@ public class SchemaConstants {
             ALT_ALLELE_FIELD_NAME
     );
 
-    public static final List<String> COHORT_FIELDS = Arrays.asList(POSITION_FIELD_NAME, SAMPLE_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, "call_GT", "call_GQ", "call_RGQ");
+    public static final List<String> COHORT_FIELDS = Arrays.asList(CHROM_FIELD_NAME, POSITION_FIELD_NAME, SAMPLE_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, "call_GT", "call_GQ", "call_RGQ");
     public static final List<String> SAMPLE_FIELDS = Arrays.asList(SAMPLE_FIELD_NAME);
-    public static final List<String> YNG_FIELDS = Arrays.asList(POSITION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME);
+    public static final List<String> YNG_FIELDS = Arrays.asList(CHROM_FIELD_NAME, POSITION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME);
 
 //    private void validateSchema(final Set<String> columnNames) {
 //        for ( final String requiredField : REQUIRED_FIELDS ) {
