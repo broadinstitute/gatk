@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bdgenomics.adam.util.PhredUtils;
 import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.*;
@@ -15,7 +17,9 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
+import java.lang.reflect.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -131,9 +135,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
         final double log10Confidence =
-                ! outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
-                        ? AFresult.log10ProbOnlyRefAlleleExists() + 0.0 : AFresult.log10ProbVariantPresent() + 0.0 ;
-
+                    !outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
+                            ? AFresult.log10ProbOnlyRefAlleleExists() + 0.0 : AFresult.log10ProbVariantPresent() + 0.0;
 
         // Add 0.0 removes -0.0 occurrences.
         final double phredScaledConfidence = (-10.0 * log10Confidence) + 0.0;
@@ -164,11 +167,78 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         final GenotypesContext genotypes = outputAlleles.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
                 AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
 
+        if (configuration.genotypeArgs.usePosteriorProbabilitiesToCalculateQual && hasPosteriors(genotypes)) {
+            final double log10NoVariantPosterior = nonVariantPresentLog10PosteriorProbability(genotypes) * -.1;
+            final double qualUpdate = !outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
+                    ? log10NoVariantPosterior + 0.0 : MathUtils.log10OneMinusPow10(log10NoVariantPosterior) + 0.0;
+            if (!Double.isNaN(qualUpdate)) {
+                builder.log10PError(qualUpdate);
+            }
+        }
+
         // calculating strand bias involves overwriting data structures, so we do it last
         final Map<String, Object> attributes = composeCallAttributes(vc, outputAlternativeAlleles.alternativeAlleleMLECounts(),
                 AFresult, outputAlternativeAlleles.outputAlleles(vc.getReference()),genotypes);
 
         return builder.genotypes(genotypes).attributes(attributes).make();
+    }
+
+    protected double nonVariantPresentLog10PosteriorProbability(final GenotypesContext gc) {
+        return gc.stream()
+                .map(gt -> gt.getExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY))
+                .mapToDouble(v -> coherceToDouble(v, Double.NaN, true))
+                .filter(v -> !Double.isNaN(v))
+                .min().orElse(Double.NaN);
+    }
+
+    private double coherceToDouble(final Object obj, final double defaultValue, final boolean takeFirstElement) {
+        if (obj == null) {
+            return defaultValue;
+        } else if (obj instanceof CharSequence) {
+            try {
+                return Double.parseDouble(obj.toString());
+            } catch (final NumberFormatException ex) {
+                return defaultValue;
+            }
+        } else if (obj instanceof Number) {
+            return ((Number) obj).doubleValue();
+        } else if (takeFirstElement) {
+            if (obj instanceof Collection) {
+                if( ((Collection)obj).isEmpty()) {
+                    return defaultValue;
+                } else if (obj instanceof List) {
+                    final List<?> asList = (List<?>) obj;
+                    return coherceToDouble(asList.get(0), defaultValue, false);
+                } else {
+                    final Collection<?> collection = (Collection<?>) obj;
+                    return coherceToDouble(collection.iterator().next(), defaultValue, false);
+                }
+            } else if (obj.getClass().isArray()) {
+                if (obj.getClass().getComponentType().isPrimitive()) {
+                    if (Array.getLength(obj) == 0) {
+                        return defaultValue;
+                    } else {
+                        return coherceToDouble(Array.get(obj, 1), defaultValue, false);
+                    }
+                } else {
+                    final Object[] array = (Object[]) obj;
+                    return array.length != 0 ? coherceToDouble(array[0], defaultValue, false) : defaultValue;
+                }
+            } else {
+                return defaultValue;
+            }
+        } else {
+            return defaultValue;
+        }
+    }
+
+    private boolean hasPosteriors(final GenotypesContext gc) {
+        for (final Genotype genotype : gc) {
+            if (genotype.hasExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public VariantContext calculateGenotypes(final VariantContext vc) {
