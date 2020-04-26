@@ -87,7 +87,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", outputPath,
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--" + AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "2",
+                "--apply-frd", "--apply-bqd",
+                "--transform-dragen-mapping-quality",
+                "--mapping-quality-threshold", "1",
+                "--enable-dynamic-read-disqualification-for-genotyping",
+                "--allele-informative-reads-overlap-margin","0",
+                "--dont-use-dragstr-pair-hmm-scores",
+                "--soft-clip-low-quality-ends",
+                "--dragstr-params-path", "/Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/DNA_Nexus_hiseqX_plus0_0.dragstr-params.txt",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
 

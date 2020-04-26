@@ -1118,6 +1118,51 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         }
     }
 
+
+    /**
+     * Removes evidence that does not overlap certain genomic location.
+     *
+     * @param predicate the predicate representing the requirement.
+     *
+     * <p>
+     *     This method modifies the current read-likelihoods collection.
+     * </p>
+     * <p>
+     *     Any exception thrown by the predicate will be propagated to the calling code.
+     * </p>
+     *
+     * @throws IllegalArgumentException if {@code predicate} is {@code null}.
+     */
+    public void retainEvidenceAndStoreFiltered(final Predicate<? super EVIDENCE> predicate, final Predicate<? super EVIDENCE> predicateForFilterRetention) {
+        Utils.nonNull(predicate);
+        final int sampleCount = samples.numberOfSamples();
+
+        for (int s = 0; s < sampleCount; s++) {
+            // Remove evidence from the primary data
+            final List<EVIDENCE> sampleEvidence = this.evidenceBySampleIndex.get(s);
+            final int[] removeIndices = IntStream.range(0, sampleEvidence.size())
+                    .filter(i -> !predicate.test(sampleEvidence.get(i)))
+                    .toArray();
+
+
+            final List<EVIDENCE> removedToBeRetained = new ArrayList<>(2);
+            for(int i = 0; i < removeIndices.length; i++) {
+                // if it passes the second predicate but not the first bump it into the filtered pool
+                final EVIDENCE evidence = sampleEvidence.get(removeIndices[i]);
+                if (predicateForFilterRetention.test(evidence)) {
+                    removedToBeRetained.add(evidence);
+                }
+            }
+
+            removeEvidenceByIndex(s, removeIndices);
+
+            // If applicable also apply the predicate to the filters
+            final List<EVIDENCE> sampleFiltered = filteredEvidenceBySampleIndex.get(s).stream().filter(e -> !predicateForFilterRetention.test(e)).collect(Collectors.toList());
+            sampleFiltered.addAll(removedToBeRetained);
+            filteredEvidenceBySampleIndex.set(s, sampleFiltered);
+        }
+    }
+
     protected double maximumLikelihoodOverAllAlleles(final int sampleIndex, final int evidenceIndex) {
         double result = Double.NEGATIVE_INFINITY;
         final int alleleCount = alleles.numberOfAlleles();

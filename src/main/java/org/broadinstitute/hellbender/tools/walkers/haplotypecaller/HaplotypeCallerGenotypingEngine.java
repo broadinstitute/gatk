@@ -182,8 +182,13 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             AlleleLikelihoods<GATKRead, Allele> readAlleleLikelihoods = readLikelihoods.marginalize(alleleMapper);
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
             final SimpleInterval variantCallingRelevantOverlap = new SimpleInterval(mergedVC).expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
-            // TODO this can and should be fixed to be faster since there is no reason to copy and rebuild the read here for the unsoftclipping op.
-            readAlleleLikelihoods.retainEvidence(r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
+            // We want to retian evidence that overlaps within its softclipping edges.
+            if (hcArgs.applyBQD || hcArgs.applyFRD) {
+                readAlleleLikelihoods.retainEvidenceAndStoreFiltered(r -> r.overlaps(variantCallingRelevantOverlap), r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
+//                readAlleleLikelihoods.retainEvidence(r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
+            } else {
+                readAlleleLikelihoods.retainEvidence(r -> r.overlaps(variantCallingRelevantOverlap));
+            }
             readAlleleLikelihoods.setSubsettedGenomicLoc(variantCallingRelevantOverlap);
             if (configuration.isSampleContaminationPresent()) {
                 readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
@@ -442,6 +447,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         Utils.nonNull(mergedVC, "mergedVC");
         final List<Allele> vcAlleles = mergedVC.getAlleles();
         final AlleleList<Allele> alleleList = readLikelihoods.numberOfAlleles() == vcAlleles.size() ? readLikelihoods : new IndexedAlleleList<>(vcAlleles);
+        System.out.println("\n===================================================");
+        System.out.println(mergedVC);
+        System.out.println("===================================================\n");
         final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods),paddedReference,offsetForRefIntoEvent, dragstrs);
         final int sampleCount = samples.numberOfSamples();
         final GenotypesContext result = GenotypesContext.create(sampleCount);
