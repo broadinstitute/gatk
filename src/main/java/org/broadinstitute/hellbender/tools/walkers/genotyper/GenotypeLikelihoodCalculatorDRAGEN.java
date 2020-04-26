@@ -241,7 +241,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             final List<Double> criticalThresholdsSortedForward = criticalThresholdsForward.stream().sorted(Double::compareTo).collect(Collectors.toList());
             final List<Double> criticalThresholdsSortedReverse = criticalThresholdsReverse.stream().sorted(Double::compareTo).collect(Collectors.toList());
             final List<Double> criticalThresholdsSorted = criticalThresholds.stream().sorted(Double::compareTo).collect(Collectors.toList());
-            System.out.println("fIndex: "+fAlleleIndex+" criticalValues: \n"+criticalThresholds.stream().map(d -> Double.toString(d)).collect(Collectors.joining("\n")));
+//            System.out.println("fIndex: "+fAlleleIndex+" criticalValues: \n"+criticalThresholds.stream().map(d -> Double.toString(d)).collect(Collectors.joining("\n")));
 
             // iterate over all of the homozygous genotypes for the given allele
             for(int gtAlleleIndex = 0; gtAlleleIndex < sampleLikelihoods.numberOfAlleles(); gtAlleleIndex++) {
@@ -258,11 +258,11 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 // TODO this will have to account for the indel priors later in its existance
                 final double gtAllelePrior = 0.0;
 
-                System.out.println("\nForwards Strands: ");
+//                System.out.println("\nForwards Strands: ");
                 final double maxLog10FForwardsStrand = computeFRDModelForStrandData(readContainers, c -> !c.isReverseStrand() , offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSortedForward, gtAllelePrior);
-                System.out.println("\nReverse Strands: ");
+//                System.out.println("\nReverse Strands: ");
                 final double maxLog10FReverseStrand = computeFRDModelForStrandData(readContainers, c -> c.isReverseStrand(), offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSortedReverse, gtAllelePrior);
-                System.out.println("\nBoth Strands: ");
+//                System.out.println("\nBoth Strands: ");
                 final double maxLog10FBothStrands = computeFRDModelForStrandData(readContainers, c -> true, offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted, gtAllelePrior);
 
 //                System.out.println("gtAlleleIndex : "+gtAlleleIndex+ " fAlleleIndex: "+fAlleleIndex +" forwards: "+maxLog10FForwardsStrand+" reverse: "+maxLog10FReverseStrand+" both: "+maxLog10FBothStrands);
@@ -306,7 +306,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         if (positionSortedReads.isEmpty()) {
             return Double.NEGATIVE_INFINITY; // TODO check up on this
         }
-        System.out.println("GT Allele Prior: "+gtAllelePrior);
+//        System.out.println("GT Allele Prior: "+gtAllelePrior);
 
         int counter = 0;
         double maxLpspi = Double.NEGATIVE_INFINITY;
@@ -360,7 +360,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             double LPsi = gtAllelePrior + lpf + LP_R_GF;
             localMaxLpspi = Math.max(localMaxLpspi, LPsi);
 
-            System.out.println("beta: "+beta+" localMaxLpspi: " + localMaxLpspi + " for lpf: "+lpf+" with LP_R_GF: "+LP_R_GF+" index: "+counter++);
+//            System.out.println("beta: "+beta+" localMaxLpspi: " + localMaxLpspi + " for lpf: "+lpf+" with LP_R_GF: "+LP_R_GF+" index: "+counter++);
             maxLpspi = Math.max(maxLpspi, localMaxLpspi);
         }
 

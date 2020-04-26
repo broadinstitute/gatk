@@ -447,9 +447,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         Utils.nonNull(mergedVC, "mergedVC");
         final List<Allele> vcAlleles = mergedVC.getAlleles();
         final AlleleList<Allele> alleleList = readLikelihoods.numberOfAlleles() == vcAlleles.size() ? readLikelihoods : new IndexedAlleleList<>(vcAlleles);
-        System.out.println("\n===================================================");
-        System.out.println(mergedVC);
-        System.out.println("===================================================\n");
+//        System.out.println("\n===================================================");
+//        System.out.println(mergedVC);
+//        System.out.println("===================================================\n");
         final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods),paddedReference,offsetForRefIntoEvent, dragstrs);
         final int sampleCount = samples.numberOfSamples();
         final GenotypesContext result = GenotypesContext.create(sampleCount);
