@@ -13,6 +13,7 @@ from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_val
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
+CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts/mgh-all-features-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 
 
@@ -1349,6 +1350,10 @@ def _diagnosis_channels(disease: str, incidence_only: bool = False):
     if incidence_only:
         return {f'no_{disease}': 0,  f'future_{disease}': 1}
     return {f'no_{disease}': 0, f'prior_{disease}': 1, f'future_{disease}': 2}
+
+
+def _outcome_channels(outcome: str):
+    return {f'no_{outcome}': 0,  f'future_{outcome}': 1}
 
 
 def loyalty_time_to_event(
