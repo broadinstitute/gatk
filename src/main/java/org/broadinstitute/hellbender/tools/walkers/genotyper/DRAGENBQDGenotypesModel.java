@@ -160,7 +160,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 //                System.out.println(Arrays.toString(BQDCallResults));
             }
             if (computeFRD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
-                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods,
+                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, ployidyModelGenotypeLikelihoods,
                         Stream.of(strandForward, strandReverse).flatMap(list -> list.stream()).filter(r -> r.getIndexInLikelihoodsObject() != -1).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
                         34.77, api, calculators);
 //                System.out.println("FRD results:");

@@ -38,6 +38,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 
     private final double cachedLog10Alpha;
     private final double cachedLog10AlphaInverse;
+    private final double maxEffectiveDepthForHetAdjustment = 40; //TODO this needs to be parameterized
 
     /**
      * Creates a new calculator providing its ploidy and number of genotyping alleles.
@@ -212,10 +213,10 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
      * @return
      */
     //TODO this WILLLL need to handle indel priors
-    public <A extends Allele> double[] calculateFRDLikelihoods(LikelihoodMatrix<GATKRead, A> sampleLikelihoods,
+    public <A extends Allele> double[] calculateFRDLikelihoods(final LikelihoodMatrix<GATKRead, A> sampleLikelihoods, final double[] ploidyModelLikelihoods,
                                                                final List<DRAGENBQDGenotypesModel.DragenReadContainer> readContainers,
                                                                final double snipAprioriHet, final double indelAprioriHet, final GenotypeLikelihoodCalculators calculators) {
-        Utils.validate(sampleLikelihoods == cachedLikelihoodsObject, "There was a mismatch between the sample stored by the genotyper and the one requesed for BQD, this will result in invalid genotyping");
+        Utils.validate(sampleLikelihoods == cachedLikelihoodsObject, "There was a mismatch between the sample stored by the genotyper and the one requested for BQD, this will result in invalid genotyping");
         final double[] outputArray = new double[genotypeCount];
         Arrays.fill(outputArray, Double.NEGATIVE_INFINITY);
 
@@ -259,34 +260,44 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 final double gtAllelePrior = 0.0;
 
 //                System.out.println("\nForwards Strands: ");
-                final double maxLog10FForwardsStrand = computeFRDModelForStrandData(readContainers, c -> !c.isReverseStrand() , offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSortedForward, gtAllelePrior);
+                final double[] maxLog10FForwardsStrand = computeFRDModelForStrandData(readContainers, c -> !c.isReverseStrand() , offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSortedForward, gtAllelePrior);
 //                System.out.println("\nReverse Strands: ");
-                final double maxLog10FReverseStrand = computeFRDModelForStrandData(readContainers, c -> c.isReverseStrand(), offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSortedReverse, gtAllelePrior);
+                final double[] maxLog10FReverseStrand = computeFRDModelForStrandData(readContainers, c -> c.isReverseStrand(), offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSortedReverse, gtAllelePrior);
 //                System.out.println("\nBoth Strands: ");
-                final double maxLog10FBothStrands = computeFRDModelForStrandData(readContainers, c -> true, offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted, gtAllelePrior);
+                final double[] maxLog10FBothStrands = computeFRDModelForStrandData(readContainers, c -> true, offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted, gtAllelePrior);
 
 //                System.out.println("gtAlleleIndex : "+gtAlleleIndex+ " fAlleleIndex: "+fAlleleIndex +" forwards: "+maxLog10FForwardsStrand+" reverse: "+maxLog10FReverseStrand+" both: "+maxLog10FBothStrands);
-                outputArray[indexForGT] = Math.max(outputArray[indexForGT], maxLog10FForwardsStrand);
-                outputArray[indexForGT] = Math.max(outputArray[indexForGT], maxLog10FReverseStrand);
-                outputArray[indexForGT] = Math.max(outputArray[indexForGT], maxLog10FBothStrands);
+                double[] localBestModel = maxLog10FForwardsStrand;
+                // TODO enum the indexes
+                if (localBestModel[0] < maxLog10FReverseStrand[0]) {
+                    localBestModel = maxLog10FReverseStrand;
+                }
+                if (localBestModel[0] < maxLog10FBothStrands[0]) {
+                    localBestModel = maxLog10FBothStrands;
+                }
+
+
+                // Use the index corresponding the mixture of F and
+                double localBestModelScore = localBestModel[0] - localBestModel[1];
+                int closestGTAlleleIndex = allelesToIndex(gtAlleleIndex, fAlleleIndex);
+                double log10LikelihoodsForPloyidyModel = ploidyModelLikelihoods[closestGTAlleleIndex] - MathUtils.log10(2);
+                int depthForGenotyping = sampleLikelihoods.evidenceCount();
+//                System.out.println("best FRD likelihoods: "+localBestModelScore+" P(F) score used: "+localBestModel[1]+"  use MaxEffectiveDepth: "+maxEffectiveDepthForHetAdjustment);
+//                System.out.println("Using array index "+closestGTAlleleIndex+" for mixture gt with likelihood of "+log10LikelihoodsForPloyidyModel+" adjusted based on depth: "+depthForGenotyping);
+                double adjustedBestModel = log10LikelihoodsForPloyidyModel + ((localBestModelScore - log10LikelihoodsForPloyidyModel)
+                        * ((Math.min(depthForGenotyping, maxEffectiveDepthForHetAdjustment)*1.0)/depthForGenotyping));
+//                System.out.println("p_rG_adj : "+adjustedBestModel);
+
+
+                // take the best FRD model for the given GT
+                outputArray[indexForGT] = Math.max(outputArray[indexForGT], adjustedBestModel + localBestModel[1]);
             }
+
+
 
         }
 
-//        for(int gtAlleleIndex = 0; gtAlleleIndex < sampleLikelihoods.numberOfAlleles(); gtAlleleIndex++) {
-//            //TODO how in the hell do i actaully calculate this offset correctly... blehhhhhhh
-//            //This is crufty, it just so happens that the index of the homozygous genotype corresponds to the maximum genotype count per field.
-//            //This should be pulled off as a calculator in some genotyping class.
-//            final int indexForGT = calculators.genotypeCount(ploidy, gtAlleleIndex) - 1;
-//            double[] readLikelihoodsForGT = readLikelihoodsByGenotypeIndex[indexForGT];
-//
-//            for (int foreignAlleleIndex = 0; foreignAlleleIndex < sampleLikelihoods.numberOfAlleles(); foreignAlleleIndex++) {
-//
-//
-//            }
-//        }
 
-//        for (genotypeIndex )
         return outputArray;
     }
 
@@ -299,17 +310,18 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
      * @param readLikelihoodsForGT
      * @param criticalThresholdsSorted
      * @param gtAllelePrior
-     * @return log10 score for frd model given the data and the predicate
+     * @return two doubles, index 0 is the frd score and the second is log p(F()) score used to adjust the score
      */
-    private double computeFRDModelForStrandData(final List<DRAGENBQDGenotypesModel.DragenReadContainer> positionSortedReads, final Predicate<DRAGENBQDGenotypesModel.DragenReadContainer> predicate,
+    private double[] computeFRDModelForStrandData(final List<DRAGENBQDGenotypesModel.DragenReadContainer> positionSortedReads, final Predicate<DRAGENBQDGenotypesModel.DragenReadContainer> predicate,
                                                 final int offsetForReadLikelihoodGivenAlleleIndex, final double[] readLikelihoodsForGT, final List<Double> criticalThresholdsSorted, final double gtAllelePrior) {
         if (positionSortedReads.isEmpty()) {
-            return Double.NEGATIVE_INFINITY; // TODO check up on this
+            return new double[]{Double.NEGATIVE_INFINITY, 0}; // TODO check up on this
         }
 //        System.out.println("GT Allele Prior: "+gtAllelePrior);
 
         int counter = 0;
         double maxLpspi = Double.NEGATIVE_INFINITY;
+        double lpfApplied = 0;
 
         for (final Double lpf : criticalThresholdsSorted) {
             double f_ratio = 0.0;
@@ -361,10 +373,15 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             localMaxLpspi = Math.max(localMaxLpspi, LPsi);
 
 //            System.out.println("beta: "+beta+" localMaxLpspi: " + localMaxLpspi + " for lpf: "+lpf+" with LP_R_GF: "+LP_R_GF+" index: "+counter++);
-            maxLpspi = Math.max(maxLpspi, localMaxLpspi);
+            if (localMaxLpspi > maxLpspi) {
+                maxLpspi = Math.max(maxLpspi, localMaxLpspi);
+                lpfApplied = lpf;
+            }
         }
 
-        return maxLpspi;
+        //TODO javaize this
+        // TODO soon should not need to use the LPF applied here...
+        return new double[]{maxLpspi, lpfApplied};
     }
 
 
