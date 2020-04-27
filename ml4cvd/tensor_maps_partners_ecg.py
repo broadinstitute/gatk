@@ -1,16 +1,15 @@
 import os
-import logging
-import datetime
-from typing import Dict, List, Callable, Union, Tuple
-from collections import defaultdict
-
 import csv
 import h5py
+import logging
+import datetime
 import numpy as np
+from collections import defaultdict
+from typing import Dict, List, Callable, Union, Tuple
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT
-from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, _decompress_data, TimeSeriesOrder
+from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
@@ -81,7 +80,7 @@ def make_voltage(population_normalize: float = None):
             for cm in tm.channel_map:
                 try:
                     path = _make_hd5_path(tm, ecg_date, cm)
-                    voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                    voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                     voltage = _resample_voltage(voltage, shape[1] if dynamic else shape[0])
                     slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
                     tensor[slices] = voltage
@@ -184,7 +183,7 @@ def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_
                 if path not in hd5:
                     continue
                 try:
-                    read = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                    read = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                     for channel, idx in sorted(tm.channel_map.items(), key=lambda cm: cm[1]):
                         if channel in dict_of_list:
                             for string in dict_of_list[channel]:
@@ -255,7 +254,7 @@ def make_partners_ecg_tensor(key: str, fill: float = 0):
         for i, ecg_date in enumerate(ecg_dates):
             path = _make_hd5_path(tm, ecg_date, key)
             try:
-                tensor[i] = _decompress_data(data_compressed=hd5[path][()], dtype='str')
+                tensor[i] = decompress_data(data_compressed=hd5[path][()], dtype='str')
             except KeyError:
                 logging.debug(f'Could not obtain tensor {tm.name} from ECG on {ecg_date} in {hd5.filename}')
 
@@ -263,6 +262,18 @@ def make_partners_ecg_tensor(key: str, fill: float = 0):
             tensor = tensor.astype(str)
         return tensor
     return get_partners_ecg_tensor
+
+
+task = "partners_ecg_read_md_raw"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="read_md_clean"),
+    shape=(None, 1),
+    time_series_limit=0,
+    validator=validator_not_empty,
+)
 
 
 task = "partners_ecg_read_md_raw"
@@ -438,6 +449,17 @@ TMAPS[task] = TensorMap(
     validator=validator_not_empty,
 )
 
+
+task = "partners_ecg_gender"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="gender"),
+    shape=(None, 1),
+    time_series_limit=0,
+    validator=validator_not_empty,
+)
 
 task = "partners_ecg_date"
 TMAPS[task] = TensorMap(
@@ -1056,15 +1078,15 @@ def partners_ecg_age(tm, hd5, dependents={}):
     for i, ecg_date in enumerate(ecg_dates):
         path = lambda key: _make_hd5_path(tm, ecg_date, key)
         try:
-            birthday = _decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype='str')
-            acquisition = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype='str')
+            birthday = decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype='str')
+            acquisition = decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype='str')
             delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
             years = delta.days / YEAR_DAYS
             tensor[i] = years
         except KeyError:
             logging.debug(f'Could not calculate patient age from birthday, defer to age in ECG on {ecg_date} in {hd5.filename}')
             try:
-                tensor[i] = _decompress_data(data_compressed=hd5[path('patientage')][()], dtype='str')
+                tensor[i] = decompress_data(data_compressed=hd5[path('patientage')][()], dtype='str')
             except KeyError:
                 logging.debug(f'Could not get patient age from ECG on {ecg_date} in {hd5.filename}')
     return tensor
@@ -1081,7 +1103,7 @@ def partners_ecg_acquisition_year(tm, hd5, dependents={}):
     for i, ecg_date in enumerate(ecg_dates):
         path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
         try:
-            acquisition = _decompress_data(data_compressed=hd5[path][()], dtype='str')
+            acquisition = decompress_data(data_compressed=hd5[path][()], dtype='str')
             tensor[i] = _partners_str2date(acquisition).year
         except KeyError:
             pass
@@ -1099,9 +1121,9 @@ def partners_bmi(tm, hd5, dependents={}):
     for i, ecg_date in enumerate(ecg_dates):
         path = lambda key: _make_hd5_path(tm, ecg_date, key)
         try:
-            weight_lbs = _decompress_data(data_compressed=hd5[path('weightlbs')][()], dtype='str')
+            weight_lbs = decompress_data(data_compressed=hd5[path('weightlbs')][()], dtype='str')
             weight_kg = 0.453592 * float(weight_lbs)
-            height_in = _decompress_data(data_compressed=hd5[path('heightin')][()], dtype='str')
+            height_in = decompress_data(data_compressed=hd5[path('heightin')][()], dtype='str')
             height_m = 0.0254 * float(height_in)
             bmi = weight_kg / (height_m*height_m)
             logging.info(f' Height was {height_in} weight: {weight_lbs} bmi is {bmi}')
@@ -1124,7 +1146,7 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
             path = _make_hd5_path(tm, ecg_date,hd5_key)
             found = False
             try:
-                hd5_string = _decompress_data(data_compressed=hd5[path][()], dtype='str')
+                hd5_string = decompress_data(data_compressed=hd5[path][()], dtype='str')
                 for key in tm.channel_map:
                     slices = (i, tm.channel_map[key]) if dynamic else (tm.channel_map[key],)
                     if hd5_string.lower() == key.lower():
@@ -1163,16 +1185,7 @@ TMAPS['partners_ecg_race_newest'] = TensorMap(
 )
 
 
-TMAPS['partners_ecg_gender'] = TensorMap(
-    'partners_ecg_gender', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'female': 0, 'male': 1},
-    tensor_from_file=partners_channel_string('gender'), time_series_limit=0,
-)
 
-
-TMAPS['partners_ecg_gender_newest'] = TensorMap(
-    'partners_ecg_gender_newest', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'female': 0, 'male': 1},
-    tensor_from_file=partners_channel_string('gender'),
-)
 
 
 def _partners_adult(hd5_key, minimum_age=18):
@@ -1182,13 +1195,13 @@ def _partners_adult(hd5_key, minimum_age=18):
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             path = lambda key: _make_hd5_path(tm, ecg_date, key)
-            birthday = _decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype='str')
-            acquisition = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype='str')
+            birthday = decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype='str')
+            acquisition = decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype='str')
             delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
             years = delta.days / YEAR_DAYS
             if years < minimum_age:
                 raise ValueError(f'ECG taken on patient below age cutoff.')
-            hd5_string = _decompress_data(data_compressed=hd5[path(hd5_key)][()], dtype=hd5[path(hd5_key)].attrs['dtype'])
+            hd5_string = decompress_data(data_compressed=hd5[path(hd5_key)][()], dtype=hd5[path(hd5_key)].attrs['dtype'])
             found = False
             for key in tm.channel_map:
                 if hd5_string.lower() == key.lower():
@@ -1222,7 +1235,7 @@ def voltage_zeros(tm, hd5, dependents={}):
     for i, ecg_date in enumerate(ecg_dates):
         for cm in tm.channel_map:
             path = _make_hd5_path(tm, ecg_date, cm)
-            voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+            voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
             slices = (i, tm.channel_map[cm]) if dynamic else (tm.channel_map[cm],)
             tensor[slices] = np.count_nonzero(voltage == 0)
     return tensor
@@ -1235,7 +1248,7 @@ TMAPS["lead_v6_zeros_newest"] = TensorMap("lead_v6_zeros_newest", shape=(1,), pa
 
 
 def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-    voltage = _decompress_data(data_compressed=hd5['V6'][()], dtype=hd5['V6'].attrs['dtype'])
+    voltage = decompress_data(data_compressed=hd5['V6'][()], dtype=hd5['V6'].attrs['dtype'])
     if np.count_nonzero(voltage == 0) > 10:
         raise ValueError(f'TensorMap {tm.name} has too many zeros in V6.')
 
@@ -1307,11 +1320,11 @@ def build_incidence_tensor_from_file(
                 raise KeyError(f'{tm.name} mrn not in incidence csv')
 
             if check_birthday:
-                birth_date = _partners_str2date(_decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype=hd5[path('dateofbirth')].attrs['dtype']))
+                birth_date = _partners_str2date(decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype=hd5[path('dateofbirth')].attrs['dtype']))
                 if birth_date != birth_table[mrn_int]:
                     raise ValueError(f'Birth dates do not match! CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
 
-            assess_date = _partners_str2date(_decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype']))
+            assess_date = _partners_str2date(decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype']))
             if assess_date < patient_table[mrn_int]:
                 raise ValueError(f'{tm.name} Assessed earlier than enrollment')
             if mrn_int not in date_table:
@@ -1398,7 +1411,7 @@ def loyalty_time_to_event(
                 raise KeyError(f'{tm.name} mrn not in incidence csv')
 
             path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
-            assess_date = _partners_str2date(_decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype']))
+            assess_date = _partners_str2date(decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype']))
             if assess_date < disease_dicts['follow_up_start'][patient_key_from_ecg]:
                 raise ValueError(f'Assessed earlier than enrollment.')
 
@@ -1481,7 +1494,7 @@ def _survival_from_file(
                 raise KeyError(f'{tm.name} mrn not in incidence csv')
 
             path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
-            assess_date = _partners_str2date(_decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype']))
+            assess_date = _partners_str2date(decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype']))
             if assess_date < disease_dicts['follow_up_start'][patient_key_from_ecg]:
                 raise ValueError(f'Assessed earlier than enrollment.')
 
@@ -1512,7 +1525,7 @@ def _survival_from_file(
 
 
 def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]:
-    name2tensormap: Dict[str: TensorMap] = {}
+    name2tensormap: Dict[str, TensorMap] = {}
     diagnosis2column = {
         'atrial_fibrillation': 'first_af', 'blood_pressure_medication': 'first_bpmed',
         'coronary_artery_disease': 'first_cad', 'cardiovascular_disease': 'first_cvd',
@@ -1640,7 +1653,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
 
             path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
             ecg_date = _partners_str2date(
-                _decompress_data(
+                decompress_data(
                     data_compressed=hd5[path][()],
                     dtype=hd5[path].attrs["dtype"],
                 ),
@@ -1661,7 +1674,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
 def build_cardiac_surgery_tensor_maps(
     needed_tensor_maps: List[str],
 ) -> Dict[str, TensorMap]:
-    name2tensormap: Dict[str:TensorMap] = {}
+    name2tensormap: Dict[str, TensorMap] = {}
     outcome2column = {
         "death": "mtopd",
         "stroke": "cnstrokp",

@@ -458,7 +458,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
     elif tm.is_language():
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if PARTNERS_READ_TEXT in tm.name:
-            caption = _decompress_data(data_compressed=hd5[tm.name][()], dtype=hd5[tm.name].attrs['dtype'])
+            caption = decompress_data(data_compressed=hd5[tm.name][()], dtype=hd5[tm.name].attrs['dtype'])
         else:
             caption = str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()
         char_idx = np.random.randint(len(caption) + 1)
@@ -478,7 +478,11 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         raise ValueError(f'No default tensor_from_file for TensorMap {tm.name} with interpretation: {tm.interpretation}')
 
 
-def _decompress_data(data_compressed, dtype):
+def decompress_data(data_compressed: np.array, dtype: str) -> np.array:
+    """Decompresses a compressed byte array. If the primitive type of the data
+    to decompress is a string, calls decode using the zstd codec. If the
+    primitive type of the data to decompress is not a string (e.g. int or
+    float), the buffer is interpreted using the passed dtype."""
     codec = numcodecs.zstd.Zstd()
     data_decompressed = codec.decode(data_compressed)
     if dtype == 'str':
