@@ -248,6 +248,7 @@ workflow AlignAndCall {
       gatk_override = gatk_override,
       gatk_docker_override = gatk_docker_override,
       compress = compress_output_vcf,
+      base_name = base_name,
       preemptible_tries = preemptible_tries
   }
 
@@ -719,6 +720,7 @@ task FilterLowHetSites {
     File ref_fai
     File ref_dict
     File filtered_vcf
+    String base_name
     Int? max_low_het_sites
     Int? preemptible_tries
     File? gatk_override
@@ -726,8 +728,7 @@ task FilterLowHetSites {
     Boolean compress
   }
 
-  String basename = basename(filtered_vcf, ".vcf")
-  String output_vcf = basename + ".final" + if compress then ".vcf.gz" else ".vcf"
+  String output_vcf = base_name + ".final" + if compress then ".vcf.gz" else ".vcf"
   String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
   Int max_sites = select_first([max_low_het_sites, 3])
   
