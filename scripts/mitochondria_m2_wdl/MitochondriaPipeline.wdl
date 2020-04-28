@@ -2,7 +2,7 @@ version 1.0
 
 import "AlignAndCall.wdl" as AlignAndCall
 
-#import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignAndCall/versions/20/plain-WDL/descriptor" as AlignAndCall
+#import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignAndCall/versions/22/plain-WDL/descriptor" as AlignAndCall
 
 workflow MitochondriaPipeline {
 
@@ -99,6 +99,7 @@ workflow MitochondriaPipeline {
   }
 
   String base_name = basename(SubsetBamToChrM.output_bam, ".bam")
+
 
   call AlignAndCall.AlignAndCall as AlignAndCall {
     input:
@@ -238,7 +239,7 @@ task SubsetBamToChrM {
   runtime {
     memory: "3 GB"
     disks: "local-disk " + disk_size + " HDD"
-    docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
+    docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
     preemptible: select_first([preemptible_tries, 5])
   }
   output {
@@ -396,7 +397,7 @@ task SplitMultiAllelicSites {
     File split_vcf_index = "~{output_vcf}"
   }
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])
