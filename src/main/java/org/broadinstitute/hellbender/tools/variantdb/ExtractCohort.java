@@ -31,7 +31,16 @@ public class ExtractCohort extends GATKTool {
     public static final int DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM = 1000000;
     private VariantContextWriter vcfWriter = null;
     private ExtractCohortEngine engine;
+    public enum Mode {
+        ARRAYS("arrays"),
+        EXOMES("exomes"),
+        GENOMES("genomes");
 
+        private String name;
+        private Mode(String name) {
+            this.name = name;
+        }
+    };
 
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -95,6 +104,13 @@ public class ExtractCohort extends GATKTool {
     )
     private int localSortMaxRecordsInRam = DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM;
 
+    @Argument(
+            fullName = "mode",
+            doc = "Source of genomic data. Valid options are one of arrays, exomes, genomes",
+            optional = false
+    )
+    private Mode mode = Mode.EXOMES;
+
     @Override
     public boolean requiresReference() {
         return true;
@@ -119,7 +135,7 @@ public class ExtractCohort extends GATKTool {
 
         vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
 
-        TableReference sampleTableRef = new TableReference(sampleTableName, SchemaConstants.SAMPLE_FIELDS);
+        TableReference sampleTableRef = new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS);
         Set<String> sampleNames = ExtractCohortBQ.populateSampleNames(sampleTableRef, printDebugInformation);
 
         VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary());
@@ -131,6 +147,7 @@ public class ExtractCohort extends GATKTool {
                 annotationEngine,
                 reference,
                 sampleNames,
+                mode,
                 cohortTable,
                 filteringFQTableName,
                 localSortMaxRecordsInRam,
@@ -157,10 +174,10 @@ public class ExtractCohort extends GATKTool {
     protected void onShutdown() {
         super.onShutdown();
 
-//        if ( evoquerEngine != null ) {
-//            logger.info(String.format("***Processed %d total sites", evoquerEngine.getTotalNumberOfSites()));
-//            logger.info(String.format("***Processed %d total variants", evoquerEngine.getTotalNumberOfVariants()));
-//        }
+        if ( engine != null ) {
+            logger.info(String.format("***Processed %d total sites", engine.getTotalNumberOfSites()));
+            logger.info(String.format("***Processed %d total variants", engine.getTotalNumberOfVariants()));
+        }
 
         // Close up our writer if we have to:
         if ( vcfWriter != null ) {
