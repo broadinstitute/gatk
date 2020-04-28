@@ -847,18 +847,25 @@ def explore(args):
     args.num_workers = 0
     tmaps = args.tensor_maps_in
     fpath_prefix = "summary_stats"
+    tsv_style_is_genetics = 'genetics' in args.tsv_style
+    out_ext = 'tsv' if tsv_style_is_genetics else 'csv'
+    out_sep = '\t' if tsv_style_is_genetics else ','
 
     if any([len(tm.shape) != 1 for tm in tmaps]) and any([(len(tm.shape) == 2) and (tm.shape[0] is not None) for tm in tmaps]):
         raise ValueError("Explore only works for 1D tensor maps, but len(tm.shape) returned a value other than 1.")
 
     # Iterate through tensors, get tmaps, and save to dataframe
     df = _tensors_to_df(args)
+    if tsv_style_is_genetics:
+        fid = df['fpath'].str.split('/').str[-1].str.split('.').str[0]
+        df.insert(0, 'FID', fid)
+        df.insert(1, 'IID', fid)
 
     # Save dataframe to CSV
-    fpath = os.path.join(args.output_folder, args.id, "tensors_all_union.csv")
-    df.to_csv(fpath, index=False)
-    fpath = os.path.join(args.output_folder, args.id, "tensors_all_intersect.csv")
-    df.dropna().to_csv(fpath, index=False)
+    fpath = os.path.join(args.output_folder, args.id, f"tensors_all_union.{out_ext}")
+    df.to_csv(fpath, index=False, sep=out_sep)
+    fpath = os.path.join(args.output_folder, args.id, f"tensors_all_intersect.{out_ext}")
+    df.dropna().to_csv(fpath, index=False, sep=out_sep)
     logging.info(f"Saved dataframe of tensors (union and intersect) to {fpath}")
 
     #fpath = os.path.join(args.output_folder, args.id, "tensors_all_union.csv")

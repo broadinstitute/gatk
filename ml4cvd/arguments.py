@@ -58,6 +58,7 @@ def parse_args():
     parser.add_argument('--phecode_definitions', default='/mnt/ml4cvd/projects/jamesp/data/phecode_definitions1.2.csv', help='CSV of phecode definitions')
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms.')
     parser.add_argument('--test_csv', default=None, help='Path to CSV with Sample IDs to reserve for testing')
+    parser.add_argument('--tsv_style', default='standard', choices=['standard', 'genetics'], help='Format choice for the TSV file produced in output by infer and explore modes.')
     parser.add_argument('--app_csv', help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
     parser.add_argument('--tensors', help='Path to folder containing tensors, or where tensors will be written.')
     parser.add_argument('--output_folder', default='./recipes_output/', help='Path to output folder for recipes.py runs.')
