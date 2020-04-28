@@ -154,13 +154,79 @@ public final class CollectFragmentCounts extends ReadWalker {
             "a non-splicing aligner (such as bwa). ")
     private boolean spliced = true;
 
-    final private LinkedHashMap<Gff3BaseData, FeatureCoverage> featureCounts = new LinkedHashMap<>();
+//    final private LinkedHashMap<Gff3BaseData, FeatureCoverage> featureCounts = new LinkedHashMap<>();
+    final private List<FeatureCoverage> featureCounts = new ArrayList<>();
 
-    final private OverlapDetector<Pair<FeatureCoverage, Gff3BaseData>> featureOverlapDetector = new OverlapDetector<>(0,0);
+    final private OverlapDetector<Pair<FeatureCoverage, List<Interval>>> featureOverlapDetector = new OverlapDetector<>(0,0);
 
     enum MultiOverlapMethod {
-        EQUAL,
-        PROPORTIONAL
+
+        EQUAL {
+            @Override
+            public float getWeight(final List<Interval> alignmentIntervals, final List<Interval> overlappingIntervals) {
+                return 1;
+            }
+        },
+        PROPORTIONAL {
+            @Override
+            float getWeight(final List<Interval> alignmentIntervals, final List<Interval> overlappingIntervals) {
+                final int basesOnReference = alignmentIntervals.stream().map(Interval::getLengthOnReference).reduce(0, Integer::sum);
+                return (float)1.0 - (float)countUncoveredBases(alignmentIntervals, overlappingIntervals)/basesOnReference;
+            }
+
+            int countUncoveredBases(final List<Interval> countingIntervals, final List<Interval> coveringIntervals) {
+                if (coveringIntervals.isEmpty()) {
+                    return (int)Interval.countBases(countingIntervals);
+                }
+                //make sure sorted
+                Collections.sort(countingIntervals);
+                Collections.sort(coveringIntervals);
+
+                Iterator<Interval> countingIntervalsIterator = countingIntervals.iterator();
+                Iterator<Interval> coveringIntervalsIterator = coveringIntervals.iterator();
+
+                int uncoveredBases = 0;
+                Interval currentCoveringInterval = coveringIntervalsIterator.next();
+                int currentIntervalCoveredUntil = 0;
+                while (countingIntervalsIterator.hasNext()) {
+                    final Interval currentCountingInterval = countingIntervalsIterator.next();
+                    currentIntervalCoveredUntil = Math.max(currentCountingInterval.getStart(), currentIntervalCoveredUntil); //we will move through the currentCountingInterval.  this is the first uncovered base
+                    //get to correct contig, or last covering interval
+                    while (currentCoveringInterval.getContig().compareTo(currentCountingInterval.getContig()) < 0 && coveringIntervalsIterator.hasNext()) {
+                        currentCoveringInterval = coveringIntervalsIterator.next();
+                    }
+
+                    //seek until end of currentCoveringInterval is at or past currentCountingIntervalPos
+                    while (currentCoveringInterval.getContig().equals(currentCountingInterval.getContig()) && currentCoveringInterval.getEnd() < currentIntervalCoveredUntil && coveringIntervalsIterator.hasNext()) {
+                        currentCoveringInterval = coveringIntervalsIterator.next();
+                    }
+
+                    while (currentCoveringInterval.overlaps(currentCountingInterval) || currentIntervalCoveredUntil > currentCoveringInterval.getStart()) {
+                        if (currentCoveringInterval.getStart() > currentIntervalCoveredUntil) {
+                            uncoveredBases += currentCoveringInterval.getStart() - currentIntervalCoveredUntil;
+                        }
+
+                        if (currentIntervalCoveredUntil <= currentCoveringInterval.getEnd()) {
+                            currentIntervalCoveredUntil = Math.min(currentCoveringInterval.getEnd() + 1, currentCountingInterval.getEnd() + 1);
+                        }
+
+                        if (!coveringIntervalsIterator.hasNext() || currentIntervalCoveredUntil < currentCoveringInterval.getEnd() + 1) {
+                            break;
+                        }
+
+                        currentCoveringInterval = coveringIntervalsIterator.next();
+                    }
+                    uncoveredBases += currentCountingInterval.getEnd() - currentIntervalCoveredUntil + 1;
+
+                }
+                return uncoveredBases;
+            }
+        };
+
+        abstract float getWeight(final List<Interval> alignmentIntervals, final List<Interval> overlappingIntervals);
+        float getWeightForNoFeature(final List<Interval> alignmentIntervals, final List<Interval> allOverlappingIntervals) {
+            return 1 - getWeight(alignmentIntervals, allOverlappingIntervals);
+        }
     }
 
     @Override
@@ -197,19 +263,26 @@ public final class CollectFragmentCounts extends ReadWalker {
         }
 
         logger.info("collecting list of features");
-        for (final SAMSequenceRecord contig : dict.getSequences()) {
-            final List<Gff3Feature> contigFeatures = features.getFeatures(gffFile, new SimpleInterval(contig.getSequenceName(), 1, contig.getSequenceLength()));
-            logger.info("collecting features in " + contig.getSequenceName());
+        final List<SimpleInterval> allIntervals = hasUserSuppliedIntervals()? getTraversalIntervals() : IntervalUtils.getAllIntervalsForReference(dict);
+        for (final SimpleInterval interval : allIntervals) {
+            final List<Gff3Feature> contigFeatures = features.getFeatures(gffFile, interval);
+            logger.info("collecting features in " + interval.getContig() + ":" + interval.getStart() + "-" + interval.getEnd());
             for (final Gff3Feature feature : contigFeatures) {
-                if(!overlap_type.contains(feature.getType())) {
-                    continue;
-                }
-                final Gff3BaseData overlapBaseData = shrinkBaseData(feature.getBaseData());
                 if (grouping_type.contains(feature.getType())) {
-                    addGroupingFeature(overlapBaseData, overlapBaseData);
+                    final List<Interval> overlappingFeatures = feature.getDescendents().stream().filter(f -> overlap_type.contains(f.getType())).map(f -> new Interval(f.getContig(), f.getStart(), f.getEnd())).collect(Collectors.toList());
+                    final Gff3BaseData shrunkGroupingBaseData = shrinkBaseData(feature.getBaseData());
+                    addGroupingFeature(shrunkGroupingBaseData, overlappingFeatures);
                 }
 
-                feature.getAncestors().stream().filter(f -> grouping_type.contains(f.getType())).map(Gff3Feature::getBaseData).map(this::shrinkBaseData).forEach(b -> addGroupingFeature(b, overlapBaseData));
+//                if(!overlap_type.contains(feature.getType())) {
+//                    continue;
+//                }
+//                final Gff3BaseData overlapBaseData = shrinkBaseData(feature.getBaseData());
+//                if (grouping_type.contains(feature.getType())) {
+//                    addGroupingFeature(overlapBaseData, overlapBaseData);
+//                }
+//
+//                feature.getAncestors().stream().filter(f -> grouping_type.contains(f.getType())).map(Gff3Feature::getBaseData).map(this::shrinkBaseData).forEach(b -> addGroupingFeature(b, overlapBaseData));
             }
         }
 
@@ -223,15 +296,17 @@ public final class CollectFragmentCounts extends ReadWalker {
         return shrunkBaseData;
     }
 
-    private void addGroupingFeature(final Gff3BaseData groupingBaseData, final Gff3BaseData overlappingBaseData) {
+    private void addGroupingFeature(final Gff3BaseData groupingBaseData, final List<Interval> overlappingFeatures) {
         final String geneID = groupingBaseData.getAttributes().get(gene_id_key);
         if (geneID == null) {
             throw new UserException("no geneid field " + gene_id_key + " found in feature at " + groupingBaseData.getContig() + ":" + groupingBaseData.getStart() + "-" + groupingBaseData.getEnd());
         }
 
-        final FeatureCoverage featureCoverage = featureCounts.computeIfAbsent(groupingBaseData,
-                g -> new FeatureCoverage(g, g.getStrand() != Strand.NONE));
-        featureOverlapDetector.addLhs(Pair.of(featureCoverage, overlappingBaseData), overlappingBaseData);
+        final FeatureCoverage featureCoverage =new FeatureCoverage(groupingBaseData, groupingBaseData.getStrand() != Strand.NONE);
+        featureCounts.add(featureCoverage);
+        for (final Interval overlappingFeature : overlappingFeatures) {
+            featureOverlapDetector.addLhs(Pair.of(featureCoverage, overlappingFeatures), overlappingFeature);
+        }
 
 
     }
@@ -327,12 +402,12 @@ public final class CollectFragmentCounts extends ReadWalker {
         if ((!spliced || !read.isReverseStrand() || !inGoodPair(read))) {
             final List<Interval> alignmentIntervals = getAlignmentIntervals(read);
 
-            //List<Gff3Feature> featureCoverageGroups = featureContext.getValues(gffFile);
-            Set<Pair<FeatureCoverage, Gff3BaseData>> featureCoverageGroups;
+            //List<Gff3Feature> groupingFeaturesWithOverlaps = featureContext.getValues(gffFile);
+            Set<Pair<FeatureCoverage, List<Interval>>> groupingFeaturesWithOverlaps;
             if (spliced) {
-                featureCoverageGroups = alignmentIntervals.stream().flatMap(i -> featureOverlapDetector.getOverlaps(i).stream()).collect(Collectors.toSet());
+                groupingFeaturesWithOverlaps = alignmentIntervals.stream().flatMap(i -> featureOverlapDetector.getOverlaps(i).stream()).collect(Collectors.toSet());
             } else {
-                featureCoverageGroups = featureOverlapDetector.getOverlaps(getReadInterval(read));
+                groupingFeaturesWithOverlaps = featureOverlapDetector.getOverlaps(getReadInterval(read));
             }
 
             final Strand fragmentStrand = getFragmentStrand(read);
@@ -340,38 +415,29 @@ public final class CollectFragmentCounts extends ReadWalker {
 
 
             final int basesOnReference = alignmentIntervals.stream().map(Interval::getLengthOnReference).reduce(0, Integer::sum);
-            final Map<FeatureCoverage, List<Interval>> overlapsByGroupingFeatures = new LinkedHashMap<>();
-            //count how many bases in alignmentIntervals are not covered by any feature
-            final List<Interval> overlappingIntervals = featureCoverageGroups.stream().map(p -> new Interval (p.getRight().getContig(), p.getRight().getStart(), p.getRight().getEnd())).collect(Collectors.toList());
+            //final Map<FeatureCoverage, List<Interval>> overlapsByGroupingFeatures = new LinkedHashMap<>();
 
-            float summedWeights = 0;
-            if (multiOverlapMethod == MultiOverlapMethod.PROPORTIONAL) {
-                summedWeights += (float) countUncoveredBases(alignmentIntervals, overlappingIntervals)/basesOnReference; //account for weight to something not included in annotations
-            }
+            final List<Interval> overlappingIntervals = groupingFeaturesWithOverlaps.stream().flatMap(p -> p.getRight().stream()).collect(Collectors.toList());
 
-            for (final Pair<FeatureCoverage, Gff3BaseData> featureCoverageGroup : featureCoverageGroups) {
-                final List<Interval> overlappingFeatures = overlapsByGroupingFeatures.computeIfAbsent(featureCoverageGroup.getLeft(), b -> new ArrayList<>());
-                final Gff3BaseData overlappingFeature = featureCoverageGroup.getRight();
-                overlappingFeatures.add(new Interval(overlappingFeature.getContig(), overlappingFeature.getStart(), overlappingFeature.getEnd()));
-            }
+            float summedWeights = multiOverlapMethod.getWeightForNoFeature(alignmentIntervals, overlappingIntervals);
+
+//            for (final Pair<FeatureCoverage, Gff3BaseData> featureCoverageGroup : groupingFeaturesWithOverlaps) {
+//                final List<Interval> overlappingFeatures = overlapsByGroupingFeatures.computeIfAbsent(featureCoverageGroup.getLeft(), b -> new ArrayList<>());
+//                final Gff3BaseData overlappingFeature = featureCoverageGroup.getRight();
+//                overlappingFeatures.add(new Interval(overlappingFeature.getContig(), overlappingFeature.getStart(), overlappingFeature.getEnd()));
+//            }
             final List<Pair<FeatureCoverage, Float>> unNormalizedWeights = new ArrayList<>();
 
 
-            for (final Map.Entry<FeatureCoverage, List<Interval>> overlapsByGroupingFeature : overlapsByGroupingFeatures.entrySet()) {
+            for (final Pair<FeatureCoverage, List<Interval>> groupingFeatureWithOverlaps :groupingFeaturesWithOverlaps) {
                 float weight;
-                if (multiOverlapMethod == MultiOverlapMethod.PROPORTIONAL) {
-                    weight = (float) 1.0 - (float) countUncoveredBases(alignmentIntervals, overlapsByGroupingFeature.getValue()) / basesOnReference;
-                } else if (multiOverlapMethod == MultiOverlapMethod.EQUAL) {
-                    weight = (float) 1.0;
-                } else {
-                    throw new GATKException("unallowed multi overlap method");
-                }
+                weight = multiOverlapMethod.getWeight(alignmentIntervals, groupingFeatureWithOverlaps.getRight());
                 summedWeights += weight;
-                unNormalizedWeights.add(Pair.of(overlapsByGroupingFeature.getKey(), weight));
+                unNormalizedWeights.add(Pair.of(groupingFeatureWithOverlaps.getLeft(), weight));
             }
 
 
-            final int nGroupingFeaturesCovered = overlapsByGroupingFeatures.size();
+            final int nGroupingFeaturesCovered = groupingFeaturesWithOverlaps.size();
             for (final Pair<FeatureCoverage, Float> unNormalizedWeight : unNormalizedWeights) {
                 final FeatureCoverage featureCoverage = unNormalizedWeight.getLeft();
                 final Gff3BaseData baseData = featureCoverage.baseData;
@@ -386,52 +452,7 @@ public final class CollectFragmentCounts extends ReadWalker {
         }
     }
 
-    private int countUncoveredBases(final List<Interval> countingIntervals, final List<Interval> coveringIntervals) {
-        if (coveringIntervals.isEmpty()) {
-            return (int)Interval.countBases(countingIntervals);
-        }
-        //make sure sorted
-        Collections.sort(countingIntervals);
-        Collections.sort(coveringIntervals);
 
-        Iterator<Interval> countingIntervalsIterator = countingIntervals.iterator();
-        Iterator<Interval> coveringIntervalsIterator = coveringIntervals.iterator();
-
-        int uncoveredBases = 0;
-        Interval currentCoveringInterval = coveringIntervalsIterator.next();
-        while (countingIntervalsIterator.hasNext()) {
-            final Interval currentCountingInterval = countingIntervalsIterator.next();
-            int currentIntervalCoveredUntil = currentCountingInterval.getStart(); //we will move through the currentCountingInterval.  this is the first uncovered base
-            //get to correct contig, or last covering interval
-            while (currentCoveringInterval.getContig().compareTo(currentCountingInterval.getContig()) < 0 && coveringIntervalsIterator.hasNext()) {
-                 currentCoveringInterval = coveringIntervalsIterator.next();
-            }
-
-            //seek until end of currentCoveringInterval is at or past currentCountingIntervalPos
-            while (currentCoveringInterval.getContig().equals(currentCountingInterval.getContig()) && currentCoveringInterval.getEnd() < currentIntervalCoveredUntil && coveringIntervalsIterator.hasNext()) {
-                currentCoveringInterval = coveringIntervalsIterator.next();
-            }
-
-            while (currentCoveringInterval.overlaps(currentCountingInterval)) {
-                if (currentCoveringInterval.getStart() > currentIntervalCoveredUntil) {
-                    uncoveredBases += currentCoveringInterval.getStart() - currentIntervalCoveredUntil;
-                }
-
-                if (currentIntervalCoveredUntil <= currentCoveringInterval.getEnd()) {
-                    currentIntervalCoveredUntil = Math.min(currentCoveringInterval.getEnd() + 1, currentCountingInterval.getEnd() + 1);
-                }
-
-                if (!coveringIntervalsIterator.hasNext()) {
-                    break;
-                }
-
-                currentCoveringInterval = coveringIntervalsIterator.next();
-            }
-            uncoveredBases += currentCountingInterval.getEnd() - currentIntervalCoveredUntil + 1;
-
-        }
-        return uncoveredBases;
-    }
 
     @Override
     public Object onTraversalSuccess() {
@@ -443,7 +464,7 @@ public final class CollectFragmentCounts extends ReadWalker {
                 i++;
             }
             writer.writeMetadata("annotation_file", gffFile.toString());
-            for (final FeatureCoverage featureCoverage : featureCounts.values()) {
+            for (final FeatureCoverage featureCoverage : featureCounts) {
                 for (final SingleStrandFeatureCoverage singleStrandFeatureCoverage : featureCoverage.getSingleStrandCoverages()) {
                     writer.writeRecord(singleStrandFeatureCoverage);
                 }
