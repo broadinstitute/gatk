@@ -17,7 +17,7 @@ public class ExtractCohortBQ {
         Set<String> results = new HashSet<>();
 
         // Get the query string:
-        final String sampleListQueryString = "SELECT sample_name FROM `" + sampleTableRef.getFQTableName() + "`";
+        final String sampleListQueryString = "SELECT " + SchemaUtils.SAMPLE_NAME_FIELD_NAME + " FROM `" + sampleTableRef.getFQTableName() + "`";
         ;
 
         // Execute the query:
