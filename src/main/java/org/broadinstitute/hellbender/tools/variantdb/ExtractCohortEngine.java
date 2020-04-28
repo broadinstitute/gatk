@@ -36,7 +36,6 @@ public class ExtractCohortEngine {
 
     private final boolean printDebugInformation;
     private final int localSortMaxRecordsInRam;
-//    private final TableReference sampleTableRef;
     private final TableReference cohortTableRef;
     private final TableReference filteringTableRef;
     private final ReferenceDataSource refSource;
@@ -45,6 +44,7 @@ public class ExtractCohortEngine {
 
     private final ProgressMeter progressMeter;
     private final String projectID;
+    private final ExtractCohort.Mode mode;
 
     /** List of sample names seen in the variant data from BigQuery. */
     private Set<String> sampleNames;
@@ -59,7 +59,7 @@ public class ExtractCohortEngine {
      * This value is used to construct the genotype information of those missing samples
      * when they are merged together into a {@link VariantContext} object
      */
-    public static final int MISSING_CONF_THRESHOLD = 60;
+    public static int MISSING_CONF_THRESHOLD = 60;
 
 
     public ExtractCohortEngine(final String projectID,
@@ -68,6 +68,7 @@ public class ExtractCohortEngine {
                                final VariantAnnotatorEngine annotationEngine,
                                final ReferenceDataSource refSource,
                                final Set<String> sampleNames,
+                               final ExtractCohort.Mode mode,
                                final String cohortTableName,
                                final String filteringTableName,
                                final int localSortMaxRecordsInRam,
@@ -81,8 +82,9 @@ public class ExtractCohortEngine {
         this.vcfWriter = vcfWriter;
         this.refSource = refSource;
         this.sampleNames = sampleNames;
-        this.cohortTableRef = new TableReference(cohortTableName, SchemaConstants.COHORT_FIELDS);
-        this.filteringTableRef = filteringTableName == null ? null : new TableReference(filteringTableName, SchemaConstants.YNG_FIELDS);
+        this.mode = mode;
+        this.cohortTableRef = new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
+        this.filteringTableRef = filteringTableName == null ? null : new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
         this.printDebugInformation = printDebugInformation;
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
@@ -91,6 +93,9 @@ public class ExtractCohortEngine {
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
     }
+
+    int getTotalNumberOfVariants() { return totalNumberOfVariants; }
+    int getTotalNumberOfSites() { return totalNumberOfSites; }
 
     public void traverse() {
         final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef);
@@ -102,8 +107,8 @@ public class ExtractCohortEngine {
         final Comparator<GenericRecord> sortingCollectionComparator = new Comparator<GenericRecord>() {
             @Override
             public int compare( GenericRecord o1, GenericRecord o2 ) {
-                final long firstPosition = Long.parseLong(o1.get(SchemaConstants.POSITION_FIELD_NAME).toString());
-                final long secondPosition = Long.parseLong(o2.get(SchemaConstants.POSITION_FIELD_NAME).toString());
+                final long firstPosition = Long.parseLong(o1.get(SchemaUtils.POSITION_FIELD_NAME).toString());
+                final long secondPosition = Long.parseLong(o2.get(SchemaUtils.POSITION_FIELD_NAME).toString());
 
                 return Long.compare(firstPosition, secondPosition);
             }
@@ -111,14 +116,12 @@ public class ExtractCohortEngine {
         return EvoquerSortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam);
     }
 
-
-
     private void createVariantsFromUngroupedTableResult(final GATKAvroReader avroReader) {
 
         final org.apache.avro.Schema schema = avroReader.getSchema();
 
         final Set<String> columnNames = new HashSet<>();
-        if ( schema.getField(SchemaConstants.POSITION_FIELD_NAME) == null ) {
+        if ( schema.getField(SchemaUtils.POSITION_FIELD_NAME) == null ) {
             throw new UserException("Records must contain a position column");
         }
         schema.getFields().forEach(field -> columnNames.add(field.name()));
@@ -137,8 +140,8 @@ public class ExtractCohortEngine {
         String currentContig = "";
 
         for ( final GenericRecord sortedRow : sortingCollection ) {
-            final long rowPosition = Long.parseLong(sortedRow.get(SchemaConstants.POSITION_FIELD_NAME).toString());
-            currentContig = sortedRow.get(SchemaConstants.CHROM_FIELD_NAME).toString();
+            final long rowPosition = Long.parseLong(sortedRow.get(SchemaUtils.POSITION_FIELD_NAME).toString());
+            currentContig = sortedRow.get(SchemaUtils.CHROM_FIELD_NAME).toString();
 
             if ( rowPosition != currentPosition && currentPosition != -1 ) {
                 ++totalNumberOfSites;
@@ -168,7 +171,7 @@ public class ExtractCohortEngine {
         final HashMap<Allele, HashMap<Allele, String>> yngMap = new HashMap<>();
 
         for ( final GenericRecord sampleRecord : sampleRecordsAtPosition ) {
-            final String sampleName = sampleRecord.get(SchemaConstants.SAMPLE_FIELD_NAME).toString();
+            final String sampleName = sampleRecord.get(SchemaUtils.SAMPLE_NAME_FIELD_NAME).toString();
             currentPositionSamplesSeen.add(sampleName);
             ++numRecordsAtPosition;
 
@@ -176,40 +179,43 @@ public class ExtractCohortEngine {
                 logger.info("\t" + contig + ":" + currentPosition + ": found record for sample " + sampleName + ": " + sampleRecord);
             }
 
-            switch (sampleRecord.get(SchemaConstants.STATE_FIELD_NAME).toString()) {
+            switch (sampleRecord.get(SchemaUtils.STATE_FIELD_NAME).toString()) {
                 case "v":   // Variant
                     ++totalNumberOfVariants;
                     unmergedCalls.add(createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName, vqsLodMap, yngMap));
                     currentPositionHasVariant = true;
                     break;
                 case "0":   // Non Variant Block with GQ < 10
-                    unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 0));
+                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 0));
                     break;
                 case "1":  // Non Variant Block with 10 <=  GQ < 20
-                    unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 10));
+                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 10));
                     break;
                 case "2":  // Non Variant Block with 20 <= GQ < 30
-                    unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 20));
+                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 20));
                     break;
                 case "3":  // Non Variant Block with 30 <= GQ < 40
-                    unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 30));
+                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 30));
                     break;
                 case "4":  // Non Variant Block with 40 <= GQ < 50
-                    unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 40));
+                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 40));
                     break;
                 case "5":  // Non Variant Block with 50 <= GQ < 60
-                    unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 50));
+                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 50));
                     break;
                 case "6":  // Non Variant Block with 60 <= GQ (usually omitted from tables)
-                    unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 60));
+                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 60));
                     break;
-                case "*":   // Spanning Deletion: TODO handle correctly
+                case "*":   // Spanning Deletion - do nothing. just mark the sample as seen
                     break;
                 case "m":   // Missing
                     // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
                     break;
+                case "u":   // unknown GQ used for array data
+                    unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele));
+                    break;
                 default:
-                    throw new GATKException("Unrecognized state: " + sampleRecord.get(SchemaConstants.STATE_FIELD_NAME).toString());
+                    throw new GATKException("Unrecognized state: " + sampleRecord.get(SchemaUtils.STATE_FIELD_NAME).toString());
             }
 
         }
@@ -227,19 +233,27 @@ public class ExtractCohortEngine {
             return;
         }
 
-        // Find missing samples and synthesize GQ 60s
+        // Find samples for dropped state and synthesize. If not arrays use GQ 60
         final Set<String> samplesNotEncountered = Sets.difference(sampleNames, currentVariantSamplesSeen);
         for ( final String missingSample : samplesNotEncountered ) {
-            unmergedCalls.add(createRefSiteVariantContext(missingSample, contig, start, refAllele, MISSING_CONF_THRESHOLD));
+            if (mode.equals(ExtractCohort.Mode.ARRAYS)) {
+                unmergedCalls.add(createRefSiteVariantContext(missingSample, contig, start, refAllele));
+
+            } else {
+                unmergedCalls.add(createRefSiteVariantContextWithGQ(missingSample, contig, start, refAllele, MISSING_CONF_THRESHOLD));
+            }
         }
 
-        // Note that we remove NON_REF in our variantContextMerger if the GnarlyGenotyper is disabled, but
-        // keep NON_REF around if the GnarlyGenotyper is enabled. This is because the GnarlyGenotyper expects
-        // the NON_REF allele to still be present, and will give incorrect results if it's not.
-        final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], true, false, true);
+        final VariantContext mergedVC = variantContextMerger.merge(
+                unmergedCalls,
+                new SimpleInterval(contig, (int) start, (int) start),
+                refAllele.getBases()[0],
+                true,
+                false,
+                true);
 
 
-        final VariantContext finalVC = filteringTableRef != null ? mergedVC : filterVariants(mergedVC);
+        final VariantContext finalVC = mode.equals(ExtractCohort.Mode.ARRAYS) ? mergedVC : filterVariants(mergedVC);
 //        final VariantContext annotatedVC = enableVariantAnnotator ?
 //                variantAnnotator.annotateContext(finalizedVC, new FeatureContext(), null, null, a -> true): finalVC;
 
@@ -308,9 +322,9 @@ public class ExtractCohortEngine {
         builder.start(startPosition);
 
         final List<Allele> alleles = new ArrayList<>();
-        Allele ref = Allele.create(sampleRecord.get(SchemaConstants.REF_ALLELE_FIELD_NAME).toString(), true);
+        Allele ref = Allele.create(sampleRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME).toString(), true);
         alleles.add(ref);
-        List<Allele> altAlleles = Arrays.stream(sampleRecord.get(SchemaConstants.ALT_ALLELE_FIELD_NAME).toString().split(SchemaConstants.MULTIVALUE_FIELD_DELIMITER))
+        List<Allele> altAlleles = Arrays.stream(sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString().split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER))
                 .map(altAllele -> Allele.create(altAllele, false)).collect(Collectors.toList());
         alleles.addAll(altAlleles);
         builder.alleles(alleles);
@@ -324,9 +338,9 @@ public class ExtractCohortEngine {
 
 
         for ( final String columnName : columnNames ) {
-            if ( SchemaConstants.REQUIRED_FIELDS.contains(columnName) ||
-                    columnName.equals(SchemaConstants.POSITION_FIELD_NAME) ||
-                    columnName.equals(SchemaConstants.CHROM_FIELD_NAME) ) {
+            if ( SchemaUtils.REQUIRED_FIELDS.contains(columnName) ||
+                    columnName.equals(SchemaUtils.POSITION_FIELD_NAME) ||
+                    columnName.equals(SchemaUtils.CHROM_FIELD_NAME) ) {
                 continue;
             }
 
@@ -336,8 +350,8 @@ public class ExtractCohortEngine {
             }
             final String columnValueString = columnValue.toString();
 
-            if ( columnName.startsWith(SchemaConstants.GENOTYPE_FIELD_PREFIX) ) {
-                final String genotypeAttributeName = columnName.substring(SchemaConstants.GENOTYPE_FIELD_PREFIX.length());
+            if ( columnName.startsWith(SchemaUtils.GENOTYPE_FIELD_PREFIX) ) {
+                final String genotypeAttributeName = columnName.substring(SchemaUtils.GENOTYPE_FIELD_PREFIX.length());
 
                 if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_KEY) ) {
                     final List<Allele> genotypeAlleles =
@@ -349,21 +363,21 @@ public class ExtractCohortEngine {
                 } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_QUALITY_KEY) ) {
                     genotypeBuilder.GQ(Integer.parseInt(columnValueString));
                 } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_PL_KEY) ) {
-                    genotypeBuilder.PL(Arrays.stream(columnValueString.split(SchemaConstants.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
+                    genotypeBuilder.PL(Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
                 } else if ( genotypeAttributeName.equals(VCFConstants.DEPTH_KEY) ) {
                     genotypeBuilder.DP(Integer.parseInt(columnValueString));
                 } else if ( genotypeAttributeName.equals(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY) ) {
                     genotypeBuilder.attribute(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, Integer.parseInt(columnValueString));
                 } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS) ) {
-                    genotypeBuilder.AD(Arrays.stream(columnValueString.split(SchemaConstants.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
+                    genotypeBuilder.AD(Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
                 } else if ( genotypeAttributeName.equals(GATKVCFConstants.AS_VQS_LOD_KEY) ) {
                     HashMap<Allele, Double> innerVqslodMap = vqsLodMap.get(ref);
-                    double[] vqslodValues = Arrays.stream(columnValueString.split(SchemaConstants.MULTIVALUE_FIELD_DELIMITER)).mapToDouble(Double::parseDouble).toArray();
+                    double[] vqslodValues = Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToDouble(Double::parseDouble).toArray();
                     // should we use put or putIfAbsent - this may insert the same value multiple times. same with YNG below
                     new IndexRange(0, vqslodValues.length).forEach(i -> innerVqslodMap.put(altAlleles.get(i), vqslodValues[i]));
                 } else if ( genotypeAttributeName.equals("YNG_STATUS") ) {
                     HashMap<Allele, String> innerYNGMap = yngMap.get(ref);
-                    String[] yngValues = columnValueString.split(SchemaConstants.MULTIVALUE_FIELD_DELIMITER);
+                    String[] yngValues = columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER);
                     new IndexRange(0, yngValues.length).forEach(i -> innerYNGMap.put(altAlleles.get(i), yngValues[i]));
                 } else {
                     genotypeBuilder.attribute(genotypeAttributeName, columnValueString);
@@ -378,33 +392,18 @@ public class ExtractCohortEngine {
         return builder.make();
     }
 
-    private VariantContext createRefSiteVariantContext(final String sample, final String contig, final long start, final Allele refAllele, final int gq) {
-        final VariantContextBuilder builder = new VariantContextBuilder();
-        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
-
-        builder.chr(contig);
-        builder.start(start);
-
-        final List<Allele> alleles = new ArrayList<>();
-        alleles.add(refAllele);
-        alleles.add(Allele.NON_REF_ALLELE);
-        builder.alleles(alleles);
-
-        builder.stop(start);
-
-        genotypeBuilder.name(sample);
+    private VariantContext createRefSiteVariantContextWithGQ(final String sample, final String contig, final long start, final Allele refAllele, final Integer gq) {
+        final VariantContextBuilder builder = new VariantContextBuilder("", contig, start, start, new ArrayList<>(Arrays.asList(refAllele, Allele.NON_REF_ALLELE)));
+        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sample, new ArrayList<>(Arrays.asList(refAllele, refAllele)));
 
         builder.attribute(VCFConstants.END_KEY, Long.toString(start));
-
-        final List<Allele> genotypeAlleles = new ArrayList<>();
-        genotypeAlleles.add(refAllele);
-        genotypeAlleles.add(refAllele);
-        genotypeBuilder.alleles(genotypeAlleles);
-
-        genotypeBuilder.GQ(gq);
-
+        if (gq != null) {
+            genotypeBuilder.GQ(gq);
+        }
         builder.genotypes(genotypeBuilder.make());
-
         return builder.make();
+    }
+    private VariantContext createRefSiteVariantContext(final String sample, final String contig, final long start, final Allele refAllele) {
+        return createRefSiteVariantContextWithGQ(sample, contig, start, refAllele, null);
     }
 }
