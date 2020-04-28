@@ -83,8 +83,8 @@ public class ExtractCohortEngine {
         this.refSource = refSource;
         this.sampleNames = sampleNames;
         this.mode = mode;
-        this.cohortTableRef = new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
-        this.filteringTableRef = filteringTableName == null ? null : new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
+        this.cohortTableRef = mode.equals(ExtractCohort.Mode.ARRAYS) ? new TableReference(cohortTableName, SchemaUtils.ARRAY_COHORT_FIELDS) : new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
+        this.filteringTableRef = mode.equals(ExtractCohort.Mode.ARRAYS) ? null : new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
         this.printDebugInformation = printDebugInformation;
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
@@ -107,8 +107,8 @@ public class ExtractCohortEngine {
         final Comparator<GenericRecord> sortingCollectionComparator = new Comparator<GenericRecord>() {
             @Override
             public int compare( GenericRecord o1, GenericRecord o2 ) {
-                final long firstPosition = Long.parseLong(o1.get(SchemaUtils.POSITION_FIELD_NAME).toString());
-                final long secondPosition = Long.parseLong(o2.get(SchemaUtils.POSITION_FIELD_NAME).toString());
+                final long firstPosition = Long.parseLong(o1.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
+                final long secondPosition = Long.parseLong(o2.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
 
                 return Long.compare(firstPosition, secondPosition);
             }
@@ -121,9 +121,9 @@ public class ExtractCohortEngine {
         final org.apache.avro.Schema schema = avroReader.getSchema();
 
         final Set<String> columnNames = new HashSet<>();
-        if ( schema.getField(SchemaUtils.POSITION_FIELD_NAME) == null ) {
-            throw new UserException("Records must contain a position column");
-        }
+//        if ( schema.getField(SchemaUtils.POSITION_FIELD_NAME) == null ) {
+//            throw new UserException("Records must contain a position column");
+//        }
         schema.getFields().forEach(field -> columnNames.add(field.name()));
 //        validateSchema(columnNames);
 
@@ -140,8 +140,9 @@ public class ExtractCohortEngine {
         String currentContig = "";
 
         for ( final GenericRecord sortedRow : sortingCollection ) {
-            final long rowPosition = Long.parseLong(sortedRow.get(SchemaUtils.POSITION_FIELD_NAME).toString());
-            currentContig = sortedRow.get(SchemaUtils.CHROM_FIELD_NAME).toString();
+            final long location = Long.parseLong(sortedRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
+            final long rowPosition = SchemaUtils.decodePosition(location);
+            currentContig = SchemaUtils.decodeContig(location).name();
 
             if ( rowPosition != currentPosition && currentPosition != -1 ) {
                 ++totalNumberOfSites;
@@ -339,8 +340,7 @@ public class ExtractCohortEngine {
 
         for ( final String columnName : columnNames ) {
             if ( SchemaUtils.REQUIRED_FIELDS.contains(columnName) ||
-                    columnName.equals(SchemaUtils.POSITION_FIELD_NAME) ||
-                    columnName.equals(SchemaUtils.CHROM_FIELD_NAME) ) {
+                    columnName.equals(SchemaUtils.LOCATION_FIELD_NAME) ) {
                 continue;
             }
 

@@ -32,14 +32,9 @@ public class ExtractCohort extends GATKTool {
     private VariantContextWriter vcfWriter = null;
     private ExtractCohortEngine engine;
     public enum Mode {
-        ARRAYS("arrays"),
-        EXOMES("exomes"),
-        GENOMES("genomes");
-
-        private String name;
-        private Mode(String name) {
-            this.name = name;
-        }
+        ARRAYS,
+        EXOMES,
+        GENOMES;
     };
 
     @Argument(
@@ -106,7 +101,7 @@ public class ExtractCohort extends GATKTool {
 
     @Argument(
             fullName = "mode",
-            doc = "Source of genomic data. Valid options are one of arrays, exomes, genomes",
+            doc = "Source of genomic data. Valid options are one of ARRAYS, EXOMES, GENOMES",
             optional = false
     )
     private Mode mode = Mode.EXOMES;
