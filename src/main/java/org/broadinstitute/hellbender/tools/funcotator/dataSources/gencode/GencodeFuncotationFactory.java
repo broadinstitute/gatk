@@ -318,9 +318,43 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                      final FeatureInput<? extends Feature> mainFeatureInput,
                                      final FlankSettings flankSettings,
                                      final boolean isDataSourceB37,
-                                     final String ncbiBuildVersion, final boolean isSegmentFuncotationEnabled) {
+                                     final String ncbiBuildVersion,
+                                     final boolean isSegmentFuncotationEnabled) {
+        this(gencodeTranscriptFastaFilePath, version, name,
+                transcriptSelectionMode, userRequestedTranscripts, annotationOverrides, mainFeatureInput,
+                flankSettings, isDataSourceB37, ncbiBuildVersion, isSegmentFuncotationEnabled,
+                FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT);
+    }
 
-        super(mainFeatureInput);
+        /**
+         * Create a {@link GencodeFuncotationFactory}.
+         *
+         * @param gencodeTranscriptFastaFilePath {@link Path} to the FASTA file containing the sequences of all transcripts in the Gencode data source.
+         * @param version The version {@link String} of Gencode from which {@link Funcotation}s will be made.
+         * @param name A {@link String} containing the name of this {@link GencodeFuncotationFactory}.
+         * @param transcriptSelectionMode The {@link TranscriptSelectionMode} by which representative/verbose transcripts will be chosen for overlapping variants.
+         * @param userRequestedTranscripts A {@link Set<String>} containing Gencode TranscriptIDs that the user requests to be annotated with priority over all other transcripts for overlapping variants.
+         * @param annotationOverrides A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
+         * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
+         * @param flankSettings Settings object containing our 5'/3' flank sizes
+         * @param isDataSourceB37 If {@code true}, indicates that the data source behind this {@link GencodeFuncotationFactory} contains B37 data.
+         * @param ncbiBuildVersion The NCBI build version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
+         * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
+         */
+    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFilePath,
+                                     final String version,
+                                     final String name,
+                                     final TranscriptSelectionMode transcriptSelectionMode,
+                                     final Set<String> userRequestedTranscripts,
+                                     final LinkedHashMap<String, String> annotationOverrides,
+                                     final FeatureInput<? extends Feature> mainFeatureInput,
+                                     final FlankSettings flankSettings,
+                                     final boolean isDataSourceB37,
+                                     final String ncbiBuildVersion,
+                                     final boolean isSegmentFuncotationEnabled,
+                                     final int minBasesForValidSegment) {
+
+        super(mainFeatureInput, minBasesForValidSegment);
 
         // Set up our local transcript fasta file.
         // We must localize it (if not on disk) to make read times fast enough to be manageable:
@@ -456,7 +490,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     @Override
     protected List<Funcotation> createDefaultFuncotationsOnVariant( final VariantContext variant, final ReferenceContext referenceContext ) {
-        if (FuncotatorUtils.isSegmentVariantContext(variant)) {
+
+        if (FuncotatorUtils.isSegmentVariantContext(variant, minBasesForValidSegment)) {
             return createSegmentFuncotations(variant, Collections.emptyList(), null, null, null, null);
         } else {
             // Simply create IGR

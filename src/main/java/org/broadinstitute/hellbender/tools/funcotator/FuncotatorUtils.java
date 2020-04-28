@@ -53,6 +53,8 @@ public final class FuncotatorUtils {
      */
     private FuncotatorUtils() {}
 
+    public static final int DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT = 150;
+
     private static final Map<String, AminoAcid> tableByCodon;
     private static final Map<String, AminoAcid> tableByCode;
     private static final Map<String, AminoAcid> tableByLetter;
@@ -2070,11 +2072,11 @@ public final class FuncotatorUtils {
      * Dev note: this is done by examining the length and the alt allele of the segment.
      *
      * @param vc Never {@code null}
+     * @param minSizeForSegment Minimum size for a segment to be valid.
      * @return Boolean whether the given variant context could represent a copy number segment.
      */
-    public static boolean isSegmentVariantContext(final VariantContext vc) {
+    public static boolean isSegmentVariantContext(final VariantContext vc, final int minSizeForSegment) {
         Utils.nonNull(vc);
-        final int MIN_SIZE_FOR_SEGMENT = 150;
         final List<String> ACCEPTABLE_ALT_ALLELES = Stream.concat(
                 Stream.of(SimpleSVType.SupportedType.values())
                         .map(s -> SimpleSVType.createBracketedSymbAlleleString(s.toString())),
@@ -2089,7 +2091,7 @@ public final class FuncotatorUtils {
             }
         }
 
-        return acceptableAlternateAllele && (VariantContextUtils.getSize(vc) > MIN_SIZE_FOR_SEGMENT);
+        return acceptableAlternateAllele && (VariantContextUtils.getSize(vc) > minSizeForSegment);
     }
 
     // ========================================================================================

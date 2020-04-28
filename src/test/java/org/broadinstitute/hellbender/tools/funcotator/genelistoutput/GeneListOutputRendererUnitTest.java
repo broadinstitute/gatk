@@ -9,10 +9,7 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
-import org.broadinstitute.hellbender.tools.funcotator.AnnotatedIntervalToSegmentVariantContextConverter;
-import org.broadinstitute.hellbender.tools.funcotator.FlankSettings;
-import org.broadinstitute.hellbender.tools.funcotator.FuncotationMap;
-import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadataUtils;
@@ -112,6 +109,66 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
         geneListOutputRenderer.write(segmentVariantContext, funcotationMap);
         final SortedMap<Pair<String,String>, Pair<VariantContext, FuncotationMap>> sortedMap = geneListOutputRenderer.getGeneExonToVariantFuncotationMap();
         Assert.assertEquals(sortedMap, gtMap);
+    }
+
+    //TODO: Add 2 write / validateAbleToWrite tests for segment data < 150 bases - .  Use data from issue.
+
+    @DataProvider
+    public Object[][] provideForSegmentLengthTests() {
+
+        final LinkedHashSet<String> funcotationFields = createDummyGencodeFuncotationFactory()
+                .getSupportedFuncotationFieldsForSegments();
+
+        final List<String> testFieldValues = Arrays.asList("GENE1,GENE2,GENE1-AS1", "GENE1", "", "1-", "", "", "");
+        final FuncotationMap funcotationMap = createTestFuncotationMap(funcotationFields, testFieldValues);
+
+        final int start = 356000;
+
+        return new Object[][] {
+            {
+                funcotationMap,
+                    FuncotatorTestUtils.createDummySegmentVariantContext(
+                            start,
+                            start + FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT - 1,
+                            "T"
+                    )
+            },
+        };
+    }
+
+    @Test(dataProvider = "provideForSegmentLengthTests",
+          expectedExceptions = UserException.BadInput.class)
+    public void testValidateAbleToWriteFailureOnShortLength(final FuncotationMap funcotationMap,
+                                                            final VariantContext segmentVariantContext) throws IOException {
+        final File outputFile = File.createTempFile("testFileForSegmentLengthTesting", ".seg");
+        final GeneListOutputRenderer geneListOutputRenderer =
+                new GeneListOutputRenderer(
+                        outputFile.toPath(),
+                        new LinkedHashMap<>(),
+                        new LinkedHashMap<>(),
+                        new HashSet<>(),
+                        "TEST_TOOL"
+                );
+
+        geneListOutputRenderer.validateAbleToWrite(segmentVariantContext, funcotationMap);
+    }
+
+    @Test(dataProvider = "provideForSegmentLengthTests")
+    public void testValidateAbleToWriteSuccessOnShortLengthWithNonDefaultMinSegmentSize(
+            final FuncotationMap funcotationMap, final VariantContext segmentVariantContext
+    ) throws IOException {
+        final File outputFile = File.createTempFile("testFileForSegmentLengthTesting", ".seg");
+        final GeneListOutputRenderer geneListOutputRenderer =
+                new GeneListOutputRenderer(
+                        outputFile.toPath(),
+                        new LinkedHashMap<>(),
+                        new LinkedHashMap<>(),
+                        new HashSet<>(),
+                        "TEST_TOOL",
+                        FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT/2
+                );
+
+        geneListOutputRenderer.validateAbleToWrite(segmentVariantContext, funcotationMap);
     }
 
     @DataProvider
@@ -395,7 +452,8 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
         return result;
     }
 
-    /** More whitebox testing of the gene exon map.
+    /**
+     * More whitebox testing of the gene exon map.
      */
     @Test(dataProvider = "provideGeneExonMapSortingTest")
     public void testSortingOfGeneExonPair(final List<Pair<String,String>> gtSorting,

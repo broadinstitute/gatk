@@ -62,7 +62,9 @@ public class FuncotatorEngineUnitTest extends GATKBaseTest {
                                 new HashSet<>(),
                                 new DummyPlaceholderGatkTool(),
                                 FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE,
-                                new FlankSettings(0, 0), false)
+                                new FlankSettings(0, 0),
+                                false,
+                                FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT)
                 );
 
         for (int i = 0; i < entireVcf.getRight().size(); i++) {

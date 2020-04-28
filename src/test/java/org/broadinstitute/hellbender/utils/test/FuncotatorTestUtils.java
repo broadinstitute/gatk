@@ -335,6 +335,21 @@ public class FuncotatorTestUtils {
     }
 
     /**
+     * Create a very simple dummy variant context that may or may not adhere to the conventions in
+     * {@link AnnotatedIntervalToSegmentVariantContextConverter#convert(AnnotatedInterval, ReferenceContext)}
+     *
+     * Resulting variant will be based on hg19 and will be placed on Chromosome 3.
+     * Resulting variant will always have {@link AnnotatedIntervalToSegmentVariantContextConverter#COPY_NEUTRAL_ALLELE} as its ALT allele.
+     *
+     * @return Never {@code null}
+     */
+    public static VariantContext createDummySegmentVariantContext(final int start, final int end, final String refAllele) {
+        return createSimpleVariantContext(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
+                "3", start, end, refAllele,
+                AnnotatedIntervalToSegmentVariantContextConverter.COPY_NEUTRAL_ALLELE.getDisplayString());
+    }
+
+    /**
      * See {@link FuncotatorTestUtils#createDummySegmentVariantContext()}, but this allows caller to specify attributes
      *   to add.
      *

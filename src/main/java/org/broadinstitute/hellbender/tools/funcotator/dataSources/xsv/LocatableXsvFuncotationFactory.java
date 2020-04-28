@@ -10,9 +10,7 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
-import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
-import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -96,8 +94,23 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
     public LocatableXsvFuncotationFactory(final String name, final String version, final LinkedHashMap<String, String> annotationOverridesMap,
                                           final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput,
                                           final boolean isDataSourceB37){
+        this(name, version, annotationOverridesMap, mainSourceFileAsFeatureInput, isDataSourceB37, FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT);
+    }
 
-        super(mainSourceFileAsFeatureInput);
+    /**
+     * Create a {@link LocatableXsvFuncotationFactory}.
+     * @param name A {@link String} containing the name of this {@link LocatableXsvFuncotationFactory}.
+     * @param version  The version {@link String} of the backing data source from which {@link Funcotation}s will be made.
+     * @param annotationOverridesMap A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param mainSourceFileAsFeatureInput The backing {@link FeatureInput} for this {@link LocatableXsvFuncotationFactory}, from which all {@link Funcotation}s will be created.
+     * @param isDataSourceB37 If {@code true}, indicates that the data source behind this {@link LocatableXsvFuncotationFactory} contains B37 data.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
+     */
+    public LocatableXsvFuncotationFactory(final String name, final String version, final LinkedHashMap<String, String> annotationOverridesMap,
+                                          final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput,
+                                          final boolean isDataSourceB37, final int minBasesForValidSegment){
+
+        super(mainSourceFileAsFeatureInput, minBasesForValidSegment);
 
         this.name = name;
         this.version = version;

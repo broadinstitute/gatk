@@ -11,10 +11,10 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
@@ -25,8 +25,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.BiFunction;
-import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
 /**
@@ -134,8 +132,28 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                                  final LinkedHashMap<String, String> annotationOverridesMap,
                                  final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput,
                                  final boolean isDataSourceB37) {
+        this(name, version, sourceFilePath, annotationOverridesMap, mainSourceFileAsFeatureInput, isDataSourceB37, FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT);
+    }
 
-        super(mainSourceFileAsFeatureInput);
+    /**
+     * Create a {@link VcfFuncotationFactory}.
+     * @param name A {@link String} containing the name of this {@link VcfFuncotationFactory}.
+     * @param version  The version {@link String} of the backing data source from which {@link Funcotation}s will be made.
+     * @param sourceFilePath {@link Path} to the VCF file from which {@link VariantContext}s will be read in and used as Features from which to create {@link Funcotation}s.
+     * @param annotationOverridesMap A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param mainSourceFileAsFeatureInput The backing {@link FeatureInput} for this {@link VcfFuncotationFactory}, from which all {@link Funcotation}s will be created.
+     * @param isDataSourceB37 If {@code true}, indicates that the data source behind this {@link GencodeFuncotationFactory} contains B37 data.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
+     */
+    public VcfFuncotationFactory(final String name,
+                                 final String version,
+                                 final Path sourceFilePath,
+                                 final LinkedHashMap<String, String> annotationOverridesMap,
+                                 final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput,
+                                 final boolean isDataSourceB37,
+                                 final int minBasesForValidSegment) {
+
+        super(mainSourceFileAsFeatureInput, minBasesForValidSegment);
 
         this.name = name;
         this.version = version;

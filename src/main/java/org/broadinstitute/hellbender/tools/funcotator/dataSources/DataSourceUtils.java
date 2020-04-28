@@ -239,6 +239,7 @@ final public class DataSourceUtils {
      * @param gatkToolInstance Instance of the {@link GATKTool} into which to add {@link FeatureInput}s.  Must not be {@code null}.
      * @param lookaheadFeatureCachingInBp Number of base-pairs to cache when querying variants.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @param doAttemptSegmentFuncotationForTranscriptDatasources Allow the caller to specify whether segments should
      *                                                            be annotated with a gencode/transcript datasource.
      *                                                            Not all datasources support this flag and it is
@@ -252,7 +253,8 @@ final public class DataSourceUtils {
                                                                                                         final GATKTool gatkToolInstance,
                                                                                                         final int lookaheadFeatureCachingInBp,
                                                                                                         final FlankSettings flankSettings,
-                                                                                                        final boolean doAttemptSegmentFuncotationForTranscriptDatasources) {
+                                                                                                        final boolean doAttemptSegmentFuncotationForTranscriptDatasources,
+                                                                                                        final int minBasesForValidSegment) {
         Utils.nonNull(dataSourceMetaData);
         Utils.nonNull(annotationOverridesMap);
         Utils.nonNull(transcriptSelectionMode);
@@ -280,22 +282,22 @@ final public class DataSourceUtils {
             switch ( FuncotatorArgumentDefinitions.DataSourceType.getEnum(stringType) ) {
                 case LOCATABLE_XSV:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, XsvTableFeature.class, true);
-                    funcotationFactory = DataSourceUtils.createLocatableXsvDataSource(path, properties, annotationOverridesMap, featureInput);
+                    funcotationFactory = DataSourceUtils.createLocatableXsvDataSource(path, properties, annotationOverridesMap, featureInput, minBasesForValidSegment);
                     break;
                 case SIMPLE_XSV:
-                    funcotationFactory = DataSourceUtils.createSimpleXsvDataSource(path, properties, annotationOverridesMap);
+                    funcotationFactory = DataSourceUtils.createSimpleXsvDataSource(path, properties, annotationOverridesMap, minBasesForValidSegment);
                     break;
                 case COSMIC:
-                    funcotationFactory = DataSourceUtils.createCosmicDataSource(path, properties, annotationOverridesMap);
+                    funcotationFactory = DataSourceUtils.createCosmicDataSource(path, properties, annotationOverridesMap, minBasesForValidSegment);
                     break;
                 case GENCODE:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class, false);
                     funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode,
-                            userTranscriptIdSet, featureInput, flankSettings, doAttemptSegmentFuncotationForTranscriptDatasources);
+                            userTranscriptIdSet, featureInput, flankSettings, doAttemptSegmentFuncotationForTranscriptDatasources, minBasesForValidSegment);
                     break;
                 case VCF:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, VariantContext.class, false);
-                    funcotationFactory = DataSourceUtils.createVcfDataSource(path, properties, annotationOverridesMap, featureInput);
+                    funcotationFactory = DataSourceUtils.createVcfDataSource(path, properties, annotationOverridesMap, featureInput, minBasesForValidSegment);
                     break;
                 default:
                     throw new GATKException("Unknown type of DataSourceFuncotationFactory encountered: " + stringType );
@@ -339,12 +341,14 @@ final public class DataSourceUtils {
      * @param dataSourceProperties {@link Properties} consisting of the contents of the config file for the data source.  Must not be {@code null}.
      * @param annotationOverridesMap {@link LinkedHashMap}{@code <String->String>} containing any annotation overrides to be included in the resulting data source.  Must not be {@code null}.
      * @param featureInput The {@link FeatureInput<? extends Feature>} object for the LocatableXsv data source we are creating.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @return A new {@link LocatableXsvFuncotationFactory} based on the given data source file information and field overrides map.
      */
     private static LocatableXsvFuncotationFactory createLocatableXsvDataSource(final Path dataSourceFile,
                                                                                final Properties dataSourceProperties,
                                                                                final LinkedHashMap<String, String> annotationOverridesMap,
-                                                                               final FeatureInput<? extends Feature> featureInput) {
+                                                                               final FeatureInput<? extends Feature> featureInput,
+                                                                               final int minBasesForValidSegment) {
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
         Utils.nonNull(annotationOverridesMap);
@@ -360,7 +364,8 @@ final public class DataSourceUtils {
                         version,
                         annotationOverridesMap,
                         featureInput,
-                        isB37
+                        isB37,
+                        minBasesForValidSegment
                 );
 
         // Set the supported fields by the LocatableXsvFuncotationFactory:
@@ -421,11 +426,13 @@ final public class DataSourceUtils {
      * @param dataSourceFile {@link Path} to the data source file.  Must not be {@code null}.
      * @param dataSourceProperties {@link Properties} consisting of the contents of the config file for the data source.  Must not be {@code null}.
      * @param annotationOverridesMap {@link LinkedHashMap}{@code <String->String>} containing any annotation overrides to be included in the resulting data source.  Must not be {@code null}.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @return A new {@link SimpleKeyXsvFuncotationFactory} based on the given data source file information and field overrides map.
      */
     private static SimpleKeyXsvFuncotationFactory createSimpleXsvDataSource(final Path dataSourceFile,
-                                                                   final Properties dataSourceProperties,
-                                                                   final LinkedHashMap<String, String> annotationOverridesMap) {
+                                                                            final Properties dataSourceProperties,
+                                                                            final LinkedHashMap<String, String> annotationOverridesMap,
+                                                                            final int minBasesForValidSegment) {
 
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
@@ -435,16 +442,17 @@ final public class DataSourceUtils {
 
         // Create our SimpleKeyXsvFuncotationFactory:
         return new SimpleKeyXsvFuncotationFactory(
-                        dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME),
-                        resolveFilePathStringFromKnownPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), dataSourceFile),
-                        dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION),
-                        dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_DELIMITER),
-                        Integer.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_KEY_COLUMN)),
-                        SimpleKeyXsvFuncotationFactory.XsvDataKeyType.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_KEY)),
-                        annotationOverridesMap,
-                        0,
-                        Boolean.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_PERMISSIVE_COLS)),
-                        isB37
+                    dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME),
+                    resolveFilePathStringFromKnownPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), dataSourceFile),
+                    dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION),
+                    dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_DELIMITER),
+                    Integer.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_KEY_COLUMN)),
+                    SimpleKeyXsvFuncotationFactory.XsvDataKeyType.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_KEY)),
+                    annotationOverridesMap,
+                    0,
+                    Boolean.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_PERMISSIVE_COLS)),
+                    isB37,
+                    minBasesForValidSegment
                 );
     }
 
@@ -453,11 +461,13 @@ final public class DataSourceUtils {
      * @param dataSourceFile {@link Path} to the data source file.  Must not be {@code null}.
      * @param dataSourceProperties {@link Properties} consisting of the contents of the config file for the data source.  Must not be {@code null}.
      * @param annotationOverridesMap {@link LinkedHashMap}{@code <String->String>} containing any annotation overrides to be included in the resulting data source.  Must not be {@code null}.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @return A new {@link CosmicFuncotationFactory} based on the given data source file information and field overrides map.
      */
     private static CosmicFuncotationFactory createCosmicDataSource(final Path dataSourceFile,
                                                                 final Properties dataSourceProperties,
-                                                                final LinkedHashMap<String, String> annotationOverridesMap) {
+                                                                final LinkedHashMap<String, String> annotationOverridesMap,
+                                                                   final int minBasesForValidSegment) {
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
         Utils.nonNull(annotationOverridesMap);
@@ -469,7 +479,8 @@ final public class DataSourceUtils {
                         resolveFilePathStringFromKnownPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), dataSourceFile),
                         annotationOverridesMap,
                         version,
-                        isB37
+                        isB37,
+                minBasesForValidSegment
                 );
     }
 
@@ -482,6 +493,7 @@ final public class DataSourceUtils {
      * @param userTranscriptIdSet {@link Set} of {@link String}s containing transcript IDs of interest to be selected for first.  Must not be {@code null}.
      * @param featureInput The {@link FeatureInput<? extends Feature>} object for the Gencode data source we are creating.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @param isSegmentFuncotationEnabled Do we want to allow the output Gencode Funcotation Factory to do segment annotations?  If false,
      *                                    segments will be funcotated with variant classifications of
      *                                    {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#COULD_NOT_DETERMINE}
@@ -493,8 +505,9 @@ final public class DataSourceUtils {
                                                                      final TranscriptSelectionMode transcriptSelectionMode,
                                                                      final Set<String> userTranscriptIdSet,
                                                                      final FeatureInput<? extends Feature> featureInput,
-                                                                     final FlankSettings flankSettings, final boolean isSegmentFuncotationEnabled) {
-
+                                                                     final FlankSettings flankSettings,
+                                                                     final boolean isSegmentFuncotationEnabled,
+                                                                     final int minBasesForValidSegment) {
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
         Utils.nonNull(annotationOverridesMap);
@@ -521,7 +534,9 @@ final public class DataSourceUtils {
                 featureInput,
                 flankSettings,
                 isB37,
-                ncbiBuildVersion, isSegmentFuncotationEnabled
+                ncbiBuildVersion,
+                isSegmentFuncotationEnabled,
+                minBasesForValidSegment
             );
     }
 
@@ -531,12 +546,14 @@ final public class DataSourceUtils {
      * @param dataSourceProperties {@link Properties} consisting of the contents of the config file for the data source.  Must not be {@code null}.
      * @param annotationOverridesMap {@link LinkedHashMap}{@code <String->String>} containing any annotation overrides to be included in the resulting data source.  Must not be {@code null}.
      * @param featureInput The {@link FeatureInput<? extends Feature>} object for the VCF data source we are creating.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @return A new {@link GencodeFuncotationFactory} based on the given data source file information, field overrides map, and transcript information.
      */
     private static VcfFuncotationFactory createVcfDataSource(final Path dataSourceFile,
                                                              final Properties dataSourceProperties,
                                                              final LinkedHashMap<String, String> annotationOverridesMap,
-                                                             final FeatureInput<? extends Feature> featureInput) {
+                                                             final FeatureInput<? extends Feature> featureInput,
+                                                             final int minBasesForValidSegment) {
 
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
@@ -555,7 +572,8 @@ final public class DataSourceUtils {
                 resolveFilePathStringFromKnownPath(srcFile, dataSourceFile),
                 annotationOverridesMap,
                 featureInput,
-                isB37
+                isB37,
+                minBasesForValidSegment
         );
     }
 
