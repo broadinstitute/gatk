@@ -105,7 +105,7 @@ TMAPS['partners_ecg_supranodal_6_v6_valid'] = TensorMap(
 TMAPS['partners_ecg_supranodal_6_weighted'] = TensorMap(
     'partners_ecg_supranodal_6', interpretation=Interpretation.CATEGORICAL, time_series_limit=0, path_prefix='partners_ecg_rest',
     channel_map={'supraventricular_tachycardia': 0, 'ectopic_atrial_rhythm': 1, 'atrial_flutter': 2, 'atrial_fibrillation': 3, 'sinus_rhythm': 4, 'unspecified': 5},
-    loss=weighted_crossentropy([10.0, 4.0, 4.0, 2.0, 1.0, 1.0], 'partners_supranodal_6'),
+    loss=weighted_crossentropy([70.0, 10.0, 50.0, 7.0, 1.0, 10.0], 'partners_supranodal_6'),
     tensor_from_file=make_partners_ecg_label(
         keys=['read_md_clean', 'read_pc_clean'],
         dict_of_list = {
@@ -221,7 +221,7 @@ TMAPS['partners_ecg_supranodal_6_v6_valid_newest'] = TensorMap(
 TMAPS['partners_ecg_supranodal_6_weighted_newest'] = TensorMap(
     'partners_ecg_supranodal_6_newest', interpretation=Interpretation.CATEGORICAL, path_prefix='partners_ecg_rest',
     channel_map={'supraventricular_tachycardia': 0, 'ectopic_atrial_rhythm': 1, 'atrial_flutter': 2, 'atrial_fibrillation': 3, 'sinus_rhythm': 4, 'unspecified': 5},
-    loss=weighted_crossentropy([10.0, 4.0, 4.0, 2.0, 1.0, 1.0], 'partners_supranodal_6'),
+    loss=weighted_crossentropy([70.0, 10.0, 50.0, 7.0, 1.0, 10.0], 'partners_supranodal_6'),
     tensor_from_file=make_partners_ecg_label(
         keys=['read_md_clean', 'read_pc_clean'],
         dict_of_list = {
