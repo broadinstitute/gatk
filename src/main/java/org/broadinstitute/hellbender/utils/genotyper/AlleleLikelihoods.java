@@ -1326,7 +1326,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             // Retain the filtered evidence for later genotyping purposes
             final List<EVIDENCE> filtered = filteredEvidenceBySampleIndex.get(sampleIndex);
             Arrays.stream(indexesToRemove).forEach(idx -> {
-                System.out.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName());
+//                System.out.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName());
                 filtered.add(sampleEvidence.get(idx));
             });
 
