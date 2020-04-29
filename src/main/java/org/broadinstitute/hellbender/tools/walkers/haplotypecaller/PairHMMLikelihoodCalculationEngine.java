@@ -5,7 +5,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -17,10 +16,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
 import java.util.*;
 import java.util.function.ToDoubleFunction;
 
@@ -50,6 +45,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     private final boolean dynamicDisqualification;
     private final double readDisqualificationScale;
     private final boolean useMapQAsPhredMismappingRate;
+    private final boolean disableCapReadQualitiesToMapQ;
 
     public enum PCRErrorModel {
         /** no specialized PCR error model will be applied; if base insertion/deletion qualities are present they will be used */
@@ -103,7 +99,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final PairHMM.Implementation hmmType,
                                               final double log10globalReadMismappingRate,
                                               final PCRErrorModel pcrErrorModel) {
-        this( constantGCP, dragstrParams, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, false);
+        this( constantGCP, dragstrParams, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, false, false);
     }
 
     /**
@@ -132,7 +128,8 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final byte baseQualityScoreThreshold,
                                               final boolean dynamicReadDisqualificaiton,
                                               final double readDisqualificationScale,
-                                              final boolean useMapQAsPhredMismappingRate) {
+                                              final boolean useMapQAsPhredMismappingRate,
+                                              final boolean capReadQualitiesToMapQ) {
         Utils.nonNull(hmmType, "hmmType is null");
         Utils.nonNull(pcrErrorModel, "pcrErrorModel is null");
         if (constantGCP < 0){
@@ -149,6 +146,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         this.dynamicDisqualification = dynamicReadDisqualificaiton;
         this.readDisqualificationScale = readDisqualificationScale;
         this.useMapQAsPhredMismappingRate = useMapQAsPhredMismappingRate;
+        this.disableCapReadQualitiesToMapQ = capReadQualitiesToMapQ;
 
         initializePCRErrorModel();
 
@@ -331,7 +329,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             final byte[] readDelQuals = ReadUtils.getBaseDeletionQualities(read).clone();
 
             applyPCRErrorModel(readBases, readInsQuals, readDelQuals);
-            capMinimumReadQualities(read, readQuals, readInsQuals, readDelQuals, baseQualityScoreThreshold);
+            capMinimumReadQualities(read, readQuals, readInsQuals, readDelQuals, baseQualityScoreThreshold, disableCapReadQualitiesToMapQ);
 
             // Create a new copy of the read and sets its base qualities to the modified versions.
             result.add(createQualityModifiedRead(read, readBases, readQuals, readInsQuals, readDelQuals));
@@ -339,9 +337,11 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         return result;
     }
 
-    private static void capMinimumReadQualities(final GATKRead read, final byte[] readQuals, final byte[] readInsQuals, final byte[] readDelQuals, final byte baseQualityScoreThreshold) {
+    private static void capMinimumReadQualities(final GATKRead read, final byte[] readQuals, final byte[] readInsQuals, final byte[] readDelQuals, final byte baseQualityScoreThreshold, final boolean disableCapReadQualitiesToMapQ) {
         for( int i = 0; i < readQuals.length; i++ ) {
-            readQuals[i] = (byte) Math.min(0xff & readQuals[i], read.getMappingQuality()); // cap base quality by mapping quality, as in UG
+            if (!disableCapReadQualitiesToMapQ) {
+                readQuals[i] = (byte) Math.min(0xff & readQuals[i], read.getMappingQuality()); // cap base quality by mapping quality, as in UG
+            }
             readQuals[i] =    setToFixedValueIfTooLow( readQuals[i],    baseQualityScoreThreshold,             QualityUtils.MIN_USABLE_Q_SCORE );
             readInsQuals[i] = setToFixedValueIfTooLow( readInsQuals[i], QualityUtils.MIN_USABLE_Q_SCORE,       QualityUtils.MIN_USABLE_Q_SCORE );
             readDelQuals[i] = setToFixedValueIfTooLow( readDelQuals[i], QualityUtils.MIN_USABLE_Q_SCORE,       QualityUtils.MIN_USABLE_Q_SCORE );

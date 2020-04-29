@@ -195,9 +195,9 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         }
 
         // Debug output for the genotyper to see into the calculation itself
-//        System.out.println(String.format("n%d=%2d, best_phred_score =%5.2f q_mean=%5.2f, alpha=%4.2f, Ph(E)=%4.2f;  ", forwards?1:0,
-//                nIndexUsed, minScoreFound, cumulative_mean_base_quality_phred_adjusted[nIndexUsed],
-//                BQD_FIXED_DEFAULT_ALPHA, cumulative_p_R_for_E[nIndexUsed]));
+        System.out.println(String.format("n%d=%2d, best_phred_score =%5.2f q_mean=%5.2f, alpha=%4.2f, Ph(E)=%4.2f;  ", forwards?1:0,
+                nIndexUsed, minScoreFound, cumulative_mean_base_quality_phred_adjusted[nIndexUsed],
+                BQD_FIXED_DEFAULT_ALPHA, cumulative_p_R_for_E[nIndexUsed]));
 
         //TODO this will be where i put my debuglogging (if i had any)
         return minScoreFound;
@@ -372,7 +372,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             double LPsi = gtAllelePrior + lpf + LP_R_GF;
             localMaxLpspi = Math.max(localMaxLpspi, LPsi);
 
-//            System.out.println("beta: "+beta+" localMaxLpspi: " + localMaxLpspi + " for lpf: "+lpf+" with LP_R_GF: "+LP_R_GF+" index: "+counter++);
+            System.out.println("beta: "+beta+" localMaxLpspi: " + localMaxLpspi + " for lpf: "+lpf+" with LP_R_GF: "+LP_R_GF+" index: "+counter++);
             if (localMaxLpspi > maxLpspi) {
                 maxLpspi = Math.max(maxLpspi, localMaxLpspi);
                 lpfApplied = lpf;

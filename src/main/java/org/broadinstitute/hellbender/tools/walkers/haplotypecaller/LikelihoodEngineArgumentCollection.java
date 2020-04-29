@@ -75,6 +75,10 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Argument(fullName ="mapping-quality-based-read-mismapping-rate", doc= "If true this will limit the phred scaled likelihood for a read based on its MQ score", optional = true)
     public boolean mapQBasedReadMismappingRateAdjustment = false;
 
+    @Advanced
+    @Argument(fullName ="disable-cap-base-qualities-to-map-quality", doc= "If false this disables capping of base qualities in the HMM to the mapping quality of the read", optional = true)
+    public boolean capReadQualitiesToMapQ = false;
+
     /**
      * TODO
      */

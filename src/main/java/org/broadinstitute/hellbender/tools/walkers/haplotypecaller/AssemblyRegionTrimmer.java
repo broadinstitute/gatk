@@ -166,6 +166,7 @@ public final class AssemblyRegionTrimmer {
 
         int minStart = variantsInRegion.stream().mapToInt(VariantContext::getStart).min().getAsInt();
         int maxEnd = variantsInRegion.stream().mapToInt(VariantContext::getEnd).max().getAsInt();
+//        System.out.println("minStart ="+minStart+" maxEnd="+maxEnd);
         final SimpleInterval variantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region);
 
         for (final VariantContext vc : variantsInRegion) {
@@ -178,15 +179,20 @@ public final class AssemblyRegionTrimmer {
                     final int mostRepeats = numRepeatsAndUnit.getLeft().stream().max(Integer::compareTo).orElse(0);
                     final int longestSTR = mostRepeats * repeatLength;
                     padding = assemblyRegionArgs.strPaddingForGenotyping + longestSTR;
+//                    System.out.println("repeat length: "+repeatLength+" mostRepeats: "+mostRepeats+" longestSTR: "+longestSTR);
                 }
             }
 
+//            System.out.println("and the padding is: "+padding);
             minStart = Math.min(minStart, Math.max(vc.getStart() - padding,1));
             maxEnd = Math.max(maxEnd, vc.getEnd() + padding);
+//            System.out.println("minStart ="+minStart+" maxEnd="+maxEnd);
         }
 
-        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region);
+//        System.out.println("minStart ="+minStart+" maxEnd="+maxEnd);
+        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region.getPaddedSpan());
 
+//        System.out.println("Padded and trimmed the region to this span: "+ paddedVariantSpan);
         return new Result(region, variantSpan, paddedVariantSpan);
     }
 

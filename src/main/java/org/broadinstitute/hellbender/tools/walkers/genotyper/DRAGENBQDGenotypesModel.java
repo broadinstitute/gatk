@@ -40,7 +40,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 
     public DRAGENBQDGenotypesModel(final boolean useBQDModel, final boolean useFRDModel, final int allelePadding, final DragstrParams dragstrParams) { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY, useBQDModel, useFRDModel, allelePadding,  dragstrParams); }
 
-    /**
+    /*
      *  Initialize model with given maximum allele count and ploidy for caching
      */
     public DRAGENBQDGenotypesModel(final int calculatorCachePloidyCapacity, final int calculatorCacheAlleleCapacity,
@@ -71,8 +71,8 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 
         double api;
         if (dragstrs !=  null) {
-            final int period = dragstrs.mostRepeatedPeriod(offsetForRefIntoEvent);
-            final int repeats = dragstrs.numberOfMostRepeats(offsetForRefIntoEvent);
+            final int period = dragstrs.mostRepeatedPeriod(offsetForRefIntoEvent + 1 );
+            final int repeats = dragstrs.numberOfMostRepeats(offsetForRefIntoEvent + 1);
             api = dragstrParams.api(period, repeats);
 //            System.out.println("API found: "+ api +" with period used: "+period+"  and repeats: "+repeats);
         } else {

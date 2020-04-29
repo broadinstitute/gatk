@@ -594,9 +594,17 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, false, VCpriors);
         }
 
+
+//        System.out.println("\n=================================================");
+//        System.out.println("assemblyRegion: "+new SimpleInterval(region));
+//        System.out.println("=================================================");
+
         // evaluate each sample's reads against all haplotypes
         final List<Haplotype> haplotypes = assemblyResult.getHaplotypeList();
         final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, regionForGenotyping.getReads());
+
+//        System.out.println("Haplotyes:");
+//        haplotypes.forEach(h -> System.out.println(haplotypes));
 
         // Calculate the likelihoods: CPU intensive part.
         final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods =
@@ -611,6 +619,17 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         //  GLs.  In particular, for samples that are heterozygous non-reference (B/C) the marginalization for B treats the
         //  haplotype containing C as reference (and vice versa).  Now this is fine if all possible haplotypes are included
         //  in the genotyping, but we lose information if we select down to a few haplotypes.  [EB]
+
+//        for(int counter = 0; counter < readLikelihoods.sampleEvidence(0).size(); counter++) {
+//            GATKRead read = readLikelihoods.sampleEvidence(0).get(counter);
+//            System.out.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"]");
+//            String hmmScores = "";
+//            for (int h = 0; h < readLikelihoods.numberOfAlleles(); h++) {
+//                hmmScores = hmmScores + "," + readLikelihoods.sampleMatrix(0).get(h, counter);
+//            }
+//            System.out.println(hmmScores);
+//
+//        }
 
         final CalledHaplotypes calledHaplotypes = genotypingEngine.assignGenotypeLikelihoods(
                 haplotypes,
