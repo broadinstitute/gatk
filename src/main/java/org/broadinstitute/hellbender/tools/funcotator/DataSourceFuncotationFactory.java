@@ -62,6 +62,11 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
      */
     protected final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput;
 
+    /**
+     * Minimum number of bases for a segment to be considered valid.
+     */
+    protected int minBasesForValidSegment;
+
     @VisibleForTesting
     public FeatureInput<? extends Feature> getMainSourceFileAsFeatureInput() {
         return mainSourceFileAsFeatureInput;
@@ -69,17 +74,22 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
 
     /**
      * Constructor to initialize final fields in this class with defaults.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      */
-    protected DataSourceFuncotationFactory() {
+    protected DataSourceFuncotationFactory(final int minBasesForValidSegment) {
         this.mainSourceFileAsFeatureInput = null;
+        this.minBasesForValidSegment = minBasesForValidSegment;
     }
 
     /**
      * Constructor to initialize final fields in this class.
      * @param mainSourceFileAsFeatureInput The backing data store as a FeatureInput to leverage tribble querying.  Can be {@code null} for non-locatable funcotation factories.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      */
-    protected DataSourceFuncotationFactory(final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput) {
+    protected DataSourceFuncotationFactory(final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput,
+                                           final int minBasesForValidSegment) {
         this.mainSourceFileAsFeatureInput = mainSourceFileAsFeatureInput;
+        this.minBasesForValidSegment = minBasesForValidSegment;
     }
 
 
@@ -225,7 +235,7 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
         // Create our funcotations:
         final List<Funcotation> outputFuncotations;
 
-        if (FuncotatorUtils.isSegmentVariantContext(variant) && isSupportingSegmentFuncotation()) {
+        if (FuncotatorUtils.isSegmentVariantContext(variant, minBasesForValidSegment) && isSupportingSegmentFuncotation()) {
             outputFuncotations = createFuncotationsOnSegment(variant, referenceContext, featureList);
         } else {
 

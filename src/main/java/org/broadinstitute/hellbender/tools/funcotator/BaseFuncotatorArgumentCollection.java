@@ -105,4 +105,11 @@ abstract class BaseFuncotatorArgumentCollection implements Serializable {
     )
     public int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
 
+    @Advanced
+    @Argument(
+            fullName = FuncotatorArgumentDefinitions.MIN_NUM_BASES_FOR_SEGMENT_FUNCOTATION,
+            optional = true,
+            doc = "The minimum number of bases for a variant to be annotated as a segment.  Recommended to be changed only for use with FuncotateSegments.  Defaults to " + FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT
+    )
+    public int minNumBasesForValidSegment = FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT;
 }

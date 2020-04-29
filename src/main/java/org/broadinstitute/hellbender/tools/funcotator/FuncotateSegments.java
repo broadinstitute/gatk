@@ -142,10 +142,13 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
                 funcotatorArgs.transcriptSelectionMode,
                 finalUserTranscriptIdSet,
                 this,
-                funcotatorArgs.lookaheadFeatureCachingInBp, new FlankSettings(0,0), true)
-                .stream()
-                .filter(DataSourceFuncotationFactory::isSupportingSegmentFuncotation)
-                .collect(Collectors.toList());
+                funcotatorArgs.lookaheadFeatureCachingInBp,
+                new FlankSettings(0,0),
+                true,
+                funcotatorArgs.minNumBasesForValidSegment
+        ).stream()
+         .filter(DataSourceFuncotationFactory::isSupportingSegmentFuncotation)
+         .collect(Collectors.toList());
 
         // Log the datasources
         logger.info("The following datasources support funcotation on segments: ");

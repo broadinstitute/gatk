@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -143,6 +144,16 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
                                     final LinkedHashMap<String, String> annotationOverridesMap,
                                     final String version,
                                     final boolean isDataSourceB37) {
+        this(pathToCosmicDb, annotationOverridesMap, version, isDataSourceB37, FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT);
+    }
+
+    public CosmicFuncotationFactory(final Path pathToCosmicDb,
+                                    final LinkedHashMap<String, String> annotationOverridesMap,
+                                    final String version,
+                                    final boolean isDataSourceB37,
+                                    final int minBasesForValidSegment) {
+
+        super(minBasesForValidSegment);
 
         this.pathToCosmicDb = localizeCosmicDbFileIfRemote(pathToCosmicDb);
         this.version = version;
