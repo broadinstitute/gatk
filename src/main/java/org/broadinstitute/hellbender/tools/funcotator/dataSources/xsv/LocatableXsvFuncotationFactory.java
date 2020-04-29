@@ -10,7 +10,10 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.funcotator.*;
+import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -21,7 +24,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Factory for creating {@link TableFuncotation}s by handling `Separated Value` files with arbitrary delimiters
@@ -144,7 +153,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
     }
 
     @Override
-    protected List<Funcotation> createDefaultFuncotationsOnVariant( final VariantContext variant, final ReferenceContext referenceContext ) {
+    protected List<Funcotation> createDefaultFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext ) {
         return createDefaultFuncotationsOnVariantHelper(variant, referenceContext, Collections.emptySet());
     }
 

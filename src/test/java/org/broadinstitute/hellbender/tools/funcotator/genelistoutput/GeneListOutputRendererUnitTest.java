@@ -9,7 +9,11 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
-import org.broadinstitute.hellbender.tools.funcotator.*;
+import org.broadinstitute.hellbender.tools.funcotator.AnnotatedIntervalToSegmentVariantContextConverter;
+import org.broadinstitute.hellbender.tools.funcotator.FlankSettings;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotationMap;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadataUtils;
@@ -24,7 +28,15 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -42,8 +54,8 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
         final LinkedHashSet<String> funcotationFields = createDummyGencodeFuncotationFactory()
                 .getSupportedFuncotationFieldsForSegments();
 
-        final List<String> testFieldValues1 = Arrays.asList("GENE1,GENE2,GENE1-AS1", "GENE1", "", "1-", "", "", "");
-        final List<Pair<String,String>> gtKeys1 = Arrays.asList(Pair.of("GENE1", "1-"), Pair.of("GENE1-AS1", ""), Pair.of("GENE2", ""));
+        final List<String>  testFieldValues1 = Arrays.asList("GENE1,GENE2,GENE1-AS1", "GENE1", "", "1-", "", "", "");
+        final List<Pair<String,String>> gtKeys1  = Arrays.asList(Pair.of("GENE1", "1-"), Pair.of("GENE1-AS1", ""), Pair.of("GENE2", ""));
         final FuncotationMap funcotationMap1 = createTestFuncotationMap(funcotationFields, testFieldValues1);
         final Pair<VariantContext, FuncotationMap> pairValue1 = Pair.of(segmentVariantContext, funcotationMap1);
 
