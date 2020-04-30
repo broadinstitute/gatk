@@ -246,7 +246,7 @@ public final class IngestVariantWalker extends VariantWalker {
         try {
             // Create a metadata file to go into the metadata dir for _this_ sample
             // TODO--this should just be one file per sample set?
-            final String sampleMetadataName = sampleName + metadataDirectoryName+ FILETYPE;
+            final String sampleMetadataName = sampleName + metadataDirectoryName + FILETYPE;
             final Path sampleMetadataOutputPath = metadataDirectoryPath.resolve(sampleMetadataName);
             // write header to it
             List<String> sampleListHeader = IngestSampleListCreation.getHeaders();
@@ -317,7 +317,7 @@ public final class IngestVariantWalker extends VariantWalker {
             // check to see if this is an array
             if(isArray) {
                 // check if the array variant is homref 0/0 and if it is then add it to the PET as an unknown state
-                if (variant.getGenotype(0).isHomRef()) { // TODO Note the shortcuts taken for the createArrayPositionRows --- no walking to the end or GQ state other than Unknown
+                if (variant.getGenotype(0).isHomRef()) {
                     List<List<String>> TSVLinesToCreatePet;
                     TSVLinesToCreatePet = IngestPetCreation.createArrayPositionRows(get_location(variantChr, start), get_location(variantChr, end), variant, sampleId);
 
