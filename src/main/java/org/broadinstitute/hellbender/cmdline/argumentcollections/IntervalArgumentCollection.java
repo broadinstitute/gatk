@@ -245,7 +245,7 @@ public abstract class IntervalArgumentCollection implements Serializable {
      * Is the interval specified an interval list
      */
     public String intervalListFileSpecified() {
-        if (getIntervalStrings().size()==1 && IntervalUtils.isIntervalFile(getIntervalStrings().get(0))) {
+        if (getIntervalStrings().size()==1 && IntervalUtils.isGatkIntervalFile(getIntervalStrings().get(0))) {
             return getIntervalStrings().get(0);
         } else {
             return null;
