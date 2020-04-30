@@ -3,6 +3,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 
@@ -59,15 +60,17 @@ public final class IngestVetArrayCreation {
 
         call_GT {
             public String getColumnValue(final VariantContext variant) {
+                IndexedAlleleList<Allele> alleleList = new IndexedAlleleList<>(variant.getAlleles());
                 ArrayList<Integer> allele_indices = new ArrayList<Integer>();
-                for (Allele allele : variant.getGenotype(0).getAlleles()){
-                    allele_indices.add(GATKVariantContextUtils.indexOfAllele(variant, allele, true, true, true  ));
-                }
 
+                for (Allele allele : variant.getGenotype(0).getAlleles()) {
+                    allele_indices.add(alleleList.indexOfAllele(allele));
+                }
                 if (allele_indices.size() != 2){
                     throw new IllegalArgumentException("GT doesnt have two alleles");
                 }
-                return variant.getGenotype(0).isPhased() ? StringUtils.join(allele_indices, VCFConstants.PHASED) : StringUtils.join(allele_indices, VCFConstants.UNPHASED) ;
+                String separator = variant.getGenotype(0).isPhased() ? VCFConstants.PHASED : VCFConstants.UNPHASED;
+                return StringUtils.join(allele_indices, separator);
             }
         },
 
