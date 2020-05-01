@@ -104,7 +104,7 @@ public class ContigAlignmentsModifierUnitTest extends GATKBaseTest {
                 1, 120, cigar, true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
 
         final List<AlignmentInterval> generatedARList = Utils.stream(ContigAlignmentsModifier.splitGappedAlignment(alignmentInterval,
-                StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY,
+                StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY,
                 cigar.getReadLength())).collect(Collectors.toList());
 
         Assert.assertEquals(generatedARList.size(), 3);

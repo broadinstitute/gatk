@@ -69,10 +69,10 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
     public void testProcessEvidenceTargetLinks(final List<EvidenceTargetLink> etls,
                                                final List<VariantContext> expectedVariants) {
         final int impreciseEvidenceVariantCallingThreshold =
-                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection().impreciseVariantEvidenceThreshold;
+                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsArgumentCollection().impreciseVariantEvidenceThreshold;
 
         final int maxCallableImpreciseVariantDeletionSize =
-                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection().maxCallableImpreciseVariantDeletionSize;
+                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsArgumentCollection().maxCallableImpreciseVariantDeletionSize;
 
         final ReferenceMultiSparkSource referenceMultiSource = new ReferenceMultiSparkSource(twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
