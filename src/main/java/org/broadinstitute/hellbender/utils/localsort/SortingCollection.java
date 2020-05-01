@@ -2,8 +2,10 @@ package org.broadinstitute.hellbender.utils.localsort;
 
 import htsjdk.samtools.Defaults;
 import htsjdk.samtools.util.*;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,8 +37,8 @@ import java.util.TreeSet;
  * If Snappy DLL is available and snappy.disable system property is not set to true, then Snappy is used
  * to compress temporary files.
  */
-public class EvoquerSortingCollection<T> implements Iterable<T> {
-    private static final Logger log = LogManager.getLogger(EvoquerSortingCollection.class);
+public class SortingCollection<T> implements Iterable<T> {
+    private static final Logger log = LogManager.getLogger(SortingCollection.class);
 
     /**
      * Client must implement this class, which defines the way in which records are written to and
@@ -86,7 +88,7 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
     /**
      * Used to write records to file, and used as a prototype to create codecs for reading.
      */
-    private final EvoquerSortingCollection.Codec<T> codec;
+    private final SortingCollection.Codec<T> codec;
 
     /**
      * For sorting, both when spilling records to file, and merge sorting.
@@ -124,9 +126,9 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
      * @param printRecordSizeSampling If true record size will be sampled and output at DEBUG log level
      * @param tmpDir          Where to write files of records that will not fit in RAM
      */
-    private EvoquerSortingCollection(final Class<T> componentType, final EvoquerSortingCollection.Codec<T> codec,
-                                     final Comparator<T> comparator, final int maxRecordsInRam,
-                                     final boolean printRecordSizeSampling, final Path... tmpDir) {
+    private SortingCollection(final Class<T> componentType, final SortingCollection.Codec<T> codec,
+                              final Comparator<T> comparator, final int maxRecordsInRam,
+                              final boolean printRecordSizeSampling, final Path... tmpDir) {
         if (maxRecordsInRam <= 0) {
             throw new IllegalArgumentException("maxRecordsInRam must be > 0");
         }
@@ -331,12 +333,12 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
      * @deprecated since 2017-09. Use {@link #newInstance(Class, Codec, Comparator, int, Path...)} instead
      */
     @Deprecated
-    public static <T> EvoquerSortingCollection<T> newInstance(final Class<T> componentType,
-                                                              final EvoquerSortingCollection.Codec<T> codec,
-                                                              final Comparator<T> comparator,
-                                                              final int maxRecordsInRAM,
-                                                              final File... tmpDir) {
-        return new EvoquerSortingCollection<>(componentType, codec, comparator, maxRecordsInRAM, false, Arrays.stream(tmpDir).map(File::toPath).toArray(Path[]::new));
+    public static <T> SortingCollection<T> newInstance(final Class<T> componentType,
+                                                       final SortingCollection.Codec<T> codec,
+                                                       final Comparator<T> comparator,
+                                                       final int maxRecordsInRAM,
+                                                       final File... tmpDir) {
+        return new SortingCollection<>(componentType, codec, comparator, maxRecordsInRAM, false, Arrays.stream(tmpDir).map(File::toPath).toArray(Path[]::new));
 
     }
 
@@ -351,12 +353,12 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
      * @deprecated since 2017-09. Use {@link #newInstanceFromPaths(Class, Codec, Comparator, int, Collection)} instead
      */
     @Deprecated
-    public static <T> EvoquerSortingCollection<T> newInstance(final Class<T> componentType,
-                                                              final EvoquerSortingCollection.Codec<T> codec,
-                                                              final Comparator<T> comparator,
-                                                              final int maxRecordsInRAM,
-                                                              final Collection<File> tmpDirs) {
-        return new EvoquerSortingCollection<>(componentType,
+    public static <T> SortingCollection<T> newInstance(final Class<T> componentType,
+                                                       final SortingCollection.Codec<T> codec,
+                                                       final Comparator<T> comparator,
+                                                       final int maxRecordsInRAM,
+                                                       final Collection<File> tmpDirs) {
+        return new SortingCollection<>(componentType,
                 codec,
                 comparator,
                 maxRecordsInRAM,
@@ -374,13 +376,13 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
      * @param maxRecordsInRAM  how many records to accumulate in memory before spilling to disk
      * @param printRecordSizeSampling If true record size will be sampled and output at DEBUG log level
      */
-    public static <T> EvoquerSortingCollection<T> newInstance(final Class<T> componentType,
-                                                              final EvoquerSortingCollection.Codec<T> codec,
-                                                              final Comparator<T> comparator,
-                                                              final int maxRecordsInRAM,
-                                                              final boolean printRecordSizeSampling) {
+    public static <T> SortingCollection<T> newInstance(final Class<T> componentType,
+                                                       final SortingCollection.Codec<T> codec,
+                                                       final Comparator<T> comparator,
+                                                       final int maxRecordsInRAM,
+                                                       final boolean printRecordSizeSampling) {
         final Path tmpDir = Paths.get(System.getProperty("java.io.tmpdir"));
-        return new EvoquerSortingCollection<>(componentType, codec, comparator, maxRecordsInRAM, printRecordSizeSampling, tmpDir);
+        return new SortingCollection<>(componentType, codec, comparator, maxRecordsInRAM, printRecordSizeSampling, tmpDir);
     }
 
     /**
@@ -393,13 +395,13 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
      * @param printRecordSizeSampling If true record size will be sampled and output at DEBUG log level
      * @param tmpDir           Where to write files of records that will not fit in RAM
      */
-    public static <T> EvoquerSortingCollection<T> newInstance(final Class<T> componentType,
-                                                              final EvoquerSortingCollection.Codec<T> codec,
-                                                              final Comparator<T> comparator,
-                                                              final int maxRecordsInRAM,
-                                                              final boolean printRecordSizeSampling,
-                                                              final Path... tmpDir) {
-        return new EvoquerSortingCollection<>(componentType, codec, comparator, maxRecordsInRAM, printRecordSizeSampling, tmpDir);
+    public static <T> SortingCollection<T> newInstance(final Class<T> componentType,
+                                                       final SortingCollection.Codec<T> codec,
+                                                       final Comparator<T> comparator,
+                                                       final int maxRecordsInRAM,
+                                                       final boolean printRecordSizeSampling,
+                                                       final Path... tmpDir) {
+        return new SortingCollection<>(componentType, codec, comparator, maxRecordsInRAM, printRecordSizeSampling, tmpDir);
     }
 
     /**
@@ -410,12 +412,12 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
      * @param comparator      Defines output sort order
      * @param maxRecordsInRAM how many records to accumulate in memory before spilling to disk
      */
-    public static <T> EvoquerSortingCollection<T> newInstance(final Class<T> componentType,
-                                                              final EvoquerSortingCollection.Codec<T> codec,
-                                                              final Comparator<T> comparator,
-                                                              final int maxRecordsInRAM) {
+    public static <T> SortingCollection<T> newInstance(final Class<T> componentType,
+                                                       final SortingCollection.Codec<T> codec,
+                                                       final Comparator<T> comparator,
+                                                       final int maxRecordsInRAM) {
         final Path tmpDir = Paths.get(System.getProperty("java.io.tmpdir"));
-        return new EvoquerSortingCollection<>(componentType, codec, comparator, maxRecordsInRAM, false, tmpDir);
+        return new SortingCollection<>(componentType, codec, comparator, maxRecordsInRAM, false, tmpDir);
     }
 
     /**
@@ -427,12 +429,12 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
      * @param maxRecordsInRAM how many records to accumulate in memory before spilling to disk
      * @param tmpDir          Where to write files of records that will not fit in RAM
      */
-    public static <T> EvoquerSortingCollection<T> newInstance(final Class<T> componentType,
-                                                              final EvoquerSortingCollection.Codec<T> codec,
-                                                              final Comparator<T> comparator,
-                                                              final int maxRecordsInRAM,
-                                                              final Path... tmpDir) {
-        return new EvoquerSortingCollection<>(componentType, codec, comparator, maxRecordsInRAM, false, tmpDir);
+    public static <T> SortingCollection<T> newInstance(final Class<T> componentType,
+                                                       final SortingCollection.Codec<T> codec,
+                                                       final Comparator<T> comparator,
+                                                       final int maxRecordsInRAM,
+                                                       final Path... tmpDir) {
+        return new SortingCollection<>(componentType, codec, comparator, maxRecordsInRAM, false, tmpDir);
     }
 
     /**
@@ -444,12 +446,12 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
      * @param maxRecordsInRAM how many records to accumulate in memory before spilling to disk
      * @param tmpDirs         Where to write files of records that will not fit in RAM
      */
-    public static <T> EvoquerSortingCollection<T> newInstanceFromPaths(final Class<T> componentType,
-                                                                       final EvoquerSortingCollection.Codec<T> codec,
-                                                                       final Comparator<T> comparator,
-                                                                       final int maxRecordsInRAM,
-                                                                       final Collection<Path> tmpDirs) {
-        return new EvoquerSortingCollection<>(componentType,
+    public static <T> SortingCollection<T> newInstanceFromPaths(final Class<T> componentType,
+                                                                final SortingCollection.Codec<T> codec,
+                                                                final Comparator<T> comparator,
+                                                                final int maxRecordsInRAM,
+                                                                final Collection<Path> tmpDirs) {
+        return new SortingCollection<>(componentType,
                 codec,
                 comparator,
                 maxRecordsInRAM,
@@ -464,10 +466,10 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
         private int iterationIndex = 0;
 
         InMemoryIterator() {
-            Arrays.parallelSort(EvoquerSortingCollection.this.ramRecords,
+            Arrays.parallelSort(SortingCollection.this.ramRecords,
                     0,
-                    EvoquerSortingCollection.this.numRecordsInRam,
-                    EvoquerSortingCollection.this.comparator);
+                    SortingCollection.this.numRecordsInRam,
+                    SortingCollection.this.comparator);
         }
 
         @Override
@@ -477,7 +479,7 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
 
         @Override
         public boolean hasNext() {
-            return this.iterationIndex < EvoquerSortingCollection.this.numRecordsInRam;
+            return this.iterationIndex < SortingCollection.this.numRecordsInRam;
         }
 
         @Override
@@ -485,8 +487,8 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
             if (!hasNext()) {
                 throw new NoSuchElementException();
             }
-            T ret = EvoquerSortingCollection.this.ramRecords[iterationIndex];
-            if (destructiveIteration) EvoquerSortingCollection.this.ramRecords[iterationIndex] = null;
+            T ret = SortingCollection.this.ramRecords[iterationIndex];
+            if (destructiveIteration) SortingCollection.this.ramRecords[iterationIndex] = null;
             ++iterationIndex;
             return ret;
         }
@@ -606,7 +608,7 @@ public class EvoquerSortingCollection<T> implements Iterable<T> {
             this.file = file;
             try {
                 this.is = Files.newInputStream(file);
-                this.codec = EvoquerSortingCollection.this.codec.clone();
+                this.codec = SortingCollection.this.codec.clone();
                 this.codec.setInputStream(tempStreamFactory.wrapTempInputStream(this.is, bufferSize));
                 advance();
             } catch (IOException e) {
