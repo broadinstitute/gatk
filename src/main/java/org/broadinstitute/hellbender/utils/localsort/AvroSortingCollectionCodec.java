@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-public class AvroSortingCollectionCodec implements EvoquerSortingCollection.Codec<GenericRecord> {
+public class AvroSortingCollectionCodec implements SortingCollection.Codec<GenericRecord> {
 
     private Schema schema;
     private DataFileWriter<GenericRecord> outputWriter;
@@ -79,7 +79,7 @@ public class AvroSortingCollectionCodec implements EvoquerSortingCollection.Code
     }
 
     @Override
-    public EvoquerSortingCollection.Codec<GenericRecord> clone() {
+    public SortingCollection.Codec<GenericRecord> clone() {
         return new AvroSortingCollectionCodec(schema);
     }
 }
