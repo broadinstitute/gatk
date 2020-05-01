@@ -7,6 +7,8 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DecoderFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.io.IOException;
@@ -15,6 +17,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 public class StorageAPIAvroReader implements GATKAvroReader {
+
+    private static final Logger logger = LogManager.getLogger(StorageAPIAvroReader.class);
 
     private static int rowCount = 0;
 
