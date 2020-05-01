@@ -202,7 +202,7 @@ public class ExtractCohortEngine {
 
             if ( location != currentLocation && currentLocation != -1 ) {
                 ++totalNumberOfSites;
-                processSampleRecordsForLocation(location, currentPositionRecords, columnNames);
+                processSampleRecordsForLocation(currentLocation, currentPositionRecords, columnNames);
 
                 currentPositionRecords.clear();
             }
