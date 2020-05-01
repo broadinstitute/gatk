@@ -5,8 +5,8 @@ set -e
 
 
 REPO=broadinstitute
-PROJECT=gatk-dev
-VERSION=2.5.0-sl-testing
+PROJECT=gatk
+VERSION=2.3.0
 FULL_PATH=${REPO}/${PROJECT}:gatkbase-${VERSION}
 
 #################################################
