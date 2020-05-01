@@ -127,6 +127,7 @@ Attempting to run Docker with
     --rm \
     --ipc=host \
     -v ${WORKDIR}/:${WORKDIR}/ \
+    -v ${HOME}/:${HOME}/ \
     ${MOUNTS} \
     ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
@@ -136,5 +137,6 @@ ${GPU_DEVICE} \
 --rm \
 --ipc=host \
 -v ${WORKDIR}/:${WORKDIR}/ \
+-v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
 ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"

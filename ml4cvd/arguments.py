@@ -24,7 +24,7 @@ from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps
+from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps
 from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
 
@@ -218,6 +218,10 @@ def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
         return TMAPS[name]
 
     TMAPS.update(build_partners_tensor_maps(needed_tensor_maps))
+    if name in TMAPS:
+        return TMAPS[name]
+
+    TMAPS.update(build_cardiac_surgery_tensor_maps(needed_tensor_maps))
     if name in TMAPS:
         return TMAPS[name]
 

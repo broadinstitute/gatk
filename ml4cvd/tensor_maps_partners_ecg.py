@@ -8,7 +8,7 @@ from collections import defaultdict
 from typing import Dict, List, Callable, Union, Tuple
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 
 
@@ -88,7 +88,7 @@ def make_voltage(population_normalize: float = None):
                     slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
                     tensor[slices] = voltage
                 except KeyError:
-                    pass
+                    logging.warning(f'KeyError for channel {cm} in {tm.name}')
         if population_normalize is not None:
             tensor /= population_normalize
         return tensor
@@ -1370,7 +1370,7 @@ def _diagnosis_channels(disease: str, incidence_only: bool = False):
 
 
 def _outcome_channels(outcome: str):
-    return {f'no_{outcome}': 0,  f'future_{outcome}': 1}
+    return {f'no_{outcome}': 0,  f'{outcome}': 1}
 
 
 def loyalty_time_to_event(
@@ -1603,13 +1603,23 @@ def _cardiac_surgery_str2date(input_date: str) -> datetime.datetime:
     return datetime.datetime.strptime(input_date, "%d%b%Y")
 
 
+def _date_in_window_from_dates(ecg_dates, surgery_date, day_window):
+    ecg_dates.sort(reverse=True)
+    for ecg_date in ecg_dates:
+        ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT)
+        if surgery_date - ecg_datetime <= datetime.timedelta(days=day_window):
+            return ecg_date
+    raise ValueError(f'No ECG in time window')
+
+
 def build_cardiac_surgery_outcome_tensor_from_file(
     file_name: str,
+    outcome2column: Dict[str, str],
     patient_column: str = "medrecn",
-    outcome_column: str = "mtopd",
     start_column: str = "surgdt",
     delimiter: str = ",",
     day_window: int = 30,
+    population_normalize: int = None,
 ) -> Callable:
     """Build a tensor_from_file function for outcomes given CSV of patients.
 
@@ -1618,7 +1628,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
 
     :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
     :param patient_column: The header name of the column of patient ids
-    :param diagnosis_date_column: The header name of the column of disease diagnosis dates
+    :param outcome2column: Dictionary mapping outcome names to the header name of the column with outcome status
     :param start_column: The header name of the column of surgery dates
     :param delimiter: The delimiter separating columns of the TSV or CSV
     :return: The tensor_from_file function to provide to TensorMap constructors
@@ -1630,57 +1640,49 @@ def build_cardiac_surgery_outcome_tensor_from_file(
             header = next(reader)
             patient_index = header.index(patient_column)
             date_index = header.index(start_column)
-            outcome_index = header.index(outcome_column)
-            date_surg_table = {}
-            patient_table = {}
+            surgery_date_table = {}
+            outcome_table = defaultdict(dict)
             for row in reader:
                 try:
                     patient_key = int(row[patient_index])
-                    patient_table[patient_key] = int(row[outcome_index])
-                    date_surg_table[patient_key] = _cardiac_surgery_str2date(
-                        row[date_index],
-                    )
-                    if len(patient_table) % 1000 == 0:
-                        logging.debug(f"Processed: {len(patient_table)} patient rows.")
+                    surgery_date_table[patient_key] = _cardiac_surgery_str2date(row[date_index])
+                    for outcome in outcome2column:
+                        outcome_table[outcome][patient_key] = int(row[header.index(outcome2column[outcome])])
+                    if len(outcome_table) % 1000 == 0:
+                        logging.debug(f"Processed: {len(outcome_table)} outcome rows.")
                 except ValueError as e:
-                    logging.warning(f"val err {e}")
+                    logging.debug(f'Value error {e}')
+
+        logging.info(f"Processed outcomes:{list(outcome_table.keys())}. Got {len(surgery_date_table)} patients.")
 
     except FileNotFoundError as e:
         error = e
-
-    logging.info(
-        f"Done processing {outcome_column}. Got {len(patient_table)} patient rows.",
-    )
 
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if error:
             raise error
 
-        ecg_dates = _get_ecg_dates(tm, hd5)
-        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        categorical_data = np.zeros(shape, dtype=np.float32)
-        for i, ecg_date in enumerate(ecg_dates):
-            mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
-            if mrn_int not in patient_table:
-                raise KeyError(f"MRN not in STS outcomes CSV")
+        mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
+        if mrn_int not in surgery_date_table:
+            raise KeyError(f"MRN not in STS outcomes CSV")
 
-            path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
-            ecg_date = _partners_str2date(
-                decompress_data(
-                    data_compressed=hd5[path][()],
-                    dtype=hd5[path].attrs["dtype"],
-                ),
-            )
+        ecg_dates = list(hd5[tm.path_prefix])
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for dtm in tm.dependent_map:
+            dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
+        ecg_date = _date_in_window_from_dates(ecg_dates, surgery_date_table[mrn_int], day_window)
+        for cm in tm.channel_map:
+            path = _make_hd5_path(tm, ecg_date, cm)
+            voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+            voltage = _resample_voltage(voltage, tm.shape[0])
+            tensor[..., tm.channel_map[cm]] = voltage
+        if population_normalize is not None:
+            tensor /= population_normalize
 
-            # Convert ecg_date from datetime.date to datetime.datetime
-            ecg_date = datetime.datetime.combine(ecg_date, datetime.time.min)
+        for dtm in tm.dependent_map:
+            dependents[tm.dependent_map[dtm]][outcome_table[dtm][mrn_int]] = 1.0
 
-            # If the date of surgery - date of ECG is > time window, skip it
-            if date_surg_table[mrn_int] - ecg_date > datetime.timedelta(days=day_window):
-                raise ValueError(f"ECG out of time window")
-
-            categorical_data[(i, patient_table[mrn_int]) if dynamic else (patient_table[mrn_int],)] = 1.0
-        return categorical_data
+        return tensor
     return tensor_from_file
 
 
@@ -1689,37 +1691,55 @@ def build_cardiac_surgery_tensor_maps(
 ) -> Dict[str, TensorMap]:
     name2tensormap: Dict[str, TensorMap] = {}
     outcome2column = {
-        "death": "mtopd",
-        "stroke": "cnstrokp",
-        "renal_failure": "crenfail",
-        "prolonged_ventilation": "crenfail",
-        "dsw_infection": "deepsterninf",
-        "reoperation": "reop",
-        "any_morbidity": "anymorbidity",
-        "long_stay": "llos",
+        "sts_death": "mtopd",
+        "sts_stroke": "cnstrokp",
+        "sts_renal_failure": "crenfail",
+        "sts_prolonged_ventilation": "crenfail",
+        "sts_dsw_infection": "deepsterninf",
+        "sts_reoperation": "reop",
+        "sts_any_morbidity": "anymorbidity",
+        "sts_long_stay": "llos",
     }
 
+    dependent_maps = {}
     for outcome in outcome2column:
-        name = f"outcome_{outcome}"
-        if name in needed_tensor_maps:
-            tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-                file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-                outcome_column=outcome2column[outcome],
-                day_window=30,
-            )
-            name2tensormap[name] = TensorMap(
-                name,
-                Interpretation.CATEGORICAL,
-                path_prefix=PARTNERS_PREFIX,
-                channel_map=_outcome_channels(outcome),
-                tensor_from_file=tensor_from_file_fxn,
-                time_series_limit=0,
-            )
-            name2tensormap[f'{name}_newest'] = TensorMap(
-                f'{name}_newest',
-                Interpretation.CATEGORICAL,
-                path_prefix=PARTNERS_PREFIX,
-                channel_map=_outcome_channels(outcome),
-                tensor_from_file=tensor_from_file_fxn,
-            )
+        channel_map = _outcome_channels(outcome)
+        dependent_maps[outcome] = TensorMap(outcome, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=channel_map)
+
+    name = 'ecg_2500_sts'
+    if name in needed_tensor_maps:
+        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
+            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
+            outcome2column=outcome2column,
+            population_normalize=2000,
+            day_window=30,
+        )
+        name2tensormap[name] = TensorMap(
+            name,
+            shape=(2500, 12),
+            path_prefix=PARTNERS_PREFIX,
+            dependent_map=dependent_maps,
+            channel_map=ECG_REST_AMP_LEADS,
+            tensor_from_file=tensor_from_file_fxn,
+        )
+    name = 'ecg_5000_sts'
+    if name in needed_tensor_maps:
+        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
+            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
+            outcome2column=outcome2column,
+            population_normalize=2000,
+            day_window=30,
+        )
+        name2tensormap[name] = TensorMap(
+            name,
+            shape=(5000, 12),
+            path_prefix=PARTNERS_PREFIX,
+            dependent_map=dependent_maps,
+            channel_map=ECG_REST_AMP_LEADS,
+            tensor_from_file=tensor_from_file_fxn,
+        )
+    for outcome in outcome2column:
+        if outcome in needed_tensor_maps:
+            name2tensormap[outcome] = dependent_maps[outcome]
+
     return name2tensormap
