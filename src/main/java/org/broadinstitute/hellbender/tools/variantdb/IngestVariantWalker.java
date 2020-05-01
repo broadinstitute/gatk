@@ -54,48 +54,6 @@ public final class IngestVariantWalker extends VariantWalker {
     private String sampleId;
     private List<SimpleInterval> userIntervals;
 
-    public long chromAdjustment = 1000000000000L;
-
-    public enum ChromosomeEnum {
-        CHR1(1),
-        CHR2(2),
-        CHR3(3),
-        CHR4(4),
-        CHR5(5),
-        CHR6(6),
-        CHR7(7),
-        CHR8(8),
-        CHR9(9),
-        CHR10(10),
-        CHR11(11),
-        CHR12(12),
-        CHR13(13),
-        CHR14(14),
-        CHR15(15),
-        CHR16(16),
-        CHR17(17),
-        CHR18(18),
-        CHR19(19),
-        CHR20(20),
-        CHR21(21),
-        CHR22(22),
-        CHRX(23),
-        CHRY(24),
-        CHRM(25);
-
-        int index;
-
-        ChromosomeEnum(int index) {
-            this.index = index;
-        }
-    }
-
-    public long get_location(String chrom, int position) {
-        int chromosomeIndex = ChromosomeEnum.valueOf(chrom.toUpperCase()).index;
-        long adjustedLocation = Long.valueOf(chromosomeIndex) * chromAdjustment + Long.valueOf(position);
-        return adjustedLocation;
-    }
-
     // To determine which directory (and ultimately table) the sample's data will go into
     // Since tables have a limited number of samples (default is 4k)
     public int getSampleDirectoryNumber(String sampleId, int sampleMod) { // this is based on sample id
@@ -120,7 +78,7 @@ public final class IngestVariantWalker extends VariantWalker {
             shortName = "IG",
             doc = "Ref Block GQ band to ignore, bands of 10 e.g 0-9 get combined to 0, 20-29 get combined to 20",
             optional = true)
-    public String gqStateToIgnore = "SIXTY";  // TODO -- this will be an enum from the PetCreation: GQStateEnum
+    public IngestPetCreation.GQStateEnum gqStateToIgnore = IngestPetCreation.GQStateEnum.SIXTY;
 
     @Argument(fullName = "sample-name-mapping",
             shortName = "SNM",
@@ -131,8 +89,19 @@ public final class IngestVariantWalker extends VariantWalker {
             shortName = "IA",
             doc = "Flag if the input vcf is an array",
             optional = true)
-    public Boolean isArray = false; // TODO -- this will be an enum called MODE
+    public Boolean isArray = false;
 
+    @Argument(fullName = "mode",
+            shortName = "MO",
+            doc = "Type of sample. Default is EXOMES. Valid options are ARRAYS, EXOMES, GENOMES",
+            optional = true)
+    public CommonCode.ModeEnum mode = CommonCode.ModeEnum.EXOMES;
+
+    @Argument(
+            fullName = "ref-version",
+            doc = "Remove this option!!!! only for ease of testing. Valid options are 37 or 38",
+            optional = true)
+    private String refVersion = "38"; // TODO note the the extraction has 37 as the default
 
     @Override
     public boolean requiresIntervals() {
@@ -141,6 +110,9 @@ public final class IngestVariantWalker extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
+
+        // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
+        ChromosomeEnum.setRefVersion(refVersion);
 
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
@@ -261,7 +233,7 @@ public final class IngestVariantWalker extends VariantWalker {
                     sampleName,
                     sampleId,
                     intervalListMd5,
-                    IngestPetCreation.GQStateEnum.valueOf(gqStateToIgnore));
+                    gqStateToIgnore);
             sampleMetadataWriter.getNewLineBuilder().setRow(TSVLineToCreateSampleMetadata).write();
 
         } catch (final IOException e) {
@@ -319,14 +291,14 @@ public final class IngestVariantWalker extends VariantWalker {
                 // check if the array variant is homref 0/0 and if it is then add it to the PET as an unknown state
                 if (variant.getGenotype(0).isHomRef()) {
                     List<List<String>> TSVLinesToCreatePet;
-                    TSVLinesToCreatePet = IngestPetCreation.createArrayPositionRows(get_location(variantChr, start), get_location(variantChr, end), variant, sampleId);
+                    TSVLinesToCreatePet = IngestPetCreation.createArrayPositionRows(SchemaUtils.encodeLocation(variantChr, start), SchemaUtils.encodeLocation(variantChr, end), variant, sampleId);
 
                     for (List<String> TSVLineToCreatePet : TSVLinesToCreatePet) {
                         petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
                     }
                 } else {
                     final List<String> TSVLineToCreateVet = IngestVetArrayCreation.createVariantRow(
-                            get_location(variantChr, start),
+                            SchemaUtils.encodeLocation(variantChr, start),
                             variant,
                             sampleId
                     );
@@ -338,7 +310,7 @@ public final class IngestVariantWalker extends VariantWalker {
 
                     // also add to PET
                     List<List<String>> TSVLinesToCreatePet;
-                    TSVLinesToCreatePet = IngestPetCreation.createPositionRows(get_location(variantChr, start), get_location(variantChr, end), variant, sampleId);
+                    TSVLinesToCreatePet = IngestPetCreation.createPositionRows(SchemaUtils.encodeLocation(variantChr, start), SchemaUtils.encodeLocation(variantChr, end), variant, sampleId);
 
                     // write the position to the XSV
                     for (List<String> TSVLineToCreatePet : TSVLinesToCreatePet) {
@@ -351,7 +323,7 @@ public final class IngestVariantWalker extends VariantWalker {
             }
             // else, it must be an exome or genome!
             final List<String> TSVLineToCreateVet = IngestVetExomeCreation.createVariantRow(
-                    get_location(variantChr, start),
+                    SchemaUtils.encodeLocation(variantChr, start),
                     variant,
                     sampleId
             );
@@ -370,13 +342,13 @@ public final class IngestVariantWalker extends VariantWalker {
             // TODO throw an error if start and end are the same?
 
             // for each of the reference blocks with the GQ to discard, keep track of the positions for the missing insertions
-            if (IngestPetCreation.getGQStateEnum(variant.getGenotype(0).getGQ()).equals(IngestPetCreation.GQStateEnum.valueOf(gqStateToIgnore))) {
+            if (IngestPetCreation.getGQStateEnum(variant.getGenotype(0).getGQ()).equals(gqStateToIgnore)) {
                 // add interval to "covered" intervals
                 setCoveredInterval(variantChr, start, end);
             }
 
             // create PET output if the reference block's GQ is not the one to discard or its a variant
-            if (!variant.isReferenceBlock() || !IngestPetCreation.getGQStateEnum(variant.getGenotype(0).getGQ()).equals(IngestPetCreation.GQStateEnum.valueOf(gqStateToIgnore))) {
+            if (!variant.isReferenceBlock() || !IngestPetCreation.getGQStateEnum(variant.getGenotype(0).getGQ()).equals(gqStateToIgnore)) {
 
                 // add interval to "covered" intervals
                 setCoveredInterval(variantChr, start, end);
@@ -385,15 +357,15 @@ public final class IngestVariantWalker extends VariantWalker {
                 // handle deletions that span across multiple intervals
                 if (!firstInterval && !variant.isReferenceBlock()) {
                     TSVLinesToCreatePet = IngestPetCreation.createSpanDelRows(
-                            get_location(variantChr, start),
-                            get_location(variantChr, end),
+                            SchemaUtils.encodeLocation(variantChr, start),
+                            SchemaUtils.encodeLocation(variantChr, end),
                             variant,
                             sampleId
                     );
                 } else {
                     TSVLinesToCreatePet = IngestPetCreation.createPositionRows(
-                            get_location(variantChr, start),
-                            get_location(variantChr, end),
+                            SchemaUtils.encodeLocation(variantChr, start),
+                            SchemaUtils.encodeLocation(variantChr, end),
                             variant,
                             sampleId
                     );
@@ -418,8 +390,8 @@ public final class IngestVariantWalker extends VariantWalker {
             final String contig = genomeLoc.getContig();
             // write the position to the XSV
             for (List<String> TSVLineToCreatePet : IngestPetCreation.createMissingTSV(
-                    get_location(contig, genomeLoc.getStart()),
-                    get_location(contig, genomeLoc.getEnd()),
+                    SchemaUtils.encodeLocation(contig, genomeLoc.getStart()),
+                    SchemaUtils.encodeLocation(contig, genomeLoc.getEnd()),
                     sampleId
             )) {
                 petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
