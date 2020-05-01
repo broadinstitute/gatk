@@ -222,7 +222,7 @@ public class ExtractCohortEngine {
         final Set<String> currentPositionSamplesSeen = new HashSet<>();
         boolean currentPositionHasVariant = false;
         final long currentPosition = SchemaUtils.decodePosition(location);
-        final String contig = SchemaUtils.decodeContig(location).name();
+        final String contig = SchemaUtils.decodeContig(location);
         final Allele refAllele = Allele.create(refSource.queryAndPrefetch(contig, currentPosition, currentPosition).getBaseString(), true);
         int numRecordsAtPosition = 0;
 
