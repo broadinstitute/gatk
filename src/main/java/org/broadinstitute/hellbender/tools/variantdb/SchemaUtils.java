@@ -53,8 +53,8 @@ public class SchemaUtils {
         return adjustedLocation;
     }
 
-    public static ChromosomeEnum decodeContig(long location) {
-        return ChromosomeEnum.valueOfIndex((int)(location/chromAdjustment));
+    public static String decodeContig(long location) {
+        return ChromosomeEnum.valueOfIndex((int)(location/chromAdjustment)).getContigName();
     }
 
     public static int decodePosition(long location) {
