@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.variantdb;
 
+import com.google.cloud.bigquery.FieldValueList;
+import com.google.cloud.bigquery.TableResult;
 import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -9,21 +11,19 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.bigquery.GATKAvroReader;
-import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
-import org.broadinstitute.hellbender.utils.bigquery.TableReference;
+import org.broadinstitute.hellbender.utils.bigquery.*;
 import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollectionCodec;
-import org.broadinstitute.hellbender.utils.localsort.EvoquerSortingCollection;
+import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
@@ -49,7 +49,7 @@ public class ExtractCohortEngine {
     /** List of sample names seen in the variant data from BigQuery. */
     private Set<String> sampleNames;
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
-
+    private final ExtractCohort.QueryMode queryMode;
 
     private int totalNumberOfVariants = 0;
     private int totalNumberOfSites = 0;
@@ -75,7 +75,8 @@ public class ExtractCohortEngine {
                                final boolean printDebugInformation,
                                final double vqsLodSNPThreshold,
                                final double vqsLodINDELThreshold,
-                               final ProgressMeter progressMeter) {
+                               final ProgressMeter progressMeter,
+                               final ExtractCohort.QueryMode queryMode) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -89,6 +90,7 @@ public class ExtractCohortEngine {
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
         this.progressMeter = progressMeter;
+        this.queryMode = queryMode;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
@@ -98,12 +100,66 @@ public class ExtractCohortEngine {
     int getTotalNumberOfSites() { return totalNumberOfSites; }
 
     public void traverse() {
-        final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef);
-        createVariantsFromUngroupedTableResult(storageAPIAvroReader);
+        switch (queryMode) {
+            case LOCAL_SORT:
+                if (printDebugInformation) {
+                    logger.debug("using storage api with local sort");
+                }
+                final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef);
+                createVariantsFromUngroupedTableResult(storageAPIAvroReader);
+                break;
+            case QUERY:
+                if (printDebugInformation) {
+                    logger.debug("using query api with order by");
+                }
+                // create the query string
+                String q = "SELECT " + StringUtils.join(SchemaUtils.ARRAY_COHORT_FIELDS,",") + " FROM " + cohortTableRef.getFQTableName() + " ORDER BY " + SchemaUtils.LOCATION_FIELD_NAME;
+                TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), cohortTableRef.tableProject, cohortTableRef.tableDataset, q);
+                createVariantsFromSortedTableResults(new QueryAPIRowReader(tr));
+                break;
+        }
     }
 
-    private EvoquerSortingCollection<GenericRecord> getEvoquerSortingCollection(org.apache.avro.Schema schema) {
-        final EvoquerSortingCollection.Codec<GenericRecord> sortingCollectionCodec = new AvroSortingCollectionCodec(schema);
+    private void createVariantsFromSortedTableResults(final QueryAPIRowReader reader) {
+
+//        final Set<String> columnNames = new HashSet<>();
+//        if ( schema.getField(POSITION_FIELD_NAME) == null || schema.getField(VALUES_ARRAY_FIELD_NAME) == null ) {
+//            throw new UserException("Records must contain position and values columns");
+//        }
+//        schema.getField(VALUES_ARRAY_FIELD_NAME).schema().getElementType().getFields().forEach(field -> columnNames.add(field.name()));
+//        validateSchema(columnNames);
+
+        List<GenericRecord> sampleRecords = new ArrayList<>();
+        long currentLocation = -1;
+
+        while (reader.hasNext()) {
+            ++totalNumberOfSites;
+            FieldValueList row = reader.next();
+
+            final long location = row.get(SchemaUtils.LOCATION_FIELD_NAME).getLongValue();
+            if (currentLocation < 0) {
+                currentLocation = location;
+            }
+
+            if (currentLocation != location) {
+                if ( printDebugInformation ) {
+                    logger.info(currentLocation + ": processing records");
+                }
+                // TODO this should start a thread or something - i.e. scatter
+                processSampleRecordsForLocation(currentLocation, sampleRecords, new HashSet<>(SchemaUtils.ARRAY_COHORT_FIELDS));
+                currentLocation = location;
+                sampleRecords = new ArrayList<>();
+            }
+
+            sampleRecords.add(new QueryRecord(row));
+
+        }
+        processSampleRecordsForLocation(currentLocation, sampleRecords, new HashSet<>(SchemaUtils.ARRAY_COHORT_FIELDS));
+
+    }
+
+    public static SortingCollection<GenericRecord> getAvroSortingCollection(org.apache.avro.Schema schema, int localSortMaxRecordsInRam) {
+        final SortingCollection.Codec<GenericRecord> sortingCollectionCodec = new AvroSortingCollectionCodec(schema);
         final Comparator<GenericRecord> sortingCollectionComparator = new Comparator<GenericRecord>() {
             @Override
             public int compare( GenericRecord o1, GenericRecord o2 ) {
@@ -113,8 +169,11 @@ public class ExtractCohortEngine {
                 return Long.compare(firstPosition, secondPosition);
             }
         };
-        return EvoquerSortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam);
+        return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam);
     }
+
+
+
 
     private void createVariantsFromUngroupedTableResult(final GATKAvroReader avroReader) {
 
@@ -127,7 +186,7 @@ public class ExtractCohortEngine {
         schema.getFields().forEach(field -> columnNames.add(field.name()));
 //        validateSchema(columnNames);
 
-        EvoquerSortingCollection<GenericRecord> sortingCollection =  getEvoquerSortingCollection(schema);
+        SortingCollection<GenericRecord> sortingCollection =  getAvroSortingCollection(schema, localSortMaxRecordsInRam);
 
         for ( final GenericRecord queryRow : avroReader ) {
             sortingCollection.add(queryRow);
@@ -136,35 +195,34 @@ public class ExtractCohortEngine {
         sortingCollection.printTempFileStats();
 
         final List<GenericRecord> currentPositionRecords = new ArrayList<>(sampleNames.size() * 2);
-        long currentPosition = -1;
-        String currentContig = "";
+        long currentLocation = -1;
 
         for ( final GenericRecord sortedRow : sortingCollection ) {
             final long location = Long.parseLong(sortedRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-            final long rowPosition = SchemaUtils.decodePosition(location);
-            currentContig = SchemaUtils.decodeContig(location).name();
 
-            if ( rowPosition != currentPosition && currentPosition != -1 ) {
+            if ( location != currentLocation && currentLocation != -1 ) {
                 ++totalNumberOfSites;
-                processSampleRecordsForPosition(currentPosition, currentContig, currentPositionRecords, columnNames);
+                processSampleRecordsForLocation(location, currentPositionRecords, columnNames);
 
                 currentPositionRecords.clear();
             }
 
             currentPositionRecords.add(sortedRow);
-            currentPosition = rowPosition;
+            currentLocation = location;
         }
 
         if ( ! currentPositionRecords.isEmpty() ) {
             ++totalNumberOfSites;
-            processSampleRecordsForPosition(currentPosition, currentContig, currentPositionRecords, columnNames);
+            processSampleRecordsForLocation(currentLocation, currentPositionRecords, columnNames);
         }
     }
 
-    private void processSampleRecordsForPosition(final long currentPosition, final String contig, final Iterable<GenericRecord> sampleRecordsAtPosition, final Set<String> columnNames) {
+    private void processSampleRecordsForLocation(final long location, final Iterable<GenericRecord> sampleRecordsAtPosition, final Set<String> columnNames) {
         final List<VariantContext> unmergedCalls = new ArrayList<>();
         final Set<String> currentPositionSamplesSeen = new HashSet<>();
         boolean currentPositionHasVariant = false;
+        final long currentPosition = SchemaUtils.decodePosition(location);
+        final String contig = SchemaUtils.decodeContig(location).name();
         final Allele refAllele = Allele.create(refSource.queryAndPrefetch(contig, currentPosition, currentPosition).getBaseString(), true);
         int numRecordsAtPosition = 0;
 
