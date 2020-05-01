@@ -534,6 +534,7 @@ task collectBundleIntoDir(type: Copy) {
 
 task bundle(type: Zip) {
     dependsOn collectBundleIntoDir
+    zip64 true
 
     baseName = project.name + "-" + project.version
     destinationDir file("$buildDir")
