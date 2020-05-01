@@ -37,6 +37,11 @@ public class ExtractCohort extends GATKTool {
         GENOMES;
     };
 
+    public enum QueryMode {
+        LOCAL_SORT,
+        QUERY
+    }
+
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -106,6 +111,20 @@ public class ExtractCohort extends GATKTool {
     )
     private Mode mode = Mode.EXOMES;
 
+    @Argument(
+            fullName = "query-mode",
+            doc = "Source of genomic data. Valid options are one of GROUP_BY, LOCAL_SORT, QUERY",
+            optional = false
+    )
+    private QueryMode queryMode = QueryMode.QUERY;
+
+    @Argument(
+            fullName = "ref-version",
+            doc = "Remove this option!!!! only for ease of testing. Valid options are 37 or 38",
+            optional = true
+    )
+    private String refVersion = "37";
+
     @Override
     public boolean requiresReference() {
         return true;
@@ -135,6 +154,8 @@ public class ExtractCohort extends GATKTool {
 
         VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary());
 
+        ChromosomeEnum.setRefVersion(refVersion);
+
         engine = new ExtractCohortEngine(
                 projectID,
                 vcfWriter,
@@ -149,7 +170,8 @@ public class ExtractCohort extends GATKTool {
                 printDebugInformation,
                 vqsLodSNPThreshold,
                 vqsLodINDELThreshold,
-                progressMeter);
+                progressMeter,
+                queryMode);
         vcfWriter.writeHeader(header);
     }
 
