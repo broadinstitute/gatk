@@ -81,11 +81,13 @@ class TensorGenerator:
         self.augment = augment
         self.run_on_main_thread = num_workers == 0
         self.q = None
+        self.stats_q = None
         self._started = False
         self.workers = []
         self.worker_instances = []
         self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.name, self.keep_paths = \
             batch_size, input_maps, output_maps, num_workers, cache_size, weights, name, keep_paths
+        self.true_epochs = 0
         if num_workers == 0:
             num_workers = 1  # The one worker is the main thread
         if weights is None:
@@ -117,11 +119,14 @@ class TensorGenerator:
 
     def _init_workers(self):
         self.q = Queue(min(self.batch_size, TENSOR_GENERATOR_MAX_Q_SIZE))
+        self.stats_q = Queue(len(self.worker_instances))
         self._started = True
         for i, (path_iter, iter_len) in enumerate(zip(self.path_iters, self.true_epoch_lens)):
             name = f'{self.name}_{i}'
             worker_instance = _MultiModalMultiTaskWorker(
                 self.q,
+                self.stats_q,
+                self.num_workers,
                 self.input_maps, self.output_maps,
                 path_iter, iter_len,
                 self.batch_function, self.batch_size, self.keep_paths, self.batch_function_kwargs,
@@ -153,7 +158,47 @@ class TensorGenerator:
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
         else:
+            if self.stats_q.qsize() == self.num_workers:
+                self.aggregate_and_print_stats()
             return self.q.get(TENSOR_GENERATOR_TIMEOUT)
+
+    def aggregate_and_print_stats(self):
+        stats = Counter()
+        self.true_epochs += 1
+        while self.stats_q.qsize() != 0:
+            stats += self.stats_q.get()
+
+        error_info = '\n\t\t'.join([
+            f'[{error}] - {count:.0f}'
+            for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True) if 'Error' in error
+        ])
+
+        info_string = '\n\t'.join([
+            f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {self.true_epochs:.0f}",
+            f"{stats['Tensors presented']/self.true_epochs:0.0f} tensors were presented.",
+            f"{stats['skipped_paths']} paths were skipped because they previously failed.",
+            f"The following errors occurred:\n\t\t{error_info}",
+        ])
+        logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
+        eps = 1e-7
+        for tm in self.input_maps + self.output_maps:
+            if self.true_epochs != 1:
+                break
+            if tm.is_categorical() and tm.axes() == 1:
+                n = stats[f'{tm.name}_n'] + eps
+                message = f'Categorical \n{tm.name} has {n:.0f} total examples.'
+                for channel, index in tm.channel_map.items():
+                    examples = stats[f'{tm.name}_index_{index:.0f}']
+                    message = f'{message}\n\tLabel {channel} {examples} examples, {100 * (examples / n):0.2f}% of total.'
+                logging.info(message)
+            elif tm.is_continuous() and tm.axes() == 1:
+                sum_squared = stats[f'{tm.name}_sum_squared']
+                n = stats[f'{tm.name}_n'] + eps
+                n_sum = stats[f'{tm.name}_sum']
+                mean = n_sum / n
+                std = np.sqrt((sum_squared/n)-(mean*mean))
+                logging.info(f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{std:0.2f} '
+                             f"Maximum:{stats[f'{tm.name}_max']:0.2f} Minimum:{stats[f'{tm.name}_min']:0.2f}")
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -242,6 +287,8 @@ class _MultiModalMultiTaskWorker:
     def __init__(
         self,
         q: Queue,
+        stats_q: Queue,
+        num_workers: int,
         input_maps: List[TensorMap], output_maps: List[TensorMap],
         path_iter: PathIterator, true_epoch_len: int,
         batch_function: BatchFunction, batch_size: int, return_paths: bool, batch_func_kwargs: Dict,
@@ -250,6 +297,8 @@ class _MultiModalMultiTaskWorker:
         augment: bool,
     ):
         self.q = q
+        self.stats_q = stats_q
+        self.num_workers = num_workers
         self.input_maps = input_maps
         self.output_maps = output_maps
         self.path_iter = path_iter
@@ -281,6 +330,7 @@ class _MultiModalMultiTaskWorker:
             batch[name][idx] = self.dependents[tm]
             if tm.cacheable:
                 self.cache[path, name] = self.dependents[tm]
+            self._collect_stats(tm, self.dependents[tm])
             return self.hd5
         if (path, name) in self.cache:
             batch[name][idx] = self.cache[path, name]
@@ -291,7 +341,23 @@ class _MultiModalMultiTaskWorker:
         batch[name][idx] = tensor
         if tm.cacheable:
             self.cache[path, name] = tensor
+        self._collect_stats(tm, tensor)
         return self.hd5
+
+    def _collect_stats(self, tm, tensor):
+        if tm.is_categorical() and tm.axes() == 1:
+            self.epoch_stats[f'{tm.name}_index_{np.argmax(tensor):.0f}'] += 1
+            self.epoch_stats[f'{tm.name}_n'] += 1
+        if tm.is_continuous() and tm.axes() == 1:
+            self.epoch_stats[f'{tm.name}_n'] += 1
+            rescaled = tm.rescale(tensor)[0]
+            if 0.0 == self.epoch_stats[f'{tm.name}_max'] == self.epoch_stats[f'{tm.name}_min']:
+                self.epoch_stats[f'{tm.name}_max'] = min(0, rescaled)
+                self.epoch_stats[f'{tm.name}_min'] = max(0, rescaled)
+            self.epoch_stats[f'{tm.name}_max'] = max(rescaled, self.epoch_stats[f'{tm.name}_max'])
+            self.epoch_stats[f'{tm.name}_min'] = min(rescaled, self.epoch_stats[f'{tm.name}_min'])
+            self.epoch_stats[f'{tm.name}_sum'] += rescaled
+            self.epoch_stats[f'{tm.name}_sum_squared'] += rescaled * rescaled
 
     def _handle_tensor_path(self, path: Path) -> None:
         hd5 = None
@@ -307,6 +373,7 @@ class _MultiModalMultiTaskWorker:
                 hd5 = self._handle_tm(tm, False, path)
             self.paths_in_batch.append(path)
             self.stats['Tensors presented'] += 1
+            self.epoch_stats['Tensors presented'] += 1
             self.stats['batch_index'] += 1
         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
             error_name = type(e).__name__
@@ -320,23 +387,12 @@ class _MultiModalMultiTaskWorker:
 
     def _on_epoch_end(self):
         self.stats['epochs'] += 1
-        for k in self.stats:
-            logging.debug(f"{k}: {self.stats[k]}")
-        error_info = '\n\t\t'.join([
-            f'[{error}] - {count}'
-            for error, count in sorted(self.epoch_stats.items(), key=lambda x: x[1], reverse=True)
-        ])
-        info_string = '\n\t'.join([
-            f"The following errors occurred:\n\t\t{error_info}",
-            f"Generator looped & shuffled over {self.true_epoch_len} paths.",
-            f"{int(self.stats['Tensors presented']/self.stats['epochs'])} tensors were presented.",
-            f"{self.epoch_stats['skipped_paths']} paths were skipped because they previously failed.",
-            str(self.cache),
-            f"{(time.time() - self.start):.2f} seconds elapsed.",
-        ])
-        logging.info(f"Worker {self.name} - In true epoch {self.stats['epochs']}:\n\t{info_string}")
+        self.epoch_stats['epochs'] = self.stats['epochs']
+        while self.stats_q.qsize() == self.num_workers:
+            continue
+        self.stats_q.put(self.epoch_stats)
         if self.stats['Tensors presented'] == 0:
-            raise ValueError(f"Completed an epoch but did not find any tensors to yield")
+            logging.error(f"Completed an epoch but did not find any tensors to yield")
         if 'test' in self.name:
             logging.warning(f'Test worker {self.name} completed a full epoch. Test results may be double counting samples.')
         self.start = time.time()
