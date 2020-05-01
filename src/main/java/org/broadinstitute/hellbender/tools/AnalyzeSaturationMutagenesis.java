@@ -10,6 +10,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -23,7 +24,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.text.DecimalFormat;
@@ -186,7 +186,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         reference = new Reference(ReferenceDataSource.of(referenceArguments.getReferencePath()));
         codonTracker = new CodonTracker(orfCoords, reference.getRefSeq(), logger);
         if ( writeRejectedReads ) {
-            rejectedReadsBAMWriter = createSAMWriter(new File(outputFilePrefix + ".rejected.bam"), false);
+            rejectedReadsBAMWriter = createSAMWriter(new GATKPathSpecifier(outputFilePrefix + ".rejected.bam"), false);
         }
     }
 

@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -58,16 +59,16 @@ public class UserException extends RuntimeException {
             super(String.format("Couldn't read file. Error was: %s with exception: %s", message, getMessage(e)), e);
         }
 
-        public CouldNotReadInputFile(File file) {
-            super(String.format("Couldn't read file %s", file.getAbsolutePath()));
+        public CouldNotReadInputFile(final GATKPathSpecifier file, final String message) {
+            super(String.format("Couldn't read file %s. Error was: %s", file.getRawInputString(), message));
+        }
+
+        public CouldNotReadInputFile(final GATKPathSpecifier file, final String message, final Throwable cause) {
+            super(String.format("Couldn't read file %s. Error was: %s", file.getRawInputString(), message), cause);
         }
 
         public CouldNotReadInputFile(Path file) {
             super(String.format("Couldn't read file %s", file.toAbsolutePath().toUri()));
-        }
-
-        public CouldNotReadInputFile(File file, String message) {
-            super(String.format("Couldn't read file %s. Error was: %s", file.getAbsolutePath(), message));
         }
 
         public CouldNotReadInputFile(Path file, String message) {
@@ -80,14 +81,6 @@ public class UserException extends RuntimeException {
 
         public CouldNotReadInputFile(String file, String message) {
             super(String.format("Couldn't read file %s. Error was: %s", file, message));
-        }
-
-        public CouldNotReadInputFile(File file, String message, Exception e) {
-            super(String.format("Couldn't read file %s. Error was: %s with exception: %s", file.getAbsolutePath(), message, getMessage(e)), e);
-        }
-
-        public CouldNotReadInputFile(File file, Exception e) {
-            this(file, getMessage(e), e);
         }
 
         public CouldNotReadInputFile(Path path, Exception e) {
@@ -140,9 +133,12 @@ public class UserException extends RuntimeException {
     public static class CouldNotCreateOutputFile extends UserException {
         private static final long serialVersionUID = 0L;
 
+        public CouldNotCreateOutputFile(final GATKPathSpecifier file, final String message, final Exception e) {
+            super(String.format("Couldn't write file %s because %s with exception %s", file.getRawInputString(), message, getMessage(e)), e);
+        }
 
-        public CouldNotCreateOutputFile(File file, String message, Exception e) {
-            super(String.format("Couldn't write file %s because %s with exception %s", file.getAbsolutePath(), message, getMessage(e)), e);
+        public CouldNotCreateOutputFile(final GATKPathSpecifier file, final String message) {
+            super(String.format("Couldn't write file %s because %s", file.getRawInputString(), message));
         }
 
         public CouldNotCreateOutputFile(File file, String message) {
@@ -242,12 +238,12 @@ public class UserException extends RuntimeException {
             super(String.format("Unknown file is malformed: %s", message));
         }
 
-        public MalformedFile(File f, String message) {
-            super(String.format("File %s is malformed: %s", f.getAbsolutePath(), message));
+        public MalformedFile(final GATKPathSpecifier f, final String message) {
+            super(String.format("File %s is malformed: %s", f.getRawInputString(), message));
         }
 
-        public MalformedFile(File f, String message, Exception e) {
-            super(String.format("File %s is malformed: %s caused by %s", f.getAbsolutePath(), message, getMessage(e)), e);
+        public MalformedFile(final GATKPathSpecifier f, final String message, final Exception e) {
+            super(String.format("File %s is malformed: %s caused by %s", f.getRawInputString(), message, getMessage(e)), e);
         }
 
         public MalformedFile(Path p, String message) {

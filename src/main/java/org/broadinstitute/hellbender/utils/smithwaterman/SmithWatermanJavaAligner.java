@@ -355,7 +355,9 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         final int alignment_offset;
         if ( overhangStrategy == SWOverhangStrategy.SOFTCLIP ) {
             lce.add(makeElement(state, segment_length));
-            if ( p2 > 0 ) lce.add(makeElement(State.CLIP, p2));
+            if ( p2 > 0 ) {
+                lce.add(makeElement(State.CLIP, p2));
+            }
             alignment_offset = p1;
         } else if ( overhangStrategy == SWOverhangStrategy.IGNORE ) {
             lce.add(makeElement(state, segment_length + p2));

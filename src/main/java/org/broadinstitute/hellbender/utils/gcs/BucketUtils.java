@@ -65,6 +65,16 @@ public final class BucketUtils {
     }
 
     /**
+     * Return true if this {@code GATKPathSpecifier} represents a gcs URI.
+     * @param pathSpec specifier to inspect
+     * @return true if this {@code GATKPathSpecifier} represents a gcs URI.
+     */
+    public static boolean isGcsUrl(final GATKPathSpecifier pathSpec) {
+        Utils.nonNull(pathSpec);
+        return pathSpec.getScheme().equals(GoogleCloudStorageFileSystem.SCHEME);
+    }
+
+    /**
      * @param pathSpec specifier to inspect
      * @return true if this {@code GATKPathSpecifier} represents a remote storage system which may benefit from prefetching (gcs or http(s))
      */
@@ -122,6 +132,7 @@ public final class BucketUtils {
      * @param path the path
      * @return an absolute file path if the original path was a relative file path, otherwise the original path
      */
+    //TODO: get rid of this..
     public static String makeFilePathAbsolute(String path){
         if (isGcsUrl(path) || isHadoopUrl(path) || isFileUrl(path) || isHttpUrl(path)){
             return path;
@@ -295,6 +306,7 @@ public final class BucketUtils {
      * @return the file size in bytes
      * @throws IOException
      */
+    //TODO: fix me
     public static long fileSize(String path) throws IOException {
         if (isGcsUrl(path)) {
             java.nio.file.Path p = getPathOnGcs(path);
@@ -313,14 +325,15 @@ public final class BucketUtils {
      * Note that sub-directories are ignored - they are not recursed into.
      * Only supports HDFS and local paths.
      *
-     * @param path The URL to the file or directory whose size to return
+     * @param pathSpecifier The URL to the file or directory whose size to return
      * @return the total size of all files in bytes
      */
-    public static long dirSize(String path) {
+    public static long dirSize(final GATKPathSpecifier pathSpecifier) {
         try {
             // GCS case (would work with local too)
-            if (isGcsUrl(path)) {
-                java.nio.file.Path p = getPathOnGcs(path);
+            if (isGcsUrl(pathSpecifier)) {
+                //TODO: fix/remove getPathOnGcs...
+                java.nio.file.Path p = getPathOnGcs(pathSpecifier.getRawInputString());
                 if (Files.isRegularFile(p)) {
                     return Files.size(p);
                 }
@@ -335,11 +348,11 @@ public final class BucketUtils {
                 ).sum();
             }
             // local file or HDFS case
-            Path hadoopPath = new Path(path);
-            FileSystem fs = new Path(path).getFileSystem(new Configuration());
+            Path hadoopPath = new Path(pathSpecifier.getURIString());
+            FileSystem fs = new Path(pathSpecifier.getURIString()).getFileSystem(new Configuration());
             FileStatus status = fs.getFileStatus(hadoopPath);
             if (status == null) {
-                throw new UserException.CouldNotReadInputFile(path, "File not found.");
+                throw new UserException.CouldNotReadInputFile(pathSpecifier.getRawInputString(), "File not found.");
             }
             long size = 0;
             if (status.isDirectory()) {
@@ -353,7 +366,7 @@ public final class BucketUtils {
             }
             return size;
         } catch (RuntimeIOException | IOException e) {
-            throw new UserException("Failed to determine total input size of " + path + "\n Caused by:" + e.getMessage(), e);
+            throw new UserException("Failed to determine total input size of " + pathSpecifier.getRawInputString() + "\n Caused by:" + e.getMessage(), e);
         }
     }
 

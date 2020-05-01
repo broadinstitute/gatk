@@ -97,7 +97,7 @@ public final class ReadsSparkSink {
             final boolean writeBai, final boolean writeSbi, final boolean sortReadsToHeader, final long splittingIndexGranularity) throws IOException {
 
         String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
-        ReadsSparkSource.checkCramReference(ctx, absoluteOutputFile, referencePathSpecifier);
+        ReadsSparkSource.checkCramReference(ctx, new GATKPathSpecifier(absoluteOutputFile), referencePathSpecifier);
 
         // The underlying reads are required to be in SAMRecord format in order to be
         // written out, so we convert them to SAMRecord explicitly here. If they're already

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
@@ -80,11 +81,11 @@ public class VQSLODTranche extends Tranche {
      * Returns a list of tranches, sorted from most to least specific, read in from file f.
      * @throws IOException if there are problems reading the file.
      */
-    public static List<VQSLODTranche> readTranches(final File f) throws IOException{
+    public static List<VQSLODTranche> readTranches(final GATKPathSpecifier f) throws IOException{
         String[] header = null;
         List<VQSLODTranche> tranches = new ArrayList<>();
 
-        try (XReadLines xrl = new XReadLines(f) ) {
+        try (XReadLines xrl = new XReadLines(f.toPath()) ) {
             for (final String line : xrl) {
                 if (line.startsWith(COMMENT_STRING)) {
                     if ( !line.contains("Version"))

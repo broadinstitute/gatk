@@ -57,10 +57,10 @@ public final class IOUtils {
     private static final Pattern GENOMICSDB_URI_PATTERN = Pattern.compile("^" + GENOMIC_DB_URI_SCHEME + "(\\.?)(.*)(://)(.*)");
 
     /**
-     * Returns true if the file's extension is CRAM.
+     * Returns true if the GATKPathSpecifier's extension is CRAM.
      */
-    public static boolean isCramFile(final File inputFile) {
-        return isCramFileName(inputFile.getName());
+    public static boolean isCramFile(final GATKPathSpecifier pathSpec) {
+        return pathSpec != null && FileExtensions.CRAM.equalsIgnoreCase("." + FilenameUtils.getExtension(pathSpec.getURI().getPath()));
     }
 
     /**
@@ -74,7 +74,7 @@ public final class IOUtils {
      * Returns true if the file's extension is CRAM.
      */
     public static boolean isCramFileName(final String inputFileName) {
-        return FileExtensions.CRAM.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
+        return isCramFile(new GATKPathSpecifier(inputFileName));
     }
 
     /**
@@ -278,7 +278,7 @@ public final class IOUtils {
             fileContents = readStreamIntoByteArray(new FileInputStream(source), readBufferSize);
         }
         catch ( FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(source, e);
+            throw new UserException.CouldNotReadInputFile(source.getAbsolutePath(), e);
         }
 
         if ( fileContents.length != source.length() ) {
@@ -910,7 +910,7 @@ public final class IOUtils {
         for (final File file : files) {
             Utils.nonNull(file, "Unexpected null file reference.");
             if (!file.exists()) {
-                throw new UserException.CouldNotReadInputFile(file, "The input file does not exist.");
+                throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(), "The input file does not exist.");
             } else if (!file.isFile()) {
                 throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(), "The input file is not a regular file");
             } else if (!file.canRead()) {

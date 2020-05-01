@@ -226,7 +226,7 @@ public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
         final MetricsFile<BaseDistributionByCycleMetrics, Integer> metricsFile = calculateBaseDistributionByCycle(reads);
-        saveResults(metricsFile, getHeaderForReads(), getReadSourceName().get(0));
+        saveResults(metricsFile, getHeaderForReads(), getReadSourceName());
     }
 
     /**

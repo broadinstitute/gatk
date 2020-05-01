@@ -4,6 +4,7 @@ import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.Main;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
@@ -188,6 +189,14 @@ public abstract class BaseTest {
      */
     public File getTestFile(String fileName) {
         return new File(getToolTestDataDir(), fileName);
+    }
+
+    /**
+     * @param fileName the name of a file
+     * @return a File resolved using getToolTestDataDir as the parent and fileName
+     */
+    public GATKPathSpecifier getTestPath(String fileName) {
+        return new GATKPathSpecifier(getToolTestDataDir() + fileName);
     }
 
     /**

@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.MultiVariantWalker;
@@ -21,7 +22,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -142,7 +142,7 @@ public class ApplyVQSR extends MultiVariantWalker {
     private FeatureInput<VariantContext> recal;
 
     @Argument(fullName="tranches-file", doc="The input tranches file describing where to cut the data", optional=true)
-    private File TRANCHES_FILE;
+    private GATKPathSpecifier TRANCHES_FILE;
 
     /////////////////////////////
     // Outputs
@@ -151,7 +151,7 @@ public class ApplyVQSR extends MultiVariantWalker {
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="The output filtered and recalibrated VCF file in which each variant is annotated with its VQSLOD value", optional=false)
-    private String output;
+    private GATKPathSpecifier output;
 
     /////////////////////////////
     // Command Line Arguments
@@ -216,7 +216,7 @@ public class ApplyVQSR extends MultiVariantWalker {
                 }
             }
             catch(IOException e ) {
-                throw new UserException.CouldNotReadInputFile(TRANCHES_FILE, e);
+                throw new UserException.CouldNotReadInputFile(TRANCHES_FILE, "Can't read tranches file", e);
             }
             Collections.reverse(tranches); // this algorithm wants the tranches ordered from best (lowest truth sensitivity) to worst (highest truth sensitivity)
         }
@@ -272,7 +272,7 @@ public class ApplyVQSR extends MultiVariantWalker {
 
         hInfo.addAll(getDefaultToolVCFHeaderLines());
         final VCFHeader vcfHeader = new VCFHeader(hInfo, samples);
-        vcfWriter = createVCFWriter(new File(output));
+        vcfWriter = createVCFWriter(output);
         vcfWriter.writeHeader(vcfHeader);
     }
 

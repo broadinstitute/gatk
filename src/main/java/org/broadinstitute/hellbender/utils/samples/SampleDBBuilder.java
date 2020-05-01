@@ -50,7 +50,7 @@ public class SampleDBBuilder {
         try {
             return reader.parse(sampleFile, getMissingFields(sampleFile), sampleDB);
         } catch ( FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(sampleFile, e);
+            throw new UserException.CouldNotReadInputFile(sampleFile.getAbsolutePath(), e);
         }
     }
 

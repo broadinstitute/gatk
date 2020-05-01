@@ -156,11 +156,32 @@ public abstract class SmithWatermanAlignerAbstractUnitTest extends GATKBaseTest 
         };
     }
 
+    @DataProvider
+    public Object[][] getAlignmentsWithMismatchingStart(){
+        return new Object[][]{
+                {SWOverhangStrategy.SOFTCLIP, "6S6M"},
+                {SWOverhangStrategy.INDEL, "6D6I6M"},
+                {SWOverhangStrategy.LEADING_INDEL, "6D6I6M"},
+                {SWOverhangStrategy.IGNORE, "12M"}
+        };
+    }
+
+    @Test(dataProvider = "getAlignmentsWithMismatchingStart")
+    public void should_return_maximal_alignment_match(final SWOverhangStrategy strategy, final String expected) {
+        try(final SmithWatermanAligner aligner = getAligner()) {
+            final SmithWatermanAlignment alignment = aligner.align(
+                    "GGGGGGTTTTTT".getBytes(),
+                    "AAACCCTTTTTT".getBytes(),
+                    // BWA alignment scoring matrix
+                    new SWParameters(1, -4, -6, -1), strategy);
+            Assert.assertEquals(alignment.getCigar().toString(), expected);
+        }
+    }
+
     @Test(dataProvider = "OddNoAlignment")
     public void testOddNoAlignment(final String reference, final String read, final SWParameters weights,
                                    final int expectedStart, final String expectedCigar) {
-        assertAlignmentMatchesExpected(reference, read, expectedStart, expectedCigar, weights,
-                                       SWOverhangStrategy.SOFTCLIP);
+        assertAlignmentMatchesExpected(reference, read, expectedStart, expectedCigar, weights, SWOverhangStrategy.SOFTCLIP);
     }
 
     @Test

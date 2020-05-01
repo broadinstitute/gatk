@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -136,13 +137,15 @@ public class PathSeqScoreSpark extends GATKSparkTool {
 
     private int recommendedNumReducers = 0;
 
+    //TODO: fix this
     private Tuple2<JavaRDD<GATKRead>, SAMFileHeader> readInputWithHeader(final String path,
                                                                          final ReadsSparkSource readsSource) {
         if (path != null) {
             if (BucketUtils.fileExists(path)) {
+                //TODO: fix this
                 recommendedNumReducers += PSUtils.pathseqGetRecommendedNumReducers(path, numReducers, getTargetPartitionSize());
-                final SAMFileHeader header = readsSource.getHeader(path, null);
-                JavaRDD<GATKRead> reads = readsSource.getParallelReads(path, null, null, bamPartitionSplitSize, useNio);
+                final SAMFileHeader header = readsSource.getHeader(new GATKPathSpecifier(path), null);
+                JavaRDD<GATKRead> reads = readsSource.getParallelReads(new GATKPathSpecifier(path), null, null, bamPartitionSplitSize, useNio);
                 reads = PSUtils.primaryReads(reads);
                 return new Tuple2<>(reads, header);
             } else {
@@ -185,7 +188,7 @@ public class PathSeqScoreSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        if (!readArguments.getReadFiles().isEmpty()) {
+        if (!readArguments.getReadPathSpecifiers().isEmpty()) {
             throw new UserException.BadInput("Please use --paired-input or --unpaired-input instead of --input");
         }
 

@@ -201,7 +201,7 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
 
         long fileSize = BucketUtils.fileSize(file1.getAbsolutePath());
         Assert.assertTrue(fileSize > 0);
-        long dirSize = BucketUtils.dirSize(dir.getAbsolutePath());
+        long dirSize = BucketUtils.dirSize(new GATKPathSpecifier(dir.getAbsolutePath()));
         Assert.assertEquals(dirSize, fileSize * 2);
     }
 
@@ -217,9 +217,9 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
         Assert.assertTrue(srcFileSize > 0);
         long intermediateFileSize = BucketUtils.fileSize(intermediate);
         Assert.assertEquals(intermediateFileSize, srcFileSize);
-        long intermediateDirSize = BucketUtils.dirSize(intermediate);
+        long intermediateDirSize = BucketUtils.dirSize(new GATKPathSpecifier(intermediate));
         Assert.assertEquals(intermediateDirSize, srcFileSize);
-        long intermediateParentDirSize = BucketUtils.dirSize(gcsSubDir);
+        long intermediateParentDirSize = BucketUtils.dirSize(new GATKPathSpecifier(gcsSubDir));
         Assert.assertEquals(intermediateParentDirSize, srcFileSize);
 
         BucketUtils.deleteFile(intermediate);

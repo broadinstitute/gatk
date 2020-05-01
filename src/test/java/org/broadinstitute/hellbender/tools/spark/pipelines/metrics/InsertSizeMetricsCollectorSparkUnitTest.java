@@ -57,7 +57,7 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
             final boolean allLevels,
             final String expectedResultsFile) throws IOException {
 
-        final String inputPath = new File(TEST_DATA_DIR, fileName).getAbsolutePath();
+        final GATKPathSpecifier inputPathSpecifier = new GATKPathSpecifier(new File(TEST_DATA_DIR, fileName).getAbsolutePath());
         final GATKPathSpecifier referencePath = referenceName != null ?
                 new GATKPathSpecifier(referenceName) :
                 null;
@@ -67,8 +67,8 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         ReadsSparkSource readSource = new ReadsSparkSource(ctx, ValidationStringency.DEFAULT_STRINGENCY);
 
-        SAMFileHeader samHeader = readSource.getHeader(inputPath, referencePath);
-        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputPath, referencePath);
+        SAMFileHeader samHeader = readSource.getHeader(inputPathSpecifier, referencePath);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputPathSpecifier, referencePath);
 
         InsertSizeMetricsArgumentCollection isArgs = new InsertSizeMetricsArgumentCollection();
         isArgs.output = outfile.getAbsolutePath();
