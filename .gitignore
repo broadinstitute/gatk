@@ -10,3 +10,4 @@ recipes_output/*
 ml4cvd.egg-info/*
 .Rproj.user
 docker/terra_image/*/**
+build/
