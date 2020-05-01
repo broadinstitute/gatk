@@ -70,5 +70,12 @@ public enum ChromosomeEnum {
         }
     }
 
+    public String getContigName() {
+        if (currentVersion==ref37) {
+            return v37ContigName;
+        } else {
+            return name();
+        }
+    }
 
 }
