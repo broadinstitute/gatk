@@ -788,7 +788,8 @@ def _tensors_to_df(args):
     paths = [(path, gen.name) for gen in generators for path in gen.path_iters[0].paths]
     tot = len(paths)
     with Pool(processes=None) as pool:
-        list_of_dicts_of_dicts = pool.starmap(_hd5_to_dict, [(tmaps, path, gen_name, tot) for path, gen_name in paths])
+        list_of_dicts_of_dicts = pool.starmap(_hd5_to_dict,
+                                    [(tmaps, path, gen_name, tot) for path, gen_name in paths])
 
     num_hd5 = len(list_of_dicts_of_dicts)
     list_of_tensor_dicts = [dotd[i] for dotd in list_of_dicts_of_dicts for i in dotd if dotd is not None]
@@ -868,11 +869,6 @@ def explore(args):
     df.dropna().to_csv(fpath, index=False, sep=out_sep)
     logging.info(f"Saved dataframe of tensors (union and intersect) to {fpath}")
 
-    #fpath = os.path.join(args.output_folder, args.id, "tensors_all_union.csv")
-    #logging.info(f"Loading {fpath} to Pandas DataFrame")
-    #df = pd.read_csv(fpath, keep_default_na=False)
-    #logging.info(f"Loaded {fpath} to Pandas DataFrame")
-
     # Check if any tmaps are categorical
     if Interpretation.CATEGORICAL in [tm.interpretation for tm in tmaps]:
 
@@ -904,13 +900,14 @@ def explore(args):
                 df_stats = pd.DataFrame(counts, index=cm_names, columns=["counts"])
 
                 # Add new column: percent of all counts
-                df_stats["fraction_of_total"] = df_stats["counts"] / df_stats.loc[f"total"]["counts"]
+                df_stats["percent_of_total"] = df_stats["counts"] / df_stats.loc[f"total"]["counts"] * 100
 
                 # Save parent dataframe to CSV on disk
                 fpath = os.path.join(
                     args.output_folder, args.id,
                     f"{fpath_prefix}_{Interpretation.CATEGORICAL}_{tm.name}_{df_str}.csv",
                 )
+                df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.CATEGORICAL} {tm.name} tmaps to {fpath}")
 
@@ -921,7 +918,8 @@ def explore(args):
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
             df_stats = pd.DataFrame()
             if df_cur.empty:
-                logging.info(f"{df_str} of tensors results in empty dataframe. Skipping calculations of {Interpretation.CONTINUOUS} summary statistics")
+                logging.info(f"{df_str} of tensors results in empty dataframe."
+                             f" Skipping calculations of {Interpretation.CONTINUOUS} summary statistics")
             else:
                 for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.CONTINUOUS]:
                     if tm.channel_map:
@@ -937,7 +935,7 @@ def explore(args):
                             stats["count"] = df_cur[key].count()
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
-                            stats["missing_fraction"] = stats["missing"] / stats["total"]
+                            stats["missing_percent"] = stats["missing"] / stats["total"] * 100
                             df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
                     else:
                         stats = dict()
@@ -951,7 +949,7 @@ def explore(args):
                         stats["count"] = df_cur[key].count()
                         stats["missing"] = df_cur[key].isna().sum()
                         stats["total"] = len(df_cur[key])
-                        stats["missing_fraction"] = stats["missing"] / stats["total"]
+                        stats["missing_percent"] = stats["missing"] / stats["total"] * 100
                         df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[key])])
 
                 # Save parent dataframe to CSV on disk
@@ -959,6 +957,7 @@ def explore(args):
                     args.output_folder, args.id,
                     f"{fpath_prefix}_{Interpretation.CONTINUOUS}_{df_str}.csv",
                 )
+                df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.CONTINUOUS} tmaps to {fpath}")
 
@@ -967,7 +966,8 @@ def explore(args):
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
             df_stats = pd.DataFrame()
             if df_cur.empty:
-                logging.info(f"{df_str} of tensors results in empty dataframe. Skipping calculations of {Interpretation.LANGUAGE} summary statistics")
+                logging.info(f"{df_str} of tensors results in empty dataframe."
+                             f" Skipping calculations of {Interpretation.LANGUAGE} summary statistics")
             else:
                 for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.LANGUAGE]:
                     if tm.channel_map:
@@ -978,7 +978,7 @@ def explore(args):
                             stats["count_unique"] = len(df_cur[key].value_counts())
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
-                            stats["missing_fraction"] = stats["missing"] / stats["total"]
+                            stats["missing_percent"] = stats["missing"] / stats["total"] * 100
                             df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
                     else:
                         stats = dict()
@@ -987,7 +987,7 @@ def explore(args):
                         stats["count_unique"] = len(df_cur[key].value_counts())
                         stats["missing"] = df_cur[key].isna().sum()
                         stats["total"] = len(df_cur[key])
-                        stats["missing_fraction"] = stats["missing"] / stats["total"]
+                        stats["missing_percent"] = stats["missing"] / stats["total"] * 100
                         df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[tm.name])])
 
                 # Save parent dataframe to CSV on disk
@@ -995,5 +995,6 @@ def explore(args):
                     args.output_folder, args.id,
                     f"{fpath_prefix}_{Interpretation.LANGUAGE}_{df_str}.csv",
                 )
+                df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}")
