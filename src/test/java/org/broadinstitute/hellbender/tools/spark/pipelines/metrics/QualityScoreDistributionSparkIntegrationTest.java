@@ -35,7 +35,7 @@ public class QualityScoreDistributionSparkIntegrationTest  extends CommandLinePr
         return QualityScoreDistributionSpark.class.getSimpleName();
     }
 
-    @Test(groups = "spark")
+    @Test(groups = {"R", "spark"})
     public void testAccumulators() throws Exception {
         final long[] qs= new long[128];
         final long[] oqs= new long[128];
@@ -90,7 +90,7 @@ public class QualityScoreDistributionSparkIntegrationTest  extends CommandLinePr
         return list.iterator();
     }
 
-    @Test(dataProvider = "QualityScoreDistribution", groups = {"spark", "R"})
+    @Test(dataProvider = "QualityScoreDistribution", groups = {"R", "spark"})
     public void test(final String unsortedBamName, final String expectedFileName, final String referenceName,
                      final boolean makePdf, final boolean pfReadsOnly, final boolean alignedReadsOnly) throws IOException {
         final File unsortedBam = new File(TEST_DATA_DIR, unsortedBamName);

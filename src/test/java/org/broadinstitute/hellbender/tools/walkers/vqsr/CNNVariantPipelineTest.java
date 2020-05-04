@@ -69,8 +69,7 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
         new Main().instanceMain(args.getArgsArray());
     }
 
-    // Disabled until https://github.com/broadinstitute/gatk/issues/6307 is resolved
-    @Test(enabled=false, groups = {"python"}, dependsOnMethods = {"testGenerateReadTensors"})
+    @Test(groups = {"python"}, dependsOnMethods = {"testGenerateReadTensors"})
     public void testTrainingReadModel() {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addRaw("CNNVariantTrain")
