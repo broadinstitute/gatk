@@ -292,14 +292,14 @@ public class DragstrLocus {
             } else if (chrEntries.get(0).pos > end) {
                 return -1;
             } else {
-                int i = 0, j = chrEntries.size();
+                int i = 0, j = chrEntries.size() - 1;
                 while (i < j) {
                     int k = (i + j) / 2;
                     final Entry candidate = chrEntries.get(k);
                     if (candidate.pos < start) {
-                        i = k + 1;
+                        i = Math.min(k + 1, j);
                     } else if (candidate.pos > start) {
-                        j = k - 1;
+                        j = Math.max(k - 1, i);
                     } else {
                         return candidate.offset;
                     }

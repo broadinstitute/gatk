@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
-import com.google.cloud.storage.Acl;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -15,14 +14,48 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 
-public class DragstrParams {
+public final class DragstrParams {
+
+    public static final DragstrParams DEFAULT = new DragstrParams(
+            DragstrConstants.DEFAULT_MAX_PERIOD,
+            DragstrConstants.DEFAULT_MAX_REPEATS,
+            new double[][] { /* GOP */
+                    {45.00, 45.00, 45.00, 45.00, 45.00, 45.00, 40.50, 33.50, 28.00, 24.00, 21.75, 21.75, 21.75, 21.75, 21.75, 21.75, 21.75, 21.75, 21.75, 21.75},
+                    {39.50, 39.50, 39.50, 39.50, 36.00, 30.00, 27.25, 25.00, 24.25, 24.75, 26.25, 26.25, 26.25, 26.25, 26.25, 26.25, 26.25, 26.25, 26.25, 26.75},
+                    {38.50, 41.00, 41.00, 41.00, 41.00, 37.50, 35.25, 34.75, 34.75, 33.25, 33.25, 33.25, 32.50, 30.75, 28.50, 29.00, 29.00, 29.00, 29.00, 29.00},
+                    {37.50, 39.00, 39.00, 37.75, 34.00, 34.00, 30.25, 30.25, 30.25, 30.25, 30.25, 30.25, 30.25, 30.25, 30.25, 31.75, 31.75, 31.75, 31.75, 31.75},
+                    {37.00, 40.00, 40.00, 40.00, 36.00, 35.00, 24.50, 24.50, 24.50, 24.50, 22.50, 22.50, 22.50, 23.50, 23.50, 23.50, 23.50, 23.50, 23.50, 23.50},
+                    {36.25, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00, 40.00},
+                    {36.00, 40.50, 40.50, 40.50, 20.75, 20.75, 20.75, 20.75, 20.75, 20.75, 20.75, 20.75, 20.75, 20.75, 20.75, 20.75, 20.75, 20.75, 20.75, 20.75},
+                    {36.25, 39.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75, 32.75}},
+            new double[][] { /* GCP */
+                    MathUtils.doubles(DragstrConstants.DEFAULT_MAX_REPEATS, 10.0),
+                    MathUtils.doubles(DragstrConstants.DEFAULT_MAX_REPEATS, 5.0),        // = 10.0 / 2
+                    MathUtils.doubles(DragstrConstants.DEFAULT_MAX_REPEATS, 10.0 / 3.0),
+                    MathUtils.doubles(DragstrConstants.DEFAULT_MAX_REPEATS, 10.0 / 4.0),
+                    MathUtils.doubles(DragstrConstants.DEFAULT_MAX_REPEATS, 2.0),        // = 10.0 / 5
+                    MathUtils.doubles(DragstrConstants.DEFAULT_MAX_REPEATS, 10.0 / 6.0),
+                    MathUtils.doubles(DragstrConstants.DEFAULT_MAX_REPEATS, 10.0 / 7.0),
+                    MathUtils.doubles(DragstrConstants.DEFAULT_MAX_REPEATS, 10.0 / 8.0),
+            },
+            new double[][] { /* API */
+                    {39.00, 39.00, 37.00, 35.00, 32.00, 26.00, 20.00, 16.00, 12.00, 10.00, 8.00, 7.00, 7.00, 6.00, 6.00, 5.00, 5.00, 4.00, 4.00, 4.00},
+                    {30.00, 30.00, 29.00, 22.00, 17.00, 14.00, 11.00, 8.00, 6.00, 5.00, 4.00, 4.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 2.00, 2.00},
+                    {27.00, 27.00, 25.00, 18.00, 14.00, 12.00, 9.00, 7.00, 5.00, 4.00, 3.00, 3.00, 3.00, 3.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00},
+                    {27.00, 27.00, 18.00, 9.00, 9.00, 9.00, 9.00, 3.00, 3.00, 3.00, 3.00, 3.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00},
+                    {29.00, 29.00, 18.00, 8.00, 8.00, 8.00, 4.00, 3.00, 3.00, 3.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00},
+                    {25.00, 25.00, 10.00, 10.00, 10.00, 4.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00},
+                    {21.00, 21.00, 11.00, 11.00, 5.00, 5.00, 5.00, 5.00, 5.00, 5.00, 5.00, 5.00, 5.00, 5.00, 5.00, 5.00, 5.00, 5.00, 5.00, 5.00},
+                    {18.00, 18.00, 10.00, 6.00, 4.00, 4.00, 4.00, 4.00, 4.00, 4.00, 4.00, 4.00, 4.00, 4.00, 4.00, 4.00, 4.00, 4.00, 4.00, 4.00}}
+    );
+
 
     private final int maxPeriod;
     private final int maxRepeats;
     private final double[][] gop;
     private final double[][] gcp;
     private final double[][] api;
-    private final Map<Object, AlleleFrequencyCalculator> afcs;
+    private Map<Object, AlleleFrequencyCalculator> afcs;
 
     public DragstrParams(final String path) {
         this(openBufferedReader(path), path);
@@ -36,29 +69,34 @@ public class DragstrParams {
         }
     }
 
+    public static DragstrParams of(int maxPeriod, int maxRepeats, double[][] gop, double[][] gcp, double[][] api) {
+        ParamUtils.isPositive(maxPeriod, "max period must be a positive");
+        ParamUtils.isPositive(maxRepeats, "max repeats must be a positive");
+        Utils.nonNull(gop, "gop cannot be null");
+        Utils.nonNull(gcp, "gcp cannot be null");
+        Utils.nonNull(api, "api cannot be null");
+        Utils.validate(gop.length == maxPeriod, "input gop length must match maxPeriod");
+        Utils.validate(gcp.length == maxPeriod, "input gcp length must match maxPeriod");
+        Utils.validate(api.length == maxPeriod, "input api length must match maxPeriod");
+        for (int i = 0; i < maxPeriod; i++) {
+            final double[] gopRow = gop[i];
+            final double[] gcpRow = gcp[i];
+            final double[] apiRow = api[i];
+            for (int j = 0; j < maxRepeats; j++) {
+                Utils.validate(gopRow[j] >= 0 && Double.isFinite(gopRow[j]), "bad gop value: " + gopRow[j]);
+                Utils.validate(gcpRow[j] >= 0 && Double.isFinite(gcpRow[j]), "bad gcp value: " + gcpRow[j]);
+                Utils.validate(apiRow[j] >= 0 && Double.isFinite(apiRow[j]), "bad api value: " + apiRow[j]);
+            }
+        }
+        return new DragstrParams(maxPeriod, maxRepeats, gop.clone(), gcp.clone(), api.clone());
+    }
+
     private BufferedWriter openBufferedWriter(final String path) {
         try {
             return Files.newBufferedWriter(Paths.get(path));
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile(path, ex);
         }
-    }
-
-    public static DragstrParams fromEstimate(final DragstrModelEstimator.Estimate estimate) {
-        Utils.nonNull(estimate);
-        final int maxPeriod = estimate.gp.length;
-        final int maxRepeats = estimate.gp[0].length;
-        final double[][] gop = new double[maxPeriod][maxRepeats];
-        final double[][] gcp = new double[maxPeriod][maxRepeats];
-        final double[][] api = new double[maxPeriod][maxRepeats];
-        for (int i = 0; i < maxPeriod; i++) {
-            for (int j = 0; j < maxRepeats; j++) {
-                gop[i][j] = estimate.gop(i +1, j + 1);
-                gcp[i][j] = estimate.gcp(i + 1, j+ 1);
-                api[i][j] = estimate.api( i + 1, j + 1);
-            }
-        }
-        return new DragstrParams(maxPeriod, maxRepeats, gop, gcp, api);
     }
 
     private DragstrParams(final BufferedReader reader, final String path) {

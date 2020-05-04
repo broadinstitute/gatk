@@ -173,6 +173,18 @@ public final class MathUtils {
         }
     }
 
+    /**
+     * Returns an array filled with the same double value.
+     * @param size of the output array.
+     * @param fill the value to fill the output with.
+     * @return never {@code null}.
+     */
+    public static double[] doubles(final int size, final double fill) {
+        final double[] result = new double[size];
+        Arrays.fill(result, fill);
+        return result;
+    }
+
     @FunctionalInterface
     public interface IntToDoubleArrayFunction {
         double[] apply(int value);

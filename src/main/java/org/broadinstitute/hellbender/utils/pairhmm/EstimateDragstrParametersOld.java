@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.EstimateDragstrParameters;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -30,14 +31,11 @@ import java.util.zip.ZipFile;
         summary = "Determine the presence of STR in a reference sequence",
         oneLineSummary = "Determines the presence of STR in a reference sequence"
 )
-public class EstimateSTRModelParameters extends GATKTool {
+public class EstimateDragstrParametersOld  extends GATKTool {
 
     @ArgumentCollection
     private final DragstrCasesSamplerArgumentCollection dragstrCasesSamplerArgumentCollection = new DragstrCasesSamplerArgumentCollection();
     private Pattern ZIP_ENTRY_NAME_REGEXP = Pattern.compile("^(\\d+)/(\\d+).bin$");
-
-    @ArgumentCollection
-    public DragstrModelEstimatorArgumentCollection dragstrModelEstimatorArgumentCollection = new DragstrModelEstimatorArgumentCollection();
 
     @Argument(doc = "location of the .zip file containing the locations to sample from. This zip file is to be generated using SampleSitesForDRAGstrModel tool ",
               fullName = SAMPLING_LOCI_ARGUMENT_FULL_NAME)
@@ -64,14 +62,13 @@ public class EstimateSTRModelParameters extends GATKTool {
 
     @Override
     public void traverse() {
-        final DragstrModelEstimator estimator = new DragstrModelEstimator(dragstrModelEstimatorArgumentCollection);
+        final DragstrParametersEstimator estimator = new DragstrParametersEstimator(dragstrCasesSamplerArgumentCollection);
         final DragstrCasesSampler sampler = new DragstrCasesSampler(dragstrCasesSamplerArgumentCollection, directlyAccessEngineReferenceDataSource(), directlyAccessEngineReadsDataSource());
-        final DragstrModelEstimator.Estimate estimate = estimator.createEstimate(maxPeriod, maxRepeat);
+        final EstimateDragstrParameters.StratifiedDragstrLocusCases sampledCases = new EstimateDragstrParameters.StratifiedDragstrLocusCases(maxPeriod, maxRepeat);
         try (final ZipFile zipIn = stageZipInput()) {
             checkSameSampleDictionary(zipIn);
             final List<ZipEntry> zipEntries = EnumerationUtils.toList(zipIn.entries());
             for (int period = 1; period <= maxPeriod; period++) {
-                final DragstrModelEstimator.PeriodCases periodCases = estimator.createPeriodCases(period, maxRepeat, 10000);
                 final String periodEntryPrefix = "" + period + "/";
                 for (final ZipEntry entry : zipEntries) {
                     final String entryName = entry.getName();
@@ -80,26 +77,19 @@ public class EstimateSTRModelParameters extends GATKTool {
                         if (matcher.matches()) {
                             final int repeat = Integer.parseInt(matcher.group(2));
                             try (final BinaryTableReader<DragstrLocus> locusReader = DragstrLocus.binaryReader(zipIn.getInputStream(entry))) {
-                                final DragstrModelEstimator.RepeatCases repeatCases = periodCases.getRepeatCases(repeat);
                                 final List<DragstrLocus> loci = locusReader.readAll();
-                                sampler.sample(repeatCases, loci);
+                                sampledCases.addAll(sampler.sample(period, repeat, loci));
                             } catch (final IOException ex) {
                                 throw new UserException.CouldNotReadInputFile(samplingLoci, "could not read entry " + entryName + " from " + samplingLoci, ex);
                             }
                         }
                     }
                 }
-                logger.info("Estimating gap penalty and het prior for period " + period);
-                final long start = System.currentTimeMillis();
-                estimator.estimate(estimate, periodCases);
-                logger.info("Estimate done in " + ((System.currentTimeMillis() - start) / 1000) + " seconds");
-                logger.debug("GP: " + Arrays.toString(estimate.gp[period - 1]));
-                logger.debug("Pr: " + Arrays.toString(estimate.ph_het_variant[period - 1]));
             }
         } catch (final IOException ex) {
             throw new UserException.CouldNotReadInputFile(samplingLoci, "could not open zip file " + samplingLoci, ex);
         }
-        final DragstrParams params = DragstrParams.fromEstimate(estimate);
+        final DragstrParams params = estimator.estimate(sampledCases);
         params.print(outputPath);
     }
 

@@ -32,10 +32,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -1498,5 +1495,32 @@ public final class Utils {
             result = result & toDelete.pop().delete();
         }
         return result;
+    }
+
+    /**
+     * Runs a task in parallel returning this result.
+     * @param threads number of threads requested. 0 would result in using the suggested default, usually the host number of CPU cores.
+     * @param supplier the task to run.
+     * @param <T> the type of the return.
+     * @return whatever the input task return in the end, it can be {@code null}.
+     * @throws GATKException if the run was interrupted or resuled in a checked exception. Unchecked exception and Error are
+     *        rethrown without any wrapping.
+     */
+    public static <T> T runInParallel(final int threads, final Supplier<T> supplier) {
+        final ForkJoinPool threadPool = threads == 0 ? new ForkJoinPool() : new ForkJoinPool(threads);
+        try {
+            return threadPool.submit(supplier::get).get();
+        } catch (final InterruptedException e) {
+            throw new GATKException("task interrupted", e);
+        } catch (ExecutionException e) {
+            final Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            } else if (cause instanceof Error) {
+                throw (Error) cause;
+            } else {
+                throw new GATKException("exception when executing parallel task ", cause);
+            }
+        }
     }
 }

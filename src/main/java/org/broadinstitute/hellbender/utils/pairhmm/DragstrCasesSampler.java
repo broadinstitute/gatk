@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.EstimateDragstrParameters;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.IntervalPileup;
@@ -21,7 +22,7 @@ public class DragstrCasesSampler {
     private SAMSequenceDictionary dictionary;
     private ReadsDataSource readsSource;
     private ReferenceDataSource referenceSource;
-    private static final Logger logger = LogManager.getLogger(EstimateSTRModelParameters.class);
+    private static final Logger logger = LogManager.getLogger(EstimateDragstrParametersOld.class);
     private DragstrCasesSamplerArgumentCollection config;
 
     public DragstrCasesSampler(final DragstrCasesSamplerArgumentCollection dragstrCasesSamplerArgumentCollection,
@@ -33,14 +34,13 @@ public class DragstrCasesSampler {
         this.dictionary = referenceSource.getSequenceDictionary();
     }
 
-    void sample(final DragstrModelEstimator.RepeatCases dest, final List<DragstrLocus> loci) {
-        final int period = dest.getPeriod();
-        final int repeats = dest.getRepeats();
+    EstimateDragstrParameters.DragstrLocusCases sample(final int period, final int repeats, final List<DragstrLocus> loci) {
         logger.info("Sampling period = " + period + " and repeat count = " + repeats);
         if (!config.useAllEvidence) {
             final Random rdn = new Random(((config.randomSeed * 31) + period * 31) + repeats * 31);
             Collections.shuffle(loci, rdn);
         }
+        final EstimateDragstrParameters.DragstrLocusCases result = new EstimateDragstrParameters.DragstrLocusCases(1000);
         final int size = loci.size();
         int nonAllRefCases = 0; // number of cases that contain at least some non-ref read.
         int noReads = 0;
@@ -131,24 +131,25 @@ public class DragstrCasesSampler {
                     logger.debug(String.format("P=%d, L=%d, j=%d, %s: taken with non-ref/total (%d/%d) rows disqualified (%d,%d,%d)", period, locus.getRepeats(),
                             i + 1, startLocation, nonRefTotal, total, readsWithNoBases, readsWithNoQuals, readsWithTooManyBadBQs));
                 }
-                dest.add(total, nonRefTotal);
-                if (!config.useAllEvidence && dest.size() >= config.maximumNumberOfCases) {
-                    logger.info("Finished sampling period = " + period + " and repeat count = " + repeats + " as maximum number of case was reached: " + dest.size());
-                    logger.info("Number of cases containing non-ref reads is " + nonAllRefCases + " over " + dest.size());
+                result.add(locus, total, nonRefTotal);
+                if (!config.useAllEvidence && result.size() >= config.maximumNumberOfCases) {
+                    logger.info("Finished sampling period = " + period + " and repeat count = " + repeats + " as maximum number of case was reached: " + result.size());
+                    logger.info("Number of cases containing non-ref reads is " + nonAllRefCases + " over " + result.size());
                     logger.info("Number of dismissed cases are " + noReads + " due to lack of mapped reads and " + lowMinMQ + " due to low minimum MQ");
-                    return;
+                    return result;
                 } else if (!config.useAllEvidence && nonRefTotal > 0) {
-                    if (++nonAllRefCases >= config.targetMinimumNonRefCases && dest.size() >= config.minimumNumberOfCases) {
-                        logger.info("Finished sampling period = " + period + " and repeat count = " + repeats + " as minimum non-ref containing cases with a minimum number of cases was reached: " + nonAllRefCases + "/" + dest.size());
-                        logger.info("Number of cases containing non-ref reads is " + nonAllRefCases + " over " + dest.size());
+                    if (++nonAllRefCases >= config.targetMinimumNonRefCases && result.size() >= config.minimumNumberOfCases) {
+                        logger.info("Finished sampling period = " + period + " and repeat count = " + repeats + " as minimum non-ref containing cases with a minimum number of cases was reached: " + nonAllRefCases + "/" + result.size());
+                        logger.info("Number of cases containing non-ref reads is " + nonAllRefCases + " over " + result.size());
                         logger.info("Number of dismissed cases are " + noReads + " due to lack of mapped reads and " + lowMinMQ + " due to low minimum MQ");
-                        return;
+                        return result;
                     }
                 }
             }
         }
-        logger.info("Finished sampling period = " + period + " and repeat count = " + repeats + " exhausted all possible cases with non-ref containing " + nonAllRefCases + " over a total of " + dest.size());
-        logger.info("Number of cases containing non-ref reads is " + nonAllRefCases + " over " + dest.size());
+        logger.info("Finished sampling period = " + period + " and repeat count = " + repeats + " exhausted all possible cases with non-ref containing " + nonAllRefCases + " over a total of " + result.size());
+        logger.info("Number of cases containing non-ref reads is " + nonAllRefCases + " over " + result.size());
         logger.info("Number of dismissed cases are " + noReads + " due to lack of mapped reads and " + lowMinMQ + " due to low minimum MQ");
+        return result;
     }
 }

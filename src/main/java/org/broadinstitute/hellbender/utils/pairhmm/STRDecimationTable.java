@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.PrintWriter;
 import java.nio.file.Paths;
 import java.util.Arrays;
 
@@ -42,7 +41,6 @@ public class STRDecimationTable {
 
     public STRDecimationTable(final String spec) {
         Utils.nonNull(spec);
-        final int[][] decimation;
         if (spec.equalsIgnoreCase(NO_DECIMATION_STR)) {
             decimationMatrix = new int[][] {{0}};
         } else if (spec.equalsIgnoreCase(DEFAULT_DECIMATION_STR)) {
@@ -77,8 +75,8 @@ public class STRDecimationTable {
             final String[][] values = reader.lines()
                     .filter(str -> !str.startsWith("#") && !str.trim().isEmpty())
                     .map(str -> Arrays.stream(str.split("\\s+"))
-                               .mapToDouble(Double::parseDouble)
-                               .toArray())
+                               //.mapToDouble(Double::parseDouble)
+                               .toArray(String[]::new))
                     .toArray(String[][]::new);
             return parseDecimationMatrixValues(values, spec);
         } catch (final IOException ex) {
@@ -117,8 +115,8 @@ public class STRDecimationTable {
             final int[][] result = new int[values.length][];
             for (int i = 0; i < values.length; i++) {
                 final String[] row = values[i];
-                final int[] rowValues = new int[values.length];
-                for (int j = 0; j <  row.length; j++) {
+                final int[] rowValues = new int[values[i].length];
+                for (int j = 0; j < row.length; j++) {
                     final String str = row[j];
                     final int value;
                     try {
@@ -191,7 +189,7 @@ public class STRDecimationTable {
         }
     }
 
-    public long decimationBit(int period, int repeatCount) {
+    public int decimationBit(int period, int repeatCount) {
         if (period >= decimationMatrix.length) {
             return 0;
         } else if (repeatCount >= decimationMatrix[period].length) {

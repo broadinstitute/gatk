@@ -22,7 +22,6 @@ public final class DragstrConstants {
     public static final String SAMPLING_MIN_CASE_COUNT_ARGUMENT_FULL_NAME = "sampling-min-case-count";
 
 
-
     public static final int DEFAULT_MAX_PERIOD = 8;
     public static final int DEFAULT_MAX_REPEATS = 20;
     public static final int DEFAULT_RANDOM_SEED = 23;
@@ -34,31 +33,20 @@ public final class DragstrConstants {
     public static final int DEFAULT_SAMPLING_MIN_NON_REF_CONTAINING_CASE_COUNT = 200;
     public static final int DEFAULT_SAMPLING_MIN_CASE_COUNT = 400;
     public static final String MIN_DEPTH_ARGUMENT_FULL_NAME = "minimum-depth";
-    public static final String MIN_DEPTH_ARGUMENT_SHORT_NAME = "md" ;
+    public static final String MIN_DEPTH_ARGUMENT_SHORT_NAME = "md";
 
-
-    @Argument(fullName = SAMPLING_MIN_BQ_THRESHOLD_ARGUMENT_FULL_NAME,
-            doc = "Base quality thershold for base-call. Reads that contain a number bases that map on the STR will not qualify for sampling",
-            optional = true)
-    private int baseQualThreshold = DEFAULT_SAMPLING_BASE_QUAL_THRESHOLD; // 10;
-
-    @Argument(fullName = SAMPLING_MAX_BQ_EXCEPTIONS_ALLOWED_ARGUMENT_FULL_NAME,
-            doc = "Maximum number of STR overlapping base call with low quality allowed for any read to be considered for further analysis",
-            optional = true)
-    private int baseQualExceptionsAllowed = DEFAULT_SAMPLING_MAX_BQ_EXCEPTIONS_ALLOWED; // 2;
-
-    @Argument(fullName = SAMPLING_MAX_CASE_COUNT_ARGUMENT_FULL_NAME,
-            doc = "maximum number of sites sampled for each combination of period and repeat count",
-            optional = true)
-    private int maximumNumberOfCases = DEFAULT_SAMPLING_MAX_COUNT; // 2000.
-
-    @Argument(fullName = SAMPLING_MIN_NON_REF_CONTAING_CASE_COUNT_ARGUMENT_FULL_NAME,
-            doc = "targeted minimum number of sites sampled that contain non-ref reads for each combination of period and repeat count",
-            optional = true)
-    private int targetMinimumNonRefCases = DEFAULT_SAMPLING_MIN_NON_REF_CONTAINING_CASE_COUNT; //200.
-
-    @Argument(fullName = SAMPLING_MIN_CASE_COUNT_ARGUMENT_FULL_NAME,
-            doc = "minimum number of sites sampled for each combination of period and repeat count",
-            optional = true)
-    private int minimumNumberOfCases = DEFAULT_SAMPLING_MIN_CASE_COUNT;
+    public static final String GP_VALUES_ARGUMENT_FULL_NAME = "gp-values";
+    public static final String API_VALUES_ARGUMENT_FULL_NAME = "api-values";
+    public static final String HET_TO_HOM_RATIO_FULL_NAME = "het-to-hom-ratio";
+    public static final String MIN_LOCI_COUNT_FULL_NAME = "min-loci-count";
+    public static final String API_MONO_THRESHOLD_FULL_NAME = "api-mono-threshold";
+    public static final String MIN_GOP_FULL_NAME = "min-gop";
+    public static final String MAX_GOP_FULL_NAME = "max-gop";
+    public static final DoubleSequence DEFAULT_PHRED_GP_VALUES = new DoubleSequence("10:1.0:50");
+    public static final DoubleSequence DEFAULT_PHRED_API_VALUES = new DoubleSequence("0:1.0:40");
+    public static final double DEFAULT_HET_TO_HOM_RATIO = 2.0;
+    public static final int DEFAULT_MIN_LOCI_COUNT = 50;
+    public static final int DEFAULT_API_MONO_THRESHOLD = 3;
+    public static final double DEFAULT_MIN_GOP = 10;
+    public static final double DEFAULT_MAX_GOP = 50;
 }
