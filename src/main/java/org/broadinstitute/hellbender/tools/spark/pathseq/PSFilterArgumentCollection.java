@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 public final class PSFilterArgumentCollection implements Serializable {
@@ -45,6 +46,8 @@ public final class PSFilterArgumentCollection implements Serializable {
     public static final String DUST_T_SCORE_SHORT_NAME = DUST_T_SCORE_LONG_NAME;
     public static final String HOST_MIN_IDENTITY_LONG_NAME = "host-min-identity";
     public static final String HOST_MIN_IDENTITY_SHORT_NAME = HOST_MIN_IDENTITY_LONG_NAME;
+    public static final String IGNORE_ALIGNMENT_CONTIGS_LONG_NAME = "ignore-alignment-contigs";
+    public static final String IGNORE_ALIGNMENT_CONTIGS_SHORT_NAME = IGNORE_ALIGNMENT_CONTIGS_LONG_NAME;
     public static final String HOST_KMER_COUNT_THRESHOLD_LONG_NAME = "host-kmer-thresh";
     public static final String HOST_KMER_COUNT_THRESHOLD_SHORT_NAME = HOST_KMER_COUNT_THRESHOLD_LONG_NAME;
     public static final String FILTER_BWA_SEED_LENGTH_LONG_NAME = "filter-bwa-seed-length";
@@ -189,6 +192,16 @@ public final class PSFilterArgumentCollection implements Serializable {
             minValue = 1,
             optional = true)
     public int minIdentity = 30;
+
+    /**
+     * If using --is-host-aligned, ignores alignments to these contigs (can be specified multiple times). This
+     * can be useful if the alignment is to a reference containing a microbe, such as chrEBV in hg38.
+     */
+    @Argument(doc = "Host-aligned BAM contigs to ignore",
+            fullName = IGNORE_ALIGNMENT_CONTIGS_LONG_NAME,
+            shortName = IGNORE_ALIGNMENT_CONTIGS_SHORT_NAME,
+            optional = true)
+    public List<String> alignmentContigsToIgnore = new ArrayList<>();
 
     /**
      * Controls the stringency of read filtering based on host k-mer matching. Reads with at least this many matching
