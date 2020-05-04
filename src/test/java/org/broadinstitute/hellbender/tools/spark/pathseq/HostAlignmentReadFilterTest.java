@@ -72,7 +72,7 @@ public final class HostAlignmentReadFilterTest {
         final GATKRead read_in = ArtificialReadUtils.createArtificialRead(bases, qual, "*");
         read_in.setIsUnmapped();
         final boolean test_i = filter.test(read_in);
-        Assert.assertEquals(true, test_i);
+        Assert.assertTrue(test_i);
     }
 
     @Test
@@ -89,28 +89,28 @@ public final class HostAlignmentReadFilterTest {
         readA.setAttribute("NM", 0);
         readA.setPosition(IGNORED_CONTIG, 1);
         final boolean testA = filter.test(readA);
-        Assert.assertEquals(true, testA);
+        Assert.assertTrue(testA);
 
         // Mapped fully to non-ignored contig
         final GATKRead readB = ArtificialReadUtils.createArtificialRead(bases, qual, "100M");
         readB.setAttribute("NM", 0);
         readB.setPosition("chrNotIgnore", 1);
         final boolean testB = filter.test(readB);
-        Assert.assertEquals(false, testB);
+        Assert.assertFalse(testB);
 
         // Mapped poorly to ignored contig
         final GATKRead readC = ArtificialReadUtils.createArtificialRead(bases, qual, "10M90S");
         readC.setAttribute("NM", 90);
         readC.setPosition(IGNORED_CONTIG, 1);
         final boolean testC = filter.test(readC);
-        Assert.assertEquals(true, testC);
+        Assert.assertTrue(testC);
 
         // Mapped poorly to non-ignored contig
         final GATKRead readD = ArtificialReadUtils.createArtificialRead(bases, qual, "10M90S");
         readD.setAttribute("NM", 90);
         readD.setPosition("chrNotIgnore", 1);
         final boolean testD = filter.test(readD);
-        Assert.assertEquals(true, testD);
+        Assert.assertTrue(testD);
     }
 
     @Test
@@ -121,6 +121,6 @@ public final class HostAlignmentReadFilterTest {
         final GATKRead read_in = ArtificialReadUtils.createArtificialRead(cigar);
         read_in.setPosition("pos", 1);
         final boolean test_i = filter.test(read_in);
-        Assert.assertEquals(true, test_i); //Don't filter out reads if there is no NM tag
+        Assert.assertTrue(test_i); //Don't filter out reads if there is no NM tag
     }
 }

@@ -182,7 +182,7 @@ public final class PSFilter implements AutoCloseable {
             final Set<String> contigsToIgnoreSet = new HashSet<>(filterArgs.alignmentContigsToIgnore);
             for (final String contig : contigsToIgnoreSet) {
                 if (dictionary.getSequence(contig) == null) {
-                    throw new UserException.MissingContigInSequenceDictionary(contig, dictionary);
+                    throw new UserException.BadInput("Ignored sequence " + contig + " not found in input header.");
                 }
             }
         }
