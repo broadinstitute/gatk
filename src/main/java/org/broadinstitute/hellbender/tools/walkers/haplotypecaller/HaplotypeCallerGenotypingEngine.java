@@ -65,7 +65,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         this.doPhysicalPhasing = doPhysicalPhasing;
         ploidyModel = new HomogeneousPloidyModel(samples,configuration.standardArgs.genotypeArgs.samplePloidy);
         genotypingModel = hcArgs.applyBQD || hcArgs.applyFRD ?
-                new DRAGENBQDGenotypesModel(applyBQD, hcArgs.applyFRD, hcArgs.informativeReadOverlapMargin, hcArgs.likelihoodArgs.dragstrParams) :
+                new DRAGENBQDGenotypesModel(applyBQD, hcArgs.applyFRD, hcArgs.informativeReadOverlapMargin, hcArgs.maxEffectiveDepthAdjustment, hcArgs.likelihoodArgs.dragstrParams) :
                 new IndependentSampleGenotypesModel();
         maxGenotypeCountToEnumerate = configuration.standardArgs.genotypeArgs.MAX_GENOTYPE_COUNT;
         referenceConfidenceMode = configuration.emitReferenceConfidence;

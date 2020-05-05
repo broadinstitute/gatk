@@ -38,7 +38,6 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 
     private final double cachedLog10Alpha;
     private final double cachedLog10AlphaInverse;
-    private final double maxEffectiveDepthForHetAdjustment = 40; //TODO this needs to be parameterized
 
     /**
      * Creates a new calculator providing its ploidy and number of genotyping alleles.
@@ -215,7 +214,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
     //TODO this WILLLL need to handle indel priors
     public <A extends Allele> double[] calculateFRDLikelihoods(final LikelihoodMatrix<GATKRead, A> sampleLikelihoods, final double[] ploidyModelLikelihoods,
                                                                final List<DRAGENBQDGenotypesModel.DragenReadContainer> readContainers,
-                                                               final double snipAprioriHet, final double indelAprioriHet, final GenotypeLikelihoodCalculators calculators) {
+                                                               final double snipAprioriHet, final double indelAprioriHet, final int maxEffectiveDepthForHetAdjustment,
+                                                               final GenotypeLikelihoodCalculators calculators) {
         Utils.validate(sampleLikelihoods == cachedLikelihoodsObject, "There was a mismatch between the sample stored by the genotyper and the one requested for BQD, this will result in invalid genotyping");
         final double[] outputArray = new double[genotypeCount];
         Arrays.fill(outputArray, Double.NEGATIVE_INFINITY);
@@ -277,23 +277,23 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 }
 
 
-                // Use the index corresponding the mixture of F and
-                double localBestModelScore = localBestModel[0] - localBestModel[1];
-                int closestGTAlleleIndex = allelesToIndex(gtAlleleIndex, fAlleleIndex);
-                double log10LikelihoodsForPloyidyModel = ploidyModelLikelihoods[closestGTAlleleIndex] - MathUtils.log10(2);
-                int depthForGenotyping = sampleLikelihoods.evidenceCount();
+                if (maxEffectiveDepthForHetAdjustment > 0) {
+                    // Use the index corresponding the mixture of F and
+                    double localBestModelScore = localBestModel[0] - localBestModel[1];
+                    int closestGTAlleleIndex = allelesToIndex(gtAlleleIndex, fAlleleIndex);
+                    double log10LikelihoodsForPloyidyModel = ploidyModelLikelihoods[closestGTAlleleIndex] - MathUtils.log10(2);
+                    int depthForGenotyping = sampleLikelihoods.evidenceCount();
 //                System.out.println("best FRD likelihoods: "+localBestModelScore+" P(F) score used: "+localBestModel[1]+"  use MaxEffectiveDepth: "+maxEffectiveDepthForHetAdjustment);
 //                System.out.println("Using array index "+closestGTAlleleIndex+" for mixture gt with likelihood of "+log10LikelihoodsForPloyidyModel+" adjusted based on depth: "+depthForGenotyping);
-                double adjustedBestModel = log10LikelihoodsForPloyidyModel + ((localBestModelScore - log10LikelihoodsForPloyidyModel)
-                        * ((Math.min(depthForGenotyping, maxEffectiveDepthForHetAdjustment)*1.0)/depthForGenotyping));
+                    double adjustedBestModel = log10LikelihoodsForPloyidyModel + ((localBestModelScore - log10LikelihoodsForPloyidyModel)
+                            * ((Math.min(depthForGenotyping, maxEffectiveDepthForHetAdjustment) * 1.0) / depthForGenotyping));
 //                System.out.println("p_rG_adj : "+adjustedBestModel);
+                    outputArray[indexForGT] = Math.max(outputArray[indexForGT], adjustedBestModel + localBestModel[1]);
+                } else {
+                    outputArray[indexForGT] = Math.max(outputArray[indexForGT], localBestModel[0]);
+                }
 
-
-                // take the best FRD model for the given GT
-                outputArray[indexForGT] = Math.max(outputArray[indexForGT], adjustedBestModel + localBestModel[1]);
             }
-
-
 
         }
 

@@ -33,19 +33,20 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
     private final boolean computeBQD;
     private final boolean computeFRD;
     private final int allelePadding;
+    private final int maxEffectiveDepthAdjustment;
     private final DragstrParams dragstrParams;
 
     // We keep a fallback model in mind... this might want to be adjusted as implementation workds
     private final IndependentSampleGenotypesModel fallbackModel;
 
-    public DRAGENBQDGenotypesModel(final boolean useBQDModel, final boolean useFRDModel, final int allelePadding, final DragstrParams dragstrParams) { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY, useBQDModel, useFRDModel, allelePadding,  dragstrParams); }
+    public DRAGENBQDGenotypesModel(final boolean useBQDModel, final boolean useFRDModel, final int allelePadding, final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY, useBQDModel, useFRDModel, allelePadding, maxEffectiveDepthAdjustment,  dragstrParams); }
 
     /*
      *  Initialize model with given maximum allele count and ploidy for caching
      */
     public DRAGENBQDGenotypesModel(final int calculatorCachePloidyCapacity, final int calculatorCacheAlleleCapacity,
                                    final boolean useBQDModel, final boolean useFRDModel, final int allelePadding,
-                                   final DragstrParams dragstrParams) {
+                                   final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) {
         fallbackModel = new IndependentSampleGenotypesModel(calculatorCachePloidyCapacity, calculatorCacheAlleleCapacity);
         cachePloidyCapacity = calculatorCachePloidyCapacity;
         cacheAlleleCountCapacity = calculatorCacheAlleleCapacity;
@@ -54,6 +55,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
         this.computeBQD = useBQDModel;
         this.computeFRD = useFRDModel;
         this.allelePadding = allelePadding;
+        this.maxEffectiveDepthAdjustment = maxEffectiveDepthAdjustment;
         this.dragstrParams = dragstrParams;
     }
 
@@ -162,7 +164,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             if (computeFRD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
                 FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, ployidyModelGenotypeLikelihoods,
                         Stream.of(strandForward, strandReverse).flatMap(list -> list.stream()).filter(r -> r.getIndexInLikelihoodsObject() != -1).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
-                        34.77, api, calculators);
+                        34.77, api, maxEffectiveDepthAdjustment, calculators);
 //                System.out.println("FRD results:");
 //                System.out.println(Arrays.toString(FRDCallResults));
             }

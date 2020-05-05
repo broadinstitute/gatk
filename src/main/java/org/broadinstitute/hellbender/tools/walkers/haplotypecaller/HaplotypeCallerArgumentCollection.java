@@ -134,7 +134,9 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Advanced
     @Argument(fullName = "mapping-quality-threshold", doc = "Control the threshold for dicounting reads from genotyping/calling due to mapping quality")
     public int mappingQualityThreshold = HaplotypeCallerEngine.DEFAULT_READ_QUALITY_FILTER_THRESHOLD;
-
+    @Advanced
+    @Argument(fullName = "max-effective-depth-adjustment-for-frd", doc = "Set the maximum depth to modify FRD adjustment to in the event of high depth sites (0 to disable)", optional = false)
+    public int maxEffectiveDepthAdjustment = 0;
 
     @Hidden
     @Argument(fullName = "keep-rg", doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)
