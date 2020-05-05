@@ -514,6 +514,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             // we're benchmarking ART and/or the active region determination code in the HC, just leave without doing any work
             return NO_CALLS;
         }
+//        System.out.println("calling for region: " +region.getSpan());
 
         final List<VariantContext> VCpriors = new ArrayList<>();
         if (hcArgs.standardArgs.genotypeArgs.supportVariants != null) {

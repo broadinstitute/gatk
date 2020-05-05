@@ -108,6 +108,9 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     @Argument(fullName= STR_PADDING_LONG_NAME, doc = "Include at least this many bases around an event for calling STR indels", optional = true)
     public int strPaddingForGenotyping = 75;
 
+//    @Hidden
+//    @Argument(fullName= "disable-assembly-window-expansion-at-str-sites", doc )
+
 
     /**
      * Other parameters

@@ -35,6 +35,10 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Argument(fullName="pair-hmm-gap-continuation-penalty", doc="Flat gap continuation penalty for use in the Pair HMM", optional = true)
     public int gcpHMM = 10;
 
+    @Advanced
+    @Argument(fullName="expected-error-rate-per-base", doc="Error rate used to set expectation for post HMM read disqualification based on mismatches", optional = true)
+    public double expectedErrorRatePerBase = PairHMMLikelihoodCalculationEngine.DEFAULT_EXPECTED_ERROR_RATE_PER_BASE;
+
     /**
      * The PairHMM implementation to use for genotype likelihood calculations. The various implementations balance a tradeoff of accuracy and runtime.
      */

@@ -156,7 +156,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 errorAlleleContribution = 0;
             }
 
-//            System.out.println("read index:"+readIndex+" ihomGT:"+-10*homozygousGenotypeContribution+"  errorAlleleContribution:"+-10*errorAlleleContribution + " difference in phred: "+ -10*(errorAlleleContribution - homozygousGenotypeContribution));
+////            System.out.println("read index:"+readIndex+" ihomGT:"+-10*homozygousGenotypeContribution+"  errorAlleleContribution:"+-10*errorAlleleContribution + " difference in phred: "+ -10*(errorAlleleContribution - homozygousGenotypeContribution));
 
             // Populate the error probability array in phred space
             // Calculation: Alpha * P(r|E_allele) + (1 - Alpha) * P(r | G_homozygousGT))
@@ -185,7 +185,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         double lastGQQual=0;
         for (int n = 0; n < cumulative_mean_base_quality_phred_adjusted.length; n++) {
             final double bqdScore = cumulative_mean_base_quality_phred_adjusted[n] + cumulative_p_R_for_E[n] + (cumulative_P_GT[cumulative_P_GT.length-1] - cumulative_P_GT[n]);
-//            System.out.println(String.format("n=%d: %.2f, cum_phred_bq=%.2f, cum_prob_r_Error=%.2f, prob_G_remaining=%.2f",
+////            System.out.println(String.format("n=%d: %.2f, cum_phred_bq=%.2f, cum_prob_r_Error=%.2f, prob_G_remaining=%.2f",
 //                    n, bqdScore, cumulative_mean_base_quality_phred_adjusted[n], cumulative_p_R_for_E[n],
 //                    (cumulative_P_GT[cumulative_P_GT.length-1] - cumulative_P_GT[n])));
             if (minScoreFound > bqdScore) {
@@ -266,7 +266,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 //                System.out.println("\nBoth Strands: ");
                 final double[] maxLog10FBothStrands = computeFRDModelForStrandData(readContainers, c -> true, offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted, gtAllelePrior);
 
-//                System.out.println("gtAlleleIndex : "+gtAlleleIndex+ " fAlleleIndex: "+fAlleleIndex +" forwards: "+maxLog10FForwardsStrand+" reverse: "+maxLog10FReverseStrand+" both: "+maxLog10FBothStrands);
+////                System.out.println("gtAlleleIndex : "+gtAlleleIndex+ " fAlleleIndex: "+fAlleleIndex +" forwards: "+maxLog10FForwardsStrand+" reverse: "+maxLog10FReverseStrand+" both: "+maxLog10FBothStrands);
                 double[] localBestModel = maxLog10FForwardsStrand;
                 // TODO enum the indexes
                 if (localBestModel[0] < maxLog10FReverseStrand[0]) {

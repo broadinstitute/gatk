@@ -44,6 +44,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     private final DragstrParams dragstrParams;
     private final boolean dynamicDisqualification;
     private final double readDisqualificationScale;
+    private final double expectedErrorRatePerBase;
     private final boolean useMapQAsPhredMismappingRate;
     private final boolean disableCapReadQualitiesToMapQ;
 
@@ -76,7 +77,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
      *
      * For example, if this is 0.01, then we'd expect 1 error per 100 bp.
      */
-    private static final double EXPECTED_ERROR_RATE_PER_BASE = 0.02;
+    public static final double DEFAULT_EXPECTED_ERROR_RATE_PER_BASE = 0.02;
     
     /**
      * Create a new PairHMMLikelihoodCalculationEngine using provided parameters and hmm to do its calculations
@@ -99,7 +100,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final PairHMM.Implementation hmmType,
                                               final double log10globalReadMismappingRate,
                                               final PCRErrorModel pcrErrorModel) {
-        this( constantGCP, dragstrParams, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, false, false);
+        this( constantGCP, dragstrParams, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, DEFAULT_EXPECTED_ERROR_RATE_PER_BASE, false, false);
     }
 
     /**
@@ -128,6 +129,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final byte baseQualityScoreThreshold,
                                               final boolean dynamicReadDisqualificaiton,
                                               final double readDisqualificationScale,
+                                              final double expectedErrorRatePerBase,
                                               final boolean useMapQAsPhredMismappingRate,
                                               final boolean capReadQualitiesToMapQ) {
         Utils.nonNull(hmmType, "hmmType is null");
@@ -146,6 +148,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         this.dynamicDisqualification = dynamicReadDisqualificaiton;
         this.readDisqualificationScale = readDisqualificationScale;
         this.useMapQAsPhredMismappingRate = useMapQAsPhredMismappingRate;
+        this.expectedErrorRatePerBase = expectedErrorRatePerBase;
         this.disableCapReadQualitiesToMapQ = capReadQualitiesToMapQ;
 
         initializePCRErrorModel();
@@ -185,9 +188,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             result.normalizeLikelihoods(log10globalReadMismappingRate);
         }
         if (dynamicDisqualification) {
-            result.filterPoorlyModeledEvidence(daynamicLog10MinLiklihoodModel(readDisqualificationScale, log10MinTrueLikelihood(EXPECTED_ERROR_RATE_PER_BASE)));
+            result.filterPoorlyModeledEvidence(daynamicLog10MinLiklihoodModel(readDisqualificationScale, log10MinTrueLikelihood(expectedErrorRatePerBase, false)));
         } else {
-            result.filterPoorlyModeledEvidence(log10MinTrueLikelihood(EXPECTED_ERROR_RATE_PER_BASE));
+            result.filterPoorlyModeledEvidence(log10MinTrueLikelihood(expectedErrorRatePerBase, true));
         }
         return result;
     }
@@ -195,7 +198,13 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     private ToDoubleFunction<GATKRead> daynamicLog10MinLiklihoodModel(final double dynamicRadQualConstant, final ToDoubleFunction<GATKRead> log10MinTrueLikelihood) {
         return read -> {
             double dynamicThreshold = calculateDynamicThreshold(read, dynamicRadQualConstant);
-            return Math.min(dynamicThreshold, log10MinTrueLikelihood.applyAsDouble(read));
+            double log10MaxLikelihoodForTrueAllele = log10MinTrueLikelihood.applyAsDouble(read);
+            if (dynamicThreshold < log10MaxLikelihoodForTrueAllele ) {
+//                System.out.println("For read "+ read.getName() + " replacing old threshold ("+log10MaxLikelihoodForTrueAllele+") with new threshold: "+dynamicThreshold);
+                return dynamicThreshold;
+            } else {
+                return log10MaxLikelihoodForTrueAllele;
+            }
         };
     }
 
@@ -238,9 +247,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             37, 0.009200898, 0.348056286, 38, 0.007467036, 0.289881373, 39, 0.006057179, 0.241163527,
             40, 0.004911394, 0.200422214};
 
-    private ToDoubleFunction<GATKRead> log10MinTrueLikelihood(final double maximumErrorPerBase) {
+    private ToDoubleFunction<GATKRead> log10MinTrueLikelihood(final double maximumErrorPerBase, final boolean capLikelihoods) {
         return read -> {
-            final double maxErrorsForRead = Math.min(2.0, Math.ceil(read.getLength() * maximumErrorPerBase));
+            final double maxErrorsForRead = capLikelihoods ? Math.min(2.0, Math.ceil(read.getLength() * maximumErrorPerBase)) : Math.ceil(read.getLength() * maximumErrorPerBase);
             final double log10QualPerBase = -4.0;
             return maxErrorsForRead * log10QualPerBase;
         };
