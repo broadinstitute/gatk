@@ -49,9 +49,6 @@ public class DragstrCasesSamplerArgumentCollection {
             minValue = 0.0)
     public double maxGOP = DragstrConstants.DEFAULT_MAX_GOP;
 
-    @Argument(fullName = "dont-adjust-gop", optional = true)
-    public boolean dontPostAdjustmentOfGOP = false;
-
     private void validate() {
         if (phredGpValues != DragstrConstants.DEFAULT_PHRED_GP_VALUES) {
             for (final double d : phredGpValues.toDoubleArray()) {
@@ -88,9 +85,7 @@ public class DragstrCasesSamplerArgumentCollection {
               shortName = DragstrConstants.MIN_DEPTH_ARGUMENT_SHORT_NAME,
               doc = "Minimum coverage to consider a locus for sampling",
               optional = true)
-    public int minDepth;
-
-    public int locusSamplig;
+    public int minDepth = DragstrConstants.DEFAULT_MIN_DEPTH;
 
     @Argument(fullName = DragstrConstants.USE_ALL_EVIDENCE_FULL_NAME,
             doc = "do not sample, simply use all cases available (slow for not downsampled STR loci sets)",
@@ -100,56 +95,45 @@ public class DragstrCasesSamplerArgumentCollection {
     @Argument(fullName = DragstrConstants.RANDOM_SEED_ARGUMENT_FULL_NAME,
             doc = "random number generator base seed",
             optional = true)
-    public int randomSeed;
+    public int randomSeed = DragstrConstants.DEFAULT_RANDOM_SEED;
+
     @Argument(fullName = DragstrConstants.SAMPLING_PADDING_ARGUMENT_FULL_NAME,
             doc = "bases on either side of the repeat that are included in the STR pileup",
             optional = true)
-    public int pileupPadding;
+    public int pileupPadding = DragstrConstants.DEFAULT_SAMPLING_PADDING;
+
     @Argument(fullName = DragstrConstants.SAMPLING_MIN_MQ_ARGUMENT_FULL_NAME,
             doc = "the minimum read mapping quality allowed in sampled loci. Any read with a lower MQ will result in discarding that locus",
             optional = true)
-    public int samplingMinMQ;
+    public int samplingMinMQ = DragstrConstants.DEFAULT_SAMPLING_MIN_MQ;
+
     @Argument(fullName = DragstrConstants.SAMPLING_MAX_MQ_ARGUMENT_FULL_NAME,
             doc = "the maximum number of sites to sample per period and repeat count combination",
             optional = true)
-    public int maxCount;
+    public int maxCount = DragstrConstants.DEFAULT_SAMPLING_MAX_COUNT;
+
     @Argument(fullName = DragstrConstants.SAMPLING_MIN_BQ_THRESHOLD_ARGUMENT_FULL_NAME,
             doc = "Base quality thershold for base-call. Reads that contain a number bases that map on the STR will not qualify for sampling",
             optional = true)
-    public int baseQualThreshold;
+    public int baseQualThreshold = DragstrConstants.DEFAULT_SAMPLING_BASE_QUAL_THRESHOLD;
 
     @Argument(fullName = org.broadinstitute.hellbender.utils.pairhmm.DragstrConstants.SAMPLING_MAX_BQ_EXCEPTIONS_ALLOWED_ARGUMENT_FULL_NAME,
         doc ="Maximum number of STR overlapping base call with low quality allowed for any read to be considered for further analysis",
         optional =true)
-    public int baseQualExceptionsAllowed;
+    public int baseQualExceptionsAllowed = DragstrConstants.DEFAULT_SAMPLING_MAX_BQ_EXCEPTIONS_ALLOWED;
 
     @Argument(fullName = org.broadinstitute.hellbender.utils.pairhmm.DragstrConstants.SAMPLING_MAX_CASE_COUNT_ARGUMENT_FULL_NAME,
         doc ="maximum number of sites sampled for each combination of period and repeat count",
         optional =true)
-    public int maximumNumberOfCases;
+    public int maximumNumberOfCases = DragstrConstants.DEFAULT_SAMPLING_MAX_COUNT;
 
     @Argument(fullName = org.broadinstitute.hellbender.utils.pairhmm.DragstrConstants.SAMPLING_MIN_NON_REF_CONTAING_CASE_COUNT_ARGUMENT_FULL_NAME,
         doc ="targeted minimum number of sites sampled that contain non-ref reads for each combination of period and repeat count",
         optional =true)
-    public int targetMinimumNonRefCases;
+    public int targetMinimumNonRefCases =DragstrConstants.DEFAULT_SAMPLING_MIN_NON_REF_CONTAINING_CASE_COUNT;
 
     @Argument(fullName = org.broadinstitute.hellbender.utils.pairhmm.DragstrConstants.SAMPLING_MIN_CASE_COUNT_ARGUMENT_FULL_NAME,
         doc ="minimum number of sites sampled for each combination of period and repeat count",
         optional =true)
-    public int minimumNumberOfCases;
-
-    @Argument(fullName = "mim-loci-count-per-period-and-repeat-count")
-    public int minimumLociCountPerPeriodAndRepeatCount = 50;
-
-    public DragstrCasesSamplerArgumentCollection() {
-        this.randomSeed = DragstrConstants.DEFAULT_RANDOM_SEED;
-        this.pileupPadding = DragstrConstants.DEFAULT_SAMPLING_PADDING;
-        this.samplingMinMQ = DragstrConstants.DEFAULT_SAMPLING_MIN_MQ;
-        this.maxCount = DragstrConstants.DEFAULT_SAMPLING_MAX_COUNT;
-        this.baseQualThreshold = DragstrConstants.DEFAULT_SAMPLING_BASE_QUAL_THRESHOLD;
-        this.baseQualExceptionsAllowed = DragstrConstants.DEFAULT_SAMPLING_MAX_BQ_EXCEPTIONS_ALLOWED;
-        this.maximumNumberOfCases = DragstrConstants.DEFAULT_SAMPLING_MAX_COUNT;
-        this.targetMinimumNonRefCases = DragstrConstants.DEFAULT_SAMPLING_MIN_NON_REF_CONTAINING_CASE_COUNT;
-        this.minimumNumberOfCases = DragstrConstants.DEFAULT_SAMPLING_MIN_CASE_COUNT;
-    }
+    public int minimumNumberOfCases =  DragstrConstants.DEFAULT_SAMPLING_MIN_CASE_COUNT;
 }

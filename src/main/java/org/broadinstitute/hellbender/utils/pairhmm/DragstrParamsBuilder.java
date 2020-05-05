@@ -40,7 +40,7 @@ public class DragstrParamsBuilder {
         final double[][] gop = new double[gp.length][gp[0].length];
         for (int i = 0; i < gop.length; i++) {
             for (int j = 0; j < gop[i].length; j++) {
-                gop[i][j] = gopCalculation(gp[i][j], gcp[i][j], i, minGop, maxGop, stepwise);
+                gop[i][j] = Math.max(minGop, gopCalculation(gp[i][j], gcp[i][j], i, 0.0, maxGop, stepwise));
             }
         }
         return DragstrParams.of(maxPeriod, maxRepeats, gop, gcp, api);

@@ -49,4 +49,5 @@ public final class DragstrConstants {
     public static final int DEFAULT_API_MONO_THRESHOLD = 3;
     public static final double DEFAULT_MIN_GOP = 10;
     public static final double DEFAULT_MAX_GOP = 50;
+    public static final int DEFAULT_MIN_DEPTH = 10;
 }
