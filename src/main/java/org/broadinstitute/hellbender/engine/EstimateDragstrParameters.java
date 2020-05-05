@@ -190,6 +190,7 @@ public class EstimateDragstrParameters extends GATKTool {
             DECIMATION_MASKS_BY_BIT[i] = DECIMATION_MASKS_BY_BIT[j] << 1;
             DECIMATION_MASKS_BY_BIT[j] = ~DECIMATION_MASKS_BY_BIT[j];
         }
+        DECIMATION_MASKS_BY_BIT[Long.SIZE -1] = ~DECIMATION_MASKS_BY_BIT[Long.SIZE - 1];
     }
 
     private DragstrLocusCases downsample(final DragstrLocusCases in, final int minDecimationBit, final int maxCount) {
@@ -211,10 +212,13 @@ public class EstimateDragstrParameters extends GATKTool {
                 }
             }
             int finalSize = inSize;
+            IntList progressiveSizes = new IntArrayList(10);
             long filterMask = ~ DECIMATION_MASKS_BY_BIT[minDecimationBit];
+            progressiveSizes.add(finalSize);
             for (int j = minDecimationBit; finalSize > maxCount && j < Long.SIZE; j++) {
                 finalSize -= countByFirstDecimatingBit[j];
                 filterMask |= ~ DECIMATION_MASKS_BY_BIT[j];
+                progressiveSizes.add(finalSize);
             }
             final DragstrLocusCases out = new DragstrLocusCases(finalSize);
             for (int i = 0; i < inSize; i++) {
@@ -224,6 +228,10 @@ public class EstimateDragstrParameters extends GATKTool {
                     out.depth.add(in.depth.get(i));
                     out.nonref.add(in.nonref.get(i));
                 }
+            }
+            progressiveSizes.add(out.size());
+            if (logger.isDebugEnabled()) {
+                if (in.size() > 0) {logger.debug("" + in.loci.get(0).getPeriod() + " "  + in.loci.get(0).getRepeats() + " " + Arrays.toString(progressiveSizes.toArray()));};
             }
             return out;
         }
