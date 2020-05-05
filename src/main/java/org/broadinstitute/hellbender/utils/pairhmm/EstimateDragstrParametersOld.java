@@ -19,7 +19,6 @@ import static org.broadinstitute.hellbender.utils.pairhmm.DragstrConstants.*;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 
 import java.io.*;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -89,7 +88,7 @@ public class EstimateDragstrParametersOld  extends GATKTool {
         } catch (final IOException ex) {
             throw new UserException.CouldNotReadInputFile(samplingLoci, "could not open zip file " + samplingLoci, ex);
         }
-        final DragstrParams params = estimator.estimate(sampledCases);
+        final DragstrParams params = estimator.estimateSequencial(sampledCases);
         params.print(outputPath);
     }
 

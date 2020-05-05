@@ -6,9 +6,11 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.EstimateDragstrParameters;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.stream.IntStream;
 
 public class DragstrParametersEstimator {
 
@@ -72,11 +74,20 @@ public class DragstrParametersEstimator {
     }
 
 
-    public DragstrParams estimate(final EstimateDragstrParameters.StratifiedDragstrLocusCases cases) {
+    public DragstrParams estimateSequencial(final EstimateDragstrParameters.StratifiedDragstrLocusCases cases) {
         final DragstrParamsBuilder builder = new DragstrParamsBuilder(maxPeriod, maxRepeats);
         for (int period = 1; period <= maxPeriod; period++) {
             estimatePeriod(period, builder, cases);
         }
+        return builder.make(min_gop, max_gop, .25);
+    }
+
+    public DragstrParams estimateParallel(final EstimateDragstrParameters.StratifiedDragstrLocusCases cases, final int threads) {
+        final DragstrParamsBuilder builder = new DragstrParamsBuilder(maxPeriod, maxRepeats);
+        final int actualThreads = Math.min(threads, maxPeriod + 1);
+        Utils.runInParallel(actualThreads, () -> IntStream.range(1, maxPeriod + 1)
+                .parallel()
+                .forEach(period  -> estimatePeriod(period, builder, cases) ));
         return builder.make(min_gop, max_gop, .25);
     }
 

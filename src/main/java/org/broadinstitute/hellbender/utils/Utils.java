@@ -1523,4 +1523,8 @@ public final class Utils {
             }
         }
     }
+
+    public static void runInParallel(final int threads, final Runnable run) {
+        runInParallel(threads, () -> {run.run(); return null;});
+    }
 }

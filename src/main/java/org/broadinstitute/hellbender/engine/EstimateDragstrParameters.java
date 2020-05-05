@@ -19,7 +19,6 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BinaryOperator;
@@ -148,7 +147,11 @@ public class EstimateDragstrParameters extends GATKTool {
 
     private DragstrParams estimateParams(StratifiedDragstrLocusCases finalSites) {
         final DragstrParametersEstimator estimator = new DragstrParametersEstimator(config);
-        return estimator.estimate(finalSites);
+        if (runInParallel || threads > 1) {
+            return estimator.estimateParallel(finalSites, threads);
+        } else {
+            return estimator.estimateSequencial(finalSites);
+        }
     }
 
     private StratifiedDragstrLocusCases downSample(final StratifiedDragstrLocusCases allSites, final File lociFile) {
