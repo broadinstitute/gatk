@@ -203,7 +203,7 @@ public class EstimateDragstrParameters extends GATKTool {
                 long mask = locus.getMask();
                 for (int j = minDecimationBit; mask != 0 && j < 64;  j++) {
                     final long newMask = mask & DECIMATION_MASKS_BY_BIT[j];
-                    if (newMask != mask) {
+                    if (newMask == mask) {
                          countByFirstDecimatingBit[j]++;
                          break;
                      } else {
@@ -223,7 +223,7 @@ public class EstimateDragstrParameters extends GATKTool {
             final DragstrLocusCases out = new DragstrLocusCases(finalSize);
             for (int i = 0; i < inSize; i++) {
                 final long mask = in.loci.get(i).getMask();
-                if ((mask & filterMask) == 0) {
+                if ((mask & filterMask) != filterMask) {
                     out.loci.add(in.loci.get(i));
                     out.depth.add(in.depth.get(i));
                     out.nonref.add(in.nonref.get(i));
@@ -231,7 +231,8 @@ public class EstimateDragstrParameters extends GATKTool {
             }
             progressiveSizes.add(out.size());
             if (logger.isDebugEnabled()) {
-                if (in.size() > 0) {logger.debug("" + in.loci.get(0).getPeriod() + " "  + in.loci.get(0).getRepeats() + " " + Arrays.toString(progressiveSizes.toArray()));};
+                if (in.size() > 0) {logger.debug("" + in.loci.get(0).getPeriod() + " "  + in.loci.get(0).getRepeats()
+                        + " " + Arrays.toString(progressiveSizes.toArray()));};
             }
             return out;
         }
