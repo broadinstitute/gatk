@@ -69,7 +69,7 @@ public class DragstrParametersEstimator {
             // so if no exact was found we look the position before the insertion position in case that value
             // is close enough (less than 0.001 way).
             min_gp_idx_by_period[i] = index >= 0 ? index :
-                    (index < -1 && Math.abs(gp_min - phred_api_range[-index - 2]) < 0.001) ? -index - 2 : -index - 1;
+                    (index < -1 && Math.abs(gp_min - phred_gp_range[-index - 2]) < 0.001) ? -index - 2 : -index - 1;
         }
     }
 
