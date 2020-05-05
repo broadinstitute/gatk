@@ -223,7 +223,7 @@ public class EstimateDragstrParameters extends GATKTool {
             final DragstrLocusCases out = new DragstrLocusCases(finalSize);
             for (int i = 0; i < inSize; i++) {
                 final long mask = in.loci.get(i).getMask();
-                if ((mask & filterMask) != filterMask) {
+                if ((mask & filterMask) == filterMask) {
                     out.loci.add(in.loci.get(i));
                     out.depth.add(in.depth.get(i));
                     out.nonref.add(in.nonref.get(i));
