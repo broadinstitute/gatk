@@ -31,8 +31,7 @@ import java.util.stream.Collectors;
  *
  * <p>
  *     The tool takes multiple normal sample callsets produced by {@link Mutect2}'s tumor-only mode and collates sites present in two or more samples
- *     into a sites-only VCF. The PoN captures common artifactual and germline variant sites.
- *     Mutect2 then uses the PoN to filter variants at the site-level.
+ *     into a sites-only VCF. The PoN captures common artifacts.  Mutect2 then uses the PoN to filter variants at the site-level.
  * </p>
  * <p>
  *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.
