@@ -882,7 +882,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         int insLocStop = 20;
 
         Pair<List<Integer>,byte[]> result;
-        byte[] refBytes = "TATCATCATCGGA".getBytes();
+        byte[] refBytes = "ATCATCATCGGA".getBytes();    // excludes leading match base common to VC's ref and alt alleles
 
         Assert.assertEquals(GATKVariantContextUtils.findRepeatedSubstring("ATG".getBytes()),3);
         Assert.assertEquals(GATKVariantContextUtils.findRepeatedSubstring("AAA".getBytes()),1);
@@ -908,7 +908,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(result.getRight().length,3);
 
         // simple non-tandem deletion: CCCC*, -
-        refBytes = "TCCCCCCCCATG".getBytes();
+        refBytes = "CCCCCCCCATG".getBytes();    // excludes leading match base common to VC's ref and alt alleles
         vc = new VariantContextBuilder("foo", delLoc, 10, 14, Arrays.asList(ccccR,nullA)).make();
         result = GATKVariantContextUtils.getNumTandemRepeatUnits(vc, refBytes);
         Assert.assertEquals(result.getLeft().toArray()[0],8);
@@ -916,7 +916,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(result.getRight().length,1);
 
         // CCCC*,CC,-,CCCCCC, context = CCC: (C)7 -> (C)5,(C)3,(C)9
-        refBytes = "TCCCCCCCAGAGAGAG".getBytes();
+        refBytes = "CCCCCCCAGAGAGAG".getBytes();    // excludes leading match base common to VC's ref and alt alleles
         vc = new VariantContextBuilder("foo", insLoc, insLocStart, insLocStart+4, Arrays.asList(ccccR,cc, nullA,cccccc)).make();
         result = GATKVariantContextUtils.getNumTandemRepeatUnits(vc, refBytes);
         Assert.assertEquals(result.getLeft().toArray()[0],7);
@@ -926,7 +926,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(result.getRight().length,1);
 
         // GAGA*,-,GAGAGAGA
-        refBytes = "TGAGAGAGAGATTT".getBytes();
+        refBytes = "GAGAGAGAGATTT".getBytes();  // excludes leading match base common to VC's ref and alt alleles
         vc = new VariantContextBuilder("foo", insLoc, insLocStart, insLocStart+4, Arrays.asList(gagaR, nullA,gagagaga)).make();
         result = GATKVariantContextUtils.getNumTandemRepeatUnits(vc, refBytes);
         Assert.assertEquals(result.getLeft().toArray()[0],5);
