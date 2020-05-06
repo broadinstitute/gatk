@@ -91,6 +91,8 @@ public class SplitIntervals extends GATKTool {
     public static final String PICARD_INTERVAL_FILE_EXTENSION = "interval_list";
     public static final String DEFAULT_EXTENSION = "-scattered." + PICARD_INTERVAL_FILE_EXTENSION;
 
+    public static final int DEFAULT_NUMBER_OF_DIGITS = 4;  //to preserve backward compatibility
+
     @Argument(fullName = SCATTER_COUNT_LONG_NAME, shortName = SCATTER_COUNT_SHORT_NAME,
             doc = "scatter count: number of output interval files to split into", optional = true)
     private int scatterCount = 1;
@@ -147,8 +149,9 @@ public class SplitIntervals extends GATKTool {
                         })  // turn the intervals back into an IntervalList
                 ).collect(Collectors.toList());
 
-        final DecimalFormat formatter = new DecimalFormat("0000");
-        IntStream.range(0, scatteredFinal.size()).forEach(n -> scatteredFinal.get(n).write(new File(outputDir, formatter.format(n) + extension)));
+        final int maxNumberOfPlaces = Math.max((int)Math.floor(Math.log10(scatterCount-1))+1, DEFAULT_NUMBER_OF_DIGITS);
+        final String formatString = "%0" + maxNumberOfPlaces + "d";
+        IntStream.range(0, scatteredFinal.size()).forEach(n -> scatteredFinal.get(n).write(new File(outputDir, String.format(formatString, n) + extension)));
     }
 
     @Override

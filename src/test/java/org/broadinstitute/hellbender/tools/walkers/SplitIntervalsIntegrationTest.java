@@ -162,7 +162,9 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
 
     //generates the files to look for given a scatter count, directory and extension
     private static Stream<File> getExpectedScatteredFiles(final int scatterCount, final File outputDir, String extension) {
-        return IntStream.range(0, scatterCount).mapToObj(n -> new File(outputDir, formatter.format(n) + extension));
+        final int maxNumberOfPlaces = (int)Math.max(Math.floor(Math.log10(scatterCount-1))+1, SplitIntervals.DEFAULT_NUMBER_OF_DIGITS);
+        final String fileIndexFormatString = "%0" + maxNumberOfPlaces + "d";
+        return IntStream.range(0, scatterCount).mapToObj(n -> new File(outputDir, String.format(fileIndexFormatString, n) + extension));
     }
 
     private static void verifyScatteredFilesExist(final int scatterCount, final File outputDir, String extension) {
