@@ -206,6 +206,54 @@ def parse_args():
     parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
     parser.add_argument('--cache_size', default=3.5e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
 
+    # Cross reference arguments
+    parser.add_argument(
+        '--tensors_name', default='Tensors',
+        help='Name of dataset at tensors, e.g. ECG. '
+             'Adds contextual detail to summary CSV and plots.',
+    )
+    parser.add_argument(
+        '--join_tensors', default=['partners_ecg_patientid_clean'], nargs='+',
+        help='TensorMap or column name in csv of value in tensors used in join with reference. '
+             'Can be more than 1 join value.',
+    )
+    parser.add_argument(
+        '--time_tensor', default='partners_ecg_datetime',
+        help='TensorMap or column name in csv of value in tensors to perform time cross-ref on. '
+             'Time cross referencing is optional.',
+    )
+    parser.add_argument(
+        '--reference_tensors',
+        help='Either a csv or directory of hd5 containing a reference dataset.',
+    )
+    parser.add_argument(
+        '--reference_name', default='Reference',
+        help='Name of dataset at reference, e.g. STS. '
+             'Adds contextual detail to summary CSV and plots.',
+    )
+    parser.add_argument(
+        '--reference_join_tensors', nargs='+',
+        help='TensorMap or column name in csv of value in reference used in join in tensors. '
+             'Can be more than 1 join value.',
+    )
+    parser.add_argument(
+        '--reference_start_time_tensor', nargs='+',
+        help='TensorMap or column name in csv of start of time window in reference. '
+             'An integer can be provided as a second argument to specify an offset to the start time. '
+             'e.g. tStart -30',
+    )
+    parser.add_argument(
+        '--reference_end_time_tensor', nargs='+',
+        help='TensorMap or column name in csv of end of time window in reference. '
+             'An integer can be provided as a second argument to specify an offset to the end time. '
+             'e.g. tEnd 30',
+    )
+    parser.add_argument(
+        '--reference_label',
+        help='TensorMap or column name of value in csv to report distribution on, e.g. mortality. '
+             'Label distribution reporting is optional.',
+    )
+
     args = parser.parse_args()
     _process_args(args)
     return args

@@ -603,7 +603,6 @@ TMAPS[task] = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase_pc"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=validator_not_empty,
 )
 
 
@@ -614,7 +613,6 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase_pc"),
     shape=(1,),
-    validator=validator_not_empty,
 )
 
 

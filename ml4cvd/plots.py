@@ -1042,6 +1042,36 @@ def plot_partners_ecgs(args):
             logging.exception(f"Broken tensor at: {tp}")
 
 
+def plot_cross_reference(args, xref_df, title, time_description, window_start, window_end):
+    # TODO make this work with start/end windows
+    if xref_df.empty:
+        logging.info(f'No cross reference found for "{title}"')
+        return
+
+    title = title.replace(' ', '_')
+
+    # compute day diffs
+    day_diffs = np.array(xref_df.apply(lambda row: (row[args.time_tensor] - row[window_end]).days, axis=1))
+
+    plt.rcParams['font.size'] = 18
+    fig = plt.figure(figsize=(15,9))
+    ax = fig.add_subplot(111)
+    binwidth = 5
+    ax.hist(day_diffs, bins=range(day_diffs.min(), day_diffs.max() + binwidth, binwidth))
+    ax.set_xlabel('Days relative to event')
+    ax.set_ylabel('Number of patients')
+    ax.set_title(f'Distribution of {args.tensors_name} {time_description}: N={len(day_diffs)}')
+
+    ax.text(0.05, 0.90, f'Min: {day_diffs.min()}', transform=ax.transAxes)
+    ax.text(0.05, 0.85, f'Max: {day_diffs.max()}', transform=ax.transAxes)
+    ax.text(0.05, 0.80, f'Median: {np.median(day_diffs):.0f}', transform=ax.transAxes)
+    plt.tight_layout()
+
+    fpath = os.path.join(args.output_folder, args.id, f'distribution_{title}{IMAGE_EXT}')
+    fig.savefig(fpath)
+    logging.info(f'Saved histogram of days relative to {window_end} to {fpath}')
+
+
 def _ecg_rest_traces(hd5):
     """Extracts ECG resting traces from HD5 and returns a dictionary based on biosppy template"""
     leads = {}

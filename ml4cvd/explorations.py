@@ -4,19 +4,19 @@
 import os
 import csv
 import math
+import logging
 import operator
 import datetime
 from operator import itemgetter
 from functools import reduce
 from itertools import combinations
-from collections import defaultdict, Counter
-from multiprocess import Pool, Value
+from collections import defaultdict, Counter, OrderedDict
 from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 
 import h5py
-import logging
 import numpy as np
 import pandas as pd
+from multiprocess import Pool, Value
 from tensorflow.keras.models import Model
 
 import matplotlib
@@ -25,8 +25,10 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 
 from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.TensorMap import TensorMap, Interpretation, decompress_data
-from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, evaluate_predictions, subplot_rocs, subplot_scatters
+from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
+from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
+from ml4cvd.plots import evaluate_predictions, subplot_rocs, subplot_scatters
+from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference
 from ml4cvd.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 
@@ -788,8 +790,10 @@ def _tensors_to_df(args):
     paths = [(path, gen.name) for gen in generators for path in gen.path_iters[0].paths]
     tot = len(paths)
     with Pool(processes=None) as pool:
-        list_of_dicts_of_dicts = pool.starmap(_hd5_to_dict,
-                                    [(tmaps, path, gen_name, tot) for path, gen_name in paths])
+        list_of_dicts_of_dicts = pool.starmap(
+            _hd5_to_dict,
+            [(tmaps, path, gen_name, tot) for path, gen_name in paths],
+        )
 
     num_hd5 = len(list_of_dicts_of_dicts)
     list_of_tensor_dicts = [dotd[i] for dotd in list_of_dicts_of_dicts for i in dotd if dotd is not None]
@@ -918,8 +922,10 @@ def explore(args):
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
             df_stats = pd.DataFrame()
             if df_cur.empty:
-                logging.info(f"{df_str} of tensors results in empty dataframe."
-                             f" Skipping calculations of {Interpretation.CONTINUOUS} summary statistics")
+                logging.info(
+                    f"{df_str} of tensors results in empty dataframe."
+                    f" Skipping calculations of {Interpretation.CONTINUOUS} summary statistics",
+                )
             else:
                 for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.CONTINUOUS]:
                     if tm.channel_map:
@@ -966,8 +972,10 @@ def explore(args):
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
             df_stats = pd.DataFrame()
             if df_cur.empty:
-                logging.info(f"{df_str} of tensors results in empty dataframe."
-                             f" Skipping calculations of {Interpretation.LANGUAGE} summary statistics")
+                logging.info(
+                    f"{df_str} of tensors results in empty dataframe."
+                    f" Skipping calculations of {Interpretation.LANGUAGE} summary statistics",
+                )
             else:
                 for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.LANGUAGE]:
                     if tm.channel_map:
@@ -998,3 +1006,160 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}")
+
+
+def _report_cross_reference(args, cross_reference_df, title):
+    title = title.replace(' ', '_')
+    if args.reference_label in cross_reference_df:
+        labels, counts = np.unique(cross_reference_df[args.reference_label], return_counts=True)
+        labels = np.append(labels, ['Total'])
+        counts = np.append(counts, [sum(counts)])
+
+        # save outcome distribution to csv
+        df_out = pd.DataFrame({ 'counts': counts, args.reference_label: labels }).set_index(args.reference_label, drop=True)
+        fpath = os.path.join(args.output_folder, args.id, f'distribution_{args.reference_label.replace(" ", "_")}_{title}.csv')
+        df_out.to_csv(fpath)
+        logging.info(f'Saved distribution of {args.reference_label} in cross reference to {fpath}')
+
+    # save cross reference to csv
+    fpath = os.path.join(args.output_folder, args.id, f'list_{title}.csv')
+    cross_reference_df.set_index(args.join_tensors, drop=True).to_csv(fpath)
+    logging.info(f'Saved cross reference to {fpath}')
+
+
+def cross_reference(args):
+    """Cross reference a source cohort with a reference cohort."""
+    args.num_workers = 0
+    cohort_counts = OrderedDict()
+
+    src_path = args.tensors
+    src_name = args.tensors_name
+    src_join = args.join_tensors
+    src_time = args.time_tensor
+    ref_path = args.reference_tensors
+    ref_name = args.reference_name
+    ref_join = args.reference_join_tensors
+    ref_start = args.reference_start_time_tensor
+    ref_end = args.reference_end_time_tensor
+    ref_label = args.reference_label
+
+    # parse options
+    src_cols = list(src_join)
+    ref_cols = list(ref_join)
+    if ref_label is not None:
+        ref_cols.append(ref_label)
+
+    use_time = src_time is not None and len(ref_start) != 0 and len(ref_end) != 0
+    if use_time:
+        src_cols.append(src_time)
+
+        # ref start and end are lists where the first element is the name of the time tensor
+        # and the second element is the offset to the value of the time tensor
+
+        # if there is no second element in list, append 0 (if there is, still ok)
+        [l.append(0) for l in [ref_start, ref_end]]
+
+        # add unique column names to ref_cols
+        ref_cols.extend({ref_start[0], ref_end[0]})
+
+        # parse second element in list as int
+        ref_start[1] = int(ref_start[1])
+        ref_end[1] = int(ref_end[1])
+
+    # load data into dataframes
+    def _load_data(name, path, cols):
+        if os.path.isdir(src_path):
+            logging.debug(f'Assuming {name} is directory of hd5 at {path}')
+            from ml4cvd.arguments import _get_tmap
+            args.tensor_maps_in = [_get_tmap(it, cols) for it in cols]
+            df = _tensors_to_df(args)[cols]
+        else:
+            logging.debug(f'Assuming {name} is a csv at {path}')
+            df = pd.read_csv(path, usecols=cols, low_memory=False)
+        return df
+
+    src_df = _load_data(src_name, src_path, src_cols)
+    logging.info(f'Loaded {src_name} into dataframe')
+    ref_df = _load_data(ref_name, ref_path, ref_cols)
+    logging.info(f'Loaded {ref_name} into dataframe')
+
+    # cleanup time col
+    if use_time:
+        src_df[src_time] = pd.to_datetime(src_df[src_time], errors='coerce', infer_datetime_format=True)
+        src_df.dropna(inplace=True)
+
+        for ref_time in {ref_start[0], ref_end[0]}:
+            ref_df[ref_time] = pd.to_datetime(ref_df[ref_time], errors='coerce', infer_datetime_format=True)
+        ref_df.dropna(inplace=True)
+
+        def _add_offset_time(ref_time):
+            offset = ref_time[1]
+            if offset == 0:
+                return ref_time[0]
+            ref_time_col = f'{ref_time[1]}_days_relative_{ref_time[0]}'
+            ref_df[ref_time_col] = ref_df[ref_start[0]].apply(lambda x: x + datetime.timedelta(days=offset))
+            ref_cols.append(ref_time_col)
+            return ref_time_col
+
+        ref_start = _add_offset_time(ref_start)
+        ref_end = _add_offset_time(ref_end)
+
+        time_description = f'between {ref_start.replace("_", " ")} and {ref_end.replace("_", " ")}'
+    logging.info('Cleaned data columns and removed rows that could not be parsed')
+
+    # drop duplicates based on cols
+    src_df.drop_duplicates(subset=src_cols, inplace=True)
+    ref_df.drop_duplicates(subset=ref_cols, inplace=True)
+    logging.info('Removed duplicates from dataframes, based on join, time, and label')
+
+    cohort_counts[f'{src_name} (total)'] = len(src_df)
+    cohort_counts[f'{src_name} (unique {" + ".join(src_join)})'] = len(src_df.drop_duplicates(subset=src_join))
+    cohort_counts[f'{ref_name} (total)'] = len(ref_df)
+    cohort_counts[f'{ref_name} (unique {" + ".join(ref_join)})'] = len(ref_df.drop_duplicates(subset=ref_join))
+
+    # merge on join columns
+    cross_reference_df = src_df.merge(ref_df, how='inner', left_on=src_join, right_on=ref_join)
+    logging.info('Cross referenced based on join tensors')
+
+    cohort_counts[f'{src_name} in {ref_name} (unique {" + ".join(src_cols)})'] = len(cross_reference_df.drop_duplicates(subset=src_cols))
+    cohort_counts[f'{src_name} in {ref_name} (unique {" + ".join(src_join)})'] = len(cross_reference_df.drop_duplicates(subset=src_join))
+    cohort_counts[f'{ref_name} in {src_name} (unique {" + ".join(ref_cols)})'] = len(cross_reference_df.drop_duplicates(subset=ref_cols))
+    cohort_counts[f'{ref_name} in {src_name} (unique {" + ".join(ref_join)})'] = len(cross_reference_df.drop_duplicates(subset=ref_join))
+
+    # report cross_reference no time filter
+    title = f'all {src_name} in {ref_name}'
+    _report_cross_reference(args, cross_reference_df, title)
+
+    if use_time:
+        cross_reference_df = cross_reference_df[(cross_reference_df[ref_start] <= cross_reference_df[src_time]) & (cross_reference_df[ref_end] >= cross_reference_df[src_time])]
+        logging.info('Cross referenced based on time')
+
+        # At this point, rows in source have probably been duplicated by the join
+        # This is fine, each row in reference has all associated rows in source now
+
+        cohort_counts[f'{src_name} {time_description} (total - {src_name} may be duplicated if valid for multiple {ref_name})'] = len(cross_reference_df)
+        cohort_counts[f'{src_name} {time_description} (unique {" + ".join(src_cols)})'] = len(cross_reference_df.drop_duplicates(subset=src_cols))
+
+        # report cross_reference, all, time filtered
+        title = f'all {src_name} {time_description}'
+        _report_cross_reference(args, cross_reference_df, title)
+        plot_cross_reference(args, cross_reference_df, title, time_description, ref_start, ref_end)
+
+        # get most recent row in source for each row in reference
+        # sort in ascending order so last() returns most recent
+        cross_reference_df = cross_reference_df.sort_values(by=ref_cols+[src_time], ascending=True)
+        cross_reference_df = cross_reference_df.groupby(by=ref_cols, as_index=False).last()[list(src_df) + list(ref_df)]
+        logging.info(f'Found most recent {src_name} per {ref_name}')
+
+        cohort_counts[f'Most recent {src_name} in {ref_name} {time_description} (total - {src_name} may be duplicated if valid for multiple {ref_name})'] = len(cross_reference_df)
+        cohort_counts[f'Most recent {src_name} in {ref_name} {time_description} (unique {" + ".join(src_cols)})'] = len(cross_reference_df.drop_duplicates(subset=src_cols))
+
+        # report cross_reference, most recent, time filtered
+        title = f'most recent {src_name} {time_description}'
+        _report_cross_reference(args, cross_reference_df, title)
+        plot_cross_reference(args, cross_reference_df, title, time_description, ref_start, ref_end)
+
+    # report counts
+    fpath = os.path.join(args.output_folder, args.id, 'summary_cohort_counts.csv')
+    pd.DataFrame.from_dict(cohort_counts, orient='index', columns=['count']).rename_axis('description').to_csv(fpath)
+    logging.info(f'Saved cohort counts to {fpath}')

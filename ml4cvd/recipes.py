@@ -17,9 +17,9 @@ from ml4cvd.optimizers import find_learning_rate
 from ml4cvd.defines import TENSOR_EXT, MODEL_EXT
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.tensor_writer_partners import write_tensors_partners
-from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv, explore
-from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
-from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf
+from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
+from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels, explore
+from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf, cross_reference
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
@@ -47,6 +47,8 @@ def run(args):
             write_tensors_partners(args.xml_folder, args.tensors)
         elif 'explore' == args.mode:
             explore(args)
+        elif 'cross_reference' == args.mode:
+            cross_reference(args)
         elif 'train' == args.mode:
             train_multimodal_multitask(args)
         elif 'test' == args.mode:
