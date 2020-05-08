@@ -80,7 +80,7 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<StandardCall
 
             final byte[] bases = referenceContext.getBases(interval);
             final int startOffset = vc.getStart() - interval.getStart();
-            final DragstrUtils.STRSequenceAnalyzer analyzer = DragstrUtils.repeatPeriodAndCounts(bases, dragstrParams.maximumPeriod(), startOffset, startOffset + 1);
+            final DragstrUtils.STRSequenceAnalyzer analyzer = DragstrUtils.repeatPeriodAndCounts(bases, dragstrParams.maximumPeriod(), startOffset, startOffset + 1, true);
             final int period = analyzer.mostRepeatedPeriod(startOffset);
             final int repeats = analyzer.numberOfMostRepeats(startOffset);
 
