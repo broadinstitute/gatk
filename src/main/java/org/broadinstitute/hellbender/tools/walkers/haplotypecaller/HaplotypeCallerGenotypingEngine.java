@@ -149,7 +149,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
         final DragstrUtils.STRSequenceAnalyzer dragstrs = isDragstrSTRAnalyzerNecessary(startPosKeySet, haplotypes)
                 ? DragstrUtils.repeatPeriodAndCounts(ref, startPosKeySet.first() - refLoc.getStart(),
-                startPosKeySet.last() + 2 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod())
+                startPosKeySet.last() + 2 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod(), !hcArgs.likelihoodArgs.dontConsiderUptreamBasesWhenCalculatingStrOnReference)
                 : null;
 
         for( final int loc : startPosKeySet ) {

@@ -511,7 +511,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     public List<VariantContext> callRegion(final AssemblyRegion region, final FeatureContext features, final ReferenceContext referenceContext) {
         if ( hcArgs.justDetermineActiveRegions ) {
-            // we're benchmarking ART and/or the active region determination code in the HC, just leave without doing any work
+            // we're benchmarking ART and/or the active region determination code in the HC, justio leave without doing any work
             return NO_CALLS;
         }
         System.out.println("calling for region: " +region.getSpan());

@@ -23,7 +23,7 @@ public class DragstrPairHMMInputScoreImputator implements PairHMMInputScoreImput
     @Override
     public PairHMMInputScoreImputation impute(final GATKRead read) {
         final byte[] bases = read.getBases();
-        final DragstrUtils.STRSequenceAnalyzer analyzer = DragstrUtils.repeatPeriodAndCounts(read.getLength(), params.maximumPeriod());
+        final DragstrUtils.STRSequenceAnalyzer analyzer = DragstrUtils.repeatPeriodAndCounts(read.getLength(), params.maximumPeriod(), true);
         analyzer.load(bases);
         final int length = bases.length;
         final byte[] gop = new byte[length];

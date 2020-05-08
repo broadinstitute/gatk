@@ -13,18 +13,18 @@ import java.util.Collection;
 
 public class DragstrUtils {
 
-    public static STRSequenceAnalyzer repeatPeriodAndCounts(final int maxSequenceLength, final int maxPeriod) {
-        return new STRSequenceAnalyzer(maxSequenceLength, maxPeriod);
+    public static STRSequenceAnalyzer repeatPeriodAndCounts(final int maxSequenceLength, final int maxPeriod, final boolean considerUpstream) {
+        return new STRSequenceAnalyzer(maxSequenceLength, maxPeriod, considerUpstream);
     }
 
-    public static STRSequenceAnalyzer repeatPeriodAndCounts(final byte[] sequence, final int maxPeriod) {
-        final STRSequenceAnalyzer result = new STRSequenceAnalyzer(sequence.length, maxPeriod);
+    public static STRSequenceAnalyzer repeatPeriodAndCounts(final byte[] sequence, final int maxPeriod, final boolean considerUpstream) {
+        final STRSequenceAnalyzer result = new STRSequenceAnalyzer(sequence.length, maxPeriod, considerUpstream);
         result.load(sequence);
         return result;
     }
 
-    public static STRSequenceAnalyzer repeatPeriodAndCounts(final byte[] sequence, final int start, final int stop, final int maxPeriod) {
-        final STRSequenceAnalyzer result = new STRSequenceAnalyzer(sequence.length, maxPeriod);
+    public static STRSequenceAnalyzer repeatPeriodAndCounts(final byte[] sequence, final int start, final int stop, final int maxPeriod, final boolean considerUpstream) {
+        final STRSequenceAnalyzer result = new STRSequenceAnalyzer(sequence.length, maxPeriod, considerUpstream);
         result.load(sequence, start, stop);
         return result;
     }
@@ -53,11 +53,13 @@ public class DragstrUtils {
         private final int[][] repeatsByPeriodAndPosition;
         private final int[] periodWithMostRepeats;
         private final int maxPeriod;
+        private final boolean considerUpstream;
 
-        private STRSequenceAnalyzer(final int maxSequenceLength, final int maxPeriod) {
+        private STRSequenceAnalyzer(final int maxSequenceLength, final int maxPeriod, final boolean considerUpstream) {
             repeatsByPeriodAndPosition = new int[maxPeriod][maxSequenceLength];
             this.maxPeriod = maxPeriod;
             this.periodWithMostRepeats = new int[maxSequenceLength];
+            this.considerUpstream = considerUpstream;
         }
 
         public int numberOfRepeats(final int position, final int period) {
@@ -158,19 +160,21 @@ public class DragstrUtils {
                 }
                 leftMargin++;
 
-                // propagate forward the total run-length over to the other repeats in the run.
-                // we do it per cycle in the period so that we first deal with repeat units whose offset
-                // is zero respect the beginning of the sequence, the2 1 base, then 2 etc.
-                for (cycleIndex = 0; cycleIndex < periodLength; cycleIndex++) {
-                  // The left most repeated unit runLength[i] contains the actual run length for all
-                  // the units to the right. We copy that value forward to the other run-length units.
-                  // We do this by iterating over consecutive repeat runs.
-                  for (position = leftMargin + cycleIndex; position < rightMargin; position += periodLength) {
-                    final int totalRunLength = runLength[position];
-                    for (int repeatInRun = 1; repeatInRun < totalRunLength; repeatInRun++) {
-                        runLength[position += periodLength] = totalRunLength;
+                if (considerUpstream) {
+                    // propagate forward the total run-length over to the other repeats in the run.
+                    // we do it per cycle in the period so that we first deal with repeat units whose offset
+                    // is zero respect the beginning of the sequence, the2 1 base, then 2 etc.
+                    for (cycleIndex = 0; cycleIndex < periodLength; cycleIndex++) {
+                        // The left most repeated unit runLength[i] contains the actual run length for all
+                        // the units to the right. We copy that value forward to the other run-length units.
+                        // We do this by iterating over consecutive repeat runs.
+                        for (position = leftMargin + cycleIndex; position < rightMargin; position += periodLength) {
+                            final int totalRunLength = runLength[position];
+                            for (int repeatInRun = 1; repeatInRun < totalRunLength; repeatInRun++) {
+                                runLength[position += periodLength] = totalRunLength;
+                            }
+                        }
                     }
-                  }
                 }
 
                 // Now we calculate the max repeat length that overlaps any given position.
@@ -252,18 +256,20 @@ public class DragstrUtils {
                 last = next;
             }
             // forward phase:
-            int leftMargin;
-            last = sequence[start];
-            for (leftMargin = start - 1; leftMargin >= 0 && sequence[leftMargin] == last; leftMargin--);
-            int carryForward = start - leftMargin - 1;
-            for (position = start; position < end; position++) {
-                final byte next = sequence[position];
-                if (next == last) {
-                    runLengths[position] += carryForward++;
-                } else {
-                    carryForward = 1;
+            if (considerUpstream) {
+                int leftMargin;
+                last = sequence[start];
+                for (leftMargin = start - 1; leftMargin >= 0 && sequence[leftMargin] == last; leftMargin--) ;
+                int carryForward = start - leftMargin - 1;
+                for (position = start; position < end; position++) {
+                    final byte next = sequence[position];
+                    if (next == last) {
+                        runLengths[position] += carryForward++;
+                    } else {
+                        carryForward = 1;
+                    }
+                    last = next;
                 }
-                last = next;
             }
         }
     }
