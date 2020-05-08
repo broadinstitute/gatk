@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.TandemRepeat;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -185,9 +186,14 @@ public final class AssemblyRegionTrimmer {
             maxEnd = Math.max(maxEnd, vc.getEnd() + padding);
         }
 
-        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region.getPaddedSpan());
+        SimpleInterval regionLimit = assemblyRegionArgs.maxExtensionIntoRegionPadding >= 0 ?
+                new SimpleInterval(region.getContig(), Math.max(region.getStart() - assemblyRegionArgs.maxExtensionIntoRegionPadding,0),// enforce 0 here since we are not validating this interval
+                        region.getEnd() + assemblyRegionArgs.maxExtensionIntoRegionPadding).intersect(region.getPaddedSpan()) // we use this intersect to enforce contig boundaries and region padding.
+        : region.getPaddedSpan();
 
-//        System.out.println("Padded and trimmed the region to this span: "+ paddedVariantSpan);
+        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(regionLimit);
+
+        System.out.println("Padded and trimmed the region to this span: "+ paddedVariantSpan);
         return new Result(region, variantSpan, paddedVariantSpan);
     }
 

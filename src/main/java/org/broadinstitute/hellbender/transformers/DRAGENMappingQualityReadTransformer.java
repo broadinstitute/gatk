@@ -22,11 +22,11 @@ public final class DRAGENMappingQualityReadTransformer implements ReadTransforme
     public DRAGENMappingQualityReadTransformer( ) { }
 
     @VisibleForTesting
-    public int mapValue(final int val) {
+    public static double mapValue(final int val) {
         for (int i = 1; i < mQTableX.length; i++) {
             if (val <= mQTableX[i]) {
                 final double xfactor = 1.0*(val - mQTableX[i-1]) / (mQTableX[i] - mQTableX[i-1]) ;
-                return  mQTableY[i-1] + (int)(xfactor * (mQTableY[i] - mQTableY[i-1]));
+                return  mQTableY[i-1] + (xfactor * (mQTableY[i] - mQTableY[i-1]));
             }
         }
         //This is technically a failure state because the MQ is invalid if somehow it exceeds 256 by the SAMSpec....
@@ -41,12 +41,12 @@ public final class DRAGENMappingQualityReadTransformer implements ReadTransforme
         // TODO these two ssteps are unnecessary. They can both happen but this time I would like to apply both in every case so nothing falls through the cracks.
         if (read.hasAttribute(EXTENDED_MAPPING_QUALITY_READ_TAG)) {
             int extendedMQ = read.getAttributeAsInteger(EXTENDED_MAPPING_QUALITY_READ_TAG);
-            int mappedMQ = mapValue(extendedMQ);
-            read.setMappingQuality(mappedMQ);
-        } else {
-            int oldMQ = read.getMappingQuality();
-            int mappedMQ = mapValue(oldMQ);
-            read.setMappingQuality(mappedMQ);
+//            int mappedMQ = mapValue(extendedMQ);
+            read.setMappingQuality(extendedMQ);
+//        } else {
+//            int oldMQ = read.getPhredScaledMappingQuality();
+//            int mappedMQ = mapValue(oldMQ);
+//            read.setMappingQuality(mappedMQ);
         }
         return read;
     }

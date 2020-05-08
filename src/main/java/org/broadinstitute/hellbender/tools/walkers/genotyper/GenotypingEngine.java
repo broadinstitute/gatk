@@ -145,11 +145,13 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // skip this if we are already looking at a vc with NON_REF as the first alt allele i.e. if we are in GenotypeGVCFs
         if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic) && !emitAllActiveSites()
                 && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles) && givenAlleles.isEmpty()) {
+            System.out.println("REASONA");
             return null;
         }
 
         // return a null call if we aren't forcing site emission and the only alt allele is a spanning deletion
         if (! emitAllActiveSites() && outputAlternativeAlleles.alleles.size() == 1 && Allele.SPAN_DEL.equals(outputAlternativeAlleles.alleles.get(0))) {
+            System.out.println("REASONB");
             return null;
         }
 

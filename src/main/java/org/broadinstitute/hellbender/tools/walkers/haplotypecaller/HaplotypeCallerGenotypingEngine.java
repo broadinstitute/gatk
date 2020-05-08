@@ -178,9 +178,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
             //TODO this might need to be revisited given the extra genotyping code that will possibly exist in the future...
             mergedVC = removeAltAllelesIfTooManyGenotypes(ploidy, alleleMapper, mergedVC);
-//            System.out.println("\n=============================================================================");
-//            System.out.println("Event at: "+mergedVC);
-//            System.out.println("=============================================================================");
 
             AlleleLikelihoods<GATKRead, Allele> readAlleleLikelihoods = readLikelihoods.marginalize(alleleMapper);
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
@@ -196,6 +193,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             if (configuration.isSampleContaminationPresent()) {
                 readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
             }
+            System.out.println("\n=============================================================================");
+            System.out.println("Event at: "+mergedVC+" with "+readAlleleLikelihoods.evidenceCount()+" reads");
+            System.out.println("=============================================================================");
 
             if (emitReferenceConfidence) {
                 mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
@@ -221,6 +221,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 }
                 // maintain the set of all called haplotypes
                 call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
+            } else {
+                System.out.println("nocall");
             }
         }
 

@@ -200,7 +200,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             double dynamicThreshold = calculateDynamicThreshold(read, dynamicRadQualConstant);
             double log10MaxLikelihoodForTrueAllele = log10MinTrueLikelihood.applyAsDouble(read);
             if (dynamicThreshold < log10MaxLikelihoodForTrueAllele ) {
-//                System.out.println("For read "+ read.getName() + " replacing old threshold ("+log10MaxLikelihoodForTrueAllele+") with new threshold: "+dynamicThreshold);
+                System.out.println("For read "+ read.getName() + " replacing old threshold ("+log10MaxLikelihoodForTrueAllele+") with new threshold: "+dynamicThreshold);
                 return dynamicThreshold;
             } else {
                 return log10MaxLikelihoodForTrueAllele;

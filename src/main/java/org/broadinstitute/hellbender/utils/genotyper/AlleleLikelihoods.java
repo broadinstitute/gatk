@@ -414,10 +414,15 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         final double worstLikelihoodCap = bestAllele.likelihood + maximumBestAltLikelihoodDifference;
 
         final int alleleCount = alleles.numberOfAlleles();
+        boolean hasWarned = false;
 
         // Guarantee to be the case by enclosing code.
         for (int a = 0; a < alleleCount; a++) {
             if (sampleValues[a][evidenceIndex] < worstLikelihoodCap) {
+                if (!hasWarned) {
+                    System.out.println("For evidence "+evidenceBySampleIndex.get(sampleIndex).get(evidenceIndex)+" replace allele "+a+" hmm score of "+sampleValues[a][evidenceIndex]+" with "+worstLikelihoodCap);
+                    hasWarned = true;
+                }
                 sampleValues[a][evidenceIndex] = worstLikelihoodCap;
             }
         }
@@ -1326,7 +1331,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             // Retain the filtered evidence for later genotyping purposes
             final List<EVIDENCE> filtered = filteredEvidenceBySampleIndex.get(sampleIndex);
             Arrays.stream(indexesToRemove).forEach(idx -> {
-//                System.out.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName());
+                System.out.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName());
                 filtered.add(sampleEvidence.get(idx));
             });
 
