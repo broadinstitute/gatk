@@ -1129,60 +1129,45 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         removeEvidenceByIndex(sampleIndex, indexesToRemove);
     }
 
+    // remove evidence and unset the {@code evidenceIndexBySampleIndex} Map for this sample
     // assumes that evidencesToRemove is sorted and without duplicates.
     private void removeEvidenceByIndex(final int sampleIndex, final int[] evidencesToRemove) {
-        if (evidencesToRemove.length == 0) {
+        final int numToRemove = evidencesToRemove.length;
+        if (numToRemove == 0) {
             return;
-        } else {
-            final Object2IntMap<EVIDENCE> evidenceIndex = evidenceIndexBySampleIndex(sampleIndex);
-            final int oldEvidenceCount = numberOfEvidences[sampleIndex];
-            final int newEvidenceCount = oldEvidenceCount - evidencesToRemove.length;
-            if (newEvidenceCount < 0) {
-                throw new IllegalStateException("attempt to remove non-existent evidence or repeated evidence");
-            } else if (newEvidenceCount == 0) { // taking in consideration the assumption we simply remove
-                // all evidence.
-                evidenceIndex.clear();
-                numberOfEvidences[sampleIndex] = 0;
-            } else {
-                final List<EVIDENCE> evidences = evidenceBySampleIndex.get(sampleIndex);
-                final double[][] values = valuesBySampleIndex[sampleIndex];
+        }
+        final int oldEvidenceCount = numberOfEvidences[sampleIndex];
+        final int newEvidenceCount = oldEvidenceCount - evidencesToRemove.length;
+        Utils.validate(newEvidenceCount >= 0, "attempted to remove non-existent evidence or repeated evidence");
 
-                int nextIndexToRemove = evidencesToRemove[0];
-                if (nextIndexToRemove < 0) {
-                    throw new IllegalStateException("invalid input index array as it contains negatives");
-                }
-                evidenceIndex.remove(evidences.get(nextIndexToRemove));
-                for (int etrIndex = 1, to = nextIndexToRemove, from = to + 1; to < newEvidenceCount; etrIndex++, from++) {
-                    if (etrIndex < evidencesToRemove.length) {
-                        nextIndexToRemove = evidencesToRemove[etrIndex];
-                        if (nextIndexToRemove < from) {
-                            throw new IllegalStateException("invalid input index array contains indexes out of order");
-                        } else if (nextIndexToRemove >= oldEvidenceCount) {
-                            throw new IllegalStateException("invalid input index array contains indexes out of order");
-                        }
-                        evidenceIndex.remove(evidences.get(nextIndexToRemove));
-                    } else {
-                        nextIndexToRemove = oldEvidenceCount;
-                    }
-                    for (; from < nextIndexToRemove; from++) {
-                        final EVIDENCE evidence = evidences.get(from);
-                        evidences.set(to, evidence);
-                        evidenceIndex.put(evidence, to++);
-                    }
-                }
-                Utils.truncate(evidences, newEvidenceCount);
-                // now we do the likelihood values, we save ourselves all the checks:
-                for (final double[] alleleValues : values) {
-                    for (int etrIndex = 1, to = evidencesToRemove[0], from = to + 1; to < newEvidenceCount; from++, etrIndex++) {
-                        nextIndexToRemove = etrIndex < evidencesToRemove.length ? evidencesToRemove[etrIndex] : oldEvidenceCount;
-                        for (; from < nextIndexToRemove; from++) {
-                            alleleValues[to++] = alleleValues[from];
-                        }
-                    }
-                }
-                numberOfEvidences[sampleIndex] = newEvidenceCount;
+        // update the list of evidence and evidence count
+        final List<EVIDENCE> oldEvidence = evidenceBySampleIndex.get(sampleIndex);
+        final List<EVIDENCE> newEvidence = new ArrayList<>(newEvidenceCount);
+        for (int n = 0, numRemoved = 0; n < oldEvidenceCount; n++) {
+            if (numRemoved < numToRemove && n == evidencesToRemove[numRemoved]) {
+                numRemoved++;
+            } else {
+                newEvidence.add(oldEvidence.get(n));
             }
         }
+        Utils.validate(newEvidence.size() == newEvidenceCount, "Indices to remove contained duplicates, was not ordered, or contained out-of-range indices.");
+        evidenceBySampleIndex.set(sampleIndex, newEvidence);
+        numberOfEvidences[sampleIndex] = newEvidenceCount;
+
+        //  invalidate the cached evidence to index map
+        evidenceIndexBySampleIndex.set(sampleIndex, null);
+
+        // update the likelihoods arrays in place
+        for (final double[] alleleValues : valuesBySampleIndex[sampleIndex]) {
+            for (int n = 0, numRemoved = 0; n < oldEvidenceCount; n++) {
+                if (numRemoved < numToRemove && n == evidencesToRemove[numRemoved]) {
+                    numRemoved++;
+                } else {
+                    alleleValues[n - numRemoved] = alleleValues[n];
+                }
+            }
+        }
+
     }
 
     /**
