@@ -31,11 +31,6 @@ public class ExtractCohort extends GATKTool {
     public static final int DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM = 1000000;
     private VariantContextWriter vcfWriter = null;
     private ExtractCohortEngine engine;
-    public enum Mode {
-        ARRAYS,
-        EXOMES,
-        GENOMES;
-    };
 
     public enum QueryMode {
         LOCAL_SORT,
@@ -109,7 +104,7 @@ public class ExtractCohort extends GATKTool {
             doc = "Source of genomic data. Valid options are one of ARRAYS, EXOMES, GENOMES",
             optional = false
     )
-    private Mode mode = Mode.EXOMES;
+    private CommonCode.ModeEnum mode = CommonCode.ModeEnum.EXOMES;
 
     @Argument(
             fullName = "query-mode",
