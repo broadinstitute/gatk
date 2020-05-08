@@ -44,7 +44,7 @@ public class ExtractCohortEngine {
 
     private final ProgressMeter progressMeter;
     private final String projectID;
-    private final ExtractCohort.Mode mode;
+    private final CommonCode.ModeEnum mode;
 
     /** List of sample names seen in the variant data from BigQuery. */
     private Set<String> sampleNames;
@@ -68,7 +68,7 @@ public class ExtractCohortEngine {
                                final VariantAnnotatorEngine annotationEngine,
                                final ReferenceDataSource refSource,
                                final Set<String> sampleNames,
-                               final ExtractCohort.Mode mode,
+                               final CommonCode.ModeEnum mode,
                                final String cohortTableName,
                                final String filteringTableName,
                                final int localSortMaxRecordsInRam,
@@ -84,8 +84,8 @@ public class ExtractCohortEngine {
         this.refSource = refSource;
         this.sampleNames = sampleNames;
         this.mode = mode;
-        this.cohortTableRef = mode.equals(ExtractCohort.Mode.ARRAYS) ? new TableReference(cohortTableName, SchemaUtils.ARRAY_COHORT_FIELDS) : new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
-        this.filteringTableRef = mode.equals(ExtractCohort.Mode.ARRAYS) ? null : new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
+        this.cohortTableRef = mode.equals(CommonCode.ModeEnum.ARRAYS) ? new TableReference(cohortTableName, SchemaUtils.ARRAY_COHORT_FIELDS) : new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
+        this.filteringTableRef = mode.equals(CommonCode.ModeEnum.ARRAYS) ? null : new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
         this.printDebugInformation = printDebugInformation;
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
@@ -295,7 +295,7 @@ public class ExtractCohortEngine {
         // Find samples for dropped state and synthesize. If not arrays use GQ 60
         final Set<String> samplesNotEncountered = Sets.difference(sampleNames, currentVariantSamplesSeen);
         for ( final String missingSample : samplesNotEncountered ) {
-            if (mode.equals(ExtractCohort.Mode.ARRAYS)) {
+            if (mode.equals(CommonCode.ModeEnum.ARRAYS)) {
                 unmergedCalls.add(createRefSiteVariantContext(missingSample, contig, start, refAllele));
 
             } else {
@@ -312,7 +312,7 @@ public class ExtractCohortEngine {
                 true);
 
 
-        final VariantContext finalVC = mode.equals(ExtractCohort.Mode.ARRAYS) ? mergedVC : filterVariants(mergedVC);
+        final VariantContext finalVC = mode.equals(CommonCode.ModeEnum.ARRAYS) ? mergedVC : filterVariants(mergedVC);
 //        final VariantContext annotatedVC = enableVariantAnnotator ?
 //                variantAnnotator.annotateContext(finalizedVC, new FeatureContext(), null, null, a -> true): finalVC;
 
