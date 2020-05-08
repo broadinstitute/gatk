@@ -175,32 +175,31 @@ public class DragstrUtils {
                             }
                         }
                     }
-                }
 
-                // Now we calculate the max repeat length that overlaps any given position.
+                    // Now we calculate the max repeat length that overlaps any given position.
 
-                // we skip period == 1 (periodIndex == 0) since is already resolved.
+                    // we skip period == 1 (periodIndex == 0) since is already resolved.
 
-                // for period == 2 the code can be simplified a bit since it only requires the combination of the
-                // current value and the previous one
-                if (periodLength == 2 && end > 2) { // end > 2 to avoid a leftIndex = -1 condition.
-                    final int[] twoPeriodValues = repeatsByPeriodAndPosition[1]; // this way we avoid repeated indirection two the period 2 array.
-                    int rightIndex = end - 1,
-                        leftIndex = rightIndex - 1,
-                        rightValue = twoPeriodValues[rightIndex],
-                        leftValue;
-                    do {
-                        leftValue = twoPeriodValues[leftIndex];
-                        if (leftValue > rightValue) {
-                            twoPeriodValues[rightIndex] = leftValue;
-                        }
-                        rightValue = leftValue;
-                        rightIndex--;
-                        leftIndex--;
-                    } while (leftIndex >= leftMargin);
-                } else if (periodLength > 2 && sequence.length > 2) {
-                    // for period 3 or above we could use a special heap to get in k log k the longest length in a window
-                    // but since in practice the max perior is something like 8 or 10 bases it seems a bit of an overkill.
+                    // for period == 2 the code can be simplified a bit since it only requires the combination of the
+                    // current value and the previous one
+                    if (periodLength == 2 && end > 2) { // end > 2 to avoid a leftIndex = -1 condition.
+                        final int[] twoPeriodValues = repeatsByPeriodAndPosition[1]; // this way we avoid repeated indirection two the period 2 array.
+                        int rightIndex = end - 1,
+                                leftIndex = rightIndex - 1,
+                                rightValue = twoPeriodValues[rightIndex],
+                                leftValue;
+                        do {
+                            leftValue = twoPeriodValues[leftIndex];
+                            if (leftValue > rightValue) {
+                                twoPeriodValues[rightIndex] = leftValue;
+                            }
+                            rightValue = leftValue;
+                            rightIndex--;
+                            leftIndex--;
+                        } while (leftIndex >= leftMargin);
+                    } else if (periodLength > 2 && sequence.length > 2) {
+                        // for period 3 or above we could use a special heap to get in k log k the longest length in a window
+                        // but since in practice the max perior is something like 8 or 10 bases it seems a bit of an overkill.
                         final int[] periodValues = repeatsByPeriodAndPosition[periodIndex];
                         // we fill the expected trailing 0 with the count for the first non-zero which is exactly
                         // at length - periodLength (e.q. length - periodIndex - 1).
@@ -222,6 +221,7 @@ public class DragstrUtils {
                                 maxInWindow = valueIn;
                             }
                         }
+                    }
                 }
             }
 
