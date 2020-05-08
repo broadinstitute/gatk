@@ -1,0 +1,20 @@
+[
+ {
+   "description": "[DESCRIPTION]",
+   "name": "position",
+   "type": "Integer",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "sample",
+   "type": "String",
+   "mode": "Required"
+ },
+  {
+   "description": "[DESCRIPTION]",
+   "name": "state",
+   "type": "String",
+   "mode": "Required"
+ }
+]
