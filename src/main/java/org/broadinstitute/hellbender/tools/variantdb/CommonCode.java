@@ -108,4 +108,9 @@ public class CommonCode {
         return headerLines;
     }
 
+    public enum ModeEnum {
+        ARRAYS,
+        EXOMES,
+        GENOMES
+    }
 }
