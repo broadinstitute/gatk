@@ -287,6 +287,7 @@ dependencies {
     compile 'org.apache.commons:commons-collections4:4.1'
     compile 'org.apache.commons:commons-vfs2:2.0'
     compile 'org.apache.commons:commons-configuration2:2.4'
+    compile 'org.apache.httpcomponents:httpclient:4.5.12'
     compile 'commons-beanutils:commons-beanutils:1.9.3'
     compile 'commons-io:commons-io:2.5'
     compile 'org.reflections:reflections:0.9.10'
