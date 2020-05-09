@@ -308,7 +308,7 @@ public final class GATKVariantContextUtils {
                 }
                 gb.attribute(VCFConstants.GENOTYPE_POSTERIORS_KEY, Arrays.stream(log10Posteriors)
                         .mapToObj(GATKVariantContextUtils::formatGP).toArray());
-                System.out.println("After applying the prior: "+ Arrays.toString(log10Posteriors));
+//                System.out.println("After applying the prior: "+ Arrays.toString(log10Posteriors));
                 gb.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, Arrays.stream(log10Priors)
                         .map(v -> v == 0.0 ? 0.0 : v * -10)
                         .mapToObj(GATKVariantContextUtils::formatGP).toArray());

@@ -514,7 +514,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             // we're benchmarking ART and/or the active region determination code in the HC, justio leave without doing any work
             return NO_CALLS;
         }
-        System.out.println("calling for region: " +region.getSpan());
+//        System.out.println("calling for region: " +region.getSpan());
 
         final List<VariantContext> VCpriors = new ArrayList<>();
         if (hcArgs.standardArgs.genotypeArgs.supportVariants != null) {
@@ -596,16 +596,22 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
 
-        System.out.println("\n=================================================");
-        System.out.println("assemblyRegion: "+new SimpleInterval(region));
-        System.out.println("=================================================");
+//        System.out.println("\n=================================================");
+//        System.out.println("assemblyRegion: "+new SimpleInterval(region));
+//        System.out.println("=================================================");
 
         // evaluate each sample's reads against all haplotypes
         final List<Haplotype> haplotypes = assemblyResult.getHaplotypeList();
         final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, regionForGenotyping.getReads());
 
-        System.out.println("Haplotyes:");
-        System.out.println(haplotypes);
+//        System.out.println("Haplotyes:");
+//        System.out.println(haplotypes);
+//        for(int counter = 0; counter < reads.get(samplesList.getSample(0)).size(); counter++) {
+//            GATKRead read = reads.get(samplesList.getSample(0)).get(counter);
+//            System.out.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"]");
+//            System.out.println(Arrays.toString(read.getBaseQualitiesNoCopy()));
+//        }
+//        System.out.println("");
 
         // Calculate the likelihoods: CPU intensive part.
         final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods =
@@ -621,16 +627,16 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         //  haplotype containing C as reference (and vice versa).  Now this is fine if all possible haplotypes are included
         //  in the genotyping, but we lose information if we select down to a few haplotypes.  [EB]
 
-        for(int counter = 0; counter < readLikelihoods.sampleEvidence(0).size(); counter++) {
-            GATKRead read = readLikelihoods.sampleEvidence(0).get(counter);
-            System.out.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"]");
-            String hmmScores = "";
-            for (int h = 0; h < readLikelihoods.numberOfAlleles(); h++) {
-                hmmScores = hmmScores + "," + readLikelihoods.sampleMatrix(0).get(h, counter);
-            }
-            System.out.println(hmmScores);
-
-        }
+//        for(int counter = 0; counter < readLikelihoods.sampleEvidence(0).size(); counter++) {
+//            GATKRead read = readLikelihoods.sampleEvidence(0).get(counter);
+//            System.out.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"]");
+//            String hmmScores = "";
+//            for (int h = 0; h < readLikelihoods.numberOfAlleles(); h++) {
+//                hmmScores = hmmScores + "," + readLikelihoods.sampleMatrix(0).get(h, counter);
+//            }
+//            System.out.println(hmmScores);
+//
+//        }
 
         final CalledHaplotypes calledHaplotypes = genotypingEngine.assignGenotypeLikelihoods(
                 haplotypes,

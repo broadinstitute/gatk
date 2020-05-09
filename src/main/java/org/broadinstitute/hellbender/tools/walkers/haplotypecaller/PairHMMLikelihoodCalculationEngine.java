@@ -200,7 +200,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             double dynamicThreshold = calculateDynamicThreshold(read, dynamicRadQualConstant);
             double log10MaxLikelihoodForTrueAllele = log10MinTrueLikelihood.applyAsDouble(read);
             if (dynamicThreshold < log10MaxLikelihoodForTrueAllele ) {
-                System.out.println("For read "+ read.getName() + " replacing old threshold ("+log10MaxLikelihoodForTrueAllele+") with new threshold: "+dynamicThreshold);
+//                System.out.println("For read "+ read.getName() + " replacing old threshold ("+log10MaxLikelihoodForTrueAllele+") with new threshold: "+dynamicThreshold);
                 return dynamicThreshold;
             } else {
                 return log10MaxLikelihoodForTrueAllele;
@@ -313,6 +313,11 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         // Modify the read qualities by applying the PCR error model and capping the minimum base,insertion,deletion qualities
         final List<GATKRead> processedReads = modifyReadQualities(likelihoods.evidence());
 
+//        for(int counter = 0; counter < processedReads.size(); counter++) {
+//            GATKRead read = processedReads.get(counter);
+//            System.out.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"]");
+//            System.out.println(Arrays.toString(read.getBaseQualitiesNoCopy()));
+//        }
         // Run the PairHMM to calculate the log10 likelihood of each (processed) reads' arising from each haplotype
         pairHMM.computeLog10Likelihoods(likelihoods, processedReads, inputScoreImputator);
     }

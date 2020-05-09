@@ -193,9 +193,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             if (configuration.isSampleContaminationPresent()) {
                 readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
             }
-            System.out.println("\n=============================================================================");
-            System.out.println("Event at: "+mergedVC+" with "+readAlleleLikelihoods.evidenceCount()+" reads");
-            System.out.println("=============================================================================");
+//            System.out.println("\n=============================================================================");
+//            System.out.println("Event at: "+mergedVC+" with "+readAlleleLikelihoods.evidenceCount()+" reads");
+//            System.out.println("=============================================================================");
 
             if (emitReferenceConfidence) {
                 mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
@@ -221,8 +221,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 }
                 // maintain the set of all called haplotypes
                 call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
-            } else {
-                System.out.println("nocall");
             }
         }
 

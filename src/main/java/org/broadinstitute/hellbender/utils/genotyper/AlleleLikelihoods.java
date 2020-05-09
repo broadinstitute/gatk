@@ -420,7 +420,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         for (int a = 0; a < alleleCount; a++) {
             if (sampleValues[a][evidenceIndex] < worstLikelihoodCap) {
                 if (!hasWarned) {
-                    System.out.println("For evidence "+evidenceBySampleIndex.get(sampleIndex).get(evidenceIndex)+" replace allele "+a+" hmm score of "+sampleValues[a][evidenceIndex]+" with "+worstLikelihoodCap);
+//                    System.out.println("For evidence "+evidenceBySampleIndex.get(sampleIndex).get(evidenceIndex)+" replace allele "+a+" hmm score of "+sampleValues[a][evidenceIndex]+" with "+worstLikelihoodCap);
                     hasWarned = true;
                 }
                 sampleValues[a][evidenceIndex] = worstLikelihoodCap;
@@ -1149,7 +1149,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
                     .filter(i -> !predicate.test(sampleEvidence.get(i)))
                     .toArray();
 
-            System.out.println("Evidences removed by insufficient overlapping: "+Arrays.toString(removeIndices));
+//            System.out.println("Evidences removed by insufficient overlapping: "+Arrays.toString(removeIndices));
             final List<EVIDENCE> removedToBeRetained = new ArrayList<>(2);
             for(int i = 0; i < removeIndices.length; i++) {
                 // if it passes the second predicate but not the first bump it into the filtered pool
@@ -1331,7 +1331,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             // Retain the filtered evidence for later genotyping purposes
             final List<EVIDENCE> filtered = filteredEvidenceBySampleIndex.get(sampleIndex);
             Arrays.stream(indexesToRemove).forEach(idx -> {
-                System.out.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName());
+//                System.out.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName());
                 filtered.add(sampleEvidence.get(idx));
             });
 

@@ -193,7 +193,7 @@ public final class AssemblyRegionTrimmer {
 
         final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(regionLimit);
 
-        System.out.println("Padded and trimmed the region to this span: "+ paddedVariantSpan);
+//        System.out.println("Padded and trimmed the region to this span: "+ paddedVariantSpan);
         return new Result(region, variantSpan, paddedVariantSpan);
     }
 
