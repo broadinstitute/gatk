@@ -8,6 +8,7 @@ import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
@@ -15,6 +16,7 @@ import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import picard.util.ClippingUtility;
 
 import java.util.*;
 import java.util.function.ToDoubleFunction;
@@ -211,7 +213,8 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     static double calculateDynamicThreshold(final GATKRead read, final double dynamicRadQualConstant) {
         double sumMean = 0;
         double sumVariance = 0;
-        byte[] baseQualities = read.getBaseQualities();
+        byte[] baseQualities = read.getTransientAttribute("HMMQuals") != null ?
+                (byte[]) read.getTransientAttribute("HMMQuals") : read.getBaseQualities();
 
         for( int i = 0; i < baseQualities.length; i++) {
             int bq = baseQualities[i];
@@ -334,19 +337,21 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         final List<GATKRead> result = new ArrayList<>(reads.size());
 
         for (final GATKRead read : reads) {
-            final byte[] readBases = read.getBases();
+            final GATKRead unclipped = read;
+            final byte[] readBases = unclipped.getBases();
 
             // NOTE -- must clone anything that gets modified here so we don't screw up future uses of the read
             //Using close here is justified - it's an array of primitives.
-            final byte[] readQuals = read.getBaseQualities().clone();
-            final byte[] readInsQuals = ReadUtils.getBaseInsertionQualities(read).clone();
-            final byte[] readDelQuals = ReadUtils.getBaseDeletionQualities(read).clone();
+            final byte[] readQuals = unclipped.getBaseQualities().clone();
+            final byte[] readInsQuals = ReadUtils.getBaseInsertionQualities(unclipped).clone();
+            final byte[] readDelQuals = ReadUtils.getBaseDeletionQualities(unclipped).clone();
 
             applyPCRErrorModel(readBases, readInsQuals, readDelQuals);
-            capMinimumReadQualities(read, readQuals, readInsQuals, readDelQuals, baseQualityScoreThreshold, disableCapReadQualitiesToMapQ);
+            capMinimumReadQualities(unclipped, readQuals, readInsQuals, readDelQuals, baseQualityScoreThreshold, disableCapReadQualitiesToMapQ);
 
+            read.setTransientAttribute("HMMQuals", readQuals);
             // Create a new copy of the read and sets its base qualities to the modified versions.
-            result.add(createQualityModifiedRead(read, readBases, readQuals, readInsQuals, readDelQuals));
+            result.add(createQualityModifiedRead(unclipped, readBases, readQuals, readInsQuals, readDelQuals));
         }
         return result;
     }

@@ -399,15 +399,15 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-I", "gs://broad-dsde-methods-dragen/illumina-files/data/hg38/DNA_Nexus_hiseqX_plus0_0.bam",
                 "-R", "/Users/emeryj/hellbender/references/Homo_sapiens_assembly38.fasta",
                 "--apply-frd", "--transform-dragen-mapping-quality", "--mapping-quality-threshold", "1", "--apply-bqd",
-                "--soft-clip-low-quality-ends", "--enable-dynamic-read-disqualification-for-genotyping",
+                 "--enable-dynamic-read-disqualification-for-genotyping",
                 "--dragstr-params-path", "/Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/vcfEvals/DNA_Nexus_hiseqX_plus0_0.dragstr-params.txt",
                 "--genotype-assignment-method", "USE_POSTERIOR_PROBABILITIES",
                 "--standard-min-confidence-threshold-for-calling", "3",
                 "--disable-cap-base-qualities-to-map-quality",
                 "--expected-error-rate-per-base", "0.03",
-                "--max-extension", "25",
+                "--max-extension", "25", "--soft-clip-low-quality-ends",
                 "--use-posteriors-to-calculate-qual",
-                "-L", "chr1:84,578,877-84,579,835",
+                "-L", "chr1:1890364-1892569",
                 "-O", output.getAbsolutePath()
         };
         runCommandLine(args);

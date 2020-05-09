@@ -52,14 +52,17 @@ public final class FragmentUtils {
         final byte[] firstReadQuals = firstRead.getBaseQualities();
         final byte[] secondReadBases = secondRead.getBases();
         final byte[] secondReadQuals = secondRead.getBaseQualities();
+        // adjustments to make to handle softclipping bases
+        final int secondOffset = secondRead.getStart() - secondRead.getSoftStart();
 
         final int halfOfPcrErrorQual = halfOfPcrSnvQual.orElse(HALF_OF_DEFAULT_PCR_SNV_ERROR_QUAL);
 
         for (int i = 0; i < numOverlappingBases; i++) {
 
             final int firstReadIndex = firstReadStop + i;
+            final int secondReadIndex = secondOffset + i;
             final byte firstReadBase = firstReadBases[firstReadIndex];
-            final byte secondReadBase = secondReadBases[i];
+            final byte secondReadBase = secondReadBases[secondReadIndex];
 
             if (firstReadBase == secondReadBase) {
                 firstReadQuals[firstReadIndex] = (byte) Math.min(firstReadQuals[firstReadIndex], halfOfPcrErrorQual);
@@ -70,7 +73,7 @@ public final class FragmentUtils {
                 // automatically weaken the strength of one another's evidence.  Furthermore, if one base if low quality
                 // and one is high it will essentially ignore the low quality base without compromising the high-quality base
                 firstReadQuals[firstReadIndex] = 0;
-                secondReadQuals[i] = 0;
+                secondReadQuals[secondReadIndex] = 0;
             }
         }
         firstRead.setBaseQualities(firstReadQuals);
@@ -85,10 +88,11 @@ public final class FragmentUtils {
 
             for (int i = 0; i < numOverlappingBases; i++) {
                 final int firstReadIndex = firstReadStop + i;
+                final int secondReadIndex = secondOffset + i;
                 firstReadDeletionQuals[firstReadIndex] = (byte) Math.min(firstReadDeletionQuals[firstReadIndex], maxIndelQual);
                 firstReadInsertionQuals[firstReadIndex] = (byte) Math.min(firstReadInsertionQuals[firstReadIndex], maxIndelQual);
-                secondReadDeletionQuals[i] = (byte) Math.min(secondReadDeletionQuals[i], maxIndelQual);
-                secondReadInsertionQuals[i] = (byte) Math.min(secondReadInsertionQuals[i], maxIndelQual);
+                secondReadDeletionQuals[secondReadIndex] = (byte) Math.min(secondReadDeletionQuals[secondReadIndex], maxIndelQual);
+                secondReadInsertionQuals[secondReadIndex] = (byte) Math.min(secondReadInsertionQuals[secondReadIndex], maxIndelQual);
             }
 
             ReadUtils.setDeletionBaseQualities(firstRead, firstReadDeletionQuals);

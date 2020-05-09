@@ -606,12 +606,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
 //        System.out.println("Haplotyes:");
 //        System.out.println(haplotypes);
-//        for(int counter = 0; counter < reads.get(samplesList.getSample(0)).size(); counter++) {
-//            GATKRead read = reads.get(samplesList.getSample(0)).get(counter);
-//            System.out.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"]");
-//            System.out.println(Arrays.toString(read.getBaseQualitiesNoCopy()));
-//        }
-//        System.out.println("");
 
         // Calculate the likelihoods: CPU intensive part.
         final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods =
