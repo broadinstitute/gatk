@@ -46,14 +46,14 @@ public final class FragmentUtils {
 
         final Pair<Integer, Boolean> offset = ReadUtils.getReadCoordinateForReferenceCoordinate(firstRead, secondRead.getStart(), false);
         final int firstReadStop = (offset.getRight() ? offset.getLeft() + 1 : offset.getLeft());
-        final int numOverlappingBases = Math.min(firstRead.getLength() - firstReadStop, secondRead.getLength());
+        final int secondOffset = ReadUtils.getReadCoordinateForReferenceCoordinate(secondRead, secondRead.getStart(), false).getLeft(); //TODO this is a bandage
+        final int numOverlappingBases = Math.min(firstRead.getLength() - firstReadStop, secondRead.getLength() - secondOffset);
 
         final byte[] firstReadBases = firstRead.getBases();
         final byte[] firstReadQuals = firstRead.getBaseQualities();
         final byte[] secondReadBases = secondRead.getBases();
         final byte[] secondReadQuals = secondRead.getBaseQualities();
         // adjustments to make to handle softclipping bases
-        final int secondOffset = secondRead.getStart() - secondRead.getSoftStart();
 
         final int halfOfPcrErrorQual = halfOfPcrSnvQual.orElse(HALF_OF_DEFAULT_PCR_SNV_ERROR_QUAL);
 
@@ -66,7 +66,7 @@ public final class FragmentUtils {
 
             if (firstReadBase == secondReadBase) {
                 firstReadQuals[firstReadIndex] = (byte) Math.min(firstReadQuals[firstReadIndex], halfOfPcrErrorQual);
-                secondReadQuals[i] = (byte) Math.min(secondReadQuals[i], halfOfPcrErrorQual);
+                secondReadQuals[secondReadIndex] = (byte) Math.min(secondReadQuals[secondReadIndex], halfOfPcrErrorQual);
             } else if (setConflictingToZero) {
                 // If downstream processing forces read pairs to support the same haplotype, setConflictingToZero should be false
                 // because the original base qualities of conflicting bases, when pegged to the same haplotype, will

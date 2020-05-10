@@ -407,7 +407,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "--expected-error-rate-per-base", "0.03",
                 "--max-extension", "25", "--soft-clip-low-quality-ends",
                 "--use-posteriors-to-calculate-qual",
-                "-L", "chr1:1890364-1892569",
+                "-L", "chr1:55218337-55219340",
                 "-O", output.getAbsolutePath()
         };
         runCommandLine(args);
