@@ -1,6 +1,6 @@
 #<METADATA>input_bam_0=/Users/ckachuli/gatk/src/test/resources/large/NA12878.RNAseq.with.mate.info.bam
 #<METADATA>annotation_file=/Users/ckachuli/gatk/src/test/resources/large/Homo_sapiens.GRCh37.20.gff3
-gene_id	contig	start	stop	strand	sense_antisense	NA12878_counts
+gene_id	contig	start	stop	strand	sense_antisense	NA12878.star_counts
 DEFB125	20	67891	77735	+	sense	0.0
 DEFB125	20	67891	77735	+	antisense	0.0
 DEFB126	20	123010	126392	+	sense	0.0

@@ -54,7 +54,6 @@ public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramT
 
         final String[] args = {
                 "-I", NA12878_20_RNAseq_bam,
-                "-N", "NA12878",
                 "-G", b37_20_gff3,
                 "--gene_id_key", "Name",
                 "--grouping_type", "gene",
@@ -80,7 +79,6 @@ public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramT
 
         final String[] args1 = {
                 "-I", NA12878_20_RNAseq_bam,
-                "-N", "NA12878",
                 "-G", b37_20_gff3,
                 "--gene_id_key", "Name",
                 "--grouping_type", "gene",
@@ -92,7 +90,6 @@ public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramT
 
         final String[] args2 = {
                 "-I", NA12878_20_RNAseq_bam,
-                "-N", "NA12878",
                 "-G", b37_20_gff3,
                 "--gene_id_key", "Name",
                 "--grouping_type", "gene",

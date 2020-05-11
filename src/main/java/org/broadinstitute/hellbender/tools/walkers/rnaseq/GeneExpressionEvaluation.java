@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.Cigar;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMTag;
@@ -76,9 +78,6 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     @Argument(doc="overlap type")
     private Set<String> overlap_type = new HashSet<>(Collections.singleton("exon"));
 
-    @Argument(doc="sample name to label counts", shortName = "N")
-    private String name;
-
     @Argument(doc="gene_id key")
     private String gene_id_key = "gene_id";
 
@@ -91,13 +90,14 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     @Argument(doc = "how to distribute weight of reads with multiple alignments")
     private MultiMapMethod multiMapMethod = MultiMapMethod.IGNORE;
 
-    @Argument(doc = "Whether the rna is spliced.  If spliced, alignments must be from a splice aware aligner (such as star), if unspliced, alignments must be from " +
-            "a non-splicing aligner (such as bwa). ")
+    @Argument(doc = "Whether the rna is spliced.  If spliced, alignments must be from a splice aware aligner (such as star).  If unspliced, alignments must be from a non-splicing aligner (such as bwa). ")
     private boolean spliced = true;
 
     final private Map<Gff3BaseData, Coverage> featureCounts = new LinkedHashMap<>();
 
     final private OverlapDetector<Pair<Gff3BaseData, Interval>> featureOverlapDetector = new OverlapDetector<>(0,0);
+
+    private String sampleName = null;
 
     enum MultiOverlapMethod {
 
@@ -148,7 +148,6 @@ public final class GeneExpressionEvaluation extends ReadWalker {
                 final float normalizationFactor = (float)1.0/summedUnNormalizedWeights;
 
                 for (final Gff3BaseData feature : weights.keySet()) {
-                    //weights.compute(feature, (k,v) -> v*normalizationFactor);
                     weights.compute(feature, (k,v) -> v*normalizationFactor);
                 }
 
@@ -202,7 +201,6 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         readFilters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
         readFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
         readFilters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
-        //readFilters.add(ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE);
         return readFilters;
     }
 
@@ -210,6 +208,16 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     public void onTraversalStart() {
         validateOutputFile(outputCountsFile);
         final SAMSequenceDictionary dict = getBestAvailableSequenceDictionary();
+        final SAMFileHeader header = getHeaderForReads();
+        for (final SAMReadGroupRecord readGroupRecord : header.getReadGroups()) {
+            if (sampleName == null) {
+                sampleName = readGroupRecord.getSample();
+            } else {
+                if (!sampleName.equals(readGroupRecord.getSample())) {
+                    throw new GATKException("Cannot run GeneExpressionEvaluation on multi-sample bam.");
+                }
+            }
+        }
         if (dict == null) {
             throw new GATKException("sequence dictionary must be specified (" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME + ").");
         }
@@ -246,8 +254,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     private Gff3BaseData shrinkBaseData(final Gff3BaseData baseData) {
         //remove all but gene_id_key attributes
         final Map<String, String> shrunkAttributes = baseData.getAttributes().entrySet().stream().filter(e -> e.getKey().equals(gene_id_key)).collect(Collectors.toMap(Map.Entry::getKey,Map.Entry::getValue));
-        final Gff3BaseData shrunkBaseData = new Gff3BaseData(baseData.getContig(), baseData.getSource(), baseData.getType(), baseData.getStart(), baseData.getEnd(), baseData.getStrand(), baseData.getPhase(), shrunkAttributes);
-        return shrunkBaseData;
+        return new Gff3BaseData(baseData.getContig(), baseData.getSource(), baseData.getType(), baseData.getStart(), baseData.getEnd(), baseData.getStrand(), baseData.getPhase(), shrunkAttributes);
     }
 
     private void addGroupingFeature(final Gff3BaseData groupingBaseData, final List<Interval> overlappingFeatures) {
@@ -262,7 +269,8 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         }
     }
 
-    private static boolean inGoodPair(final GATKRead read) {
+
+    static boolean inGoodPair(final GATKRead read) {
 
         boolean ret = !read.mateIsUnmapped() && read.isProperlyPaired() && read.getContig().equals(read.getMateContig()) &&
                 read.isReverseStrand() != read.mateIsReverseStrand();
@@ -286,13 +294,13 @@ public final class GeneExpressionEvaluation extends ReadWalker {
             }
         }
         return ret;
-        }
+    }
 
-    private List<Interval> getAlignmentIntervals(final GATKRead read) {
+    static List<Interval> getAlignmentIntervals(final GATKRead read, final boolean spliced, final SAMFileHeader header) {
 
         if (spliced) {
             final List<Interval> alignmentIntervals = new ArrayList<>();
-            final SAMRecord rec = read.convertToSAMRecord(getHeaderForReads());
+            final SAMRecord rec = read.convertToSAMRecord(header);
 
             final List<AlignmentBlock> readAlignmentBlocks = rec.getAlignmentBlocks();
 
@@ -315,13 +323,8 @@ public final class GeneExpressionEvaluation extends ReadWalker {
                     }
                 }
             }
-            if (overlapsMate) {
-                //sort and merge
-                return getMergedIntervals(alignmentIntervals);
-            } else {
-                Collections.sort(alignmentIntervals);
-                return alignmentIntervals;
-            }
+            return getMergedIntervals(alignmentIntervals);
+
         } else {
             if (read.isUnmapped()) {
                 return Collections.emptyList();
@@ -340,7 +343,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
         if ((!read.isReverseStrand() || !inGoodPair(read))) {
-            final List<Interval> alignmentIntervals = getAlignmentIntervals(read);
+            final List<Interval> alignmentIntervals = getAlignmentIntervals(read, spliced, getHeaderForReads());
 
             final Map<Gff3BaseData, Float> initalWeights = multiOverlapMethod.getWeights(alignmentIntervals, featureOverlapDetector);
             final Map<Gff3BaseData, Float> finalWeights = multiMapMethod.getWeights(read.getAttributeAsInteger(SAMTag.NH.toString()), initalWeights);
@@ -364,7 +367,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     @Override
     public Object onTraversalSuccess() {
         logger.info(String.format("Writing read counts to %s...", outputCountsFile.getAbsolutePath()));
-        try (final FragmentCountWriter writer = new FragmentCountWriter(outputCountsFile.toPath(), name, gene_id_key)) {
+        try (final FragmentCountWriter writer = new FragmentCountWriter(outputCountsFile.toPath(), sampleName, gene_id_key)) {
             int i=0;
             for (final File input_bam: readArguments.getReadFiles()) {
                 writer.writeMetadata("input_bam_"+i, input_bam.toString());
@@ -403,7 +406,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
                     .set("stop", fragmentCount.baseData.getEnd())
                     .set("strand", fragmentCount.baseData.getStrand().encode())
                     .set("sense_antisense", fragmentCount.sense? "sense" : "antisense")
-                    .set(name+"_counts", fragmentCount.count, 2)
+                    .set(name != null? name+"_counts" : "counts", fragmentCount.count, 2)
                     .set("gene_id", fragmentCount.baseData.getAttributes().get(gene_id_key));
         }
     }
