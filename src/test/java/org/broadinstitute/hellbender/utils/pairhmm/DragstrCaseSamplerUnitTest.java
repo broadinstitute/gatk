@@ -20,7 +20,7 @@ public class DragstrCaseSamplerUnitTest {
     public void testBugCases(final int chridx, final int pos, final String unit, final int repeats, final int expectedK, final int expectedN) {
 //        final ReferenceDataSource referenceDataSource = new ReferenceFileSource(new File(TEST_REF).toPath());
 //        final ReadsDataSource readsDataSource = new ReadsDataSource(new File(TEST_BAM).toPath());
-//        final DragstrParametersEstimator estimator = new DragstrParametersEstimator(new DragstrModelEstimatorArgumentCollection());
+L//        final DragstrParametersEstimator estimator = new DragstrParametersEstimator(new DragstrModelEstimatorArgumentCollection());
 //        final DragstrCasesSampler sampler = new DragstrCasesSampler(new DragstrCasesSamplerArgumentCollection(), referenceDataSource, readsDataSource);
 //        final DragstrLocus locus = DragstrLocus.make(chridx, pos, (byte) unit.getBytes().length, (short) (repeats * unit.length()), 0);
 //        final DragstrParametersEstimator.RepeatCases cases = estimator.createPeriodCases(unit.length(), 20, 10).getRepeatCases(repeats);

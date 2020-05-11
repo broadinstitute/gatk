@@ -15,6 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrLocus;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import javax.annotation.Nullable;
@@ -33,6 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -1526,5 +1528,23 @@ public final class Utils {
 
     public static void runInParallel(final int threads, final Runnable run) {
         runInParallel(threads, () -> {run.run(); return null;});
+    }
+
+    public interface ThrowingRunnable {
+        void run() throws Throwable;
+    }
+
+    public interface ThrowingConsumer<E> {
+        void accept(E val);
+    }
+
+    public static Runnable catchAndUncheck(final ThrowingRunnable runnable) {
+        return () -> {
+            try {
+                runnable.run();
+            } catch (final Throwable th) {
+                throw new GATKException(th.getMessage(), th);
+            }
+        };
     }
 }

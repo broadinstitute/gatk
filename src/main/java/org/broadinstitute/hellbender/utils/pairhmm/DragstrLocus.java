@@ -14,6 +14,8 @@ import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,6 +45,8 @@ public class DragstrLocus {
         return new DragstrLocus(chrIdx, start, period, length, mask);
     }
 
+    public int getChromosomeIndex() { return chromosomeIndex; }
+
     public long getMask() { return mask; }
 
     public long getStart() {
@@ -61,7 +65,40 @@ public class DragstrLocus {
         return length / period;
     }
 
+    @FunctionalInterface
+    public interface WriteAction {
+        void write(final DragstrLocus locus, final DataOutput dest) throws IOException;
+    }
+
+
     public static BinaryTableWriter<DragstrLocus> binaryWriter(final OutputStream out, final OutputStream indexOut, final String path) {
+        return binaryWriter(out, indexOut, path, (record, output) -> {
+            output.writeInt(record.mask);
+            output.writeShort(record.chromosomeIndex);
+            output.writeLong(record.start);
+            output.writeByte(record.period);
+            output.writeShort(record.length);
+        });
+    }
+
+    public static BinaryTableWriter<DragstrLocus> dragenWriter(final OutputStream out, final OutputStream indexOut, final String path) {
+        final ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * 3 + Short.BYTES + 2 * Byte.BYTES);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+
+        return binaryWriter(out, indexOut, path, (record, output) -> {
+            buffer.clear();
+            buffer.putInt(record.mask);
+            buffer.putInt(record.chromosomeIndex);
+            buffer.putInt((int) record.start - 1);  
+            buffer.putShort(record.length);
+            buffer.put(record.period);
+            buffer.put((byte) Math.min(255, record.getRepeats()));
+            output.write(buffer.array());
+        });
+    }
+
+
+    private static BinaryTableWriter<DragstrLocus> binaryWriter(final OutputStream out, final OutputStream indexOut, final String path, final WriteAction wa) {
         return new BinaryTableWriter<DragstrLocus>(out, path) {
 
             private DataOutputStream indexDataOutputStream = indexOut != null ? new DataOutputStream(indexOut) : null;
@@ -74,11 +111,7 @@ public class DragstrLocus {
                 if (indexOut != null) {
                     outputIndexWhenApplies(record);
                 }
-                output.writeShort(record.chromosomeIndex);
-                output.writeLong(record.start);
-                output.writeByte(record.period);
-                output.writeShort(record.length);
-                output.writeInt(record.mask);
+                wa.write(record, output);
             }
 
             private void outputIndexWhenApplies(DragstrLocus record) throws IOException {
@@ -105,7 +138,7 @@ public class DragstrLocus {
             @Override
             public void close() throws IOException {
                 super.close();
-                indexDataOutputStream.close();
+                if (indexOut != null) indexDataOutputStream.close();
             }
         };
     }
@@ -159,11 +192,9 @@ public class DragstrLocus {
                     final long e = s + l - 1;
                     if (chrIdx != c) {
                         return null;
-                    } else if (e < start) {
-                        continue;
                     } else if (s > end) {
                         return null;
-                    } else {
+                    } else if (s >= start) {
                         return new DragstrLocus(c, s, p, l, m);
                     }
                 }
@@ -205,8 +236,6 @@ public class DragstrLocus {
             }
         };
     }
-
-
 
     @Override
     public boolean equals(final Object other) {

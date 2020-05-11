@@ -12,12 +12,15 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.pairhmm.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import org.omg.PortableInterceptor.USER_EXCEPTION;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
@@ -59,6 +62,9 @@ public class EstimateDragstrParameters extends GATKTool {
 
     @Argument(fullName="output", shortName = "O", doc = "where to write the parameter output file.")
     private String output;
+
+    @Argument(fullName="str-table-output", doc = "str-table.bin formatted file containing the downsampled loci in reference order.", optional = true)
+    private String strTableOutput;
 
     private SAMSequenceDictionary dictionary;
     private AbsoluteCoordinates absoluteCoordinates;
@@ -104,6 +110,9 @@ public class EstimateDragstrParameters extends GATKTool {
                 logCounts(allSites);
                 final StratifiedDragstrLocusCases finalSites = downSample(allSites, lociDir);
                 logCounts(finalSites);
+                if (strTableOutput != null) {
+                    outputStrTable(finalSites, strTableOutput);
+                }
 
                 logger.info("Estimating parameters used sampled down cases");
                 final DragstrParams estimate = estimateParams(finalSites);
@@ -112,6 +121,19 @@ public class EstimateDragstrParameters extends GATKTool {
             } else {
                 DragstrParams.DEFAULT.print(output);
             }
+        }
+    }
+
+    private void outputStrTable(final StratifiedDragstrLocusCases finalSites, final String strTableOutput) {
+        try (final BinaryTableWriter<DragstrLocus> writer = DragstrLocus.dragenWriter(BucketUtils.createFile(strTableOutput), null, strTableOutput)) {
+            final List<DragstrLocus> loci = Arrays.stream(finalSites.perPeriodAndRepeat)
+                    .flatMap(Arrays::stream)
+                    .flatMap(dcc -> dcc.loci.stream())
+                    .sorted(Comparator.comparingInt(DragstrLocus::getChromosomeIndex).thenComparing(DragstrLocus::getStart).thenComparing(DragstrLocus::getEnd))
+                    .collect(Collectors.toList());
+            writer.writeAll(loci);
+        } catch (final IOException ex) {
+            throw new UserException.CouldNotCreateOutputFile(strTableOutput, ex);
         }
     }
 
@@ -223,7 +245,7 @@ public class EstimateDragstrParameters extends GATKTool {
             final DragstrLocusCases out = new DragstrLocusCases(finalSize);
             for (int i = 0; i < inSize; i++) {
                 final long mask = in.loci.get(i).getMask();
-                if ((mask & filterMask) == filterMask) {
+                if ((mask & filterMask) == 0) {
                     out.loci.add(in.loci.get(i));
                     out.depth.add(in.depth.get(i));
                     out.nonref.add(in.nonref.get(i));
