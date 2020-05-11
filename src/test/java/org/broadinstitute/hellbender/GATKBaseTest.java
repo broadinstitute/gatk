@@ -74,6 +74,10 @@ public abstract class GATKBaseTest extends BaseTest {
     public static final String NA12878_20_21_WGS_cram = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram";
     public static final String NA12878_20_21_covered_regions = publicTestDir + "wgs_calling_regions.v1.chr20_chr21.interval_list";
 
+    // ~10,000 reads from chromosome 20 of NA12878 RNA-seq, aligned to b37 with STAR
+    public static final String NA12878_20_RNAseq_bam = largeFileTestDir + "NA12878.RNAseq.with.mate.info.bam";
+    public static final String b37_20_gff3 = largeFileTestDir + "Homo_sapiens.GRCh37.20.gff3";
+
     // Variants from a DBSNP 138 VCF overlapping the reads in NA12878_20_21_WGS_bam
     public static final String dbsnp_138_b37_20_21_vcf = largeFileTestDir + "dbsnp_138.b37.20.21.vcf";
 
