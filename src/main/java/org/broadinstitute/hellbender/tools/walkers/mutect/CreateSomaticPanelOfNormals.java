@@ -30,8 +30,14 @@ import java.util.stream.Collectors;
  * Create a panel of normals (PoN) containing germline and artifactual sites for use with Mutect2.
  *
  * <p>
- *     The tool takes multiple normal sample callsets produced by {@link Mutect2}'s tumor-only mode and collates sites present in two or more samples
- *     into a sites-only VCF. The PoN captures common artifacts.  Mutect2 then uses the PoN to filter variants at the site-level.
+ *     The tool takes multiple normal sample callsets produced by {@link Mutect2}'s tumor-only mode and collates sites present in multiple samples
+ *     (two by default, set by the --min-sample-count argument) into a sites-only VCF. The PoN captures common artifacts.  Mutect2 then
+ *     uses the PoN to filter variants at the site-level.
+ *
+ *     The --max-germline-probability argument sets the threshold for possible germline variants to be included in the PoN.  By default this
+ *     is set to 0.5, so that likely germline events are excluded.  This is usually the correct behavior as germline variants are best handled
+ *     by probabilistic modeling via Mutect2's --germline-resource argument.  A germline resource, such as gnomAD in the case of humans, is a much
+ *     more refined tool for germline filtering than any PoN could be.
  * </p>
  * <p>
  *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.
