@@ -193,12 +193,11 @@ public class DragstrLocus {
             @Override
             protected DragstrLocus readRecord(final PushbackDataInput input) throws IOException {
                 while (!input.eof()) {
-                    final int c = input.readUnsignedShort();
+                    final int c = input.readInt();
                     final long s = input.readLong();
                     final byte p = input.readByte();
                     final short l = input.readShort();
-                    final int m = input.readInt();
-                    final long e = s + l - 1;
+                    final long m = input.readLong();
                     if (chrIdx != c) {
                         return null;
                     } else if (s > end) {
@@ -259,21 +258,6 @@ public class DragstrLocus {
     public boolean equals(final DragstrLocus other) {
         return other == this || (other.chromosomeIndex == this.chromosomeIndex &&
                 other.length == length && other.start == this.start && this.period == other.period);
-    }
-
-    private static boolean equalUnits(byte[] a, byte[] b) {
-        if (a == b) {
-            return true;
-        } else if (a.length != b.length) {
-            return false;
-        } else {
-            for (int i = 0; i < a.length; i++) {
-                if (!Nucleotide.same(a[i],b[i])) {
-                    return false;
-                }
-            }
-            return true;
-        }
     }
 
     public SimpleInterval getStartInterval(final SAMSequenceDictionary dictionary, final int margin) {
