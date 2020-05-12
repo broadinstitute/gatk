@@ -3,14 +3,12 @@ package org.broadinstitute.hellbender.tools.walkers.consensus;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.DuplicateSetWalker;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
-import org.glassfish.jersey.Beta;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.util.Random;

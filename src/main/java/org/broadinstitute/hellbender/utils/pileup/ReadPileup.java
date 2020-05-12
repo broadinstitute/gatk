@@ -530,4 +530,8 @@ public class ReadPileup implements Iterable<PileupElement> {
         }
         return new String(quals);
     }
+
+    public List<PileupElement> getPileupElements(){
+        return pileupElements;
+    }
 }

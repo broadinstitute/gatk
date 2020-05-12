@@ -271,7 +271,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     }
 
     private static void capMinimumReadQualities(final GATKRead read, final byte[] readQuals, final byte[] readInsQuals, final byte[] readDelQuals, final byte baseQualityScoreThreshold) {
-        for( int i = 0; i < readQuals.length; i++ ) {
+        for( int i = 0; i < readQuals.length; i++ ) { // ts: capping bq by mq makes no sense: take the min(bq, mq). bq can't be higher than mq
             readQuals[i] = (byte) Math.min(0xff & readQuals[i], read.getMappingQuality()); // cap base quality by mapping quality, as in UG
             readQuals[i] =    setToFixedValueIfTooLow( readQuals[i],    baseQualityScoreThreshold,             QualityUtils.MIN_USABLE_Q_SCORE );
             readInsQuals[i] = setToFixedValueIfTooLow( readInsQuals[i], QualityUtils.MIN_USABLE_Q_SCORE,       QualityUtils.MIN_USABLE_Q_SCORE );
@@ -323,7 +323,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
         for ( int i = 1; i < readBases.length; i++ ) {
             final int repeatLength = findTandemRepeatUnits(readBases, i-1).getRight();
-            readInsQuals[i-1] = (byte) Math.min(0xff & readInsQuals[i - 1], 0xff & pcrIndelErrorModelCache[repeatLength]);
+            readInsQuals[i-1] = (byte) Math.min(0xff & readInsQuals[i - 1], 0xff & pcrIndelErrorModelCache[repeatLength]); // ts:   byte is already 8 bits, so what does this bitwise and do/
             readDelQuals[i-1] = (byte) Math.min(0xff & readDelQuals[i - 1], 0xff & pcrIndelErrorModelCache[repeatLength]);
         }
     }

@@ -488,7 +488,7 @@ public final class CigarUtils {
      */
     public static Cigar convertTerminalInsertionToSoftClip(final Cigar cigar) {
 
-        if (cigar.numCigarElements() < 2 ) {
+        if (cigar.numCigarElements() < 2) {
             return cigar;
         }
 
@@ -499,7 +499,7 @@ public final class CigarUtils {
                 builder.add(element);
             } else if (n == 0 || n == cigar.numCigarElements() - 1) {   // terminal insertion with no clipping -- convert to soft clip
                 builder.add(new CigarElement(element.getLength(), CigarOperator.SOFT_CLIP));
-            } else if (cigar.getCigarElement(n-1).getOperator().isClipping() || cigar.getCigarElement(n+1).getOperator().isClipping()) {    // insertion preceding or following clip
+            } else if (cigar.getCigarElement(n - 1).getOperator().isClipping() || cigar.getCigarElement(n + 1).getOperator().isClipping()) {    // insertion preceding or following clip
                 builder.add(new CigarElement(element.getLength(), CigarOperator.SOFT_CLIP));
             } else {    // interior insertion
                 builder.add(element);
@@ -507,5 +507,10 @@ public final class CigarUtils {
         }
 
         return builder.make();
+    }
+
+    public static boolean containsIndels(final Cigar cigar){
+        Utils.nonNull(cigar, "the input cigar must not be null");
+        return cigar.getCigarElements().stream().anyMatch(e -> e.getOperator().isIndel());
     }
 }
