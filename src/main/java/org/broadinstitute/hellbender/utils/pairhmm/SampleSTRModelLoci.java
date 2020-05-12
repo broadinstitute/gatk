@@ -207,6 +207,21 @@ public class SampleSTRModelLoci extends GATKTool {
         indexInStream.close();
         output.closeArchiveEntry();
 
+        output.putArchiveEntry(new ZipArchiveEntry("str_table.bin"));
+        try (final BinaryTableReader<DragstrLocus> in = DragstrLocus.binaryReader(inFile);
+             final BinaryTableWriter<DragstrLocus> out = DragstrLocus.dragenWriter(new OutputStream() {
+                 @Override
+                 public void write(final int b) throws IOException {
+                     output.write(b);
+                 }
+             }, null, null)) {
+            in.stream().forEach(record -> {try { out.write(record); } catch (final IOException ex) { throw new UncheckedIOException(ex);}});
+        } catch (final FileNotFoundException ex) {
+            // cant happen.
+            throw new GATKException("bug", ex);
+        }
+        output.closeArchiveEntry();
+
     }
 
     private void saveReferenceDictionary(final ZipArchiveOutputStream output) throws IOException {

@@ -25,11 +25,11 @@ public class DragstrLocus {
     private final long start;
     private final byte period;
     private final short length;
-    private final int mask;
+    private final long mask;
 
     private static final int INDEX_BYTE_INTERVAL = 1 << 16; // every 64KB
 
-    private DragstrLocus(final int chrIdx, final long start, final byte period, final short length, final int mask) {
+    private DragstrLocus(final int chrIdx, final long start, final byte period, final short length, final long mask) {
         chromosomeIndex = chrIdx;
         this.start = start;
         this.period = period;
@@ -37,7 +37,7 @@ public class DragstrLocus {
         this.mask = mask;
     }
 
-    public static DragstrLocus make(final int chrIdx, final long start, final byte period, final short length, final int mask) {
+    public static DragstrLocus make(final int chrIdx, final long start, final byte period, final short length, final long mask) {
         ParamUtils.isPositiveOrZero(chrIdx, "chromosome index");
         ParamUtils.isPositive(start, "start position");
         ParamUtils.isPositive(period, "period");
@@ -62,7 +62,7 @@ public class DragstrLocus {
     }
 
     public int getRepeats() {
-        return length / period;
+        return period == 0 ? 0 : length / period;
     }
 
     @FunctionalInterface
@@ -73,12 +73,17 @@ public class DragstrLocus {
 
     public static BinaryTableWriter<DragstrLocus> binaryWriter(final OutputStream out, final OutputStream indexOut, final String path) {
         return binaryWriter(out, indexOut, path, (record, output) -> {
-            output.writeInt(record.mask);
-            output.writeShort(record.chromosomeIndex);
+            output.writeInt(record.chromosomeIndex);
             output.writeLong(record.start);
             output.writeByte(record.period);
             output.writeShort(record.length);
+            output.writeLong(record.mask);
         });
+    }
+
+
+    public static BinaryTableWriter<DragstrLocus> dragenWriter(final String out) {
+        return dragenWriter(BucketUtils.createFile(out), null, out);
     }
 
     public static BinaryTableWriter<DragstrLocus> dragenWriter(final OutputStream out, final OutputStream indexOut, final String path) {
@@ -87,9 +92,9 @@ public class DragstrLocus {
 
         return binaryWriter(out, indexOut, path, (record, output) -> {
             buffer.clear();
-            buffer.putInt(record.mask);
+            buffer.putInt((int) record.mask);
             buffer.putInt(record.chromosomeIndex);
-            buffer.putInt((int) record.start - 1);  
+            buffer.putInt((int) record.start - 1);
             buffer.putShort(record.length);
             buffer.put(record.period);
             buffer.put((byte) Math.min(255, record.getRepeats()));
@@ -153,16 +158,20 @@ public class DragstrLocus {
         return binaryWriter(new FileOutputStream(out), indexFile != null ? new FileOutputStream(indexFile) : new IOUtils.NullOutputStream(), out.toString());
     }
 
+
+    public static BinaryTableReader<DragstrLocus> binaryReader(final File file) throws FileNotFoundException {
+        return binaryReader(new FileInputStream(file));
+    }
     public static BinaryTableReader<DragstrLocus> binaryReader(final InputStream in) {
         return new BinaryTableReader<DragstrLocus>(new DataInputStream(in)) {
             @Override
             protected DragstrLocus readRecord(final PushbackDataInput input) throws IOException {
-                final int chrIdx = input.readUnsignedShort();
+                final int chrIdx = input.readInt();
                 final long start = input.readLong();
                 final byte period = input.readByte();
                 final short length = input.readShort();
-                final int mask = input.readInt();
-                return new DragstrLocus(chrIdx, start, period, length, mask);
+                final long mask = input.readLong();
+                return DragstrLocus.make(chrIdx, start, period, length, mask);
             }
         };
     }
