@@ -2,7 +2,7 @@ version 1.0
 
 import "AlignAndCall.wdl" as AlignAndCall
 
-#import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignAndCall/versions/22/plain-WDL/descriptor" as AlignAndCall
+#import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignAndCall/versions/24/plain-WDL/descriptor" as AlignAndCall
 
 workflow MitochondriaPipeline {
 
@@ -234,6 +234,7 @@ task SubsetBamToChrM {
       --read-filter MateUnmappedAndUnmappedReadFilter \
       ~{"--gcs-project-for-requester-pays " + requester_pays_project} \
       -I ~{input_bam} \
+      --read-index ~{input_bai} \
       -O ~{basename}.bam
   >>>
   runtime {
