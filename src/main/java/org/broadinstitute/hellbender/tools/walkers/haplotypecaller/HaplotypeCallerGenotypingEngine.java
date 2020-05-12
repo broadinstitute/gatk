@@ -183,8 +183,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
             final SimpleInterval variantCallingRelevantOverlap = new SimpleInterval(mergedVC).expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
             // We want to retian evidence that overlaps within its softclipping edges.
-            if (hcArgs.applyBQD || hcArgs.applyFRD) {
-//                readAlleleLikelihoods.retainEvidenceAndStoreFiltered(r -> r.overlaps(variantCallingRelevantOverlap), r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
+            if (hcArgs.applyBQD || hcArgs.applyFRD) { //TODO this is not hte right set of arguemnts
                 readAlleleLikelihoods.retainEvidence(r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
             } else {
                 readAlleleLikelihoods.retainEvidence(r -> r.overlaps(variantCallingRelevantOverlap));

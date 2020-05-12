@@ -156,9 +156,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             double[] FRDCallResults = null;
 
             if (computeBQD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
-                double forwardHomopolymerAdjustment = FRDBQDUtils.computeForwardHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent);
-                double reverseHomopolymerAdjustment = FRDBQDUtils.computeReverseHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent);
-                BQDCallResults = likelihoodsCalculator.calculateBQDLikelihoods(sampleLikelihoods, strandForward, strandReverse, forwardHomopolymerAdjustment, reverseHomopolymerAdjustment, calculators);
+                BQDCallResults = likelihoodsCalculator.calculateBQDLikelihoods(sampleLikelihoods, strandForward, strandReverse, paddedReference, offsetForRefIntoEvent, calculators);
 //                System.out.println("BQD results:");
 //                System.out.println(Arrays.toString(BQDCallResults));
             }

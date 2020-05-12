@@ -323,7 +323,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     public static List<ReadFilter> makeStandardHCReadFilters(final int mappingQualityThreshold) {
         List<ReadFilter> filters = new ArrayList<>();
-        filters.add(new MappingQualityReadFilter(mappingQualityThreshold));
+        filters.add(new MappingQualityReadFilter(mappingQualityThreshold)); //TODO figure this guy out
+//        filters.add(new MappingQualityReadFilter());
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPED);
         filters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
