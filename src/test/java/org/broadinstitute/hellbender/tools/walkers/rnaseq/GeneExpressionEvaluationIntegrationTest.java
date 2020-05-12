@@ -112,13 +112,12 @@ public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramT
         final Map<Gff3BaseData, GeneExpressionEvaluation.Coverage> coverageMap1 = readCoverage(file1);
         final Map<Gff3BaseData, GeneExpressionEvaluation.Coverage> coverageMap2 = readCoverage(file2);
 
-        Assert.assertEquals(coverageMap1.size(), coverageMap2.size());
+        Assert.assertEquals(coverageMap1.keySet(), coverageMap2.keySet());
 
         for (final Map.Entry<Gff3BaseData, GeneExpressionEvaluation.Coverage> entry : coverageMap1.entrySet()) {
             final Gff3BaseData feature = entry.getKey();
             final GeneExpressionEvaluation.Coverage coverage1 = entry.getValue();
 
-            Assert.assertTrue(coverageMap2.containsKey(feature));
             final GeneExpressionEvaluation.Coverage coverage2 = coverageMap2.get(feature);
 
             if (feature.getStrand() != Strand.NONE) {

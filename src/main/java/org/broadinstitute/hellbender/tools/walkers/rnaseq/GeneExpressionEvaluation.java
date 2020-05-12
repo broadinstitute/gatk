@@ -161,7 +161,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     enum MultiMapMethod {
         IGNORE {
             @Override
-            Map<Gff3BaseData, Float> getWeights(final int nHits, final Map<Gff3BaseData, Float> previousWeights) {
+            protected Map<Gff3BaseData, Float> getWeightsForMethod(final int nHits, final Map<Gff3BaseData, Float> previousWeights) {
                 if (nHits == 1) {
                     return previousWeights;
                 } else {
@@ -171,7 +171,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         },
         EQUAL {
             @Override
-            Map<Gff3BaseData, Float> getWeights(final int nHits, final Map<Gff3BaseData, Float> previousWeights) {
+            protected Map<Gff3BaseData, Float> getWeightsForMethod(final int nHits, final Map<Gff3BaseData, Float> previousWeights) {
                 if (nHits == 1) {
                     return previousWeights;
                 } else {
@@ -184,7 +184,15 @@ public final class GeneExpressionEvaluation extends ReadWalker {
             }
         };
 
-        abstract Map<Gff3BaseData, Float> getWeights(final int nHits, final Map<Gff3BaseData, Float> previousWeights);
+        Map<Gff3BaseData, Float> getWeights(final int nHits, final Map<Gff3BaseData, Float> previousWeights) {
+            if (nHits < 1) {
+                throw new GATKException("nHits = " + nHits + ", cannot be less than 1");
+            }
+
+            return getWeightsForMethod(nHits, previousWeights);
+        }
+
+        abstract protected Map<Gff3BaseData, Float> getWeightsForMethod(final int nHits, final Map<Gff3BaseData, Float> previousWeights);
 
     }
 
@@ -348,7 +356,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
             final Map<Gff3BaseData, Float> initalWeights = multiOverlapMethod.getWeights(alignmentIntervals, featureOverlapDetector);
             final Map<Gff3BaseData, Float> finalWeights = multiMapMethod.getWeights(read.getAttributeAsInteger(SAMTag.NH.toString()), initalWeights);
 
-            final Strand fragmentStrand = getFragmentStrand(read);
+            final Strand fragmentStrand = getFragmentStrand(read, trancriptionRead);
 
             for (final Map.Entry<Gff3BaseData, Float> weight : finalWeights.entrySet()) {
                 final Gff3BaseData feature = weight.getKey();
@@ -462,12 +470,12 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         }
     }
 
-    private Strand getFragmentStrand(final GATKRead read) {
+    static Strand getFragmentStrand(final GATKRead read, final TrancriptionRead trancriptionRead) {
         return (read.isFirstOfPair() == (trancriptionRead==TrancriptionRead.R1))? (read.isReverseStrand() ? Strand.NEGATIVE : Strand.POSITIVE) :
                                                                                     (read.isReverseStrand() ? Strand.POSITIVE : Strand.NEGATIVE);
     }
 
-    private enum TrancriptionRead {
+    enum TrancriptionRead {
         R1,
         R2
     }
