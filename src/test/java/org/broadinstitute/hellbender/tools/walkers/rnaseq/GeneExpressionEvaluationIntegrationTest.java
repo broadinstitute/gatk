@@ -14,7 +14,6 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-
 public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramTest {
 
     // If true, update the expected outputs in tests that assert a match vs. prior output,

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
-
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
@@ -19,7 +18,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -195,6 +193,7 @@ import java.util.stream.Collectors;
  *     </p>
  * </p>
  * <p>The number of mapping for a particular fragment is extracted via the NH tag.</p>
+ * <p>Currently this tool only works on a single sample BAM.  If a readgroup header line indicates multiple samples in the same BAM, the tool will throw an exception.</p>
  */
 @CommandLineProgramProperties(
         summary = "This tool evaluates gene expression from RNA-seq reads aligned to genome.  Features to evaluate expression over are defined in an input annotation file in gff3 fomat " +
@@ -213,28 +212,28 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     )
     private File outputCountsFile = null;
 
-    @Argument(doc="gff3 file containing feature annotations", shortName = "G", fullName = "gff-file")
+    @Argument(doc="Gff3 file containing feature annotations", shortName = "G", fullName = "gff-file")
     private FeatureInput<Gff3Feature> gffFile;
 
-    @Argument(doc="feature types to group by", fullName = "grouping-type")
+    @Argument(doc="Feature types to group by", fullName = "grouping-type")
     private Set<String> groupingType = new HashSet<>(Collections.singleton("gene"));
 
-    @Argument(doc="feature overlap types", fullName = "overlap-type")
+    @Argument(doc="Feature overlap types", fullName = "overlap-type")
     private Set<String> overlapType = new HashSet<>(Collections.singleton("exon"));
 
-    @Argument(doc="attribute key to label features by in output", fullName = "feature-label-key")
+    @Argument(doc="Attribute key to label features by in output", fullName = "feature-label-key")
     private String featureLabelKey = "Name";
 
-    @Argument(doc = "which read corresponds to the transcription strand", fullName = "transcription-read")
+    @Argument(doc = "Which read corresponds to the transcription strand", fullName = "transcription-read")
     private TrancriptionRead trancriptionRead = TrancriptionRead.R1;
 
-    @Argument(doc = "how to distribute weight of alignments which overlap multiple features", fullName = "multi-overlap-method")
+    @Argument(doc = "How to distribute weight of alignments which overlap multiple features", fullName = "multi-overlap-method")
     private MultiOverlapMethod multiOverlapMethod = MultiOverlapMethod.PROPORTIONAL;
 
-    @Argument(doc = "how to distribute weight of reads with multiple alignments", fullName = "multi-map-method")
+    @Argument(doc = "How to distribute weight of reads with multiple alignments", fullName = "multi-map-method")
     private MultiMapMethod multiMapMethod = MultiMapMethod.IGNORE;
 
-    @Argument(doc = "whether the rna is spliced.  If spliced, alignments must be from a splice aware aligner (such as star).  If unspliced, alignments must be from a non-splicing aligner (such as bwa). ")
+    @Argument(doc = "Whether the rna is spliced.  If spliced, alignments must be from a splice aware aligner (such as star).  If unspliced, alignments must be from a non-splicing aligner (such as bwa). ")
     private boolean spliced = true;
 
     final private Map<Gff3BaseData, Coverage> featureCounts = new LinkedHashMap<>();
@@ -361,7 +360,9 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     @Override
     public void onTraversalStart() {
         validateOutputFile(outputCountsFile);
-        mappingQualityFilter.minMappingQualityScore = 0;
+        if(multiMapMethod == MultiMapMethod.EQUAL) {
+            mappingQualityFilter.minMappingQualityScore = 0;
+        }
         final SAMSequenceDictionary dict = getBestAvailableSequenceDictionary();
         final SAMFileHeader header = getHeaderForReads();
         for (final SAMReadGroupRecord readGroupRecord : header.getReadGroups()) {
@@ -639,5 +640,3 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         return merged;
     }
 }
-
-
