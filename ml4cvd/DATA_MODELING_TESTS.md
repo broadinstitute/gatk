@@ -55,7 +55,8 @@ This model should achieve about 75% validation set accuracy on predicting from t
 
 
 ## Running tests
-The command below will run all (integration and unit) tests:
+### Integration tests
+The command below will run integration tests (and some pre-pytest unit tests):
 ```
 ${HOME}/ml/scripts/tf.sh -t ${HOME}/ml/ml4cvd/tests.py
 ```
@@ -74,4 +75,24 @@ AssertionError: 0.2925531914893617 != 0.7606382978723405 within 0.4 delta
 ```
 are expected since models are not trained much in the interest of time and they may not have learnt enough. They can
 still be valuable as smoke tests since they exercise a lot of the codebase.
+
+### Unit tests
+Unit tests can be run in Docker with
+```
+${HOME}/ml/scripts/tf.sh -T ${HOME}/ml/tests
+```
+Unit tests can be run locally in a conda environment with
+```
+python -m pytest ${HOME}/ml/tests
+```
+Some of the unit tests are slow due to creating, saving and loading `tensorflow` models.
+To skip those tests to move quickly, run
+```
+python -m pytest ${HOME}/ml/tests -m "not slow"
+```
+pytest can also run specific tests using `::`. For example
+```
+python -m pytest ${HOME}/ml/tests/test_models.py::TestMakeMultimodalMultitaskModel::test_u_connect_segment
+```
+For more pytest usage information, checkout the [usage guide](https://docs.pytest.org/en/latest/usage.html).
 

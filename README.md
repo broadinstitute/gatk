@@ -6,9 +6,9 @@ and functionality.
 
 
 Getting Started
-* Setting up your local environment
-* Setting up a remote VM
-* Modeling/Data Sources/Tests (`ml4cvd/DATA_MODELING_TESTS.md`)
+* [Setting up your local environment](#setting-up-your-local-environment)
+* [Setting up a remote VM](#setting-up-a-remote-vm)
+* Modeling/Data Sources/Tests [(`ml4cvd/DATA_MODELING_TESTS.md`)](ml4cvd/DATA_MODELING_TESTS.md)
 
 Advanced Topics:
 * Tensorizing Data (going from raw data to arrays suitable for modeling, in `ml4cvd/tensorize/README.md, TENSORIZE.md` )

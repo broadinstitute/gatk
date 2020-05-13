@@ -27,7 +27,7 @@ from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_pr
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
-from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map, make_variational_multimodal_multitask_model
+from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map
 
 
 def run(args):
@@ -138,14 +138,10 @@ def _find_learning_rate(args) -> float:
 
 def train_multimodal_multitask(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    if args.variational:  # TODO: Save the encoders and decoders
-        model, _, _ = make_variational_multimodal_multitask_model(**args.__dict__)
-    else:
-        model = make_multimodal_multitask_model(**args.__dict__)
+    model = make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
-        anneal_rate=args.anneal_rate, anneal_shift=args.anneal_shift, anneal_max=args.anneal_max,
     )
 
     out_path = os.path.join(args.output_folder, args.id + '/')
@@ -155,10 +151,7 @@ def train_multimodal_multitask(args):
 
 def test_multimodal_multitask(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    if args.variational:
-        model, _, _ = make_variational_multimodal_multitask_model(**args.__dict__)
-    else:
-        model = make_multimodal_multitask_model(**args.__dict__)
+    model = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.alpha)
@@ -215,10 +208,7 @@ def infer_multimodal_multitask(args):
     inference_tsv = inference_file_name(args.output_folder, args.id)
     tsv_style_is_genetics = 'genetics' in args.tsv_style
     tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
-    if args.variational:
-        model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
-    else:
-        model = make_multimodal_multitask_model(**args.__dict__)
+    model = make_multimodal_multitask_model(**args.__dict__)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
@@ -295,10 +285,7 @@ def infer_hidden_layer_multimodal_multitask(args):
         cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha,
     )
     generate_test.set_worker_paths(tensor_paths)
-    if args.variational:
-        full_model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
-    else:
-        full_model = make_multimodal_multitask_model(**args.__dict__)
+    full_model = make_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
     dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)

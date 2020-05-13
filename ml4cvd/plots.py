@@ -160,7 +160,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix='./figu
     rows = max(2, int(math.ceil(total_plots / cols)))
     f, axes = plt.subplots(rows, cols, figsize=(int(cols*SUBPLOT_SIZE), int(rows*SUBPLOT_SIZE)))
     for k in sorted(history.history.keys()):
-        if 'val_' not in k:
+        if not k.startswith('val_'):
             if isinstance(history.history[k][0], LearningRateSchedule):
                 history.history[k] = [history.history[k][0](i * training_steps) for i in range(len(history.history[k]))]
             axes[row, col].plot(history.history[k])

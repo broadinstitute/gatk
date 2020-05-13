@@ -9,7 +9,7 @@ from ml4cvd.TensorMap import TensorMap, Interpretation
 
 
 CONTINUOUS_TMAPS = [
-    TensorMap(f'{n}d_cont', shape=tuple(range(1, n + 1)), interpretation=Interpretation.CONTINUOUS)
+    TensorMap(f'{n}d_cont', shape=tuple(range(2, n + 2)), interpretation=Interpretation.CONTINUOUS)
     for n in range(1, 6)
 ]
 CATEGORICAL_TMAPS = [

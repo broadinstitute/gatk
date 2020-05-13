@@ -228,6 +228,9 @@ class TensorMap(object):
         if self.validator is None:
             self.validator = lambda tm, x, hd5: None
 
+    def __repr__(self):
+        return f'TensorMap({self.name}, {self.shape}, {self.interpretation})'
+
     def __eq__(self, other):
         if not isinstance(other, TensorMap):
             return NotImplemented
