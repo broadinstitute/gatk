@@ -153,6 +153,7 @@ def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
         'originalrestingecgmeasurements',
         'intervalmeasurementtimeresolution',
         'intervalmeasurementamplituderesolution',
+        'intervalmeasurementfilter',
         'diagnosis',
         'originaldiagnosis',
     ]

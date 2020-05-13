@@ -12,6 +12,7 @@ from __future__ import print_function
 # Imports
 import os
 import csv
+import math
 import h5py
 import time
 import logging
@@ -27,6 +28,9 @@ from ml4cvd.TensorMap import TensorMap
 
 np.set_printoptions(threshold=np.inf)
 
+
+DEFAULT_VALID_RATIO = 0.2
+DEFAULT_TEST_RATIO = 0.1
 
 TENSOR_GENERATOR_TIMEOUT = 64
 TENSOR_GENERATOR_MAX_Q_SIZE = 32
@@ -197,8 +201,10 @@ class TensorGenerator:
                 n_sum = stats[f'{tm.name}_sum']
                 mean = n_sum / n
                 std = np.sqrt((sum_squared/n)-(mean*mean))
-                logging.info(f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{std:0.2f} '
-                             f"Maximum:{stats[f'{tm.name}_max']:0.2f} Minimum:{stats[f'{tm.name}_min']:0.2f}")
+                logging.info(
+                    f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{std:0.2f} '
+                    f"Maximum:{stats[f'{tm.name}_max']:0.2f} Minimum:{stats[f'{tm.name}_min']:0.2f}",
+                )
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -472,58 +478,149 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
         return inputs, outputs
 
 
-def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv):
-    """Return 3 disjoint lists of tensor paths.
+def _get_train_valid_test_discard_ratios(
+        valid_ratio: float,
+        test_ratio: float,
+        train_csv: str,
+        valid_csv: str,
+        test_csv: str,
+) -> Tuple[int, int, int, int]:
 
-    The paths are split in training, validation and testing lists
-    apportioned according to valid_ratio and test_ratio
+    if valid_csv is not None:
+        valid_ratio = 0
+    if test_csv is not None:
+        test_ratio = 0
+    if train_csv is not None:
+        train_ratio = 0
+        discard_ratio = 1.0 - valid_ratio - test_ratio
+    else:
+        train_ratio = 1.0 - valid_ratio - test_ratio
+        discard_ratio = 0
 
-    Arguments:
-        tensors: directory containing tensors
-        valid_ratio: rate of tensors in validation list
-        test_ratio: rate of tensors in testing list
-        test_modulo: if greater than 1, all sample ids modulo this number will be used for testing regardless of test_ratio and valid_ratio
+    if not math.isclose(train_ratio + valid_ratio + test_ratio + discard_ratio, 1.0):
+        raise ValueError(f'ratios do not sum to 1, train/valid/test/discard = {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}')
+    logging.debug(f'train/valid/test/discard ratios: {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}')
 
-    Returns:
-        A tuple of 3 lists of hd5 tensor file paths
+    return train_ratio, valid_ratio, test_ratio, discard_ratio
+
+
+def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]]:
+    if sample_csv is None:
+        return None
+    with open(sample_csv, 'r') as csv_file:
+        sample_ids = [row[0] for row in csv.reader(csv_file)]
+        # simple header detection, sample ids are assumed to be ints, headers strings with non-numerics
+        try:
+            int(sample_ids[0])
+        except ValueError:
+            sample_ids = sample_ids[1:]
+        return set(sample_ids)
+
+
+def get_train_valid_test_paths(
+        tensors: str,
+        sample_csv: str,
+        valid_ratio: float,
+        test_ratio: float,
+        train_csv: str,
+        valid_csv: str,
+        test_csv: str,
+) -> Tuple[List[str], List[str], List[str]]:
     """
-    test_paths = []
+    Return 3 disjoint lists of tensor paths.
+
+    The paths are split in training, validation, and testing lists.
+    If no arguments are given, paths are split into train/valid/test in the ratio 0.7/0.2/0.1.
+    Otherwise, at least 2 arguments are required to specify train/valid/test sets.
+
+    :param tensors: path to directory containing tensors
+    :param sample_csv: path to csv containing sample ids, only consider sample ids for splitting
+                       into train/valid/test sets if they appear in sample_csv
+    :param valid_ratio: rate of tensors in validation list, mutually exclusive with valid_csv
+    :param test_ratio: rate of tensors in testing list, mutually exclusive with test_csv
+    :param train_csv: path to csv containing sample ids to reserve for training list
+    :param valid_csv: path to csv containing sample ids to reserve for validation list, mutually exclusive with valid_ratio
+    :param test_csv: path to csv containing sample ids to reserve for testing list, mutually exclusive with test_ratio
+
+    :return: tuple of 3 lists of hd5 tensor file paths
+    """
     train_paths = []
     valid_paths = []
+    test_paths = []
+    discard_paths = []
 
-    assert valid_ratio > 0 and test_ratio > 0 and valid_ratio+test_ratio < 1.0
+    train_ratio, valid_ratio, test_ratio, discard_ratio = _get_train_valid_test_discard_ratios(
+        valid_ratio=valid_ratio,
+        test_ratio=test_ratio,
+        train_csv=train_csv,
+        valid_csv=valid_csv,
+        test_csv=test_csv,
+    )
 
-    if test_csv is not None:
-        lol = list(csv.reader(open(test_csv, 'r')))
-        test_dict = {l[0]: True for l in lol}
-        logging.info(f'Using external test set with {len(test_dict)} examples from file:{test_csv}')
-        test_ratio = 0.0
-        test_modulo = 0
+    choices = {
+        'train': (train_paths, train_ratio),
+        'valid': (valid_paths, valid_ratio),
+        'test': (test_paths, test_ratio),
+        'discard': (discard_paths, discard_ratio),
+    }
 
+    # parse csv's to disjoint sets, None if csv was None
+    sample_set = _sample_csv_to_set(sample_csv)
+
+    train_set = _sample_csv_to_set(train_csv)
+    valid_set = _sample_csv_to_set(valid_csv)
+    test_set = _sample_csv_to_set(test_csv)
+
+    if train_set is not None and valid_set is not None and not train_set.isdisjoint(valid_set):
+        raise ValueError('train and validation samples overlap')
+    if train_set is not None and test_set is not None and not train_set.isdisjoint(test_set):
+        raise ValueError('train and test samples overlap')
+    if valid_set is not None and test_set is not None and not valid_set.isdisjoint(test_set):
+        raise ValueError('validation and test samples overlap')
+
+    # find tensors and split them among train/valid/test
     for root, dirs, files in os.walk(tensors):
         for name in files:
-            if os.path.splitext(name)[-1].lower() != TENSOR_EXT:
-                continue
+            path = os.path.join(root, name)
+            split = os.path.splitext(name)
+            sample_id = split[0]
 
-            if test_csv is not None and os.path.splitext(name)[0] in test_dict:
-                test_paths.append(os.path.join(root, name))
+            if split[-1].lower() != TENSOR_EXT:
                 continue
-
-            dice = np.random.rand()
-            if dice < test_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
-                test_paths.append(os.path.join(root, name))
-            elif dice < (valid_ratio+test_ratio):
-                valid_paths.append(os.path.join(root, name))
+            elif sample_set is not None and sample_id not in sample_set:
+                continue
+            elif train_set is not None and sample_id in train_set:
+                train_paths.append(path)
+            elif valid_set is not None and sample_id in valid_set:
+                valid_paths.append(path)
+            elif test_set is not None and sample_id in test_set:
+                test_paths.append(path)
             else:
-                train_paths.append(os.path.join(root, name))
+                choice = np.random.choice([k for k in choices], p=[choices[k][1] for k in choices])
+                choices[choice][0].append(path)
 
-    logging.info(f"Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}")
-    if len(train_paths) == 0 and len(valid_paths) == 0 and len(test_paths) == 0:
-        raise ValueError(f"Not enough tensors at {tensors}\n")
+    logging.info(f'Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}')
+    logging.debug(f'Discarded {len(discard_paths)} tensors due to given ratios')
+    if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
+        raise ValueError(
+            f'Not enough tensors at {tensors}\n'
+            f'Found {len(train_paths)} training, {len(valid_paths)} validation, and {len(test_paths)} testing tensors\n'
+            f'Discarded {len(discard_paths)} tensors',
+        )
+
     return train_paths, valid_paths, test_paths
 
 
-def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo, test_csv):
+def get_train_valid_test_paths_split_by_csvs(
+        tensors: str,
+        balance_csvs: List[str],
+        sample_csv: str,
+        valid_ratio: float,
+        test_ratio: float,
+        train_csv: str,
+        valid_csv: str,
+        test_csv: str,
+) -> Tuple[List[List[str]], List[List[str]], List[List[str]]]:
     stats = Counter()
     sample2group = {}
     for i, b_csv in enumerate(balance_csvs):
@@ -536,27 +633,29 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
             stats['group_'+str(i+1)] += 1
     logging.info(f"Balancing with CSVs of Sample IDs stats: {stats}")
 
-    test_paths = [[] for _ in range(len(balance_csvs)+1)]
     train_paths = [[] for _ in range(len(balance_csvs)+1)]
     valid_paths = [[] for _ in range(len(balance_csvs)+1)]
-    for root, dirs, files in os.walk(tensors):
-        for name in files:
-            splits = os.path.splitext(name)
-            if splits[-1].lower() != TENSOR_EXT:
-                continue
+    test_paths = [[] for _ in range(len(balance_csvs)+1)]
+
+    _train, _valid, _test = get_train_valid_test_paths(
+        tensors=tensors,
+        sample_csv=sample_csv,
+        valid_ratio=valid_ratio,
+        test_ratio=test_ratio,
+        train_csv=train_csv,
+        valid_csv=valid_csv,
+        test_csv=test_csv,
+    )
+
+    for paths, split_list in [(_train, train_paths), (_valid, valid_paths), (_test, test_paths)]:
+        for path in paths:
+            split = os.path.splitext(os.path.basename(path))
+            sample_id = split[0]
 
             group = 0
-            sample_id = os.path.basename(splits[0])
             if sample_id in sample2group:
                 group = sample2group[sample_id]
-
-            dice = np.random.rand()
-            if dice < test_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
-                test_paths[group].append(os.path.join(root, name))
-            elif dice < (valid_ratio+test_ratio):
-                valid_paths[group].append(os.path.join(root, name))
-            else:
-                train_paths[group].append(os.path.join(root, name))
+            split_list[group].append(path)
 
     for i in range(len(train_paths)):
         if len(train_paths[i]) == 0 or len(valid_paths[i]) == 0 or len(test_paths[i]) == 0:
@@ -574,15 +673,17 @@ def test_train_valid_tensor_generators(
     tensor_maps_out: List[TensorMap],
     tensors: str,
     batch_size: int,
-    valid_ratio: float,
-    test_ratio: float,
-    test_modulo: int,
     num_workers: int,
     cache_size: float,
     balance_csvs: List[str],
     keep_paths: bool = False,
     keep_paths_test: bool = True,
     mixup_alpha: float = -1.0,
+    sample_csv: str = None,
+    valid_ratio: float = None,
+    test_ratio: float = None,
+    train_csv: str = None,
+    valid_csv: str = None,
     test_csv: str = None,
     siamese: bool = False,
     sample_weight: TensorMap = None,
@@ -594,26 +695,45 @@ def test_train_valid_tensor_generators(
     :param tensor_maps_out: list of TensorMaps that are output from a model
     :param tensors: directory containing tensors
     :param batch_size: number of examples in each mini-batch
-    :param valid_ratio: rate of tensors to use for validation
-    :param test_ratio: rate of tensors to use for testing
-    :param test_modulo: if greater than 1, all sample ids modulo this number will be used for testing regardless of test_ratio and valid_ratio
     :param num_workers: number of processes spun off for training and testing. Validation uses half as many workers
     :param cache_size: size in bytes of maximum cache for EACH worker
     :param balance_csvs: if not empty, generator will provide batches balanced amongst the Sample ID in these CSVs.
     :param keep_paths: also return the list of tensor files loaded for training and validation tensors
     :param keep_paths_test:  also return the list of tensor files loaded for testing tensors
     :param mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
-    :param test_csv: CSV file of sample ids to use for testing if set will ignore test_ration and test_modulo
+    :param sample_csv: CSV file of sample ids, sample ids are considered for train/valid/test only if it is in sample_csv
+    :param valid_ratio: rate of tensors to use for validation, mutually exclusive with valid_csv
+    :param test_ratio: rate of tensors to use for testing, mutually exclusive with test_csv
+    :param train_csv: CSV file of sample ids to use for training
+    :param valid_csv: CSV file of sample ids to use for validation, mutually exclusive with valid_ratio
+    :param test_csv: CSV file of sample ids to use for testing, mutually exclusive with test_ratio
     :param siamese: if True generate input for a siamese model i.e. a left and right input tensors for every input TensorMap
     :param sample_weight: TensorMap that outputs a sample weight for the other tensors
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
     generate_train, generate_valid, generate_test = None, None, None
     if len(balance_csvs) > 0:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo, test_csv)
+        train_paths, valid_paths, test_paths = get_train_valid_test_paths_split_by_csvs(
+            tensors=tensors,
+            balance_csvs=balance_csvs,
+            sample_csv=sample_csv,
+            valid_ratio=valid_ratio,
+            test_ratio=test_ratio,
+            train_csv=train_csv,
+            valid_csv=valid_csv,
+            test_csv=test_csv,
+        )
         weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
     else:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv)
+        train_paths, valid_paths, test_paths = get_train_valid_test_paths(
+            tensors=tensors,
+            sample_csv=sample_csv,
+            valid_ratio=valid_ratio,
+            test_ratio=test_ratio,
+            train_csv=train_csv,
+            valid_csv=valid_csv,
+            test_csv=test_csv,
+        )
         weights = None
     generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese, augment=True, sample_weight=sample_weight)
     generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, weights, keep_paths, name='validation_worker', siamese=siamese, augment=False)
