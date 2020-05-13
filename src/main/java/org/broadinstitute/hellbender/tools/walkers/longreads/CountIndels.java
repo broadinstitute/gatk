@@ -179,91 +179,93 @@ public final class CountIndels extends IntervalWalker {
 
     private void summarizeInterval(SimpleInterval interval, Set<DataEntry> d) {
         Map<String, DataEntry> readNames = new HashMap<>();
-        for (DataEntry de : d) {
-            readNames.put(de.getReadName(), de);
-        }
-
-        int allNumDeletedBasesFwd = 0;
-        int allNumDeletedBasesRev = 0;
-        int allNumInsertedBasesFwd = 0;
-        int allNumInsertedBasesRev = 0;
-        List<Integer> allDelLengthsFwd = new ArrayList<>();
-        List<Integer> allDelLengthsRev = new ArrayList<>();
-        List<Integer> allInsLengthsFwd = new ArrayList<>();
-        List<Integer> allInsLengthsRev = new ArrayList<>();
-        List<String> allInsAllelesFwd = new ArrayList<>();
-        List<String> allInsAllelesRev = new ArrayList<>();
-
-        for (String readName : readNames.keySet()) {
-            int numDeletedBases = 0;
-            int numInsertedBases = 0;
-            boolean isNegativeStrand = false;
-            List<Integer> delLengths = new ArrayList<>();
-            List<Integer> insLengths = new ArrayList<>();
-            List<String> insAlleles = new ArrayList<>();
-
-            DataEntry de = readNames.get(readName);
-
-            numDeletedBases += de.getType().equals(CigarOperator.D) ? de.alleleLength : 0;
-            numInsertedBases += de.getType().equals(CigarOperator.I) ? de.alleleLength : 0;
-            isNegativeStrand = de.isNegativeStrand();
-
-            if (de.getType().equals(CigarOperator.D)) {
-                delLengths.add(de.getAlleleLength());
-            } else {
-                insLengths.add(de.getAlleleLength());
-                insAlleles.add(de.allele);
+        if (d.size() > 0) {
+            for (DataEntry de : d) {
+                readNames.put(de.getReadName(), de);
             }
 
-            if (isNegativeStrand) {
-                allNumDeletedBasesRev += numDeletedBases;
-                allNumInsertedBasesRev += numInsertedBases;
-                allDelLengthsRev.addAll(delLengths);
-                allInsLengthsRev.addAll(insLengths);
-                allInsAllelesRev.addAll(insAlleles);
-            } else {
-                allNumDeletedBasesFwd += numDeletedBases;
-                allNumInsertedBasesFwd += numInsertedBases;
-                allDelLengthsFwd.addAll(delLengths);
-                allInsLengthsFwd.addAll(insLengths);
-                allInsAllelesFwd.addAll(insAlleles);
+            int allNumDeletedBasesFwd = 0;
+            int allNumDeletedBasesRev = 0;
+            int allNumInsertedBasesFwd = 0;
+            int allNumInsertedBasesRev = 0;
+            List<Integer> allDelLengthsFwd = new ArrayList<>();
+            List<Integer> allDelLengthsRev = new ArrayList<>();
+            List<Integer> allInsLengthsFwd = new ArrayList<>();
+            List<Integer> allInsLengthsRev = new ArrayList<>();
+            List<String> allInsAllelesFwd = new ArrayList<>();
+            List<String> allInsAllelesRev = new ArrayList<>();
+
+            for (String readName : readNames.keySet()) {
+                int numDeletedBases = 0;
+                int numInsertedBases = 0;
+                boolean isNegativeStrand = false;
+                List<Integer> delLengths = new ArrayList<>();
+                List<Integer> insLengths = new ArrayList<>();
+                List<String> insAlleles = new ArrayList<>();
+
+                DataEntry de = readNames.get(readName);
+
+                numDeletedBases += de.getType().equals(CigarOperator.D) ? de.alleleLength : 0;
+                numInsertedBases += de.getType().equals(CigarOperator.I) ? de.alleleLength : 0;
+                isNegativeStrand = de.isNegativeStrand();
+
+                if (de.getType().equals(CigarOperator.D)) {
+                    delLengths.add(de.getAlleleLength());
+                } else {
+                    insLengths.add(de.getAlleleLength());
+                    insAlleles.add(de.allele);
+                }
+
+                if (isNegativeStrand) {
+                    allNumDeletedBasesRev += numDeletedBases;
+                    allNumInsertedBasesRev += numInsertedBases;
+                    allDelLengthsRev.addAll(delLengths);
+                    allInsLengthsRev.addAll(insLengths);
+                    allInsAllelesRev.addAll(insAlleles);
+                } else {
+                    allNumDeletedBasesFwd += numDeletedBases;
+                    allNumInsertedBasesFwd += numInsertedBases;
+                    allDelLengthsFwd.addAll(delLengths);
+                    allInsLengthsFwd.addAll(insLengths);
+                    allInsAllelesFwd.addAll(insAlleles);
+                }
+
+                try {
+                    readStatsWriter.write(Joiner.on("\t").join(
+                            interval,
+                            readName,
+                            isNegativeStrand ? "-" : "+",
+                            interval.getLengthOnReference(),
+                            numDeletedBases,
+                            numInsertedBases,
+                            Joiner.on(",").join(delLengths),
+                            Joiner.on(",").join(insLengths),
+                            insAlleles.size() > 0 ? Joiner.on(",").join(insAlleles) : "."
+                    ) + "\n");
+                } catch (IOException e) {
+                    throw new GATKException(e.getMessage());
+                }
             }
 
             try {
-                readStatsWriter.write(Joiner.on("\t").join(
+                intervalStatsWriter.write(Joiner.on("\t").join(
                         interval,
-                        readName,
-                        isNegativeStrand ? "-" : "+",
+                        readNames.size(),
                         interval.getLengthOnReference(),
-                        numDeletedBases,
-                        numInsertedBases,
-                        Joiner.on(",").join(delLengths),
-                        Joiner.on(",").join(insLengths),
-                        insAlleles.size() > 0 ? Joiner.on(",").join(insAlleles) : "."
+                        allNumDeletedBasesFwd,
+                        allNumDeletedBasesRev,
+                        allNumInsertedBasesFwd,
+                        allNumInsertedBasesRev,
+                        Joiner.on(",").join(allDelLengthsFwd),
+                        Joiner.on(",").join(allDelLengthsRev),
+                        Joiner.on(",").join(allInsAllelesFwd),
+                        Joiner.on(",").join(allInsAllelesRev),
+                        allInsAllelesFwd.size() > 0 ? Joiner.on(",").join(allInsAllelesFwd) : ".",
+                        allInsAllelesRev.size() > 0 ? Joiner.on(",").join(allInsAllelesRev) : "."
                 ) + "\n");
             } catch (IOException e) {
                 throw new GATKException(e.getMessage());
             }
-        }
-
-        try {
-            intervalStatsWriter.write(Joiner.on("\t").join(
-                    interval,
-                    readNames.size(),
-                    interval.getLengthOnReference(),
-                    allNumDeletedBasesFwd,
-                    allNumDeletedBasesRev,
-                    allNumInsertedBasesFwd,
-                    allNumInsertedBasesRev,
-                    Joiner.on(",").join(allDelLengthsFwd),
-                    Joiner.on(",").join(allDelLengthsRev),
-                    Joiner.on(",").join(allInsAllelesFwd),
-                    Joiner.on(",").join(allInsAllelesRev),
-                    allInsAllelesFwd.size() > 0 ? Joiner.on(",").join(allInsAllelesFwd) : ".",
-                    allInsAllelesRev.size() > 0 ? Joiner.on(",").join(allInsAllelesRev) : "."
-            ) + "\n");
-        } catch (IOException e) {
-            throw new GATKException(e.getMessage());
         }
     }
 
