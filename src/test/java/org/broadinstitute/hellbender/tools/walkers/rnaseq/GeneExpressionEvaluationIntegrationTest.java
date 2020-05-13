@@ -55,12 +55,11 @@ public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramT
         final String[] args = {
                 "-I", NA12878_20_RNAseq_bam,
                 "-G", b37_20_gff3,
-                "--gene_id_key", "Name",
-                "--grouping_type", "gene",
-                "--grouping_type", "pseudogene",
-                "--overlap_type", "exon",
-                "--multiOverlapMethod", multiOverlapMethod.toString(),
-                "--multiMapMethod", multiMapMethod.toString(),
+                "--grouping-type", "gene",
+                "--grouping-type", "pseudogene",
+                "--overlap-type", "exon",
+                "--multi-overlap-method", multiOverlapMethod.toString(),
+                "--multi-map-method", multiMapMethod.toString(),
                 "-O", outputPath
         };
 
@@ -80,22 +79,20 @@ public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramT
         final String[] args1 = {
                 "-I", NA12878_20_RNAseq_bam,
                 "-G", b37_20_gff3,
-                "--gene_id_key", "Name",
-                "--grouping_type", "gene",
-                "--grouping_type", "pseudogene",
-                "--overlap_type", "exon",
-                "--trancriptionRead", "R1",
+                "--grouping-type", "gene",
+                "--grouping-type", "pseudogene",
+                "--overlap-type", "exon",
+                "--transcription-read", "R1",
                 "-O", output1.getAbsolutePath()
         };
 
         final String[] args2 = {
                 "-I", NA12878_20_RNAseq_bam,
                 "-G", b37_20_gff3,
-                "--gene_id_key", "Name",
-                "--grouping_type", "gene",
-                "--grouping_type", "pseudogene",
-                "--overlap_type", "exon",
-                "--trancriptionRead", "R2",
+                "--grouping-type", "gene",
+                "--grouping-type", "pseudogene",
+                "--overlap-type", "exon",
+                "--transcription-read", "R2",
                 "-O", output2.getAbsolutePath()
         };
 

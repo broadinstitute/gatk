@@ -36,44 +36,44 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
         read1.setAttribute(SAMTag.MQ.toString(), 20);
         read1.setFragmentLength(300);
         read1.setAttribute(SAMTag.MC.toString(), "100M");
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
 
         //not properly paired
         read1.setIsProperlyPaired(false);
-        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1));
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0));
         read1.setIsProperlyPaired(true);
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
 
         //chimeric
         read1.setMatePosition(header.getSequenceDictionary().getSequence(0).getSequenceName(), 300);
-        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1));
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0));
         read1.setMatePosition(read1.getContig(), 300);
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
 
         //same strand
         read1.setMateIsReverseStrand(false);
 
         read1.setMateIsReverseStrand(true);
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
 
         //mate mapping quality too low
         read1.setAttribute(SAMTag.MQ.toString(), -1);
-        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1));
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0));
         read1.setAttribute(SAMTag.MQ.toString(), 20);
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
 
         //outward facing
         read1.setMatePosition(read1.getContig(), 50);
-        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1));
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0));
         read1.setMatePosition(read1.getContig(), 250);
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
 
         //swap strands and still pass
         read1.setIsReverseStrand(true);
         read1.setMateIsReverseStrand(false);
         read1.setPosition(read1.getContig(), 250);
         read1.setMatePosition(read1.getContig(), 200);
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
     }
 
     @DataProvider(name = "testGetAlignmentIntervalsDataProvider")
@@ -183,7 +183,7 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "testGetAlignmentIntervalsDataProvider")
     public void testGetAlignmentIntervals(final GATKRead read, final boolean spliced, final SAMFileHeader header, final List<Interval> expectedAlignmentIntervals) {
-        Assert.assertEquals(GeneExpressionEvaluation.getAlignmentIntervals(read, spliced, header), expectedAlignmentIntervals);
+        Assert.assertEquals(GeneExpressionEvaluation.getAlignmentIntervals(read, spliced, 0), expectedAlignmentIntervals);
     }
 
     @DataProvider(name = "testGetFragmentStrandDataProvider")

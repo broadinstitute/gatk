@@ -5,7 +5,6 @@ import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
@@ -20,6 +19,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -50,47 +50,191 @@ import java.util.stream.Collectors;
 
 /**
  * Evaluate gene expression from RNA-seq reads aligned to genome.
- * @author Chris Kachulis &lt;ckachuli@broadinstitute.org&gt;
+ *
+ * <p>This tool evaluates gene expression from RNA-seq reads aligned to genome.  Features to evaluate expression over are defined in an input annotation file in gff3 fomat
+ * (https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md).  Output is a tsv listing sense and antisense expression for all stranded grouping features,
+ * and expression (labeled as sense) for all unstranded grouping features.
+ * </p>
+ * 
+ * <p>
+ *     <h3>Input</h3>
+ *     <ul>
+ *     <li>BAM file of RNA-seq reads</li>
+ *     <li>Gff3 file of feature annotations</li>
+ *     </ul>
+ * </p>
+ * <p>
+ *     <h3>Output</h3>
+ *     TSV file of gene expression
+ * </p>
+ *
+ * <p>
+ *     <h3>Usage Examples</h3>
+ *     <p>
+ *         gatk GeneExpressionEvaluation
+ *         -I input.bam
+ *         -G geneAnnotations.gff3
+ *         -O output.tsv
+ *     </p>
+ * </p>
+ * 
+ *<p>Reads are assumed to be paired-end.  Reads which are in a "good pair" are counted once together as a single fragment.  Reads which are not in a "good pair" are each counted separately.
+ * A "good pair" is defined as:
+ *  <li>Both reads are mapped</li>
+ *  <li>Properly paired flag is set</li>
+ *  <li>Both reads are on same contig</li>
+ *  <li>Reads are on opposite strands</li>
+ *  <li>Mapping quality of both reads is at least minimum-mapping-quality</li>
+ *  <li>Reads are inward-facing</li>
+ *</p>
+ *
+ * <p>Reads can be either from spliced are unspliced RNA.  If from spliced RNA, alignment blocks of reads are taken as their coverage.  
+ * If from unspliced RNA, the entire region from the start of the earliest read to the end of the latest read is taken as the fragment
+ * coverage.  Splice status is set through the command line.  By default, splice status is taken to be "spliced." </p>
+ * <p>
+ *     <h3>For spliced RNA</h3>
+ *     <p>
+ *         gatk GeneExpressionEvaluation
+ *         -I input.bam
+ *         -G geneAnnotations.gff3
+ *         -O output.tsv
+ *         --spliced true
+ *     </p>
+ * </p>
+ * <p>
+ *     <h3>For unspliced RNA</h3>
+ *     <p>
+ *         gatk GeneExpressionEvaluation
+ *         -I input.bam
+ *         -G geneAnnotations.gff3
+ *         -O output.tsv
+ *         --spliced true
+ *     </p>
+ * </p>
+ * 
+ * <p>Gene expression is aggregated over "groupingType" features, and overlap of fragments with features is determined by "overlapType" features.  By default,
+ * "groupingType" is genes, and "overlapType" is exons.  Additional grouping_types and overlap_types can be used as well.</p>
+ * <p>
+ *     <h3>Use gene and pseudogene as grouping types</h3>
+ *     <p>
+ *     gatk GeneExpressionEvaluation
+ *     -I input.bam
+ *     -G geneAnnotations.gff3
+ *     -O output.tsv
+ *     --grouping-type gene
+ *     --grouping-type pseudogene
+ *     </p>
+ * </p>
+ * 
+ * <p>The transcription read is by default read1, however this can be changed to read2.  The transcription read determines whether a fragment is sense or antisense.  
+ * If the transcription read is on the same strand as the feature, the fragment is sense, if on the opposite strand, the fragment is antisense.
+ * </p>
+ * <p>
+ *     <h3>Set transcription read to read2</h3>
+ *     <p>
+ *         gatk GeneExpressionEvaluation
+ *         -I input.bam
+ *         -G geneAnnotations.gff3
+ *         -O output.tsv
+ *         --transcription-read R2
+ *         
+ * </p>
+ *
+ * <p>Multi-overlapping fragments (fragment alignments which overlap multiple grouping features) can be handled in two ways.  Equals weight can be given to each grouping feature,
+ * in which case each is given weight 1/N, for N overlapping grouping features.
+ * </p>
+ * <p>
+ *     <h3>Equal weight for multi-overlapping fragments</h3>
+ *     <p>
+ *         gatk GeneExpressionEvaluation
+ *         -I input.bam
+ *         -G geneAnnotations.gff3
+ *         -O output.tsv
+ *         --multi-overlap-method EQUAL
+ *     </p>
+ * </p>
+ * <p>Multi-overlapping fragments can also have weight distributed according to how much of the fragment overlaps each feature.  In this case, each grouping feature is given an unnormalized weight corresponding
+ * to the fraction of the fragment that overlaps its overlapping features.  A "non-overlapping" option is also given an unnormalized weight corresponding the the fraction of the fragment that overlaps no features.
+ * Final weights for each feature are found by normalizing by the sum of unnormalized weights.  This is the default behavior.
+ * </p>
+ * <p>
+ *     <h3>Proportional weight for multi-overlapping fragments</h3>
+ *     <p>
+ *         gatk GeneExpressionEvaluation
+ *         -I input.bam
+ *         -G geneAnnotations.gff3
+ *         -O output.tsv
+ *         --multi-overlap-method PROPORTIONAL
+ *     </p>
+ * </p>
+ *
+ * <p>Multi-mapping fragments (fragments whose reads map to multiple locations) can also be handled in two ways.  They can be ignored, in which case only fragments with a single mapping are counted.
+ * This is default behavior.
+ * </p>
+ * <p>
+ *     <h3>Ignore multi-mapping fragments</h3>
+ *     <p>
+ *         gatk GeneExpressionEvaluation
+ *         -I input.bam
+ *         -G geneAnnotations.gff3
+ *         -O output.tsv
+ *         --multi-map-method IGNORE
+ *     </p>
+ * </p>
+ * <p>Multi-mapping fragments can alternatively have their weight distributed equally between the different alignments.  If run in this setting, minimum-mapping-quality will be set to 0,
+ * regardless of its value on the command line.
+ * </p>
+ * <p>
+ *     <h3>Equally weight each alignment of multi-mapping fragments</h3>
+ *     <p>
+ *         gatk GeneExpressionEvaluation
+ *         -I input.bam
+ *         -G geneAnnotations.gff3
+ *         -O output.tsv
+ *         --multi-map-method EQUAL
+ *     </p>
+ * </p>
+ * <p>The number of mapping for a particular fragment is extracted via the NH tag.</p>
  */
 @CommandLineProgramProperties(
-        summary = "Collects fragment counts at specified intervals",
-        oneLineSummary = "Collects fragment counts at specified intervals",
+        summary = "This tool evaluates gene expression from RNA-seq reads aligned to genome.  Features to evaluate expression over are defined in an input annotation file in gff3 fomat " +
+                "(https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md).  Output is a tsv listing sense and antisense expression for all stranded grouping features, " +
+                "and expression (labeled as sense) for all unstranded grouping features.",
+        oneLineSummary = "Evaluate gene expression from RNA-seq reads aligned to genome.",
         programGroup = CoverageAnalysisProgramGroup.class
 )
 @DocumentedFeature
 public final class GeneExpressionEvaluation extends ReadWalker {
-    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 0;
-
 
     @Argument(
-            doc = "Output file for read counts.",
+            doc = "Output file for gene expression.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private File outputCountsFile = null;
 
-    @Argument(doc="gff file", shortName = "G")
+    @Argument(doc="gff3 file containing feature annotations", shortName = "G", fullName = "gff-file")
     private FeatureInput<Gff3Feature> gffFile;
 
-    @Argument(doc="types to group by", shortName = "T")
-    private Set<String> grouping_type = new HashSet<>(Collections.singleton("gene"));
+    @Argument(doc="feature types to group by", fullName = "grouping-type")
+    private Set<String> groupingType = new HashSet<>(Collections.singleton("gene"));
 
-    @Argument(doc="overlap type")
-    private Set<String> overlap_type = new HashSet<>(Collections.singleton("exon"));
+    @Argument(doc="feature overlap types", fullName = "overlap-type")
+    private Set<String> overlapType = new HashSet<>(Collections.singleton("exon"));
 
-    @Argument(doc="gene_id key")
-    private String gene_id_key = "gene_id";
+    @Argument(doc="attribute key to label features by in output", fullName = "feature-label-key")
+    private String featureLabelKey = "Name";
 
-    @Argument(doc = "which read corresponds to the transcription strand")
+    @Argument(doc = "which read corresponds to the transcription strand", fullName = "transcription-read")
     private TrancriptionRead trancriptionRead = TrancriptionRead.R1;
 
-    @Argument(doc = "how to distribute weight of alignments which overlap multiple features")
+    @Argument(doc = "how to distribute weight of alignments which overlap multiple features", fullName = "multi-overlap-method")
     private MultiOverlapMethod multiOverlapMethod = MultiOverlapMethod.PROPORTIONAL;
 
-    @Argument(doc = "how to distribute weight of reads with multiple alignments")
+    @Argument(doc = "how to distribute weight of reads with multiple alignments", fullName = "multi-map-method")
     private MultiMapMethod multiMapMethod = MultiMapMethod.IGNORE;
 
-    @Argument(doc = "Whether the rna is spliced.  If spliced, alignments must be from a splice aware aligner (such as star).  If unspliced, alignments must be from a non-splicing aligner (such as bwa). ")
+    @Argument(doc = "whether the rna is spliced.  If spliced, alignments must be from a splice aware aligner (such as star).  If unspliced, alignments must be from a non-splicing aligner (such as bwa). ")
     private boolean spliced = true;
 
     final private Map<Gff3BaseData, Coverage> featureCounts = new LinkedHashMap<>();
@@ -98,6 +242,8 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     final private OverlapDetector<Pair<Gff3BaseData, Interval>> featureOverlapDetector = new OverlapDetector<>(0,0);
 
     private String sampleName = null;
+
+    final MappingQualityReadFilter mappingQualityFilter = new MappingQualityReadFilter();
 
     enum MultiOverlapMethod {
 
@@ -208,13 +354,14 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         readFilters.add(ReadFilterLibrary.MAPPED);
         readFilters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
         readFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
-        readFilters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
+        readFilters.add(mappingQualityFilter);
         return readFilters;
     }
 
     @Override
     public void onTraversalStart() {
         validateOutputFile(outputCountsFile);
+        mappingQualityFilter.minMappingQualityScore = 0;
         final SAMSequenceDictionary dict = getBestAvailableSequenceDictionary();
         final SAMFileHeader header = getHeaderForReads();
         for (final SAMReadGroupRecord readGroupRecord : header.getReadGroups()) {
@@ -236,8 +383,8 @@ public final class GeneExpressionEvaluation extends ReadWalker {
             final List<Gff3Feature> contigFeatures = features.getFeatures(gffFile, interval);
             logger.info("collecting features in " + interval.getContig() + ":" + interval.getStart() + "-" + interval.getEnd());
             for (final Gff3Feature feature : contigFeatures) {
-                if (grouping_type.contains(feature.getType())) {
-                    final List<Interval> overlappingFeatures = feature.getDescendents().stream().filter(f -> overlap_type.contains(f.getType())).map(f -> new Interval(f.getContig(), f.getStart(), f.getEnd())).collect(Collectors.toList());
+                if (groupingType.contains(feature.getType())) {
+                    final List<Interval> overlappingFeatures = feature.getDescendents().stream().filter(f -> overlapType.contains(f.getType())).map(f -> new Interval(f.getContig(), f.getStart(), f.getEnd())).collect(Collectors.toList());
                     final Gff3BaseData shrunkGroupingBaseData = shrinkBaseData(feature.getBaseData());
                     addGroupingFeature(shrunkGroupingBaseData, overlappingFeatures);
                 }
@@ -260,15 +407,15 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     }
 
     private Gff3BaseData shrinkBaseData(final Gff3BaseData baseData) {
-        //remove all but gene_id_key attributes
-        final Map<String, String> shrunkAttributes = baseData.getAttributes().entrySet().stream().filter(e -> e.getKey().equals(gene_id_key)).collect(Collectors.toMap(Map.Entry::getKey,Map.Entry::getValue));
+        //remove all but featureLabelKey attributes
+        final Map<String, String> shrunkAttributes = baseData.getAttributes().entrySet().stream().filter(e -> e.getKey().equals(featureLabelKey)).collect(Collectors.toMap(Map.Entry::getKey,Map.Entry::getValue));
         return new Gff3BaseData(baseData.getContig(), baseData.getSource(), baseData.getType(), baseData.getStart(), baseData.getEnd(), baseData.getStrand(), baseData.getPhase(), shrunkAttributes);
     }
 
     private void addGroupingFeature(final Gff3BaseData groupingBaseData, final List<Interval> overlappingFeatures) {
-        final String geneID = groupingBaseData.getAttributes().get(gene_id_key);
+        final String geneID = groupingBaseData.getAttributes().get(featureLabelKey);
         if (geneID == null) {
-            throw new UserException("no geneid field " + gene_id_key + " found in feature at " + groupingBaseData.getContig() + ":" + groupingBaseData.getStart() + "-" + groupingBaseData.getEnd());
+            throw new UserException("no geneid field " + featureLabelKey + " found in feature at " + groupingBaseData.getContig() + ":" + groupingBaseData.getStart() + "-" + groupingBaseData.getEnd());
         }
 
         featureCounts.put(groupingBaseData, new Coverage(0, 0));
@@ -278,7 +425,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     }
 
 
-    static boolean inGoodPair(final GATKRead read) {
+    static boolean inGoodPair(final GATKRead read, int minimumMappingQuality) {
 
         boolean ret = !read.mateIsUnmapped() && read.isProperlyPaired() && read.getContig().equals(read.getMateContig()) &&
                 read.isReverseStrand() != read.mateIsReverseStrand();
@@ -287,7 +434,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
             if (!read.hasAttribute(SAMTag.MQ.toString())) {
                 throw new GATKException("Mate quality must be included.  Consider running FixMateInformation.");
             }
-            ret = ret && read.getAttributeAsInteger(SAMTag.MQ.toString()) >= DEFAULT_MINIMUM_MAPPING_QUALITY;
+            ret = ret && read.getAttributeAsInteger(SAMTag.MQ.toString()) >= minimumMappingQuality;
         }
 
         if (ret) {
@@ -304,24 +451,24 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         return ret;
     }
 
-    static List<Interval> getAlignmentIntervals(final GATKRead read, final boolean spliced, final SAMFileHeader header) {
+    static List<Interval> getAlignmentIntervals(final GATKRead read, final boolean spliced, final int minimumMappingQuality) {
 
         if (spliced) {
             final List<Interval> alignmentIntervals = new ArrayList<>();
-            final SAMRecord rec = read.convertToSAMRecord(header);
 
-            final List<AlignmentBlock> readAlignmentBlocks = rec.getAlignmentBlocks();
+            final List<AlignmentBlock> readAlignmentBlocks = SAMUtils.getAlignmentBlocks(read.getCigar(), read.getStart(), "read cigar");
 
             for( final AlignmentBlock block : readAlignmentBlocks) {
                 alignmentIntervals.add(new Interval(read.getContig(), block.getReferenceStart(), block.getReferenceStart()+block.getLength() - 1));
             }
 
             boolean overlapsMate = false;
-            if (inGoodPair(read)) {
-                if(SAMUtils.getMateCigar(rec) == null) {
+            if (inGoodPair(read, minimumMappingQuality)) {
+                final String mateCigarString = read.getAttributeAsString(SAMTag.MC.toString());
+                if(mateCigarString == null) {
                     throw new GATKException("Mate cigar must be present if using spliced reads");
                 }
-                final List<AlignmentBlock> mateAlignmentBlocks = SAMUtils.getMateAlignmentBlocks(rec);
+                final List<AlignmentBlock> mateAlignmentBlocks = SAMUtils.getAlignmentBlocks(TextCigarCodec.decode(mateCigarString), read.getMateStart(), "mate cigar");
                 for( final AlignmentBlock block : mateAlignmentBlocks) {
                     final Interval alignmentBlockInterval = new Interval(read.getMateContig(), block.getReferenceStart(), block.getReferenceStart()+block.getLength() - 1);
                     alignmentIntervals.add(alignmentBlockInterval);
@@ -338,7 +485,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
                 return Collections.emptyList();
             }
 
-            final boolean inGoodPair = inGoodPair(read);
+            final boolean inGoodPair = inGoodPair(read, minimumMappingQuality);
 
             final int start = inGoodPair? Math.min(read.getStart(), read.getMateStart()) : read.getStart();
             final int end = inGoodPair? start + Math.abs(read.getFragmentLength()) - 1 : read.getEnd();
@@ -350,8 +497,8 @@ public final class GeneExpressionEvaluation extends ReadWalker {
 
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
-        if ((!read.isReverseStrand() || !inGoodPair(read))) {
-            final List<Interval> alignmentIntervals = getAlignmentIntervals(read, spliced, getHeaderForReads());
+        if ((!read.isReverseStrand() || !inGoodPair(read, mappingQualityFilter.minMappingQualityScore))) {
+            final List<Interval> alignmentIntervals = getAlignmentIntervals(read, spliced, mappingQualityFilter.minMappingQualityScore);
 
             final Map<Gff3BaseData, Float> initalWeights = multiOverlapMethod.getWeights(alignmentIntervals, featureOverlapDetector);
             final Map<Gff3BaseData, Float> finalWeights = multiMapMethod.getWeights(read.getAttributeAsInteger(SAMTag.NH.toString()), initalWeights);
@@ -375,7 +522,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     @Override
     public Object onTraversalSuccess() {
         logger.info(String.format("Writing read counts to %s...", outputCountsFile.getAbsolutePath()));
-        try (final FragmentCountWriter writer = new FragmentCountWriter(outputCountsFile.toPath(), sampleName, gene_id_key)) {
+        try (final FragmentCountWriter writer = new FragmentCountWriter(outputCountsFile.toPath(), sampleName, featureLabelKey)) {
             int i=0;
             for (final File input_bam: readArguments.getReadFiles()) {
                 writer.writeMetadata("input_bam_"+i, input_bam.toString());
@@ -409,13 +556,14 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         }
 
         protected void composeLine(final SingleStrandFeatureCoverage fragmentCount, final DataLine dataLine) {
+            final String gene_label = fragmentCount.baseData.getAttributes().get(gene_id_key);
             dataLine.set("contig", fragmentCount.baseData.getContig())
                     .set("start", fragmentCount.baseData.getStart())
                     .set("stop", fragmentCount.baseData.getEnd())
                     .set("strand", fragmentCount.baseData.getStrand().encode())
                     .set("sense_antisense", fragmentCount.sense? "sense" : "antisense")
                     .set(name != null? name+"_counts" : "counts", fragmentCount.count, 2)
-                    .set("gene_id", fragmentCount.baseData.getAttributes().get(gene_id_key));
+                    .set("gene_id", gene_label == null? "" : gene_label);
         }
     }
 
