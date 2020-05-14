@@ -350,7 +350,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      *
      * @throws IllegalArgumentException if {@code maximumDifferenceWithBestAlternative} is not 0 or less.
      */
-    public void normalizeLikelihoods(final double maximumLikelihoodDifferenceCap) {
+    public void normalizeLikelihoods(final double maximumLikelihoodDifferenceCap, final boolean symmetricallyNormalizeAllelesToReference) {
         Utils.validateArg(maximumLikelihoodDifferenceCap < 0.0 && !Double.isNaN(maximumLikelihoodDifferenceCap),
                 "the minimum reference likelihood fall must be negative");
 
@@ -369,47 +369,47 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             final double[][] sampleValues = valuesBySampleIndex[s];
             final int evidenceCount = evidenceBySampleIndex.get(s).size();
             for (int r = 0; r < evidenceCount; r++) {
-                normalizeLikelihoodsPerEvidence(maximumLikelihoodDifferenceCap, sampleValues, s, r);
+                normalizeLikelihoodsPerEvidence(maximumLikelihoodDifferenceCap, sampleValues, s, r, symmetricallyNormalizeAllelesToReference);
             }
         }
     }
 
-    /**
-     * Adjusts likelihoods so that for each unit of evidence, the best allele likelihood is 0 and caps the minimum likelihood
-     * of any allele for each unit of evidence based on the maximum alternative allele likelihood which is tied to the mapping quality of the read.
-     *
-     *
-     * @throws IllegalArgumentException if {@code maximumDifferenceWithBestAlternative} is not 0 or less.
-     */
-    public void normalizeLikelihoodsByReadMQAsPhred() {
-
-        final int alleleCount = alleles.numberOfAlleles();
-        if (alleleCount == 0){ // trivial case there is no alleles.
-            return;
-        } else if (alleleCount == 1) {
-            return;
-        }
-
-        for (int s = 0; s < valuesBySampleIndex.length; s++) {
-            final double[][] sampleValues = valuesBySampleIndex[s];
-            final int evidenceCount = evidenceBySampleIndex.get(s).size();
-            //BIG TODO THIS IS CURRENTLY PEGGED TO GATK READS
-            final List<EVIDENCE> sampleEvidence = sampleEvidence(s);
-
-            for (int r = 0; r < evidenceCount; r++) {
-                final double phredLikelihood = QualityUtils.qualToErrorProbLog10(((GATKRead)sampleEvidence.get(r)).getMappingQuality());
-
-                normalizeLikelihoodsPerEvidence(phredLikelihood, sampleValues, s, r);
-            }
-        }
-    }
+//    /**
+////     * Adjusts likelihoods so that for each unit of evidence, the best allele likelihood is 0 and caps the minimum likelihood
+////     * of any allele for each unit of evidence based on the maximum alternative allele likelihood which is tied to the mapping quality of the read.
+////     *
+////     *
+////     * @throws IllegalArgumentException if {@code maximumDifferenceWithBestAlternative} is not 0 or less.
+////     */
+////    public void normalizeLikelihoodsByReadMQAsPhred() {
+////
+////        final int alleleCount = alleles.numberOfAlleles();
+////        if (alleleCount == 0){ // trivial case there is no alleles.
+////            return;
+////        } else if (alleleCount == 1) {
+////            return;
+////        }
+////
+////        for (int s = 0; s < valuesBySampleIndex.length; s++) {
+////            final double[][] sampleValues = valuesBySampleIndex[s];
+////            final int evidenceCount = evidenceBySampleIndex.get(s).size();
+////            //BIG TODO THIS IS CURRENTLY PEGGED TO GATK READS
+////            final List<EVIDENCE> sampleEvidence = sampleEvidence(s);
+////
+////            for (int r = 0; r < evidenceCount; r++) {
+////                final double phredLikelihood = QualityUtils.qualToErrorProbLog10(((GATKRead)sampleEvidence.get(r)).getMappingQuality());
+////
+////                normalizeLikelihoodsPerEvidence(phredLikelihood, sampleValues, s, r);
+////            }
+////        }
+//    }
 
     // Does the normalizeLikelihoods job for each piece of evidence.
     private void normalizeLikelihoodsPerEvidence(final double maximumBestAltLikelihoodDifference,
-                                                 final double[][] sampleValues, final int sampleIndex, final int evidenceIndex) {
+                                                 final double[][] sampleValues, final int sampleIndex, final int evidenceIndex, final boolean symmetricallyNormalizeAllelesToReference) {
 
         //allow the best allele to be the reference because asymmetry leads to strange artifacts like het calls with >90% alt reads
-        final BestAllele bestAllele = searchBestAllele(sampleIndex,evidenceIndex,true);
+        final BestAllele bestAllele = searchBestAllele(sampleIndex,evidenceIndex,symmetricallyNormalizeAllelesToReference);
 
         final double worstLikelihoodCap = bestAllele.likelihood + maximumBestAltLikelihoodDifference;
 

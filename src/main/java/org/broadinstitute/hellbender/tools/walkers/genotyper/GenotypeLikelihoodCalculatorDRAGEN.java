@@ -257,6 +257,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 //This is crufty, it just so happens that the index of the homozygous genotype corresponds to the maximum genotype count per field.
                 //This should be pulled off as a calculator in some genotyping class.
                 final int indexForGT = calculators.genotypeCount(ploidy, gtAlleleIndex + 1) - 1;
+//                System.out.println("indexForGT "+indexForGT+ " ooffsetForReadLikelihoodGivenAlleleIndex ="+offsetForReadLikelihoodGivenAlleleIndex);
                 double[] readLikelihoodsForGT = readLikelihoodsByGenotypeIndex[indexForGT];
 
                 // TODO this will have to account for the indel priors later in its existance
@@ -340,6 +341,9 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                             Double.NEGATIVE_INFINITY :
                             readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex]; // :
                             //Double.NEGATIVE_INFINITY;
+//                    double LPd_r_F = container.getPhredPFValue() - 0.0000001 <= lpf ?
+//                            readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex] :
+//                                                Double.NEGATIVE_INFINITY;
                     double lp_r_GT = readLikelihoodsForGT[readIndex] - MathUtils.log10(2);
 
                     f_ratio += Math.pow(10, LPd_r_F - MathUtils.approximateLog10SumLog10(LPd_r_F, lp_r_GT));
@@ -365,6 +369,9 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                     double LPd_r_F = container.getPhredPFValue() + 0.0000001 <= lpf ?
                             Double.NEGATIVE_INFINITY :
                             readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex];
+////                            Double.NEGATIVE_INFINITY;
+//                   double LPd_r_F = container.getPhredPFValue() - 0.0000001 <= lpf ?
+//                            readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex] :
 //                            Double.NEGATIVE_INFINITY;
 
                     LP_R_GF += MathUtils.approximateLog10SumLog10(log10beta + LPd_r_F, log10betaDelta + lp_r_GT);

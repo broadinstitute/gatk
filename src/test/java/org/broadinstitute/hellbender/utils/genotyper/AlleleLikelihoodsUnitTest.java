@@ -274,7 +274,7 @@ public final class AlleleLikelihoodsUnitTest {
         final AlleleLikelihoods<GATKRead, Allele> result = new AlleleLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
         final double[][][] originalLikelihoods = fillWithRandomLikelihoods(samples,alleles,original, result);
 
-        result.normalizeLikelihoods(- 0.001);
+        result.normalizeLikelihoods(- 0.001, true);
         testAlleleQueries(alleles,result);
         final int numberOfAlleles = alleles.length;
         final double[][][] newLikelihoods = new double[originalLikelihoods.length][alleles.length][];

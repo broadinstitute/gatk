@@ -75,9 +75,13 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Argument(fullName="phred-scaled-global-read-mismapping-rate", doc="The global assumed mismapping rate for reads", optional = true)
     public int phredScaledGlobalReadMismappingRate = 45;
 
+//    @Advanced
+//    @Argument(fullName ="mapping-quality-based-read-mismapping-rate", doc= "If true this will limit the phred scaled likelihood for a read based on its MQ score", optional = true)
+//    public boolean mapQBasedReadMismappingRateAdjustment = false;
+
     @Advanced
-    @Argument(fullName ="mapping-quality-based-read-mismapping-rate", doc= "If true this will limit the phred scaled likelihood for a read based on its MQ score", optional = true)
-    public boolean mapQBasedReadMismappingRateAdjustment = false;
+    @Argument(fullName = "disable-symmetric-hmm-normalizing", doc="Toggle to revive legacy behavior of asymmetrically normalizing the arguments to the reference haplotype", optional = true)
+    public boolean disableSymmetricallyNormalizeAllelesToReference = false;
 
     @Advanced
     @Argument(fullName ="disable-cap-base-qualities-to-map-quality", doc= "If false this disables capping of base qualities in the HMM to the mapping quality of the read", optional = true)

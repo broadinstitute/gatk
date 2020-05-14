@@ -407,7 +407,10 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "--expected-error-rate-per-base", "0.03",
                 "--max-extension", "25", "--soft-clip-low-quality-ends",
                 "--use-posteriors-to-calculate-qual",
-                "-L", "chr1:823819-824957",
+                "--dont-consider-upstream-bases-in-reference-str",
+                "-L", "chr1:31466115-31467899",
+                "--allele-informative-reads-overlap-margin", "0",
+                "--disable-symmetric-hmm-normalizing",
                 "--minimum-mapping-quality", "1",
                 "-O", output.getAbsolutePath()
         };

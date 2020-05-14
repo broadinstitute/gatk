@@ -47,8 +47,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     private final boolean dynamicDisqualification;
     private final double readDisqualificationScale;
     private final double expectedErrorRatePerBase;
-    private final boolean useMapQAsPhredMismappingRate;
+//    private final boolean useMapQAsPhredMismappingRate;
     private final boolean disableCapReadQualitiesToMapQ;
+    private final boolean symmetricallyNormalizeAllelesToReference;
 
     public enum PCRErrorModel {
         /** no specialized PCR error model will be applied; if base insertion/deletion qualities are present they will be used */
@@ -102,7 +103,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final PairHMM.Implementation hmmType,
                                               final double log10globalReadMismappingRate,
                                               final PCRErrorModel pcrErrorModel) {
-        this( constantGCP, dragstrParams, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, DEFAULT_EXPECTED_ERROR_RATE_PER_BASE, false, false);
+        this( constantGCP, dragstrParams, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, DEFAULT_EXPECTED_ERROR_RATE_PER_BASE, true, false);
     }
 
     /**
@@ -132,7 +133,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final boolean dynamicReadDisqualificaiton,
                                               final double readDisqualificationScale,
                                               final double expectedErrorRatePerBase,
-                                              final boolean useMapQAsPhredMismappingRate,
+                                              final boolean symmetricallyNormalizeAllelesToReference,
                                               final boolean capReadQualitiesToMapQ) {
         Utils.nonNull(hmmType, "hmmType is null");
         Utils.nonNull(pcrErrorModel, "pcrErrorModel is null");
@@ -149,7 +150,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         this.pairHMM = hmmType.makeNewHMM(arguments);
         this.dynamicDisqualification = dynamicReadDisqualificaiton;
         this.readDisqualificationScale = readDisqualificationScale;
-        this.useMapQAsPhredMismappingRate = useMapQAsPhredMismappingRate;
+        this.symmetricallyNormalizeAllelesToReference = symmetricallyNormalizeAllelesToReference;
         this.expectedErrorRatePerBase = expectedErrorRatePerBase;
         this.disableCapReadQualitiesToMapQ = capReadQualitiesToMapQ;
 
@@ -167,7 +168,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     }
 
     @Override
-    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods( final AssemblyResultSet assemblyResultSet, final SampleList samples, final Map<String, List<GATKRead>> perSampleReadList ) {
+    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods( final AssemblyResultSet assemblyResultSet, final SampleList samples, final Map<String, List<GATKRead>> perSampleReadList) {
         Utils.nonNull(assemblyResultSet, "assemblyResultSet is null");
         Utils.nonNull(samples, "samples is null");
         Utils.nonNull(perSampleReadList, "perSampleReadList is null");
@@ -184,11 +185,11 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             computeReadLikelihoods(result.sampleMatrix(i));
         }
 
-        if (useMapQAsPhredMismappingRate) {
-            result.normalizeLikelihoodsByReadMQAsPhred();
-        } else {
-            result.normalizeLikelihoods(log10globalReadMismappingRate);
-        }
+//        if (useMapQAsPhredMismappingRate) {
+//            result.normalizeLikelihoodsByReadMQAsPhred();
+//        } else {
+            result.normalizeLikelihoods(log10globalReadMismappingRate, symmetricallyNormalizeAllelesToReference);
+//        }
         if (dynamicDisqualification) {
             result.filterPoorlyModeledEvidence(daynamicLog10MinLiklihoodModel(readDisqualificationScale, log10MinTrueLikelihood(expectedErrorRatePerBase, false)));
         } else {
