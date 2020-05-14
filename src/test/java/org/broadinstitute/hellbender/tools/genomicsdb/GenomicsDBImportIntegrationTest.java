@@ -112,6 +112,8 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String COMBINED_WITHSPACES = largeFileTestDir + "gvcfs/combined.gatk3.7.smaller_interval.g.vcf";
     private static final ArrayList<SimpleInterval> INTERVAL =
             new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr20", 17960187, 17981445)));
+    private static final ArrayList<SimpleInterval> INTERVAL_20_21 =
+            new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr20"),new SimpleInterval("chr21")));
     private static final ArrayList<SimpleInterval> MULTIPLE_INTERVALS = new ArrayList<SimpleInterval>(Arrays.asList(
         new SimpleInterval("chr20", 17960187, 17970000),
         new SimpleInterval("chr20", 17970001, 17980000),
@@ -166,6 +168,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
+    public void testGenomicsDBImportFileInputsNativeReader() throws IOException {
+        testGenomicsDBImporter(LOCAL_GVCFS, INTERVAL, COMBINED, b38_reference_20_21, true, 1, true);
+    }
+
+    @Test
     public void testGenomicsDBImportFileInputs_newMQ() throws IOException {
         testGenomicsDBImporter_newMQ(GVCFS_WITH_NEW_MQ, INTERVAL2, COMBINED_WITH_NEW_MQ, b37_reference_20_21, true, Collections.emptyList());
     }
@@ -173,6 +180,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     @Test
     public void testGenomicsDBImportFileInputsWithMultipleIntervals() throws IOException {
         testGenomicsDBImporter(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, b38_reference_20_21, true, 1);
+    }
+
+    @Test
+    public void testGenomicsDBImportFileInputsWithMultipleIntervalsNativeReader() throws IOException {
+        testGenomicsDBImporter(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, b38_reference_20_21, true, 1, true);
     }
 
     @Test(timeOut = 1000000)
@@ -193,8 +205,23 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFNativeReader() throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, INTERVAL, b38_reference_20_21, new String[0], 1, 0, true);
+    }
+
+    @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFMergeChromosomesToSinglePartition() throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, INTERVAL_20_21, b38_reference_20_21, new String[0], 1, 1, false);
+    }
+
+    @Test
     public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleIntervals() throws IOException {
         testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, b38_reference_20_21, new String[0]);
+    }
+
+    @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleIntervalsNativeReader() throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, b38_reference_20_21, new String[0], 1, 0, true);
     }
 
     @Test
@@ -204,9 +231,21 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleIntervalsWithMultipleThreadsNativeReader() throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, b38_reference_20_21,
+                new String[0], 4, 0, true);
+    }
+
+    @Test
     public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleNonAdjacentIntervals() throws IOException {
         testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS,
             b38_reference_20_21, new String[0]);
+    }
+
+    @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleNonAdjacentIntervalsNativeReader() throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS,
+            b38_reference_20_21, new String[0], 1, 0, true);
     }
 
     @Test
@@ -215,6 +254,14 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         //this test covers the scenario where the input vcfs have spanning deletions
         testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS_AFTER_COMBINE_GVCFS, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS,
             b38_reference_20_21, new String[0]);
+    }
+
+    @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleNonAdjacentIntervalsForFilesProducedAfterCombineGVCFsNativeReader()
+        throws IOException {
+        //this test covers the scenario where the input vcfs have spanning deletions
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS_AFTER_COMBINE_GVCFS, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS,
+            b38_reference_20_21, new String[0], 1, 0, true);
     }
 
     @Test
@@ -246,6 +293,12 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     public void testGenomicsDBThreeLargeSamplesWithGenotypes() throws IOException {
         ArrayList<SimpleInterval> intervals = new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr20", 1, 64444167)));
         testGenomicsDBImporterWithGenotypes(LOCAL_GVCFS, intervals, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, true, false);
+    }
+
+    @Test
+    public void testGenomicsDBThreeLargeSamplesWithGenotypesNativeReader() throws IOException {
+        ArrayList<SimpleInterval> intervals = new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr20", 1, 64444167)));
+        testGenomicsDBImporterWithGenotypes(LOCAL_GVCFS, intervals, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, true, false, true);
     }
 
     @Test
@@ -295,9 +348,19 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                                                      final boolean testAll,
                                                      final boolean produceGTField,
                                                      final boolean sitesOnlyQuery) throws IOException {
+         testGenomicsDBImporterWithGenotypes(vcfInputs, intervals, expectedCombinedVCF, referenceFile, testAll, produceGTField, 
+                 sitesOnlyQuery, false);
+    }
+
+    private void testGenomicsDBImporterWithGenotypes(final List<String> vcfInputs, final List<SimpleInterval> intervals,
+                                                      final String expectedCombinedVCF, final String referenceFile,
+                                                     final boolean testAll,
+                                                     final boolean produceGTField,
+                                                     final boolean sitesOnlyQuery,
+                                                     final boolean useNativeReader) throws IOException {
         final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
 
-        writeToGenomicsDB(vcfInputs, intervals, workspace, 0, false, 0, 1);
+        writeToGenomicsDB(vcfInputs, intervals, workspace, 0, false, 0, 1, false, false, false, 0, useNativeReader);
         checkJSONFilesAreWritten(workspace);
         checkGenomicsDBAgainstExpected(workspace, intervals, expectedCombinedVCF, referenceFile, testAll, ATTRIBUTES_TO_IGNORE, produceGTField, sitesOnlyQuery);
         checkGenomicsDBAgainstExpected(workspace, intervals, expectedCombinedVCF, referenceFile, testAll, ATTRIBUTES_TO_IGNORE, produceGTField, sitesOnlyQuery, true);
@@ -328,9 +391,17 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private void testGenomicsDBAgainstCombineGVCFs(final List<String> vcfInputs, final List<SimpleInterval> intervals,
                                                    final String referenceFile, final String[] CombineGVCFArgs,
                                                    final int numVCFReaderThreadsInImporter) throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(vcfInputs, intervals, referenceFile, CombineGVCFArgs, numVCFReaderThreadsInImporter, 0, false);
+    }
+
+    private void testGenomicsDBAgainstCombineGVCFs(final List<String> vcfInputs, final List<SimpleInterval> intervals,
+                                                   final String referenceFile, final String[] CombineGVCFArgs,
+                                                   final int numVCFReaderThreadsInImporter, final int chrsToPartitions, 
+                                                   final boolean useNativeReader) throws IOException {
         final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
 
-        writeToGenomicsDB(vcfInputs, intervals, workspace, 0, false, 0, numVCFReaderThreadsInImporter);
+        writeToGenomicsDB(vcfInputs, intervals, workspace, 0, false, 0, numVCFReaderThreadsInImporter, false, false, false, 
+                          chrsToPartitions, useNativeReader);
         checkJSONFilesAreWritten(workspace);
         for(SimpleInterval currInterval : intervals) {
             List<SimpleInterval> tmpList = new ArrayList<SimpleInterval>(Arrays.asList(currInterval));
@@ -396,9 +467,19 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         testGenomicsDBImporterWithBatchSize(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, batchSize);
     }
 
+    @Test(dataProvider = "batchSizes")
+    public void testGenomicsDBImportFileInputsInBatchesWithMultipleIntervalsNativeReader(final int batchSize) throws IOException {
+        testGenomicsDBImporterWithBatchSize(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, batchSize, true);
+    }
+
     @Test(groups = {"bucket"}, dataProvider = "batchSizes")
     public void testGenomicsDBImportGCSInputsInBatches(final int batchSize) throws IOException {
         testGenomicsDBImporterWithBatchSize(resolveLargeFilesAsCloudURIs(LOCAL_GVCFS), INTERVAL, COMBINED, batchSize);
+    }
+
+    @Test(groups = {"bucket"}, dataProvider = "batchSizes")
+    public void testGenomicsDBImportGCSInputsInBatchesNativeReader(final int batchSize) throws IOException {
+        testGenomicsDBImporterWithBatchSize(resolveLargeFilesAsCloudURIs(LOCAL_GVCFS), INTERVAL, COMBINED, batchSize, true);
     }
 
     @DataProvider
@@ -440,8 +521,14 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private void testGenomicsDBImporter(final List<String> vcfInputs, final List<SimpleInterval> intervals,
                                         final String expectedCombinedVCF, final String referenceFile,
                                         final boolean testAll, final int threads) throws IOException {
+        testGenomicsDBImporter(vcfInputs, intervals, expectedCombinedVCF, referenceFile, testAll, threads, false);
+    }
+
+    private void testGenomicsDBImporter(final List<String> vcfInputs, final List<SimpleInterval> intervals,
+                                        final String expectedCombinedVCF, final String referenceFile,
+                                        final boolean testAll, final int threads, final boolean useNativeReader) throws IOException {
         final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
-        writeToGenomicsDB(vcfInputs, intervals, workspace, 0, false, 0, 1);
+        writeToGenomicsDB(vcfInputs, intervals, workspace, 0, false, 0, 1, false, false, false, 0, useNativeReader);
 
         checkGenomicsDBAgainstExpected(workspace, intervals, expectedCombinedVCF, referenceFile, testAll, ATTRIBUTES_TO_IGNORE);
     }
@@ -459,9 +546,15 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     private void testGenomicsDBImporterWithBatchSize(final List<String> vcfInputs, final List<SimpleInterval> intervals,
                                                      final String expectedCombinedVCF, final int batchSize) throws IOException {
+        testGenomicsDBImporterWithBatchSize(vcfInputs, intervals, expectedCombinedVCF, batchSize, false);
+    }
+
+    private void testGenomicsDBImporterWithBatchSize(final List<String> vcfInputs, final List<SimpleInterval> intervals,
+                                                     final String expectedCombinedVCF, final int batchSize,
+                                                     final boolean useNativeReader) throws IOException {
         final String workspace = createTempDir("genomicsdb-batchsize-tests-").getAbsolutePath() + "/workspace-" + batchSize;
 
-        writeToGenomicsDB(vcfInputs, intervals, workspace, batchSize, false, 0, 1);
+        writeToGenomicsDB(vcfInputs, intervals, workspace, batchSize, false, 0, 1, false, false, false, 0, true);
         checkJSONFilesAreWritten(workspace);
         checkGenomicsDBAgainstExpected(workspace, intervals, expectedCombinedVCF, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
     }
@@ -489,6 +582,14 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private void writeToGenomicsDB(final List<String> vcfInputs, final List<SimpleInterval> intervals, final String workspace,
                                    final int batchSize, final Boolean useBufferSize, final int bufferSizePerSample, int threads, 
                                    final boolean mergeIntervals, final boolean overwriteWorkspace, final boolean incremental) {
+        writeToGenomicsDB(vcfInputs, intervals, workspace, batchSize, useBufferSize, bufferSizePerSample, threads, mergeIntervals, 
+                          overwriteWorkspace, incremental, 0, false);
+    }
+
+    private void writeToGenomicsDB(final List<String> vcfInputs, final List<SimpleInterval> intervals, final String workspace,
+                                   final int batchSize, final Boolean useBufferSize, final int bufferSizePerSample, int threads, 
+                                   final boolean mergeIntervals, final boolean overwriteWorkspace, final boolean incremental,
+                                   final int chrsToPartitions, final boolean useNativeReader) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         if (incremental) {
             args.add(GenomicsDBImport.INCREMENTAL_WORKSPACE_ARG_LONG_NAME, workspace);
@@ -501,11 +602,21 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         args.add(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(threads));
         args.add(GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME, mergeIntervals);
         args.add(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, overwriteWorkspace);
+        if (chrsToPartitions != 0) {
+            args.add(GenomicsDBImport.MERGE_CHROMOSOMES_INTO_NUM_PARTITIONS, String.valueOf(chrsToPartitions));
+        }
+        args.add(GenomicsDBImport.USE_NATIVE_VCF_READER_LONG_NAME, useNativeReader);
         if (useBufferSize) {
             args.add("genomicsdb-vcf-buffer-size", String.valueOf(bufferSizePerSample));
         }
 
         runCommandLine(args);
+        if (chrsToPartitions != 0) {
+            String[] partitions = GenomicsDBUtils.listGenomicsDBArrays(workspace);
+            // it may not always be the case that the number of partitions created matches
+            // the number we specified, but will be true for our tests
+            Assert.assertTrue(partitions.length == chrsToPartitions);
+        }
     }
 
     private static void checkJSONFilesAreWritten(final String workspace) {
@@ -951,60 +1062,71 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace + "workspace2", 0, false, 0, 1, false, false, true);
     }
 
+    private void testIncrementalImport(final int stepSize, final List<SimpleInterval> intervals, final String workspace, 
+                                       final int batchSize, final boolean produceGTField, final boolean useVCFCodec, final String expected,
+                                       final int chrsToPartitions, final boolean useNativeReader) throws IOException {
+        for(int i=0; i<LOCAL_GVCFS.size(); i+=stepSize) {
+            int upper = Math.min(i+stepSize, LOCAL_GVCFS.size());
+            writeToGenomicsDB(LOCAL_GVCFS.subList(i, upper), intervals, workspace, batchSize, false, 0, 1, false, false, i!=0, 
+                              chrsToPartitions, i!=0 && useNativeReader);
+            checkJSONFilesAreWritten(workspace);
+        }
+        for(SimpleInterval currInterval : intervals) {
+            List<SimpleInterval> tmpList = new ArrayList<SimpleInterval>(Arrays.asList(currInterval));
+            String expectedVcf = expected;
+            if (expected.isEmpty()) {
+                File expectedCombinedVCF = runCombineGVCFs(LOCAL_GVCFS, tmpList, b38_reference_20_21, new String[0]);
+                expectedVcf = expectedCombinedVCF.getAbsolutePath();
+            }
+            checkGenomicsDBAgainstExpected(workspace, tmpList, expectedVcf, b38_reference_20_21, true,
+                                           ATTRIBUTES_TO_IGNORE, produceGTField, false);
+            if (useVCFCodec) {
+                checkGenomicsDBAgainstExpected(workspace, tmpList, expectedVcf, b38_reference_20_21, true,
+                                               ATTRIBUTES_TO_IGNORE, produceGTField, false, true);
+            }
+        }
+    }
+
     @Test
     public void testGenomicsDBBasicIncremental() throws IOException {
         final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
-        writeToGenomicsDB(LOCAL_GVCFS.subList(0,2), INTERVAL, workspace, 0, false, 0, 1, false, false, false);
-        checkJSONFilesAreWritten(workspace);
+        testIncrementalImport(2, INTERVAL, workspace, 0, true, true, COMBINED_WITH_GENOTYPES, 0, false);
         createAndCheckIntervalListFromExistingWorkspace(workspace, true);
-        writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), INTERVAL, workspace, 0, false, 0, 1, false, false, true);
-        checkJSONFilesAreWritten(workspace);
-
-        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false);
-        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false, true);
     }
 
     @Test
     public void testGenomicsDBIncrementalAndBatchSize1WithNonAdjacentIntervals() throws IOException {
         final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
-        writeToGenomicsDB(LOCAL_GVCFS.subList(0,2), MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 1, false, 0, 1, false, false, false);
-        checkJSONFilesAreWritten(workspace);
-        writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 1, false, 0, 1, false, false, true);
-        checkJSONFilesAreWritten(workspace);
+        testIncrementalImport(2, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 1, false, true, "", 0, false);
+        createAndCheckIntervalListFromExistingWorkspace(workspace, false);
+    }
 
-        for(SimpleInterval currInterval : MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS) {
-            List<SimpleInterval> tmpList = new ArrayList<SimpleInterval>(Arrays.asList(currInterval));
-            File expectedCombinedVCF = runCombineGVCFs(LOCAL_GVCFS, tmpList, b38_reference_20_21, new String[0]);
-            checkGenomicsDBAgainstExpected(workspace, tmpList, expectedCombinedVCF.getAbsolutePath(), b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, false, false);
-            checkGenomicsDBAgainstExpected(workspace, tmpList, expectedCombinedVCF.getAbsolutePath(), b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, false, false, true);
-        }
+    @Test
+    public void testGenomicsDBIncrementalAndBatchSize1WithNonAdjacentIntervalsNativeReader() throws IOException {
+        final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
+        testIncrementalImport(2, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 1, false, true, "", 0, true);
+        createAndCheckIntervalListFromExistingWorkspace(workspace, false);
+    }
 
+    @Test
+    public void testGenomicsDBIncrementalAndBatchSize1WithNonAdjacentIntervalsMergeChromosomesIntoPartitions() throws IOException {
+        final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
+        testIncrementalImport(2, INTERVAL_20_21, workspace, 1, false, true, "", 1, false);
         createAndCheckIntervalListFromExistingWorkspace(workspace, false);
     }
 
     @Test
     public void testGenomicsDBIncrementalAndBatchSize2() throws IOException {
         final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
-        writeToGenomicsDB(LOCAL_GVCFS.subList(0,2), MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 2, false, 0, 1, false, false, false);
-        checkJSONFilesAreWritten(workspace);
-        writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 2, false, 0, 1, false, false, true);
-        checkJSONFilesAreWritten(workspace);
-
-        checkGenomicsDBAgainstExpected(workspace, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false);
+        testIncrementalImport(2, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 2, true, false, 
+                              COMBINED_WITH_GENOTYPES, 0, false);
     }
 
     @Test
     public void testGenomicsDBMultipleIncrementalImports() throws IOException {
         final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
-        writeToGenomicsDB(LOCAL_GVCFS.subList(0,1), MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 2, false, 0, 1, false, false, false);
-        checkJSONFilesAreWritten(workspace);
-        writeToGenomicsDB(LOCAL_GVCFS.subList(1,2), MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 2, false, 0, 1, false, false, true);
-        checkJSONFilesAreWritten(workspace);
-        writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 2, false, 0, 1, false, false, true);
-        checkJSONFilesAreWritten(workspace);
-
-        checkGenomicsDBAgainstExpected(workspace, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false);
-        checkGenomicsDBAgainstExpected(workspace, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false, true);
+        testIncrementalImport(1, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 2, true, true, 
+                              COMBINED_WITH_GENOTYPES, 0, false);
     }
 
     private void createAndCheckIntervalListFromExistingWorkspace(final String workspace, final Boolean singleInterval) {
@@ -1043,4 +1165,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         Assert.assertEquals(rc, 0);
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
     }
+
+    @Test(expectedExceptions = {UserException.class}, expectedExceptionsMessageRegExp=".*must be block compressed.*")
+    public void testGenomicsDBImportNativeReaderNoCompressedVcf() throws IOException {
+        testGenomicsDBImporterWithGenotypes(Arrays.asList(NA_12878_PHASED), MULTIPLE_INTERVALS, NA_12878_PHASED, b37_reference_20_21, 
+                false, true, false, true);
+    }
+
 }
