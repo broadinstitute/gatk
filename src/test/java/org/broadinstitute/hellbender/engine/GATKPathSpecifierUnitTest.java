@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.apache.commons.lang3.SystemUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
@@ -12,7 +13,7 @@ import org.testng.annotations.Test;
 import java.io.*;
 import java.nio.file.*;
 
-public class GATKPathSpecifierUnitTest {
+public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     final static String FS_SEPARATOR = FileSystems.getDefault().getSeparator();
 
@@ -208,7 +209,7 @@ public class GATKPathSpecifierUnitTest {
     }
 
     @DataProvider
-    public Object[][] inputStreamSpecifiers() throws IOException {
+    public Object[][] inputStreamSpecifiers() {
         return new Object[][]{
                 // references that can be resolved to an actual test file that can be read
 
@@ -244,7 +245,7 @@ public class GATKPathSpecifierUnitTest {
     }
 
     @DataProvider
-    public Object[][] outputStreamSpecifiers() throws IOException {
+    public Object[][] outputStreamSpecifiers() {
         return new Object[][]{
                 // output URIs that can be resolved to an actual test file
                 {IOUtils.createTempPath("testOutputStream", ".txt").toString()},
@@ -284,6 +285,159 @@ public class GATKPathSpecifierUnitTest {
                 dos.write("some stuff".getBytes());
             }
         }
+    }
+
+    @DataProvider(name = "getExtensionTestCases")
+    public Object[][] getExtensionTestCases() {
+        return new Object[][] {
+                // input, extension
+                {"localFile.bam", ".bam"},
+                {"localFile.BAM", ".BAM"},
+                {"/localFile.bam", ".bam"},
+                {"gs://bucket/aFile.bam", ".bam"},
+                {"gs://hellbender/test/resources/aFile.adam", ".adam"},
+                {"gs://hellbender/test/resources/aFile.fasta", ".fasta"},
+                {"http://bucket/aFile.bam?query=param", ".bam"},
+
+                // getExtension() returns ".gz", but this case also satisfies hasExtension(".fasta.gz")
+                {"aFile.fasta.gz", ".gz"},
+                // basename is ".fasta"!
+                {".fasta.gz", ".gz"},
+        };
+    }
+
+    @Test(dataProvider = "getExtensionTestCases")
+    public void testGetExtension(final String spec, final String expectedExtension) {
+        final GATKPathSpecifier pathSpec = new GATKPathSpecifier(spec);
+        final String actualExtension = pathSpec.getExtension();
+
+        Assert.assertEquals(actualExtension, expectedExtension);
+        // verify that hasExtension(getExtension()) is always true
+        Assert.assertTrue(pathSpec.hasExtension(actualExtension));
+    }
+
+    @DataProvider(name="negativeGetExtensionTestCases")
+    public Object[][] negativeGetExtensionTestCases() {
+        return new Object[][]{
+                // no extensions
+                {""},
+                {"/"},
+                {"."},
+                {"localFile"},
+                {"localFile."},
+                {"/localFile."},
+                {"gs://hellbender/test/resources"},
+                {"gs://hellbender/test/resources?query=param"},
+                {"gs://hellbender/test/resources/"},
+                {"gs://hellbender/test/resources/?query=param"},
+        };
+    }
+
+    @Test(dataProvider = "negativeGetExtensionTestCases", expectedExceptions={IllegalArgumentException.class})
+    public void testNegativeGetExtension(final String spec) {
+        new GATKPathSpecifier(spec).getExtension();
+    }
+
+    @DataProvider(name = "hasExtensionTestCases")
+    public Object[][] hasExtensionTestCases() {
+        return new Object[][]{
+                // input, extension satisfies "hasExtension"
+                {"localFile.bam", ".bam", true },
+                {"localFile.BAM", ".BAM", true },
+                {"localFile.BAM", ".bam", true },
+                {"localFile.bam", ".BAM", true },
+                {"/localFile.bam", ".bam", true },
+                {"gs://bucket/aFile.bam", ".bam", true },
+                {"gs://hellbender/test/resources/aFile.adam", ".adam", true },
+                {"gs://hellbender/test/resources/aFile.fasta", ".fasta", true },
+                {"http://bucket/aFile.bam?query=param", ".bam", true },
+
+                {"aFile.fasta.gz", ".gz", true },
+                {"aFile.fasta.gz", ".fasta.gz", true },
+                // basename is ".fasta"!
+                {".fasta.gz", ".gz", true },
+                {".fasta.gz", ".fasta.gz", true },
+
+                // no extensions
+                {"/", ".ext", false },
+                {".", ".ext", false },
+                {"localFile", ".a", false }, // extension must have length > 1
+                {"localFile.", ".a", false },
+                {"gs://hellbender/test/resources", ".fasta", false },
+                {"gs://hellbender/test/resources?query=param", ".fasta", false },
+                {"gs://hellbender/test/resources/", ".fasta", false },
+                {"gs://hellbender/test/resources/?query=param", ".fasta", false },
+        };
+    }
+
+    @Test(dataProvider = "hasExtensionTestCases")
+    public void testHasExtension(final String spec, final String extension, final boolean expectedResult) {
+        Assert.assertEquals(new GATKPathSpecifier(spec).hasExtension(extension), expectedResult);
+    }
+
+    @DataProvider(name = "getBaseNameTestCases")
+    public Object[][] getBaseNameTestCases() {
+        return new Object[][] {
+                // input, baseName
+                {"localFile.bam", "localFile"},
+                {"localFile.BAM", "localFile"},
+                {"/localFile.bam", "localFile"},
+                {"gs://bucket/aFile.bam", "aFile"},
+                {"gs://hellbender/test/resources/aFile.adam", "aFile"},
+                {"gs://hellbender/test/resources/aFile.fasta", "aFile"},
+                {"http://bucket/aFile.bam?query=param", "aFile"},
+
+                // This case satisfies hasExtension(".fasta.gz"), but getExtension() returns ".gz".
+                {"aFile.fasta.gz", "aFile.fasta"},
+                // basename is ".fasta"!
+                {".fasta.gz", ".fasta",},
+        };
+    }
+
+    @Test(dataProvider = "getBaseNameTestCases")
+    public void testGetBaseName(final String spec, final String baseName) {
+        Assert.assertEquals(new GATKPathSpecifier(spec).getBaseName(), baseName);
+    }
+
+    @DataProvider(name="negativeGetBaseNameTestCases")
+    public Object[][] negativeGetBaseNameTestCases() {
+        return new Object[][]{
+                // no extensions
+                {"/"},
+                {"."},
+                {"/."},
+                {"/name/.fasta"},
+                {"localFile"},
+                {"gs://hellbender/test/resources"},
+                {"gs://hellbender/test/resources?query=param"},
+                {"gs://hellbender/test/resources/"},
+                {"gs://hellbender/test/resources/?query=param"},
+        };
+    }
+
+    @Test(dataProvider = "negativeGetBaseNameTestCases", expectedExceptions = {IllegalArgumentException.class})
+    public void testNegativeGetBaseName(final String spec) {
+        new GATKPathSpecifier(spec).getBaseName();
+    }
+
+    @DataProvider(name="isFastaTestCases")
+    public Object[][] isFastaTestCases() {
+        final String twoBitRefURL = publicTestDir + "large/human_g1k_v37.20.21.2bit";
+        return new Object[][] {
+                { twoBitRefURL, false },
+                { "file://" + twoBitRefURL, false },
+                { hg38Reference, true }, // gzipped
+                { "file://" + hg38Reference, true }, // gzipped
+                { GCS_b37_CHR20_21_REFERENCE_2BIT, false },
+                { GCS_b37_CHR20_21_REFERENCE, true },
+                // dummy query params at the end to make sure URI.getPath does the right thing
+                { GCS_b37_CHR20_21_REFERENCE + "?query=param", true}
+        };
+    }
+
+    @Test(dataProvider = "isFastaTestCases")
+    public void testIsFasta(final String referenceSpec, final boolean expectedIsFasta) {
+        Assert.assertEquals(new GATKPathSpecifier(referenceSpec).isFasta(), expectedIsFasta);
     }
 
     /**

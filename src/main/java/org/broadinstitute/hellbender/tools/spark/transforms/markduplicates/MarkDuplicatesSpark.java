@@ -312,7 +312,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         // Check if we are using multiple inputs that the headers are all in the correct querygrouped ordering, if so set the aggregate header to reflect this
         if (readArguments.getReadPathSpecifiers().size() > 1) {
             final Optional<GATKPathSpecifier> badlySorted = readArguments.getReadPathSpecifiers().stream()
-                    .filter(spec -> !treatAsReadGroupOrdered(getHeaderForInputPath(spec), treatUnsortedAsOrdered))
+                    .filter(spec -> !treatAsReadGroupOrdered(getHeaderForReadsInput(spec), treatUnsortedAsOrdered))
                     .findFirst();
 
             if(badlySorted.isPresent()) {
@@ -323,7 +323,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                     throw new UserException(
                             "Multiple inputs to MarkDuplicatesSpark detected. MarkDuplicatesSpark requires all inputs to be queryname sorted " +
                                     "or querygroup-sorted for multi-input processing but input " + badlySorted.get() + " was sorted in " +
-                                    getHeaderForInputPath(badlySorted.get()) + " order");
+                                    getHeaderForReadsInput(badlySorted.get()) + " order");
                 }
             } else {
                 // The default sort order for merged input files is unsorted, so this will be fed to the tool to be sorted

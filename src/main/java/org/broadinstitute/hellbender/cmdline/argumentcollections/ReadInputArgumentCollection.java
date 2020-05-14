@@ -39,14 +39,14 @@ public abstract class ReadInputArgumentCollection implements Serializable {
     protected List<GATKPathSpecifier> readIndices;
 
     /**
-     * Get the list of BAM/SAM/CRAM files specified at the command line.
-     * Paths are the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
+     * Get the list of BAM/SAM/CRAM inputs specified at the command line.
+     * GATKPathSpecifier is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
     public abstract List<GATKPathSpecifier> getReadPathSpecifiers();
 
     /**
-     * Get the list of BAM/SAM/CRAM files specified at the command line.
-     * Paths are the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
+     * Get the list of BAM/SAM/CRAM inputs specified at the command line.
+     * GATKPathSpecifier is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
 
     public List<Path> getReadPaths() {

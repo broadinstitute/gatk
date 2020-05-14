@@ -112,6 +112,13 @@ public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, 
         }
     }
 
+    /**
+     * Returns true if this is a HDFS (Hadoop filesystem) URL.
+     */
+    public boolean isHadoopURL() {
+        return hasExtension(HDFS_SCHEME);
+    }
+
     @Override
     public void setTag(String tagName) {
         this.tagName = tagName;

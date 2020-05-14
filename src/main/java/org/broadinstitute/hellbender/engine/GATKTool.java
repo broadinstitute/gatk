@@ -37,7 +37,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
@@ -473,7 +472,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
      */
     private boolean hasCramInput() {
-        return readArguments.getReadPathSpecifiers().stream().anyMatch(IOUtils::isCramFile);
+        return readArguments.getReadPathSpecifiers().stream().anyMatch(GATKPathSpecifier::isCram);
     }
 
     /**
@@ -812,8 +811,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return SAMFileWriter
      */
     public final SAMFileGATKReadWriter createSAMWriter(final GATKPathSpecifier outputPathSpecifier, final boolean preSorted) {
-        final boolean isCramFile = IOUtils.isCramFile(outputPathSpecifier);
-        if (!hasReference() && isCramFile) {
+        if (!hasReference() && outputPathSpecifier.isCram()) {
             throw UserException.MISSING_REFERENCE_FOR_CRAM;
         }
 

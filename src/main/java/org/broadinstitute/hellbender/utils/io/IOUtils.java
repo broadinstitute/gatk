@@ -57,34 +57,6 @@ public final class IOUtils {
     private static final Pattern GENOMICSDB_URI_PATTERN = Pattern.compile("^" + GENOMIC_DB_URI_SCHEME + "(\\.?)(.*)(://)(.*)");
 
     /**
-     * Returns true if the GATKPathSpecifier's extension is CRAM.
-     */
-    public static boolean isCramFile(final GATKPathSpecifier pathSpec) {
-        return pathSpec != null && FileExtensions.CRAM.equalsIgnoreCase("." + FilenameUtils.getExtension(pathSpec.getURI().getPath()));
-    }
-
-    /**
-     * Returns true if the file's extension is CRAM.
-     */
-    public static boolean isCramFile(final Path path) {
-        return isCramFileName(path.getFileName().toString());
-    }
-
-    /**
-     * Returns true if the file's extension is CRAM.
-     */
-    public static boolean isCramFileName(final String inputFileName) {
-        return isCramFile(new GATKPathSpecifier(inputFileName));
-    }
-
-    /**
-     * Returns true if the file's extension is BAM.
-     */
-    public static boolean isBamFileName(final String inputFileName) {
-        return FileExtensions.BAM.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
-    }
-
-    /**
      * Given a Path, determine if it is an HDF5 file without requiring that we're on a platform that supports
      * HDF5 (let the caller decide if a return value of false is fatal).
      *

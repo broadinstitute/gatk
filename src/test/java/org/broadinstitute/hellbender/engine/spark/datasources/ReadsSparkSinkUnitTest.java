@@ -182,11 +182,11 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
         ReadsSparkSink.writeReads(ctx, outputPath, referencePath, rddParallelReads, header, ReadsWriteFormat.SINGLE, 0, outputPartsPath, writeBai, writeSbi, true, sbiGranularity);
 
         // check that a bai file is created
-        if (IOUtils.isBamFileName(outputPath) && writeBai) {
+        if (new GATKPathSpecifier(outputPath).isBam() && writeBai) {
             Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath + FileExtensions.BAI_INDEX)));
         }
         // check that a splitting bai file is created with correct granularity
-        if (IOUtils.isBamFileName(outputPath) && writeSbi) {
+        if (new GATKPathSpecifier(outputPath).isBam() && writeSbi) {
             final java.nio.file.Path sbiPath = IOUtils.getPath(outputPath + FileExtensions.SBI);
             Assert.assertTrue(Files.exists(sbiPath));
             final SBIIndex sbi = SBIIndex.load(sbiPath);

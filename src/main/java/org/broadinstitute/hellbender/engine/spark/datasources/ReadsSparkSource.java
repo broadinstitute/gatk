@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.disq_bio.disq.HtsjdkReadsRdd;
@@ -197,7 +196,7 @@ public final class ReadsSparkSource implements Serializable {
      * @return a <code>GATKPathSpecifier</code> or <code>null</code> if not CRAM
      */
     static GATKPathSpecifier checkCramReference(final JavaSparkContext ctx, final GATKPathSpecifier filePathSpecifier, final GATKPathSpecifier referencePathSpecifier) {
-        if (IOUtils.isCramFile(filePathSpecifier)) {
+        if (filePathSpecifier.isCram()) {
             if (referencePathSpecifier == null) {
                 throw new UserException.MissingReference("A reference is required for CRAM input");
             } else if (ReferenceTwoBitSparkSource.isTwoBit(referencePathSpecifier)) { // htsjdk can't handle 2bit reference files

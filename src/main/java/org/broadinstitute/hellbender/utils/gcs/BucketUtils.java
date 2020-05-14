@@ -109,13 +109,6 @@ public final class BucketUtils {
     /**
      * Returns true if the given path is a HDFS (Hadoop filesystem) URL.
      */
-    public static boolean isHadoopUrl(GATKPathSpecifier pathSpecifier) {
-        return pathSpecifier == null ? false : pathSpecifier.getURI().getScheme().equals(HDFS_SCHEME);
-    }
-
-    /**
-     * Returns true if the given path is a HDFS (Hadoop filesystem) URL.
-     */
     public static boolean isHadoopUrl(String path) {
         return path.startsWith(HDFS_PREFIX);
     }
@@ -282,6 +275,7 @@ public final class BucketUtils {
      *  @param path The folder where you want the file to be (local, GCS or HDFS).
      *
      */
+    //TODO: use GATKPathSpecifier
     public static boolean fileExists(String path) {
         final boolean MAYBE = false;
         try (InputStream inputStream = openFile(path)) {

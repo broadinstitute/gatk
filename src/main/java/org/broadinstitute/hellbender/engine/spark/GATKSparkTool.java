@@ -336,7 +336,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     protected JavaRDD<GATKRead> getGatkReadJavaRDD(TraversalParameters traversalParameters, ReadsSparkSource source, GATKPathSpecifier inputSpecifier) {
         JavaRDD<GATKRead> output;
         // TODO: This if statement is a temporary hack until #959 gets resolve
-        if (inputSpecifier.getURIString().endsWith(".adam")) {
+        if (inputSpecifier.hasExtension(".adam")) {
             try {
                 output = source.getADAMReads(inputSpecifier, traversalParameters, getHeaderForReads());
             } catch (IOException e) {
@@ -414,7 +414,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
      */
     private boolean hasCramInput() {
-        return readArguments.getReadPathSpecifiers().stream().anyMatch(IOUtils::isCramFile);
+        return readArguments.getReadPathSpecifiers().stream().anyMatch(GATKPathSpecifier::isCram);
     }
 
     /**
@@ -517,7 +517,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * Returns the header for a given input.
      */
-    protected SAMFileHeader getHeaderForInputPath(final GATKPathSpecifier inputPathSpecifier){
+    protected SAMFileHeader getHeaderForReadsInput(final GATKPathSpecifier inputPathSpecifier){
         final SAMFileHeader header = readInputs.get(inputPathSpecifier);
         if (header == null) {
             throw new GATKException(String.format("Input %s not present in tool inputs", inputPathSpecifier.getRawInputString()));

@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
@@ -43,8 +42,8 @@ public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializ
             } catch (IOException e) {
                 throw new UserException("Failed to create a ReferenceTwoBitSource object" + e.getMessage());
             }
-        } else if (isFasta(referencePathSpecifier)) {
-            if (BucketUtils.isHadoopUrl(referencePathSpecifier)) {
+        } else if (referencePathSpecifier.isFasta()) {
+            if (referencePathSpecifier.isHadoopURL()) {
                 referenceSource = new ReferenceHadoopSparkSource(referencePathSpecifier);
             } else {
                 referenceSource = new ReferenceFileSparkSource(referencePathSpecifier);

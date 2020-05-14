@@ -1,8 +1,12 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.FileExtensions;
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 
 /**
@@ -63,7 +67,6 @@ public interface PathURI {
      */
     String getToPathFailureReason();
 
-
     /**
      * Return the scheme for this PathURI. For file URIs (URIs that have no explicit scheme), this will return
      * the scheme "file".
@@ -71,6 +74,100 @@ public interface PathURI {
      */
     default String getScheme() {
         return getURI().getScheme();
+    }
+
+    /**
+     * @return the extension of the last component of the hierarchical part of the scheme-specific part of the
+     * URI, if any, including the ".". Note that this only returns the part of the last component after the last
+     * ".", ie. it will return ".gz" for a name that ends in ".fasta.gz".
+     * @throws IllegalArgumentException if the hierarchical name ends with the default file system separator
+     * (i.e. "/") or ".", or if the last component does not contain a ".".
+     */
+    default String getExtension() {
+        final String hierarchicalPath = getURI().getPath();
+        final int indexOfLastComponent = hierarchicalPath.lastIndexOf(FileSystems.getDefault().getSeparator());
+        if (indexOfLastComponent != -1 && indexOfLastComponent < hierarchicalPath.length() - 1) {
+            final String lastComponent = hierarchicalPath.substring(indexOfLastComponent + 1);
+            if (lastComponent.length() > 0) {
+                final int indexOfLastDot = lastComponent.lastIndexOf('.');
+                if (indexOfLastDot != -1 && indexOfLastDot < lastComponent.length() - 1) {
+                    // return a string that includes the leading "." to enable easy comparison with the many
+                    // internal file extension constants we have that include the leading "." (i.e., in htsjdk),
+                    // and also for API consistency (since hasExtension() requires the candidate extension to
+                    // include a leading ".", this allows hasExtension(getExtension()) to always work whenever
+                    // getExtension() succeeds
+                    return lastComponent.substring(indexOfLastDot);
+                }
+            }
+        }
+        throw new IllegalArgumentException(String.format("Input path (%s) has no extension", this));
+    }
+
+    /**
+     * Return true if the path component (the hierarchical part of the scheme specific part of the underlying URI)
+     * ends with the provided {@code extension} string.
+     *
+     * @param extension the target extension to test, INCLUDING the leading ".". May not be null.
+     * @return true if the path component of this specifier ends with the extension, otherwise false
+     */
+    default boolean hasExtension(final String extension) {
+        Utils.nonNull(extension, "Target extension must not be null");
+        Utils.validateArg(extension.length() > 1, "Target extension must be length > 1");
+        Utils.validateArg(extension.charAt(0) == '.', "Target extension must include the leading '.'");
+
+        // We don't want to use {@code #getExtension} here, since it won't work correctly if we're comparing an
+        // extension that uses multiple . chars, such as .fasta.gz., and {@code #getExtension} will throw if there
+        // is no extension.
+        return getURI().getPath().toLowerCase().endsWith(extension.toLowerCase());
+    }
+
+    /**
+     * @return the base name (the last component of the hierarchical part of the scheme-specific part of the URI,
+     * after the last "/"), up to but not including the extension (the last ".").
+     * @throws IllegalArgumentException if the last component is empty (ie, the component ends in "/"), or the last
+     * component exists but starts with "."
+     */
+    default String getBaseName() {
+        final String hierarchicalPath = getURI().getPath();
+        final int indexOfLastComponent = hierarchicalPath.lastIndexOf(FileSystems.getDefault().getSeparator());
+        if (indexOfLastComponent != -1 && indexOfLastComponent < hierarchicalPath.length() - 1) {
+            final String lastComponent = hierarchicalPath.substring(indexOfLastComponent + 1);
+            if (lastComponent.length() > 0) {
+                final int indexOfLastDot = lastComponent.lastIndexOf('.');
+                if (indexOfLastDot != -1 && indexOfLastDot > 1) {
+                    return lastComponent.substring(0, indexOfLastDot);
+                }
+            }
+        }
+        throw new IllegalArgumentException(String.format("Input path (%s) has no extension", this));
+    }
+
+    /**
+     * Returns true if the file's extension is ".sam"".
+     */
+    default boolean isSam() {
+        return hasExtension(FileExtensions.SAM);
+    }
+
+    /**
+     * Returns true if the file's extension is ".bam"".
+     */
+    default boolean isBam() {
+        return hasExtension(FileExtensions.BAM);
+    }
+
+    /**
+     * Returns true if the GATKPathSpecifier's extension is ".cram".
+     */
+    default boolean isCram() {
+        return hasExtension(FileExtensions.CRAM);
+    }
+
+    /**
+     * @return true if this path spec has a FASTA file extension
+     */
+    default boolean isFasta() {
+        return FileExtensions.FASTA.stream().anyMatch(this::hasExtension);
     }
 
     /**
