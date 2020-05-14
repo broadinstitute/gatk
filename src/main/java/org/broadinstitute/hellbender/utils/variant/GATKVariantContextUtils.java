@@ -281,9 +281,7 @@ public final class GATKVariantContextUtils {
                 final double[] log10Priors = gpc.getLog10Priors(glCalc, allelesToUse);
                 final double[] log10Posteriors = new double[genotypeLikelihoods.length];
                 double bestPosterior = Double.NEGATIVE_INFINITY;
-                double bestLikelihood = Double.NEGATIVE_INFINITY;
                 int bestGenotypeIndex = 0;
-                int bestLikelihoodIndex = 0;
                 for (int i = 0; i < genotypeLikelihoods.length; i++) {
                     final double log10Posterior = log10Posteriors[i] = log10Priors[i] + genotypeLikelihoods[i]
                             + glCalc.genotypeAlleleCountsAt(i).log10CombinationCount();
@@ -291,28 +289,48 @@ public final class GATKVariantContextUtils {
                         bestGenotypeIndex = i;
                         bestPosterior = log10Posterior;
                     }
-                    if (bestLikelihood < genotypeLikelihoods[i]) {
-                        bestLikelihood = genotypeLikelihoods[i];
-                        bestLikelihoodIndex = i;
-                    }
                 }
                 for (int i = 0; i < log10Posteriors.length; i++) {
                     log10Posteriors[i] -= bestPosterior;
-                    if ((log10Posteriors[i] *= -10.0) == 0.0) {
-                        log10Posteriors[i] = 0.0;
-                    }
-
                 }
                 gb.alleles(glCalc.genotypeAlleleCountsAt(bestGenotypeIndex).asAlleleList(allelesToUse));
-                if ( allelesToUse.size() > 0 ) { // we still use Lks for GQ.
-                    gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(bestLikelihoodIndex, genotypeLikelihoods));
+                if ( allelesToUse.size() > 0 ) {
+                    gb.log10PError(getGQLog10FromPosteriors(bestGenotypeIndex, log10Posteriors));
                 }
                 gb.attribute(VCFConstants.GENOTYPE_POSTERIORS_KEY, Arrays.stream(log10Posteriors)
+                        .map(v -> v == 0.0 ? 0.0 : v * -10) // the reason for the == 0.0 is to avoid a signed 0 output "-0.0"
                         .mapToObj(GATKVariantContextUtils::formatGP).toArray());
                 gb.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, Arrays.stream(log10Priors)
                         .map(v -> v == 0.0 ? 0.0 : v * -10)
                         .mapToObj(GATKVariantContextUtils::formatGP).toArray());
             }
+        }
+    }
+
+    private static double getGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] log10Posteriors) {
+        if (bestGenotypeIndex < 0) {
+            return CommonInfo.NO_LOG10_PERROR;
+        } else if (log10Posteriors.length == 3) { // most common case
+            if (bestGenotypeIndex == 0) {
+                return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors[1], log10Posteriors[2]));
+            } else if (bestGenotypeIndex == 1) {
+                return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors[0], log10Posteriors[2]));
+            } else {
+                return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors[0], log10Posteriors[1]));
+            }
+        } else if (log10Posteriors.length == 2) { // trival haploid single alt allele case.
+            return bestGenotypeIndex == 0 ? log10Posteriors[1] : log10Posteriors[0];
+        } else if (log10Posteriors.length > 3) { // general case.
+            final double[] loosingLog10Posteriors = new double[log10Posteriors.length -1];
+            if (bestGenotypeIndex > 0) {
+                System.arraycopy(log10Posteriors, 0, loosingLog10Posteriors, 0, bestGenotypeIndex);
+            }
+            if (bestGenotypeIndex < loosingLog10Posteriors.length) {
+                System.arraycopy(log10Posteriors, bestGenotypeIndex + 1, loosingLog10Posteriors, bestGenotypeIndex, loosingLog10Posteriors.length - bestGenotypeIndex);
+            }
+            return Math.min(0.0, MathUtils.log10sumLog10(loosingLog10Posteriors));
+        } else { // just in case a safe failure code for 1 and 0 genotype cases
+            return CommonInfo.NO_LOG10_PERROR;
         }
     }
 
