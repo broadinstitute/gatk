@@ -159,6 +159,10 @@ public final class AssemblyRegionTrimmer {
      * @return never {@code null}.
      */
     public Result trim(final AssemblyRegion region, final SortedSet<VariantContext> variants, ReferenceContext referenceContext) {
+        if (assemblyRegionArgs.enableLegacyAssemblyRegionTrimming) {
+            return trimLegacy(region, variants);
+        }
+
         final List<VariantContext> variantsInRegion = variants.stream().filter(region::overlaps).collect(Collectors.toList());
 
         if ( variantsInRegion.isEmpty() ) {
@@ -186,15 +190,98 @@ public final class AssemblyRegionTrimmer {
             maxEnd = Math.max(maxEnd, vc.getEnd() + padding);
         }
 
-        SimpleInterval regionLimit = assemblyRegionArgs.maxExtensionIntoRegionPadding >= 0 ?
-                new SimpleInterval(region.getContig(), Math.max(region.getStart() - assemblyRegionArgs.maxExtensionIntoRegionPadding,0),// enforce 0 here since we are not validating this interval
-                        region.getEnd() + assemblyRegionArgs.maxExtensionIntoRegionPadding).intersect(region.getPaddedSpan()) // we use this intersect to enforce contig boundaries and region padding.
-        : region.getPaddedSpan();
-
-        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(regionLimit);
+        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region.getPaddedSpan());
 
 //        System.out.println("Padded and trimmed the region to this span: "+ paddedVariantSpan);
         return new Result(region, variantSpan, paddedVariantSpan);
     }
 
+
+    /**
+     * Returns a trimming result object from which the variant trimmed region and flanking non-variant sections
+     * can be recovered latter.
+     *
+     * @param originalRegion the genome location range to trim.
+     * @param allVariantsWithinExtendedRegion list of variants contained in the trimming location. Variants therein
+     *                                        not overlapping with {@code originalRegion} are simply ignored.
+     * @return never {@code null}.
+     */
+    public Result trimLegacy(final AssemblyRegion originalRegion,
+                       final SortedSet<VariantContext> allVariantsWithinExtendedRegion) {
+
+        if ( allVariantsWithinExtendedRegion.isEmpty() ) // no variants,
+        {
+            return noVariation(originalRegion);
+        }
+
+        final List<VariantContext> withinActiveRegion = new LinkedList<>();
+        final SimpleInterval originalRegionRange = originalRegion.getSpan();
+        boolean foundNonSnp = false;
+        SimpleInterval variantSpan = null;
+        for ( final VariantContext vc : allVariantsWithinExtendedRegion ) {
+            final SimpleInterval vcLoc = new SimpleInterval(vc);
+            if ( originalRegionRange.overlaps(vcLoc) ) {
+                foundNonSnp = foundNonSnp || ! vc.isSNP();
+                variantSpan = variantSpan == null ? vcLoc : variantSpan.spanWith(vcLoc);
+                withinActiveRegion.add(vc);
+            }
+        }
+        final int padding = foundNonSnp ? assemblyRegionArgs.indelPaddingForGenotyping : assemblyRegionArgs.snpPaddingForGenotyping;
+
+        // we don't actually have anything in the region after skipping out variants that don't overlap
+        // the region's full location
+        if ( variantSpan == null ) {
+            return noVariation(originalRegion);
+        }
+
+        final SimpleInterval maximumSpan = originalRegionRange.expandWithinContig(assemblyRegionArgs.maxExtensionIntoRegionPadding, sequenceDictionary);
+        final SimpleInterval idealSpan = variantSpan.expandWithinContig(padding, sequenceDictionary);
+        final SimpleInterval finalSpan = maximumSpan.intersect(idealSpan).mergeWithContiguous(variantSpan);
+//      TODO disable this code with ERC
+//        // Make double sure that, if we are emitting GVCF we won't call non-variable positions beyond the target active region span.
+//        // In regular call we don't do so so we don't care and we want to maintain behavior, so the conditional.
+//        final SimpleInterval callableSpan = emitReferenceConfidence ? variantSpan.intersect(originalRegionRange) : variantSpan;
+        final SimpleInterval callableSpan = variantSpan;
+
+        final Pair<SimpleInterval, SimpleInterval> nonVariantRegions = nonVariantTargetRegions(originalRegion, callableSpan);
+
+
+//        System.out.println("events       : " + withinActiveRegion);
+//        System.out.println("region       : " + originalRegion);
+//        System.out.println("callableSpan : " + callableSpan);
+//        System.out.println("padding      : " + padding);
+//        System.out.println("idealSpan    : " + idealSpan);
+//        System.out.println("maximumSpan  : " + maximumSpan);
+//        System.out.println("finalSpan    : " + finalSpan);
+
+
+        return new Result(originalRegion, variantSpan, finalSpan);
+    }
+
+    /**
+     * Calculates the list of region to trim away.
+     * @param targetRegion region for which to generate the flanking regions.
+     * @param variantSpan the span of the core region containing relevant variation and required padding.
+     * @return never {@code null}; 0, 1 or 2 element list.
+     */
+    private Pair<SimpleInterval, SimpleInterval> nonVariantTargetRegions(final AssemblyRegion targetRegion, final SimpleInterval variantSpan) {
+        final SimpleInterval targetRegionRange = targetRegion.getSpan();
+        final int finalStart = variantSpan.getStart();
+        final int finalStop = variantSpan.getEnd();
+
+        final int targetStart = targetRegionRange.getStart();
+        final int targetStop = targetRegionRange.getEnd();
+
+        final boolean preTrimmingRequired = targetStart < finalStart;
+        final boolean postTrimmingRequired = targetStop > finalStop;
+        if (preTrimmingRequired) {
+            final String contig = targetRegionRange.getContig();
+            return postTrimmingRequired ? Pair.of(new SimpleInterval(contig, targetStart, finalStart - 1), new SimpleInterval(contig, finalStop + 1, targetStop)) :
+                    Pair.of(new SimpleInterval(contig, targetStart, finalStart - 1), null);
+        } else if (postTrimmingRequired) {
+            return Pair.of(null, new SimpleInterval(targetRegionRange.getContig(), finalStop + 1, targetStop));
+        } else {
+            return Pair.of(null, null);
+        }
+    }
 }

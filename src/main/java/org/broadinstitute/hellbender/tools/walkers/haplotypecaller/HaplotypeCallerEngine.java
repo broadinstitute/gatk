@@ -758,6 +758,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final Set<GATKRead> readsToRemove = new LinkedHashSet<>();
         for( final GATKRead rec : activeRegion.getReads() ) {
             if( rec.getLength() < READ_LENGTH_FILTER_THRESHOLD || rec.getMappingQuality() < hcArgs.mappingQualityThreshold || ! ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE.test(rec) || (hcArgs.keepRG != null && !rec.getReadGroup().equals(hcArgs.keepRG)) ) {
+//                System.out.println("Filtered before assembly the read: "+rec.toString());
                 readsToRemove.add(rec);
             }
         }

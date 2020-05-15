@@ -1149,7 +1149,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
                     .filter(i -> !predicate.test(sampleEvidence.get(i)))
                     .toArray();
 
-//            System.out.println("Evidences removed by insufficient overlapping: "+Arrays.toString(removeIndices));
+            System.out.println("Evidences removed by insufficient overlapping: "+Arrays.toString(removeIndices));
             final List<EVIDENCE> removedToBeRetained = new ArrayList<>(2);
             for(int i = 0; i < removeIndices.length; i++) {
                 // if it passes the second predicate but not the first bump it into the filtered pool
