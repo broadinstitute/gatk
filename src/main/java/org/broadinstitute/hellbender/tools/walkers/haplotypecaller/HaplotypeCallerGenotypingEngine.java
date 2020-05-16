@@ -14,13 +14,14 @@ import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculat
 import org.broadinstitute.hellbender.tools.haplotypecaller.SimpleGenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.VariationalAlleleFrequencyCalculator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrReadSTRAnalizer;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -147,9 +148,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(readLikelihoods, activeRegionWindow);
         }
 
-        final DragstrUtils.STRSequenceAnalyzer dragstrs = isDragstrSTRAnalyzerNecessary(startPosKeySet, haplotypes)
-                ? DragstrUtils.repeatPeriodAndCounts(ref, startPosKeySet.first() - refLoc.getStart(),
-                startPosKeySet.last() + 2 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod(), !hcArgs.likelihoodArgs.dontConsiderUptreamBasesWhenCalculatingStrOnReference)
+        final DragstrReferenceSTRs dragstrs = isDragstrSTRAnalyzerNecessary(startPosKeySet, haplotypes)
+                ? DragstrReferenceSTRs.of(ref,startPosKeySet.first() - refLoc.getStart(),
+                startPosKeySet.last() + 2 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod())
                 : null;
 
         for( final int loc : startPosKeySet ) {
@@ -211,7 +212,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, mergedAllelesListSizeBeforePossibleTrimming, readAlleleLikelihoods, call, annotationEngine);
 
                 if (dragstrs != null && GATKVariantContextUtils.containsInlineIndel(annotatedCall)) {
-                    annotatedCall = DragstrUtils.annotate(annotatedCall, hcArgs.likelihoodArgs.dragstrParams, dragstrs, loc - refLoc.getStart() + 1, ploidy, snpHeterozygosity);
+                    final int strOffset = loc - refLoc.getStart() + 1;
+                    annotatedCall = DragstrUtils.annotate(annotatedCall, hcArgs.likelihoodArgs.dragstrParams, dragstrs.period(strOffset), dragstrs.repeatLength(strOffset));
                 }
                 returnCalls.add( annotatedCall );
 
@@ -253,14 +255,14 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         }
     }
 
-    private GenotypePriorCalculator resolveCustomAlleleFrequencyCalculator(final VariantContext vc, final DragstrUtils.STRSequenceAnalyzer strs, final int pos, final int ploidy, final double snpHeterozygosity, final double indelHeterozygosity) {
+    private GenotypePriorCalculator resolveCustomAlleleFrequencyCalculator(final VariantContext vc, final DragstrReferenceSTRs strs, final int pos, final int ploidy, final double snpHeterozygosity, final double indelHeterozygosity) {
        if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors) {
             return SimpleGenotypePriorCalculator.assumingHW(Math.log10(snpHeterozygosity), Math.log10(indelHeterozygosity));
         } else if (strs == null) {
             return SimpleGenotypePriorCalculator.givenHetToHomRatio(Math.log10(snpHeterozygosity), Math.log10(indelHeterozygosity), Math.log10(Math.min(snpHeterozygosity, indelHeterozygosity)), hcArgs.likelihoodArgs.dragstrHetHomRatio);
        } else {
-            final int period = strs.mostRepeatedPeriod(pos);
-            final int repeats = strs.numberOfMostRepeats(pos);
+            final int period = strs.period(pos);
+            final int repeats = strs.repeatLength(pos);
             return SimpleGenotypePriorCalculator.givenDragstrParams(hcArgs.likelihoodArgs.dragstrParams, period, repeats, Math.log10(snpHeterozygosity), hcArgs.likelihoodArgs.dragstrHetHomRatio);
         }
     }
@@ -441,7 +443,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @param mergedVC               Input VC with event to genotype
      * @return                       GenotypesContext object wrapping genotype objects with PLs
      */
-    protected GenotypesContext calculateGLsForThisEvent(final AlleleLikelihoods<GATKRead, Allele> readLikelihoods, final VariantContext mergedVC, final List<Allele> noCallAlleles, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrUtils.STRSequenceAnalyzer dragstrs) {
+    protected GenotypesContext calculateGLsForThisEvent(final AlleleLikelihoods<GATKRead, Allele> readLikelihoods, final VariantContext mergedVC, final List<Allele> noCallAlleles, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceSTRs dragstrs) {
         Utils.nonNull(readLikelihoods, "readLikelihoods");
         Utils.nonNull(mergedVC, "mergedVC");
         final List<Allele> vcAlleles = mergedVC.getAlleles();

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
-import breeze.stats.distributions.Rand;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.testng.Assert;
@@ -19,7 +18,7 @@ public class DragstrUtilsTest {
     @Test(dataProvider = "testSequenceAndMaxPeriodData")
     public void testRepeatPeriodAndCount(final String sequenceStr, final int maxPeriod, final boolean includeUpstream) {
         final byte[] sequence = sequenceStr.getBytes();
-        final DragstrUtils.STRSequenceAnalyzer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod, includeUpstream);
+        final DragstrReadSTRAnalizer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod, includeUpstream);
         rpc.load(sequence);
         final Random rdn = new Random(Arrays.hashCode(sequence) * 31 + maxPeriod);
         final int[] positions = new int[sequence.length];
@@ -54,7 +53,7 @@ public class DragstrUtilsTest {
     }
 
     private void testRepeatBestPeriodAndCount(final byte[] sequence, final int maxPeriod, final int start, final int end, final boolean includeUpstream, final Random rdn) {
-        final DragstrUtils.STRSequenceAnalyzer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod,  includeUpstream);
+        final DragstrReadSTRAnalizer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod,  includeUpstream);
         if (start == 0 && end == sequence.length && rdn.nextDouble() <= 0.5) { // sometimes use the margin free method when applies to test it.
             rpc.load(sequence);
         } else {

@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -62,7 +63,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 
 //    @Override TODO unify the two calling infrastructures
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data, byte[] paddedReference, int offsetForRefIntoEvent, final DragstrUtils.STRSequenceAnalyzer dragstrs) {
+    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data, byte[] paddedReference, int offsetForRefIntoEvent, final DragstrReferenceSTRs dragstrs) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 
@@ -74,8 +75,8 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 
         double api;
         if (dragstrs !=  null) {
-            final int period = dragstrs.mostRepeatedPeriod(offsetForRefIntoEvent + 1 );
-            final int repeats = dragstrs.numberOfMostRepeats(offsetForRefIntoEvent + 1);
+            final int period = dragstrs.period(offsetForRefIntoEvent + 1 );
+            final int repeats = dragstrs.repeatLength(offsetForRefIntoEvent + 1);
             api = dragstrParams.api(period, repeats);
 //            System.out.println("API found: "+ api +" with period used: "+period+"  and repeats: "+repeats);
         } else {

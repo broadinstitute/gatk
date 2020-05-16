@@ -86,7 +86,7 @@ public final class ReadThreadingAssembler {
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
         this.generateSeqGraph = !useLinkedDebrujinGraphs;
-        this.pruneBeforeCycleCounting = enableLegacyGraphCycleDetection;
+        this.pruneBeforeCycleCounting = !enableLegacyGraphCycleDetection;
         if (!generateSeqGraph) {
             logger.error("JunctionTreeLinkedDeBruinGraph is enabled.\n This is an experimental assembly graph mode that has not been fully validated\n\n");
         }
