@@ -73,7 +73,4 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
 
     @ArgumentCollection
     public PairHMMNativeArgumentCollection pairHMMNativeArgs = new PairHMMNativeArgumentCollection();
-
-    @Argument(fullName="dont-consider-upstream-bases-in-reference-str", optional = true, doc ="ignore up-stream bases when determining an str period and lenght in a reference position")
-    public boolean dontConsiderUptreamBasesWhenCalculatingStrOnReference;
 }
