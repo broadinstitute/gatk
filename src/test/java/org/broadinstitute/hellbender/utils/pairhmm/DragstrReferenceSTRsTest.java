@@ -12,6 +12,23 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 
+/**
+ * Tool to figure out the period and repeat-length (in units) of STRs in a reference sequence.
+ * <p>
+ *    The period and repeat-length of a reference sequence position is determined as follow.
+ *    The STR unit is solelly determined by the sequence from that base onwards.
+ * </p>
+ * <p>
+ *     If the backward base sequence contains additional copies of that unit these are added to the repeat-length.
+ * </p>
+ * <p>
+ *     However a larger repeat-length for a different STR unit upstream would effectively being ignored.
+ * </p>
+ * <p>
+ *     All sites period and forward repeat-length are determined in a single pass thru the sequence (O(L * MaxPeriod)).
+ *     The backward additional unit count is calculated on demand.
+ * </p>
+ */
 public class DragstrReferenceSTRsTest {
 
     @Test(dataProvider = "testSequenceAndMaxPeriodData")
@@ -32,12 +49,17 @@ public class DragstrReferenceSTRsTest {
         }
     }
 
-    @Test(dataProvider = "testSequenceAndMaxPeriodDataWithStartEnd")
-    public void testRepeatBestPeriodAndCountPartialSequence(final int start, final int end, final int maxPeriod, final String sequenceStr) {
-        for (int position = start; position < end; position++) {
-            final byte[] sequence = sequenceStr.getBytes();
-            final DragstrReferenceSTRs subject = DragstrReferenceSTRs.of(sequence, 0, sequence.length, maxPeriod);
-            assertCorrectness(subject, sequenceStr, maxPeriod, start, end);
+    @Test(dataProvider = "testSequenceAndMaxPeriodData")
+    public void testRepeatBestPeriodAndCountPartialSequence(final String seqStr, final int maxPeriod) {
+        for (int start = 0; start <= 6; start++) {
+            for (int end = 7; end < seqStr.length(); end++) {
+                final DragstrReferenceSTRs partialSubject = DragstrReferenceSTRs.of(seqStr.getBytes(), start, end, maxPeriod);
+                for (int pos = start; pos < end; pos++) {
+                    final int[] result = calculateBestPeriodAndRepeat(seqStr, pos, maxPeriod);
+                    Assert.assertEquals(result[0], partialSubject.period(pos));
+                    Assert.assertEquals(result[1], partialSubject.repeatLength(pos));
+                }
+            }
         }
     }
 
@@ -107,7 +129,8 @@ public class DragstrReferenceSTRsTest {
                 "AAAAA",
                 "A",
                 "",
-                "ACGTAGATCTGTAGCACTATCGAGC"};
+                "ACGTAGATCTGTAGCACTATCGAGC",
+                "TACAACACAATACAATACAATACAATACAATACAAATACAAATACAATACAATACAATACAATACAATACAATACAATAT"};
         final Random rdn = new Random(131);
         final RandomDNA rdnDNA = new RandomDNA(rdn);
 
@@ -134,22 +157,5 @@ public class DragstrReferenceSTRsTest {
             result.add(new Object[] { randomSequence, Math.max(5, randomSequence.length() / 4 ) });
         }
         return result.toArray(new Object[result.size()][]);
-    }
-
-    @DataProvider
-    public static Object[][] testSequenceAndMaxPeriodDataWithStartEnd() {
-        final Object[][] baseData = testSequenceAndMaxPeriodData();
-        final Random rdn = new Random(313111241);
-        final List<Object[]>  all = Arrays.stream(baseData)
-                .flatMap(in -> {
-                    final String seq = (String) in[0];
-                    final int maxPeriod = (Integer) in[1];
-                    return IntStream.range(0, seq.length())
-                            .boxed()
-                            .flatMap(start -> IntStream.range(start, seq.length() + 1).mapToObj(end -> new int[] {start, end}))
-                            .map(startEnd -> new Object[] {startEnd[0], startEnd[1], maxPeriod, seq});
-                }).collect(Collectors.toList());
-        Collections.shuffle(all, rdn);
-        return all.subList(0, 10000).toArray(new Object[10000][]);
     }
 }

@@ -66,43 +66,50 @@ public class DragstrReferenceSTRs {
         final int[] periods = new int[end - start];
         Arrays.fill(periods, 1);
         for (int period = 2; period <= maxPeriod; period++) {
-            if (sequence.length < period << 1) {
+            if (sequence.length  < period << 1) {
                 break;
             }
-            int position, matchesRun, carryBack, rightMargin;
+            int position, remainingToMatchUnit, carryBack, rightMargin, positionPlusPeriod, resultArrayOffset;
 
             // We first find the right-margin enclosing the last repeat that would match
             // a prospective repeat unit within [start,end):
             rightMargin = Math.min(end + period, sequence.length) - 1;
-            position = rightMargin - period;
+            final int rightMostStart = position = rightMargin - period;
+            remainingToMatchUnit = period;
+            carryBack = 1;
             for (; rightMargin < sequence.length; rightMargin++) {
-                if (sequence[position] != sequence[rightMargin]) {
+                if (sequence[position++] != sequence[rightMargin]) {
                     break;
+                } else if (--remainingToMatchUnit == 0) {
+                    carryBack++;
+                    remainingToMatchUnit = period;
                 }
             }
 
             // then we work our way backwards carrying on number of conseqcutive matching units
             // and updating.
+            // carryBack and matchesRun has been updated in the forward pass so they correspond to the value
+            // at rightMostStart.
+            if ((resultArrayOffset = rightMostStart - start) >= 0 && carryBack > repeats[resultArrayOffset]) {
+                repeats[resultArrayOffset] = carryBack;
+                periods[resultArrayOffset] = period;
+            }
 
-            // Is a bit silly that we revisit each position between margin and end since the repeats&periods array
-            // would be updated but it simplifies the initialization of these three vars just below. Could be optimized.
-            position = rightMargin - period - 1;
-            carryBack = 1;
-            matchesRun = 0;
             boolean inZone = false;
-            for (int compareWithPosition = position + period, offset = position - start; position >= start; position--, compareWithPosition--, offset--) {
-                if (sequence[position] == sequence[compareWithPosition]) {
-                    if (++matchesRun == period) { // have we matched yet another unit of length period?
+            for (position = rightMostStart - 1, positionPlusPeriod = position + period,
+                 resultArrayOffset = position - start; position >= start; position--, positionPlusPeriod--, resultArrayOffset--) {
+                if (sequence[position] == sequence[positionPlusPeriod]) {
+                    if (--remainingToMatchUnit == 0) { // have we matched yet another unit of length period?
                         ++carryBack;
-                        matchesRun = 0;
+                        remainingToMatchUnit = period;
                     }
-                    if ((inZone |= position < end) && carryBack > repeats[offset]) {
-                        repeats[offset] = carryBack;
-                        periods[offset] = period;
+                    if ((inZone |= position < end) && carryBack > repeats[resultArrayOffset]) {
+                        repeats[resultArrayOffset] = carryBack;
+                        periods[resultArrayOffset] = period;
                     }
                 } else {
                     carryBack = 1;
-                    matchesRun = 0;
+                    remainingToMatchUnit = period;
                 }
             }
         }
