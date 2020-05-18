@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrReadSTRAnalizer;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
@@ -80,9 +81,9 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<StandardCall
 
             final byte[] bases = referenceContext.getBases(interval);
             final int startOffset = vc.getStart() - interval.getStart();
-            final DragstrReadSTRAnalizer analyzer = DragstrUtils.repeatPeriodAndCounts(bases, dragstrParams.maximumPeriod(), startOffset, startOffset + 1, true);
-            final int period = analyzer.mostRepeatedPeriod(startOffset);
-            final int repeats = analyzer.numberOfMostRepeats(startOffset);
+            final DragstrReferenceSTRs analyzer = DragstrReferenceSTRs.of(bases, startOffset, startOffset + 1, dragstrParams.maximumPeriod());
+            final int period = analyzer.period(startOffset);
+            final int repeats = analyzer.repeatLength(startOffset);
 
             final GenotypePriorCalculator gpc = SimpleGenotypePriorCalculator.givenDragstrParams(dragstrParams, period, repeats, Math.log10(getConfiguration().genotypeArgs.snpHeterozygosity), 2.0);
             return  calculateGenotypes(vc, gpc, Collections.emptyList());
