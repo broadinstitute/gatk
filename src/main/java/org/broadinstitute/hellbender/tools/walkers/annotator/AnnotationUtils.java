@@ -60,12 +60,29 @@ public final class AnnotationUtils {
     }
 
     /**
-     * Helper function to convert a comma-separated String (such as a vc.getAttrbute().toString() output) to a List of Strings
-     * @param somethingList the allele-specific annotations string; may have brackets
-     * @return a list of allele-specific annotation entries
+     * Extract a list of strings from a delimited annotation string (which may or may not have spaces and brackets)
+     * @param somethingList input string
+     * @param isRaw does the annotation use the delimiter for raw allele-specific annotations
+     * @return a list of allele-specific annotation entries as Strings
      */
-    public static List<String> decodeAnyASList( final String somethingList) {
-        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, ""), ALLELE_SPECIFIC_REDUCED_DELIM));
+    public static List<String> decodeAnyASList( final String somethingList, final boolean isRaw) {
+        if (isRaw) {
+            return decodeAnyASList(somethingList, ALLELE_SPECIFIC_RAW_DELIM);
+        } else {
+            return decodeAnyASList(somethingList, ALLELE_SPECIFIC_REDUCED_DELIM);
+        }
+    }
+
+
+    /**
+     * Helper function to convert a delimited String (which may or may not have spaces and brackets,
+     * such as a vc.getAttrbute().toString() output) to a List of Strings
+     * @param somethingList the allele-specific annotations string; may have brackets
+     * @param splitDelim the delimiter that separates list entries
+     * @return a list of allele-specific annotation entries as Strings
+     */
+    public static List<String> decodeAnyASList( final String somethingList, final String splitDelim) {
+        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, "").replaceAll(" ", ""), splitDelim));
     }
 
     /**
@@ -89,7 +106,7 @@ public final class AnnotationUtils {
         if (rawDataString.startsWith("[")) {
             rawDataString = rawDataString.substring(1, rawDataString.length() - 1).replaceAll("\\s", "");
         }
-        return Arrays.asList(rawDataString.split(ALLELE_SPECIFIC_SPLIT_REGEX));
+        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(rawDataString, ALLELE_SPECIFIC_RAW_DELIM));
     }
 
     static String generateMissingDataWarning(final VariantContext vc, final Genotype g, final AlleleLikelihoods<GATKRead, Allele> likelihoods) {

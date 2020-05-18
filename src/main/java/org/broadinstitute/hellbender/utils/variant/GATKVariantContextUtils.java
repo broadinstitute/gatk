@@ -1499,7 +1499,7 @@ public final class GATKVariantContextUtils {
                 String filters = (String) attributes.get(GATKVCFConstants.AS_FILTER_STATUS_KEY);
                 // checking for . and PASS should be able to be removed. these were temporarily used to indicate no allele specific filter
                 if (filters != null && !filters.isEmpty() && !filters.equals(VCFConstants.EMPTY_INFO_FIELD) && !filters.equals(GATKVCFConstants.SITE_LEVEL_FILTERS) && !filters.equals((VCFConstants.PASSES_FILTERS_v4))) {
-                    AnnotationUtils.decodeAnyASList(filters).stream().forEach(filter -> builder.filter(filter));
+                    AnnotationUtils.decodeAnyASList(filters, AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM).stream().forEach(filter -> builder.filter(filter));
                 }
 
                 int alleleIndex = vc.getAlleleIndex(alt);

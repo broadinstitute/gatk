@@ -245,7 +245,7 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         vcfWriter = createVCFWriter(outputFile);
         if (outputDbName != null) {
-            annotationDatabaseWriter = createVCFWriter(new File(outputDbName));
+            annotationDatabaseWriter = createVCFWriter(new File(outputDbName).toPath(), true);
         }
 
         final Set<String> sampleNameSet = samples.asSetOfSamples();
@@ -269,7 +269,7 @@ public final class GnarlyGenotyper extends VariantWalker {
         SimpleInterval variantStart = new SimpleInterval(variant.getContig(), variant.getStart(), variant.getStart());
         //return early if there's no non-symbolic ALT since GDB already did the merging
         if ( !variant.isVariant() || !GATKVariantContextUtils.isProperlyPolymorphic(variant)
-                || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0
+                || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,-1) == 0
                 || (onlyOutputCallsStartingInIntervals && !intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
             if (keepAllSites) {
                 VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));  //don't fill in QUAL here because there's no alt data

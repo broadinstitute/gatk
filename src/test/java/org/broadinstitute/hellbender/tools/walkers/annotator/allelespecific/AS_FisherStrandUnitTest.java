@@ -12,7 +12,7 @@ import static org.testng.Assert.*;
  * This class exists in order to run GATK3 concordance tests using the framework of ReducibleAnnotationBaseTest
  * Created by emeryj on 8/11/17.
  */
-public class AS_FisherStrandUnitTest extends ReducibleAnnotationBaseTest {
+public class AS_FisherStrandUnitTest extends AS_StrandBiasUnitTest {
 
     @Override
     protected List<Annotation> getAnnotationsToUse() {

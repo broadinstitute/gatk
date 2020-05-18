@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.annotations.Test;
 
 import java.io.File;
