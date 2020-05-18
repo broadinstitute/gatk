@@ -18,7 +18,7 @@ public class DragstrUtilsTest {
     @Test(dataProvider = "testSequenceAndMaxPeriodData")
     public void testRepeatPeriodAndCount(final String sequenceStr, final int maxPeriod, final boolean includeUpstream) {
         final byte[] sequence = sequenceStr.getBytes();
-        final DragstrReadSTRAnalizer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod, includeUpstream);
+        final DragstrReadSTRAnalizer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod);
         rpc.load(sequence);
         final Random rdn = new Random(Arrays.hashCode(sequence) * 31 + maxPeriod);
         final int[] positions = new int[sequence.length];
@@ -31,33 +31,33 @@ public class DragstrUtilsTest {
             ArrayUtils.shuffle(periods, rdn);
             for (final int period : periods) {
                 final int repeatCount = rpc.numberOfRepeats(position, period);
-                final int expected = calculate(sequence, position, period, includeUpstream);
+                final int expected = calculate(sequence, position, period);
                 Assert.assertEquals(repeatCount, expected, new String(sequence) + " " + position + " " + period);
             }
         }
     }
 
     @Test(dataProvider = "testSequenceAndMaxPeriodData")
-    public void testRepeatBestPeriodAndCount(final String sequenceStr, final int maxPeriod, final boolean includeUpstream) {
+    public void testRepeatBestPeriodAndCount(final String sequenceStr, final int maxPeriod) {
         final Random rdn = new Random(sequenceStr.hashCode() * 31 + maxPeriod);
 
-        testRepeatBestPeriodAndCount(sequenceStr.getBytes(), maxPeriod, 0, sequenceStr.length(), includeUpstream, rdn);
-        testRepeatBestPeriodAndCount(sequenceStr.getBytes(), maxPeriod, 0, 0, includeUpstream, rdn);
+        testRepeatBestPeriodAndCount(sequenceStr.getBytes(), maxPeriod, 0, sequenceStr.length(), rdn);
+        testRepeatBestPeriodAndCount(sequenceStr.getBytes(), maxPeriod, 0, 0, rdn);
         // random start and ends:
         final int randomTries =  Math.min(sequenceStr.length() * sequenceStr.length() * 4, 100);
         for (int i = 0; i < randomTries; i++) {
             final int start = rdn.nextInt(sequenceStr.length());
             final int end = rdn.nextInt(sequenceStr.length() - start) + start;
-            testRepeatBestPeriodAndCount(sequenceStr.getBytes(), maxPeriod, start, end, includeUpstream, rdn);
+            testRepeatBestPeriodAndCount(sequenceStr.getBytes(), maxPeriod, start, end, rdn);
         }
     }
 
-    private void testRepeatBestPeriodAndCount(final byte[] sequence, final int maxPeriod, final int start, final int end, final boolean includeUpstream, final Random rdn) {
-        final DragstrReadSTRAnalizer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod,  includeUpstream);
+    private void testRepeatBestPeriodAndCount(final byte[] sequence, final int maxPeriod, final int start, final int end, final Random rdn) {
+        final DragstrReadSTRAnalizer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod);
         if (start == 0 && end == sequence.length && rdn.nextDouble() <= 0.5) { // sometimes use the margin free method when applies to test it.
             rpc.load(sequence);
         } else {
-            rpc.load(sequence, start, end);
+            rpc.load(sequence);
         }
         final int[] positions = new int[end - start];
         for (int i = 0; i < positions.length; i++) {
@@ -65,13 +65,13 @@ public class DragstrUtilsTest {
         }
         ArrayUtils.shuffle(positions, rdn);
         for (int position : positions) {
-                final int[] expected = calculateBestPeriodAndRepeat(sequence, position, maxPeriod, includeUpstream);
+                final int[] expected = calculateBestPeriodAndRepeat(sequence, position, maxPeriod);
                 final int bestPeriod = rpc.mostRepeatedPeriod(position);
                 final int bestRepeat = rpc.numberOfMostRepeats(position);
                 try {
                     Assert.assertEquals(bestPeriod, expected[0], new String(sequence) + " " + position + " " + start + " " + end);
                 } catch (final AssertionError err) {
-                    rpc.load(sequence, start, end);
+                    rpc.load(sequence);
                     throw err;
                 }
                 Assert.assertEquals(bestRepeat, expected[1], new String(sequence) + " " + position);
@@ -88,12 +88,12 @@ public class DragstrUtilsTest {
      * @param maxPeriod
      * @return
      */
-    public static int[] calculateBestPeriodAndRepeat(final byte[] sequence, final int position, final int maxPeriod, final boolean includeUpstream) {
+    public static int[] calculateBestPeriodAndRepeat(final byte[] sequence, final int position, final int maxPeriod) {
         final int[] result = new int[2];
         result[0] = 1;
-        result[1] = calculate(sequence, position, 1, includeUpstream);
+        result[1] = calculate(sequence, position, 1);
         for (int period = 2; period <= maxPeriod; period++) {
-            final int candidate = calculate(sequence, position, period, includeUpstream);
+            final int candidate = calculate(sequence, position, period);
             if (candidate > result[1]) {
                 result[0] = period;
                 result[1] = candidate;
@@ -102,7 +102,7 @@ public class DragstrUtilsTest {
         return result;
     }
 
-    public static int calculate(final byte[] sequence, final int position, final int period, final boolean includeUpstream) {
+    public static int calculate(final byte[] sequence, final int position, final int period) {
         if (period > sequence.length) {
             return 0;
         }
@@ -120,7 +120,7 @@ public class DragstrUtilsTest {
                 forward++;
             }
             int backward = 0;
-            if (includeUpstream) {
+
                 for (int offset = start + i - period; offset >= 0; offset -= period) {
                     final byte[] other = Arrays.copyOfRange(sequence, offset, offset + period);
                     if (!Arrays.equals(unit, other)) {
@@ -128,7 +128,6 @@ public class DragstrUtilsTest {
                     }
                     backward++;
                 }
-            }
             final int candidate = forward + backward + 1;
             if (candidate > max) {
                 max = candidate;
@@ -168,12 +167,10 @@ public class DragstrUtilsTest {
             randomSequences[i] = new String(bases);
         }
         for (final String fixSequence : fixSequences) {
-            result.add(new Object[] { fixSequence, Math.max(5, fixSequence.length() / 4), true });
-            result.add(new Object[] { fixSequence, Math.max(5, fixSequence.length() / 4), false });
+            result.add(new Object[] { fixSequence, Math.max(5, fixSequence.length() / 4)});
         }
         for (final String randomSequence : randomSequences) {
-            result.add(new Object[] { randomSequence, Math.max(5, randomSequence.length() / 4 ), true});
-            result.add(new Object[] { randomSequence, Math.max(5, randomSequence.length() / 4 ), false});
+            result.add(new Object[] { randomSequence, Math.max(5, randomSequence.length() / 4 )});
         }
         return result.toArray(new Object[result.size()][]);
     }

@@ -11,21 +11,16 @@ import java.util.Collection;
 
 public class DragstrUtils {
 
-    public static DragstrReadSTRAnalizer repeatPeriodAndCounts(final int maxSequenceLength, final int maxPeriod, final boolean considerUpstream) {
-        return new DragstrReadSTRAnalizer(maxSequenceLength, maxPeriod, considerUpstream);
+    public static DragstrReadSTRAnalizer repeatPeriodAndCounts(final int maxSequenceLength, final int maxPeriod) {
+        return new DragstrReadSTRAnalizer(maxSequenceLength, maxPeriod);
     }
 
     public static DragstrReadSTRAnalizer repeatPeriodAndCounts(final byte[] sequence, final int maxPeriod, final boolean considerUpstream) {
-        final DragstrReadSTRAnalizer result = new DragstrReadSTRAnalizer(sequence.length, maxPeriod, considerUpstream);
+        final DragstrReadSTRAnalizer result = new DragstrReadSTRAnalizer(sequence.length, maxPeriod);
         result.load(sequence);
         return result;
     }
 
-    public static DragstrReadSTRAnalizer repeatPeriodAndCounts(final byte[] sequence, final int start, final int stop, final int maxPeriod, final boolean considerUpstream) {
-        final DragstrReadSTRAnalizer result = new DragstrReadSTRAnalizer(sequence.length, maxPeriod, considerUpstream);
-        result.load(sequence, start, stop);
-        return result;
-    }
 
     public static Collection<? extends VCFHeaderLine> vcfHeaderLines() {
         return Collections.list(new VCFInfoHeaderLine(DragstrConstants.DRAGSTRINFO_KEY, 2, VCFHeaderLineType.Integer, "Indicates the period and repeat count"),
