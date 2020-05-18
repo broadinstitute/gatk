@@ -409,10 +409,12 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "--enable-legacy-graph-cycle-detection",
                 "--soft-clip-low-quality-ends",
                 "--use-posteriors-to-calculate-qual",
-                "-L", "chr1:36858484-36860488",
-                "--allele-informative-reads-overlap-margin", "0",
+                "-L", "chr1:55055736-55056724",
+                "--padding-around-indels", "150",
+                "--allele-informative-reads-overlap-margin", "1",
                 "--disable-symmetric-hmm-normalizing",
                 "--minimum-mapping-quality", "1",
+                "--disable-spanning-event-genotyping",
                 "-O", output.getAbsolutePath()
         };
         runCommandLine(args);

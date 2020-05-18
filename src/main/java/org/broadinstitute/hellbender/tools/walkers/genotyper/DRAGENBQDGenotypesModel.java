@@ -17,10 +17,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -163,7 +160,7 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             }
             if (computeFRD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
                 FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, ployidyModelGenotypeLikelihoods,
-                        Stream.of(strandForward, strandReverse).flatMap(list -> list.stream()).filter(r -> r.getIndexInLikelihoodsObject() != -1).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
+                        Stream.of(strandForward, strandReverse).flatMap(Collection::stream).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
                         34.77, api, maxEffectiveDepthAdjustment, calculators);
 //                System.out.println("FRD results:");
 //                System.out.println(Arrays.toString(FRDCallResults));

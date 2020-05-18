@@ -231,9 +231,10 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 
         for(int fAlleleIndex = 0; fAlleleIndex < sampleLikelihoods.numberOfAlleles(); fAlleleIndex++) {
             // ignore symbolic alleles
-            if (sampleLikelihoods.getAllele(fAlleleIndex).isSymbolic() ) {
-                continue;
-            }
+            //TODO figure out what SHOULD happen at this site?
+//            if (sampleLikelihoods.getAllele(fAlleleIndex).isSymbolic() ) {
+//                continue;
+//            }
             final boolean isIndel = sampleLikelihoods.getAllele(fAlleleIndex).length() != refAllele.length();
             final int offsetForReadLikelihoodGivenAlleleIndex = alleleDataSize * fAlleleIndex + readCount;
 
@@ -253,6 +254,9 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 if (gtAlleleIndex == fAlleleIndex) {
                     continue;
                 }
+//                if (sampleLikelihoods.getAllele(fAlleleIndex).isSymbolic() ) {
+//                    continue;
+//                }
 
                 //This is crufty, it just so happens that the index of the homozygous genotype corresponds to the maximum genotype count per field.
                 //This should be pulled off as a calculator in some genotyping class.
@@ -263,10 +267,11 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 // TODO this will have to account for the indel priors later in its existance
                 final double gtAllelePrior = 0.0;
 
+                // TODO restore the critical thresholds
 //                System.out.println("\nForwards Strands: ");
-                final double[] maxLog10FForwardsStrand = computeFRDModelForStrandData(readContainers, c -> !c.isReverseStrand() , offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSortedForward, gtAllelePrior);
+                final double[] maxLog10FForwardsStrand = computeFRDModelForStrandData(readContainers, c -> !c.isReverseStrand() , offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted, gtAllelePrior);
 //                System.out.println("\nReverse Strands: ");
-                final double[] maxLog10FReverseStrand = computeFRDModelForStrandData(readContainers, c -> c.isReverseStrand(), offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSortedReverse, gtAllelePrior);
+                final double[] maxLog10FReverseStrand = computeFRDModelForStrandData(readContainers, c -> c.isReverseStrand(), offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted, gtAllelePrior);
 //                System.out.println("\nBoth Strands: ");
                 final double[] maxLog10FBothStrands = computeFRDModelForStrandData(readContainers, c -> true, offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted, gtAllelePrior);
 
@@ -333,6 +338,10 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 
             // iterate over the
             for (final DRAGENBQDGenotypesModel.DragenReadContainer container : positionSortedReads) {
+                if (container.getIndexInLikelihoodsObject() == -1) {
+                    continue;
+                }
+
                 final int readIndex = container.getIndexInLikelihoodsObject();
 
                 // Keep track of the aggregate support for the foreign allele
@@ -360,6 +369,9 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 
             // iterate over the containers again using the approximated beta constraint
             for (final DRAGENBQDGenotypesModel.DragenReadContainer container : positionSortedReads) {
+                if (container.getIndexInLikelihoodsObject() == -1) {
+                    continue;
+                }
                 final int readIndex = container.getIndexInLikelihoodsObject();
 
                 double lp_r_GT = readLikelihoodsForGT[readIndex] - MathUtils.log10(2);

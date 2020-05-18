@@ -421,7 +421,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             if (sampleValues[a][evidenceIndex] < worstLikelihoodCap) {
                 if (!hasWarned) {
 //                    System.out.println("For evidence "+evidenceBySampleIndex.get(sampleIndex).get(evidenceIndex)+" replace allele "+a+" hmm score of "+sampleValues[a][evidenceIndex]+" with "+worstLikelihoodCap);
-                    hasWarned = true;
+//                    hasWarned = true;
                 }
                 sampleValues[a][evidenceIndex] = worstLikelihoodCap;
             }
@@ -710,7 +710,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
                 new IndexedAlleleList(newAlleles),
                 samples,
                 newEvidenceBySampleIndex,
-                null, // TODO Until somebody decides to use this for an annotation I will resolve to delete this in all transformations except for the one I care about for DRAGEN-GATK
+                filteredEvidenceBySampleIndex,
                 newLikelihoodValues);
         result.isNaturalLog = isNaturalLog;
         return result;
@@ -1118,7 +1118,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             removeEvidenceByIndex(s, removeIndices);
 
             // If applicable also apply the predicate to the filters
-            final List<EVIDENCE> sampleFiltered = filteredEvidenceBySampleIndex.get(s).stream().filter(e -> !predicate.test(e)).collect(Collectors.toList());
+            final List<EVIDENCE> sampleFiltered = filteredEvidenceBySampleIndex.get(s).stream().filter(e -> predicate.test(e)).collect(Collectors.toList());
             filteredEvidenceBySampleIndex.set(s, sampleFiltered);
         }
     }
