@@ -256,6 +256,11 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
                 }
             }
         }
+        if (actualLines.hasNext()) {
+            Assert.fail("Finished parsing expected file and found lines remaining in the actual file  "+actualFile.getName());
+        } else if (expectedLines.hasNext()) {
+            Assert.fail("Reached end of parsing expected file lines and found lines remaining "+expectedFile.getName());
+        }
     }
 
 

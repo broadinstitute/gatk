@@ -345,6 +345,7 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
                 for (DoCOutputType.Partition p : partitionTypes) {
                     // Write the per-interval depth information as necessary
                     final DepthOfCoverageStats coverageByAggregationPartitionType = partitionerToRemove.getCoverageByAggregationType(p);
+                    writer.writePerIntervalDepthInformation(p, (SimpleInterval) activeInterval, coverageByAggregationPartitionType, globalIdentifierMap.get(p));
 
                     // Create a new table if necessary
                     if (!perIntervalStatisticsAggregationByPartitioning.containsKey(p)) {
