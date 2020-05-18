@@ -229,6 +229,11 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
                     Assert.assertEquals(actualLine.stream().sorted().iterator(), expectedLine.stream().sorted().iterator(), "Base output files disagreed at line "+linecount);
                     linecount++;
                 }
+                if (actualLines.hasNext()) {
+                    Assert.fail("Finished parsing expected file and found lines remaining in the actual file  "+actualFile.getName());
+                } else if (expectedLines.hasNext()) {
+                    Assert.fail("Reached end of parsing expected file lines and found lines remaining "+expectedFile.getName());
+                }
 
             } else {
                 compareLinesByColumn(actualFile, expectedFile, actualHeader, expectedHeader, actualLines, expectedLines);
