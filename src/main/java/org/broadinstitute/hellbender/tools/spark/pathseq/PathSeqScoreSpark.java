@@ -133,12 +133,10 @@ public class PathSeqScoreSpark extends GATKSparkTool {
 
     private int recommendedNumReducers = 0;
 
-    //TODO: fix this
     private Tuple2<JavaRDD<GATKRead>, SAMFileHeader> readInputWithHeader(final String path,
                                                                          final ReadsSparkSource readsSource) {
         if (path != null) {
             if (BucketUtils.fileExists(path)) {
-                //TODO: fix this
                 recommendedNumReducers += PSUtils.pathseqGetRecommendedNumReducers(path, numReducers, getTargetPartitionSize());
                 final SAMFileHeader header = readsSource.getHeader(new GATKPathSpecifier(path), null);
                 JavaRDD<GATKRead> reads = readsSource.getParallelReads(new GATKPathSpecifier(path), null, null, bamPartitionSplitSize, useNio);

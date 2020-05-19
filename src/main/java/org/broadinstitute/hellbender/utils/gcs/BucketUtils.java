@@ -275,7 +275,6 @@ public final class BucketUtils {
      *  @param path The folder where you want the file to be (local, GCS or HDFS).
      *
      */
-    //TODO: use GATKPathSpecifier
     public static boolean fileExists(String path) {
         final boolean MAYBE = false;
         try (InputStream inputStream = openFile(path)) {
@@ -300,7 +299,6 @@ public final class BucketUtils {
      * @return the file size in bytes
      * @throws IOException
      */
-    //TODO: fix me
     public static long fileSize(String path) throws IOException {
         if (isGcsUrl(path)) {
             java.nio.file.Path p = getPathOnGcs(path);
@@ -326,7 +324,6 @@ public final class BucketUtils {
         try {
             // GCS case (would work with local too)
             if (isGcsUrl(pathSpecifier)) {
-                //TODO: fix/remove getPathOnGcs...
                 java.nio.file.Path p = getPathOnGcs(pathSpecifier.getRawInputString());
                 if (Files.isRegularFile(p)) {
                     return Files.size(p);
