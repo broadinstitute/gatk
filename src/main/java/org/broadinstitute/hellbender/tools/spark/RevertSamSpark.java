@@ -18,6 +18,7 @@ import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -214,7 +215,7 @@ public class RevertSamSpark extends GATKSparkTool {
         sam("Generate SAM files."),
         bam("Generate BAM files."),
         cram("Generate CRAM files."),
-        dynamic("Generate files based on the extention of input.");
+        dynamic("Generate files based on the extension of input.");
 
         final String description;
 
@@ -269,7 +270,7 @@ public class RevertSamSpark extends GATKSparkTool {
         ////////////////////////////////////////////////////////////////////////////
         Map<String, Path> writerMap = getOutputMap(outputMap,
                                                   output,
-                                                  getDefaultExtension(readArguments.getReadPathSpecifiers().get(0).getRawInputString(), outputByReadgroupFileFormat),
+                                                  getDefaultExtension(readArguments.getReadPathSpecifiers().get(0), outputByReadgroupFileFormat),
                                                   localHeader.getReadGroups(),
                                                   outputByReadGroup);
 
@@ -498,12 +499,12 @@ public class RevertSamSpark extends GATKSparkTool {
     }
 
     @VisibleForTesting
-    static String getDefaultExtension(final String input, final FileType setting) {
+    static String getDefaultExtension(final GATKPathSpecifier inputPath, final FileType setting) {
         if (setting == FileType.dynamic) {
-            if (input.endsWith(FileExtensions.SAM)) {
+            if (inputPath.isSam()) {
                 return FileExtensions.SAM;
             }
-            if (input.endsWith(FileExtensions.CRAM)) {
+            if (inputPath.isCram()) {
                 throw new UserException.UnimplementedFeature("Input file is a cram. This is currently unsupported for this tool");
             }
             return FileExtensions.BAM;

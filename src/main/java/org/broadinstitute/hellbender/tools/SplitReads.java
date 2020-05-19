@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.util.IOUtil;
-import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -22,7 +20,6 @@ import org.broadinstitute.hellbender.tools.readersplitters.SampleNameSplitter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -80,7 +77,7 @@ public final class SplitReads extends ReadWalker {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "The directory to output SAM/BAM/CRAM files."
     )
-    public File OUTPUT_DIRECTORY = new File("");
+    public GATKPathSpecifier OUTPUT_DIRECTORY;
 
     @Argument(
             fullName = SAMPLE_LONG_NAME,
@@ -108,7 +105,7 @@ public final class SplitReads extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        IOUtil.assertDirectoryIsWritable(OUTPUT_DIRECTORY);
+        IOUtil.assertDirectoryIsWritable(OUTPUT_DIRECTORY.toPath());
         if ( readArguments.getReadPathSpecifiers().size() != 1 ) {
             throw new UserException("This tool only accepts a single SAM/BAM/CRAM as input");
         }
@@ -146,20 +143,15 @@ public final class SplitReads extends ReadWalker {
             // attribute for which a given read/group has no value; anything else indicates a coding error
             throw new GATKException.ShouldNeverReachHereException("Unrecognized attribute value found: " + attributeValue);
         }
-        final SAMFileWriterFactory samFileWriterFactory = new SAMFileWriterFactory();
-        final SAMFileHeader samFileHeaderIn = getHeaderForReads();
-
-        return prepareSAMFileWriter(samFileWriterFactory, samFileHeaderIn, attributeValue);
+        return prepareSAMFileWriter(attributeValue);
     }
 
     //  Create a new output file and prepare and return the corresponding SAMFileGATKReadWriter.
-    private SAMFileGATKReadWriter prepareSAMFileWriter(
-            SAMFileWriterFactory samFileWriterFactory,
-            SAMFileHeader samFileHeaderIn,
-            final String keyName) {
-        final String base = FilenameUtils.getBaseName(readArguments.getReadPathSpecifiers().get(0).getURI().getSchemeSpecificPart());
-        final String extension = "." + FilenameUtils.getExtension(readArguments.getReadPathSpecifiers().get(0).getURI().getSchemeSpecificPart());
-        final GATKPathSpecifier outFile = new GATKPathSpecifier(new File(OUTPUT_DIRECTORY, base + keyName + extension).getAbsolutePath());
+    private SAMFileGATKReadWriter prepareSAMFileWriter(final String keyName) {
+        final GATKPathSpecifier pathSpec = readArguments.getReadPathSpecifiers().get(0);
+        final GATKPathSpecifier outFile = new GATKPathSpecifier(
+                OUTPUT_DIRECTORY.toPath().resolve(pathSpec.getBaseName() + keyName + pathSpec.getExtension()).toString()
+        );
         return createSAMWriter(outFile, true);
     }
 
@@ -171,7 +163,6 @@ public final class SplitReads extends ReadWalker {
     private Map<String, SAMFileGATKReadWriter> createWriters(final List<ReaderSplitter<?>> splitters) {
         final Map<String, SAMFileGATKReadWriter> outs = new LinkedHashMap<>();
 
-        final SAMFileWriterFactory samFileWriterFactory = new SAMFileWriterFactory();
         final SAMFileHeader samFileHeaderIn = getHeaderForReads();
 
         // Build up a list of key options at each level.
@@ -181,7 +172,7 @@ public final class SplitReads extends ReadWalker {
 
         // For every combination of keys, add a SAMFileWriter.
         addKey(splitKeys, 0, "", key -> {
-            outs.put(key, prepareSAMFileWriter(samFileWriterFactory, samFileHeaderIn, key));
+            outs.put(key, prepareSAMFileWriter(key));
         });
 
         return outs;
