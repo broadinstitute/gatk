@@ -440,6 +440,20 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
         Assert.assertEquals(new GATKPathSpecifier(referenceSpec).isFasta(), expectedIsFasta);
     }
 
+    @DataProvider(name="isHadoopURLTestCases")
+    public Object[][] isHadoopURLTestCases() {
+        return new Object[][] {
+                { GATKPathSpecifier.HDFS_SCHEME + "://someFile", true },
+                { "file://someFile.bam", false },
+                { "someFile.bam", false },
+        };
+    }
+
+    @Test(dataProvider = "isHadoopURLTestCases")
+    public void testIsHadoopURL(final String referenceSpec, final boolean expectedIsHadoop) {
+        Assert.assertEquals(new GATKPathSpecifier(referenceSpec).isHadoopURL(), expectedIsHadoop);
+    }
+
     /**
      * Return the string resulting from joining the individual components using the local default
      * file system separator.
