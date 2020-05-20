@@ -252,7 +252,10 @@ class PloidyModel(GeneralizedContinuousModel):
                       * ploidy_k.dimshuffle('x', 'x', 0))
         mu_den_sjk = gamma_rest_sj.dimshuffle(0, 1, 'x') + mu_num_sjk
         eps_mapping_j = eps_mapping * t_j / tt.sum(t_j)  # average number of reads erroneously mapped to contig j
-        mu_sjk = ((1.0 - eps_mapping) * (mu_num_sjk / mu_den_sjk)
+
+        # the switch is required for a single contig edge case
+        mu_ratio_sjk = tt.switch(tt.eq(mu_den_sjk, 0.0), 0.0, mu_num_sjk / mu_den_sjk)
+        mu_sjk = ((1.0 - eps_mapping) * mu_ratio_sjk
                   + eps_mapping_j.dimshuffle('x', 0, 'x')) * n_s.dimshuffle(0, 'x', 'x')
 
         def _get_logp_sjk(_n_sj):
