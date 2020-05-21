@@ -1,18 +1,22 @@
 {
-  "PathSeqThreeStageWorkflow.sample_name": "sample",
-  "PathSeqThreeStageWorkflow.input_bam_or_cram": "gs://my-bucket/sample.bam",
+  "PathSeqPipeline.sample_name": "NA12878_24RG_med.hg380.7chicken0.3",
+  "PathSeqPipeline.input_bam_or_cram": "gs://gatk-best-practices/pathseq/contaminated-bam/NA12878_24RG_med.hg380.7chicken0.3.bam",
+  "PathSeqPipeline.input_bam_or_cram_index": "gs://gatk-best-practices/pathseq/contaminated-bam/NA12878_24RG_med.hg380.7chicken0.3.bam.bai",
+  "PathSeqPipeline.downsample": false,
+  "PathSeqPipeline.gather_filter_metrics": true,
+  "PathSeqPipeline.PathSeqFilter.is_host_aligned": false,
 
-  "PathSeqThreeStageWorkflow.is_host_aligned": false,
-  "PathSeqThreeStageWorkflow.min_clipped_read_length": 60,
-  "PathSeqThreeStageWorkflow.filter_duplicates": true,
-  "PathSeqThreeStageWorkflow.min_score_identity": 0.90,
-  "PathSeqThreeStageWorkflow.identity_margin": 0.02,
-  "PathSeqThreeStageWorkflow.divide_by_genome_length": true,
+  "PathSeqPipeline.PathSeqFilter.min_clipped_read_length": 60,
+  "PathSeqPipeline.PathSeqFilter.filter_duplicates": true,
+  "PathSeqPipeline.PathSeqScore.min_score_identity": 0.90,
+  "PathSeqPipeline.PathSeqScore.identity_margin": 0.02,
+  "PathSeqPipeline.PathSeqScore.divide_by_genome_length": true,
 
-  "PathSeqThreeStageWorkflow.filter_bwa_image": "gs://my-bucket/references/pathseq_host.fa.img",
-  "PathSeqThreeStageWorkflow.kmer_file": "gs://my-bucket/references/pathseq_host.bfi",
-  "PathSeqThreeStageWorkflow.microbe_bwa_image": "gs://my-bucket/references/pathseq_microbe.fa.img",
-  "PathSeqThreeStageWorkflow.microbe_dict": "gs://my-bucket/references/pathseq_microbe.dict",
-  "PathSeqThreeStageWorkflow.taxonomy_file": "gs://my-bucket/references/pathseq_taxonomy.db",
-  "PathSeqThreeStageWorkflow.gatk_docker": "broadinstitute/gatk:4.1.0.0"
+  "PathSeqPipeline.PathSeqFilter.kmer_file": "gs://gatk-best-practices/pathseq/resources/pathseq_host.bfi",
+  "PathSeqPipeline.PathSeqAlign.microbe_bwa_image": "gs://gatk-best-practices/pathseq/resources/meats.fa.img",
+  "PathSeqPipeline.PathSeqAlign.microbe_dict": "gs://gatk-best-practices/pathseq/resources/meats.dict",
+  "PathSeqPipeline.PathSeqFilter.filter_bwa_image": "gs://gatk-best-practices/pathseq/resources/pathseq_host.fa.img",
+  "PathSeqPipeline.PathSeqScore.taxonomy_file": "gs://gatk-best-practices/pathseq/resources/meats.min2k.db",
+
+  "PathSeqPipeline.gatk_docker": "broadinstitute/gatk:latest"
 }
