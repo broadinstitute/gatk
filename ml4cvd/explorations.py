@@ -16,7 +16,7 @@ from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 import h5py
 import numpy as np
 import pandas as pd
-from multiprocess import Pool, Value
+import multiprocess
 from tensorflow.keras.models import Model
 
 import matplotlib
@@ -701,30 +701,21 @@ def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
            len(obj.shape) == 1
 
 
-def _init_dict_of_tensors(tmaps: list) -> dict:
-    # Iterate through tmaps and initialize dict in which to store
-    # tensors, error types, and fpath
-    dict_of_tensors = defaultdict(dict)
-    for tm in tmaps:
-        if tm.channel_map:
-            for cm in tm.channel_map:
-                dict_of_tensors[tm.name].update({(tm.name, cm): list()})
-        else:
-            dict_of_tensors[tm.name].update({f'{tm.name}': list()})
-        dict_of_tensors[tm.name].update({f'error_type_{tm.name}': list()})
-        dict_of_tensors[tm.name].update({'fpath': list()})
-    return dict_of_tensors
-
-
-def _hd5_to_dict(tmaps, path, gen_name, tot):
+def _hd5_to_disk(tmaps, path, gen_name, tot, output_folder, id):
     with count.get_lock():
         i = count.value
-        if (i+1) % 500 == 0:
+        if i % 500 == 0:
             logging.info(f"{gen_name} - Parsing {i}/{tot} ({i/tot*100:.1f}%) done")
         count.value += 1
+
+    # each worker should write to it's own file
+    pid = multiprocess.current_process().pid
+    fpath = os.path.join(output_folder, id, f'tensors_all_union_{pid}.csv')
+    write_header = not os.path.isfile(fpath)
+
     try:
         with h5py.File(path, "r") as hd5:
-            dict_of_tensor_dicts = defaultdict(lambda: _init_dict_of_tensors(tmaps))
+            dict_of_tensor_dicts = defaultdict(dict)
             # Iterate through each tmap
             for tm in tmaps:
                 shape = tm.shape if tm.shape[0] is not None else tm.shape[1:]
@@ -734,7 +725,7 @@ def _hd5_to_dict(tmaps, path, gen_name, tot):
                         # If not a multi-tensor tensor, wrap in array to loop through
                         tensors = np.array([tensors])
                     for i, tensor in enumerate(tensors):
-                        if tensor == None:
+                        if tensor is None:
                             break
 
                         error_type = ''
@@ -743,113 +734,97 @@ def _hd5_to_dict(tmaps, path, gen_name, tot):
                             # Append tensor to dict
                             if tm.channel_map:
                                 for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
+                                    dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = tensor[tm.channel_map[cm]]
                             else:
                                 # If tensor is a scalar, isolate the value in the array;
                                 # otherwise, retain the value as array
                                 if shape[0] == 1:
                                     if type(tensor) == np.ndarray:
                                         tensor = tensor.item()
-                                dict_of_tensor_dicts[i][tm.name][tm.name] = tensor
+                                dict_of_tensor_dicts[i][tm.name] = tensor
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                             if tm.channel_map:
                                 for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = np.nan
+                                    dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = np.nan
                             else:
-                                dict_of_tensor_dicts[i][tm.name][tm.name] = np.full(shape, np.nan)[0]
+                                dict_of_tensor_dicts[i][tm.name] = np.full(shape, np.nan)[0]
                             error_type = type(e).__name__
-
-                        # Save error type, fpath, and generator name (set)
-                        dict_of_tensor_dicts[i][tm.name][f'error_type_{tm.name}'] = error_type
-                        dict_of_tensor_dicts[i][tm.name]['fpath'] = path
-                        dict_of_tensor_dicts[i][tm.name]['generator'] = gen_name
+                        dict_of_tensor_dicts[i][f'error_type_{tm.name}'] = error_type
 
                 except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                     # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
                     if tm.channel_map:
                         for cm in tm.channel_map:
-                            dict_of_tensor_dicts[0][tm.name][(tm.name, cm)] = np.nan
+                            dict_of_tensor_dicts[0][f'{tm.name} {cm}'] = np.nan
                     else:
-                        dict_of_tensor_dicts[0][tm.name][tm.name] = np.full(shape, np.nan)[0]
-                    dict_of_tensor_dicts[0][tm.name][f'error_type_{tm.name}'] = type(e).__name__
-                    dict_of_tensor_dicts[0][tm.name]['fpath'] = path
-                    dict_of_tensor_dicts[0][tm.name]['generator'] = gen_name
+                        dict_of_tensor_dicts[0][tm.name] = np.full(shape, np.nan)[0]
+                    dict_of_tensor_dicts[0][f'error_type_{tm.name}'] = type(e).__name__
 
-            # Append list of dicts with tensor_dict
-            return dict_of_tensor_dicts
+            for i in dict_of_tensor_dicts:
+                dict_of_tensor_dicts[i]['fpath'] = path
+                dict_of_tensor_dicts[i]['generator'] = gen_name
+
+            # write tdicts to disk
+            if len(dict_of_tensor_dicts) > 0:
+                keys = dict_of_tensor_dicts[0].keys()
+                with open(fpath, 'a') as output_file:
+                    dict_writer = csv.DictWriter(output_file, keys)
+                    if write_header:
+                        dict_writer.writeheader()
+                    dict_writer.writerows(dict_of_tensor_dicts.values())
     except OSError as e:
         logging.info(f"OSError {e}")
-        return None
 
 
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
     global count # TODO figure out how to not use global
-    count = Value('l', 0)
-    paths = [(path, gen.name) for gen in generators for path in gen.path_iters[0].paths]
-    tot = len(paths)
-    with Pool(processes=None) as pool:
-        list_of_dicts_of_dicts = pool.starmap(
-            _hd5_to_dict,
-            [(tmaps, path, gen_name, tot) for path, gen_name in paths],
+    count = multiprocess.Value('l', 1)
+    paths = [(path, gen.name) for gen in generators for worker_paths in gen.path_iters for path in worker_paths.paths]
+    num_hd5 = len(paths)
+    chunksize = num_hd5 // args.num_workers
+    with multiprocess.Pool(processes=args.num_workers) as pool:
+        pool.starmap(
+            _hd5_to_disk,
+            [(tmaps, path, gen_name, num_hd5, args.output_folder, args.id) for path, gen_name in paths],
+            chunksize=chunksize,
         )
 
-    num_hd5 = len(list_of_dicts_of_dicts)
-    list_of_tensor_dicts = [dotd[i] for dotd in list_of_dicts_of_dicts for i in dotd if dotd is not None]
-
-    # Now we have a list of dicts where each dict has {tmaps:values} and
-    # each HD5 -> one dict in the list
-    # Next, convert list of dicts -> dataframe
-    df = pd.DataFrame()
-
+    # get columns that should have dtype 'string' instead of dtype 'O'
+    str_cols = ['fpath', 'generator']
     for tm in tmaps:
-        # Isolate all {tmap:values} from the list of dicts for this tmap
-        list_of_tmap_dicts = list(map(itemgetter(tm.name), list_of_tensor_dicts))
+        if tm.interpretation == Interpretation.LANGUAGE:
+            str_cols.extend([f'{tm.name} {cm}' for cm in tm.channel_map] if tm.channel_map else [tm.name])
+        str_cols.append(f'error_type_{tm.name}')
+    str_cols = {key: 'string' for key in str_cols}
 
-        # Convert this tmap-specific list of dicts into dict of lists
-        dict_of_tmap_lists = {
-            k: [d[k] for d in list_of_tmap_dicts]
-            for k in list_of_tmap_dicts[0]
-        }
-
-        # Convert list of dicts into dataframe and concatenate to big df
-        df = pd.concat([df, pd.DataFrame(dict_of_tmap_lists)], axis=1)
-
-    # Remove duplicate columns: error_types, fpath
-    df = df.loc[:, ~df.columns.duplicated()]
+    # read all temporary files to df
+    df = pd.DataFrame()
+    base = os.path.join(args.output_folder, args.id)
+    temp_files = []
+    for name in os.listdir(base):
+        if 'tensors_all_union_' in name:
+            fpath = os.path.join(base, name)
+            _df = pd.read_csv(fpath, dtype=str_cols)
+            logging.debug(f'Loaded {fpath} into memory')
+            df = df.append(_df, ignore_index=True)
+            logging.debug(f'Appended {fpath} to overall dataframe')
+            temp_files.append(fpath)
 
     # Remove "_worker" from "generator" values
     df["generator"].replace("_worker", "", regex=True, inplace=True)
 
-    # Rearrange df columns so fpath and generator are at the end
-    cols = [col for col in df if col not in ["fpath", "generator"]] \
-           + ["fpath", "generator"]
-    df = df[cols]
+    logging.info(f"Extracted {len(tmaps)} tmaps from {len(df)} tensors across {num_hd5} hd5 files into DataFrame")
 
-    # Cast dtype of some columns to string. Note this is necessary; although a
-    # df (or pd.series) of floats will have the type "float", a df of strings
-    # assumes a dtype of "object". Casting to dtype "string" will confer performnace
-    # improvements in future versions of Pandas
-    df["fpath"] = df["fpath"].astype("string")
-    df["generator"] = df["generator"].astype("string")
-
-    # Iterate through tensor (and channel) maps and cast Pandas dtype to string
-    if Interpretation.LANGUAGE in [tm.interpretation for tm in tmaps]:
-        for tm in [tm for tm in args.tensor_maps_in if tm.interpretation is Interpretation.LANGUAGE]:
-            if tm.channel_map:
-                for cm in tm.channel_map:
-                    key = (tm.name, cm)
-                    df[key] = df[key].astype("string")
-            else:
-                key = tm.name
-                df[key] = df[key].astype("string")
-    logging.info(f"Extracted {len(tmaps)} tmaps from {df.shape[0]} tensors across {num_hd5} hd5 files into DataFrame")
+    # remove temporary files
+    for fpath in temp_files:
+        os.remove(fpath)
+    logging.debug(f'Deleted {len(temp_files)} temporary files')
     return df
 
 
 def explore(args):
-    args.num_workers = 0
     tmaps = args.tensor_maps_in
     fpath_prefix = "summary_stats"
     tsv_style_is_genetics = 'genetics' in args.tsv_style
@@ -861,6 +836,7 @@ def explore(args):
 
     # Iterate through tensors, get tmaps, and save to dataframe
     df = _tensors_to_df(args)
+
     if tsv_style_is_genetics:
         fid = df['fpath'].str.split('/').str[-1].str.split('.').str[0]
         df.insert(0, 'FID', fid)
@@ -883,7 +859,7 @@ def explore(args):
                 counts_missing = []
                 if tm.channel_map:
                     for cm in tm.channel_map:
-                        key = (tm.name, cm)
+                        key = f'{tm.name} {cm}'
                         counts.append(df_cur[key].sum())
                         counts_missing.append(df_cur[key].isna().sum())
                 else:
@@ -931,18 +907,19 @@ def explore(args):
                     if tm.channel_map:
                         for cm in tm.channel_map:
                             stats = dict()
-                            key = (tm.name, cm)
+                            key = f'{tm.name} {cm}'
                             stats["min"] = df_cur[key].min()
                             stats["max"] = df_cur[key].max()
                             stats["mean"] = df_cur[key].mean()
                             stats["median"] = df_cur[key].median()
-                            stats["mode"] = df_cur[key].mode()[0]
+                            mode = df_cur[key].mode()
+                            stats["mode"] = mode[0] if len(mode) != 0 else np.nan
                             stats["variance"] = df_cur[key].var()
                             stats["count"] = df_cur[key].count()
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
                             stats["missing_percent"] = stats["missing"] / stats["total"] * 100
-                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{tm.name} {cm}'])])
                     else:
                         stats = dict()
                         key = tm.name
@@ -950,7 +927,8 @@ def explore(args):
                         stats["max"] = df_cur[key].max()
                         stats["mean"] = df_cur[key].mean()
                         stats["median"] = df_cur[key].median()
-                        stats["mode"] = df_cur[key].mode()[0]
+                        mode = df_cur[key].mode()
+                        stats["mode"] = mode[0] if len(mode) != 0 else np.nan
                         stats["variance"] = df_cur[key].var()
                         stats["count"] = df_cur[key].count()
                         stats["missing"] = df_cur[key].isna().sum()
@@ -981,13 +959,13 @@ def explore(args):
                     if tm.channel_map:
                         for cm in tm.channel_map:
                             stats = dict()
-                            key = (tm.name, cm)
+                            key = f'{tm.name} {cm}'
                             stats["count"] = df_cur[key].count()
                             stats["count_unique"] = len(df_cur[key].value_counts())
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
                             stats["missing_percent"] = stats["missing"] / stats["total"] * 100
-                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{tm.name} {cm}'])])
                     else:
                         stats = dict()
                         key = tm.name
@@ -1029,7 +1007,6 @@ def _report_cross_reference(args, cross_reference_df, title):
 
 def cross_reference(args):
     """Cross reference a source cohort with a reference cohort."""
-    args.num_workers = 0
     cohort_counts = OrderedDict()
 
     src_path = args.tensors
