@@ -441,9 +441,9 @@ task ScatterIntervals {
     }
 }
 
-task BundledPostprocessGermlineCNVCalls {
+task PostprocessGermlineCNVCalls {
     input {
-        File invariants_tar
+        File bundled_gcnv_outputs
         String entity_id
         File contig_ploidy_calls_tar
         Array[String]? allosomal_contigs
@@ -463,10 +463,10 @@ task BundledPostprocessGermlineCNVCalls {
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
-    Float invariants_size = size(invariants_tar, "GiB")
+    Float bundled_gcnv_outputs_size = size(bundled_gcnv_outputs, "GiB")
     Float disk_overhead = 20.0
     Float tar_disk_factor= 5.0
-    Int vm_disk_size = ceil(tar_disk_factor * invariants_size + disk_overhead)
+    Int vm_disk_size = ceil(tar_disk_factor * bundled_gcnv_outputs_size + disk_overhead)
 
     String genotyped_intervals_vcf_filename = "genotyped-intervals-~{entity_id}.vcf.gz"
     String genotyped_segments_vcf_filename = "genotyped-segments-~{entity_id}.vcf.gz"
@@ -481,8 +481,8 @@ task BundledPostprocessGermlineCNVCalls {
 
         # untar calls to CALLS_0, CALLS_1, etc directories and build the command line
         # also copy over shard config and interval files
-        tar xzf ~{invariants_tar}
-        rm ~{invariants_tar}
+        tar xzf ~{bundled_gcnv_outputs}
+        rm ~{bundled_gcnv_outputs}
         number_of_shards=`find . -name 'CALLS_*' | wc -l`
 
         touch calls_and_model_args.txt
@@ -495,7 +495,7 @@ task BundledPostprocessGermlineCNVCalls {
         tar xzf ~{contig_ploidy_calls_tar} -C extracted-contig-ploidy-calls
         rm ~{contig_ploidy_calls_tar}
 
-        time gatk --java-options "-Xmx~{command_mem_mb}m" PostprocessGermlineCNVCalls \
+        gatk --java-options "-Xmx~{command_mem_mb}m" PostprocessGermlineCNVCalls \
              --arguments_file calls_and_model_args.txt \
             ~{sep=" " allosomal_contigs_args} \
             --autosomal-ref-copy-number ~{ref_copy_number_autosomal_contigs} \
@@ -617,7 +617,7 @@ task CollectModelQualityMetrics {
     }
 }
 
-task BundlePostprocessingInvariants {
+task BundleCallerOutputs {
     input {
       Array[File] calls_tars
       Array[File] model_tars

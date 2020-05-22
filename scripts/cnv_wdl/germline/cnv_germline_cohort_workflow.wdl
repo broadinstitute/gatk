@@ -150,10 +150,10 @@ workflow CNVGermlineCohortWorkflow {
       Boolean? gcnv_disable_annealing
 
       ######################################################
-      #### arguments for BundlePostprocessingInvariants ####
+      #### arguments for BundleCallerOutputs ####
       ######################################################
-      Int? mem_gb_for_bundle_postprocessing_invariants
-      Int? disk_space_gb_for_bundle_postprocessing_invariants
+      Int? mem_gb_for_bundle_caller_outputs
+      Int? disk_space_gb_for_bundle_caller_outputs
 
       ###################################################
       #### arguments for PostprocessGermlineCNVCalls ####
@@ -325,7 +325,7 @@ workflow CNVGermlineCohortWorkflow {
         }
     }
 
-    call CNVTasks.BundlePostprocessingInvariants {
+    call CNVTasks.BundleCallerOutputs {
         input:
             calls_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar,
             model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar,
@@ -334,15 +334,15 @@ workflow CNVGermlineCohortWorkflow {
             gcnvkernel_version = GermlineCNVCallerCohortMode.gcnvkernel_version_json,
             sharded_interval_lists = GermlineCNVCallerCohortMode.sharded_interval_list,
             docker = gatk_docker,
-            mem_gb = mem_gb_for_bundle_postprocessing_invariants,
-            disk_space_gb = disk_space_gb_for_bundle_postprocessing_invariants,
+            mem_gb = mem_gb_for_bundle_caller_outputs,
+            disk_space_gb = disk_space_gb_for_bundle_caller_outputs,
             preemptible_attempts = preemptible_attempts
     }
 
     scatter (sample_index in range(length(normal_bams))) {
-        call CNVTasks.BundledPostprocessGermlineCNVCalls {
+        call CNVTasks.PostprocessGermlineCNVCalls {
             input:
-                invariants_tar = BundlePostprocessingInvariants.bundle_tar,
+                bundled_gcnv_outputs = BundleCallerOutputs.bundle_tar,
                 entity_id = CollectCounts.entity_id[sample_index],
                 allosomal_contigs = allosomal_contigs,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
@@ -357,7 +357,7 @@ workflow CNVGermlineCohortWorkflow {
 
         call CNVTasks.CollectSampleQualityMetrics {
             input:
-                genotyped_segments_vcf = BundledPostprocessGermlineCNVCalls.genotyped_segments_vcf,
+                genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf,
                 entity_id = CollectCounts.entity_id[sample_index],
                 maximum_number_events = maximum_number_events_per_sample,
                 gatk_docker = gatk_docker,
@@ -391,9 +391,9 @@ workflow CNVGermlineCohortWorkflow {
         Array[File] gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar
         Array[File] gcnv_calls_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCohortMode.gcnv_tracking_tar
-        Array[File] genotyped_intervals_vcfs = BundledPostprocessGermlineCNVCalls.genotyped_intervals_vcf
-        Array[File] genotyped_segments_vcfs = BundledPostprocessGermlineCNVCalls.genotyped_segments_vcf
-        Array[File] denoised_copy_ratios = BundledPostprocessGermlineCNVCalls.denoised_copy_ratios
+        Array[File] genotyped_intervals_vcfs = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
+        Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
+        Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
         Array[File] sample_qc_status_files = CollectSampleQualityMetrics.qc_status_file
         Array[String] sample_qc_status_strings = CollectSampleQualityMetrics.qc_status_string
         File model_qc_status_file = CollectModelQualityMetrics.qc_status_file
@@ -539,8 +539,6 @@ task GermlineCNVCallerCohortMode {
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
     Int num_samples = length(read_count_files)
-
-    String dollar = "$" #WDL workaround, see https://github.com/broadinstitute/cromwell/issues/1819
 
     command <<<
         set -eu
