@@ -1074,7 +1074,7 @@ def cross_reference(args):
             if offset == 0:
                 return ref_time[0]
             ref_time_col = f'{ref_time[1]}_days_relative_{ref_time[0]}'
-            ref_df[ref_time_col] = ref_df[ref_start[0]].apply(lambda x: x + datetime.timedelta(days=offset))
+            ref_df[ref_time_col] = ref_df[ref_time[0]].apply(lambda x: x + datetime.timedelta(days=offset))
             ref_cols.append(ref_time_col)
             return ref_time_col
 
