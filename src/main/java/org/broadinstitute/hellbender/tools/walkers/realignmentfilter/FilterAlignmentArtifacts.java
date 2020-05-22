@@ -111,7 +111,7 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
     public static final int DEFAULT_MAX_GROUPED_SPAN = 10_000;
     private static final int MIN_UNITIG_LENGTH = 30;
     private static final int ASSEMBLY_PADDING = 50;
-    private static final SmithWatermanAligner ALIGNER = SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.FASTEST_AVAILABLE);
+    private static final SmithWatermanAligner ALIGNER = SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.JAVA);
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="The output filtered VCF file", optional=false)
