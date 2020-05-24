@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.Allele;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -14,6 +12,8 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Test code for {@link AlleleLikelihoods}
@@ -174,11 +174,19 @@ public final class AlleleLikelihoodsUnitTest {
         final AlleleLikelihoods<GATKRead, Allele> original = makeGoodAndBadLikelihoods(samples, alleles, reads);
 
         final AlleleLikelihoods<GATKRead, Allele> result = makeGoodAndBadLikelihoods(samples, alleles, reads);
+
+        // fill the evidence-to-index cache now to check that it is invalidated below
+        for (int s = 0; s < samples.length; s++) {
+            result.fillEvidenceToIndexCache(s);
+            Assert.assertTrue(result.evidenceToIndexCacheIsFilled(s));
+        }
+
         result.filterPoorlyModeledEvidence(read -> -100);
 
         for (int s = 0; s < samples.length; s++) {
             final int oldSampleReadCount = original.sampleEvidenceCount(s);
             final int newSampleReadCount = result.sampleEvidenceCount(s);
+            Assert.assertEquals(result.evidenceToIndexCacheIsFilled(s), oldSampleReadCount == newSampleReadCount);
             Assert.assertEquals(newSampleReadCount, (oldSampleReadCount + 1) / 2);
             final LikelihoodMatrix<GATKRead, Allele> newSampleMatrix = result.sampleMatrix(s);
             final LikelihoodMatrix<GATKRead, Allele> oldSampleMatrix = original.sampleMatrix(s);
@@ -198,9 +206,19 @@ public final class AlleleLikelihoodsUnitTest {
         fillWithRandomLikelihoods(samples, alleles, original, result);
 
         final SimpleInterval evenReadOverlap = new SimpleInterval(SAM_HEADER.getSequenceDictionary().getSequences().get(0).getSequenceName(), EVEN_READ_START, EVEN_READ_START);
+
+        // fill the evidence-to-index cache now to check that it is invalidated below
+        for (int s = 0; s < samples.length; s++) {
+            result.fillEvidenceToIndexCache(s);
+            Assert.assertTrue(result.evidenceToIndexCacheIsFilled(s));
+        }
+
         result.retainEvidence(evenReadOverlap::overlaps);
         final double[][][] newLikelihoods = new double[samples.length][alleles.length][];
-        for (int s = 0; s < samples.length ; s++)
+        for (int s = 0; s < samples.length ; s++) {
+            final int oldSampleReadCount = original.sampleEvidenceCount(s);
+            final int newSampleReadCount = result.sampleEvidenceCount(s);
+            Assert.assertEquals(result.evidenceToIndexCacheIsFilled(s), oldSampleReadCount == newSampleReadCount);
             for (int a = 0; a < alleles.length; a++) {
                 newLikelihoods[s][a] = new double[(original.sampleEvidenceCount(s) + 1) / 2];
                 final LikelihoodMatrix<GATKRead, Allele> sampleMatrix = original.sampleMatrix(s);
@@ -209,7 +227,29 @@ public final class AlleleLikelihoodsUnitTest {
                     newLikelihoods[s][a][r] = sampleMatrix.get(a, r << 1);
                 }
             }
+        }
         testLikelihoodMatrixQueries(samples,result,newLikelihoods);
+    }
+
+    @Test(dataProvider = "dataSets")
+    public void testContaminationDownsamplingInvalidatesEvidenceToIndexCache(final String[] samples, final Allele[] alleles, final Map<String,List<GATKRead>> reads) {
+        final AlleleLikelihoods<GATKRead, Allele> original = new AlleleLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
+        final AlleleLikelihoods<GATKRead, Allele> result = new AlleleLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
+        fillWithRandomLikelihoods(samples, alleles, original, result);
+
+        // fill the evidence-to-index cache now to check that it is invalidated below
+        for (int s = 0; s < samples.length; s++) {
+            result.fillEvidenceToIndexCache(s);
+            Assert.assertTrue(result.evidenceToIndexCacheIsFilled(s));
+        }
+
+        final double downsamplingFraction = 0.5;
+        final Map<String, Double> perSampleDownsamplingFractions = Arrays.stream(samples).collect(Collectors.toMap(s -> s, s -> downsamplingFraction));
+        result.contaminationDownsampling(perSampleDownsamplingFractions);
+
+        for (int s = 0; s < samples.length ; s++) {
+            Assert.assertEquals(result.sampleEvidenceCount(s) < original.sampleEvidenceCount(s), !result.evidenceToIndexCacheIsFilled(s));
+        }
     }
 
     @Test(dataProvider = "marginalizationDataSets")
@@ -571,6 +611,16 @@ public final class AlleleLikelihoodsUnitTest {
         final Map<String,List<GATKRead>> sampleToReads = ReadLikelihoodsUnitTester.sampleToReads(sampleList, readCounts);
         final double expectedLik = -0.2;
         subject.addEvidence(sampleToReads, expectedLik);
+
+        // test that evidence-to-index cache is valid after adding reads
+        for (int s = 0; s < sampleList.numberOfSamples(); s++) {
+            if (sampleToReads.containsKey(sampleList.getSample(s)) && !sampleToReads.get(sampleList.getSample(s)).isEmpty()) {
+                Assert.assertTrue(subject.evidenceToIndexCacheIsFilled(s));
+                for (int r = 0; r < subject.sampleEvidenceCount(s); r++) {
+                    Assert.assertEquals(subject.evidenceIndex(s, subject.sampleEvidence(s).get(r)), r);
+                }
+            }
+        }
 
         AlleleListUnitTester.assertAlleleList(subject, alleleList.asListOfAlleles());
         SampleListUnitTester.assertSampleList(subject,sampleList.asListOfSamples());

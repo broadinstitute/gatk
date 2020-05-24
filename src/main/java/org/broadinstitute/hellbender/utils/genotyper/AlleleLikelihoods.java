@@ -10,7 +10,6 @@ import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 
 import java.util.*;
 import java.util.function.Function;
@@ -77,6 +76,8 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      *
      * <p>In order to save CPU time the indices contained in this array (not the array itself) is
      * lazily initialized by invoking {@link #evidenceIndexBySampleIndex(int)}.</p>
+     *
+     * <p>Whenever a sample's evidence list is modified this cache must either be updated or invalidated by {@link #invalidateEvidenceToIndexCache(int)}.</p>
      */
     protected final List<Object2IntMap<EVIDENCE>> evidenceIndexBySampleIndex;
 
@@ -738,8 +739,8 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             }
 
             final int initialNumberOfEvidences = evidenceBySampleIndex.get(sampleIndex).size();
-            final List<EVIDENCE> newlyAddedEvidence = appendEvidence(newSampleEvidence, sampleIndex);
-            extendsLikelihoodArrays(initialLikelihood, sampleIndex, initialNumberOfEvidences, initialNumberOfEvidences + newlyAddedEvidence.size());
+            final int newlyAddedEvidenceCount = appendEvidence(newSampleEvidence, sampleIndex); // updates evidence-to-index cache as a side effect
+            extendsLikelihoodArrays(initialLikelihood, sampleIndex, initialNumberOfEvidences, initialNumberOfEvidences + newlyAddedEvidenceCount);
         }
     }
 
@@ -758,46 +759,28 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         }
     }
 
-    // Append the new evidence reference into the structure per-sample.
-    private List<EVIDENCE> appendEvidence(final List<EVIDENCE> newSampleEvidence, final int sampleIndex) {
+    // Append the new evidence reference into the structure per-sample, returning the count of evidence actually added (duplicates are not added)
+    // NOTE: the evidence-to-index cache is updated in place and not invalidated via {@link #invalidateEvidenceToIndexCache(int)} because adding new evidence
+    // to the cache, as opposed to removing evidence, is just a matter of appending entries
+    private int appendEvidence(final List<EVIDENCE> newSampleEvidence, final int sampleIndex) {
 
         final List<EVIDENCE> sampleEvidence = evidenceBySampleIndex.get(sampleIndex);
         final Object2IntMap<EVIDENCE> sampleEvidenceIndex = evidenceIndexBySampleIndex(sampleIndex);
+        final int previousEvidenceCount = sampleEvidence.size();
 
-        // actually-added will have the list of evidence added at the end of this method.
-        // this won't include those that were already in the table.
-        // being optimistic we assume that there is no repeats in the input new evidence so we set it to
-        // the input list but if we found something we then start a new list.
-        List<EVIDENCE> actuallyAdded = newSampleEvidence;
-
-        int i, nextIndex = sampleEvidence.size();
-        final int stop = newSampleEvidence.size();
-        for (i = 0; i < stop; i++) {
-            final EVIDENCE newEvidence = newSampleEvidence.get(i);
+        int nextIndex = sampleEvidence.size();
+        for (final EVIDENCE newEvidence : newSampleEvidence) {
             final int previousValue = sampleEvidenceIndex.put(newEvidence, nextIndex);
             if (previousValue == MISSING_INDEX) {
                 nextIndex++;
                 sampleEvidence.add(newEvidence);
-            } else {
-                actuallyAdded = new ArrayList<>(newSampleEvidence.subList(0, i));
-                i++; // skip the repeated element.
-                break;
-            }
-        }
-        // second for below only use if we encounter some evidence that is already in the table:
-        for (; i < stop; i++) {
-            final EVIDENCE newEvidence = newSampleEvidence.get(i);
-            final int previousValue = sampleEvidenceIndex.put(newEvidence, nextIndex);
-            if (previousValue == MISSING_INDEX) {
-                nextIndex++;
-                sampleEvidence.add(newEvidence);
-                actuallyAdded.add(newEvidence);
             } else {
                 sampleEvidenceIndex.put(newEvidence, previousValue); // revert
             }
         }
+
         numberOfEvidences[sampleIndex] = sampleEvidence.size();
-        return actuallyAdded;
+        return sampleEvidence.size() - previousEvidenceCount;
     }
 
     /**
@@ -1129,7 +1112,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         removeEvidenceByIndex(sampleIndex, indexesToRemove);
     }
 
-    // remove evidence and unset the {@code evidenceIndexBySampleIndex} Map for this sample
+    // remove evidence and unset the {@code evidenceIndexBySampleIndex} cache for this sample
     // assumes that evidencesToRemove is sorted and without duplicates.
     private void removeEvidenceByIndex(final int sampleIndex, final int[] evidencesToRemove) {
         final int numToRemove = evidencesToRemove.length;
@@ -1154,8 +1137,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         evidenceBySampleIndex.set(sampleIndex, newEvidence);
         numberOfEvidences[sampleIndex] = newEvidenceCount;
 
-        //  invalidate the cached evidence to index map
-        evidenceIndexBySampleIndex.set(sampleIndex, null);
+        invalidateEvidenceToIndexCache(sampleIndex);
 
         // update the likelihoods arrays in place
         for (final double[] alleleValues : valuesBySampleIndex[sampleIndex]) {
@@ -1168,6 +1150,12 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             }
         }
 
+    }
+
+    // The evidenceToIndex map becomes invalid when the evidence list is modified, for example by deleting evidence
+    // When adding evidence it is simple enough to add new entries to the map, but we must be careful to do so.
+    private void invalidateEvidenceToIndexCache(final int sampleIndex) {
+        evidenceIndexBySampleIndex.set(sampleIndex, null);
     }
 
     /**
@@ -1201,18 +1189,26 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
 
     private Object2IntMap<EVIDENCE> evidenceIndexBySampleIndex(final int sampleIndex) {
         if (evidenceIndexBySampleIndex.get(sampleIndex) == null) {
-            final List<EVIDENCE> sampleEvidence = evidenceBySampleIndex.get(sampleIndex);
-            final int sampleEvidenceCount = sampleEvidence.size();
-            final Object2IntMap<EVIDENCE> index = new Object2IntOpenHashMap<>(sampleEvidenceCount);
-            index.defaultReturnValue(MISSING_INDEX);
-            evidenceIndexBySampleIndex.set(sampleIndex, index);
-            for (int r = 0; r < sampleEvidenceCount; r++) {
-                index.put(sampleEvidence.get(r), r);
-            }
-            return index;
-        } else {
-            return evidenceIndexBySampleIndex.get(sampleIndex);
+            fillEvidenceToIndexCache(sampleIndex);
         }
+        return evidenceIndexBySampleIndex.get(sampleIndex);
+    }
+
+    @VisibleForTesting
+    void fillEvidenceToIndexCache(int sampleIndex) {
+        final List<EVIDENCE> sampleEvidence = evidenceBySampleIndex.get(sampleIndex);
+        final int sampleEvidenceCount = sampleEvidence.size();
+        final Object2IntMap<EVIDENCE> index = new Object2IntOpenHashMap<>(sampleEvidenceCount);
+        index.defaultReturnValue(MISSING_INDEX);
+        evidenceIndexBySampleIndex.set(sampleIndex, index);
+        for (int r = 0; r < sampleEvidenceCount; r++) {
+            index.put(sampleEvidence.get(r), r);
+        }
+    }
+
+    @VisibleForTesting
+    boolean evidenceToIndexCacheIsFilled(final int sampleIndex) {
+        return evidenceIndexBySampleIndex.get(sampleIndex) != null;
     }
 
 
