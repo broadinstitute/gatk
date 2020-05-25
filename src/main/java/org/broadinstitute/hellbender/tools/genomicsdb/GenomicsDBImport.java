@@ -58,6 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.CompletionException;
@@ -138,6 +139,8 @@ import java.util.stream.Collectors;
  *  </pre>
  *
  *  Add new samples to an existing genomicsdb workspace.
+ *  In the incremental import case, no intervals are specified in the command because the tool will use the same
+ *  intervals used in the initial import. Sample map is also supported for incremental import.
  *  <pre>
  *    gatk --java-options "-Xmx4g -Xms4g" GenomicsDBImport \
  *      -V data/gvcfs/mother.g.vcf.gz \
@@ -146,8 +149,6 @@ import java.util.stream.Collectors;
  *      --genomicsdb-update-workspace-path my_database \
  *      --tmp-dir=/path/to/large/tmp \
  *  </pre>
- *  In the incremental import case, no intervals are specified in the command because the tool will use the same 
- *  intervals used in the initial import. Sample map is also supported for incremental import
  *
  *  Get Picard-style interval_list from existing workspace
  *  <pre>
@@ -201,7 +202,7 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String VCF_INITIALIZER_THREADS_LONG_NAME = "reader-threads";
     public static final String MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL = "max-num-intervals-to-import-in-parallel";
     public static final String USE_NATIVE_VCF_READER_LONG_NAME = "use-native-vcf-reader";
-    public static final String MERGE_CHROMOSOMES_INTO_NUM_PARTITIONS = "merge-chromosomes-into-num-partitions";
+    public static final String MERGE_CONTIGS_INTO_NUM_PARTITIONS = "merge-contigs-into-num-partitions";
     public static final int INTERVAL_LIST_SIZE_WARNING_THRESHOLD = 100;
 
     @Argument(fullName = WORKSPACE_ARG_LONG_NAME,
@@ -340,17 +341,17 @@ public final class GenomicsDBImport extends GATKTool {
     private boolean useNativeVcfReader = false;
 
     @Advanced
-    @Argument(fullName = MERGE_CHROMOSOMES_INTO_NUM_PARTITIONS,
-            shortName = MERGE_CHROMOSOMES_INTO_NUM_PARTITIONS,
+    @Argument(fullName = MERGE_CONTIGS_INTO_NUM_PARTITIONS,
+            shortName = MERGE_CONTIGS_INTO_NUM_PARTITIONS,
             doc = "Number of GenomicsDB arrays to merge input intervals into. Defaults to 0, which disables this merging. " +
-                  "This option can only be used if entire chromosomes are specified as intervals. The tool will not split up " +
-                  "a chromosome into multiple arrays, which means the actual number of partitions may be less than what is " +
+                  "This option can only be used if entire contigs are specified as intervals. The tool will not split up " +
+                  "a contig into multiple arrays, which means the actual number of partitions may be less than what is " +
                   "specified for this argument. This can improve performance in the " +
-                  "case where the user is trying to import a very large number of chromosomes (larger than " + 
+                  "case where the user is trying to import a very large number of contigs - larger than " +
                   INTERVAL_LIST_SIZE_WARNING_THRESHOLD,
             optional = true,
             minValue = 0)
-    private int mergeChromosomesIntoNumPartitions = 0;
+    private int mergeContigsIntoNumPartitions = 0;
 
     //executor service used when vcfInitializerThreads > 1
     private ExecutorService inputPreloadExecutorService;
@@ -479,6 +480,29 @@ public final class GenomicsDBImport extends GATKTool {
         }
         Path indexPath = path.resolveSibling(path.getFileName() + FileExtensions.COMPRESSED_VCF_INDEX);
         IOUtils.assertFileIsReadable(indexPath);
+    }
+
+    private void assertIntervalsCoverEntireContigs(GenomicsDBImporter importer,
+                                                   List<SimpleInterval> intervals) {
+        GenomicsDBVidMapProto.VidMappingPB vidMapPB = importer.getProtobufVidMapping();
+        if (vidMapPB == null) {
+            throw new UserException("Could not get protobuf vid mappping object from GenomicsDBImporter");
+        }
+        Map<String,GenomicsDBVidMapProto.Chromosome> vidContigs =
+                vidMapPB.getContigsList().stream().collect(Collectors.toMap(item->item.getName(), item->item));
+        for (SimpleInterval interval: intervals) {
+            GenomicsDBVidMapProto.Chromosome vidContig = vidContigs.get(interval.getContig());
+            long contigLength = vidContig.getLength();
+            if (interval.getStart() != 1 || interval.getEnd() > contigLength) {
+                String inputInterval = String.format("Contig:%s, Start:%d, End:%d",
+                        interval.getContig(), interval.getStart(), interval.getEnd());
+                String vidInterval = String.format("Contig:%s, Start:%d, End:%d",
+                        vidContig.getName(), 1, vidContig.getLength());
+                throw new UserException(MERGE_CONTIGS_INTO_NUM_PARTITIONS+" requires that entire contigs " +
+                        "be specified for input intervals. Input interval contained: " + inputInterval +
+                        " while reference contig was: "+ vidInterval);
+            }
+        }
     }
 
     /**
@@ -665,15 +689,15 @@ public final class GenomicsDBImport extends GATKTool {
      */
     @Override
     public void onTraversalStart() {
+        String workspaceDir = BucketUtils.makeFilePathAbsolute(overwriteCreateOrCheckWorkspace());
+        vidMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
+        callsetMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
+        vcfHeaderFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
         if (getIntervalsFromExistingWorkspace) {
             // intervals may be null if merge-contigs-into-num-partitions was used to create workspace
             // if so, we need to wait for vid to be generated before writing out interval list
             return;
         }
-        String workspaceDir = BucketUtils.makeFilePathAbsolute(overwriteCreateOrCheckWorkspace());
-        vidMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
-        callsetMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
-        vcfHeaderFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
         if (doIncrementalImport) {
             logger.info("Callset Map JSON file will be re-written to " + callsetMapJSONFile);
@@ -741,12 +765,6 @@ public final class GenomicsDBImport extends GATKTool {
             beginBuilder.setTiledbColumn(bounds[0]);
             endBuilder.setTiledbColumn(bounds[1]);
             configPartitions.add(createPartitionWithBeginAndEnd(beginBuilder.build(), endBuilder.build()));
-            /* TODO MTL add exception here if can't read metadata file?
-                throw new UserException(
-                    "Workspace contains array name that doesn't fit the <contig><delim><startpos><delim><endpos> format:"+
-                    partitions[i]+" where <delim> is "+Constants.CHROMOSOME_FOLDER_DELIMITER_SYMBOL_REGEX+
-                    "\nWas the specified workspace created using GenomicsDBImport?");
-            */
         }
         return configPartitions;
     }
@@ -777,7 +795,6 @@ public final class GenomicsDBImport extends GATKTool {
                 long[] bounds = GenomicsDBUtils.getArrayColumnBounds(workspace, partitions[i]);
                 // merge-contigs-into-num-partitions ensures entire contigs are within a given partition
                 // so we just check here that contig starts within the given bounds
-                // TODO MTL catch exception for getarraycolumnbounds here?
                 intervals.addAll(vidMapPB.getContigsList().stream()
                         .filter(x -> x.getTiledbColumnOffset() >= bounds[0] &&  
                         x.getTiledbColumnOffset() <= bounds[1])
@@ -798,6 +815,7 @@ public final class GenomicsDBImport extends GATKTool {
             if (partitionInfo.length != 3) {
                 // if  merge-contigs-into-num-partitions was used we may need to use
                 // some metadata instead of array names for partition bounds
+                intervals = null;
                 return;
             }
             final String contig = partitionInfo[0];
@@ -855,13 +873,14 @@ public final class GenomicsDBImport extends GATKTool {
             importer = new GenomicsDBImporter(importConfig);
             // Modify importer directly from updateImportProtobufVidMapping.
             org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.updateImportProtobufVidMapping(importer);
-            if (mergeChromosomesIntoNumPartitions != 0) {
+            if (mergeContigsIntoNumPartitions != 0) {
                 if (!doIncrementalImport) {
-                    importer.coalesceContigsIntoNumPartitions(mergeChromosomesIntoNumPartitions);
+                    assertIntervalsCoverEntireContigs(importer, intervals);
+                    importer.coalesceContigsIntoNumPartitions(mergeContigsIntoNumPartitions);
                 }
                 else {
                     logger.warn(INCREMENTAL_WORKSPACE_ARG_LONG_NAME+" was set, so ignoring " +
-                        MERGE_CHROMOSOMES_INTO_NUM_PARTITIONS + ". When updating workspaces, " +
+                        MERGE_CONTIGS_INTO_NUM_PARTITIONS + ". When updating workspaces, " +
                         "GenomicsDBImport must use the same partition boundaries/intervals as the original import"); 
                 }
             }

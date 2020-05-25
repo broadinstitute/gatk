@@ -255,7 +255,8 @@ dependencies {
     compile 'com.github.broadinstitute:picard:' + picardVersion
     externalSourceConfiguration 'com.github.broadinstitute:picard:' + picardVersion + ':sources'
     compile ('org.genomicsdb:genomicsdb:' + genomicsdbVersion)  {
-        exclude module: 'log4j'
+        exclude module: 'log4j-api'
+        exclude module: 'log4j-core'
         exclude module: 'spark-core_2.11'
         exclude module: 'spark-sql_2.11'
         exclude module: 'htsjdk'
