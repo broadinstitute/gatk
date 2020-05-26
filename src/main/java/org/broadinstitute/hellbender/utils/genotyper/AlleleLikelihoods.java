@@ -738,9 +738,10 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
                 continue;
             }
 
-            final int initialNumberOfEvidences = evidenceBySampleIndex.get(sampleIndex).size();
-            final int newlyAddedEvidenceCount = appendEvidence(newSampleEvidence, sampleIndex); // updates evidence-to-index cache as a side effect
-            extendsLikelihoodArrays(initialLikelihood, sampleIndex, initialNumberOfEvidences, initialNumberOfEvidences + newlyAddedEvidenceCount);
+            final int oldEvidenceCount = evidenceBySampleIndex.get(sampleIndex).size();
+            appendEvidence(newSampleEvidence, sampleIndex);
+            final int newEvidenceCount = evidenceBySampleIndex.get(sampleIndex).size();
+            extendsLikelihoodArrays(initialLikelihood, sampleIndex, oldEvidenceCount, newEvidenceCount);
         }
     }
 
@@ -762,17 +763,14 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     // Append the new evidence reference into the structure per-sample, returning the count of evidence actually added (duplicates are not added)
     // NOTE: the evidence-to-index cache is updated in place and not invalidated via {@link #invalidateEvidenceToIndexCache(int)} because adding new evidence
     // to the cache, as opposed to removing evidence, is just a matter of appending entries
-    private int appendEvidence(final List<EVIDENCE> newSampleEvidence, final int sampleIndex) {
+    private void appendEvidence(final List<EVIDENCE> newSampleEvidence, final int sampleIndex) {
 
         final List<EVIDENCE> sampleEvidence = evidenceBySampleIndex.get(sampleIndex);
         final Object2IntMap<EVIDENCE> sampleEvidenceIndex = evidenceIndexBySampleIndex(sampleIndex);
-        final int previousEvidenceCount = sampleEvidence.size();
 
-        int nextIndex = sampleEvidence.size();
         for (final EVIDENCE newEvidence : newSampleEvidence) {
-            final int previousValue = sampleEvidenceIndex.put(newEvidence, nextIndex);
+            final int previousValue = sampleEvidenceIndex.put(newEvidence, sampleEvidence.size());
             if (previousValue == MISSING_INDEX) {
-                nextIndex++;
                 sampleEvidence.add(newEvidence);
             } else {
                 sampleEvidenceIndex.put(newEvidence, previousValue); // revert
@@ -780,7 +778,6 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         }
 
         numberOfEvidences[sampleIndex] = sampleEvidence.size();
-        return sampleEvidence.size() - previousEvidenceCount;
     }
 
     /**
@@ -1121,7 +1118,6 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         }
         final int oldEvidenceCount = numberOfEvidences[sampleIndex];
         final int newEvidenceCount = oldEvidenceCount - evidencesToRemove.length;
-        Utils.validate(newEvidenceCount >= 0, "attempted to remove non-existent evidence or repeated evidence");
 
         // update the list of evidence and evidence count
         final List<EVIDENCE> oldEvidence = evidenceBySampleIndex.get(sampleIndex);
@@ -1131,25 +1127,17 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
                 numRemoved++;
             } else {
                 newEvidence.add(oldEvidence.get(n));
-            }
-        }
-        Utils.validate(newEvidence.size() == newEvidenceCount, "Indices to remove contained duplicates, was not ordered, or contained out-of-range indices.");
-        evidenceBySampleIndex.set(sampleIndex, newEvidence);
-        numberOfEvidences[sampleIndex] = newEvidenceCount;
 
-        invalidateEvidenceToIndexCache(sampleIndex);
-
-        // update the likelihoods arrays in place
-        for (final double[] alleleValues : valuesBySampleIndex[sampleIndex]) {
-            for (int n = 0, numRemoved = 0; n < oldEvidenceCount; n++) {
-                if (numRemoved < numToRemove && n == evidencesToRemove[numRemoved]) {
-                    numRemoved++;
-                } else {
+                // update the likelihoods arrays in place
+                for (final double[] alleleValues : valuesBySampleIndex[sampleIndex]) {
                     alleleValues[n - numRemoved] = alleleValues[n];
                 }
             }
         }
+        evidenceBySampleIndex.set(sampleIndex, newEvidence);
+        numberOfEvidences[sampleIndex] = newEvidenceCount;
 
+        invalidateEvidenceToIndexCache(sampleIndex);
     }
 
     // The evidenceToIndex map becomes invalid when the evidence list is modified, for example by deleting evidence
@@ -1188,29 +1176,21 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
 
 
     private Object2IntMap<EVIDENCE> evidenceIndexBySampleIndex(final int sampleIndex) {
-        if (evidenceIndexBySampleIndex.get(sampleIndex) == null) {
-            fillEvidenceToIndexCache(sampleIndex);
-        }
-        return evidenceIndexBySampleIndex.get(sampleIndex);
+        final Object2IntMap<EVIDENCE> cached = evidenceIndexBySampleIndex.get(sampleIndex);
+        return cached == null ? fillEvidenceToIndexCache(sampleIndex) : cached;
     }
 
-    @VisibleForTesting
-    void fillEvidenceToIndexCache(int sampleIndex) {
+    private Object2IntMap<EVIDENCE> fillEvidenceToIndexCache(int sampleIndex) {
         final List<EVIDENCE> sampleEvidence = evidenceBySampleIndex.get(sampleIndex);
         final int sampleEvidenceCount = sampleEvidence.size();
         final Object2IntMap<EVIDENCE> index = new Object2IntOpenHashMap<>(sampleEvidenceCount);
         index.defaultReturnValue(MISSING_INDEX);
-        evidenceIndexBySampleIndex.set(sampleIndex, index);
         for (int r = 0; r < sampleEvidenceCount; r++) {
             index.put(sampleEvidence.get(r), r);
         }
+        evidenceIndexBySampleIndex.set(sampleIndex, index);
+        return index;
     }
-
-    @VisibleForTesting
-    boolean evidenceToIndexCacheIsFilled(final int sampleIndex) {
-        return evidenceIndexBySampleIndex.get(sampleIndex) != null;
-    }
-
 
     /**
      * Implements a likelihood matrix per sample given its index.
