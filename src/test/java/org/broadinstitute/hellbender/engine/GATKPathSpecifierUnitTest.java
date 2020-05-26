@@ -303,6 +303,13 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
                 {"aFile.fasta.gz", ".gz"},
                 // basename is ".fasta"!
                 {".fasta.gz", ".gz"},
+
+                // no extensions
+                {"localFile", ""},
+                {"localFile.", ""},
+                {"/localFile.", ""},
+                {"gs://hellbender/test/resources", ""},
+                {"gs://hellbender/test/resources?query=param", ""},
         };
     }
 
@@ -312,28 +319,25 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
         final String actualExtension = pathSpec.getExtension();
 
         Assert.assertEquals(actualExtension, expectedExtension);
-        // verify that hasExtension(getExtension()) is always true
-        Assert.assertTrue(pathSpec.hasExtension(actualExtension));
+        // verify that hasExtension(getExtension()) is always true if getExtension doesn't return ""
+        if (actualExtension.length() != 0) {
+            Assert.assertTrue(pathSpec.hasExtension(actualExtension));
+        }
     }
 
-    @DataProvider(name="negativeGetExtensionTestCases")
-    public Object[][] negativeGetExtensionTestCases() {
+    @DataProvider(name="negativeBaseNameExtensionTestCases")
+    public Object[][] negativeBaseNameExtensionTestCases() {
         return new Object[][]{
-                // no extensions
+                // final name component is missing -> throw
                 {""},
                 {"/"},
                 {"."},
-                {"localFile"},
-                {"localFile."},
-                {"/localFile."},
-                {"gs://hellbender/test/resources"},
-                {"gs://hellbender/test/resources?query=param"},
                 {"gs://hellbender/test/resources/"},
                 {"gs://hellbender/test/resources/?query=param"},
         };
     }
 
-    @Test(dataProvider = "negativeGetExtensionTestCases", expectedExceptions={IllegalArgumentException.class})
+    @Test(dataProvider = "negativeBaseNameExtensionTestCases", expectedExceptions={IllegalArgumentException.class})
     public void testNegativeGetExtension(final String spec) {
         new GATKPathSpecifier(spec).getExtension();
     }
@@ -357,6 +361,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
                 // basename is ".fasta"!
                 {".fasta.gz", ".gz", true },
                 {".fasta.gz", ".fasta.gz", true },
+                {".", ".", false}, // this gets turned in a URI that ends in "/./"
 
                 // no extensions
                 {"/", ".ext", false },
@@ -391,6 +396,12 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
                 {"aFile.fasta.gz", "aFile.fasta"},
                 // basename is ".fasta"!
                 {".fasta.gz", ".fasta",},
+
+                // no basename present
+                {"/name/.fasta", ""},
+                {"localFile", "localFile"},
+                {"gs://hellbender/test/somefile", "somefile"},
+                {"gs://hellbender/test/somefile?query=param", "somefile"},
         };
     }
 
@@ -399,23 +410,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
         Assert.assertEquals(new GATKPathSpecifier(spec).getBaseName(), baseName);
     }
 
-    @DataProvider(name="negativeGetBaseNameTestCases")
-    public Object[][] negativeGetBaseNameTestCases() {
-        return new Object[][]{
-                // no extensions
-                {"/"},
-                {"."},
-                {"/."},
-                {"/name/.fasta"},
-                {"localFile"},
-                {"gs://hellbender/test/resources"},
-                {"gs://hellbender/test/resources?query=param"},
-                {"gs://hellbender/test/resources/"},
-                {"gs://hellbender/test/resources/?query=param"},
-        };
-    }
-
-    @Test(dataProvider = "negativeGetBaseNameTestCases", expectedExceptions = {IllegalArgumentException.class})
+    @Test(dataProvider = "negativeBaseNameExtensionTestCases", expectedExceptions = {IllegalArgumentException.class})
     public void testNegativeGetBaseName(final String spec) {
         new GATKPathSpecifier(spec).getBaseName();
     }
@@ -438,6 +433,60 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
     @Test(dataProvider = "isFastaTestCases")
     public void testIsFasta(final String referenceSpec, final boolean expectedIsFasta) {
         Assert.assertEquals(new GATKPathSpecifier(referenceSpec).isFasta(), expectedIsFasta);
+    }
+
+    @DataProvider(name="isSamTestCases")
+    public Object[][] isSamTestCases() {
+        return new Object[][] {
+                { "my.sam", true },
+                { "my.Sam", true },
+                { "my.SAM", true },
+                {"http://bucket/aFile.sam?query=param", true},
+
+                { "my.bam", false },
+                { "my.cram", false },
+        };
+    }
+
+    @Test(dataProvider = "isSamTestCases")
+    public void testIsSam(final String pathSpec, final boolean expectedMatch) {
+        Assert.assertEquals(new GATKPathSpecifier(pathSpec).isSam(), expectedMatch);
+    }
+
+    @DataProvider(name="isBamTestCases")
+    public Object[][] isBamTestCases() {
+        return new Object[][] {
+                { "my.bam", true },
+                { "my.Bam", true },
+                { "my.BAM", true },
+                {"http://bucket/aFile.bam?query=param", true},
+
+                { "my.sam", false },
+                { "my.cram", false },
+        };
+    }
+
+    @Test(dataProvider = "isBamTestCases")
+    public void testIsBam(final String pathSpec, final boolean expectedMatch) {
+        Assert.assertEquals(new GATKPathSpecifier(pathSpec).isBam(), expectedMatch);
+    }
+
+    @DataProvider(name="isCramTestCases")
+    public Object[][] isCramTestCases() {
+        return new Object[][] {
+                { "my.cram", true },
+                { "my.Cram", true },
+                { "my.CRAM", true },
+                {"http://bucket/aFile.cram?query=param", true},
+
+                { "my.sam", false },
+                { "my.bam", false },
+        };
+    }
+
+    @Test(dataProvider = "isCramTestCases")
+    public void testIsCram(final String pathSpec, final boolean expectedMatch) {
+        Assert.assertEquals(new GATKPathSpecifier(pathSpec).isCram(), expectedMatch);
     }
 
     @DataProvider(name="isHadoopURLTestCases")

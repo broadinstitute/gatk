@@ -79,9 +79,11 @@ public interface PathURI {
     /**
      * @return the extension of the last component of the hierarchical part of the scheme-specific part of the
      * URI, if any, including the ".". Note that this only returns the part of the last component after the last
-     * ".", ie. it will return ".gz" for a name that ends in ".fasta.gz".
+     * ".", ie. it will return ".gz" for a name that ends in ".fasta.gz" (the {@link #hasExtension(String)} method
+     * can be used to test for the presence of multi-part extensions such as this). If the hierarchical name ends
+     * with a last component that does not contain a ".", returns an empty String.
      * @throws IllegalArgumentException if the hierarchical name ends with the default file system separator
-     * (i.e. "/") or ".", or if the last component does not contain a ".".
+     * (i.e. "/").
      */
     default String getExtension() {
         final String hierarchicalPath = getURI().getPath();
@@ -95,29 +97,33 @@ public interface PathURI {
                     // internal file extension constants we have that include the leading "." (i.e., in htsjdk),
                     // and also for API consistency (since hasExtension() requires the candidate extension to
                     // include a leading ".", this allows hasExtension(getExtension()) to always work whenever
-                    // getExtension() succeeds
+                    // getExtension() succeeds)
                     return lastComponent.substring(indexOfLastDot);
                 }
             }
+            return "";
         }
-        throw new IllegalArgumentException(String.format("Input path (%s) has no extension", this));
+        throw new IllegalArgumentException(
+                String.format(
+                        "Input (%s) contains only a path, with no name component from which to retrieve an extension", this));
     }
 
     /**
      * Return true if the path component (the hierarchical part of the scheme specific part of the underlying URI)
-     * ends with the provided {@code extension} string.
+     * ends with the provided {@code extension} string. This method can be used to test for both single and
+     * multi-part extensions (ie. for a name that ends in ".fasta.gz", it will return true for both ".gz" and
+     * ".fasta.gz".
      *
      * @param extension the target extension to test, INCLUDING the leading ".". May not be null.
-     * @return true if the path component of this specifier ends with the extension, otherwise false
+     * @return true if the path component of this specifier ends with the extension, otherwise false.
      */
     default boolean hasExtension(final String extension) {
         Utils.nonNull(extension, "Target extension must not be null");
-        Utils.validateArg(extension.length() > 1, "Target extension must be length > 1");
+        Utils.validateArg(extension.length() > 0, "Target extension must be length > 0");
         Utils.validateArg(extension.charAt(0) == '.', "Target extension must include the leading '.'");
 
         // We don't want to use {@code #getExtension} here, since it won't work correctly if we're comparing an
-        // extension that uses multiple . chars, such as .fasta.gz., and {@code #getExtension} will throw if there
-        // is no extension.
+        // extension that uses multiple . chars, such as .fasta.gz.
         return getURI().getPath().toLowerCase().endsWith(extension.toLowerCase());
     }
 
@@ -134,12 +140,15 @@ public interface PathURI {
             final String lastComponent = hierarchicalPath.substring(indexOfLastComponent + 1);
             if (lastComponent.length() > 0) {
                 final int indexOfLastDot = lastComponent.lastIndexOf('.');
-                if (indexOfLastDot != -1 && indexOfLastDot > 1) {
+                if (indexOfLastDot == -1) {
+                    return lastComponent;
+                } else if (indexOfLastDot > 1) {
                     return lastComponent.substring(0, indexOfLastDot);
                 }
             }
+            return "";
         }
-        throw new IllegalArgumentException(String.format("Input path (%s) has no extension", this));
+        throw new IllegalArgumentException(String.format("Input (%s) contains only a path, but no name component", this));
     }
 
     /**
