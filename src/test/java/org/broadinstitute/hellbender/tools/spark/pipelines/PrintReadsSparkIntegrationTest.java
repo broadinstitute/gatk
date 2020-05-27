@@ -4,16 +4,22 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SBIIndex;
 import htsjdk.samtools.SBIIndexMerger;
 import htsjdk.samtools.SBIIndexWriter;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.tools.AbstractPrintReadsIntegrationTest;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -21,6 +27,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 
 @Test(groups = "spark")
 public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsIntegrationTest {
@@ -67,6 +74,44 @@ public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsInte
         SamAssertionUtils.assertSamsEqual(IOUtils.getPath(outputPath), IOUtils.getPath(gcsInputPath), null);
     }
 
+    @Test(groups = "spark")
+    public void testReadAndWriteCRAMAndReferenceOnHDFS() throws Exception {
+        final GATKPath testCram = new GATKPath(getTestFile("count_reads.cram").getAbsolutePath());
+        final GATKPath testRef = new GATKPath(getTestFile("count_reads.fasta").getAbsolutePath());
+        final GATKPath testRefDict = new GATKPath(getTestFile("count_reads.dict").getAbsolutePath());
+        final GATKPath testRefIndex = new GATKPath(getTestFile("count_reads.fasta.fai").getAbsolutePath());
+
+        MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
+            final org.apache.hadoop.fs.Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
+
+            // copy all the test files to HDFS
+            final org.apache.hadoop.fs.Path cramHDFSPath = new org.apache.hadoop.fs.Path(workingDirectory,"count_reads.cram");
+            final org.apache.hadoop.fs.Path refHDFSPath = new org.apache.hadoop.fs.Path(workingDirectory, "count_reads.fasta");
+            final org.apache.hadoop.fs.Path refHDFSDictPath = new org.apache.hadoop.fs.Path(workingDirectory,"count_reads.dict");
+            final org.apache.hadoop.fs.Path refHDFSIndexPath = new org.apache.hadoop.fs.Path(workingDirectory, "count_reads.fasta.fai");
+            cluster.getFileSystem().copyFromLocalFile(new org.apache.hadoop.fs.Path(testCram.getURI()), cramHDFSPath);
+            cluster.getFileSystem().copyFromLocalFile(new org.apache.hadoop.fs.Path(testRef.getURI()), refHDFSPath);
+            cluster.getFileSystem().copyFromLocalFile(new org.apache.hadoop.fs.Path(testRefDict.getURI()), refHDFSDictPath);
+            cluster.getFileSystem().copyFromLocalFile(new org.apache.hadoop.fs.Path(testRefIndex.getURI()), refHDFSIndexPath);
+
+            // run PrintReadsSpark and print the contents of the HDFS cram test file to an output HDFS cram
+            final GATKPath outputHDFSPath = new GATKPath(workingDirectory + "testCramOnHDFSOut.cram");
+            final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
+            argBuilder.addInput(cramHDFSPath.toUri().toString())
+                    .addOutput( outputHDFSPath.getURI().toString())
+                    .addReference(refHDFSPath.toUri().toString());
+            runCommandLine(argBuilder);
+
+            // compare the original test file with the HDFS cram written by PrintReadsSpark
+            final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+            final ReadsSparkSource readsSparkSource = new ReadsSparkSource(ctx);
+            final List<GATKRead> localReads = readsSparkSource.getParallelReads(testCram, testRef).collect();
+            final List<GATKRead> hdfsReads = readsSparkSource.getParallelReads(outputHDFSPath, testRef).collect();
+
+            Assert.assertFalse(localReads.isEmpty());
+            Assert.assertEquals(localReads, hdfsReads);
+        });
+    }
 
     @DataProvider
     public Object[][] getGranularityLevels(){
