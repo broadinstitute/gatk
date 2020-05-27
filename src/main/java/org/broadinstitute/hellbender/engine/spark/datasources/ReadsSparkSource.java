@@ -171,12 +171,11 @@ public final class ReadsSparkSource implements Serializable {
 
         // GCS case
         if (BucketUtils.isGcsUrl(filePath)) {
-            final SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(validationStringency);
-            try (ReadsDataSource readsDataSource = new ReadsDataSource(
-                    Collections.singletonList(IOUtils.getPath(filePath)),
-                    cramReferencePathSpec == null ?
-                            factory :
-                            factory.referenceSequence(referencePathSpecifier.toPath()))) {
+            final SamReaderFactory factory = SamReaderFactory.makeDefault()
+                    .validationStringency(validationStringency)
+                    .referenceSequence(cramReferencePathSpec == null ? null : referencePathSpecifier.toPath());
+            try (final ReadsDataSource readsDataSource =
+                         new ReadsDataSource(Collections.singletonList(IOUtils.getPath(filePath)), factory)) {
                  return readsDataSource.getHeader();
             }
         }
