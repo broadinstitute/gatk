@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Expected headers for the Variant Table (VET)
@@ -28,7 +29,7 @@ public enum RawArrayFieldEnum {
     // and just leave it empty if not required
 
     position, // Required-- start position for sample
-    sample, // Required-- sample Id for sample
+    sample_id, // Required-- sample Id for sample
 
 
     site_id { // Required
@@ -60,6 +61,14 @@ public enum RawArrayFieldEnum {
                     outList.add(a.getDisplayString());
                 }
             }
+            return String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, outList);
+        }
+    },
+
+    filter {
+        //TODO remove - just for looking at the data
+        public String getColumnValue(final VariantContext variant) {
+            Set<String> outList = variant.getFilters();
             return String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, outList);
         }
     },
