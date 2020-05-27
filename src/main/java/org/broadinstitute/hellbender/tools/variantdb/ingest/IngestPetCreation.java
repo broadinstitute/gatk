@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.variantdb;
+package org.broadinstitute.hellbender.tools.variantdb.ingest;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import java.util.ArrayList;
