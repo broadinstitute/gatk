@@ -62,6 +62,7 @@ import java.util.*;
  * <ul>
  *     <li>DepthOfCoverage currently only supports typical nucleotide (and N) bases, IUPAC ambiguity codes or other non-ATCGN bases will cause exceptions</li>
  *     <li>Read filters are applied to the reads before being counted in coverage information. By default Duplicate Marked and non-primary alignments are not counted. This can be disabled with --disable-tool-default-read-filters.</li>
+ *     <li>In order to filter reads out by their mapping qualities, the recommended approach is to use the MappingQualityReadFilter with the --minimum-mapping-quality or --maximum-mapping-quality arguments specified</li>
  * </ul>
  *
  * <h3>Usage example</h3>
