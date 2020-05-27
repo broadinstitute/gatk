@@ -59,8 +59,7 @@ public class SchemaUtils {
     public static final long chromAdjustment = 1000000000000L;
 
     public static long encodeLocation(String chrom, int position) {
-        ChromosomeEnum val = ChromosomeEnum.valueOfContig(chrom);
-        int chromosomeIndex = val.index;
+        int chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).index;
         long adjustedLocation = Long.valueOf(chromosomeIndex) * chromAdjustment + Long.valueOf(position);
         return adjustedLocation;
     }
