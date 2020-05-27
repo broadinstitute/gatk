@@ -201,7 +201,7 @@ public final class ReadsSparkSource implements Serializable {
                 throw new UserException.MissingReference("A reference is required for CRAM input");
             } else if (ReferenceTwoBitSparkSource.isTwoBit(referencePathSpecifier)) { // htsjdk can't handle 2bit reference files
                 throw new UserException("A 2bit file cannot be used as a CRAM file reference");
-            } else if (BucketUtils.isHadoopUrl(referencePathSpecifier)) {
+            } else if (referencePathSpecifier.isHadoopURL()) {
                 // For Hadoop file system, use a org.apache.hadoop.fs.Path
                 if (!SparkUtils.hadoopPathExists(ctx, referencePathSpecifier.getURI())) {
                     throw new UserException.MissingReference("The specified fasta file (" + referencePathSpecifier + ") does not exist.");
