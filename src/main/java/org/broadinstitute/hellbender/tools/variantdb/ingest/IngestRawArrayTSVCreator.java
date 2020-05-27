@@ -53,7 +53,7 @@ public final class IngestRawArrayTSVCreator extends IngestTSVCreator {
         row.add(String.valueOf(start));
         row.add(sampleId);
         for ( final RawArrayFieldEnum fieldEnum : RawArrayFieldEnum.values() ) {
-            if (!fieldEnum.equals(RawArrayFieldEnum.position) && !fieldEnum.equals(RawArrayFieldEnum.sample)) {
+            if (!fieldEnum.equals(RawArrayFieldEnum.position) && !fieldEnum.equals(RawArrayFieldEnum.sample_id)) {
                 row.add(fieldEnum.getColumnValue(variant));
             }        }
         return row;
