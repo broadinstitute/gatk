@@ -81,7 +81,8 @@ public final class IngestVariantWalker extends VariantWalker {
 
     @Argument(fullName = "sample-name-mapping",
             shortName = "SNM",
-            doc = "Sample name to sample id mapping")
+            doc = "Sample name to sample id mapping",
+            optional = true)
     public File sampleMap;
 
     @Argument(fullName = "is-array",
@@ -102,6 +103,14 @@ public final class IngestVariantWalker extends VariantWalker {
             optional = true)
     private String refVersion = "37";
 
+    @Argument(
+            fullName = "NextId",
+            shortName = "ID",
+            doc = "Id to start numbering the samples with",
+            optional = true)
+    private Integer nextId;
+
+
 //    @Override
 //    public boolean requiresIntervals() {
 //        return true; // TODO -- do I need to check the boolean flag on this?
@@ -116,7 +125,12 @@ public final class IngestVariantWalker extends VariantWalker {
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
         sampleName = IngestUtils.getSampleName(inputVCFHeader);
-        sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
+        if (sampleMap == null) {
+            sampleId = nextId.toString();
+            nextId = nextId++;
+        } else {
+            sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
+        }
 
         // Mod the sample directories
         final int sampleMod = 4000; // TODO hardcoded for now--potentially an input param?
