@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.variantdb;
+package org.broadinstitute.hellbender.tools.variantdb.ingest;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
@@ -10,19 +10,17 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.variantdb.*;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
-import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,17 +33,18 @@ import java.io.File;
 @CommandLineProgramProperties(
         summary = "Ingest tool for the Joint Genotyping in Big Query project",
         oneLineSummary = "Ingest tool for BQJG",
-        programGroup = ExampleProgramGroup.class,
+        programGroup = ShortVariantDiscoveryProgramGroup.class,
         omitFromCommandLine = true
 )
 public final class IngestVariantWalker extends VariantWalker {
     static final Logger logger = LogManager.getLogger(IngestVariantWalker.class);
 
-    private final char SEPARATOR = '\t';
-    private final String FILETYPE = ".tsv";
+    public static final char SEPARATOR = '\t';
+    public static final String FILETYPE = ".tsv";
     private SimpleXSVWriter vetWriter = null;
     private SimpleXSVWriter petWriter = null;
     private SimpleXSVWriter sampleMetadataWriter = null;
+    private IngestTSVCreator tsvCreator;
 
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
     private GenomeLocSortedSet coverageLocSortedSet;
@@ -101,12 +100,12 @@ public final class IngestVariantWalker extends VariantWalker {
             fullName = "ref-version",
             doc = "Remove this option!!!! only for ease of testing. Valid options are 37 or 38",
             optional = true)
-    private String refVersion = "38"; // TODO note the the extraction has 37 as the default
+    private String refVersion = "37";
 
-    @Override
-    public boolean requiresIntervals() {
-        return true; // TODO -- do I need to check the boolean flag on this?
-    }
+//    @Override
+//    public boolean requiresIntervals() {
+//        return true; // TODO -- do I need to check the boolean flag on this?
+//    }
 
     @Override
     public void onTraversalStart() {
@@ -116,41 +115,8 @@ public final class IngestVariantWalker extends VariantWalker {
 
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
-        final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples());
-        if (samples.numberOfSamples() > 1){
-            throw new UserException("This tool can only be run on single sample vcfs");
-        }
-        sampleName = samples.getSample(0);
-        //  Because BigQuery only supports partitioning based on timestamp or integer,
-        // sample names will be remapped into sample_id integers
-        try {
-            BufferedReader br = new BufferedReader(new FileReader(sampleMap));
-
-            String line; // Reading header, Ignoring
-            while ((line = br.readLine()) != null && !line.isEmpty()) {
-                String[] fields = line.split(",");
-                String name = fields[1];
-                if (sampleName.equals(name)) {
-                    sampleId = fields[0];
-                    break;
-                }
-            }
-            br.close();
-            if (sampleId == null) {
-                // sampleName not found
-                throw new UserException("Sample " + sampleName + " could not be found in sample mapping file");
-            }
-        } catch (final IOException ioe) { // FileNotFoundException e,
-            throw new UserException("Could not find sample mapping file");
-        }
-
-        final SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
-        userIntervals = intervalArgumentCollection.getIntervals(seqDictionary);
-
-        // To set up the missing positions
-        final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
-        intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
-        coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
+        sampleName = IngestUtils.getSampleName(inputVCFHeader);
+        sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
 
         // Mod the sample directories
         final int sampleMod = 4000; // TODO hardcoded for now--potentially an input param?
@@ -165,22 +131,6 @@ public final class IngestVariantWalker extends VariantWalker {
             sampleDirectory.mkdir();
         }
 
-
-        // If the pet directory inside it doesn't exist yet -- create it
-        final String petDirectoryName = "pet";
-        final Path petDirectoryPath = sampleDirectoryPath.resolve(petDirectoryName);
-        final File petDirectory = new File(petDirectoryPath.toString());
-        if (! petDirectory.exists()){
-            petDirectory.mkdir();
-        }
-        // If the vet directory inside it doesn't exist yet -- create it
-        final String vetDirectoryName = "vet";
-        final Path vetDirectoryPath = sampleDirectoryPath.resolve(vetDirectoryName);
-        final File vetDirectory = new File(vetDirectoryPath.toString());
-        if (! vetDirectory.exists()){
-            vetDirectory.mkdir();
-        }
-
         // If the metadata directory inside it doesn't exist yet, create it
         final String metadataDirectoryName = "metadata";
         final Path metadataDirectoryPath = sampleDirectoryPath.resolve(metadataDirectoryName);
@@ -189,32 +139,64 @@ public final class IngestVariantWalker extends VariantWalker {
             sampleMetadataOutputDirectory.mkdir();
         }
 
-        // if the pet & vet & metadata tsvs don't exist yet -- create them
 
-        try {
-            // Create a pet file to go into the pet dir for _this_ sample
-            final String petOutputName = sampleName + petDirectoryName + FILETYPE;
-            final Path petOutputPath = petDirectoryPath.resolve(petOutputName);
-            // write header to it
-            List<String> petHeader = IngestPetCreation.getHeaders();
-            petWriter = new SimpleXSVWriter(petOutputPath, SEPARATOR);
-            petWriter.setHeaderLine(petHeader);
-        } catch (final IOException e) {
-            throw new UserException("Could not create pet outputs", e);
+        if (isArray) {
+            tsvCreator = new IngestRawArrayTSVCreator(sampleName, sampleId, sampleDirectoryPath);
+        } else {
+            final SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
+            userIntervals = intervalArgumentCollection.getIntervals(seqDictionary);
+
+            // To set up the missing positions
+            final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
+            intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
+            coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
+
+
+            // If the pet directory inside it doesn't exist yet -- create it
+            final String petDirectoryName = "pet";
+            final Path petDirectoryPath = sampleDirectoryPath.resolve(petDirectoryName);
+            final File petDirectory = new File(petDirectoryPath.toString());
+            if (!petDirectory.exists()) {
+                petDirectory.mkdir();
+            }
+            // If the vet directory inside it doesn't exist yet -- create it
+            final String vetDirectoryName = "vet";
+            final Path vetDirectoryPath = sampleDirectoryPath.resolve(vetDirectoryName);
+            final File vetDirectory = new File(vetDirectoryPath.toString());
+            if (!vetDirectory.exists()) {
+                vetDirectory.mkdir();
+            }
+
+            // if the pet & vet tsvs don't exist yet -- create them
+            try {
+                // Create a pet file to go into the pet dir for _this_ sample
+                final String petOutputName = sampleName + petDirectoryName + FILETYPE;
+                final Path petOutputPath = petDirectoryPath.resolve(petOutputName);
+                // write header to it
+                List<String> petHeader = IngestPetCreation.getHeaders();
+                petWriter = new SimpleXSVWriter(petOutputPath, SEPARATOR);
+                petWriter.setHeaderLine(petHeader);
+            } catch (final IOException e) {
+                throw new UserException("Could not create pet outputs", e);
+            }
+
+            try {
+                // Create a vet file to go into the pet dir for _this_ sample
+                final String vetOutputName = sampleName + vetDirectoryName + FILETYPE;
+                final Path vetOutputPath = vetDirectoryPath.resolve(vetOutputName);
+                // write header to it
+                List<String> vetHeader = IngestVetExomeCreation.getHeaders();
+                vetWriter = new SimpleXSVWriter(vetOutputPath, SEPARATOR);
+                vetWriter.setHeaderLine(vetHeader);
+            } catch (final IOException e) {
+                throw new UserException("Could not create vet outputs", e);
+            }
+
+
         }
 
-        try {
-            // Create a vet file to go into the pet dir for _this_ sample
-            final String vetOutputName = sampleName + vetDirectoryName + FILETYPE;
-            final Path vetOutputPath = vetDirectoryPath.resolve(vetOutputName);
-            // write header to it
-            List<String> vetHeader = isArray ?  IngestVetArrayCreation.getHeaders(): IngestVetExomeCreation.getHeaders();
-            vetWriter = new SimpleXSVWriter(vetOutputPath, SEPARATOR);
-            vetWriter.setHeaderLine(vetHeader);
-        } catch (final IOException e) {
-            throw new UserException("Could not create vet outputs", e);
-        }
 
+        // if the metadata tsvs don't exist yet -- create them
         try {
             // Create a metadata file to go into the metadata dir for _this_ sample
             // TODO--this should just be one file per sample set?
@@ -224,11 +206,15 @@ public final class IngestVariantWalker extends VariantWalker {
             List<String> sampleListHeader = IngestSampleListCreation.getHeaders();
             sampleMetadataWriter = new SimpleXSVWriter(sampleMetadataOutputPath, SEPARATOR);
             sampleMetadataWriter.setHeaderLine(sampleListHeader);
-            // write values
-            List<String> intervalList = userIntervals.stream().map(interval -> interval.toString())
-                    .collect(Collectors.toList());
-            String intervalListBlob = StringUtils.join(intervalList, ", ");
-            String intervalListMd5 = Utils.calcMD5(intervalListBlob);
+            String intervalListMd5 = "NA";
+
+            if (!isArray) {
+                // write values
+                List<String> intervalList = userIntervals.stream().map(interval -> interval.toString())
+                        .collect(Collectors.toList());
+                String intervalListBlob = StringUtils.join(intervalList, ", ");
+                intervalListMd5 = Utils.calcMD5(intervalListBlob);
+            }
             final List<String> TSVLineToCreateSampleMetadata = IngestSampleListCreation.createSampleListRow(
                     sampleName,
                     sampleId,
@@ -241,25 +227,30 @@ public final class IngestVariantWalker extends VariantWalker {
         }
     }
 
-    public void setCoveredInterval( String variantChr, int start, int end) {
+    public static void setCoveredInterval(IngestVariantWalker ingestVariantWalker, String variantChr, int start, int end) {
         // add interval to "covered" intervals
         // GenomeLocSortedSet will automatically merge intervals that are overlapping when setting `mergeIfIntervalOverlaps`
         // to true.  In a GVCF most blocks are adjacent to each other so they wouldn't normally get merged.  We check
         // if the current record is adjacent to the previous record and "overlap" them if they are so our set is as
         // small as possible while still containing the same bases.
         final SimpleInterval variantInterval = new SimpleInterval(variantChr, start, end);
-        final int intervalStart = (previousInterval != null && previousInterval.overlapsWithMargin(variantInterval, 1)) ?
-                previousInterval.getStart() : variantInterval.getStart();
-        final int intervalEnd = (previousInterval != null && previousInterval.overlapsWithMargin(variantInterval, 1)) ?
-                Math.max(previousInterval.getEnd(), variantInterval.getEnd()) : variantInterval.getEnd();
+        final int intervalStart = (ingestVariantWalker.previousInterval != null && ingestVariantWalker.previousInterval.overlapsWithMargin(variantInterval, 1)) ?
+                ingestVariantWalker.previousInterval.getStart() : variantInterval.getStart();
+        final int intervalEnd = (ingestVariantWalker.previousInterval != null && ingestVariantWalker.previousInterval.overlapsWithMargin(variantInterval, 1)) ?
+                Math.max(ingestVariantWalker.previousInterval.getEnd(), variantInterval.getEnd()) : variantInterval.getEnd();
 
-        final GenomeLoc possiblyMergedGenomeLoc = coverageLocSortedSet.getGenomeLocParser().createGenomeLoc(variantInterval.getContig(), intervalStart, intervalEnd);
-        coverageLocSortedSet.add(possiblyMergedGenomeLoc, true);
-        previousInterval = new SimpleInterval(possiblyMergedGenomeLoc);
+        final GenomeLoc possiblyMergedGenomeLoc = ingestVariantWalker.coverageLocSortedSet.getGenomeLocParser().createGenomeLoc(variantInterval.getContig(), intervalStart, intervalEnd);
+        ingestVariantWalker.coverageLocSortedSet.add(possiblyMergedGenomeLoc, true);
+        ingestVariantWalker.previousInterval = new SimpleInterval(possiblyMergedGenomeLoc);
     }
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+
+        if (isArray) {
+            tsvCreator.apply(variant, readsContext, referenceContext, featureContext);
+            return;
+        }
 
         // get the intervals this variant covers
         final GenomeLoc variantGenomeLoc = intervalArgumentGenomeLocSortedSet.getGenomeLocParser().createGenomeLoc(variant.getContig(), variant.getStart(), variant.getEnd());
@@ -287,40 +278,6 @@ public final class IngestVariantWalker extends VariantWalker {
             int start = variant.getStart();
             int end = variant.getEnd();
             // check to see if this is an array
-            if(isArray) {
-                // check if the array variant is homref 0/0 and if it is then add it to the PET as an unknown state
-                if (variant.getGenotype(0).isHomRef()) {
-                    List<List<String>> TSVLinesToCreatePet;
-                    TSVLinesToCreatePet = IngestPetCreation.createArrayPositionRows(SchemaUtils.encodeLocation(variantChr, start), SchemaUtils.encodeLocation(variantChr, end), variant, sampleId);
-
-                    for (List<String> TSVLineToCreatePet : TSVLinesToCreatePet) {
-                        petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
-                    }
-                } else {
-                    final List<String> TSVLineToCreateVet = IngestVetArrayCreation.createVariantRow(
-                            SchemaUtils.encodeLocation(variantChr, start),
-                            variant,
-                            sampleId
-                    );
-
-                    // write the variant to the XSV
-                    SimpleXSVWriter.LineBuilder vetLine = vetWriter.getNewLineBuilder();
-                    vetLine.setRow(TSVLineToCreateVet);
-                    vetLine.write();
-
-                    // also add to PET
-                    List<List<String>> TSVLinesToCreatePet;
-                    TSVLinesToCreatePet = IngestPetCreation.createPositionRows(SchemaUtils.encodeLocation(variantChr, start), SchemaUtils.encodeLocation(variantChr, end), variant, sampleId);
-
-                    // write the position to the XSV
-                    for (List<String> TSVLineToCreatePet : TSVLinesToCreatePet) {
-                        petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
-                    }
-                }
-
-                // Return here so there is there's no additional work putting together the genomeloc etc?
-                return;
-            }
             // else, it must be an exome or genome!
             final List<String> TSVLineToCreateVet = IngestVetExomeCreation.createVariantRow(
                     SchemaUtils.encodeLocation(variantChr, start),
@@ -344,14 +301,14 @@ public final class IngestVariantWalker extends VariantWalker {
             // for each of the reference blocks with the GQ to discard, keep track of the positions for the missing insertions
             if (IngestPetCreation.getGQStateEnum(variant.getGenotype(0).getGQ()).equals(gqStateToIgnore)) {
                 // add interval to "covered" intervals
-                setCoveredInterval(variantChr, start, end);
+                setCoveredInterval(this, variantChr, start, end);
             }
 
             // create PET output if the reference block's GQ is not the one to discard or its a variant
             if (!variant.isReferenceBlock() || !IngestPetCreation.getGQStateEnum(variant.getGenotype(0).getGQ()).equals(gqStateToIgnore)) {
 
                 // add interval to "covered" intervals
-                setCoveredInterval(variantChr, start, end);
+                setCoveredInterval(this, variantChr, start, end);
 
                 List<List<String>> TSVLinesToCreatePet;
                 // handle deletions that span across multiple intervals
@@ -382,10 +339,10 @@ public final class IngestVariantWalker extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
+        if (isArray) { return 0; }
         final GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(coverageLocSortedSet);
         logger.info("MISSING_GREP_HERE:" + uncoveredIntervals.coveredSize());
         logger.info("MISSING_PERCENTAGE_GREP_HERE:" + (1.0 * uncoveredIntervals.coveredSize()) / intervalArgumentGenomeLocSortedSet.coveredSize());
-        if (isArray) { return 0; }
         for (GenomeLoc genomeLoc : uncoveredIntervals) {
             final String contig = genomeLoc.getContig();
             // write the position to the XSV
@@ -402,6 +359,9 @@ public final class IngestVariantWalker extends VariantWalker {
 
     @Override
     public void closeTool() {
+        if (isArray) {
+            tsvCreator.closeTool();
+        }
         if (vetWriter != null) {
             try {
                 vetWriter.close();
