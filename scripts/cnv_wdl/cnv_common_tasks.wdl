@@ -443,7 +443,12 @@ task ScatterIntervals {
 
 task PostprocessGermlineCNVCalls {
     input {
-        File bundled_gcnv_outputs
+        File gcnv_calls_sample_tar
+        Array[File] gcnv_model_tars
+        Array[File] calling_configs
+        Array[File] denoising_configs
+        Array[File] gcnvkernel_version
+        Array[File] sharded_interval_lists
         String entity_id
         File contig_ploidy_calls_tar
         Array[String]? allosomal_contigs
@@ -463,11 +468,6 @@ task PostprocessGermlineCNVCalls {
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
-    Float bundled_gcnv_outputs_size = size(bundled_gcnv_outputs, "GiB")
-    Float disk_overhead = 20.0
-    Float tar_disk_factor= 5.0
-    Int vm_disk_size = ceil(tar_disk_factor * bundled_gcnv_outputs_size + disk_overhead)
-
     String genotyped_intervals_vcf_filename = "genotyped-intervals-~{entity_id}.vcf.gz"
     String genotyped_segments_vcf_filename = "genotyped-segments-~{entity_id}.vcf.gz"
     String denoised_copy_ratios_filename = "denoised_copy_ratios-~{entity_id}.tsv"
@@ -476,30 +476,45 @@ task PostprocessGermlineCNVCalls {
 
     command <<<
         set -euo pipefail
-
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
+
+        sharded_interval_lists_array=(~{sep=" " sharded_interval_lists})
 
         # untar calls to CALLS_0, CALLS_1, etc directories and build the command line
         # also copy over shard config and interval files
-        tar xzf ~{bundled_gcnv_outputs}
-        rm ~{bundled_gcnv_outputs}
-        number_of_shards=`find . -name 'CALLS_*' | wc -l`
-
-        touch calls_and_model_args.txt
-        for i in $(seq 0 `expr $number_of_shards - 1`); do
-            echo "--calls-shard-path CALLS_$i" >> calls_and_model_args.txt
-            echo "--model-shard-path MODEL_$i" >> calls_and_model_args.txt
+        calling_configs_array=(~{sep=" " calling_configs})
+        denoising_configs_array=(~{sep=" " denoising_configs})
+        gcnvkernel_version_array=(~{sep=" " gcnvkernel_version})
+        sharded_interval_lists_array=(~{sep=" " sharded_interval_lists})
+        calls_args=""
+        tar xzf ~{gcnv_calls_sample_tar}
+        for index in ${!calling_configs_array[@]}; do
+            cp ${calling_configs_array[$index]} CALLS_$index/
+            cp ${denoising_configs_array[$index]} CALLS_$index/
+            cp ${gcnvkernel_version_array[$index]} CALLS_$index/
+            cp ${sharded_interval_lists_array[$index]} CALLS_$index/
+            calls_args="$calls_args --calls-shard-path CALLS_$index"
         done
 
-        mkdir -p extracted-contig-ploidy-calls
-        tar xzf ~{contig_ploidy_calls_tar} -C extracted-contig-ploidy-calls
-        rm ~{contig_ploidy_calls_tar}
+        # untar models to MODEL_0, MODEL_1, etc directories and build the command line
+        gcnv_model_tar_array=(~{sep=" " gcnv_model_tars})
+        model_args=""
+        for index in ${!gcnv_model_tar_array[@]}; do
+            gcnv_model_tar=${gcnv_model_tar_array[$index]}
+            mkdir MODEL_$index
+            tar xzf $gcnv_model_tar -C MODEL_$index
+            model_args="$model_args --model-shard-path MODEL_$index"
+        done
+
+        mkdir contig-ploidy-calls
+        tar xzf ~{contig_ploidy_calls_tar} -C contig-ploidy-calls
 
         gatk --java-options "-Xmx~{command_mem_mb}m" PostprocessGermlineCNVCalls \
-             --arguments_file calls_and_model_args.txt \
+            $calls_args \
+            $model_args \
             ~{sep=" " allosomal_contigs_args} \
             --autosomal-ref-copy-number ~{ref_copy_number_autosomal_contigs} \
-            --contig-ploidy-calls extracted-contig-ploidy-calls \
+            --contig-ploidy-calls contig-ploidy-calls \
             --sample-index ~{sample_index} \
             --output-genotyped-intervals ~{genotyped_intervals_vcf_filename} \
             --output-genotyped-segments ~{genotyped_segments_vcf_filename} \
@@ -507,13 +522,13 @@ task PostprocessGermlineCNVCalls {
 
         rm -rf CALLS_*
         rm -rf MODEL_*
-        rm -rf extracted-contig-ploidy-calls
+        rm -rf contig-ploidy-calls
     >>>
 
     runtime {
         docker: gatk_docker
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, vm_disk_size]) + if use_ssd then " SSD" else " HDD"
+        disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
         maxRetries: 1
@@ -617,14 +632,9 @@ task CollectModelQualityMetrics {
     }
 }
 
-task BundleCallerOutputs {
+task TransposeCallerOutputs {
     input {
-      Array[File] calls_tars
-      Array[File] model_tars
-      Array[File] calling_configs
-      Array[File] denoising_configs
-      Array[File] gcnvkernel_version
-      Array[File] sharded_interval_lists
+      Array[File] gcnv_calls_tars
 
       # Runtime parameters
       String docker
@@ -637,44 +647,21 @@ task BundleCallerOutputs {
 
     command <<<
         set -euo pipefail
-        mkdir -p out
 
-        calls_files_tar_list=~{write_lines(calls_tars)}
-        model_files_tar_list=~{write_lines(model_tars)}
+        gcnv_calls_tar_array=(~{sep=" " gcnv_calls_tars})
+        for index in ${!gcnv_calls_tar_array[@]}; do
+            mkdir CALLS_$index
+            tar xzf ${gcnv_calls_tar_array[$index]} -C CALLS_$index
+        done
 
-        calling_configs_list=~{write_lines(calling_configs)}
-        denoising_configs_list=~{write_lines(denoising_configs)}
-        gcnvkernel_version_list=~{write_lines(gcnvkernel_version)}
-        sharded_interval_lists_list=~{write_lines(sharded_interval_lists)}
-
-        cat $calls_files_tar_list | sort -V > calls_files_tar_list.sorted
-        cat $model_files_tar_list | sort -V > model_files_tar_list.sorted
-
-        cat $calling_configs_list | sort -V > calling_configs_list.sorted
-        cat $denoising_configs_list | sort -V > denoising_configs_list.sorted
-        cat $gcnvkernel_version_list | sort -V > gcnvkernel_version_list.sorted
-        cat $sharded_interval_lists_list | sort -V > sharded_interval_lists_list.sorted
-
-        paste calls_files_tar_list.sorted model_files_tar_list.sorted calling_configs_list.sorted denoising_configs_list.sorted gcnvkernel_version_list.sorted sharded_interval_lists_list.sorted |\
-              awk '{print (NR-1)"\t"$0}' > file_sets.sorted
-        OIFS=$IFS
-        IFS=$'\t'
-        while read index calls_tar model_tar call_config denoise version intervals; do
-            mkdir -p out/CALLS_$index
-            mkdir -p out/MODEL_$index
-            tar xzf $calls_tar -C out/CALLS_$index
-            tar xzf $model_tar -C out/MODEL_$index
-            cp $call_config out/CALLS_$index
-            cp $denoise out/CALLS_$index
-            cp $version out/CALLS_$index
-            cp $intervals out/CALLS_$index
-            rm $calls_tar $model_tar $call_config $denoise $version $intervals
-
-        done < file_sets.sorted
-        IFS=$OIFS
-
-        tar c -C out . | gzip -1 > case-gcnv-postprocessing-invariants.tar.gz
-        rm -Rf out
+        CURRENT_SAMPLE=0
+        NUM_SAMPLES=$(ls -d CALLS_0/SAMPLE_* | wc -l)
+        NUM_DIGITS=${#NUM_SAMPLES}
+        while [ $CURRENT_SAMPLE -lt $NUM_SAMPLES ]; do
+            CURRENT_SAMPLE_WITH_LEADING_ZEROS=$(printf "%0${NUM_DIGITS}d" $CURRENT_SAMPLE)
+            tar c CALLS_*/SAMPLE_$CURRENT_SAMPLE | gzip -1 > case-gcnv-calls-sample-$CURRENT_SAMPLE_WITH_LEADING_ZEROS.tar.gz
+            let CURRENT_SAMPLE=CURRENT_SAMPLE+1
+        done
     >>>
 
     runtime {
@@ -686,7 +673,7 @@ task BundleCallerOutputs {
     }
 
     output {
-        File bundle_tar = "case-gcnv-postprocessing-invariants.tar.gz"
+        Array[File] gcnv_calls_sample_tars = glob("case-gcnv-calls-sample-*.tar.gz")
     }
 }
 

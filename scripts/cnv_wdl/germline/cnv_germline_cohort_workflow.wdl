@@ -325,14 +325,9 @@ workflow CNVGermlineCohortWorkflow {
         }
     }
 
-    call CNVTasks.BundleCallerOutputs {
+    call CNVTasks.TransposeCallerOutputs {
         input:
-            calls_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar,
-            model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar,
-            calling_configs = GermlineCNVCallerCohortMode.calling_config_json,
-            denoising_configs = GermlineCNVCallerCohortMode.denoising_config_json,
-            gcnvkernel_version = GermlineCNVCallerCohortMode.gcnvkernel_version_json,
-            sharded_interval_lists = GermlineCNVCallerCohortMode.sharded_interval_list,
+            gcnv_calls_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar,
             docker = gatk_docker,
             mem_gb = mem_gb_for_bundle_caller_outputs,
             disk_space_gb = disk_space_gb_for_bundle_caller_outputs,
@@ -342,7 +337,12 @@ workflow CNVGermlineCohortWorkflow {
     scatter (sample_index in range(length(normal_bams))) {
         call CNVTasks.PostprocessGermlineCNVCalls {
             input:
-                bundled_gcnv_outputs = BundleCallerOutputs.bundle_tar,
+                gcnv_calls_sample_tar = TransposeCallerOutputs.gcnv_calls_sample_tars[sample_index],
+                gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar,
+                calling_configs = GermlineCNVCallerCohortMode.calling_config_json,
+                denoising_configs = GermlineCNVCallerCohortMode.denoising_config_json,
+                gcnvkernel_version = GermlineCNVCallerCohortMode.gcnvkernel_version_json,
+                sharded_interval_lists = GermlineCNVCallerCohortMode.sharded_interval_list,
                 entity_id = CollectCounts.entity_id[sample_index],
                 allosomal_contigs = allosomal_contigs,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
@@ -597,9 +597,9 @@ task GermlineCNVCallerCohortMode {
             --caller-external-admixing-rate ~{default="1.00" caller_external_admixing_rate} \
             --disable-annealing ~{default="false" disable_annealing}
 
-        tar c -C ~{output_dir_}/~{cohort_entity_id}-tracking . | gzip -1 > ~{cohort_entity_id}-gcnv-tracking-shard-~{scatter_index}.tar.gz
-        tar c -C ~{output_dir_}/~{cohort_entity_id}-calls  . | gzip -1 > ~{cohort_entity_id}-gcnv-calls-shard-~{scatter_index}.tar.gz
-        tar c -C ~{output_dir_}/~{cohort_entity_id}-model  . | gzip -1 > ~{cohort_entity_id}-gcnv-model-shard-~{scatter_index}.tar.gz
+        tar czf ~{cohort_entity_id}-gcnv-tracking-shard-~{scatter_index}.tar.gz -C ~{output_dir_}/~{cohort_entity_id}-tracking .
+        tar czf ~{cohort_entity_id}-gcnv-calls-shard-~{scatter_index}.tar.gz -C ~{output_dir_}/~{cohort_entity_id}-calls  .
+        tar czf ~{cohort_entity_id}-gcnv-model-shard-~{scatter_index}.tar.gz -C ~{output_dir_}/~{cohort_entity_id}-model  .
 
         rm -rf contig-ploidy-calls
     >>>

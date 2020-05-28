@@ -232,14 +232,9 @@ workflow CNVGermlineCaseWorkflow {
         }
     }
 
-    call CNVTasks.BundleCallerOutputs {
+    call CNVTasks.TransposeCallerOutputs {
         input:
-            calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar,
-            model_tars = gcnv_model_tars,
-            calling_configs = GermlineCNVCallerCaseMode.calling_config_json,
-            denoising_configs = GermlineCNVCallerCaseMode.denoising_config_json,
-            gcnvkernel_version = GermlineCNVCallerCaseMode.gcnvkernel_version_json,
-            sharded_interval_lists = GermlineCNVCallerCaseMode.sharded_interval_list,
+            gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar,
             docker = gatk_docker,
             mem_gb = mem_gb_for_bundle_caller_outputs,
             disk_space_gb = disk_space_gb_for_bundle_caller_outputs,
@@ -247,9 +242,15 @@ workflow CNVGermlineCaseWorkflow {
     }
 
     scatter (sample_index in range(length(normal_bams))) {
+
         call CNVTasks.PostprocessGermlineCNVCalls {
             input:
-                bundled_gcnv_outputs = BundleCallerOutputs.bundle_tar,
+                gcnv_calls_sample_tar = TransposeCallerOutputs.gcnv_calls_sample_tars[sample_index],
+                gcnv_model_tars = gcnv_model_tars,
+                calling_configs = GermlineCNVCallerCaseMode.calling_config_json,
+                denoising_configs = GermlineCNVCallerCaseMode.denoising_config_json,
+                gcnvkernel_version = GermlineCNVCallerCaseMode.gcnvkernel_version_json,
+                sharded_interval_lists = GermlineCNVCallerCaseMode.sharded_interval_list,
                 entity_id = CollectCounts.entity_id[sample_index],
                 allosomal_contigs = allosomal_contigs,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
@@ -341,7 +342,7 @@ task DetermineGermlineContigPloidyCaseMode {
             --mapping-error-rate ~{default="0.01" mapping_error_rate} \
             --sample-psi-scale ~{default="0.0001" sample_psi_scale}
 
-        tar czf case-contig-ploidy-calls.tar.gz -C ~{output_dir_}/case-calls .
+        tar c -C ~{output_dir_}/case-calls . | gzip -1 > case-contig-ploidy-calls.tar.gz
 
         rm -rf contig-ploidy-model
     >>>
