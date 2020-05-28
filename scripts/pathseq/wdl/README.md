@@ -5,7 +5,7 @@
 To get started, *copy* the ``pathseq_pipeline_template.json`` for the workflow and modify the parameters accordingly.
 DO NOT commit your json file to this repo.
 
-PathSeq reference files are available in the [GATK Resource Bundle](https://software.broadinstitute.org/gatk/download/bundle) at `gs://gatk-best-practices/pathseq`.
+PathSeq reference files are available in the [GATK Resource Bundle](https://gatk.broadinstitute.org/hc/en-us/articles/360035890811-Resource-bundle) at `gs://gatk-best-practices/pathseq`.
 
 *Please note that there are optional parameters that do not appear in the template files, since we do not want to specify them by default*
 
