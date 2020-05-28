@@ -222,6 +222,7 @@ def parse_args():
     parser.add_argument('--inspect_show_labels', default=True, action='store_true', help='Plot model architecture with labels for each layer.')
     parser.add_argument('--alpha', default=0.5, type=float, help='Alpha transparency for t-SNE plots must in [0.0-1.0].')
     parser.add_argument('--plot_mode', default='clinical', choices=['clinical', 'full'], help='ECG view to plot for partners ECGs.')
+    parser.add_argument("--embed_visualization", help="Method to visualize embed layer. Options: None, tsne, or umap")
 
     # Training optimization options
     parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
