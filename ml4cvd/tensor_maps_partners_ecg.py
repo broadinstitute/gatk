@@ -9,7 +9,7 @@ from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, TENSOR_EXT
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, TENSOR_EXT, CARCIAC_SURGERY_DATE_FORMAT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 from ml4cvd.normalizer import Standardize
 
@@ -1217,10 +1217,6 @@ TMAPS[task] = TensorMap(
 )
 
 
-def _partners_str2date(d):
-    return datetime.datetime.strptime(d, PARTNERS_DATE_FORMAT).date()
-
-
 def partners_ecg_age(tm, hd5, dependents={}):
     ecg_dates = _get_ecg_dates(tm, hd5)
     dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
@@ -1420,8 +1416,18 @@ def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
         raise ValueError(f'TensorMap {tm.name} has too many zeros in V6.')
 
 
-def _loyalty_str2date(date_string: str):
+# Date formatting
+def _partners_str2date(d) -> datetime.datetime:
+    return datetime.datetime.strptime(d, PARTNERS_DATE_FORMAT).date()
+
+
+def _loyalty_str2date(date_string: str) -> datetime.date:
     return str2date(date_string.split(' ')[0])
+
+
+def _cardiac_surgery_str2date(input_date: str, date_format: str = CARDIAC_SURGERY_DATE_FORMAT) -> datetime.datetime:
+    return datetime.datetime.strptime(input_date, date_format)
+
 
 
 def _hd5_filename_to_mrn_int(filename: str) -> int:
@@ -1751,10 +1757,6 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
                 name2tensormap[needed_name] = TensorMap(f'{needed_name}_newest', Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(50,), days_window=days_window, tensor_from_file=tff)
     logging.info(f'return names {list(name2tensormap.keys())}')
     return name2tensormap
-
-
-def _cardiac_surgery_str2date(input_date: str) -> datetime.datetime:
-    return datetime.datetime.strptime(input_date, "%d%b%Y")
 
 
 def _dates_with_voltage_len(ecg_dates, voltage_len, tm, hd5, voltage_key = list(ECG_REST_AMP_LEADS.keys())[0]):
