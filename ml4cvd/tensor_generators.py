@@ -18,6 +18,7 @@ import time
 import logging
 import traceback
 import numpy as np
+import pandas as pd
 from collections import Counter
 from multiprocessing import Process, Queue
 from itertools import chain
@@ -507,14 +508,33 @@ def _get_train_valid_test_discard_ratios(
 def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]]:
     if sample_csv is None:
         return None
-    with open(sample_csv, 'r') as csv_file:
-        sample_ids = [row[0] for row in csv.reader(csv_file)]
-        # simple header detection, sample ids are assumed to be ints, headers strings with non-numerics
-        try:
-            int(sample_ids[0])
-        except ValueError:
-            sample_ids = sample_ids[1:]
-        return set(sample_ids)
+
+    # Load CSV into dataframe
+    df = pd.read_csv(sample_csv, header="infer")
+
+    # Declare set of possible MRN column names
+    possible_mrn_col_names = {"sampleid", "medrecn", "mrn", "patient_id"}
+
+    # Find intersection between CSV columns and possible MRN column names
+    matches = set(df.columns).intersection(possible_mrn_col_names)
+
+    # If no matches, assume the first column is MRN
+    if not matches:
+        mrn_col_name = df.columns[0]
+
+    elif len(matches) > 1:
+        logging.warning(
+            f"{sample_csv} has more than one potential column for MRNs. Inferring most likely column name, but recommend explicitly setting MRN column name.",
+        )
+
+        # Get one string from the set of matches; this is the column name
+        mrn_col_name = next(iter(matches))
+
+    # Isolate this column from the dataframe, and cast to strings
+    sample_ids = df[mrn_col_name].apply(str)
+
+    return set(sample_ids)
+
 
 
 def get_train_valid_test_paths(
