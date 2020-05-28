@@ -188,7 +188,7 @@ public final class ContextCovariate implements Covariate {
             currentKey = 0;
             currentNPenalty = contextSize - 1;
             int offset = newBaseOffset;
-            while (bases[currentNPenalty] != 'N') {
+            while (BaseUtils.simpleBaseToBaseIndex(bases[currentNPenalty]) != -1) {
                 final int baseIndex = BaseUtils.simpleBaseToBaseIndex(bases[currentNPenalty]);
                 currentKey |= (baseIndex << offset);
                 offset -= 2;
