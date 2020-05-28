@@ -230,15 +230,15 @@ public final class SVDDenoisingUtils {
             logger.info(String.format("A value of 100 was provided for argument %s, so the corresponding filtering step will be skipped...",
                     CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME));
         } else {
-            logger.info(String.format("Filtering samples with a fraction of zero-coverage intervals above %.2f percent...", maximumZerosInSamplePercentage));
-            final int maxZerosInSample = calculateMaximumZerosCount(countNumberPassingFilter(filterIntervals), maximumZerosInSamplePercentage);
+            logger.info(String.format("Filtering samples with a fraction of zero-coverage intervals greater than or equal to %.2f percent...", maximumZerosInSamplePercentage));
+            final int numPassingIntervals = countNumberPassingFilter(filterIntervals);
             IntStream.range(0, numOriginalSamples)
                     .filter(sampleIndex -> !filterSamples[sampleIndex])
                     .forEach(sampleIndex -> {
-                        final int numZerosInSample = (int) IntStream.range(0, numOriginalIntervals)
+                        final double numZerosInSample = (double) IntStream.range(0, numOriginalIntervals)
                                 .filter(intervalIndex -> !filterIntervals[intervalIndex] && readCounts.getEntry(sampleIndex, intervalIndex) == 0.)
                                 .count();
-                        if (numZerosInSample > maxZerosInSample) {
+                        if (numZerosInSample / numPassingIntervals >= maximumZerosInSamplePercentage / 100.) {
                             filterSamples[sampleIndex] = true;
                         }
                     });
@@ -250,15 +250,15 @@ public final class SVDDenoisingUtils {
             logger.info(String.format("A value of 100 was provided for argument %s, so the corresponding filtering step will be skipped...",
                     CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME));
         } else {
-            logger.info(String.format("Filtering intervals with a fraction of zero-coverage samples above %.2f percent...", maximumZerosInIntervalPercentage));
-            final int maxZerosInInterval = calculateMaximumZerosCount(countNumberPassingFilter(filterSamples), maximumZerosInIntervalPercentage);
+            logger.info(String.format("Filtering intervals with a fraction of zero-coverage samples greater than or equal to %.2f percent...", maximumZerosInIntervalPercentage));
+            final int numPassingSamples = countNumberPassingFilter(filterSamples);
             IntStream.range(0, numOriginalIntervals)
                     .filter(intervalIndex -> !filterIntervals[intervalIndex])
                     .forEach(intervalIndex -> {
-                        final int numZerosInInterval = (int) IntStream.range(0, numOriginalSamples)
+                        final double numZerosInInterval = (double) IntStream.range(0, numOriginalSamples)
                                 .filter(sampleIndex -> !filterSamples[sampleIndex] && readCounts.getEntry(sampleIndex, intervalIndex) == 0.)
                                 .count();
-                        if (numZerosInInterval > maxZerosInInterval) {
+                        if (numZerosInInterval / numPassingSamples >= maximumZerosInIntervalPercentage / 100.) {
                             filterIntervals[intervalIndex] = true;
                         }
                     });
@@ -270,7 +270,7 @@ public final class SVDDenoisingUtils {
             logger.info(String.format("A value of 0 was provided for argument %s, so the corresponding filtering step will be skipped...",
                     CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME));
         } else {
-            logger.info(String.format("Filtering samples with a median (across intervals) below the %.2f percentile or above the %.2f percentile...",
+            logger.info(String.format("Filtering samples with a median (across intervals) strictly below the %.2f percentile or strictly above the %.2f percentile...",
                     extremeSampleMedianPercentile, 100. - extremeSampleMedianPercentile));
             //calculate the medians for all samples (which, although unnecessary, makes bookkeeping easier) across intervals not already filtered
             final double[] sampleMedians = IntStream.range(0, numOriginalSamples)
@@ -352,7 +352,7 @@ public final class SVDDenoisingUtils {
                     return value;
                 }
             });
-            logger.info(String.format("%d values below the %.2f percentile or above the %.2f percentile were truncated to the corresponding value...",
+            logger.info(String.format("%d values strictly below the %.2f percentile or strictly above the %.2f percentile were truncated to the corresponding value...",
                     numTruncated[0], extremeOutlierTruncationPercentile, 100. - extremeOutlierTruncationPercentile));
         }
         return new PreprocessedStandardizedResult(
@@ -490,11 +490,6 @@ public final class SVDDenoisingUtils {
                 return safeLog2(value / sampleMedians[sampleIndex]);
             }
         });
-    }
-
-    private static int calculateMaximumZerosCount(final int numTotalCounts,
-                                                  final double percentage) {
-        return (int) Math.ceil(numTotalCounts * percentage / 100.0);
     }
 
     private static double safeLog2(final double x) {
