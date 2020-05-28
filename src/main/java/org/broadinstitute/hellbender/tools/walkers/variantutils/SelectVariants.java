@@ -60,7 +60,7 @@ import java.util.stream.Collectors;
  *     <li>Specify criteria for inclusion that place thresholds on annotation values, e.g. "DP > 1000" (depth of
  *     coverage greater than 1000x), "AF < 0.25" (sites with allele frequency less than 0.25). These criteria are written
  *     as "JEXL expressions", which are documented in the
- *     <a href="https://www.broadinstitute.org/gatk/guide/article?id=1255">article about using JEXL expressions</a>.</li>
+ *     <a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions">article about using JEXL expressions</a>.</li>
  *     <li>Provide concordance or discordance tracks in order to include or exclude variants that are also present
  *     in other given callsets.</li>
  *     <li>Select variants based on criteria like their type (e.g. INDELs only), evidence of mendelian violation,
