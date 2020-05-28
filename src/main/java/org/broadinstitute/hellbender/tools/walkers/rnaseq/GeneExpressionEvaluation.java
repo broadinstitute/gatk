@@ -410,7 +410,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     private Gff3BaseData shrinkBaseData(final Gff3BaseData baseData) {
         //remove all but featureLabelKey attributes
         final Map<String, String> shrunkAttributes = baseData.getAttributes().entrySet().stream().filter(e -> e.getKey().equals(featureLabelKey)).collect(Collectors.toMap(Map.Entry::getKey,Map.Entry::getValue));
-        return new Gff3BaseData(baseData.getContig(), baseData.getSource(), baseData.getType(), baseData.getStart(), baseData.getEnd(), baseData.getStrand(), baseData.getPhase(), shrunkAttributes);
+        return new Gff3BaseData(baseData.getContig(), baseData.getSource(), baseData.getType(), baseData.getStart(), baseData.getEnd(), baseData.getScore(), baseData.getStrand(), baseData.getPhase(), shrunkAttributes);
     }
 
     private void addGroupingFeature(final Gff3BaseData groupingBaseData, final List<Interval> overlappingFeatures) {
@@ -576,7 +576,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         @Override
         protected GeneExpressionEvaluation.SingleStrandFeatureCoverage createRecord(final DataLine dataLine) {
             return new GeneExpressionEvaluation.SingleStrandFeatureCoverage(new Gff3BaseData(dataLine.get("contig"),".", ".",
-                    dataLine.getInt("start"), dataLine.getInt("stop"), Strand.decode(dataLine.get("strand")), 0,
+                    dataLine.getInt("start"), dataLine.getInt("stop"), -1d, Strand.decode(dataLine.get("strand")), -1,
                     Collections.singletonMap("ID", dataLine.get("gene_id"))), (float)dataLine.getDouble(6), dataLine.get("sense_antisense").equals("sense"));
         }
     }
