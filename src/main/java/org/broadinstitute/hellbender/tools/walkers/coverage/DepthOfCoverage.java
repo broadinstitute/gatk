@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.coverage;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.util.Locatable;
-import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -86,7 +85,6 @@ import java.util.*;
 @BetaFeature
 @DocumentedFeature
 public class DepthOfCoverage extends LocusWalkerByInterval {
-    private final static Logger logger = Logger.getLogger(DepthOfCoverage.class);
     private CoverageOutputWriter writer;
     // Map used to store running aggregate counts for intervals that are being recorded by DepthOfCoverage
     private Map<Locatable, DepthOfCoveragePartitionedDataStore> activeCoveragePartitioner = new HashMap<>();
