@@ -108,7 +108,7 @@ public final class IngestVariantWalker extends VariantWalker {
             shortName = "ID",
             doc = "Id to start numbering the samples with",
             optional = true)
-    private Integer nextId;
+    private Long nextId;
 
 
 //    @Override
@@ -353,7 +353,13 @@ public final class IngestVariantWalker extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        if (isArray) { return 0; }
+        if (sampleMap == null) {
+            logger.info("next available id: " + nextId);
+        }
+
+        if (isArray) {
+            return 0;
+        }
         final GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(coverageLocSortedSet);
         logger.info("MISSING_GREP_HERE:" + uncoveredIntervals.coveredSize());
         logger.info("MISSING_PERCENTAGE_GREP_HERE:" + (1.0 * uncoveredIntervals.coveredSize()) / intervalArgumentGenomeLocSortedSet.coveredSize());
@@ -373,7 +379,10 @@ public final class IngestVariantWalker extends VariantWalker {
 
     @Override
     public void closeTool() {
-        if (isArray) {
+        if (tsvCreator == null) {
+            logger.info("tsvCreator is null when closing tool");
+        }
+        if (isArray && tsvCreator != null) {
             tsvCreator.closeTool();
         }
         if (vetWriter != null) {

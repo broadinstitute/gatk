@@ -8,10 +8,10 @@ import java.util.stream.Collectors;
 public class IngestSampleListCreation {
 
     /**
-     * Expected headers for the Position Table (PET)
+     * Expected headers for the Sample List Table
      */
     public enum HeaderFieldEnum {
-        sample,
+        sample_name,
         sample_id,
         interval_list_blob,
         inferred_state,
