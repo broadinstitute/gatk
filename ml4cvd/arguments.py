@@ -152,7 +152,6 @@ def parse_args():
     parser.add_argument('--pool_x', default=2, type=int, help='Pooling size in the x-axis, if 1 no pooling will be performed.')
     parser.add_argument('--pool_y', default=2, type=int, help='Pooling size in the y-axis, if 1 no pooling will be performed.')
     parser.add_argument('--pool_z', default=1, type=int, help='Pooling size in the z-axis, if 1 no pooling will be performed.')
-    parser.add_argument('--res_layers', nargs='*', default=[], type=int, help='List of residual layers.')
     parser.add_argument('--padding', default='same', help='Valid or same border padding on the convolutional layers.')
     parser.add_argument('--dense_blocks', nargs='*', default=[32, 24, 16], type=int, help='List of number of kernels in convolutional layers.')
     parser.add_argument('--block_size', default=3, type=int, help='Number of convolutional layers within a block.')
