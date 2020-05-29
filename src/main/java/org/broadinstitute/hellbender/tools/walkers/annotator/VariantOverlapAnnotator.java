@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -156,6 +157,7 @@ public final class VariantOverlapAnnotator {
     private static String getRsID(final List<VariantContext> rsIDSourceVCs, final VariantContext vcToAnnotate) {
         Utils.nonNull(rsIDSourceVCs, "rsIDSourceVCs cannot be null");
         Utils.nonNull(vcToAnnotate, "vcToAnnotate cannot be null");
+        final List<String> rsids = new ArrayList<>();
 
         for ( final VariantContext vcComp : rsIDSourceVCs ) {
             if ( vcComp.isFiltered() ) {
@@ -169,13 +171,14 @@ public final class VariantOverlapAnnotator {
             if ( vcToAnnotate.getReference().equals(vcComp.getReference()) ) {
                 for ( final Allele allele : vcToAnnotate.getAlternateAlleles() ) {
                     if ( vcComp.getAlternateAlleles().contains(allele) ) {
-                        return vcComp.getID();
+                        rsids.add(vcComp.getID());
+                        break;
                     }
                 }
             }
         }
 
-        return null;
+        return rsids.isEmpty()? null : String.join(";", rsids);
     }
 
     /**
