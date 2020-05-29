@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.variantdb.ingest;
 
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
@@ -11,6 +13,7 @@ import java.io.FileReader;
 import java.io.IOException;
 
 public class IngestUtils {
+    static final Logger logger = LogManager.getLogger(IngestUtils.class);
 
     public static String getSampleName(final VCFHeader inputVCFHeader) {
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples());
