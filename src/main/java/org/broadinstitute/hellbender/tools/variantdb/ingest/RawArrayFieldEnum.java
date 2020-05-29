@@ -69,7 +69,7 @@ public enum RawArrayFieldEnum {
         //TODO remove - just for looking at the data
         public String getColumnValue(final VariantContext variant) {
             Set<String> outList = variant.getFilters();
-            return String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, outList);
+            return outList.isEmpty() ? "null" : String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, outList);
         }
     },
 

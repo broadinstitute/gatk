@@ -79,7 +79,7 @@ public final class IngestRawArrayTSVCreator extends IngestTSVCreator {
             try {
                 rawArrayWriter.close();
             } catch (final Exception e) {
-                throw new IllegalArgumentException("Couldn't close VET writer", e);
+                throw new IllegalArgumentException("Couldn't close RAW array writer", e);
             }
         }
     }
