@@ -36,37 +36,6 @@ from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR
 CSV_EXT = '.tsv'
 
 
-def sort_csv(tensors, tensor_maps_in):
-    stats = Counter()
-    for folder in sorted(os.listdir(tensors)):
-
-        for name in sorted(os.listdir(os.path.join(tensors, folder))):
-            try:
-                with h5py.File(os.path.join(tensors, folder, name), "r") as hd5:
-                    for tm in tensor_maps_in:
-                        tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, hd5, {}), augment=False, hd5=hd5)
-
-                        if tm.name == 'lead_v6_zeros' and tensor[0] > 1874:
-                            stats[f'Total_{tm.name}_zero_padded'] += 1
-                            stats[f'{folder}_{tm.name}_zero_padded'] += 1
-                        elif tm.name == 'lead_i_zeros' and tensor[0] > 1249:
-                            stats[f'Total_{tm.name}_zero_padded'] += 1
-                            stats[f'{folder}_{tm.name}_zero_padded'] += 1
-                        elif tm.name not in ['lead_i_zeros', 'lead_v6_zeros']:
-                            stats[f'{folder}_{tm.name}_{tensor[0]}'] += 1
-                            stats[f'Total_{tm.name}_{tensor[0]}'] += 1
-            except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                pass
-                #logging.info(f'Got error at {name} error:\n {e} {traceback.format_exc()}')
-
-        logging.info(f'In folder {folder} with {len(os.listdir(os.path.join(tensors, folder)))} ECGs')
-        if len(os.listdir(os.path.join(tensors, folder))) > 0:
-            logging.info(f'I Zero padded has:{stats[f"{folder}_lead_i_zeros_zero_padded"]}, {100 * stats[f"{folder}_lead_i_zeros_zero_padded"] / len(os.listdir(os.path.join(tensors, folder))):.1f}%')
-            logging.info(f'V6 Zero padded has:{stats[f"{folder}_lead_v6_zeros_zero_padded"]}, {100*stats[f"{folder}_lead_v6_zeros_zero_padded"]/len(os.listdir(os.path.join(tensors, folder))):.1f}%')
-    for k, v in sorted(stats.items(), key=lambda x: x[0]):
-        logging.info(f'{k} has {v}')
-
-
 def predictions_to_pngs(
     predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
     labels: Dict[str, np.ndarray], paths: List[str], folder: str,
@@ -836,6 +805,11 @@ def explore(args):
 
     # Iterate through tensors, get tmaps, and save to dataframe
     df = _tensors_to_df(args)
+
+    # By default, remove columns with error_type
+    if not args.explore_export_errors:
+        cols = [c for c in df.columns if not c.startswith('error_type_')]
+        df = df[cols]
 
     if tsv_style_is_genetics:
         fid = df['fpath'].str.split('/').str[-1].str.split('.').str[0]
