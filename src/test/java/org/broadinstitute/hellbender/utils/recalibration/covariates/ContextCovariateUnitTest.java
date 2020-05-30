@@ -27,6 +27,8 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
     public void init() {
         RAC = new RecalibrationArgumentCollection();
         covariate = new ContextCovariate(RAC);
+        Utils.resetRandomGenerator();
+
     }
 
     @Test
@@ -35,7 +37,7 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
 
         for(int i = 0; i < 10; i++) {
-            final GATKRead read = ArtificialReadUtils.createRandomRead(header, 1000,false);
+            final GATKRead read = ArtificialReadUtils.createRandomRead(header, 1000, false);
 
             read.setIsReverseStrand(rnd.nextBoolean());
             final GATKRead clippedRead = ReadClipper.clipLowQualEnds(read, RAC.LOW_QUAL_TAIL, ClippingRepresentation.WRITE_NS);
@@ -57,23 +59,36 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
 
     @DataProvider
     Iterator<Object[]> AnnoyingReads() {
+        final String IUPAC_bases = "NBTRML";
+        final int readLength = 1000;
+        final double pStop = 0.02;
+        final int nTests = 100;
         final List<Object[]> tests = new ArrayList<>();
-        for (final byte base : "NBACGTUMLA".getBytes()) {
-            for (int i = 0; i < 10; i++) {
-                tests.add(new Object[]{base, i});
+
+        final Random randomGenerator = Utils.getRandomGenerator();
+        for (int i = 0; i < nTests; i++) {
+            final List<Byte> bases = new ArrayList<>();
+            final List<Integer> positions = new ArrayList<>();
+            while (randomGenerator.nextDouble() > pStop) {
+                bases.add(IUPAC_bases.getBytes()[randomGenerator.nextInt(IUPAC_bases.length())]);
+                positions.add(randomGenerator.nextInt(readLength));
             }
+            tests.add(new Object[]{bases, positions, randomGenerator.nextBoolean(), readLength});
         }
         return tests.iterator();
     }
 
     @Test(dataProvider = "AnnoyingReads")
-    public void testContextsAnnoyingReads(final byte base, final int i) {
+    public void testContextsAnnoyingReads(final List<Byte> bases, final List<Integer> positions, final boolean strand, final int readLength){
         final Random rnd = Utils.getRandomGenerator();
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
-        final GATKRead read = ArtificialReadUtils.createRandomRead(header, 10,false);
-        read.getBasesNoCopy()[i] = base;
+        final GATKRead read = ArtificialReadUtils.createRandomRead(header, readLength,false);
 
-        read.setIsReverseStrand(rnd.nextBoolean());
+        for(int i = 0; i< bases.size(); i++) {
+            read.getBasesNoCopy()[positions.get(i)] = bases.get(i);
+        }
+        read.setIsReverseStrand(strand);
+
         final GATKRead clippedRead = ReadClipper.clipLowQualEnds(read, RAC.LOW_QUAL_TAIL, ClippingRepresentation.WRITE_NS);
         final ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1, new CovariateKeyCache());
         covariate.recordValues(read, header, readCovariates, true);
