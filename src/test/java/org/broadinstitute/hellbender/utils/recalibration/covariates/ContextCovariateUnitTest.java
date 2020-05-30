@@ -80,7 +80,6 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "AnnoyingReads")
     public void testContextsAnnoyingReads(final List<Byte> bases, final List<Integer> positions, final boolean strand, final int readLength){
-        final Random rnd = Utils.getRandomGenerator();
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         final GATKRead read = ArtificialReadUtils.createRandomRead(header, readLength,false);
 
