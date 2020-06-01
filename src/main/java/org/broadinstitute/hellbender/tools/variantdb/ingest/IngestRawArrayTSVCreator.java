@@ -65,12 +65,14 @@ public final class IngestRawArrayTSVCreator extends IngestTSVCreator {
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        final List<String> TSVLinesToCreate = createRow(SchemaUtils.encodeLocation(variant.getContig(), variant.getStart()), variant, sampleId);
+        if (variant.isNotFiltered()) {
+            final List<String> TSVLinesToCreate = createRow(SchemaUtils.encodeLocation(variant.getContig(), variant.getStart()), variant, sampleId);
 
-        // write the row to the XSV
-        SimpleXSVWriter.LineBuilder rawLine = rawArrayWriter.getNewLineBuilder();
-        rawLine.setRow(TSVLinesToCreate);
-        rawLine.write();
+            // write the row to the XSV
+            SimpleXSVWriter.LineBuilder rawLine = rawArrayWriter.getNewLineBuilder();
+            rawLine.setRow(TSVLinesToCreate);
+            rawLine.write();
+        }
     }
 
     @Override
