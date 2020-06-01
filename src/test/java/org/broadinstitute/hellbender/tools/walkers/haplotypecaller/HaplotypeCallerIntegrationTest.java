@@ -87,7 +87,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", outputPath,
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--" + AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "2",
+                "--apply-frd", "--apply-bqd",
+                "--transform-dragen-mapping-quality",
+                "--mapping-quality-threshold", "1",
+                "--enable-dynamic-read-disqualification-for-genotyping",
+                "--allele-informative-reads-overlap-margin","0",
+                "--dont-use-dragstr-pair-hmm-scores",
+                "--soft-clip-low-quality-ends",
+                "--dragstr-params-path", "/Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/DNA_Nexus_hiseqX_plus0_0.dragstr-params.txt",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
 
@@ -370,18 +377,49 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in GVCF mode is < 99% (" +  concordance + ")");
     }
 
+//    @Test
+//    public void testBQDLocalchr15InDebugger() {
+//        final File output = createTempFile("test", ".vcf");
+//
+//        final String[] args = {
+//                "-I", "/Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/G96832.NA12878.chr15.bam",
+//                "-O", output.getAbsolutePath(),
+//                "-R", "/Users/emeryj/hellbender/references/Homo_sapiens_assembly19.fasta",
+//                "-L", "15"
+//        };
+//
+//        runCommandLine(args);
+//    }
+
     @Test
-    public void testBQDLocalchr15InDebugger() {
+    public void testFRDOnThisFileInDebugger() {
         final File output = createTempFile("test", ".vcf");
 
         final String[] args = {
-                "-I", "/Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/G96832.NA12878.chr15.bam",
-                "-O", output.getAbsolutePath(),
-                "-R", "/Users/emeryj/hellbender/references/Homo_sapiens_assembly19.fasta",
-                "-L", "15"
+                "-I", "gs://broad-dsde-methods-dragen/illumina-files/data/hg38/DNA_Nexus_hiseqX_plus0_0.bam",
+                "-R", "/Users/emeryj/hellbender/references/Homo_sapiens_assembly38.fasta",
+                "--apply-frd", "--transform-dragen-mapping-quality", "--mapping-quality-threshold", "1", "--apply-bqd",
+                 "--enable-dynamic-read-disqualification-for-genotyping",
+                "--dragstr-params-path", "/Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/vcfEvals/DNA_Nexus_hiseqX_plus0_0.dragstr-params.txt",
+                "--genotype-assignment-method", "USE_POSTERIOR_PROBABILITIES",
+                "--standard-min-confidence-threshold-for-calling", "3",
+                "--disable-cap-base-qualities-to-map-quality",
+                "--expected-error-rate-per-base", "0.03",
+                "--enable-legacy-assembly-region-trimming",
+                "--enable-legacy-graph-cycle-detection",
+                "--soft-clip-low-quality-ends",
+                "--use-posteriors-to-calculate-qual",
+                "-L", "chr1:55055736-55056724",
+                "--padding-around-indels", "150",
+                "--allele-informative-reads-overlap-margin", "1",
+                "--disable-symmetric-hmm-normalizing",
+                "--minimum-mapping-quality", "1",
+                "--disable-spanning-event-genotyping",
+                "-O", output.getAbsolutePath()
         };
-
         runCommandLine(args);
+
+        System.out.println("foo");
     }
 
     @Test

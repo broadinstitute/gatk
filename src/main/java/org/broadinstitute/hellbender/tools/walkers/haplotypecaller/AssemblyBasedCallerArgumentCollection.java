@@ -140,7 +140,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
 
     @Advanced
     @Argument(fullName = "soft-clip-low-quality-ends", doc = "If enabled will preserve low-quality read ends as softclips (used for DRAGEN-GATK BQD genotyper model)", optional = true)
-    public boolean softClipLowQualityEnds = true;
+    public boolean softClipLowQualityEnds = false;
 
     @Advanced
     @Argument(fullName = ALLELE_EXTENSION_LONG_NAME,

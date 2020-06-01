@@ -99,7 +99,7 @@ final class CopyRatioSegmentedData implements DataCollection {
 
     List<IndexedCopyRatio> getIndexedCopyRatiosInSegment(final int segmentIndex) {
         return indexedCopyRatios.subList(
-                indexRangesPerSegment.get(segmentIndex).from, indexRangesPerSegment.get(segmentIndex).to);
+                indexRangesPerSegment.get(segmentIndex).getStart(), indexRangesPerSegment.get(segmentIndex).getEnd());
     }
 
     //estimate global variance empirically by taking average of all per-segment variances

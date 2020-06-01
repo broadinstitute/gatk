@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
 import java.util.*;
+import java.util.stream.IntStream;
 
 
 public final class AlignmentUtils {

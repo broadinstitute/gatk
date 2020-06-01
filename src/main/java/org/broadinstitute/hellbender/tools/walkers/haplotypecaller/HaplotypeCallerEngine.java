@@ -7,10 +7,7 @@ import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -136,7 +133,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * Reads with mapping quality lower than this number won't be considered for genotyping, even if they have
      * passed earlier filters (e.g. the walkers' own min MQ filter).
      */
-    private static final int READ_QUALITY_FILTER_THRESHOLD = 20;
+    public static final int DEFAULT_READ_QUALITY_FILTER_THRESHOLD = 20;
 
     private static final List<VariantContext> NO_CALLS = Collections.emptyList();
 
@@ -324,9 +321,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     /**
      * @return the default set of read filters for use with the HaplotypeCaller
      */
-    public static List<ReadFilter> makeStandardHCReadFilters() {
+    public static List<ReadFilter> makeStandardHCReadFilters(final int mappingQualityThreshold) {
         List<ReadFilter> filters = new ArrayList<>();
-        filters.add(new MappingQualityReadFilter(READ_QUALITY_FILTER_THRESHOLD));
+        filters.add(new MappingQualityReadFilter(mappingQualityThreshold)); //TODO figure this guy out
+//        filters.add(new MappingQualityReadFilter());
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPED);
         filters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
@@ -423,6 +421,11 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             headerInfo.addAll(DragstrUtils.vcfHeaderLines());
         }
 
+        if (hcArgs.standardArgs.genotypeArgs.genotypeAssignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
+            headerInfo.add(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_POSTERIORS_KEY, VCFHeaderLineCount.G, VCFHeaderLineType.Float, "genotype posterior in Phred Scale" ));
+            headerInfo.add(new VCFFormatHeaderLine(GATKVCFConstants.GENOTYPE_PRIOR_KEY, VCFHeaderLineCount.G, VCFHeaderLineType.Float, "genotype priors in Phred Scale"));
+        }
+
         final VCFHeader vcfHeader = new VCFHeader(headerInfo, sampleSet);
         vcfHeader.setSequenceDictionary(sequenceDictionary);
         return vcfHeader;
@@ -509,9 +512,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     public List<VariantContext> callRegion(final AssemblyRegion region, final FeatureContext features, final ReferenceContext referenceContext) {
         if ( hcArgs.justDetermineActiveRegions ) {
-            // we're benchmarking ART and/or the active region determination code in the HC, just leave without doing any work
+            // we're benchmarking ART and/or the active region determination code in the HC, justio leave without doing any work
             return NO_CALLS;
         }
+//        System.out.println("calling for region: " +region.getSpan());
 
         final List<VariantContext> VCpriors = new ArrayList<>();
         if (hcArgs.standardArgs.genotypeArgs.supportVariants != null) {
@@ -592,9 +596,20 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, false, VCpriors);
         }
 
+
+//        System.out.println("\n=================================================");
+//        System.out.println("assemblyRegion: "+new SimpleInterval(region));
+//        System.out.println("=================================================");
+
         // evaluate each sample's reads against all haplotypes
         final List<Haplotype> haplotypes = assemblyResult.getHaplotypeList();
         final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, regionForGenotyping.getReads());
+//
+//        System.out.println("Haplotyes:");
+//        for (Haplotype haplotype : haplotypes) {
+//            System.out.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
+//            System.out.println(haplotype);
+//        }
 
         // Calculate the likelihoods: CPU intensive part.
         final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods =
@@ -609,6 +624,17 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         //  GLs.  In particular, for samples that are heterozygous non-reference (B/C) the marginalization for B treats the
         //  haplotype containing C as reference (and vice versa).  Now this is fine if all possible haplotypes are included
         //  in the genotyping, but we lose information if we select down to a few haplotypes.  [EB]
+//
+//        for(int counter = 0; counter < readLikelihoods.sampleEvidence(0).size(); counter++) {
+//            GATKRead read = readLikelihoods.sampleEvidence(0).get(counter);
+//            System.out.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"] length:"+read.getLength());
+//            String hmmScores = "";
+//            for (int h = 0; h < readLikelihoods.numberOfAlleles(); h++) {
+//                hmmScores = hmmScores + "," + readLikelihoods.sampleMatrix(0).get(h, counter);
+//            }
+//            System.out.println(hmmScores);
+//
+//        }
 
         final CalledHaplotypes calledHaplotypes = genotypingEngine.assignGenotypeLikelihoods(
                 haplotypes,
@@ -731,7 +757,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final Set<GATKRead> readsToRemove = new LinkedHashSet<>();
         for( final GATKRead rec : activeRegion.getReads() ) {
-            if( rec.getLength() < READ_LENGTH_FILTER_THRESHOLD || rec.getMappingQuality() < READ_QUALITY_FILTER_THRESHOLD || ! ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE.test(rec) || (hcArgs.keepRG != null && !rec.getReadGroup().equals(hcArgs.keepRG)) ) {
+            if( rec.getLength() < READ_LENGTH_FILTER_THRESHOLD || rec.getMappingQuality() < hcArgs.mappingQualityThreshold || ! ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE.test(rec) || (hcArgs.keepRG != null && !rec.getReadGroup().equals(hcArgs.keepRG)) ) {
+//                System.out.println("Filtered before assembly the read: "+rec.toString());
                 readsToRemove.add(rec);
             }
         }

@@ -30,6 +30,9 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     @Argument(fullName="dragstr-prior-scale")
     public double dragstrPriorScale = 10; // similar to the default scale for HC without dragstr.
 
+    @Argument(fullName="use-posteriors-to-calculate-qual", shortName="gp-qual", optional = true, doc = "if available use the posterior probabilities to calculate the site QUAL")
+    public boolean usePosteriorProbabilitiesToCalculateQual = false;
+
 
     /**
      * Creates a GenotypeCalculationArgumentCollection with default values.

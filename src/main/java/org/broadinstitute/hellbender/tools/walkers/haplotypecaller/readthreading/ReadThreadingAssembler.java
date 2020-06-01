@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
@@ -28,6 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class ReadThreadingAssembler {
     private static final Logger logger = LogManager.getLogger(ReadThreadingAssembler.class);
@@ -44,6 +46,7 @@ public final class ReadThreadingAssembler {
     private boolean recoverHaplotypesFromEdgesNotCoveredInJunctionTrees = true;
     private final int numPruningSamples;
     private final int numBestHaplotypesPerGraph;
+    private final boolean pruneBeforeCycleCounting;
 
     private boolean removePathsNotConnectedToRef = true;
     private boolean justReturnRawGraph = false;
@@ -75,7 +78,7 @@ public final class ReadThreadingAssembler {
                                   final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
                                   final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
-                                  final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs) {
+                                  final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs, final boolean enableLegacyGraphCycleDetection) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = new ArrayList<>(kmerSizes);
         kmerSizes.sort(Integer::compareTo);
@@ -84,6 +87,7 @@ public final class ReadThreadingAssembler {
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
         this.generateSeqGraph = !useLinkedDebruijnGraphs;
+        this.pruneBeforeCycleCounting = !enableLegacyGraphCycleDetection;
         if (!generateSeqGraph) {
             logger.error("JunctionTreeLinkedDeBruijnGraph is enabled.\n This is an experimental assembly graph mode that has not been fully validated\n\n");
         }
@@ -95,7 +99,7 @@ public final class ReadThreadingAssembler {
 
     @VisibleForTesting
     ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final int pruneFactor) {
-        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, Integer.MAX_VALUE, false);
+        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, Integer.MAX_VALUE, false, false);
     }
 
     @VisibleForTesting
@@ -130,7 +134,14 @@ public final class ReadThreadingAssembler {
         ParamUtils.isPositiveOrZero(pruneFactor, "Pruning factor cannot be negative");
 
         // Note that error correction does not modify the original reads, which are used for genotyping
-        final List<GATKRead> correctedReads = readErrorCorrector == null ? assemblyRegion.getReads() : readErrorCorrector.correctReads(assemblyRegion.getReads());
+        List<GATKRead> correctedReads = readErrorCorrector == null ? assemblyRegion.getReads() : readErrorCorrector.correctReads(assemblyRegion.getReads());
+
+        //TODO very bad must undo
+        correctedReads = correctedReads.stream().map(r -> ReadClipper.revertSoftClippedBases(r)).collect(Collectors.toList());
+//        System.out.println("\n\n\n\n"+assemblyRegion.getSpan()+"\nNumber of reads in region: " + correctedReads.size() + "     they are:");
+//        for (GATKRead read : correctedReads) {
+//            System.out.println(read.getName() + "   " + read.convertToSAMRecord(assemblyRegion.getHeader()).getFlags()+"   pos:["+read.getStart()+"-"+read.getEnd()+"] "+read.getCigar());
+//        }
 
         final List<AbstractReadThreadingGraph> nonRefRTGraphs = new LinkedList<>();
         final List<SeqGraph> nonRefSeqGraphs = new LinkedList<>();
@@ -622,7 +633,9 @@ public final class ReadThreadingAssembler {
         // It's important to prune before recovering dangling ends so that we don't waste time recovering bad ends.
         // It's also important to prune before checking for cycles so that sequencing errors don't create false cycles
         // and unnecessarily abort assembly
-        chainPruner.pruneLowWeightChains(rtgraph);
+        if (pruneBeforeCycleCounting) {
+            chainPruner.pruneLowWeightChains(rtgraph);
+        }
 
         // sanity check: make sure there are no cycles in the graph, unless we are in experimental mode
         if ( generateSeqGraph && rtgraph.hasCycles() ) {
@@ -649,6 +662,10 @@ public final class ReadThreadingAssembler {
     }
 
     private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final AbstractReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
+        if (!pruneBeforeCycleCounting) {
+            chainPruner.pruneLowWeightChains(rtgraph);
+        }
+
         if (debugGraphTransformations) {
             printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
         }

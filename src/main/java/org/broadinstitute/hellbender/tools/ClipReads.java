@@ -371,7 +371,7 @@ public final class ClipReads extends ReadWalker {
                 boolean found = true;   // go through at least once
                 while (found) {
                     found = match.find();
-                    //System.out.printf("Matching %s against %s/%s => %b%n", bases, stc.seq, stc.revSeq, found);
+//                    System.out.printf("Matching %s against %s/%s => %b%n", bases, stc.seq, stc.revSeq, found);
                     if (found) {
                         int start = match.start();
                         int stop = match.end() - 1;

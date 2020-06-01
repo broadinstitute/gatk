@@ -80,7 +80,7 @@ final class AlleleFractionSegmentedData implements DataCollection {
 
     List<IndexedAllelicCount> getIndexedAllelicCountsInSegment(final int segmentIndex) {
         return indexedAllelicCounts.subList(
-                indexRangesPerSegment.get(segmentIndex).from, indexRangesPerSegment.get(segmentIndex).to);
+                indexRangesPerSegment.get(segmentIndex).getStart(), indexRangesPerSegment.get(segmentIndex).getEnd());
     }
 
     static final class IndexedAllelicCount extends AllelicCount {

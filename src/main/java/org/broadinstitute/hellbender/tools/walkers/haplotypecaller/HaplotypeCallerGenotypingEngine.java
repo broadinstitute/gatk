@@ -10,15 +10,19 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
+import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
+import org.broadinstitute.hellbender.tools.haplotypecaller.SimpleGenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrReadSTRAnalizer;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -36,7 +40,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     private static final Logger logger = LogManager.getLogger(HaplotypeCallerGenotypingEngine.class);
 
 
-    private final DRAGENBQDGenotypesModel genotypingModel;
+    private final GenotypersModel genotypingModel;
 
     private final PloidyModel ploidyModel;
     private final ReferenceConfidenceMode referenceConfidenceMode;
@@ -61,7 +65,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         hcArgs = configuration;
         this.doPhysicalPhasing = doPhysicalPhasing;
         ploidyModel = new HomogeneousPloidyModel(samples,configuration.standardArgs.genotypeArgs.samplePloidy);
-        genotypingModel = new DRAGENBQDGenotypesModel(applyBQD, hcArgs.applyFRD, hcArgs.informativeReadOverlapMargin); //: new IndependentSampleGenotypesModel(); //TODO thsi neds to work properly
+        genotypingModel = hcArgs.applyBQD || hcArgs.applyFRD ?
+                new DRAGENBQDGenotypesModel(applyBQD, hcArgs.applyFRD, hcArgs.informativeReadOverlapMargin, hcArgs.maxEffectiveDepthAdjustment, hcArgs.likelihoodArgs.dragstrParams) :
+                new IndependentSampleGenotypesModel();
         maxGenotypeCountToEnumerate = configuration.standardArgs.genotypeArgs.MAX_GENOTYPE_COUNT;
         referenceConfidenceMode = configuration.emitReferenceConfidence;
         snpHeterozygosity = configuration.standardArgs.genotypeArgs.snpHeterozygosity;
@@ -142,8 +148,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(readLikelihoods, activeRegionWindow);
         }
 
-        final DragstrUtils.STRSequenceAnalyzer dragstrs = !startPosKeySet.isEmpty() && hcArgs.likelihoodArgs.dragstrParams != null && !hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors
-                ? DragstrUtils.repeatPeriodAndCounts(ref, startPosKeySet.first() - refLoc.getStart(), startPosKeySet.last() + 2 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod())
+        final DragstrReferenceSTRs dragstrs = isDragstrSTRAnalyzerNecessary(startPosKeySet, haplotypes)
+                ? DragstrReferenceSTRs.of(ref,startPosKeySet.first() - refLoc.getStart(),
+                startPosKeySet.last() + 2 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod())
                 : null;
 
         for( final int loc : startPosKeySet ) {
@@ -151,7 +158,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 continue;
             }
 
-            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, true);
+            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, !hcArgs.disableSpanningEventGenotyping);
 
             final List<VariantContext> eventsAtThisLocWithSpanDelsReplaced = replaceSpanDels(eventsAtThisLoc,
                     Allele.create(ref[loc - refLoc.getStart()], true), loc);
@@ -176,21 +183,28 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             AlleleLikelihoods<GATKRead, Allele> readAlleleLikelihoods = readLikelihoods.marginalize(alleleMapper);
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
             final SimpleInterval variantCallingRelevantOverlap = new SimpleInterval(mergedVC).expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
-            // TODO this can and should be fixed to be faster since there is no reason to copy and rebuild the read here for the unsoftclipping op.
-            readAlleleLikelihoods.retainEvidence(r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
+            // We want to retian evidence that overlaps within its softclipping edges.
+            if (hcArgs.applyBQD || hcArgs.applyFRD) { //TODO this is not hte right set of arguemnts
+                readAlleleLikelihoods.retainEvidence(r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
+            } else {
+                readAlleleLikelihoods.retainEvidence(r -> r.overlaps(variantCallingRelevantOverlap));
+            }
             readAlleleLikelihoods.setSubsettedGenomicLoc(variantCallingRelevantOverlap);
             if (configuration.isSampleContaminationPresent()) {
                 readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
             }
+//            System.out.println("\n=============================================================================");
+//            System.out.println("Event at: "+mergedVC+" with "+readAlleleLikelihoods.evidenceCount()+" reads");
+//            System.out.println("=============================================================================");
 
             if (emitReferenceConfidence) {
                 mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
                 readAlleleLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
                 mergedAllelesListSizeBeforePossibleTrimming++;
             }
-            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart());
-            final AlleleFrequencyCalculator afc = resolveCustomAlleleFrequencyCalculator(mergedVC, dragstrs, loc - refLoc.getStart() + 1    , ploidy, snpHeterozygosity);
-            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), afc, givenAlleles);
+            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart(), dragstrs);
+            final GenotypePriorCalculator gpc = resolveCustomAlleleFrequencyCalculator(mergedVC, dragstrs, loc - refLoc.getStart() + 1, ploidy, snpHeterozygosity, indelHeterozygosity);
+            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), gpc, givenAlleles);
             if( call != null ) {
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
                         emitReferenceConfidence, alleleMapper, readAlleleLikelihoods, call, variantCallingRelevantOverlap);
@@ -198,7 +212,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, mergedAllelesListSizeBeforePossibleTrimming, readAlleleLikelihoods, call, annotationEngine);
 
                 if (dragstrs != null && GATKVariantContextUtils.containsInlineIndel(annotatedCall)) {
-                    annotatedCall = DragstrUtils.annotate(annotatedCall, hcArgs.likelihoodArgs.dragstrParams, dragstrs, loc - refLoc.getStart() + 1, ploidy, snpHeterozygosity);
+                    final int strOffset = loc - refLoc.getStart() + 1;
+                    annotatedCall = DragstrUtils.annotate(annotatedCall, hcArgs.likelihoodArgs.dragstrParams, dragstrs.period(strOffset), dragstrs.repeatLength(strOffset));
                 }
                 returnCalls.add( annotatedCall );
 
@@ -214,13 +229,41 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
     }
 
-    private AlleleFrequencyCalculator resolveCustomAlleleFrequencyCalculator(final VariantContext vc, final DragstrUtils.STRSequenceAnalyzer strs, final int pos, final int ploidy, final double snpHeterozygosity) {
-       if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors || !GATKVariantContextUtils.containsInlineIndel(vc)) {
-            return alleleFrequencyCalculator;
+    /**
+     * Confirms wether there is the need to analyze the region's reference sequence for the presence of STRs.
+     * <p>
+     *     This is only the case when DRAGstr is activate, we are going to use their priors and there is some indel
+     *     amongst the haplotypes.
+     * </p>
+     */
+    private boolean isDragstrSTRAnalyzerNecessary(SortedSet<Integer> startPosKeySet, List<Haplotype> haplotypes) {
+        if (startPosKeySet.isEmpty()) {
+            return false;
+        } else if (hcArgs.likelihoodArgs.dragstrParams == null) {
+            return false;
+        } else if (hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors) {
+            return false;
         } else {
-            final int period = strs.mostRepeatedPeriod(pos);
-            final int repeats = strs.numberOfMostRepeats(pos);
-            return hcArgs.likelihoodArgs.dragstrParams.getAFCalculator(period, repeats, ploidy, snpHeterozygosity, hcArgs.standardArgs.genotypeArgs.dragstrPriorScale);
+            for (final Haplotype haplotype : haplotypes) {
+                for (final VariantContext vc : haplotype.getEventMap().getVariantContexts()) {
+                    if (GATKVariantContextUtils.containsInlineIndel(vc)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+    }
+
+    private GenotypePriorCalculator resolveCustomAlleleFrequencyCalculator(final VariantContext vc, final DragstrReferenceSTRs strs, final int pos, final int ploidy, final double snpHeterozygosity, final double indelHeterozygosity) {
+       if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors) {
+            return SimpleGenotypePriorCalculator.assumingHW(Math.log10(snpHeterozygosity), Math.log10(indelHeterozygosity));
+        } else if (strs == null) {
+            return SimpleGenotypePriorCalculator.givenHetToHomRatio(Math.log10(snpHeterozygosity), Math.log10(indelHeterozygosity), Math.log10(Math.min(snpHeterozygosity, indelHeterozygosity)), hcArgs.likelihoodArgs.dragstrHetHomRatio);
+       } else {
+            final int period = strs.period(pos);
+            final int repeats = strs.repeatLength(pos);
+            return SimpleGenotypePriorCalculator.givenDragstrParams(hcArgs.likelihoodArgs.dragstrParams, period, repeats, Math.log10(snpHeterozygosity), hcArgs.likelihoodArgs.dragstrHetHomRatio);
         }
     }
 
@@ -400,12 +443,12 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @param mergedVC               Input VC with event to genotype
      * @return                       GenotypesContext object wrapping genotype objects with PLs
      */
-    protected GenotypesContext calculateGLsForThisEvent(final AlleleLikelihoods<GATKRead, Allele> readLikelihoods, final VariantContext mergedVC, final List<Allele> noCallAlleles, final byte[] paddedReference, final int offsetForRefIntoEvent ) {
+    protected GenotypesContext calculateGLsForThisEvent(final AlleleLikelihoods<GATKRead, Allele> readLikelihoods, final VariantContext mergedVC, final List<Allele> noCallAlleles, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceSTRs dragstrs) {
         Utils.nonNull(readLikelihoods, "readLikelihoods");
         Utils.nonNull(mergedVC, "mergedVC");
         final List<Allele> vcAlleles = mergedVC.getAlleles();
         final AlleleList<Allele> alleleList = readLikelihoods.numberOfAlleles() == vcAlleles.size() ? readLikelihoods : new IndexedAlleleList<>(vcAlleles);
-        final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods),paddedReference,offsetForRefIntoEvent);
+        final GenotypingLikelihoods<Allele> likelihoods = genotypingModel.calculateLikelihoods(alleleList,new GenotypingData<>(ploidyModel,readLikelihoods), paddedReference, offsetForRefIntoEvent, dragstrs);
         final int sampleCount = samples.numberOfSamples();
         final GenotypesContext result = GenotypesContext.create(sampleCount);
         for (int s = 0; s < sampleCount; s++) {

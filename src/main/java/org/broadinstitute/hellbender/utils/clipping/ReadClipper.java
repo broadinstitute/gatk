@@ -367,7 +367,7 @@ public class ReadClipper {
 
     /**
      * Turns soft clipped bases into matches
-     * @return a new read with every soft clip turned into a match
+     * @return a new read with every soft clip turned into a match, or the same read if no softclip bases were found
      */
     private GATKRead revertSoftClippedBases() {
         if (read.isEmpty()) {
