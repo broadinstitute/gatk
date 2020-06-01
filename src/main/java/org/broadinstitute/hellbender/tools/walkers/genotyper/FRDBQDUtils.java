@@ -12,16 +12,9 @@ import java.util.Comparator;
 
 public class FRDBQDUtils {
 
-
-    // TODO this needs to be evaluated as it is a hacky way of evaluating this property of the alleles to be GT called
-    // currently this accounts (probably) for indels TODO (though one suspects A* alleles might cause yet more problems....)...
-    public static  <A extends Allele> boolean containsInsertionOrDeletion(final AlleleList<A> allelesToTest) {
-        final int refAlleleSize = allelesToTest.getAllele(allelesToTest.indexOfReference()).length();
-        return allelesToTest.asListOfAlleles().stream().anyMatch(a -> !a.isSymbolic() && a.length()!=refAlleleSize);
-    }
-
     /**
-     * These two methods are taken from from the DRAGEN genotyping model for BQD
+     * These two methods are used to calculate the homopolymer base phred scaled adjustment in BQD. This code is taken from DRAGEN.
+     *
      * @param paddedReference       reference to check for homopolymer span
      * @param offsetForRefIntoEvent offset of the base upon which to make a call
      */

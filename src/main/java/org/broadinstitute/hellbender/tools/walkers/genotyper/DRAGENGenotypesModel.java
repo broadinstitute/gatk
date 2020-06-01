@@ -32,6 +32,8 @@ import java.util.stream.Stream;
 public class DRAGENGenotypesModel implements GenotypersModel {
     private static final int DEFAULT_CACHE_PLOIDY_CAPACITY = 10;
     private static final int DEFAULT_CACHE_ALLELE_CAPACITY = 50;
+    // Flat SNP het prior to use for genotyping
+    public static final double FLAT_SNP_HET_PRIOR = 34.77;
 
     private final int cacheAlleleCountCapacity;
     private final int cachePloidyCapacity;
@@ -80,7 +82,7 @@ public class DRAGENGenotypesModel implements GenotypersModel {
                 genotyperDebugStream.println("API found: " + api + " with period used: " + period + "  and repeats: " + repeats);
             }
         } else {
-            api = 34.77;
+            api = FLAT_SNP_HET_PRIOR;
         }
 
 
@@ -107,7 +109,7 @@ public class DRAGENGenotypesModel implements GenotypersModel {
             List<DragenReadContainer> strandForward = new ArrayList<>();
             List<DragenReadContainer>  strandReverse = new ArrayList<>();
 
-            ////TODO BIG GIANT TODO, THIS IS WRONG!!!! READS WITH INDELS ARE GOING TO BE SORTED INCORRECTLY HERE!!!!!!!!!!!! NEED TO ROLL MY OWN CLIPPING MANAGING CODE.......
+            ////TODO reads with indels preceding the variant in question might have their cycle counts mismatched, its unclear whether dragen handles this case based on debug outputs
             for (int j = 0; j < readsForSample.size(); j++) {
                 final GATKRead readForSample = readsForSample.get(j);
                 final int indexForSnp = ReadUtils.getReadIndexForReferenceCoordinate(readForSample, variantOffset).getLeft();
@@ -163,7 +165,7 @@ public class DRAGENGenotypesModel implements GenotypersModel {
             if (computeFRD) {
                 FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, ployidyModelGenotypeLikelihoods,
                         Stream.of(strandForward, strandReverse).flatMap(Collection::stream).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
-                        34.77, api, maxEffectiveDepthAdjustment, calculators);
+                        FLAT_SNP_HET_PRIOR, api, maxEffectiveDepthAdjustment, calculators);
                 if (genotyperDebugStream != null) {
                     genotyperDebugStream.println("FRD results:");
                     genotyperDebugStream.println(Arrays.toString(FRDCallResults));
