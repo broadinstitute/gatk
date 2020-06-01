@@ -58,7 +58,7 @@ public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest 
         final File outputFilterMetricsFile = createTempFile("filter", ".metrics");
         final File outputScoreMetricsFile = createTempFile("score", ".metrics");
         final File pathogenBwaImage = getTestFile("e_coli_k12_mini.fa.img");
-        final File pathogenFasta = getTestFile("e_coli_k12_mini.fa");
+        final File pathogenDict = getTestFile("e_coli_k12_mini.dict");
         final File taxonomyDatabase = getTestFile("e_coli_k12_mini.db");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -69,7 +69,7 @@ public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest 
         args.add(PSFilterArgumentCollection.FILTER_BWA_IMAGE_LONG_NAME, filterImagePath);
         args.add(PSFilterArgumentCollection.IS_HOST_ALIGNED_LONG_NAME, isHostAligned);
         args.add(PSBwaArgumentCollection.MICROBE_BWA_IMAGE_LONG_NAME, pathogenBwaImage);
-        args.add(PSBwaArgumentCollection.MICROBE_FASTA_LONG_NAME, pathogenFasta);
+        args.add(PSBwaArgumentCollection.MICROBE_REF_DICT_LONG_NAME, pathogenDict);
         args.add(PSScoreArgumentCollection.TAXONOMIC_DATABASE_LONG_NAME, taxonomyDatabase);
         args.add(PSFilterArgumentCollection.FILTER_METRICS_FILE_LONG_NAME, outputFilterMetricsFile);
         args.add(PSScoreArgumentCollection.SCORE_METRICS_FILE_LONG_NAME, outputScoreMetricsFile);

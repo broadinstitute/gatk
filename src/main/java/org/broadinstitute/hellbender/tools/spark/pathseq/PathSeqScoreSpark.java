@@ -105,19 +105,15 @@ public class PathSeqScoreSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     public static final String PAIRED_INPUT_LONG_NAME = "paired-input";
-    public static final String PAIRED_INPUT_SHORT_NAME = "PI";
     public static final String UNPAIRED_INPUT_LONG_NAME = "unpaired-input";
-    public static final String UNPAIRED_INPUT_SHORT_NAME = "UI";
 
     @Argument(doc = "Input queryname-sorted BAM containing only paired reads",
             fullName = PAIRED_INPUT_LONG_NAME,
-            shortName = PAIRED_INPUT_SHORT_NAME,
             optional = true)
     public String pairedInput = null;
 
     @Argument(doc = "Input BAM containing only unpaired reads",
             fullName = UNPAIRED_INPUT_LONG_NAME,
-            shortName = UNPAIRED_INPUT_SHORT_NAME,
             optional = true)
     public String unpairedInput = null;
 
