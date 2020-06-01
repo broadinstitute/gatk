@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * Interface for htsjdk input/output URIs.
@@ -77,15 +78,17 @@ public interface PathURI {
     }
 
     /**
-     * @return the extension of the last component of the hierarchical part of the scheme-specific part of the
-     * URI, if any, including the ".". Note that this only returns the part of the last component after the last
-     * ".", ie. it will return ".gz" for a name that ends in ".fasta.gz" (the {@link #hasExtension(String)} method
-     * can be used to test for the presence of multi-part extensions such as this). If the hierarchical name ends
-     * with a last component that does not contain a ".", returns an empty String.
-     * @throws IllegalArgumentException if the hierarchical name ends with the default file system separator
-     * (i.e. "/").
+     * @return an {@link Optional} containing the extension of the last component of the hierarchical part of the
+     * scheme-specific part of the URI, if any, including the ".", or Optional.empty() if the hierarchical name ends
+     * with the default file system separator, (i.e. "/"), or if the hierarchical name ends with a last component
+     * that does not contain a ".".
+     *
+     * Note that this only returns the part of the last component after the last ".", ie. it will return ".gz" for
+     * a name that ends in ".fasta.gz" (the {@link #hasExtension(String)} method can be used to test for the presence
+     * of multi-part extensions
+     * such as this).
      */
-    default String getExtension() {
+    default Optional<String> getExtension() {
         final String hierarchicalPath = getURI().getPath();
         final int indexOfLastComponent = hierarchicalPath.lastIndexOf(FileSystems.getDefault().getSeparator());
         if (indexOfLastComponent != -1 && indexOfLastComponent < hierarchicalPath.length() - 1) {
@@ -98,14 +101,11 @@ public interface PathURI {
                     // and also for API consistency (since hasExtension() requires the candidate extension to
                     // include a leading ".", this allows hasExtension(getExtension()) to always work whenever
                     // getExtension() succeeds)
-                    return lastComponent.substring(indexOfLastDot);
+                    return Optional.of(lastComponent.substring(indexOfLastDot));
                 }
             }
-            return "";
         }
-        throw new IllegalArgumentException(
-                String.format(
-                        "Input (%s) contains only a path, with no name component from which to retrieve an extension", this));
+        return Optional.empty();
     }
 
     /**
@@ -119,7 +119,7 @@ public interface PathURI {
      */
     default boolean hasExtension(final String extension) {
         Utils.nonNull(extension, "Target extension must not be null");
-        Utils.validateArg(extension.length() > 0, "Target extension must be length > 0");
+        Utils.validateArg(extension.length() > 1, "Target extension must be length > 1");
         Utils.validateArg(extension.charAt(0) == '.', "Target extension must include the leading '.'");
 
         // We don't want to use {@code #getExtension} here, since it won't work correctly if we're comparing an
@@ -128,12 +128,12 @@ public interface PathURI {
     }
 
     /**
-     * @return the base name (the last component of the hierarchical part of the scheme-specific part of the URI,
-     * after the last "/"), up to but not including the extension (the last ".").
-     * @throws IllegalArgumentException if the last component is empty (ie, the component ends in "/"), or the last
-     * component exists but starts with "."
+     * @return an {@link Optional} containing the base name (the last component of the hierarchical part of the
+     * scheme-specific part of the URI, after the last "/"), up to but not including the extension (the last "."),
+     * or Optional.empty() if the last component is empty (ie, the component ends in "/"), or the last component
+     * exists but starts with "."
      */
-    default String getBaseName() {
+    default Optional<String> getBaseName() {
         final String hierarchicalPath = getURI().getPath();
         final int indexOfLastComponent = hierarchicalPath.lastIndexOf(FileSystems.getDefault().getSeparator());
         if (indexOfLastComponent != -1 && indexOfLastComponent < hierarchicalPath.length() - 1) {
@@ -141,14 +141,13 @@ public interface PathURI {
             if (lastComponent.length() > 0) {
                 final int indexOfLastDot = lastComponent.lastIndexOf('.');
                 if (indexOfLastDot == -1) {
-                    return lastComponent;
+                    return Optional.of(lastComponent);
                 } else if (indexOfLastDot > 1) {
-                    return lastComponent.substring(0, indexOfLastDot);
+                    return Optional.of(lastComponent.substring(0, indexOfLastDot));
                 }
             }
-            return "";
         }
-        throw new IllegalArgumentException(String.format("Input (%s) contains only a path, but no name component", this));
+        return Optional.empty();
     }
 
     /**
