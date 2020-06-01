@@ -1173,3 +1173,48 @@ TMAPS['ecg-bike-trend-grade'] = TensorMap(
     'trend_grade', Interpretation.CONTINUOUS, shape=(106, 1), path_prefix='ecg_bike',
     tensor_from_file=normalized_first_date,
 )
+
+TMAPS['ecg-bike-raw-trend-hr'] = TensorMap(
+    'trend_heartrate', Interpretation.CONTINUOUS, shape=(87,), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+TMAPS['ecg-bike-raw-trend-load'] = TensorMap(
+    'trend_load', Interpretation.CONTINUOUS, shape=(87,), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+TMAPS['ecg-bike-raw-trend-grade'] = TensorMap(
+    'trend_grade', Interpretation.CONTINUOUS, shape=(87,), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+TMAPS['ecg-bike-raw-trend-artifact'] = TensorMap(
+    'trend_artifact', Interpretation.CONTINUOUS, shape=(87,), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+TMAPS['ecg-bike-raw-trend-mets'] = TensorMap(
+    'trend_mets', Interpretation.CONTINUOUS, shape=(87,), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+TMAPS['ecg-bike-raw-trend-pacecount'] = TensorMap(
+    'trend_pacecount', Interpretation.CONTINUOUS, shape=(87,), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+TMAPS['ecg-bike-raw-trend-phasename'] = TensorMap(
+    'trend_phasename', Interpretation.CONTINUOUS, shape=(87,), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+TMAPS['ecg-bike-raw-trend-phasetime'] = TensorMap(
+    'trend_phasetime', Interpretation.CONTINUOUS, shape=(87,), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+TMAPS['ecg-bike-raw-trend-time'] = TensorMap(
+    'trend_time', Interpretation.CONTINUOUS, shape=(87,), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+TMAPS['ecg-bike-raw-trend-vecount'] = TensorMap(
+    'trend_vecount', Interpretation.CONTINUOUS, shape=(87,), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+TMAPS['ecg-bike-raw-full'] = TensorMap(
+    'full', Interpretation.CONTINUOUS, shape=(216500, 3), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
