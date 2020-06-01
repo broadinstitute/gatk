@@ -20,15 +20,14 @@ import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrReadSTRAnalizer;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
+import java.io.PrintStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -54,6 +53,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
     private final HaplotypeCallerArgumentCollection hcArgs;
 
+    // Debug stream managed by the HaplotypeCallerEngine
+    private PrintStream genotyperDebugOutStream = null;
+
     /**
      * {@inheritDoc}
      * @param configuration {@inheritDoc}
@@ -66,7 +68,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         this.doPhysicalPhasing = doPhysicalPhasing;
         ploidyModel = new HomogeneousPloidyModel(samples,configuration.standardArgs.genotypeArgs.samplePloidy);
         genotypingModel = hcArgs.applyBQD || hcArgs.applyFRD ?
-                new DRAGENBQDGenotypesModel(applyBQD, hcArgs.applyFRD, hcArgs.informativeReadOverlapMargin, hcArgs.maxEffectiveDepthAdjustment, hcArgs.likelihoodArgs.dragstrParams) :
+                new DRAGENGenotypesModel(applyBQD, hcArgs.applyFRD, hcArgs.informativeReadOverlapMargin, hcArgs.maxEffectiveDepthAdjustment, hcArgs.likelihoodArgs.dragstrParams) :
                 new IndependentSampleGenotypesModel();
         maxGenotypeCountToEnumerate = configuration.standardArgs.genotypeArgs.MAX_GENOTYPE_COUNT;
         referenceConfidenceMode = configuration.emitReferenceConfidence;
@@ -189,13 +191,15 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             } else {
                 readAlleleLikelihoods.retainEvidence(r -> r.overlaps(variantCallingRelevantOverlap));
             }
-            readAlleleLikelihoods.setSubsettedGenomicLoc(variantCallingRelevantOverlap);
+            readAlleleLikelihoods.setVariantCallingSubsetUsed(variantCallingRelevantOverlap);
             if (configuration.isSampleContaminationPresent()) {
                 readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
             }
-//            System.out.println("\n=============================================================================");
-//            System.out.println("Event at: "+mergedVC+" with "+readAlleleLikelihoods.evidenceCount()+" reads");
-//            System.out.println("=============================================================================");
+            if (genotyperDebugOutStream != null) {
+                genotyperDebugOutStream.println("\n=============================================================================");
+                genotyperDebugOutStream.println("Event at: " + mergedVC + " with " + readAlleleLikelihoods.evidenceCount() + " reads");
+                genotyperDebugOutStream.println("=============================================================================");
+            }
 
             if (emitReferenceConfidence) {
                 mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
@@ -352,6 +356,12 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             allelesToRetain.add(alleleMaxPriorityQ.poll().getAllele());
         }
         return alleleMapper.keySet().stream().filter(allelesToRetain::contains).collect(Collectors.toList());
+    }
+
+    // Add the debug output stream managed by the engine, this should be called as part of initialization
+    void addDebugOutStream(final PrintStream genotyperDebugOutStream) {
+        this.genotyperDebugOutStream = genotyperDebugOutStream;
+        this.genotypingModel.addDebugOutStream(genotyperDebugOutStream);
     }
 
     /**

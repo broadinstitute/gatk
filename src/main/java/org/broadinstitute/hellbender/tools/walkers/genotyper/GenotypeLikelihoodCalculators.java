@@ -271,7 +271,7 @@ public final class GenotypeLikelihoodCalculators {
     }
 
     /**
-     * Returns an instance given its ploidy and the number of alleles.
+     * Returns an instance of the DRAGEN genotypeLikelihoodCalculator given its ploidy and the number of alleles.
      *
      * @param alleleCount the required allele-count.
      * @param ploidy the required ploidy-count.

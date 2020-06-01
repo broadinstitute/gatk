@@ -158,6 +158,11 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName="debug-assembly-region-state", doc="Write output files for assembled regions with read summaries and called haplotypes to the specified path", optional = true)
     public String assemblyStateOutput = null;
 
+    @Hidden
+    @Advanced
+    @Argument(fullName="debug-genotyper-output", doc ="Location to write genotyper debug stream that contains detailed information about the internal state of the genotyepr", optional = true)
+    public String genotyperDebugOutStream = null;
+
     /**
      * This argument is intended for benchmarking and scalability testing.
      */

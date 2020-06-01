@@ -74,6 +74,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     private final PrintStream assemblyDebugOutStream;
 
+    private final PrintStream genotyperDebugOutStream;
+
     // the genotyping engine for the isActive() determination
     private MinimalGenotypingEngine activeRegionEvaluationGenotyperEngine = null;
 
@@ -162,6 +164,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         trimmer = new AssemblyRegionTrimmer(assemblyRegionArgs, readsHeader.getSequenceDictionary());
         forceCallingAllelesPresent = hcArgs.alleles != null;
         initialize(createBamOutIndex, createBamOutMD5);
+
+        // Add necessary debug streams to the output
         if (hcArgs.assemblyStateOutput != null) {
             try {
                 assemblyDebugOutStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput)));
@@ -170,6 +174,15 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         } else {
             assemblyDebugOutStream = null;
+        }
+        if (hcArgs.genotyperDebugOutStream != null) {
+            try {
+                genotyperDebugOutStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.genotyperDebugOutStream)));
+            } catch (IOException e) {
+                throw new UserException.CouldNotCreateOutputFile(hcArgs.genotyperDebugOutStream, "Provided argument for assembly debug graph location could not be created");
+            }
+        } else {
+            genotyperDebugOutStream = null;
         }
     }
 
@@ -217,6 +230,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         genotypingEngine = new HaplotypeCallerGenotypingEngine(hcArgs, samplesList, ! hcArgs.doNotRunPhysicalPhasing, hcArgs.applyBQD);
         genotypingEngine.setAnnotationEngine(annotationEngine);
+        if (genotyperDebugOutStream != null) {
+            genotypingEngine.addDebugOutStream(genotyperDebugOutStream);
+        }
 
         referenceConfidenceModel = new ReferenceConfidenceModel(samplesList, readsHeader, hcArgs.indelSizeToEliminateInRefModel, hcArgs.standardArgs.genotypeArgs.numRefIfMissing);
 
@@ -228,6 +244,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(hcArgs, createBamOutIndex, createBamOutMD5, readsHeader);
         assemblyEngine = hcArgs.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs);
+        if (genotyperDebugOutStream != null) {
+            likelihoodCalculationEngine.addDebugOutStream(genotyperDebugOutStream);
+        }
     }
 
     private boolean isVCFMode() {
@@ -323,7 +342,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     public static List<ReadFilter> makeStandardHCReadFilters(final int mappingQualityThreshold) {
         List<ReadFilter> filters = new ArrayList<>();
-        filters.add(new MappingQualityReadFilter(mappingQualityThreshold)); //TODO figure this guy out
+        filters.add(new MappingQualityReadFilter(mappingQualityThreshold));
 //        filters.add(new MappingQualityReadFilter());
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPED);
@@ -515,7 +534,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             // we're benchmarking ART and/or the active region determination code in the HC, justio leave without doing any work
             return NO_CALLS;
         }
-//        System.out.println("calling for region: " +region.getSpan());
+        if (genotyperDebugOutStream != null) {
+            genotyperDebugOutStream.println("calling for region: " +region.getSpan());
+        }
 
         final List<VariantContext> VCpriors = new ArrayList<>();
         if (hcArgs.standardArgs.genotypeArgs.supportVariants != null) {
@@ -596,20 +617,23 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, false, VCpriors);
         }
 
-
-//        System.out.println("\n=================================================");
-//        System.out.println("assemblyRegion: "+new SimpleInterval(region));
-//        System.out.println("=================================================");
+        if (genotyperDebugOutStream != null) {
+            genotyperDebugOutStream.println("\n=================================================");
+            genotyperDebugOutStream.println("assemblyRegion: "+new SimpleInterval(region));
+            genotyperDebugOutStream.println("=================================================");
+        }
 
         // evaluate each sample's reads against all haplotypes
         final List<Haplotype> haplotypes = assemblyResult.getHaplotypeList();
         final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, regionForGenotyping.getReads());
-//
-//        System.out.println("Haplotyes:");
-//        for (Haplotype haplotype : haplotypes) {
-//            System.out.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
-//            System.out.println(haplotype);
-//        }
+
+        if (genotyperDebugOutStream != null) {
+            genotyperDebugOutStream.println("Haplotyes:");
+            for (Haplotype haplotype : haplotypes) {
+                genotyperDebugOutStream.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
+                genotyperDebugOutStream.println(haplotype);
+            }
+        }
 
         // Calculate the likelihoods: CPU intensive part.
         final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods =
@@ -624,17 +648,18 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         //  GLs.  In particular, for samples that are heterozygous non-reference (B/C) the marginalization for B treats the
         //  haplotype containing C as reference (and vice versa).  Now this is fine if all possible haplotypes are included
         //  in the genotyping, but we lose information if we select down to a few haplotypes.  [EB]
-//
-//        for(int counter = 0; counter < readLikelihoods.sampleEvidence(0).size(); counter++) {
-//            GATKRead read = readLikelihoods.sampleEvidence(0).get(counter);
-//            System.out.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"] length:"+read.getLength());
-//            String hmmScores = "";
-//            for (int h = 0; h < readLikelihoods.numberOfAlleles(); h++) {
-//                hmmScores = hmmScores + "," + readLikelihoods.sampleMatrix(0).get(h, counter);
-//            }
-//            System.out.println(hmmScores);
-//
-//        }
+
+        if (genotyperDebugOutStream != null) {
+            for (int counter = 0; counter < readLikelihoods.sampleEvidence(0).size(); counter++) {
+                GATKRead read = readLikelihoods.sampleEvidence(0).get(counter);
+                genotyperDebugOutStream.println("read " + counter + ": " + read.getName() + " cigar: " + read.getCigar() + " mapQ: " + read.getMappingQuality() + " loc: [" + read.getStart() + "-" + read.getEnd() + "] unclippedloc: [" + read.getUnclippedStart() + "-" + read.getUnclippedEnd() + "] length:" + read.getLength());
+                String hmmScores = "";
+                for (int h = 0; h < readLikelihoods.numberOfAlleles(); h++) {
+                    hmmScores = hmmScores + "," + readLikelihoods.sampleMatrix(0).get(h, counter);
+                }
+                genotyperDebugOutStream.println(hmmScores);
+            }
+        }
 
         final CalledHaplotypes calledHaplotypes = genotypingEngine.assignGenotypeLikelihoods(
                 haplotypes,
@@ -747,6 +772,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if (assemblyDebugOutStream != null) {
             assemblyDebugOutStream.close();
         }
+        if (genotyperDebugOutStream != null) {
+            genotyperDebugOutStream.close();
+        }
         // Write assembly region debug output if present
         assemblyEngine.printDebugHistograms();
 
@@ -758,7 +786,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final Set<GATKRead> readsToRemove = new LinkedHashSet<>();
         for( final GATKRead rec : activeRegion.getReads() ) {
             if( rec.getLength() < READ_LENGTH_FILTER_THRESHOLD || rec.getMappingQuality() < hcArgs.mappingQualityThreshold || ! ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE.test(rec) || (hcArgs.keepRG != null && !rec.getReadGroup().equals(hcArgs.keepRG)) ) {
-//                System.out.println("Filtered before assembly the read: "+rec.toString());
+                if (genotyperDebugOutStream != null) {
+                    genotyperDebugOutStream.println("Filtered before assembly the read: " + rec.toString());
+                }
                 readsToRemove.add(rec);
             }
         }

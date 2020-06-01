@@ -1,28 +1,35 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
-import htsjdk.samtools.CigarOperator;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
-import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingEngine;
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class DRAGENBQDGenotypesModel implements GenotypersModel {
+/**
+ * This is the DRAGEN-GATK genotyper model. This class manages the logic for likelihoods calculation between the IndependentSamplesGenotyperModel
+ * and the two DRAGEN genotypes models (FRD and BQD).
+ *
+ * In order to access the FRD and BQD genotypes model simply initialize this class with the settings enabled, then call
+ * {@link #calculateLikelihoods} to return a the modified likelihoods array with the relevant models applied. FRD and BQD
+ * both work by computing alternate likelihoods scores for the array array corresponding to homozygous allele combinations
+ * and choosing the best score for each element of the likelihoods array from among the different models. This has the net
+ * effect of penalizing heterozygous allele combinations since they do not have their likelihoods modified.
+ *
+ */
+public class DRAGENGenotypesModel implements GenotypersModel {
     private static final int DEFAULT_CACHE_PLOIDY_CAPACITY = 10;
     private static final int DEFAULT_CACHE_ALLELE_CAPACITY = 50;
 
@@ -36,18 +43,17 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
     private final int maxEffectiveDepthAdjustment;
     private final DragstrParams dragstrParams;
 
-    // We keep a fallback model in mind... this might want to be adjusted as implementation workds
-    private final IndependentSampleGenotypesModel fallbackModel;
+    //Debug stream to be managed by the HaplotypeCallerEngine
+    private PrintStream genotyperDebugStream = null;
 
-    public DRAGENBQDGenotypesModel(final boolean useBQDModel, final boolean useFRDModel, final int allelePadding, final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY, useBQDModel, useFRDModel, allelePadding, maxEffectiveDepthAdjustment,  dragstrParams); }
+    public DRAGENGenotypesModel(final boolean useBQDModel, final boolean useFRDModel, final int allelePadding, final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY, useBQDModel, useFRDModel, allelePadding, maxEffectiveDepthAdjustment,  dragstrParams); }
 
     /*
      *  Initialize model with given maximum allele count and ploidy for caching
      */
-    public DRAGENBQDGenotypesModel(final int calculatorCachePloidyCapacity, final int calculatorCacheAlleleCapacity,
-                                   final boolean useBQDModel, final boolean useFRDModel, final int allelePadding,
-                                   final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) {
-        fallbackModel = new IndependentSampleGenotypesModel(calculatorCachePloidyCapacity, calculatorCacheAlleleCapacity);
+    public DRAGENGenotypesModel(final int calculatorCachePloidyCapacity, final int calculatorCacheAlleleCapacity,
+                                final boolean useBQDModel, final boolean useFRDModel, final int allelePadding,
+                                final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) {
         cachePloidyCapacity = calculatorCachePloidyCapacity;
         cacheAlleleCountCapacity = calculatorCacheAlleleCapacity;
         likelihoodCalculators = new GenotypeLikelihoodCalculatorDRAGEN[calculatorCachePloidyCapacity][calculatorCacheAlleleCapacity];
@@ -59,24 +65,20 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
         this.dragstrParams = dragstrParams;
     }
 
-//    @Override TODO unify the two calling infrastructures
     @SuppressWarnings({"unchecked", "rawtypes"})
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data, byte[] paddedReference, int offsetForRefIntoEvent, final DragstrReferenceSTRs dragstrs) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 
-        // for right now, don't handle any deletions whatsoever
-        // Also for right now lets not worry too much abotu alleles.
-//        if (FRDBQDUtils.containsInsertionOrDeletion(genotypingAlleles) || data.numberOfAlleles() > 3) {
-//            return fallbackModel.calculateLikelihoods(genotypingAlleles, data, paddedReference, offsetForRefIntoEvent);
-//        }
-
+        //Get the prior for the
         double api;
         if (dragstrs !=  null) {
             final int period = dragstrs.period(offsetForRefIntoEvent + 1 );
             final int repeats = dragstrs.repeatLength(offsetForRefIntoEvent + 1);
             api = dragstrParams.api(period, repeats);
-//            System.out.println("API found: "+ api +" with period used: "+period+"  and repeats: "+repeats);
+            if (genotyperDebugStream != null) {
+                genotyperDebugStream.println("API found: " + api + " with period used: " + period + "  and repeats: " + repeats);
+            }
         } else {
             api = 34.77;
         }
@@ -89,16 +91,14 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
         final PloidyModel ploidyModel = data.ploidyModel();
         final List<GenotypeLikelihoods> genotypeLikelihoods = new ArrayList<>(sampleCount);
         final int alleleCount = genotypingAlleles.numberOfAlleles();
-        final int variantOffset = data.readLikelihoods().getSubsettedGenomicLoc().getStart() + allelePadding;
+        final int variantOffset = data.readLikelihoods().getVariantCallingSubsetApplied().getStart() + allelePadding;
 
-//        GenotypeLikelihoodCalculator likelihoodsCalculator = sampleCount > 0 ? getLikelihoodsCalculator(ploidyModel.samplePloidy(0), alleleCount) : null;
         GenotypeLikelihoodCalculatorDRAGEN likelihoodsCalculator = getLikelihoodsCalculator(ploidyModel.samplePloidy(0), alleleCount); //TODO this needs to change
         for (int sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
 
             ///////////////////////////////////////////////////////////////////////////
             ///// PREPROCESSING FOR BQD
             ///////////////////////////////////////////////////////////////////////////
-            //TODO this will need ohmptimation, this is probably too much object creation for in here
 
             // Separating the reads by their strand and sorting them appropriately.
             List<GATKRead> readsForSample = data.readLikelihoods().sampleEvidence(sampleIndex);
@@ -109,9 +109,8 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 
             ////TODO BIG GIANT TODO, THIS IS WRONG!!!! READS WITH INDELS ARE GOING TO BE SORTED INCORRECTLY HERE!!!!!!!!!!!! NEED TO ROLL MY OWN CLIPPING MANAGING CODE.......
             for (int j = 0; j < readsForSample.size(); j++) {
-                final GATKRead readForSample = ReadClipper.revertSoftClippedBases(readsForSample.get(j));
-                final Pair<Integer, CigarOperator> baseOffsetForRead = ReadUtils.getReadIndexForReferenceCoordinate(readForSample, variantOffset);
-                final int indexForSnp = readForSample.getBaseQualityCount() > baseOffsetForRead.getLeft() ?  baseOffsetForRead.getLeft() : -1;
+                final GATKRead readForSample = readsForSample.get(j);
+                final int indexForSnp = ReadUtils.getReadIndexForReferenceCoordinate(readForSample, variantOffset).getLeft();
 
                 if (readForSample.isReverseStrand()) {
                     strandReverse.add(new DragenReadContainer(readForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(readForSample), j));
@@ -119,12 +118,9 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
                     strandForward.add(new DragenReadContainer(readForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(readForSample), j));
                 }
             }
-            //TODO unsilly this
-            //TODO marking this with -1s is silly and probably not the right answer
             for (int j = 0; j < hmmFilteredReadsForSample.size(); j++) {
-                final GATKRead filteredReadForSample = ReadClipper.revertSoftClippedBases(hmmFilteredReadsForSample.get(j));
-                final Pair<Integer, CigarOperator> baseOffsetForRead = ReadUtils.getReadIndexForReferenceCoordinate(filteredReadForSample, variantOffset);
-                final int indexForSnp = filteredReadForSample.getBaseQualityCount() > baseOffsetForRead.getLeft() ?  baseOffsetForRead.getLeft() : -1; //This is fixing a horrible off by one bug in the above method, this shoulld be fixed but I don't want to deal with the offtarget effects here
+                final GATKRead filteredReadForSample = hmmFilteredReadsForSample.get(j);
+                final int indexForSnp = ReadUtils.getReadIndexForReferenceCoordinate(filteredReadForSample, variantOffset).getLeft();
 
                 if (filteredReadForSample.isReverseStrand()) {
                     strandReverse.add(new DragenReadContainer(filteredReadForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(filteredReadForSample), -1));
@@ -142,29 +138,36 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             if (samplePloidy != likelihoodsCalculator.ploidy()) {
                 likelihoodsCalculator = getLikelihoodsCalculator(samplePloidy, alleleCount);
             }
+            if (genotyperDebugStream != null) {
+                likelihoodsCalculator.addGenotyperDebugOutputStream(genotyperDebugStream);
+            }
 
             // this is the data array for the read liklihoods without any trouble
             final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(sampleIndex));
             final double[] ployidyModelGenotypeLikelihoods = likelihoodsCalculator.rawGenotypeLikelihoods(sampleLikelihoods);
-//
-//            System.out.println("\n Vanilla resutls:");
-//            System.out.println(Arrays.toString(ployidyModelGenotypeLikelihoods));
 
-            // TODO these must be instantiated as something real
+            if (genotyperDebugStream != null) {
+                genotyperDebugStream.println("\n Standard Genotyping Resutls:");
+                genotyperDebugStream.println(Arrays.toString(ployidyModelGenotypeLikelihoods));
+            }
+
             double[] BQDCallResults = null;
             double[] FRDCallResults = null;
-
-            if (computeBQD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
+            if (computeBQD) {
                 BQDCallResults = likelihoodsCalculator.calculateBQDLikelihoods(sampleLikelihoods, strandForward, strandReverse, paddedReference, offsetForRefIntoEvent, calculators);
-//                System.out.println("BQD results:");
-//                System.out.println(Arrays.toString(BQDCallResults));
+                if (genotyperDebugStream != null) {
+                    genotyperDebugStream.println("BQD results:");
+                    genotyperDebugStream.println(Arrays.toString(BQDCallResults));
+                }
             }
-            if (computeFRD) { // TODO this will become a switch to do frd work or bqd work calling out to the things
+            if (computeFRD) {
                 FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, ployidyModelGenotypeLikelihoods,
                         Stream.of(strandForward, strandReverse).flatMap(Collection::stream).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
                         34.77, api, maxEffectiveDepthAdjustment, calculators);
-//                System.out.println("FRD results:");
-//                System.out.println(Arrays.toString(FRDCallResults));
+                if (genotyperDebugStream != null) {
+                    genotyperDebugStream.println("FRD results:");
+                    genotyperDebugStream.println(Arrays.toString(FRDCallResults));
+                }
             }
 
             //make synthesized likelihoods object (NOTE that we can do this since for invalid model GT fields we simply infinity out the result in the array)
@@ -179,10 +182,18 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 
             // this is what the work actually is, after we have computed a few things
             genotypeLikelihoods.add(GenotypeLikelihoods.fromLog10Likelihoods(ployidyModelGenotypeLikelihoods));
-//            System.out.println("merged matrix:");
-//            System.out.println(Arrays.toString(ployidyModelGenotypeLikelihoods));
+            if (genotyperDebugStream != null) {
+                genotyperDebugStream.println("merged matrix:");
+                genotyperDebugStream.println(Arrays.toString(ployidyModelGenotypeLikelihoods));
+            }
         }
         return new GenotypingLikelihoods<>(genotypingAlleles, ploidyModel, genotypeLikelihoods);
+    }
+
+    // Adding the debug stream managed by the haplotype caller engine
+    @Override
+    public void addDebugOutStream(final PrintStream debugStream) {
+        this.genotyperDebugStream = debugStream;
     }
 
     private GenotypeLikelihoodCalculatorDRAGEN getLikelihoodsCalculator(final int samplePloidy, final int alleleCount) {
@@ -200,7 +211,8 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
     }
 
     /**
-     * This helper class is used to store the necessary data in order to sort a read based on its BQD "feather end"
+     * This helper class is used to store the necessary data in order to sort a read based on its BQD "feather end" as
+     * well as information relevant to re-associate the read with its position in the AlleleLikelihoods object arrays.
      */
     static class DragenReadContainer {
         final public GATKRead underlyingRead;
@@ -225,6 +237,10 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
 
         public int getIndexInLikelihoodsObject() {
             return indexInLikelihoodsObject;
+        }
+
+        public boolean wasFilteredByHMM() {
+            return this.getIndexInLikelihoodsObject() == -1;
         }
 
         public boolean hasValidBaseQuality() {
@@ -297,7 +313,6 @@ public class DRAGENBQDGenotypesModel implements GenotypersModel {
             //NOTE: here we want the reads to wind up in decending order by unclipped position because the unclipped position should be on the left
             int diffVal = read2.getUnclippedPosition() - read1.getUnclippedPosition();
             if (diffVal==0) {
-                //TODO verify this lines up with the sort in DRAGBQD
                 diffVal = (read1.hasValidBaseQuality() ? read1.getBaseQuality() : 0)
                         - (read2.hasValidBaseQuality() ? read2.getBaseQuality() : 0);
             }
