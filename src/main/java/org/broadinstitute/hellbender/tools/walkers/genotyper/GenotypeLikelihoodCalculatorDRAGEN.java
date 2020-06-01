@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
 
 /**
@@ -54,16 +55,26 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
     }
 
     /**
+     * Calculate the BQD model outputs to the likelihoods array.
+     * This method handles splitting the model by strand and selecting the best scoring parameters across the two for return in the likelihoods array.
      *
+     * BQD needs to see reads that have been disqualified in {@link org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods#filterPoorlyModeledEvidence(ToDoubleFunction)} as
+     * well as reads that only overlap the variant in question in their low quality ends. Reads in the former category do not have their hmm scores
+     * accounted for in the genotyping model, whereas reads in the later category do. All reads, (disqualified, low quality ends, and all others)
+     * are sorted by the cycle-count of the SNP being genotyped, and the average base qualities for the SNP base are computed across partitions
+     * of the reads in aggregate.
+     *
+     * NOTES:
+     * - The model will not handle indel alleles
+     * - The model currently does not support mixed-allele mode (modifying 0/1 GTs in addition to 0/0 GTs)
      *
      * @param sampleLikelihoods allele liklihoods containing data for reads
      * @param strandForward list of reads in the forwards orientation overlapping the site
      * @param strandReverse list of reads in the reverse orientation overlapping the site
-     * @param paddedReference reference
-     * @param offsetForRefIntoEvent
-     * @param calculators
-     * @param <A>
-     * @return
+     * @param paddedReference reference bases (with padding) used for calculating homopolymer adjustemnt
+     * @param offsetForRefIntoEvent offset of the variant into the reference event
+     * @param calculators likelihoods calculators object pre-filled with scores
+     * @return An array corresponding to the likelihoods array score for BQD, with Double.NEGATIVE_INFINITY filling all mixed allele/indel allelse
      */
     public <A extends Allele> double[] calculateBQDLikelihoods(final LikelihoodMatrix<GATKRead, A> sampleLikelihoods,
                                                                final List<DRAGENGenotypesModel.DragenReadContainer> strandForward,
@@ -77,7 +88,6 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         final double[] outputArray = new double[genotypeCount];
         Arrays.fill(outputArray, Double.NEGATIVE_INFINITY);
 
-
         final Allele refAllele = sampleLikelihoods.getAllele(0);
 
         //Determine the size of an allele page for the readsLikelihoodsByAlleleFrequency table
@@ -85,7 +95,6 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         final int alleleDataSize = readCount * (ploidy + 1);
 
         for(int gtAlleleIndex = 0; gtAlleleIndex < sampleLikelihoods.numberOfAlleles(); gtAlleleIndex++) {
-            //TODO how in the hell do i actaully calculate this offset correctly... blehhhhhhh
             //This is crufty, it just so happens that the index of the homozygous genotype corresponds to the maximum genotype count per field.
             //This should be pulled off as a calculator in some genotyping class.
             final int indexForGT = calculators.genotypeCount(ploidy, gtAlleleIndex + 1) - 1;
@@ -124,7 +133,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
     /**
      * Helper function that actually manages the math for BQD;
      *
-     * This method works by combining the computed genotype scores for reads with the raw allele likelihoods scores for th
+     * This method works by combining the computed genotype scores for reads with the raw allele likelihoods scores for each evidence
      *
      * @param positionSortedReads  Reads pairs objects (Pair<Pair<read,readBaseOffset>, sampleReadIndex>) objects sorted in the correct order for partitioning.
      *                             This means that the "error" reads in the partition are sorted by read cycle first in the provided list
@@ -217,15 +226,29 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
     }
 
     /**
+     * Calculate the BQD model outputs to the likelihoods array.
      *
-     * @param sampleLikelihoods
-     * @param strandForward
-     * @param strandReverse
-     * @param forwardHomopolymerAdjustment
-     * @param snipAprioriHet
-     * @return
+     * This method is responsible for computing critical phred-mapping quality adjustments for the entire pool of reads (Disqualified reads,
+     * reads only overlapping in low quality ends, and otherwise) and selecting true-allele/error-allele combinations as well as strand model
+     * combinations (all forward reads/ all reverse reads/ all reads) and calling {@link #computeFRDModelForStrandData} for each of these
+     * combinations selecting the best scoring columns in the final likelihoods array output.
+     *
+     * Like BQD this model genotypes with all reads that overlap the site in either their accepted bases or low quality ends, but it does
+     * not include disqualified reads for genotyping. All reads are used for computing the critical values for the mapping quality cutoffs.
+     *
+     * NOTES:
+     * - The model currently does not support mixed-allele mode (modifying 0/1 GTs in addition to 0/0 GTs)
+     * - The model will not treat symbolic alleles specially, always treating them as indels. This might or might not be the best way to handle them.
+     *
+     * @param sampleLikelihoods the likelihoods object with allele liklihoods for the reads to be genotyped
+     * @param ploidyModelLikelihoods standard genotyping model allele likelihoods (to be used for maxEffectiveDepthAdjustment)
+     * @param readContainers reads (both forwards and reverse orientation as well as disqualified reads) overlapping the site in question
+     * @param snipAprioriHet prior for heterozygus SNP allele
+     * @param indelAprioriHet prior for heterozygus indel alleles based on the STRE tables if present
+     * @param maxEffectiveDepthForHetAdjustment maxEffectiveDepthAdjustment used to reduce the effect of FRD at high depth sites (0 means no adjustment)
+     * @param calculators DRAGENlikelihoodsCalculator object to manage GT array math
+     * @return a likelihoods array corrsponding to the log10 likelihoods scores for the best combination of model parameters for each Genotype (Double.NEGATIVE_INFINITY for Genotypes not considered)
      */
-    //TODO this WILLLL need to handle indel priors
     public <A extends Allele> double[] calculateFRDLikelihoods(final LikelihoodMatrix<GATKRead, A> sampleLikelihoods, final double[] ploidyModelLikelihoods,
                                                                final List<DRAGENGenotypesModel.DragenReadContainer> readContainers,
                                                                final double snipAprioriHet, final double indelAprioriHet, final int maxEffectiveDepthForHetAdjustment,
@@ -262,6 +285,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 if (gtAlleleIndex == fAlleleIndex) {
                     continue;
                 }
+                // For right now we allow symbolic alleles, but this might be subject to change
 //                if (sampleLikelihoods.getAllele(fAlleleIndex).isSymbolic() ) {
 //                    continue;
 //                }
@@ -271,19 +295,16 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 final int indexForGT = calculators.genotypeCount(ploidy, gtAlleleIndex + 1) - 1;
                 double[] readLikelihoodsForGT = readLikelihoodsByGenotypeIndex[indexForGT];
 
-                // TODO this will have to account for the indel priors later in its existance
-                final double gtAllelePrior = 0.0;
-
                 // TODO restore the critical thresholds
                 if (genotyperDebugStream != null) {
                     genotyperDebugStream.println("indexForGT "+indexForGT+ " ooffsetForReadLikelihoodGivenAlleleIndex ="+offsetForReadLikelihoodGivenAlleleIndex);
                     genotyperDebugStream.println("\nForwards Strands: ");
                 }
-                final double[] maxLog10FForwardsStrand = computeFRDModelForStrandData(readContainers, c -> !c.isReverseStrand() , offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted, gtAllelePrior);
+                final double[] maxLog10FForwardsStrand = computeFRDModelForStrandData(readContainers, c -> !c.isReverseStrand() , offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted);
                 if (genotyperDebugStream != null) {  genotyperDebugStream.println("\nReverse Strands: ");}
-                final double[] maxLog10FReverseStrand = computeFRDModelForStrandData(readContainers, c -> c.isReverseStrand(), offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted, gtAllelePrior);
+                final double[] maxLog10FReverseStrand = computeFRDModelForStrandData(readContainers, c -> c.isReverseStrand(), offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted);
                 if (genotyperDebugStream != null) {  genotyperDebugStream.println("\nBoth Strands: ");}
-                final double[] maxLog10FBothStrands = computeFRDModelForStrandData(readContainers, c -> true, offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted, gtAllelePrior);
+                final double[] maxLog10FBothStrands = computeFRDModelForStrandData(readContainers, c -> true, offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted);
 
                 if (genotyperDebugStream != null) {
                     genotyperDebugStream.println("gtAlleleIndex : "+gtAlleleIndex+ " fAlleleIndex: "+fAlleleIndex +" forwards: "+maxLog10FForwardsStrand+" reverse: "+maxLog10FReverseStrand+" both: "+maxLog10FBothStrands);
@@ -327,17 +348,15 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 
 
     /**
-     *
-      * @param positionSortedReads
-     * @param predicate
-     * @param offsetForReadLikelihoodGivenAlleleIndex
-     * @param readLikelihoodsForGT
-     * @param criticalThresholdsSorted
-     * @param gtAllelePrior
+     * @param positionSortedReads read containers to use for genotyping
+     * @param predicate predicate used to select the correct orientation combination for reads when genotyping
+     * @param offsetForReadLikelihoodGivenAlleleIndex offset corresponding to the Error Allele in the reads likelihoods object array
+     * @param readLikelihoodsForGT reads likelihoods for Genotype array table
+     * @param criticalThresholdsSorted critical thresholds to use for this orientation combination
      * @return two doubles, index 0 is the frd score and the second is log p(F()) score used to adjust the score
      */
     private double[] computeFRDModelForStrandData(final List<DRAGENGenotypesModel.DragenReadContainer> positionSortedReads, final Predicate<DRAGENGenotypesModel.DragenReadContainer> predicate,
-                                                  final int offsetForReadLikelihoodGivenAlleleIndex, final double[] readLikelihoodsForGT, final List<Double> criticalThresholdsSorted, final double gtAllelePrior) {
+                                                  final int offsetForReadLikelihoodGivenAlleleIndex, final double[] readLikelihoodsForGT, final List<Double> criticalThresholdsSorted) {
         if (positionSortedReads.isEmpty()) {
             return new double[]{Double.NEGATIVE_INFINITY, 0};
         }
@@ -400,7 +419,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 }
             }
             // Allele prior for error allele, plus posterior for foreign event, plus model posterior
-            double LPsi = gtAllelePrior + lpf + LP_R_GF;
+            double LPsi = lpf + LP_R_GF; // NOTE unlike DRAGEN we apply the prior to the combined likelihoods array after the fact so gtAllelePrior is not included at this stage
             localMaxLpspi = Math.max(localMaxLpspi, LPsi);
 
             if (genotyperDebugStream != null) {
