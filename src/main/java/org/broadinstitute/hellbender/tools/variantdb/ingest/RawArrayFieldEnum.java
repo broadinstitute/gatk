@@ -14,13 +14,14 @@ import java.util.Set;
  * Expected headers for the Variant Table (VET)
  *     position, // req
  *     sample, // req
- *     reference_bases, // req
- *     alternate_bases_alt, // req
- *     call_genotype, // req
- *
- *     IGC // IGC < --- instead of the GQ
- *     LRR // Log R ratio --> intensity value instead of DP
- *     BAF // b allele fraction --> AD proxy
+ *     ref, // req
+ *     alt, // req
+ *     call_GT, // req
+ *     call_NORMX, // req
+ *     call_NORMY, // req
+ *     call_BAF // b allele fraction --> AD proxy
+ *     call_LRR // Log R ratio --> intensity value instead of DP
+ *     call_IGC // IGC < --- instead of the GQ
  *
  */
 
@@ -28,15 +29,15 @@ public enum RawArrayFieldEnum {
     // This where the validation step (required vs not) lives  -- fail if there is missing data for a required field
     // and just leave it empty if not required
 
-    position, // Required-- start position for sample
+//    position, // Required-- start position for sample
     sample_id, // Required-- sample Id for sample
 
 
-    site_id { // Required
+    site_name { // Required
         public String getColumnValue(final VariantContext variant) {
             final String siteId = variant.getID();
             if (siteId == null) {
-                throw new IllegalArgumentException("Cannot be missing required value for site_id"); // TODO, should this be UserException too?
+                throw new IllegalArgumentException("Cannot be missing required value for site_name"); // TODO, should this be UserException too?
             }
             return siteId;
         }
@@ -65,13 +66,13 @@ public enum RawArrayFieldEnum {
         }
     },
 
-    filter {
-        //TODO remove - just for looking at the data
-        public String getColumnValue(final VariantContext variant) {
-            Set<String> outList = variant.getFilters();
-            return outList.isEmpty() ? "null" : String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, outList);
-        }
-    },
+//    filter {
+//        //TODO remove - just for looking at the data
+//        public String getColumnValue(final VariantContext variant) {
+//            Set<String> outList = variant.getFilters();
+//            return outList.isEmpty() ? "null" : String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, outList);
+//        }
+//    },
 
     call_GT {
         public String getColumnValue(final VariantContext variant) {
@@ -89,12 +90,12 @@ public enum RawArrayFieldEnum {
         }
     },
 
-    call_NORMX { // variant.getGenotypes().get(0).getExtendedAttributes().get("X_norm")
+    call_NORMX { // variant.getGenotypes().get(0).getExtendedAttributes().get("NORMX")
         public String getColumnValue(final VariantContext variant) {
             return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("NORMX"));
         }
     },
-    call_NORMY { // variant.getGenotypes().get(0).getExtendedAttributes().get("Y_norm")
+    call_NORMY { // variant.getGenotypes().get(0).getExtendedAttributes().get("NORMY")
         public String getColumnValue(final VariantContext variant) {
             return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("NORMY"));
         }
