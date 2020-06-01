@@ -88,14 +88,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", outputPath,
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--apply-frd", "--apply-bqd",
-                "--transform-dragen-mapping-quality",
-                "--mapping-quality-threshold", "1",
-                "--enable-dynamic-read-disqualification-for-genotyping",
-                "--allele-informative-reads-overlap-margin","0",
-                "--dont-use-dragstr-pair-hmm-scores",
-                "--soft-clip-low-quality-ends",
-                "--dragstr-params-path", "/Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/DNA_Nexus_hiseqX_plus0_0.dragstr-params.txt",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
 
@@ -214,7 +206,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         final File output = createTempFile("testDRAGENGATKModeIsConsistentWithPastResults", ".vcf");
         final File expected = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk4.DRAGEN.vcf");
-
         final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
 
         final String[] args = {
@@ -240,7 +231,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         };
 
         runCommandLine(args);
-
         if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
             IntegrationTestSpec.assertEqualTextFiles(output, expected);
         }

@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,6 +66,12 @@ public final class IndependentSampleGenotypesModel implements GenotypersModel {
             genotypeLikelihoods.add(likelihoodsCalculator.genotypeLikelihoods(sampleLikelihoods));
         }
         return new GenotypingLikelihoods<>(genotypingAlleles, ploidyModel, genotypeLikelihoods);
+    }
+
+    // Currently only the DRAGEN-GATK genotyper supports the debug output stream
+    @Override
+    public void addDebugOutStream(PrintStream debugStream) {
+        return;
     }
 
     private GenotypeLikelihoodCalculator getLikelihoodsCalculator(final int samplePloidy, final int alleleCount) {

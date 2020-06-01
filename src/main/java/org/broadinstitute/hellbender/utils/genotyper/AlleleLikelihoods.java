@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 
 import java.util.*;
 import java.util.function.Function;
@@ -52,8 +51,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     protected final List<List<EVIDENCE>> evidenceBySampleIndex;
 
     /**
-     * TODO come up with a better way to store this
-     * Evidence by sample index. Each sub array contains reference to the evidence of the ith sample.
+     * Evidence disqualified by .
      */
     protected final List<List<EVIDENCE>> filteredEvidenceBySampleIndex;
 
@@ -136,7 +134,8 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         numberOfEvidences = new int[sampleCount];
 
         evidenceIndexBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
-        filteredEvidenceBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, new ArrayList<>(2)));
+        filteredEvidenceBySampleIndex = new ArrayList<>();
+        samples().forEach(s -> filteredEvidenceBySampleIndex.add(new ArrayList<>(2)));
 
         setupIndexes(evidenceBySample, sampleCount, alleleCount);
 
@@ -158,7 +157,12 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         final int sampleCount = samples.numberOfSamples();
 
         this.evidenceIndexBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
-        this.filteredEvidenceBySampleIndex = filteredEvidenceBySampleIndex != null ? filteredEvidenceBySampleIndex : new ArrayList<>(Collections.nCopies(sampleCount, new ArrayList<>(2)));
+        if (filteredEvidenceBySampleIndex != null) {
+            this.filteredEvidenceBySampleIndex = filteredEvidenceBySampleIndex;
+        } else {
+            this.filteredEvidenceBySampleIndex = new ArrayList<>();
+            samples().forEach(s -> filteredEvidenceBySampleIndex.add(new ArrayList<>(2)));
+        }
 
         referenceAlleleIndex = findReferenceAllele(alleles);
         sampleMatrices = (LikelihoodMatrix<EVIDENCE,A>[]) new LikelihoodMatrix[sampleCount];
@@ -1072,51 +1076,6 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         }
     }
 
-
-    /**
-     * Removes evidence that does not overlap certain genomic location.
-     *
-     * @param predicate the predicate representing the requirement.
-     *
-     * <p>
-     *     This method modifies the current read-likelihoods collection.
-     * </p>
-     * <p>
-     *     Any exception thrown by the predicate will be propagated to the calling code.
-     * </p>
-     *
-     * @throws IllegalArgumentException if {@code predicate} is {@code null}.
-     */
-    public void retainEvidenceAndStoreFiltered(final Predicate<? super EVIDENCE> predicate, final Predicate<? super EVIDENCE> predicateForFilterRetention) {
-        Utils.nonNull(predicate);
-        final int sampleCount = samples.numberOfSamples();
-
-        for (int s = 0; s < sampleCount; s++) {
-            // Remove evidence from the primary data
-            final List<EVIDENCE> sampleEvidence = this.evidenceBySampleIndex.get(s);
-            final int[] removeIndices = IntStream.range(0, sampleEvidence.size())
-                    .filter(i -> !predicate.test(sampleEvidence.get(i)))
-                    .toArray();
-
-            System.out.println("Evidences removed by insufficient overlapping: "+Arrays.toString(removeIndices));
-            final List<EVIDENCE> removedToBeRetained = new ArrayList<>(2);
-            for(int i = 0; i < removeIndices.length; i++) {
-                // if it passes the second predicate but not the first bump it into the filtered pool
-                final EVIDENCE evidence = sampleEvidence.get(removeIndices[i]);
-                if (predicateForFilterRetention.test(evidence)) {
-                    removedToBeRetained.add(evidence);
-                }
-            }
-
-            removeEvidenceByIndex(s, removeIndices);
-
-            // If applicable also apply the predicate to the filters
-            final List<EVIDENCE> sampleFiltered = filteredEvidenceBySampleIndex.get(s).stream().filter(e -> !predicateForFilterRetention.test(e)).collect(Collectors.toList());
-            sampleFiltered.addAll(removedToBeRetained);
-            filteredEvidenceBySampleIndex.set(s, sampleFiltered);
-        }
-    }
-
     protected double maximumLikelihoodOverAllAlleles(final int sampleIndex, final int evidenceIndex) {
         double result = Double.NEGATIVE_INFINITY;
         final int alleleCount = alleles.numberOfAlleles();
@@ -1129,10 +1088,14 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         return result;
     }
 
-    public void setSubsettedGenomicLoc(final SimpleInterval loc) {
+    public void setVariantCallingSubsetUsed(final SimpleInterval loc) {
         this.subsettedGenomicLoc = loc;
     }
-    public SimpleInterval getSubsettedGenomicLoc() {
+
+    /**
+     * Returns the location used for subsetting. May be null.
+     */
+    public SimpleInterval getVariantCallingSubsetApplied() {
         return subsettedGenomicLoc;
     }
 

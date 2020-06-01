@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.PrintStream;
 import java.util.List;
 import java.util.Map;
 
@@ -34,4 +35,9 @@ public interface ReadLikelihoodCalculationEngine extends AutoCloseable {
      */
     @Override
     public void close();
+
+    /**
+     * This method allows for adding debug printing hooks into the calculator
+     */
+    public void addDebugOutStream(final PrintStream stream);
 }

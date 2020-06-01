@@ -5,10 +5,8 @@ import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.util.Tuple;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -63,7 +61,9 @@ public final class AlignmentUtils {
         if ( referenceStart < 1 ) { throw new IllegalArgumentException("reference start much be >= 1 but got " + referenceStart); }
 
         // compute the smith-waterman alignment of read -> haplotype //TODO use more efficient than the read clipper here
-        final SmithWatermanAlignment readToHaplotypeSWAlignment = aligner.align(haplotype.getBases(), ReadClipper.hardClipSoftClippedBases(originalRead).getBases(), CigarUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
+        final GATKRead readMinusSoftClips = ReadClipper.hardClipSoftClippedBases(originalRead);
+        final int softClippedBases = originalRead.getLength() - readMinusSoftClips.getLength();
+        final SmithWatermanAlignment readToHaplotypeSWAlignment = aligner.align(haplotype.getBases(), readMinusSoftClips.getBases(), CigarUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
         if ( readToHaplotypeSWAlignment.getAlignmentOffset() == -1 ) {
             // sw can fail (reasons not clear) so if it happens just don't realign the read
             return originalRead;
@@ -72,11 +72,11 @@ public final class AlignmentUtils {
         final Cigar swCigar = new CigarBuilder().addAll(readToHaplotypeSWAlignment.getCigar()).make();
 
         // since we're modifying the read we need to clone it
-        final GATKRead read = originalRead.copy();
+        final GATKRead copiedRead = originalRead.copy();
 
         // only informative reads are given the haplotype tag to enhance visualization
         if ( isInformative ) {
-            read.setAttribute(HAPLOTYPE_TAG, haplotype.hashCode());
+            copiedRead.setAttribute(HAPLOTYPE_TAG, haplotype.hashCode());
         }
 
         // compute here the read starts w.r.t. the reference from the SW result and the hap -> ref cigar
@@ -104,42 +104,56 @@ public final class AlignmentUtils {
         final Cigar haplotypeToRef = trimCigarByBases(rightPaddedHaplotypeVsRefCigar, readToHaplotypeSWAlignment.getAlignmentOffset(), rightPaddedHaplotypeVsRefCigar.getReadLength() - 1).getCigar();
 
         final Cigar readToRefCigar = applyCigarToCigar(swCigar, haplotypeToRef);
-        final CigarBuilder.Result leftAlignedReadToRefCigarResult = leftAlignIndels(readToRefCigar, refHaplotype.getBases(), originalRead.getBases(), readStartOnReferenceHaplotype);
+        final CigarBuilder.Result leftAlignedReadToRefCigarResult = leftAlignIndels(readToRefCigar, refHaplotype.getBases(), readMinusSoftClips.getBases(), readStartOnReferenceHaplotype);
         final Cigar leftAlignedReadToRefCigar = leftAlignedReadToRefCigarResult.getCigar();
         // it's possible that left-alignment shifted a deletion to the beginning of a read and removed it, shifting the first aligned base to the right
-        read.setPosition(read.getContig(), readStartOnReference + leftAlignedReadToRefCigarResult.getLeadingDeletionBasesRemoved());
+        copiedRead.setPosition(copiedRead.getContig(), readStartOnReference + leftAlignedReadToRefCigarResult.getLeadingDeletionBasesRemoved());
 
         // the SW Cigar does not contain the hard clips of the original read
+        // Here we reconcile the aligned read (that has had any softclips removed) with its softclipped bases
         final Cigar originalCigar = originalRead.getCigar();
-        int firstIndex = 0;
-        int lastIndex = originalCigar.numCigarElements() - 1;
-        CigarElement firstElement = originalCigar.getFirstCigarElement();
-        CigarElement lastElement = originalCigar.getLastCigarElement();
-        final List<CigarElement> readToRefCigarElementsWithHardClips = new ArrayList<>();
-        int softClippedBases = 0;
-        while (firstElement.getOperator().isClipping() && firstIndex != lastIndex) {
-            if (firstElement.getOperator()== CigarOperator.SOFT_CLIP) {softClippedBases+= firstElement.getLength();}
-            readToRefCigarElementsWithHardClips.add(firstElement);
-            // TODO add a test for this behavior on soft and hardclipped reads
-            firstElement = originalCigar.getCigarElement(++firstIndex);
-        }
-        readToRefCigarElementsWithHardClips.addAll(leftAlignedReadToRefCigar.getCigarElements());
-        while (lastElement.getOperator().isClipping() && firstIndex != lastIndex)  {
-            if (lastElement.getOperator()== CigarOperator.SOFT_CLIP) {softClippedBases+= lastElement.getLength();}
-            readToRefCigarElementsWithHardClips.add(lastElement);
-            // TODO add a test for this behavior on soft and hardclipped reads
-            lastElement = originalCigar.getCigarElement(--lastIndex);
-        }
+        Cigar newCigar = appendClippedElementsFromCigarToCigar(leftAlignedReadToRefCigar, originalCigar);
+        copiedRead.setCigar(newCigar);
 
-        read.setCigar(new Cigar(readToRefCigarElementsWithHardClips));
-
-        if ( leftAlignedReadToRefCigar.getReadLength() + softClippedBases != read.getLength() ) {
+        if ( leftAlignedReadToRefCigar.getReadLength() + softClippedBases != copiedRead.getLength() ) {
             throw new GATKException("Cigar " + leftAlignedReadToRefCigar + " with read length " + leftAlignedReadToRefCigar.getReadLength()
-                    + " != read length " + read.getLength() + " for read " + read.toString() + "\nhapToRef " + haplotypeToRef + " length " + haplotypeToRef.getReadLength() + "/" + haplotypeToRef.getReferenceLength()
+                    + " != read length " + copiedRead.getLength() + " for read " + copiedRead.toString() + "\nhapToRef " + haplotypeToRef + " length " + haplotypeToRef.getReadLength() + "/" + haplotypeToRef.getReferenceLength()
                     + "\nreadToHap " + swCigar + " length " + swCigar.getReadLength() + "/" + swCigar.getReferenceLength());
         }
+        // assert that the cigar has the same number of elements as the original read
 
-        return read;
+        return copiedRead;
+    }
+
+    /**
+     * Helper method that handles the work of re-appending clipped bases from the original cigar to the new one
+     *
+     * @param cigarToHaveClippedElementsAdded cigar to attach softclips to
+     * @param originalClippedCigar cigar to check for clipped bases
+     * @return a new cigar that has had the clipped elements from the original appended to either end
+     */
+    @VisibleForTesting
+    static Cigar appendClippedElementsFromCigarToCigar(final Cigar cigarToHaveClippedElementsAdded, final Cigar originalClippedCigar) {
+        int firstIndex = 0;
+        int lastIndex = originalClippedCigar.numCigarElements() - 1;
+        CigarElement firstElement = originalClippedCigar.getFirstCigarElement();
+        CigarElement lastElement = originalClippedCigar.getLastCigarElement();
+        final List<CigarElement> readToRefCigarElementsWithHardClips = new ArrayList<>();
+        while (firstElement.getOperator().isClipping() && firstIndex != lastIndex) {
+            readToRefCigarElementsWithHardClips.add(firstElement);
+            firstElement = originalClippedCigar.getCigarElement(++firstIndex);
+        }
+        readToRefCigarElementsWithHardClips.addAll(cigarToHaveClippedElementsAdded.getCigarElements());
+
+        final List<CigarElement> endCigarElementsToReverse = new ArrayList<>();
+        while (lastElement.getOperator().isClipping() && firstIndex != lastIndex)  {
+            endCigarElementsToReverse.add(lastElement);
+            lastElement = originalClippedCigar.getCigarElement(--lastIndex);
+        }
+        // Reverse the order to preserve the original soft/hardclip ordering in mixed clipping cases where softclips precede hardclips
+        readToRefCigarElementsWithHardClips.addAll(Lists.reverse(endCigarElementsToReverse));
+
+        return new Cigar(readToRefCigarElementsWithHardClips);
     }
 
 

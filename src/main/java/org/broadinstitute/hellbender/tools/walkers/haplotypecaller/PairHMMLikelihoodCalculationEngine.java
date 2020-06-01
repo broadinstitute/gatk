@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import picard.util.ClippingUtility;
 
+import java.io.PrintStream;
 import java.util.*;
 import java.util.function.ToDoubleFunction;
 
@@ -47,9 +48,11 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     private final boolean dynamicDisqualification;
     private final double readDisqualificationScale;
     private final double expectedErrorRatePerBase;
-//    private final boolean useMapQAsPhredMismappingRate;
     private final boolean disableCapReadQualitiesToMapQ;
     private final boolean symmetricallyNormalizeAllelesToReference;
+
+    // Debug output stream for debug visibility into hmm filtering infomration
+    private PrintStream genotyperDebugOutStream = null;
 
     public enum PCRErrorModel {
         /** no specialized PCR error model will be applied; if base insertion/deletion qualities are present they will be used */
@@ -168,6 +171,11 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     }
 
     @Override
+    public void addDebugOutStream(final PrintStream stream) {
+        this.genotyperDebugOutStream = stream;
+    }
+
+    @Override
     public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods( final AssemblyResultSet assemblyResultSet, final SampleList samples, final Map<String, List<GATKRead>> perSampleReadList) {
         Utils.nonNull(assemblyResultSet, "assemblyResultSet is null");
         Utils.nonNull(samples, "samples is null");
@@ -185,11 +193,8 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             computeReadLikelihoods(result.sampleMatrix(i));
         }
 
-//        if (useMapQAsPhredMismappingRate) {
-//            result.normalizeLikelihoodsByReadMQAsPhred();
-//        } else {
-            result.normalizeLikelihoods(log10globalReadMismappingRate, symmetricallyNormalizeAllelesToReference);
-//        }
+        result.normalizeLikelihoods(log10globalReadMismappingRate, symmetricallyNormalizeAllelesToReference);
+
         if (dynamicDisqualification) {
             result.filterPoorlyModeledEvidence(daynamicLog10MinLiklihoodModel(readDisqualificationScale, log10MinTrueLikelihood(expectedErrorRatePerBase, false)));
         } else {
@@ -203,7 +208,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             double dynamicThreshold = calculateDynamicThreshold(read, dynamicRadQualConstant);
             double log10MaxLikelihoodForTrueAllele = log10MinTrueLikelihood.applyAsDouble(read);
             if (dynamicThreshold < log10MaxLikelihoodForTrueAllele ) {
-//                System.out.println("For read "+ read.getName() + " replacing old threshold ("+log10MaxLikelihoodForTrueAllele+") with new threshold: "+dynamicThreshold);
+                if (genotyperDebugOutStream != null) {
+                    genotyperDebugOutStream.println("For read "+ read.getName() + " replacing old threshold ("+log10MaxLikelihoodForTrueAllele+") with new threshold: "+dynamicThreshold);
+                }
                 return dynamicThreshold;
             } else {
                 return log10MaxLikelihoodForTrueAllele;
@@ -319,8 +326,10 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
         for(int counter = 0; counter < processedReads.size(); counter++) {
             GATKRead read = processedReads.get(counter);
-//            System.out.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"]");
-//            System.out.println(Arrays.toString(read.getBaseQualitiesNoCopy()));
+            if (genotyperDebugOutStream != null) {
+                genotyperDebugOutStream.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"]");
+                genotyperDebugOutStream.println(Arrays.toString(read.getBaseQualitiesNoCopy()));
+            }
         }
         // Run the PairHMM to calculate the log10 likelihood of each (processed) reads' arising from each haplotype
         pairHMM.computeLog10Likelihoods(likelihoods, processedReads, inputScoreImputator);
