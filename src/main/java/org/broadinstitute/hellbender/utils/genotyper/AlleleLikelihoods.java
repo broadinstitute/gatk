@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 
 import java.util.*;
 import java.util.function.Function;
@@ -349,7 +350,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      *
      * @throws IllegalArgumentException if {@code maximumDifferenceWithBestAlternative} is not 0 or less.
      */
-    public void normalizeLikelihoods(final double maximumLikelihoodDifferenceCap) {
+    public void normalizeLikelihoods(final double maximumLikelihoodDifferenceCap, final boolean symmetricallyNormalizeAllelesToReference) {
         Utils.validateArg(maximumLikelihoodDifferenceCap < 0.0 && !Double.isNaN(maximumLikelihoodDifferenceCap),
                 "the minimum reference likelihood fall must be negative");
 
@@ -368,25 +369,30 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             final double[][] sampleValues = valuesBySampleIndex[s];
             final int evidenceCount = evidenceBySampleIndex.get(s).size();
             for (int r = 0; r < evidenceCount; r++) {
-                normalizeLikelihoodsPerEvidence(maximumLikelihoodDifferenceCap, sampleValues, s, r);
+                normalizeLikelihoodsPerEvidence(maximumLikelihoodDifferenceCap, sampleValues, s, r, symmetricallyNormalizeAllelesToReference);
             }
         }
     }
 
     // Does the normalizeLikelihoods job for each piece of evidence.
     private void normalizeLikelihoodsPerEvidence(final double maximumBestAltLikelihoodDifference,
-                                                 final double[][] sampleValues, final int sampleIndex, final int evidenceIndex) {
+                                                 final double[][] sampleValues, final int sampleIndex, final int evidenceIndex, final boolean symmetricallyNormalizeAllelesToReference) {
 
         //allow the best allele to be the reference because asymmetry leads to strange artifacts like het calls with >90% alt reads
-        final BestAllele bestAllele = searchBestAllele(sampleIndex,evidenceIndex,true);
+        final BestAllele bestAllele = searchBestAllele(sampleIndex,evidenceIndex,symmetricallyNormalizeAllelesToReference);
 
         final double worstLikelihoodCap = bestAllele.likelihood + maximumBestAltLikelihoodDifference;
 
         final int alleleCount = alleles.numberOfAlleles();
+        boolean hasWarned = false;
 
         // Guarantee to be the case by enclosing code.
         for (int a = 0; a < alleleCount; a++) {
             if (sampleValues[a][evidenceIndex] < worstLikelihoodCap) {
+                if (!hasWarned) {
+//                    System.out.println("For evidence "+evidenceBySampleIndex.get(sampleIndex).get(evidenceIndex)+" replace allele "+a+" hmm score of "+sampleValues[a][evidenceIndex]+" with "+worstLikelihoodCap);
+//                    hasWarned = true;
+                }
                 sampleValues[a][evidenceIndex] = worstLikelihoodCap;
             }
         }
@@ -674,7 +680,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
                 new IndexedAlleleList(newAlleles),
                 samples,
                 newEvidenceBySampleIndex,
-                null, // TODO Until somebody decides to use this for an annotation I will resolve to delete this in all transformations except for the one I care about for DRAGEN-GATK
+                filteredEvidenceBySampleIndex,
                 newLikelihoodValues);
         result.isNaturalLog = isNaturalLog;
         return result;
@@ -1061,7 +1067,52 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             removeEvidenceByIndex(s, removeIndices);
 
             // If applicable also apply the predicate to the filters
-            final List<EVIDENCE> sampleFiltered = filteredEvidenceBySampleIndex.get(s).stream().filter(e -> !predicate.test(e)).collect(Collectors.toList());
+            final List<EVIDENCE> sampleFiltered = filteredEvidenceBySampleIndex.get(s).stream().filter(e -> predicate.test(e)).collect(Collectors.toList());
+            filteredEvidenceBySampleIndex.set(s, sampleFiltered);
+        }
+    }
+
+
+    /**
+     * Removes evidence that does not overlap certain genomic location.
+     *
+     * @param predicate the predicate representing the requirement.
+     *
+     * <p>
+     *     This method modifies the current read-likelihoods collection.
+     * </p>
+     * <p>
+     *     Any exception thrown by the predicate will be propagated to the calling code.
+     * </p>
+     *
+     * @throws IllegalArgumentException if {@code predicate} is {@code null}.
+     */
+    public void retainEvidenceAndStoreFiltered(final Predicate<? super EVIDENCE> predicate, final Predicate<? super EVIDENCE> predicateForFilterRetention) {
+        Utils.nonNull(predicate);
+        final int sampleCount = samples.numberOfSamples();
+
+        for (int s = 0; s < sampleCount; s++) {
+            // Remove evidence from the primary data
+            final List<EVIDENCE> sampleEvidence = this.evidenceBySampleIndex.get(s);
+            final int[] removeIndices = IntStream.range(0, sampleEvidence.size())
+                    .filter(i -> !predicate.test(sampleEvidence.get(i)))
+                    .toArray();
+
+            System.out.println("Evidences removed by insufficient overlapping: "+Arrays.toString(removeIndices));
+            final List<EVIDENCE> removedToBeRetained = new ArrayList<>(2);
+            for(int i = 0; i < removeIndices.length; i++) {
+                // if it passes the second predicate but not the first bump it into the filtered pool
+                final EVIDENCE evidence = sampleEvidence.get(removeIndices[i]);
+                if (predicateForFilterRetention.test(evidence)) {
+                    removedToBeRetained.add(evidence);
+                }
+            }
+
+            removeEvidenceByIndex(s, removeIndices);
+
+            // If applicable also apply the predicate to the filters
+            final List<EVIDENCE> sampleFiltered = filteredEvidenceBySampleIndex.get(s).stream().filter(e -> !predicateForFilterRetention.test(e)).collect(Collectors.toList());
+            sampleFiltered.addAll(removedToBeRetained);
             filteredEvidenceBySampleIndex.set(s, sampleFiltered);
         }
     }
@@ -1209,7 +1260,10 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
 
             // Retain the filtered evidence for later genotyping purposes
             final List<EVIDENCE> filtered = filteredEvidenceBySampleIndex.get(sampleIndex);
-            Arrays.stream(indexesToRemove).forEach(idx -> filtered.add(sampleEvidence.get(idx)));
+            Arrays.stream(indexesToRemove).forEach(idx -> {
+//                System.out.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName());
+                filtered.add(sampleEvidence.get(idx));
+            });
 
             // Remove the evidence now
             removeEvidenceByIndex(s, indexesToRemove);

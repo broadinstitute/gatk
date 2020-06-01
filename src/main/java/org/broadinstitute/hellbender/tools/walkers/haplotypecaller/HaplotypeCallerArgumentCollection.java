@@ -124,14 +124,22 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      */
     @Advanced
     @Argument(fullName = "apply-bqd", doc = "If enabled this argument will apply the DRAGEN-GATK BaseQualityDropout model to the genotyping model for filtering sites due to Linked Error mode.", optional = true)
-    public boolean applyBQD = true;
+    public boolean applyBQD = false;
     @Advanced
     @Argument(fullName = "apply-frd", doc = "If enabled this argument will apply the DRAGEN-GATK ForeignReadDetection model to the genotyping model for filtering sites.", optional = true)
     public boolean applyFRD = false;
     @Advanced
+    @Argument(fullName = "disable-spanning-event-genotyping", doc = "If enabled this argument will diable inclusion of the '*' spanning event when genotyping events that overlap deletions", optional = true)
+    public boolean disableSpanningEventGenotyping = false;
+    @Advanced
     @Argument(fullName = "transform-dragen-mapping-quality", doc = "If enabled this argument will map DRAGEN aligner aligned reads with mapping quality <=250 to scale up to MQ 50", optional = true)
     public boolean transformDRAGENMapQ = false;
-
+    @Advanced
+    @Argument(fullName = "mapping-quality-threshold", doc = "Control the threshold for dicounting reads from genotyping/calling due to mapping quality")
+    public int mappingQualityThreshold = HaplotypeCallerEngine.DEFAULT_READ_QUALITY_FILTER_THRESHOLD;
+    @Advanced
+    @Argument(fullName = "max-effective-depth-adjustment-for-frd", doc = "Set the maximum depth to modify FRD adjustment to in the event of high depth sites (0 to disable)", optional = false)
+    public int maxEffectiveDepthAdjustment = 0;
 
     @Hidden
     @Argument(fullName = "keep-rg", doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)

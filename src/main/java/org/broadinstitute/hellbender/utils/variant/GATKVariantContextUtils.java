@@ -19,10 +19,10 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.VariationalAlleleFrequencyCalculator;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.config.GATKConfig;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -280,7 +280,7 @@ public final class GATKVariantContextUtils {
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse,
                                         final List<Allele> originalGT,
-                                        final AlleleFrequencyCalculator afc) {
+                                        final GenotypePriorCalculator gpc) {
         if(originalGT == null && assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
             throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
         }
@@ -316,39 +316,78 @@ public final class GATKVariantContextUtils {
             }
             gb.alleles(best);
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
-            if (afc == null) {
-                throw new GATKException("cannot uses posteriors with a allele frequency calculator present");
+            if (gpc == null) {
+                throw new GATKException("cannot uses posteriors without a allele frequency calculator present");
             } else {
-                final double[] relativeFreqs = afc.getPriorFrequencies(AlleleList.newList(allelesToUse));
-                for (int i = 0; i < relativeFreqs.length; i++) {
-                    relativeFreqs[i] = Math.log10(relativeFreqs[i]);
-                }
-                double bestPosterior = Double.NEGATIVE_INFINITY;
-                double bestLikelihood = Double.NEGATIVE_INFINITY;
-                int bestGenotypeIndex = 0;
-                int bestLikelihoodIndex = 0;
                 final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, allelesToUse.size());
+                final double[] log10Priors = gpc.getLog10Priors(glCalc, allelesToUse);
+                final double[] log10Posteriors = new double[genotypeLikelihoods.length];
+                double bestPosterior = Double.NEGATIVE_INFINITY;
+                int bestGenotypeIndex = 0;
                 for (int i = 0; i < genotypeLikelihoods.length; i++) {
-                    final GenotypeAlleleCounts gac = glCalc.genotypeAlleleCountsAt(i);
-                    double log10Prior = 0;
-                    for (int j = 0; j < gac.distinctAlleleCount(); j++) {
-                        log10Prior += relativeFreqs[gac.alleleIndexAt(j)] * gac.alleleCountAt(j);
-                    }
-                    final double log10Posterior = log10Prior + genotypeLikelihoods[i] + gac.log10CombinationCount();
+                    final double log10Posterior = log10Posteriors[i] = log10Priors[i] + genotypeLikelihoods[i]
+                            + glCalc.genotypeAlleleCountsAt(i).log10CombinationCount();
                     if (log10Posterior > bestPosterior) {
                         bestGenotypeIndex = i;
                         bestPosterior = log10Posterior;
                     }
-                    if (bestLikelihood < genotypeLikelihoods[i]) {
-                        bestLikelihood = genotypeLikelihoods[i];
-                        bestLikelihoodIndex = i;
-                    }
+                }
+                for (int i = 0; i < log10Posteriors.length; i++) {
+                    log10Posteriors[i] -= bestPosterior;
                 }
                 gb.alleles(glCalc.genotypeAlleleCountsAt(bestGenotypeIndex).asAlleleList(allelesToUse));
-                if ( allelesToUse.size() > 0 ) { // we still use Lks for GQ.
-                    gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(bestLikelihoodIndex, genotypeLikelihoods));
+                if ( allelesToUse.size() > 0 ) {
+                    gb.log10PError(getGQLog10FromPosteriors(bestGenotypeIndex, log10Posteriors));
                 }
+                gb.attribute(VCFConstants.GENOTYPE_POSTERIORS_KEY, Arrays.stream(log10Posteriors)
+                        .map(v -> v == 0.0 ? 0.0 : v * -10) // the reason for the == 0.0 is to avoid a signed 0 output "-0.0"
+                        .mapToObj(GATKVariantContextUtils::formatGP).toArray());
+//                System.out.println("After applying the prior: "+ Arrays.toString(log10Posteriors));
+                gb.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, Arrays.stream(log10Priors)
+                        .map(v -> v == 0.0 ? 0.0 : v * -10)
+                        .mapToObj(GATKVariantContextUtils::formatGP).toArray());
             }
+        }
+    }
+
+    private static double getGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] log10Posteriors) {
+        if (bestGenotypeIndex < 0) {
+            return CommonInfo.NO_LOG10_PERROR;
+        } else if (log10Posteriors.length == 3) { // most common case
+            if (bestGenotypeIndex == 0) {
+                return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors[1], log10Posteriors[2]));
+            } else if (bestGenotypeIndex == 1) {
+                return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors[0], log10Posteriors[2]));
+            } else {
+                return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors[0], log10Posteriors[1]));
+            }
+        } else if (log10Posteriors.length == 2) { // trival haploid single alt allele case.
+            return bestGenotypeIndex == 0 ? log10Posteriors[1] : log10Posteriors[0];
+        } else if (log10Posteriors.length > 3) { // general case.
+            final double[] loosingLog10Posteriors = new double[log10Posteriors.length -1];
+            if (bestGenotypeIndex > 0) {
+                System.arraycopy(log10Posteriors, 0, loosingLog10Posteriors, 0, bestGenotypeIndex);
+            }
+            if (bestGenotypeIndex < loosingLog10Posteriors.length) {
+                System.arraycopy(log10Posteriors, bestGenotypeIndex + 1, loosingLog10Posteriors, bestGenotypeIndex, loosingLog10Posteriors.length - bestGenotypeIndex);
+            }
+            return Math.min(0.0, MathUtils.log10sumLog10(loosingLog10Posteriors));
+        } else { // just in case a safe failure code for 1 and 0 genotype cases
+            return CommonInfo.NO_LOG10_PERROR;
+        }
+    }
+
+    private static String formatGP(final double gp) {
+        final String formatted = String.format("%.2f", gp);
+        int last = formatted.length() - 1;
+        if (formatted.charAt(last) == '0') {
+            if (formatted.charAt(--last) == '0') {
+                return formatted.substring(0, --last); // exclude the '.' as-well.
+            } else {
+                return formatted.substring(0, ++last);
+            }
+        } else {
+            return formatted;
         }
     }
 
@@ -357,8 +396,8 @@ public final class GATKVariantContextUtils {
                                         final GenotypeAssignmentMethod assignmentMethod,
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse,
-                                        final AlleleFrequencyCalculator afc){
-        makeGenotypeCall(ploidy,gb,assignmentMethod,genotypeLikelihoods,allelesToUse,null, afc);
+                                        final GenotypePriorCalculator gpc){
+        makeGenotypeCall(ploidy,gb,assignmentMethod,genotypeLikelihoods,allelesToUse,null, gpc);
     }
 
     /**

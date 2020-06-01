@@ -155,7 +155,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
-        return HaplotypeCallerEngine.makeStandardHCReadFilters();
+        return HaplotypeCallerEngine.makeStandardHCReadFilters(hcArgs.mappingQualityThreshold);
     }
 
     @Override

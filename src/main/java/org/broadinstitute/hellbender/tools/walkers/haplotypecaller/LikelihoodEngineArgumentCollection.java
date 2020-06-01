@@ -25,12 +25,19 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Argument(fullName="dragstr-params-path", doc="location of the DRAGstr model parameters for STR error correction used in the Pair HMM. When provided, it overrides other PCR error correcting mechanisms", optional = true)
     public DragstrParams dragstrParams = null;
 
+    @Argument(fullName="dragstr-het-hom-ratio", doc="het to hom prior ratio use with DRAGstr on", optional = true)
+    public int dragstrHetHomRatio = 2;
+
     @Argument(fullName="dont-use-dragstr-pair-hmm-scores", doc="disable DRAGstr pair-hmm score when dragstr-params-path was provided", optional = false)
     public boolean dontUseDragstrPairHMMScores = false;
 
     @Advanced
     @Argument(fullName="pair-hmm-gap-continuation-penalty", doc="Flat gap continuation penalty for use in the Pair HMM", optional = true)
     public int gcpHMM = 10;
+
+    @Advanced
+    @Argument(fullName="expected-error-rate-per-base", doc="Error rate used to set expectation for post HMM read disqualification based on mismatches", optional = true)
+    public double expectedErrorRatePerBase = PairHMMLikelihoodCalculationEngine.DEFAULT_EXPECTED_ERROR_RATE_PER_BASE;
 
     /**
      * The PairHMM implementation to use for genotype likelihood calculations. The various implementations balance a tradeoff of accuracy and runtime.
@@ -68,11 +75,23 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Argument(fullName="phred-scaled-global-read-mismapping-rate", doc="The global assumed mismapping rate for reads", optional = true)
     public int phredScaledGlobalReadMismappingRate = 45;
 
+//    @Advanced
+//    @Argument(fullName ="mapping-quality-based-read-mismapping-rate", doc= "If true this will limit the phred scaled likelihood for a read based on its MQ score", optional = true)
+//    public boolean mapQBasedReadMismappingRateAdjustment = false;
+
+    @Advanced
+    @Argument(fullName = "disable-symmetric-hmm-normalizing", doc="Toggle to revive legacy behavior of asymmetrically normalizing the arguments to the reference haplotype", optional = true)
+    public boolean disableSymmetricallyNormalizeAllelesToReference = false;
+
+    @Advanced
+    @Argument(fullName ="disable-cap-base-qualities-to-map-quality", doc= "If false this disables capping of base qualities in the HMM to the mapping quality of the read", optional = true)
+    public boolean capReadQualitiesToMapQ = false;
+
     /**
      * TODO
      */
     @Argument(fullName="enable-dynamic-read-disqualification-for-genotyping", doc="Will enable less strict read disqualification low base quality reads")
-    public boolean enableDynamicReadDisqualification = true;
+    public boolean enableDynamicReadDisqualification = false;
 
     /**
      * TODO
@@ -84,5 +103,4 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
 
     @ArgumentCollection
     public PairHMMNativeArgumentCollection pairHMMNativeArgs = new PairHMMNativeArgumentCollection();
-
 }
