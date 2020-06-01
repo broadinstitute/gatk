@@ -206,6 +206,48 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     /*
+     * Test that the this version of DRAGEN-GATK has not changed relative to the last version with the recommended arguments enabled
+     */
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testDRAGENGATKModeIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testDRAGENGATKModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk4.DRAGEN.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                // FRD arguments
+                "--apply-frd", "--transform-dragen-mapping-quality", "--mapping-quality-threshold", "1", "--disable-cap-base-qualities-to-map-quality", "--minimum-mapping-quality", "1",
+                // BQD arguments
+                "--apply-bqd",  "--soft-clip-low-quality-ends",
+                // Dynamic read disqualification arguments"
+                "--enable-dynamic-read-disqualification-for-genotyping", "--expected-error-rate-per-base", "0.03",
+                // Genotyper arguments
+                "--genotype-assignment-method", "USE_POSTERIOR_PROBABILITIES",  "--standard-min-confidence-threshold-for-calling", "3", "--use-posteriors-to-calculate-qual",
+                // STRE arguments
+                "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
+                // misc arguments
+                "--enable-legacy-graph-cycle-detection", "--padding-around-indels", "150",
+                "--" + AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "1",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+        };
+
+        runCommandLine(args);
+
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
+
+    /*
      * Test that in VCF mode we're >= 99% concordant with GATK3.8 results
      *
      * Test currently throws an exception due to lack of support for allele-specific annotations in VCF mode
