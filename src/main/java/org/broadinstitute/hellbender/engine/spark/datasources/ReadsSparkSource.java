@@ -11,7 +11,8 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
+import org.broadinstitute.hellbender.engine.ReadsDataSourceInterface;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -173,8 +174,8 @@ public final class ReadsSparkSource implements Serializable {
             final SamReaderFactory factory = SamReaderFactory.makeDefault()
                     .validationStringency(validationStringency)
                     .referenceSequence(cramReferencePathSpec == null ? null : referencePathSpecifier.toPath());
-            try (final ReadsDataSource readsDataSource =
-                         new ReadsDataSource(Collections.singletonList(filePathSpecifier.toPath()), factory)) {
+            try (final ReadsDataSourceInterface readsDataSource =
+                         new ReadsPathDataSource(Collections.singletonList(filePathSpecifier.toPath()), factory)) {
                  return readsDataSource.getHeader();
             }
         }

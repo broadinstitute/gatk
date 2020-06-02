@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * Base class for pre-packaged walker traversals in the GATK engine.
@@ -45,8 +44,8 @@ public abstract class WalkerBase extends GATKTool {
      * directly accessing the engine datasources, since walker tools should get their data via {@code apply()} instead.
      */
     @Override
-    final protected ReadsDataSource directlyAccessEngineReadsDataSource() {
-        throw new GATKException("Should never directly access the engine ReadsDataSource in walker tool classes " +
+    final protected ReadsDataSourceInterface directlyAccessEngineReadsDataSource() {
+        throw new GATKException("Should never directly access the engine ReadsDataSourceInterface in walker tool classes " +
                 "outside of the engine package. Walker tools should get their data via apply() instead.");
     }
 

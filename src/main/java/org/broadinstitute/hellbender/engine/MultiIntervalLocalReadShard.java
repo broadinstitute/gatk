@@ -30,7 +30,7 @@ public final class MultiIntervalLocalReadShard implements MultiIntervalShard<GAT
 
     private final List<SimpleInterval> intervals;
     private final List<SimpleInterval> paddedIntervals;
-    private final ReadsDataSource readsSource;
+    private final ReadsDataSourceInterface readsSource;
 
     private ReadTransformer preReadFilterTransformer;
     private ReadFilter readFilter;
@@ -45,7 +45,7 @@ public final class MultiIntervalLocalReadShard implements MultiIntervalShard<GAT
      * @param intervalPadding Number of bases to pad each of the shard's intervals (on both sides)
      * @param readsSource Source of reads
      */
-    public MultiIntervalLocalReadShard(final List<SimpleInterval> intervals, final int intervalPadding, final ReadsDataSource readsSource) {
+    public MultiIntervalLocalReadShard(final List<SimpleInterval> intervals, final int intervalPadding, final ReadsDataSourceInterface readsSource) {
         Utils.nonNull(intervals);
         Utils.nonNull(readsSource);
         Utils.validateArg(intervalPadding >= 0, "intervalPadding must be >= 0");
@@ -68,7 +68,7 @@ public final class MultiIntervalLocalReadShard implements MultiIntervalShard<GAT
      * @param intervals The intervals that this shard spans
      * @param readsSource Source of reads
      */
-    public MultiIntervalLocalReadShard(final List<SimpleInterval> intervals, final ReadsDataSource readsSource) {
+    public MultiIntervalLocalReadShard(final List<SimpleInterval> intervals, final ReadsDataSourceInterface readsSource) {
         this(intervals, 0, readsSource);
     }
 

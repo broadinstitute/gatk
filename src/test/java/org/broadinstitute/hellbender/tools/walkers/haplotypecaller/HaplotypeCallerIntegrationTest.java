@@ -15,7 +15,8 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsDataSourceInterface;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -581,7 +582,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(argBuilder.getArgsArray());
 
-        try ( final ReadsDataSource bamOutReadsSource = new ReadsDataSource(bamOutput) ) {
+        try ( final ReadsDataSourceInterface bamOutReadsSource = new ReadsPathDataSource(bamOutput) ) {
             int actualBamoutNumReads = 0;
             for ( final GATKRead read : bamOutReadsSource ) {
                 ++actualBamoutNumReads;
