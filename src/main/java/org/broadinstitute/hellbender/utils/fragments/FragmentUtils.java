@@ -47,10 +47,13 @@ public final class FragmentUtils {
         final Pair<Integer, CigarOperator> offsetAndOperator = ReadUtils.getReadIndexForReferenceCoordinate(firstRead, secondRead.getStart());
         final CigarOperator operator = offsetAndOperator.getRight();
         final int offset = offsetAndOperator.getLeft();
-        if (offset == ReadUtils.READ_INDEX_NOT_FOUND) { // no overlap
+        if (offset == ReadUtils.READ_INDEX_NOT_FOUND || operator.isClipping()) { // no overlap or only overlap in clipped region
             return;
         }
 
+        // Compute the final aligned base indexes for both since there might be right base softclips
+        final int firstReadEndBase = ReadUtils.getReadIndexForReferenceCoordinate(firstRead, firstRead.getEnd()).getLeft();
+        final int secondReadEndBase = ReadUtils.getReadIndexForReferenceCoordinate(secondRead, secondRead.getEnd()).getLeft();
 
         // TODO: we should be careful about the case where {@code operator} is a deletion; that is, when the second read start falls in a deletion of the first read
         // TODO: however, the issue is bigger than simply getting the start correctly, because the code below assumes that all bases of both reads are aligned in their overlap.
@@ -59,7 +62,7 @@ public final class FragmentUtils {
         // TODO: a cheaper solution would be to cap all quals in the overlap region by half of the PCR qual.
         final int firstReadStop = offset;
         final int secondOffset = ReadUtils.getReadIndexForReferenceCoordinate(secondRead, secondRead.getStart()).getLeft(); //This operation handles softclipped bases in the qual/base array
-        final int numOverlappingBases = Math.min(firstRead.getLength() - firstReadStop, secondRead.getLength() - secondOffset);
+        final int numOverlappingBases = Math.min(firstReadEndBase + 1 - firstReadStop, secondReadEndBase + 1 - secondOffset); // Add 1 here because if R1 ends on the same base that R2 starts then there is 1 base of overlap not 0
 
         final byte[] firstReadBases = firstRead.getBases();
         final byte[] firstReadQuals = firstRead.getBaseQualities();

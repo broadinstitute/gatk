@@ -365,7 +365,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         double maxLpspi = Double.NEGATIVE_INFINITY;
         double lpfApplied = 0;
 
-        for (final Double lpf : criticalThresholdsSorted) {
+        for (final Double logProbFAllele : criticalThresholdsSorted) {
             double f_ratio = 0.0;
             double f_denom = 0.0;
             double localMaxLpspi = Double.NEGATIVE_INFINITY;
@@ -381,7 +381,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 
                 // Keep track of the aggregate support for the foreign allele
                 if (predicate.test(container)) {
-                    double LPd_r_F = container.getPhredPFValue() + 0.0000001 <= lpf ?
+                    // Only include reads with mapping quality adjustment < the critical threshold being used (i.e. exclude reads with MQ > than the threshold)
+                    double LPd_r_F = container.getPhredPFValue() + 0.0000001 <= logProbFAllele ?
                             Double.NEGATIVE_INFINITY :
                             readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex];
                     double lp_r_GT = readLikelihoodsForGT[readIndex] - MathUtils.log10(2);
@@ -409,7 +410,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 
                 // COMPUTE THE MODEL FOR THE STRAND IN QUESTION
                 if (predicate.test(container)) {
-                    double LPd_r_F = container.getPhredPFValue() + 0.0000001 <= lpf ?
+                    double LPd_r_F = container.getPhredPFValue() + 0.0000001 <= logProbFAllele ?
                             Double.NEGATIVE_INFINITY :
                             readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex];
 
@@ -419,15 +420,15 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 }
             }
             // Allele prior for error allele, plus posterior for foreign event, plus model posterior
-            double LPsi = lpf + LP_R_GF; // NOTE unlike DRAGEN we apply the prior to the combined likelihoods array after the fact so gtAllelePrior is not included at this stage
+            double LPsi = logProbFAllele + LP_R_GF; // NOTE unlike DRAGEN we apply the prior to the combined likelihoods array after the fact so gtAllelePrior is not included at this stage
             localMaxLpspi = Math.max(localMaxLpspi, LPsi);
 
             if (genotyperDebugStream != null) {
-                genotyperDebugStream.println("beta: "+beta+" localMaxLpspi: " + localMaxLpspi + " for lpf: "+lpf+" with LP_R_GF: "+LP_R_GF+" index: "+counter++);
+                genotyperDebugStream.println("beta: "+beta+" localMaxLpspi: " + localMaxLpspi + " for lpf: "+logProbFAllele+" with LP_R_GF: "+LP_R_GF+" index: "+counter++);
             }
             if (localMaxLpspi > maxLpspi) {
                 maxLpspi = Math.max(maxLpspi, localMaxLpspi);
-                lpfApplied = lpf;
+                lpfApplied = logProbFAllele;
             }
         }
 

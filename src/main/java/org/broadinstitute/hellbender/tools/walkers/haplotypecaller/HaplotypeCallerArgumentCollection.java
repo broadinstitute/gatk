@@ -134,6 +134,10 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Advanced
     @Argument(fullName = "transform-dragen-mapping-quality", doc = "If enabled this argument will map DRAGEN aligner aligned reads with mapping quality <=250 to scale up to MQ 50", optional = true)
     public boolean transformDRAGENMapQ = false;
+    //TODO NOTE TO THE REVIEWER, THIS ARGUMENT IS INSUFFICIENT BOTH THIS AND --minimum-mapping-quality must be set, unfortunatley
+    //TODO they can't be unified since the toolDefaultReadFilters get instantiated before this field gets populated, and we can't
+    //TODO pull the threshold from that filter since it might or might not exist by the time we go to filter for threading, really
+    //TODO we should unify on the readFilter version of this check i think but perhaps they are seperate for athropological historical reasons and it is thus culturally protected?
     @Advanced
     @Argument(fullName = "mapping-quality-threshold", doc = "Control the threshold for dicounting reads from genotyping/calling due to mapping quality")
     public int mappingQualityThreshold = HaplotypeCallerEngine.DEFAULT_READ_QUALITY_FILTER_THRESHOLD;
