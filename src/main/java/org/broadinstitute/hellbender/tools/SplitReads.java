@@ -150,8 +150,8 @@ public final class SplitReads extends ReadWalker {
     private SAMFileGATKReadWriter prepareSAMFileWriter(final String keyName) {
         final GATKPathSpecifier pathSpec = readArguments.getReadPathSpecifiers().get(0);
         final GATKPathSpecifier outFile = new GATKPathSpecifier(
-                OUTPUT_DIRECTORY.toPath().resolve(pathSpec.getBaseName() + keyName + pathSpec.getExtension()).toString()
-        );
+                OUTPUT_DIRECTORY.toPath().resolve(
+                        pathSpec.getBaseName().orElse("") + keyName + pathSpec.getExtension().get()).toString());
         return createSAMWriter(outFile, true);
     }
 
