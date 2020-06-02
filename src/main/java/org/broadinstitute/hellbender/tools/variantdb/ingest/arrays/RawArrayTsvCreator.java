@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.variantdb.ingest;
+package org.broadinstitute.hellbender.tools.variantdb.ingest.arrays;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
+import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestConstants;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
 
@@ -18,13 +19,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class IngestRawArrayTSVCreator extends IngestTSVCreator {
-    static final Logger logger = LogManager.getLogger(IngestRawArrayTSVCreator.class);
+public final class RawArrayTsvCreator{
+    static final Logger logger = LogManager.getLogger(RawArrayTsvCreator.class);
 
     private SimpleXSVWriter rawArrayWriter = null;
     private final String sampleId;
 
-    public IngestRawArrayTSVCreator(String sampleName, String sampleId, Path sampleDirectoryPath) {
+    public RawArrayTsvCreator(String sampleName, String sampleId, Path sampleDirectoryPath) {
         this.sampleId = sampleId;
         // If the raw directory inside it doesn't exist yet -- create it
         final String rawDirectoryName = "raw";
@@ -35,17 +36,15 @@ public final class IngestRawArrayTSVCreator extends IngestTSVCreator {
         }
         try {
             // Create a raw file to go into the raw dir for _this_ sample
-            final String rawOutputName = sampleName + rawDirectoryName + IngestVariantWalker.FILETYPE;
+            final String rawOutputName = sampleName + rawDirectoryName + IngestConstants.FILETYPE;
             final Path rawOutputPath = rawDirectoryPath.resolve(rawOutputName);
             // write header to it
-            List<String> rawHeader = IngestRawArrayTSVCreator.getHeaders();
-            rawArrayWriter = new SimpleXSVWriter(rawOutputPath, IngestVariantWalker.SEPARATOR);
+            List<String> rawHeader = RawArrayTsvCreator.getHeaders();
+            rawArrayWriter = new SimpleXSVWriter(rawOutputPath, IngestConstants.SEPARATOR);
             rawArrayWriter.setHeaderLine(rawHeader);
         } catch (final IOException e) {
             throw new UserException("Could not create raw outputs", e);
         }
-
-
     }
 
     public List<String> createRow(final long start, final VariantContext variant, final String sampleId) {
@@ -53,9 +52,10 @@ public final class IngestRawArrayTSVCreator extends IngestTSVCreator {
         row.add(String.valueOf(start));
         row.add(sampleId);
         for ( final RawArrayFieldEnum fieldEnum : RawArrayFieldEnum.values() ) {
-            if (!fieldEnum.equals(RawArrayFieldEnum.position) && !fieldEnum.equals(RawArrayFieldEnum.sample_id)) {
+            if (!fieldEnum.equals(RawArrayFieldEnum.sample_id)) {
                 row.add(fieldEnum.getColumnValue(variant));
-            }        }
+            }
+        }
         return row;
     }
 
@@ -63,9 +63,13 @@ public final class IngestRawArrayTSVCreator extends IngestTSVCreator {
         return Arrays.stream(RawArrayFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
     }
 
-    @Override
+    public List<List<String>> createRows(long start, long end, VariantContext variant, String sampleId) {
+        // this doesn't apply to arrays
+        throw new UserException.UnimplementedFeature("Not implemented.");
+    }
+
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        if (variant.isNotFiltered()) {
+        if (!variant.getFilters().contains("DUPE") && !variant.getFilters().contains("ZERO")) {
             final List<String> TSVLinesToCreate = createRow(SchemaUtils.encodeLocation(variant.getContig(), variant.getStart()), variant, sampleId);
 
             // write the row to the XSV
@@ -75,7 +79,6 @@ public final class IngestRawArrayTSVCreator extends IngestTSVCreator {
         }
     }
 
-    @Override
     public void closeTool() {
         if (rawArrayWriter != null) {
             try {
