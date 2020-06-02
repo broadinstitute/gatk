@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.variantdb.ingest;
+package org.broadinstitute.hellbender.tools.variantdb.ingest.arrays;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
