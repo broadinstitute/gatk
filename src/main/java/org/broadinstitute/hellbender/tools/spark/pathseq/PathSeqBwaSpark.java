@@ -208,7 +208,9 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
         if (!readArguments.getReadPathSpecifiers().isEmpty()) {
             throw new UserException.BadInput("Please use --paired-input or --unpaired-input instead of --input");
         }
-        Utils.validateArg((outputPaired == null || IOUtils.isBamFileName(outputPaired)) && (outputUnpaired == null || IOUtils.isBamFileName(outputUnpaired)), "Only BAM output is supported");
+        Utils.validateArg((outputPaired == null || new GATKPathSpecifier(outputPaired).isBam()) &&
+                        (outputUnpaired == null || new GATKPathSpecifier(outputUnpaired).isBam()),
+                        "Only BAM output is supported");
         final ReadsSparkSource readsSource = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
 
         final PSBwaAlignerSpark aligner = new PSBwaAlignerSpark(ctx, bwaArgs);
