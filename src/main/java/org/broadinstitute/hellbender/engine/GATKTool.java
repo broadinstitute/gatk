@@ -146,7 +146,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Our source of reads data (null if no source of reads was provided)
      */
-    ReadsDataSource reads;
+    ReadsDataSourceInterface reads;
 
     /**
      * Our source of Feature data (null if no source of Features was provided)
@@ -181,7 +181,7 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * Get the {@link ReadsDataSource} for this {@link GATKTool}.
+     * Get the {@link ReadsDataSourceInterface} for this {@link GATKTool}.
      * Will throw a {@link GATKException} if the reads are null.
      * Clients are expected to call the {@link #hasReads()} method prior to calling this.
      *
@@ -190,9 +190,9 @@ public abstract class GATKTool extends CommandLineProgram {
      * Tools that extend a walker type should get their data via {@code apply()} rather than directly accessing
      * the engine datasources.
      *
-     * @return the {@link ReadsDataSource} for this {@link GATKTool}.  Never {@code null}.
+     * @return the {@link ReadsDataSourceInterface} for this {@link GATKTool}.  Never {@code null}.
      */
-    protected ReadsDataSource directlyAccessEngineReadsDataSource() {
+    protected ReadsDataSourceInterface directlyAccessEngineReadsDataSource() {
         if ( reads == null ) {
             throw new GATKException("Attempted to retrieve null reads!");
         }
@@ -455,7 +455,7 @@ public abstract class GATKTool extends CommandLineProgram {
                 factory = factory.enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES);
             }
 
-            reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
+            reads = new ReadsPathDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
                 (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer));
         }
         else {

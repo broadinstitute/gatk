@@ -2,7 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.consensus;
 
 import htsjdk.samtools.SAMTag;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
+import org.broadinstitute.hellbender.engine.ReadsDataSourceInterface;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -26,7 +27,7 @@ public class DownsampleByDuplicateSetIntegrationTest extends CommandLineProgramT
                 .add(DownsampleByDuplicateSet.FRACTION_TO_KEEP_NAME, "1.0");
         runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
 
-        try (final ReadsDataSource readsDataSource = new ReadsDataSource(Paths.get(out.getAbsolutePath()))) {
+        try (final ReadsDataSourceInterface readsDataSource = new ReadsPathDataSource(Paths.get(out.getAbsolutePath()))) {
             final Iterator<GATKRead> iterator = readsDataSource.iterator();
             while (iterator.hasNext()) {
                 // Make sure that the read and its mate are next to each other in the file
@@ -53,8 +54,8 @@ public class DownsampleByDuplicateSetIntegrationTest extends CommandLineProgramT
                     .add("O", out.getAbsolutePath());
             runCommandLine(args, DownsampleByDuplicateSet.class.getSimpleName());
 
-            try(final ReadsDataSource originalBam = new ReadsDataSource(Paths.get(NA12878_GROUPED));
-                final ReadsDataSource downsampledBam = new ReadsDataSource(Paths.get(out.getAbsolutePath()))){
+            try(final ReadsDataSourceInterface originalBam = new ReadsPathDataSource(Paths.get(NA12878_GROUPED));
+                final ReadsDataSourceInterface downsampledBam = new ReadsPathDataSource(Paths.get(out.getAbsolutePath()))){
 
                 final int originalMoleculeCount = countDuplicateSets(originalBam);
                 final int downsampledMoleculeCount = countDuplicateSets(downsampledBam);
@@ -81,7 +82,7 @@ public class DownsampleByDuplicateSetIntegrationTest extends CommandLineProgramT
         }
     }
 
-    private int countDuplicateSets(final ReadsDataSource readsDataSource){
+    private int countDuplicateSets(final ReadsDataSourceInterface readsDataSource){
         int count = 0;
         String currentMoleculeId = ""; // Note we are duplex aware: 12/A different from 12/B
 

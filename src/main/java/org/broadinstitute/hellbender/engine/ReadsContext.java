@@ -9,8 +9,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.util.*;
 
 /**
- * Wrapper around ReadsDataSource that presents reads overlapping a specific interval to a client,
- * without improperly exposing the entire ReadsDataSource interface.
+ * Wrapper around ReadsDataSourceInterface that presents reads overlapping a specific interval to a client,
+ * without improperly exposing the entire ReadsDataSourceInterface interface.
  *
  * Reads data in the interval is lazily queried, so there's no overhead if the client chooses
  * not to examine contextual information from the reads.
@@ -75,7 +75,7 @@ public final class ReadsContext implements Iterable<GATKRead> {
     /**
      * Does this context have a backing source of reads data?
      *
-     * @return true if there is a backing ReadsDataSource, otherwise false
+     * @return true if there is a backing ReadsDataSourceInterface, otherwise false
      */
     public boolean hasBackingDataSource() {
         return dataSource != null;
