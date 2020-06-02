@@ -27,7 +27,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,37 +47,37 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
     private static final AnnotatedIntervalCollection ANNOTATED_INTERVALS = new AnnotatedIntervalCollection(
             LOCATABLE_METADATA,
             Arrays.asList(
-                    new AnnotatedInterval(new SimpleInterval("20", 1,	10),
+                    new AnnotatedInterval(new SimpleInterval("20", 1, 10),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.05),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.05)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 11,	20),
+                    new AnnotatedInterval(new SimpleInterval("20", 11, 20),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.95)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 21,	30),
+                    new AnnotatedInterval(new SimpleInterval("20", 21, 30),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.5)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 31,	40),
+                    new AnnotatedInterval(new SimpleInterval("20", 31, 40),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.05),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.5)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 41,	50),
+                    new AnnotatedInterval(new SimpleInterval("20", 41, 50),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.95),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.95),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.5)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 51,	60),
+                    new AnnotatedInterval(new SimpleInterval("20", 51, 60),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.5)))),
-                    new AnnotatedInterval(new SimpleInterval("21", 1,	10),
+                    new AnnotatedInterval(new SimpleInterval("21", 1, 10),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
