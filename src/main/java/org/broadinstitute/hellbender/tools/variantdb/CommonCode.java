@@ -109,8 +109,8 @@ public class CommonCode {
     }
 
     public enum ModeEnum {
-        ARRAYS,
         EXOMES,
-        GENOMES
+        GENOMES,
+        ARRAYS
     }
 }
