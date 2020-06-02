@@ -37,12 +37,15 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+
+//TODO:
+//UserException overloads
+//VCF outs
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
@@ -277,7 +280,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Must be overridden in order to add annotation arguments to the engine. If this is set to true the engine will
-     * dynamically discover all {@link Annotation}s in the package defined by {@link org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor#pluginPackageName} and automatically
+     * dynamically discover all {@link Annotation}s in the packages defined by {@link GATKAnnotationPluginDescriptor#getPackageNames()} and automatically
      * generate and add command line arguments allowing the user to specify which annotations or groups of annotations to use.
      *
      * To specify default annotations for a tool simply specify them using {@link #getDefaultVariantAnnotationGroups()} or {@link #getDefaultVariantAnnotations()}
@@ -439,7 +442,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * May be overridden by traversals that require custom initialization of the reads data source.
      */
     void initializeReads() {
-        if (! readArguments.getReadFiles().isEmpty()) {
+        if (! readArguments.getReadPathSpecifiers().isEmpty()) {
             SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
             if (hasReference()) { // pass in reference if available, because CRAM files need it
                 factory = factory.referenceSequence(referenceArguments.getReferencePath());
@@ -469,7 +472,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
      */
     private boolean hasCramInput() {
-        return readArguments.getReadFiles().stream().anyMatch(IOUtils::isCramFile);
+        return readArguments.getReadPathSpecifiers().stream().anyMatch(GATKPathSpecifier::isCram);
     }
 
     /**
@@ -801,34 +804,20 @@ public abstract class GATKTool extends CommandLineProgram {
     /*
      * Create a common SAMFileWriter using the reference and read header for this tool.
      *
-     * @param outputFile    - if this file has a .cram extension then a reference is required. Can not be null.
-     * @param preSorted     - if true then the records must already be sorted to match the header sort order
-     *
-     * @throws UserException if outputFile ends with ".cram" and no reference is provided
-     * @return SAMFileWriter
-     */
-    public final SAMFileGATKReadWriter createSAMWriter(final File outputFile, final boolean preSorted) {
-        return createSAMWriter(Utils.nonNull(outputFile).toPath(), preSorted);
-    }
-
-    /*
-     * Create a common SAMFileWriter using the reference and read header for this tool.
-     *
      * @param outputPath    - if this path has a .cram extension then a reference is required. Can not be null.
      * @param preSorted     - if true then the records must already be sorted to match the header sort order
      *
      * @throws UserException if outputFile ends with ".cram" and no reference is provided
      * @return SAMFileWriter
      */
-    public final SAMFileGATKReadWriter createSAMWriter(final Path outputPath, final boolean preSorted) {
-        final boolean isCramFile = IOUtils.isCramFile(outputPath);
-        if (!hasReference() && isCramFile) {
+    public final SAMFileGATKReadWriter createSAMWriter(final GATKPathSpecifier outputPathSpecifier, final boolean preSorted) {
+        if (!hasReference() && outputPathSpecifier.isCram()) {
             throw UserException.MISSING_REFERENCE_FOR_CRAM;
         }
 
         return new SAMFileGATKReadWriter(
             ReadUtils.createCommonSAMWriter(
-                outputPath,
+                outputPathSpecifier.toPath(),
                 referenceArguments.getReferencePath(),
                 getHeaderForSAMWriter(),
                 preSorted,
@@ -849,6 +838,18 @@ public abstract class GATKTool extends CommandLineProgram {
      * @returns VariantContextWriter must be closed by the caller
      */
     public VariantContextWriter createVCFWriter(final File outFile) {
+        return createVCFWriter(outFile == null ? null : outFile.toPath());
+    }
+
+    /**
+     * Creates a VariantContextWriter whose outputFile type is determined by
+     * the vcfOutput's extension, using the best available sequence dictionary for
+     * this tool, and default index, leniency and md5 generation settings.
+     *
+     * @param outFile output GATKPathSpecifier for this writer. May not be null.
+     * @returns VariantContextWriter must be closed by the caller
+     */
+    public VariantContextWriter createVCFWriter(final GATKPathSpecifier outFile) {
         return createVCFWriter(outFile == null ? null : outFile.toPath());
     }
 

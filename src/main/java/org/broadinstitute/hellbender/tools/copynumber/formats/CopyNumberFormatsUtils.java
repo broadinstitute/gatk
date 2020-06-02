@@ -36,7 +36,7 @@ public final class CopyNumberFormatsUtils {
                 }
             }
         } catch (final IOException e) {
-            throw new UserException.CouldNotReadInputFile(inputFile);
+            throw new UserException.CouldNotReadInputFile(inputFile.getAbsolutePath());
         }
         if (columns == null) {
             throw new UserException.BadInput(String.format(

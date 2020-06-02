@@ -80,7 +80,7 @@ public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, 
 
             return inputStream;
         } catch (IOException e) {
-            throw new UserException.CouldNotReadInputFile(getRawInputString(), e);
+            throw new UserException.CouldNotReadInputFile(this, "Can't create input stream", e);
         }
     }
 
@@ -110,6 +110,13 @@ public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, 
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(getRawInputString(), e);
         }
+    }
+
+    /**
+     * Returns true if this is a HDFS (Hadoop filesystem) URL.
+     */
+    public boolean isHadoopURL() {
+        return getScheme().equals(HDFS_SCHEME);
     }
 
     @Override

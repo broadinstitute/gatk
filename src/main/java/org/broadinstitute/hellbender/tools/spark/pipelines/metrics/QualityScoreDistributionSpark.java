@@ -134,7 +134,7 @@ public final class QualityScoreDistributionSpark extends GATKSparkTool {
                 (counts1, counts2) -> counts1.merge(counts2));
 
         final MetricsFile<?, Byte> metrics = makeMetrics(result);
-        saveResults(metrics, getHeaderForReads(), getReadSourceName().get(0));
+        saveResults(metrics, getHeaderForReads(), getReadSourceName());
     }
 
     //Convert the count object into a metrics object so save in a report

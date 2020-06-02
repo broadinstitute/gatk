@@ -74,7 +74,7 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(outputBam.toPath(), false);
+        outputWriter = createSAMWriter(outputBam, false);
     }
 
     @Override

@@ -82,7 +82,7 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
             TableUtils.checkMandatoryColumns(reader.columns(), mandatoryColumns, UserException.BadInput::new);
             records = ImmutableList.copyOf(reader.stream().iterator());     //avoid creation of an intermediate list
         } catch (final IOException | UncheckedIOException e) {
-            throw new UserException.CouldNotReadInputFile(inputFile, e);
+            throw new UserException.CouldNotReadInputFile(inputFile.getAbsolutePath(), e);
         }
     }
 
