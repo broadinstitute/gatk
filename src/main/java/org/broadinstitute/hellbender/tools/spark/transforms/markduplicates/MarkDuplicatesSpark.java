@@ -14,7 +14,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -311,7 +311,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
         // Check if we are using multiple inputs that the headers are all in the correct querygrouped ordering, if so set the aggregate header to reflect this
         if (readArguments.getReadPathSpecifiers().size() > 1) {
-            final Optional<GATKPathSpecifier> badlySorted = readArguments.getReadPathSpecifiers().stream()
+            final Optional<GATKPath> badlySorted = readArguments.getReadPathSpecifiers().stream()
                     .filter(spec -> !treatAsReadGroupOrdered(getHeaderForReadsInput(spec), treatUnsortedAsOrdered))
                     .findFirst();
 

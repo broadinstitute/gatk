@@ -5,7 +5,7 @@ import com.google.common.jimfs.Jimfs;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.BaseTest;
@@ -701,8 +701,8 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     public void testGenomicsDBPathParsing(String path, String expectedPath, String gendbExpectedAbsolutePath, boolean expectedComparison) {
         Assert.assertEquals(IOUtils.getGenomicsDBPath(path), expectedPath, "getGenomicsDBPath() returned the wrong value");
         if (path != null) {
-            // GATKPathSpecifier can't take a null path
-            Assert.assertEquals(IOUtils.getAbsolutePathWithGenomicsDBURIScheme(new GATKPathSpecifier(path)), gendbExpectedAbsolutePath, "getAbsolutePathWithGenDBScheme() returned the wrong value");
+            // GATKPath can't take a null path
+            Assert.assertEquals(IOUtils.getAbsolutePathWithGenomicsDBURIScheme(new GATKPath(path)), gendbExpectedAbsolutePath, "getAbsolutePathWithGenDBScheme() returned the wrong value");
         }
         Assert.assertEquals(IOUtils.isGenomicsDBPath(path), expectedComparison, "isGenomicsDBPath() returned the wrong value");
     }

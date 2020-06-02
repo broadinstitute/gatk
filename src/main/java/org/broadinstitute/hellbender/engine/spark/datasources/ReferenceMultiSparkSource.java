@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.FileExtensions;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
@@ -33,7 +33,7 @@ public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializ
      * @param referencePathSpecifier local path or URL to the reference file
      * @param referenceWindowFunction the custom reference window function used to map reads to desired reference bases
      */
-    public ReferenceMultiSparkSource( final GATKPathSpecifier referencePathSpecifier,
+    public ReferenceMultiSparkSource( final GATKPath referencePathSpecifier,
                                       final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction) {
         Utils.nonNull(referenceWindowFunction);
         if ( ReferenceTwoBitSparkSource.isTwoBit(referencePathSpecifier)) {
@@ -55,7 +55,7 @@ public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializ
         this.referenceWindowFunction = referenceWindowFunction;
     }
 
-    static boolean isFasta(final GATKPathSpecifier referencePathSpecifier) {
+    static boolean isFasta(final GATKPath referencePathSpecifier) {
         final String referencePathString = referencePathSpecifier.getURI().getPath();
         for (final String ext : FileExtensions.FASTA) {
             if (referencePathString.endsWith(ext)) {

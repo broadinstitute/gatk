@@ -2,13 +2,11 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * An argument collection for use with tools that accept zero or more input files containing reads
@@ -22,11 +20,11 @@ public final class OptionalReadInputArgumentCollection extends ReadInputArgument
             doc = "BAM/SAM/CRAM file containing reads",
             optional = true,
             common = true)
-    private List<GATKPathSpecifier> readInputNames = new ArrayList<>();
+    private List<GATKPath> readInputNames = new ArrayList<>();
 
     /**
      * Get the list of BAM/SAM/CRAM inputs specified at the command line.
-     * GATKPathSpecifier is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
+     * GATKPath is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
-    public List<GATKPathSpecifier> getReadPathSpecifiers() { return Collections.unmodifiableList(readInputNames); }
+    public List<GATKPath> getReadPathSpecifiers() { return Collections.unmodifiableList(readInputNames); }
 }

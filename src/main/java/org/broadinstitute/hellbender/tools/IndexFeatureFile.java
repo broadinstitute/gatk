@@ -14,7 +14,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
@@ -49,14 +49,14 @@ public final class IndexFeatureFile extends CommandLineProgram {
     @Argument(shortName =StandardArgumentDefinitions.INPUT_SHORT_NAME,
               fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
               doc = "Feature file (eg., VCF or BED file) to index. Must be in a tribble-supported format")
-    public GATKPathSpecifier featurePath;
+    public GATKPath featurePath;
 
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
               fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
               doc = "The output index file. If missing, the tool will create an index file in the same directory " +
                      "as the input file.",
               optional = true)
-    public GATKPathSpecifier outputPath;
+    public GATKPath outputPath;
 
     public static final int OPTIMAL_GVCF_INDEX_BIN_SIZE = 128000;
     public static final String GVCF_FILE_EXTENSION = ".g.vcf";

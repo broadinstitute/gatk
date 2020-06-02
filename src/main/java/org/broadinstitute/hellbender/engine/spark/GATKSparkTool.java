@@ -28,7 +28,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.utils.*;
@@ -151,7 +151,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
-    private LinkedHashMap<GATKPathSpecifier, SAMFileHeader> readInputs;
+    private LinkedHashMap<GATKPath, SAMFileHeader> readInputs;
     private ReferenceMultiSparkSource referenceSource;
     private SAMSequenceDictionary referenceDictionary;
     private List<SimpleInterval> userIntervals;
@@ -323,7 +323,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
         JavaRDD<GATKRead> output = null;
         ReadsSparkSource source = readsSource;
-        for (final GATKPathSpecifier inputPathSpecifier : readInputs.keySet()) {
+        for (final GATKPath inputPathSpecifier : readInputs.keySet()) {
             if (output == null) {
                 output = getGatkReadJavaRDD(traversalParameters, source, inputPathSpecifier);
             } else {
@@ -333,7 +333,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         return output;
     }
 
-    protected JavaRDD<GATKRead> getGatkReadJavaRDD(TraversalParameters traversalParameters, ReadsSparkSource source, GATKPathSpecifier inputSpecifier) {
+    protected JavaRDD<GATKRead> getGatkReadJavaRDD(TraversalParameters traversalParameters, ReadsSparkSource source, GATKPath inputSpecifier) {
         JavaRDD<GATKRead> output;
         // TODO: This if statement is a temporary hack until #959 gets resolve
         if (inputSpecifier.hasExtension(".adam")) {
@@ -414,7 +414,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
      */
     private boolean hasCramInput() {
-        return readArguments.getReadPathSpecifiers().stream().anyMatch(GATKPathSpecifier::isCram);
+        return readArguments.getReadPathSpecifiers().stream().anyMatch(GATKPath::isCram);
     }
 
     /**
@@ -517,7 +517,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * Returns the header for a given input.
      */
-    protected SAMFileHeader getHeaderForReadsInput(final GATKPathSpecifier inputPathSpecifier){
+    protected SAMFileHeader getHeaderForReadsInput(final GATKPath inputPathSpecifier){
         final SAMFileHeader header = readInputs.get(inputPathSpecifier);
         if (header == null) {
             throw new GATKException(String.format("Input %s not present in tool inputs", inputPathSpecifier.getRawInputString()));
@@ -571,7 +571,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
         readInputs = new LinkedHashMap<>();
         readsSource = new ReadsSparkSource(sparkContext, readArguments.getReadValidationStringency());
-        for (final GATKPathSpecifier input : readArguments.getReadPathSpecifiers()) {
+        for (final GATKPath input : readArguments.getReadPathSpecifiers()) {
             readInputs.put(input, readsSource.getHeader(input, referenceArguments.getReferenceSpecifier()));
         }
         readsHeader = createHeaderMerger().getMergedHeader();
@@ -598,7 +598,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Initializes our reference source. Does nothing if no reference was specified.
      */
     private void initializeReference() {
-        final GATKPathSpecifier referencePathSpecifier = referenceArguments.getReferenceSpecifier();
+        final GATKPath referencePathSpecifier = referenceArguments.getReferenceSpecifier();
         if ( referencePathSpecifier != null ) {
             referenceSource = new ReferenceMultiSparkSource(referencePathSpecifier, getReferenceWindowFunction());
             referenceDictionary = referenceSource.getReferenceSequenceDictionary(readsHeader != null ? readsHeader.getSequenceDictionary() : null);

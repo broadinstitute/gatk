@@ -26,7 +26,7 @@ import java.util.List;
 public class ExampleLocusWalker extends LocusWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    private GATKPathSpecifier OUTPUT_FILE = null;
+    private GATKPath OUTPUT_FILE = null;
 
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "One or more VCF files", optional = true)
     private List<FeatureInput<VariantContext>> variants;

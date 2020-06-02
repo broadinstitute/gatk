@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.MultiVariantWalker;
@@ -142,7 +142,7 @@ public class ApplyVQSR extends MultiVariantWalker {
     private FeatureInput<VariantContext> recal;
 
     @Argument(fullName="tranches-file", doc="The input tranches file describing where to cut the data", optional=true)
-    private GATKPathSpecifier TRANCHES_FILE;
+    private GATKPath TRANCHES_FILE;
 
     /////////////////////////////
     // Outputs
@@ -151,7 +151,7 @@ public class ApplyVQSR extends MultiVariantWalker {
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="The output filtered and recalibrated VCF file in which each variant is annotated with its VQSLOD value", optional=false)
-    private GATKPathSpecifier output;
+    private GATKPath output;
 
     /////////////////////////////
     // Command Line Arguments

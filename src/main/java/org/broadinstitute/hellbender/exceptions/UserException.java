@@ -4,7 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -59,11 +59,11 @@ public class UserException extends RuntimeException {
             super(String.format("Couldn't read file. Error was: %s with exception: %s", message, getMessage(e)), e);
         }
 
-        public CouldNotReadInputFile(final GATKPathSpecifier file, final String message) {
+        public CouldNotReadInputFile(final GATKPath file, final String message) {
             super(String.format("Couldn't read file %s. Error was: %s", file.getRawInputString(), message));
         }
 
-        public CouldNotReadInputFile(final GATKPathSpecifier file, final String message, final Throwable cause) {
+        public CouldNotReadInputFile(final GATKPath file, final String message, final Throwable cause) {
             super(String.format("Couldn't read file %s. Error was: %s", file.getRawInputString(), message), cause);
         }
 
@@ -133,11 +133,11 @@ public class UserException extends RuntimeException {
     public static class CouldNotCreateOutputFile extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public CouldNotCreateOutputFile(final GATKPathSpecifier file, final String message, final Exception e) {
+        public CouldNotCreateOutputFile(final GATKPath file, final String message, final Exception e) {
             super(String.format("Couldn't write file %s because %s with exception %s", file.getRawInputString(), message, getMessage(e)), e);
         }
 
-        public CouldNotCreateOutputFile(final GATKPathSpecifier file, final String message) {
+        public CouldNotCreateOutputFile(final GATKPath file, final String message) {
             super(String.format("Couldn't write file %s because %s", file.getRawInputString(), message));
         }
 
@@ -238,11 +238,11 @@ public class UserException extends RuntimeException {
             super(String.format("Unknown file is malformed: %s", message));
         }
 
-        public MalformedFile(final GATKPathSpecifier f, final String message) {
+        public MalformedFile(final GATKPath f, final String message) {
             super(String.format("File %s is malformed: %s", f.getRawInputString(), message));
         }
 
-        public MalformedFile(final GATKPathSpecifier f, final String message, final Exception e) {
+        public MalformedFile(final GATKPath f, final String message, final Exception e) {
             super(String.format("File %s is malformed: %s caused by %s", f.getRawInputString(), message, getMessage(e)), e);
         }
 

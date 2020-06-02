@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.testutils;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.*;
 import org.apache.commons.io.FilenameUtils;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SamComparison;
@@ -401,7 +401,7 @@ public final class SamAssertionUtils {
      * Validate/assert that the contents are CRAM if the extension is .cram
      */
     public static void assertCRAMContentsIfCRAM(final Path putativeCRAMPath) {
-        if (new GATKPathSpecifier(putativeCRAMPath.toUri().toString()).isCram()) {
+        if (new GATKPath(putativeCRAMPath.toUri().toString()).isCram()) {
             assertCRAMContents(putativeCRAMPath);
         }
     }

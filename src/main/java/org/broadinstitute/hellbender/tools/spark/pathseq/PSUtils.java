@@ -4,7 +4,7 @@ import htsjdk.samtools.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -64,7 +64,7 @@ public final class PSUtils {
         if (numReducers != 0) {
             return numReducers;
         }
-        return 1 + (int) (BucketUtils.dirSize(new GATKPathSpecifier(inputPath)) / targetPartitionSize);
+        return 1 + (int) (BucketUtils.dirSize(new GATKPath(inputPath)) / targetPartitionSize);
     }
 
     /**

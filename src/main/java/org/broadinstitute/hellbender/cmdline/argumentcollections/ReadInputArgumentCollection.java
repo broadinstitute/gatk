@@ -3,11 +3,9 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
-import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.List;
@@ -36,21 +34,21 @@ public abstract class ReadInputArgumentCollection implements Serializable {
                     "for each input will be inferred automatically.",
             common = true,
             optional = true)
-    protected List<GATKPathSpecifier> readIndices;
+    protected List<GATKPath> readIndices;
 
     /**
      * Get the list of BAM/SAM/CRAM inputs specified at the command line.
-     * GATKPathSpecifier is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
+     * GATKPath is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
-    public abstract List<GATKPathSpecifier> getReadPathSpecifiers();
+    public abstract List<GATKPath> getReadPathSpecifiers();
 
     /**
      * Get the list of BAM/SAM/CRAM inputs specified at the command line.
-     * GATKPathSpecifier is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
+     * GATKPath is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
 
     public List<Path> getReadPaths() {
-        return getReadPathSpecifiers().stream().map(GATKPathSpecifier::toPath).collect(Collectors.toList());
+        return getReadPathSpecifiers().stream().map(GATKPath::toPath).collect(Collectors.toList());
     }
 
     /**
@@ -65,7 +63,7 @@ public abstract class ReadInputArgumentCollection implements Serializable {
             return null;
         }
 
-        return readIndices.stream().map(GATKPathSpecifier::toPath).collect(Collectors.toList());
+        return readIndices.stream().map(GATKPath::toPath).collect(Collectors.toList());
     }
 
     /**

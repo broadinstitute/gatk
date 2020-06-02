@@ -27,7 +27,7 @@ public final class ExampleReadWalkerWithVariants extends ReadWalker {
     private List<FeatureInput<VariantContext>> variants;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    private GATKPathSpecifier outputFile;
+    private GATKPath outputFile;
 
     @Argument(fullName = "groupVariantsBySource", shortName = "groupVariantsBySource", doc = "If true, group overlapping variants by their source when outputting them", optional = true)
     private boolean groupVariantsBySource = false;

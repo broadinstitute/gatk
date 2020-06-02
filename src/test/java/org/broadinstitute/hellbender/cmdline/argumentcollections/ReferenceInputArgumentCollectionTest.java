@@ -5,7 +5,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -41,7 +41,7 @@ public final class ReferenceInputArgumentCollectionTest {
     public void testGetNullPath(){
         final ReferenceInputArgumentCollection nullPath = new ReferenceInputArgumentCollection(){
             private static final long serialVersionUID = 0L;
-            @Override public GATKPathSpecifier getReferenceSpecifier() { return null;}
+            @Override public GATKPath getReferenceSpecifier() { return null;}
         };
 
         Assert.assertNull(nullPath.getReferencePath());

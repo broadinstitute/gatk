@@ -4,7 +4,7 @@ import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 import com.google.cloud.storage.contrib.nio.SeekableByteChannelPrefetcher;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -66,12 +66,12 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
 
     @Test(groups="bucket", dataProvider = "getVariousPathsForPrefetching")
     public void testIsEligibleForPrefetchingWithPathSpecifier(String path, boolean isPrefetchable){
-        Assert.assertEquals(BucketUtils.isEligibleForPrefetching(new GATKPathSpecifier(path)), isPrefetchable);
+        Assert.assertEquals(BucketUtils.isEligibleForPrefetching(new GATKPath(path)), isPrefetchable);
     }
 
     @Test
     public void testIsEligibleForPrefetchingHdfs(){
-        Assert.assertFalse(BucketUtils.isEligibleForPrefetching(new GATKPathSpecifier("hdfs://namenode/path/to/file")));
+        Assert.assertFalse(BucketUtils.isEligibleForPrefetching(new GATKPath("hdfs://namenode/path/to/file")));
     }
 
     @Test
@@ -201,7 +201,7 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
 
         long fileSize = BucketUtils.fileSize(file1.getAbsolutePath());
         Assert.assertTrue(fileSize > 0);
-        long dirSize = BucketUtils.dirSize(new GATKPathSpecifier(dir.getAbsolutePath()));
+        long dirSize = BucketUtils.dirSize(new GATKPath(dir.getAbsolutePath()));
         Assert.assertEquals(dirSize, fileSize * 2);
     }
 
@@ -217,9 +217,9 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
         Assert.assertTrue(srcFileSize > 0);
         long intermediateFileSize = BucketUtils.fileSize(intermediate);
         Assert.assertEquals(intermediateFileSize, srcFileSize);
-        long intermediateDirSize = BucketUtils.dirSize(new GATKPathSpecifier(intermediate));
+        long intermediateDirSize = BucketUtils.dirSize(new GATKPath(intermediate));
         Assert.assertEquals(intermediateDirSize, srcFileSize);
-        long intermediateParentDirSize = BucketUtils.dirSize(new GATKPathSpecifier(gcsSubDir));
+        long intermediateParentDirSize = BucketUtils.dirSize(new GATKPath(gcsSubDir));
         Assert.assertEquals(intermediateParentDirSize, srcFileSize);
 
         BucketUtils.deleteFile(intermediate);

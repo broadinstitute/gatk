@@ -4,7 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -40,8 +40,8 @@ public final class FindBreakpointEvidenceSparkUnitTest extends GATKBaseTest {
             new FindBreakpointEvidenceSparkArgumentCollection();
     private final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
     private final ReadsSparkSource readsSource = new ReadsSparkSource(ctx);
-    private final SAMFileHeader header = readsSource.getHeader(new GATKPathSpecifier(readsFile), null);
-    private final JavaRDD<GATKRead> reads = readsSource.getParallelReads(new GATKPathSpecifier(readsFile), null, null, 0L);
+    private final SAMFileHeader header = readsSource.getHeader(new GATKPath(readsFile), null);
+    private final JavaRDD<GATKRead> reads = readsSource.getParallelReads(new GATKPath(readsFile), null, null, 0L);
     private final SVReadFilter filter = new SVReadFilter(params);
     private final ReadMetadata readMetadataExpected =
             new ReadMetadata(Collections.emptySet(), header,

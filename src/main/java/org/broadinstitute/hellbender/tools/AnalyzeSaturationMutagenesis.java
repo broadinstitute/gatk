@@ -10,7 +10,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -187,7 +187,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         reference = new Reference(ReferenceDataSource.of(referenceArguments.getReferencePath()));
         codonTracker = new CodonTracker(orfCoords, reference.getRefSeq(), logger);
         if ( writeRejectedReads ) {
-            rejectedReadsBAMWriter = createSAMWriter(new GATKPathSpecifier(outputFilePrefix + ".rejected.bam"), false);
+            rejectedReadsBAMWriter = createSAMWriter(new GATKPath(outputFilePrefix + ".rejected.bam"), false);
         }
     }
 

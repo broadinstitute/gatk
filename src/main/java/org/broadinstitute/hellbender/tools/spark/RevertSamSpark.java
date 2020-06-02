@@ -18,7 +18,7 @@ import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -499,7 +499,7 @@ public class RevertSamSpark extends GATKSparkTool {
     }
 
     @VisibleForTesting
-    static String getDefaultExtension(final GATKPathSpecifier inputPath, final FileType setting) {
+    static String getDefaultExtension(final GATKPath inputPath, final FileType setting) {
         if (setting == FileType.dynamic) {
             if (inputPath.isSam()) {
                 return FileExtensions.SAM;

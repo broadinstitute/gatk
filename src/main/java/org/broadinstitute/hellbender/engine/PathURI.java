@@ -165,7 +165,7 @@ public interface PathURI {
     }
 
     /**
-     * Returns true if the GATKPathSpecifier's extension is ".cram".
+     * Returns true if the GATKPath's extension is ".cram".
      */
     default boolean isCram() {
         return hasExtension(FileExtensions.CRAM);
