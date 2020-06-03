@@ -135,7 +135,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
 
         evidenceIndexBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
         filteredEvidenceBySampleIndex = new ArrayList<>();
-        samples().forEach(s -> filteredEvidenceBySampleIndex.add(new ArrayList<>(2)));
+        samples().forEach(s -> this.filteredEvidenceBySampleIndex.add(new ArrayList<>(2)));
 
         setupIndexes(evidenceBySample, sampleCount, alleleCount);
 
@@ -161,7 +161,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             this.filteredEvidenceBySampleIndex = filteredEvidenceBySampleIndex;
         } else {
             this.filteredEvidenceBySampleIndex = new ArrayList<>();
-            samples().forEach(s -> filteredEvidenceBySampleIndex.add(new ArrayList<>(2)));
+            samples().forEach(s -> this.filteredEvidenceBySampleIndex.add(new ArrayList<>(2)));
         }
 
         referenceAlleleIndex = findReferenceAllele(alleles);
