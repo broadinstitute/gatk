@@ -102,6 +102,12 @@ workflow CNVGermlineCaseScatteredWorkflow {
       Float? gcnv_caller_external_admixing_rate
       Boolean? gcnv_disable_annealing
 
+      ##############################################
+      #### arguments for TransposeCallerOutputs ####
+      ##############################################
+      Int? mem_gb_for_transpose_caller_outputs
+      Int? disk_space_gb_for_transpose_caller_outputs
+
       ###################################################
       #### arguments for PostprocessGermlineCNVCalls ####
       ###################################################
@@ -191,6 +197,8 @@ workflow CNVGermlineCaseScatteredWorkflow {
                 gcnv_caller_external_admixing_rate = gcnv_caller_external_admixing_rate,
                 gcnv_disable_annealing = gcnv_disable_annealing,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
+                mem_gb_for_transpose_caller_outputs = mem_gb_for_transpose_caller_outputs,
+                disk_space_gb_for_transpose_caller_outputs = disk_space_gb_for_transpose_caller_outputs,
                 allosomal_contigs = allosomal_contigs,
                 maximum_number_events_per_sample = maximum_number_events_per_sample
         }
@@ -201,8 +209,8 @@ workflow CNVGermlineCaseScatteredWorkflow {
         Array[File] read_counts_entity_id = flatten(CNVGermlineCaseWorkflow.read_counts_entity_id)
         Array[File] read_counts = flatten(CNVGermlineCaseWorkflow.read_counts)
         Array[File] sample_contig_ploidy_calls_tars = flatten(CNVGermlineCaseWorkflow.sample_contig_ploidy_calls_tars)
-        Array[File] gcnv_calls_tars = flatten(CNVGermlineCaseWorkflow.gcnv_calls_tars)
-        Array[File] gcnv_tracking_tars = flatten(CNVGermlineCaseWorkflow.gcnv_tracking_tars)
+        Array[File] gcnv_calls_tars = CNVGermlineCaseWorkflow.gcnv_calls_tars
+        Array[File] gcnv_tracking_tars = CNVGermlineCaseWorkflow.gcnv_tracking_tars
         Array[File] genotyped_intervals_vcf = flatten(CNVGermlineCaseWorkflow.genotyped_intervals_vcf)
         Array[File] genotyped_segments_vcf = flatten(CNVGermlineCaseWorkflow.genotyped_segments_vcf)
         Array[File] denoised_copy_ratios = flatten(CNVGermlineCaseWorkflow.denoised_copy_ratios)

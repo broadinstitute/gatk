@@ -149,11 +149,11 @@ workflow CNVGermlineCohortWorkflow {
       Float? gcnv_caller_external_admixing_rate
       Boolean? gcnv_disable_annealing
 
-      ######################################################
-      #### arguments for BundleCallerOutputs ####
-      ######################################################
-      Int? mem_gb_for_bundle_caller_outputs
-      Int? disk_space_gb_for_bundle_caller_outputs
+      ##############################################
+      #### arguments for TransposeCallerOutputs ####
+      ##############################################
+      Int? mem_gb_for_transpose_caller_outputs
+      Int? disk_space_gb_for_transpose_caller_outputs
 
       ###################################################
       #### arguments for PostprocessGermlineCNVCalls ####
@@ -329,8 +329,8 @@ workflow CNVGermlineCohortWorkflow {
         input:
             gcnv_calls_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar,
             docker = gatk_docker,
-            mem_gb = mem_gb_for_bundle_caller_outputs,
-            disk_space_gb = disk_space_gb_for_bundle_caller_outputs,
+            mem_gb = mem_gb_for_transpose_caller_outputs,
+            disk_space_gb = disk_space_gb_for_transpose_caller_outputs,
             preemptible_attempts = preemptible_attempts
     }
 
@@ -339,10 +339,7 @@ workflow CNVGermlineCohortWorkflow {
             input:
                 gcnv_calls_sample_tar = TransposeCallerOutputs.gcnv_calls_sample_tars[sample_index],
                 gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar,
-                calling_configs = GermlineCNVCallerCohortMode.calling_config_json,
-                denoising_configs = GermlineCNVCallerCohortMode.denoising_config_json,
-                gcnvkernel_version = GermlineCNVCallerCohortMode.gcnvkernel_version_json,
-                sharded_interval_lists = GermlineCNVCallerCohortMode.sharded_interval_list,
+                gcnv_shard_configs_tar = TransposeCallerOutputs.gcnv_shard_configs_tar,
                 entity_id = CollectCounts.entity_id[sample_index],
                 allosomal_contigs = allosomal_contigs,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,

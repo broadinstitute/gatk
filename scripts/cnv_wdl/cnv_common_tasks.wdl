@@ -215,14 +215,8 @@ task CollectCounts {
     Int command_mem_mb = machine_mem_mb - 1000
 
     Boolean enable_indexing_ = select_first([enable_indexing, false])
-    Array[String] disabled_read_filters_arr = if(defined(disabled_read_filters))
-      then
-        prefix(
-          "--disable-read-filter ",
-          select_first([disabled_read_filters])
-        )
-      else
-        []
+
+    Array[String] disabled_read_filters_arr = if defined(disabled_read_filters) then prefix("--disable-read-filter ", select_first([disabled_read_filters])) else []
 
     # Sample name is derived from the bam filename
     String base_filename = basename(bam, ".bam")
@@ -445,10 +439,7 @@ task PostprocessGermlineCNVCalls {
     input {
         File gcnv_calls_sample_tar
         Array[File] gcnv_model_tars
-        Array[File] calling_configs
-        Array[File] denoising_configs
-        Array[File] gcnvkernel_version
-        Array[File] sharded_interval_lists
+        File gcnv_shard_configs_tar
         String entity_id
         File contig_ploidy_calls_tar
         Array[String]? allosomal_contigs
@@ -478,22 +469,12 @@ task PostprocessGermlineCNVCalls {
         set -euo pipefail
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
 
-        sharded_interval_lists_array=(~{sep=" " sharded_interval_lists})
-
         # untar calls to CALLS_0, CALLS_1, etc directories and build the command line
-        # also copy over shard config and interval files
-        calling_configs_array=(~{sep=" " calling_configs})
-        denoising_configs_array=(~{sep=" " denoising_configs})
-        gcnvkernel_version_array=(~{sep=" " gcnvkernel_version})
-        sharded_interval_lists_array=(~{sep=" " sharded_interval_lists})
-        calls_args=""
         tar xzf ~{gcnv_calls_sample_tar}
-        for index in ${!calling_configs_array[@]}; do
-            cp ${calling_configs_array[$index]} CALLS_$index/
-            cp ${denoising_configs_array[$index]} CALLS_$index/
-            cp ${gcnvkernel_version_array[$index]} CALLS_$index/
-            cp ${sharded_interval_lists_array[$index]} CALLS_$index/
-            calls_args="$calls_args --calls-shard-path CALLS_$index"
+        tar xzf ~{gcnv_shard_configs_tar}
+        calls_args=""
+        for calls_dir in CALLS_*; do
+            calls_args="$calls_args --calls-shard-path $calls_dir"
         done
 
         # untar models to MODEL_0, MODEL_1, etc directories and build the command line
@@ -659,9 +640,12 @@ task TransposeCallerOutputs {
         NUM_DIGITS=${#NUM_SAMPLES}
         while [ $CURRENT_SAMPLE -lt $NUM_SAMPLES ]; do
             CURRENT_SAMPLE_WITH_LEADING_ZEROS=$(printf "%0${NUM_DIGITS}d" $CURRENT_SAMPLE)
-            tar c CALLS_*/SAMPLE_$CURRENT_SAMPLE | gzip -1 > case-gcnv-calls-sample-$CURRENT_SAMPLE_WITH_LEADING_ZEROS.tar.gz
+            tar c CALLS_*/SAMPLE_$CURRENT_SAMPLE | gzip -1 > gcnv-calls-sample-$CURRENT_SAMPLE_WITH_LEADING_ZEROS.tar.gz
             let CURRENT_SAMPLE=CURRENT_SAMPLE+1
         done
+
+        rm -r CALLS_*/SAMPLE_*
+        tar c CALLS_* | gzip -1 > gcnv-shard-configs.tar.gz
     >>>
 
     runtime {
@@ -673,7 +657,8 @@ task TransposeCallerOutputs {
     }
 
     output {
-        Array[File] gcnv_calls_sample_tars = glob("case-gcnv-calls-sample-*.tar.gz")
+        Array[File] gcnv_calls_sample_tars = glob("gcnv-calls-sample-*.tar.gz")
+        File gcnv_shard_configs_tar = "gcnv-shard-configs.tar.gz"
     }
 }
 

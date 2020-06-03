@@ -112,11 +112,11 @@ workflow CNVGermlineCaseWorkflow {
       Float? gcnv_caller_external_admixing_rate
       Boolean? gcnv_disable_annealing
 
-      ######################################################
-      #### arguments for BundleCallerOutputs ####
-      ######################################################
-      Int? mem_gb_for_bundle_caller_outputs
-      Int? disk_space_gb_for_bundle_caller_outputs
+      ##############################################
+      #### arguments for TransposeCallerOutputs ####
+      ##############################################
+      Int? mem_gb_for_transpose_caller_outputs
+      Int? disk_space_gb_for_transpose_caller_outputs
 
       ###################################################
       #### arguments for PostprocessGermlineCNVCalls ####
@@ -236,8 +236,8 @@ workflow CNVGermlineCaseWorkflow {
         input:
             gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar,
             docker = gatk_docker,
-            mem_gb = mem_gb_for_bundle_caller_outputs,
-            disk_space_gb = disk_space_gb_for_bundle_caller_outputs,
+            mem_gb = mem_gb_for_transpose_caller_outputs,
+            disk_space_gb = disk_space_gb_for_transpose_caller_outputs,
             preemptible_attempts = preemptible_attempts
     }
 
@@ -247,10 +247,7 @@ workflow CNVGermlineCaseWorkflow {
             input:
                 gcnv_calls_sample_tar = TransposeCallerOutputs.gcnv_calls_sample_tars[sample_index],
                 gcnv_model_tars = gcnv_model_tars,
-                calling_configs = GermlineCNVCallerCaseMode.calling_config_json,
-                denoising_configs = GermlineCNVCallerCaseMode.denoising_config_json,
-                gcnvkernel_version = GermlineCNVCallerCaseMode.gcnvkernel_version_json,
-                sharded_interval_lists = GermlineCNVCallerCaseMode.sharded_interval_list,
+                gcnv_shard_configs_tar = TransposeCallerOutputs.gcnv_shard_configs_tar,
                 entity_id = CollectCounts.entity_id[sample_index],
                 allosomal_contigs = allosomal_contigs,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
@@ -468,8 +465,8 @@ task GermlineCNVCallerCaseMode {
             --caller-external-admixing-rate ~{default="1.00" caller_external_admixing_rate} \
             --disable-annealing ~{default="false" disable_annealing}
 
-        tar czf case-gcnv-tracking-shard-~{scatter_index}.tar.gz -C ~{output_dir_}/case-tracking .
         tar czf case-gcnv-calls-shard-~{scatter_index}.tar.gz -C ~{output_dir_}/case-calls .
+        tar czf case-gcnv-tracking-shard-~{scatter_index}.tar.gz -C ~{output_dir_}/case-tracking .
 
         rm -rf contig-ploidy-calls
         rm -rf gcnv-model
@@ -486,9 +483,5 @@ task GermlineCNVCallerCaseMode {
     output {
         File gcnv_calls_tar = "case-gcnv-calls-shard-~{scatter_index}.tar.gz"
         File gcnv_tracking_tar = "case-gcnv-tracking-shard-~{scatter_index}.tar.gz"
-        File calling_config_json = "~{output_dir_}/case-calls/calling_config.json"
-        File denoising_config_json = "~{output_dir_}/case-calls/denoising_config.json"
-        File gcnvkernel_version_json = "~{output_dir_}/case-calls/gcnvkernel_version.json"
-        File sharded_interval_list = "~{output_dir_}/case-calls/interval_list.tsv"
     }
 }
