@@ -93,6 +93,7 @@ class TensorGenerator:
         self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.name, self.keep_paths = \
             batch_size, input_maps, output_maps, num_workers, cache_size, weights, name, keep_paths
         self.true_epochs = 0
+        self.stats_string = ""
         if num_workers == 0:
             num_workers = 1  # The one worker is the main thread
         if weights is None:
@@ -170,48 +171,71 @@ class TensorGenerator:
     def aggregate_and_print_stats(self):
         stats = Counter()
         self.true_epochs += 1
+        cur_worker = 0
         while self.stats_q.qsize() != 0:
-            stats += self.stats_q.get()
+            cur_worker += 1
+            worker_stats = self.stats_q.get().copy()
+            for k in worker_stats:
+                if stats[k] == 0 and cur_worker == 1 and ('_max' in k or '_min' in k):
+                    stats[k] = worker_stats[k]
+                elif '_max' in k:
+                    stats[k] = max(stats[k], worker_stats[k])
+                elif '_min' in k:
+                    stats[k] = min(stats[k], worker_stats[k])
+                else:
+                    stats[k] += worker_stats[k]
 
-        error_info = '\n\t\t'.join([
+        all_errors = [
             f'[{error}] - {count:.0f}'
             for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True) if 'Error' in error
-        ])
+        ]
+        if len(all_errors) > 0:
+            error_info = f'The following errors were raised:\n\t\t' + '\n\t\t'.join(all_errors)
+        else:
+            error_info = 'No errors raised.'
 
-        info_string = '\n\t'.join([
-            f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {self.true_epochs:.0f}",
-            f"{stats['Tensors presented']/self.true_epochs:0.0f} tensors were presented.",
-            f"{stats['skipped_paths']} paths were skipped because they previously failed.",
-            f"The following errors occurred:\n\t\t{error_info}",
-        ])
-        logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
         eps = 1e-7
         for tm in self.input_maps + self.output_maps:
             if self.true_epochs != 1:
                 break
             if tm.is_categorical() and tm.axes() == 1:
                 n = stats[f'{tm.name}_n'] + eps
-                message = f'Categorical \n{tm.name} has {n:.0f} total examples.'
+                self.stats_string = f'{self.stats_string}\nCategorical TensorMap: {tm.name} has {n:.0f} total examples.'
                 for channel, index in tm.channel_map.items():
                     examples = stats[f'{tm.name}_index_{index:.0f}']
-                    message = f'{message}\n\tLabel {channel} {examples} examples, {100 * (examples / n):0.2f}% of total.'
-                logging.info(message)
+                    self.stats_string = f'{self.stats_string}\n\tLabel {channel} {examples} examples, {100 * (examples / n):0.2f}% of total.'
             elif tm.is_continuous() and tm.axes() == 1:
                 sum_squared = stats[f'{tm.name}_sum_squared']
                 n = stats[f'{tm.name}_n'] + eps
                 n_sum = stats[f'{tm.name}_sum']
                 mean = n_sum / n
                 std = np.sqrt((sum_squared/n)-(mean*mean))
-                logging.info(
-                    f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{std:0.2f} '
-                    f"Maximum:{stats[f'{tm.name}_max']:0.2f} Minimum:{stats[f'{tm.name}_min']:0.2f}",
-                )
+                self.stats_string = f'{self.stats_string}\nContinuous TensorMap: {tm.name} has {n:.0f} total examples.\n\tMean: {mean:0.2f}, '
+                self.stats_string = f"{self.stats_string}Standard Deviation: {std:0.2f}, Max: {stats[f'{tm.name}_max']:0.2f}, Min: {stats[f'{tm.name}_min']:0.2f}"
+            elif tm.is_time_to_event():
+                sum_squared = stats[f'{tm.name}_sum_squared']
+                n = stats[f'{tm.name}_n'] + eps
+                n_sum = stats[f'{tm.name}_sum']
+                mean = n_sum / n
+                std = np.sqrt((sum_squared/n)-(mean*mean))
+                self.stats_string = f"{self.stats_string}\nTime to event TensorMap: {tm.name} Total events: {stats[f'{tm.name}_events']}, "
+                self.stats_string = f"{self.stats_string}\n\tMean Follow Up: {mean:0.2f}, Standard Deviation: {std:0.2f}, "
+                self.stats_string = f"{self.stats_string}\n\tMax Follow Up: {stats[f'{tm.name}_max']:0.2f}, Min Follow Up: {stats[f'{tm.name}_min']:0.2f}"
+
+        info_string = '\n\t'.join([
+            f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {self.true_epochs:.0f}",
+            f"{stats['Tensors presented']:0.0f} tensors were presented.",
+            f"{stats['skipped_paths']} paths were skipped because they previously failed.",
+            f"{error_info}",
+            f"{self.stats_string}"
+        ])
+        logging.info(f"\n!!!!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!!!!\nAggregated information string:\n\t{info_string}")
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
             for worker in self.workers:
                 worker.terminate()
-            logging.info(f'Stopped {len(self.workers)} workers.')
+            logging.info(f'Stopped {len(self.workers)} workers. {self.stats_string}')
         self.workers = []
 
     def __iter__(self):  # This is so python type annotations recognize TensorGenerator as an iterator
@@ -231,16 +255,16 @@ class TensorMapArrayCache:
         output_tms = [tm for tm in output_tms if tm.cacheable]
         self.max_size = max_size
         self.data = {}
-        self.row_size = sum(np.zeros(tm.shape, dtype=np.float32).nbytes for tm in set(input_tms + output_tms))
+        self.row_size = sum(np.zeros(tm.static_shape(), dtype=np.float32).nbytes for tm in set(input_tms + output_tms))
         self.nrows = min(int(max_size / self.row_size), max_rows) if self.row_size else 0
         self.autoencode_names: Dict[str, str] = {}
         for tm in input_tms:
-            self.data[tm.input_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
+            self.data[tm.input_name()] = np.zeros((self.nrows,) + tm.static_shape(), dtype=np.float32)
         for tm in output_tms:
             if tm in input_tms:  # Useful for autoencoders
                 self.autoencode_names[tm.output_name()] = tm.input_name()
             else:
-                self.data[tm.output_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
+                self.data[tm.output_name()] = np.zeros((self.nrows,) + tm.static_shape(), dtype=np.float32)
         self.files_seen = Counter()  # name -> max position filled in cache
         self.key_to_index = {}  # file_path, name -> position in self.data
         self.hits = 0
@@ -322,8 +346,9 @@ class _MultiModalMultiTaskWorker:
         self.epoch_stats = Counter()
         self.start = time.time()
         self.paths_in_batch = []
-        self.in_batch = {tm.input_name(): np.zeros((batch_size,) + tm.shape) for tm in input_maps}
-        self.out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.shape) for tm in output_maps}
+
+        self.in_batch = {tm.input_name(): np.zeros((batch_size,) + tm.static_shape()) for tm in input_maps}
+        self.out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.static_shape()) for tm in output_maps}
 
         self.cache = TensorMapArrayCache(cache_size, input_maps, output_maps, true_epoch_len)
         self.dependents = {}
@@ -333,6 +358,7 @@ class _MultiModalMultiTaskWorker:
         name = tm.input_name() if is_input else tm.output_name()
         batch = self.in_batch if is_input else self.out_batch
         idx = self.stats['batch_index']
+
         if tm in self.dependents:
             batch[name][idx] = self.dependents[tm]
             if tm.cacheable:
@@ -345,26 +371,31 @@ class _MultiModalMultiTaskWorker:
         if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
             self.hd5 = h5py.File(path, 'r')
         tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, self.hd5, self.dependents), augment=self.augment, hd5=self.hd5)
-        batch[name][idx] = tensor
+        slices = tuple(slice(min(tm.static_shape()[i], tensor.shape[i])) for i in range(len(tensor.shape)))
+        batch[name][(idx,)+slices] = tensor[slices]
         if tm.cacheable:
-            self.cache[path, name] = tensor
+            self.cache[path, name] = batch[name][idx]
         self._collect_stats(tm, tensor)
         return self.hd5
 
     def _collect_stats(self, tm, tensor):
+        if tm.is_time_to_event():
+            self.epoch_stats[f'{tm.name}_events'] += tensor[0]
+            self._collect_continuous_stats(tm, tensor[1])
         if tm.is_categorical() and tm.axes() == 1:
             self.epoch_stats[f'{tm.name}_index_{np.argmax(tensor):.0f}'] += 1
-            self.epoch_stats[f'{tm.name}_n'] += 1
         if tm.is_continuous() and tm.axes() == 1:
-            self.epoch_stats[f'{tm.name}_n'] += 1
-            rescaled = tm.rescale(tensor)[0]
-            if 0.0 == self.epoch_stats[f'{tm.name}_max'] == self.epoch_stats[f'{tm.name}_min']:
-                self.epoch_stats[f'{tm.name}_max'] = min(0, rescaled)
-                self.epoch_stats[f'{tm.name}_min'] = max(0, rescaled)
-            self.epoch_stats[f'{tm.name}_max'] = max(rescaled, self.epoch_stats[f'{tm.name}_max'])
-            self.epoch_stats[f'{tm.name}_min'] = min(rescaled, self.epoch_stats[f'{tm.name}_min'])
-            self.epoch_stats[f'{tm.name}_sum'] += rescaled
-            self.epoch_stats[f'{tm.name}_sum_squared'] += rescaled * rescaled
+            self._collect_continuous_stats(tm, tm.rescale(tensor)[0])
+        self.epoch_stats[f'{tm.name}_n'] += 1
+
+    def _collect_continuous_stats(self, tm, rescaled):
+        if 0.0 == self.epoch_stats[f'{tm.name}_max'] == self.epoch_stats[f'{tm.name}_min']:
+            self.epoch_stats[f'{tm.name}_max'] = rescaled
+            self.epoch_stats[f'{tm.name}_min'] = rescaled
+        self.epoch_stats[f'{tm.name}_max'] = max(rescaled, self.epoch_stats[f'{tm.name}_max'])
+        self.epoch_stats[f'{tm.name}_min'] = min(rescaled, self.epoch_stats[f'{tm.name}_min'])
+        self.epoch_stats[f'{tm.name}_sum'] += rescaled
+        self.epoch_stats[f'{tm.name}_sum_squared'] += rescaled * rescaled
 
     def _handle_tensor_path(self, path: Path) -> None:
         hd5 = None
@@ -414,8 +445,8 @@ class _MultiModalMultiTaskWorker:
                 self.q.put(out)
                 self.paths_in_batch = []
                 self.stats['batch_index'] = 0
-                self.in_batch = {tm.input_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.input_maps}
-                self.out_batch = {tm.output_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.output_maps}
+                self.in_batch = {tm.input_name(): np.zeros((self.batch_size,) + tm.static_shape()) for tm in self.input_maps}
+                self.out_batch = {tm.output_name(): np.zeros((self.batch_size,) + tm.static_shape()) for tm in self.output_maps}
             if i > 0 and i % self.true_epoch_len == 0:
                 self._on_epoch_end()
 

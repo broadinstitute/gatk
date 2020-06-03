@@ -10,7 +10,7 @@
 import logging
 import datetime
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Union, Callable, Dict, List, Optional, Tuple
 
 import h5py
 import numcodecs
@@ -27,6 +27,7 @@ from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_clas
 
 MEAN_IDX = 0
 STD_IDX = 1
+DEFAULT_TIME_TO_EVENT_CHANNELS = {'event': 0, 'follow_up_days': 1}
 
 
 class Interpretation(Enum):
@@ -200,6 +201,9 @@ class TensorMap(object):
             if self.time_series_limit is not None:
                 self.shape = (None,) + self.shape
 
+        if self.channel_map is None and self.is_time_to_event():
+            self.channel_map = DEFAULT_TIME_TO_EVENT_CHANNELS
+
         if self.discretization_bounds is not None:
             self.input_shape = self.shape
             self.input_channel_map = self.channel_map
@@ -286,6 +290,9 @@ class TensorMap(object):
 
     def axes(self):
         return len(self.shape)
+
+    def static_shape(self, limit=6):
+        return tuple([size if size else limit for size in self.shape])
 
     def hd5_key_guess(self):
         if self.path_prefix is None:
@@ -405,13 +412,13 @@ def _default_continuous_tensor_from_file(tm, hd5, input_shape, input_channel_map
             continuous_data[0] = data[0]
         else:
             continuous_data[0] = data[()]
-    if missing and input_channel_map is not None and tm.hd5_key_guess() in hd5:
+    if missing and input_channel_map is not None and tm.path_prefix in hd5:
         for k in input_channel_map:
-            if k in hd5[tm.hd5_key_guess()]:
+            if k in hd5[tm.path_prefix]:
                 missing = False
-                continuous_data[input_channel_map[k]] = hd5[tm.hd5_key_guess()][k][0]
+                continuous_data[input_channel_map[k]] = hd5[tm.path_prefix][k][0]
     if missing and tm.sentinel is None:
-        raise ValueError(f'No value found for {tm.name}.')
+        raise ValueError(f'No value found for {tm.name}, channel map is {input_channel_map} hd5_key_guess:{tm.hd5_key_guess()}')
     elif missing:
         continuous_data[:] = tm.sentinel
     return continuous_data
@@ -467,7 +474,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             caption = decompress_data(data_compressed=hd5[tm.name][()], dtype=hd5[tm.name].attrs['dtype'])
         else:
             caption = str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()
-        char_idx = np.random.randint(len(caption) + 1)
+        char_idx = np.random.randint(tm.shape[0], len(caption) + 1)
         if char_idx == len(caption):
             next_char = STOP_CHAR
         else:
@@ -475,10 +482,11 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         if tm.dependent_map is not None:
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
             dependents[tm.dependent_map][tm.dependent_map.channel_map[next_char]] = 1.0
-            window_offset = max(0, tm.shape[0] - char_idx)
-            for k in range(max(0, char_idx - tm.shape[0]), char_idx):
-                tensor[window_offset, tm.dependent_map.channel_map[caption[k]]] = 1.0
-                window_offset += 1
+            for i, k in enumerate(range(char_idx - tm.shape[0], char_idx)):
+                if caption[k] not in tm.dependent_map.channel_map:
+                    logging.warning(f'Could not find character {caption[k]} in channel map: {tm.dependent_map.channel_map}')
+                    continue
+                tensor[i, tm.dependent_map.channel_map[caption[k]]] = 1.0
         return tensor
     else:
         raise ValueError(f'No default tensor_from_file for TensorMap {tm.name} with interpretation: {tm.interpretation}')
