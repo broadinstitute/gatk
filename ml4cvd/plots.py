@@ -1043,7 +1043,7 @@ def plot_partners_ecgs(args):
 
 
 def plot_cross_reference(args, xref_df, title, time_description, window_start, window_end):
-    # TODO make this work with start/end windows
+    # TODO make this work with multiple time windows
     if xref_df.empty:
         logging.info(f'No cross reference found for "{title}"')
         return
