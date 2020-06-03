@@ -89,7 +89,8 @@ public final class SortSamSparkIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(dataProvider="sortbams", groups="spark")
+    // This test is disabled until https://github.com/broadinstitute/gatk/issues/5881 is fixed
+    @Test(enabled = false, dataProvider="sortbams", groups="spark")
     public void testSortBAMsSharded(
             final String inputFileName,
             final String unused,
