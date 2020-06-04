@@ -2,8 +2,10 @@
 
 To build and push:
 ```
-cp -r ../../ml4cvd . \
-  && perl -i -pe 's/^import vtk/#import vtk/g' ml4cvd/tensor_from_file.py \
+mv ml4cvd ml4cvdBAK_$(date +"%Y%m%d_%H%M%S") \
+  && mv config configBAK_$(date +"%Y%m%d_%H%M%S") \
+  && cp -r ../../ml4cvd . \
+  && cp -r ../vm_boot_images/config . \
   && gcloud --project uk-biobank-sek-data builds submit \
   --timeout 20m \
   --tag gcr.io/uk-biobank-sek-data/ml4cvd_terra:`date +"%Y%m%d_%H%M%S"` .
