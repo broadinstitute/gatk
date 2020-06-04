@@ -50,9 +50,8 @@ public final class TandemRepeat extends InfoFieldAnnotation implements StandardM
 
     public static Pair<List<Integer>, byte[]> getNumTandemRepeatUnits(final ReferenceContext ref, final VariantContext vc) {
         final byte[] refBases = ref.getBases();
-        final int startIndex = vc.getStart() - ref.getWindow().getStart();
-        final byte[] refBasesStartingAtVariantLocus = new String(refBases).substring(startIndex).getBytes();
-        return GATKVariantContextUtils.getNumTandemRepeatUnits(vc, refBasesStartingAtVariantLocus);
+        final int startIndex = vc.getStart() + 1 - ref.getWindow().getStart();  // +1 to exclude leading match base common to VC's ref and alt alleles
+        return GATKVariantContextUtils.getNumTandemRepeatUnits(vc, Arrays.copyOfRange(refBases, startIndex, refBases.length));
     }
 
     @Override

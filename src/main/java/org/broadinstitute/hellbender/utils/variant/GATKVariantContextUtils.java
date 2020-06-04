@@ -673,18 +673,19 @@ public final class GATKVariantContextUtils {
     /**
      *
      * @param vc
-     * @param refBasesStartingAtVCWithPad
+     * @param refBasesStartingAtVCWithoutPad    Ref bases excluding the initial base of the variant context where the alt matches the ref.
+     *                                          For example, if the reference sequence is GATCCACCACCAGTCGA and we have a deletion
+     *                                          of one STR unit CCA, it is represented as a variant context TCCA -> T, where the 'T' is
+     *                                          the padding base.  In this case, {@code refBasesStartingAtVCWithoutPad} is CCACCACCAGTCGA.
      * @return
      */
-    public static Pair<List<Integer>, byte[]> getNumTandemRepeatUnits(final VariantContext vc, final byte[] refBasesStartingAtVCWithPad) {
+    public static Pair<List<Integer>, byte[]> getNumTandemRepeatUnits(final VariantContext vc, final byte[] refBasesStartingAtVCWithoutPad) {
         Utils.nonNull(vc);
-        Utils.nonNull(refBasesStartingAtVCWithPad);
+        Utils.nonNull(refBasesStartingAtVCWithoutPad);
 
         if ( ! vc.isIndel() ){ // only indels are tandem repeats
             return null;
         }
-        final boolean VERBOSE = false;
-        final String refBasesStartingAtVCWithoutPad = new String(refBasesStartingAtVCWithPad).substring(1);
 
         final Allele refAllele = vc.getReference();
         final byte[] refAlleleBases = Arrays.copyOfRange(refAllele.getBases(), 1, refAllele.length());
@@ -693,7 +694,7 @@ public final class GATKVariantContextUtils {
         final List<Integer> lengths = new ArrayList<>();
 
         for ( final Allele allele : vc.getAlternateAlleles() ) {
-            Pair<int[],byte[]> result = getNumTandemRepeatUnits(refAlleleBases, Arrays.copyOfRange(allele.getBases(), 1, allele.length()), refBasesStartingAtVCWithoutPad.getBytes());
+            Pair<int[],byte[]> result = getNumTandemRepeatUnits(refAlleleBases, Arrays.copyOfRange(allele.getBases(), 1, allele.length()), refBasesStartingAtVCWithoutPad);
 
             final int[] repetitionCount = result.getLeft();
             // repetition count = 0 means allele is not a tandem expansion of context
@@ -706,12 +707,6 @@ public final class GATKVariantContextUtils {
             lengths.add(repetitionCount[1]);  // add this alt allele's length
 
             repeatUnit = result.getRight();
-            if (VERBOSE) {
-                System.out.println("RefContext:"+refBasesStartingAtVCWithoutPad);
-                System.out.println("Ref:"+refAllele.toString()+" Count:" + String.valueOf(repetitionCount[0]));
-                System.out.println("Allele:"+allele.toString()+" Count:" + String.valueOf(repetitionCount[1]));
-                System.out.println("RU:"+new String(repeatUnit));
-            }
         }
 
         return new MutablePair<>(lengths,repeatUnit);
