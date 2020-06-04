@@ -69,7 +69,7 @@ public final class ReadsContextUnitTest extends GATKBaseTest {
 
     @Test
     public void testIteratorOverDifferentInterval() {
-        final ReadsDataSourceInterface readsDataSource = new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam"));
+        final ReadsDataSource readsDataSource = new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam"));
         final SimpleInterval originalInterval = new SimpleInterval("1", 200, 210);
         final ReadsContext readsContext = new ReadsContext(readsDataSource, originalInterval, ReadFilterLibrary.ALLOW_ALL_READS);
         final SimpleInterval otherInterval = new SimpleInterval("1", 276, 300);

@@ -17,7 +17,7 @@ import java.util.List;
  * -Iteration over all reads, optionally restricted to reads that overlap a set of intervals
  * -Targeted queries by one interval at a time
  */
-public interface ReadsDataSourceInterface extends GATKDataSource<GATKRead>, AutoCloseable {
+public interface ReadsDataSource extends GATKDataSource<GATKRead>, AutoCloseable {
 
     /**
      * Restricts a traversal of this data source via {@link #iterator} to only return reads that overlap the given intervals,
@@ -80,7 +80,7 @@ public interface ReadsDataSourceInterface extends GATKDataSource<GATKRead>, Auto
     SAMFileHeader getHeader();
 
     /**
-     * Get the sequence dictionary for this ReadsDataSourceInterface
+     * Get the sequence dictionary for this ReadsDataSource
      *
      * @return SAMSequenceDictionary for the reads backing this datasource.
      */
@@ -89,7 +89,7 @@ public interface ReadsDataSourceInterface extends GATKDataSource<GATKRead>, Auto
     }
 
     /**
-     * @return true if this {@code ReadsDataSourceInterface} supports multiple iterations over the data
+     * @return true if this {@code ReadsDataSource} supports multiple iterations over the data
      */
     boolean supportsSerialIteration();
 

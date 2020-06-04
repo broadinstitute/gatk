@@ -7,7 +7,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReadsDataSourceInterface;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -839,7 +839,7 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testGetReadToMateMap() {
         final String bam = largeFileTestDir + "mutect/dream_synthetic_bams/tumor_1.bam";
-        final ReadsDataSourceInterface readsDataSource = new ReadsPathDataSource(IOUtils.getPath(bam));
+        final ReadsDataSource readsDataSource = new ReadsPathDataSource(IOUtils.getPath(bam));
 
         // to keep this example small, we choose a place that only four reads overlap
         final SimpleInterval interval = new SimpleInterval("20", 576_940, 577_000);

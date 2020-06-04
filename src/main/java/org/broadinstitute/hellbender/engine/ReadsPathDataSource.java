@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
  * -Iteration over all reads, optionally restricted to reads that overlap a set of intervals
  * -Targeted queries by one interval at a time
  */
-public final class ReadsPathDataSource implements ReadsDataSourceInterface {
+public final class ReadsPathDataSource implements ReadsDataSource {
     private static final Logger logger = LogManager.getLogger(ReadsPathDataSource.class);
 
     /**
