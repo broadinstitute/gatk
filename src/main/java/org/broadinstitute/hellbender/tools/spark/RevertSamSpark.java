@@ -503,9 +503,8 @@ public class RevertSamSpark extends GATKSparkTool {
         if (setting == FileType.dynamic) {
             if (inputPath.isSam()) {
                 return FileExtensions.SAM;
-            }
-            if (inputPath.isCram()) {
-                throw new UserException.UnimplementedFeature("Input file is a cram. This is currently unsupported for this tool");
+            } else if(inputPath.isCram()){
+                return FileExtensions.CRAM;
             }
             return FileExtensions.BAM;
         } else {

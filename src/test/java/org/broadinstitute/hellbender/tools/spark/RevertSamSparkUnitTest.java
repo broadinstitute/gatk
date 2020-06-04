@@ -91,7 +91,7 @@ public class RevertSamSparkUnitTest extends CommandLineProgramTest {
     @Test
     public static void testGetDefaultExtension() {
         Assert.assertEquals(RevertSamSpark.getDefaultExtension(new GATKPath("this.is.a.sam"), RevertSamSpark.FileType.dynamic), ".sam");
-        //Assert.assertEquals(RevertSamSpark.getDefaultExtension(new GATKPath("this.is.a.cram"), RevertSamSpark.FileType.dynamic), ".cram"); //TODO https://github.com/broadinstitute/gatk/issues/5559
+        Assert.assertEquals(RevertSamSpark.getDefaultExtension(new GATKPath("this.is.a.cram"), RevertSamSpark.FileType.dynamic), ".cram"); //TODO https://github.com/broadinstitute/gatk/issues/5559
         Assert.assertEquals(RevertSamSpark.getDefaultExtension(new GATKPath("this.is.a.bam"), RevertSamSpark.FileType.dynamic), ".bam");
         Assert.assertEquals(RevertSamSpark.getDefaultExtension(new GATKPath("foo"), RevertSamSpark.FileType.dynamic), ".bam");
     }
