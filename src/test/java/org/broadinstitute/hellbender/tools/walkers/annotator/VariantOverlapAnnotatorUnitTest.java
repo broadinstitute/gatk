@@ -114,6 +114,21 @@ public final class VariantOverlapAnnotatorUnitTest extends GATKBaseTest {
 
         tests.add(new Object[]{callNOID_complex_mixed_site, Arrays.asList(dbSNP_T_TTCC), "rsID1", true});
 
+        //dbsnp and call both deletions different length
+        final VariantContext call_deletion = makeVC("call", VCFConstants.EMPTY_ID_FIELD, Arrays.asList("TTTT", "T"));
+
+        final VariantContext dbSNP_deletion_different_length = makeVC("DBSNP", "rsID1", Arrays.asList("TTTTTT", "T"));
+        final VariantContext dbSNP_deletion_and_insertion_multiallelic = makeVC("DBSNP", "rsID2", Arrays.asList("TTTTTT", "T", "TTTTTTTTTTT"));
+
+        tests.add(new Object[]{call_deletion, Arrays.asList(dbSNP_deletion_different_length, dbSNP_deletion_and_insertion_multiallelic), VCFConstants.EMPTY_ID_FIELD, false});
+
+        //dbsnp and call both insert different lengths
+        final VariantContext call_insertion = makeVC("call", VCFConstants.EMPTY_ID_FIELD, Arrays.asList("T", "TTTT"));
+
+        final VariantContext dbSNP_insertion_different_length = makeVC("DBSNP", "rsID1", Arrays.asList("T", "TTTTTT"));
+
+        tests.add(new Object[]{call_insertion, Arrays.asList(dbSNP_insertion_different_length, dbSNP_deletion_and_insertion_multiallelic), VCFConstants.EMPTY_ID_FIELD, false});
+
         final VariantContext dbSNP_AC_FAIL = new VariantContextBuilder(makeVC("DBSNP", "rsID1", Arrays.asList("A", "C"))).filter("FAIL").make();
         tests.add(new Object[]{callNoIDAC, Arrays.asList(dbSNP_AC_FAIL), VCFConstants.EMPTY_ID_FIELD, false});
 

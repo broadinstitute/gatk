@@ -18,7 +18,9 @@ import java.util.Map;
 
 /**
  * Annotate the ID field and attribute overlap FLAGs for a VariantContext against a FeatureContext or a list
- * of VariantContexts. It uses dbSNP to look up RSIDs for variants.
+ * of VariantContexts. It uses dbSNP to look up RSIDs for variants.  Note that while attempts are made to account
+ * for variant representation issues, in rare cases differences in variant representation can lead to a variant
+ * not being annotated when it optimally should be.
  */
 public final class VariantOverlapAnnotator {
     private final FeatureInput<VariantContext> dbSNP;
@@ -153,7 +155,7 @@ public final class VariantOverlapAnnotator {
      *
      * @param rsIDSourceVCs a non-null list of potential overlaps that start at vcToAnnotate
      * @param vcToAnnotate a non-null VariantContext to annotate
-     * @return a String to use for the rsID from rsIDSourceVCs if one matches, or null if none matches
+     * @return a String to use for the rsID from rsIDSourceVCs if any match, or null if none match
      */
     private static String getRsID(final List<VariantContext> rsIDSourceVCs, final VariantContext vcToAnnotate) {
         Utils.nonNull(rsIDSourceVCs, "rsIDSourceVCs cannot be null");
