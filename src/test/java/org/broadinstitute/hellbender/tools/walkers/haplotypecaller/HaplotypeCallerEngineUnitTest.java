@@ -48,7 +48,7 @@ public class HaplotypeCallerEngineUnitTest extends GATKBaseTest {
                 new SimpleInterval("20", 10001019, 10001019)
         );
 
-        try (final ReadsDataSourceInterface reads = new ReadsPathDataSource(testBam.toPath());
+        try (final ReadsDataSource reads = new ReadsPathDataSource(testBam.toPath());
              final ReferenceDataSource ref = new ReferenceFileSource(reference);
              final CachingIndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(reference)) {
 

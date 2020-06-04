@@ -6,7 +6,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
-import org.broadinstitute.hellbender.engine.ReadsDataSourceInterface;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -139,7 +139,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         int totalReads = 0;
         int duplicateReads = 0;
-        try ( final ReadsDataSourceInterface outputReads = new ReadsPathDataSource(outputFile.toPath()) ) {
+        try ( final ReadsDataSource outputReads = new ReadsPathDataSource(outputFile.toPath()) ) {
             for ( GATKRead read : outputReads ) {
                 ++totalReads;
 
@@ -240,7 +240,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         int totalReads = 0;
         int duplicateReads = 0;
-        try (final ReadsDataSourceInterface outputReads = new ReadsPathDataSource(outputFile.toPath())) {
+        try (final ReadsDataSource outputReads = new ReadsPathDataSource(outputFile.toPath())) {
             for (GATKRead read : outputReads) {
                 ++totalReads;
 
@@ -306,7 +306,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         int totalReads = 0;
         int duplicateReads = 0;
-        try (final ReadsDataSourceInterface outputReads = new ReadsPathDataSource(outputFile.toPath())) {
+        try (final ReadsDataSource outputReads = new ReadsPathDataSource(outputFile.toPath())) {
             for (GATKRead read : outputReads) {
                 ++totalReads;
 
@@ -365,7 +365,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         int totalReads = 0;
         int duplicateReads = 0;
-        try ( final ReadsDataSourceInterface outputReads = new ReadsPathDataSource(outputFile.toPath()) ) {
+        try ( final ReadsDataSource outputReads = new ReadsPathDataSource(outputFile.toPath()) ) {
             for ( GATKRead read : outputReads ) {
                 ++totalReads;
 
@@ -420,7 +420,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         int totalReads = 0;
         int duplicateReads = 0;
-        try (final ReadsDataSourceInterface outputReads = new ReadsPathDataSource(outputFile.toPath())) {
+        try (final ReadsDataSource outputReads = new ReadsPathDataSource(outputFile.toPath())) {
             for (GATKRead read : outputReads) {
                 ++totalReads;
 
@@ -461,7 +461,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         args.addInput(getTestFile("hashCollisionedReads.bam"));
         runCommandLine(args);
 
-        try ( final ReadsDataSourceInterface outputReadsSource = new ReadsPathDataSource(output.toPath()) ) {
+        try ( final ReadsDataSource outputReadsSource = new ReadsPathDataSource(output.toPath()) ) {
             final List<GATKRead> actualReads = new ArrayList<>();
             for ( final GATKRead read : outputReadsSource ) {
                 Assert.assertFalse(read.isDuplicate());
