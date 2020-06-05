@@ -15,7 +15,7 @@ import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -62,7 +62,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     private static final String DEFAULT_TOOLKIT_SHORT_NAME = "GATK";
 
     @Argument(fullName = StandardArgumentDefinitions.TMP_DIR_NAME, common=true, optional=true, doc = "Temp directory to use.")
-    public GATKPathSpecifier tmpDir;
+    public GATKPath tmpDir;
 
     @ArgumentCollection(doc="Special Arguments that have meaning to the argument parsing system.  " +
             "It is unlikely these will ever need to be accessed by the command line program")
@@ -147,7 +147,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     public Object instanceMainPostParseArgs() {
         // Provide one temp directory if the caller didn't
         if (tmpDir == null) {
-            tmpDir = new GATKPathSpecifier(System.getProperty("java.io.tmpdir"));
+            tmpDir = new GATKPath(System.getProperty("java.io.tmpdir"));
         }
 
         // Build the default headers

@@ -4,7 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -17,7 +17,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 
 public class MarkDuplicatesSparkUnitTest extends GATKBaseTest {
     @DataProvider(name = "md")
@@ -32,7 +31,7 @@ public class MarkDuplicatesSparkUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "md", groups = "spark")
     public void markDupesTest(final String input, final long totalExpected, final long dupsExpected) {
-        final GATKPathSpecifier inputPathSpec = new GATKPathSpecifier(input);
+        final GATKPath inputPathSpec = new GATKPath(input);
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);

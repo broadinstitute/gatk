@@ -9,14 +9,13 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
@@ -146,12 +145,12 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
                                                              final ReadsSparkSource readsSource) {
         if (path == null) return null;
         if (BucketUtils.fileExists(path)) {
-            final SAMFileHeader header = readsSource.getHeader(new GATKPathSpecifier(path), null);
+            final SAMFileHeader header = readsSource.getHeader(new GATKPath(path), null);
             if (header.getSequenceDictionary() != null && !header.getSequenceDictionary().isEmpty()) {
                 throw new UserException.BadInput("Input BAM should be unaligned, but found one or more sequences in the header.");
             }
             PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.microbeDictionary);
-            final JavaRDD<GATKRead> reads = readsSource.getParallelReads(new GATKPathSpecifier(path), null, null, bamPartitionSplitSize);
+            final JavaRDD<GATKRead> reads = readsSource.getParallelReads(new GATKPath(path), null, null, bamPartitionSplitSize);
             return new Tuple2<>(header, reads);
         }
         logger.warn("Could not find file " + path + ". Skipping...");
@@ -208,8 +207,8 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
         if (!readArguments.getReadPathSpecifiers().isEmpty()) {
             throw new UserException.BadInput("Please use --paired-input or --unpaired-input instead of --input");
         }
-        Utils.validateArg((outputPaired == null || new GATKPathSpecifier(outputPaired).isBam()) &&
-                        (outputUnpaired == null || new GATKPathSpecifier(outputUnpaired).isBam()),
+        Utils.validateArg((outputPaired == null || new GATKPath(outputPaired).isBam()) &&
+                        (outputUnpaired == null || new GATKPath(outputUnpaired).isBam()),
                         "Only BAM output is supported");
         final ReadsSparkSource readsSource = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
 

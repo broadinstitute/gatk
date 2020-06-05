@@ -7,7 +7,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
@@ -26,7 +26,7 @@ import java.util.*;
 public class GatherTranches extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc="List of scattered tranches files")
-    public final List<GATKPathSpecifier> inputReports = new ArrayList<>();
+    public final List<GATKPath> inputReports = new ArrayList<>();
 
     /**
      * Add truth sensitivity slices through the call set at the given values. The default values are 100.0, 99.9, 99.0, and 90.0
@@ -47,16 +47,16 @@ public class GatherTranches extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="File to output the gathered tranches file to")
-    public GATKPathSpecifier outputReport;
+    public GATKPath outputReport;
 
     @Override
     protected Object doWork() {
-        inputReports.stream().map(GATKPathSpecifier::toPath).forEach(IOUtil::assertFileIsReadable);
+        inputReports.stream().map(GATKPath::toPath).forEach(IOUtil::assertFileIsReadable);
 
         try (final PrintStream tranchesStream = new PrintStream(outputReport.getOutputStream())) {
             //use a data structure to hold the tranches from each scatter shard in a format that's easy to merge
             final TreeMap<Double, List<VQSLODTranche>> scatteredTranches = new TreeMap<>();
-            for (final GATKPathSpecifier trancheFile : inputReports) {
+            for (final GATKPath trancheFile : inputReports) {
                 try {
                     for (final VQSLODTranche currentTranche : VQSLODTranche.readTranches(trancheFile)) {
                         if (scatteredTranches.containsKey(currentTranche.minVQSLod)) {

@@ -116,7 +116,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
      * @param referenceSpec reference specifier for the reference
      * @param annotatorEngine annotator engine built with desired annotations
      */
-    public Mutect2Engine(final M2ArgumentCollection MTAC, AssemblyRegionArgumentCollection assemblyRegionArgs, final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header, final GATKPathSpecifier referenceSpec, final VariantAnnotatorEngine annotatorEngine) {
+    public Mutect2Engine(final M2ArgumentCollection MTAC, AssemblyRegionArgumentCollection assemblyRegionArgs, final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header, final GATKPath referenceSpec, final VariantAnnotatorEngine annotatorEngine) {
         this.MTAC = Utils.nonNull(MTAC);
         this.header = Utils.nonNull(header);
         minCallableDepth = MTAC.callableDepth;

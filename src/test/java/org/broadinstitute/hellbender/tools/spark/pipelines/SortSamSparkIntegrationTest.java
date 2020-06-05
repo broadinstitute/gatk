@@ -8,7 +8,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -113,10 +113,10 @@ public final class SortSamSparkIntegrationTest extends CommandLineProgramTest {
         this.runCommandLine(args);
 
         final ReadsSparkSource source = new ReadsSparkSource(SparkContextFactory.getTestSparkContext());
-        final JavaRDD<GATKRead> reads = source.getParallelReads(new GATKPathSpecifier(actualOutputFile.getAbsolutePath()), referenceFile == null ? null : new GATKPathSpecifier(referenceFile.getAbsolutePath()));
+        final JavaRDD<GATKRead> reads = source.getParallelReads(new GATKPath(actualOutputFile.getAbsolutePath()), referenceFile == null ? null : new GATKPath(referenceFile.getAbsolutePath()));
 
-        final SAMFileHeader header = source.getHeader(new GATKPathSpecifier(actualOutputFile.getAbsolutePath()),
-                referenceFileName == null ? null : new GATKPathSpecifier(referenceFile.getAbsolutePath()));
+        final SAMFileHeader header = source.getHeader(new GATKPath(actualOutputFile.getAbsolutePath()),
+                referenceFileName == null ? null : new GATKPath(referenceFile.getAbsolutePath()));
 
         final List<SAMRecord> reloadedReads = reads.collect().stream().map(read -> read.convertToSAMRecord(header)).collect(Collectors.toList());
         BaseTest.assertSorted(reloadedReads.iterator(), sortOrder.getComparatorInstance(),   reloadedReads.stream().map(SAMRecord::getSAMString).collect(Collectors.joining("\n")));

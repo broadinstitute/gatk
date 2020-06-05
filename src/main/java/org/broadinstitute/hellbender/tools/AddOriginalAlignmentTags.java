@@ -6,7 +6,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -23,7 +23,7 @@ public class AddOriginalAlignmentTags extends ReadWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="Write output to this file")
-    public GATKPathSpecifier output;
+    public GATKPath output;
     private SAMFileGATKReadWriter outputWriter;
 
     public final static String MATE_CONTIG_TAG_NAME = "XM";

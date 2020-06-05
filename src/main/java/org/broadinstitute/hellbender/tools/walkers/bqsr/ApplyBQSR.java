@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
@@ -76,7 +76,7 @@ public final class ApplyBQSR extends ReadWalker{
     private static final Logger logger = LogManager.getLogger(ApplyBQSR.class);
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
-    public GATKPathSpecifier OUTPUT;
+    public GATKPath OUTPUT;
 
     /**
      * This argument is required for recalibration of base qualities. The recalibration table is a file produced by

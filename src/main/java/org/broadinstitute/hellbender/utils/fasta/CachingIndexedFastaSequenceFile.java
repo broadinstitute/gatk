@@ -12,7 +12,7 @@ import htsjdk.samtools.util.StringUtil;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -93,7 +93,7 @@ public final class CachingIndexedFastaSequenceFile implements ReferenceSequenceF
      *
      * @param fasta The file to open.
      */
-    public CachingIndexedFastaSequenceFile(final GATKPathSpecifier fasta) {
+    public CachingIndexedFastaSequenceFile(final GATKPath fasta) {
         this(fasta.toPath(), false);
     }
 

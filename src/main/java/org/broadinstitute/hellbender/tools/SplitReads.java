@@ -6,7 +6,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -77,7 +77,7 @@ public final class SplitReads extends ReadWalker {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "The directory to output SAM/BAM/CRAM files."
     )
-    public GATKPathSpecifier OUTPUT_DIRECTORY;
+    public GATKPath OUTPUT_DIRECTORY;
 
     @Argument(
             fullName = SAMPLE_LONG_NAME,
@@ -148,8 +148,8 @@ public final class SplitReads extends ReadWalker {
 
     //  Create a new output file and prepare and return the corresponding SAMFileGATKReadWriter.
     private SAMFileGATKReadWriter prepareSAMFileWriter(final String keyName) {
-        final GATKPathSpecifier pathSpec = readArguments.getReadPathSpecifiers().get(0);
-        final GATKPathSpecifier outFile = new GATKPathSpecifier(
+        final GATKPath pathSpec = readArguments.getReadPathSpecifiers().get(0);
+        final GATKPath outFile = new GATKPath(
                 OUTPUT_DIRECTORY.toPath().resolve(
                         pathSpec.getBaseName().orElse("") + keyName + pathSpec.getExtension().get()).toString());
         return createSAMWriter(outFile, true);

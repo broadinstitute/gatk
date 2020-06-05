@@ -13,7 +13,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -160,13 +160,13 @@ public final class ClipReads extends ReadWalker {
      * The output SAM/BAM/CRAM file will be written here
      */
     @Argument(doc = "BAM output file", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
-    GATKPathSpecifier OUTPUT;
+    GATKPath OUTPUT;
 
     /**
      * If provided, ClipReads will write summary statistics about the clipping operations applied to the reads in this file.
      */
     @Argument(fullName = OUTPUT_STATISTICS_LONG_NAME, shortName = OUTPUT_STATISTICS_SHORT_NAME, doc = "File to output statistics", optional = true)
-    GATKPathSpecifier STATSOUTPUT = null;
+    GATKPath STATSOUTPUT = null;
 
     /**
      * If a value > 0 is provided, then the quality score based read clipper will be applied to the reads using this

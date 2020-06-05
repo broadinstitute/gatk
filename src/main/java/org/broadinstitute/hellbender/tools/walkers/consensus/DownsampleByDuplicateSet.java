@@ -3,14 +3,12 @@ package org.broadinstitute.hellbender.tools.walkers.consensus;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.DuplicateSetWalker;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
-import org.glassfish.jersey.Beta;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.util.Random;
@@ -60,7 +58,7 @@ import java.util.Random;
 @BetaFeature
 public class DownsampleByDuplicateSet extends DuplicateSetWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "")
-    public GATKPathSpecifier outputBam;
+    public GATKPath outputBam;
 
     public static final String FRACTION_TO_KEEP_NAME = "fraction-to-keep";
     @Argument(fullName = FRACTION_TO_KEEP_NAME, doc = "This fraction of molecules in the input bam will be retained", minValue = 0.0, maxValue = 1.0)

@@ -19,7 +19,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -65,20 +65,20 @@ public final class BucketUtils {
     }
 
     /**
-     * Return true if this {@code GATKPathSpecifier} represents a gcs URI.
+     * Return true if this {@code GATKPath} represents a gcs URI.
      * @param pathSpec specifier to inspect
-     * @return true if this {@code GATKPathSpecifier} represents a gcs URI.
+     * @return true if this {@code GATKPath} represents a gcs URI.
      */
-    public static boolean isGcsUrl(final GATKPathSpecifier pathSpec) {
+    public static boolean isGcsUrl(final GATKPath pathSpec) {
         Utils.nonNull(pathSpec);
         return pathSpec.getScheme().equals(GoogleCloudStorageFileSystem.SCHEME);
     }
 
     /**
      * @param pathSpec specifier to inspect
-     * @return true if this {@code GATKPathSpecifier} represents a remote storage system which may benefit from prefetching (gcs or http(s))
+     * @return true if this {@code GATKPath} represents a remote storage system which may benefit from prefetching (gcs or http(s))
      */
-    public static boolean isEligibleForPrefetching(final GATKPathSpecifier pathSpec) {
+    public static boolean isEligibleForPrefetching(final GATKPath pathSpec) {
         Utils.nonNull(pathSpec);
         return isEligibleForPrefetching(pathSpec.getScheme());
      }
@@ -320,7 +320,7 @@ public final class BucketUtils {
      * @param pathSpecifier The URL to the file or directory whose size to return
      * @return the total size of all files in bytes
      */
-    public static long dirSize(final GATKPathSpecifier pathSpecifier) {
+    public static long dirSize(final GATKPath pathSpecifier) {
         try {
             // GCS case (would work with local too)
             if (isGcsUrl(pathSpecifier)) {

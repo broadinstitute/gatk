@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 
 import java.io.Serializable;
 

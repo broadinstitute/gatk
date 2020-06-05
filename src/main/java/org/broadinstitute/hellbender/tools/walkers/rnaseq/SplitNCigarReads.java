@@ -7,7 +7,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.MultiplePassReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -76,7 +76,7 @@ public final class SplitNCigarReads extends MultiplePassReadWalker {
     static final String MATE_CIGAR_TAG = "MC";
 
     @Argument(fullName = OUTPUT_LONG_NAME, shortName = OUTPUT_SHORT_NAME, doc="Write output to this BAM filename")
-    GATKPathSpecifier OUTPUT;
+    GATKPath OUTPUT;
 
     /**
      * This flag tells GATK to refactor cigar string with NDN elements to one element. It intended primarily for use in

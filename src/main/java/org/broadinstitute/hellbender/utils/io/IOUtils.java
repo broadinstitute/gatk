@@ -14,7 +14,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.GetSampleName;
@@ -917,12 +917,12 @@ public final class IOUtils {
     }
 
     /**
-     * Check if a given GATKPathSpecifier represents a GenomicsDB URI.
+     * Check if a given GATKPath represents a GenomicsDB URI.
      *
-     * @param pathSpec {@code GATKPathSpecifier} containing the path to test
+     * @param pathSpec {@code GATKPath} containing the path to test
      * @return true if path represents a GenomicsDB URI, otherwise false
      */
-    public static boolean isGenomicsDBPath(final GATKPathSpecifier pathSpec) {
+    public static boolean isGenomicsDBPath(final GATKPath pathSpec) {
         return getGenomicsDBPath(pathSpec) != null;
     }
 
@@ -942,7 +942,7 @@ public final class IOUtils {
      * @param genomicsDBPath String representing legal gendb URI
      * @return absolute gendb URI to the path
      */
-    public static String getAbsolutePathWithGenomicsDBURIScheme(final GATKPathSpecifier genomicsDBPath) {
+    public static String getAbsolutePathWithGenomicsDBURIScheme(final GATKPath genomicsDBPath) {
         String path = getGenomicsDBAbsolutePath(genomicsDBPath);
         if (path == null) {
             return null;
@@ -960,7 +960,7 @@ public final class IOUtils {
      * @return absolute name to the given GenomicsDB path
      * @see #getGenomicsDBPath(String)
      */
-    public static String getGenomicsDBAbsolutePath(final GATKPathSpecifier gendbPath) {
+    public static String getGenomicsDBAbsolutePath(final GATKPath gendbPath) {
         String path = getGenomicsDBPath(gendbPath);
         if (path == null) {
             return null;
@@ -987,7 +987,7 @@ public final class IOUtils {
      *             </ul>
      * @return Valid GenomicsDB path or null
      */
-    public static String getGenomicsDBPath(final GATKPathSpecifier path) {
+    public static String getGenomicsDBPath(final GATKPath path) {
         return getGenomicsDBPath(path.getRawInputString());
     }
 

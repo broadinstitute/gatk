@@ -472,7 +472,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
      */
     private boolean hasCramInput() {
-        return readArguments.getReadPathSpecifiers().stream().anyMatch(GATKPathSpecifier::isCram);
+        return readArguments.getReadPathSpecifiers().stream().anyMatch(GATKPath::isCram);
     }
 
     /**
@@ -810,7 +810,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * @throws UserException if outputFile ends with ".cram" and no reference is provided
      * @return SAMFileWriter
      */
-    public final SAMFileGATKReadWriter createSAMWriter(final GATKPathSpecifier outputPathSpecifier, final boolean preSorted) {
+    public final SAMFileGATKReadWriter createSAMWriter(final GATKPath outputPathSpecifier, final boolean preSorted) {
         if (!hasReference() && outputPathSpecifier.isCram()) {
             throw UserException.MISSING_REFERENCE_FOR_CRAM;
         }
@@ -846,10 +846,10 @@ public abstract class GATKTool extends CommandLineProgram {
      * the vcfOutput's extension, using the best available sequence dictionary for
      * this tool, and default index, leniency and md5 generation settings.
      *
-     * @param outFile output GATKPathSpecifier for this writer. May not be null.
+     * @param outFile output GATKPath for this writer. May not be null.
      * @returns VariantContextWriter must be closed by the caller
      */
-    public VariantContextWriter createVCFWriter(final GATKPathSpecifier outFile) {
+    public VariantContextWriter createVCFWriter(final GATKPath outFile) {
         return createVCFWriter(outFile == null ? null : outFile.toPath());
     }
 

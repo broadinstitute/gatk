@@ -14,7 +14,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.Optional;
 
-public class GATKPathSpecifierUnitTest extends GATKBaseTest {
+public class GATKPathUnitTest extends GATKBaseTest {
 
     final static String FS_SEPARATOR = FileSystems.getDefault().getSeparator();
 
@@ -118,20 +118,20 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "validPathSpecifiers")
     public void testPathSpecifier(final String referenceString, final String expectedURIString, final boolean hasFileSystemProvider, final boolean isPath) {
-        final PathURI pathURI = new GATKPathSpecifier(referenceString);
+        final PathURI pathURI = new GATKPath(referenceString);
         Assert.assertNotNull(pathURI);
         Assert.assertEquals(pathURI.getURI().toString(), expectedURIString);
     }
 
     @Test(dataProvider = "validPathSpecifiers")
     public void testIsNIO(final String referenceString, final String expectedURIString, final boolean hasFileSystemProvider, final boolean isPath) {
-        final PathURI pathURI = new GATKPathSpecifier(referenceString);
+        final PathURI pathURI = new GATKPath(referenceString);
         Assert.assertEquals(pathURI.hasFileSystemProvider(), hasFileSystemProvider);
     }
 
     @Test(dataProvider = "validPathSpecifiers")
     public void testIsPath(final String referenceString, final String expectedURIString, final boolean hasFileSystemProvider, final boolean isPath) {
-        final PathURI pathURI = new GATKPathSpecifier(referenceString);
+        final PathURI pathURI = new GATKPath(referenceString);
         if (isPath) {
             Assert.assertEquals(pathURI.isPath(), isPath, pathURI.getToPathFailureReason());
         } else {
@@ -141,7 +141,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "validPathSpecifiers")
     public void testToPath(final String referenceString, final String expectedURIString, final boolean hasFileSystemProvider, final boolean isPath) {
-        final PathURI pathURI = new GATKPathSpecifier(referenceString);
+        final PathURI pathURI = new GATKPath(referenceString);
         if (isPath) {
             final Path path = pathURI.toPath();
             Assert.assertEquals(path != null, isPath, pathURI.getToPathFailureReason());
@@ -161,7 +161,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "invalidPathSpecifiers", expectedExceptions = {IllegalArgumentException.class})
     public void testPathSpecifierInvalid(final String referenceString) {
-        new GATKPathSpecifier(referenceString);
+        new GATKPath(referenceString);
     }
 
     @DataProvider
@@ -189,14 +189,14 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "invalidPath")
     public void testIsPathInvalid(final String invalidPathString) {
-        final PathURI htsURI = new GATKPathSpecifier(invalidPathString);
+        final PathURI htsURI = new GATKPath(invalidPathString);
         Assert.assertFalse(htsURI.isPath());
     }
 
     @Test(dataProvider = "invalidPath", expectedExceptions = {
             IllegalArgumentException.class, FileSystemNotFoundException.class,ProviderNotFoundException.class})
     public void testToPathInvalid(final String invalidPathString) {
-        final PathURI htsURI = new GATKPathSpecifier(invalidPathString);
+        final PathURI htsURI = new GATKPath(invalidPathString);
         htsURI.toPath();
     }
 
@@ -234,7 +234,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "inputStreamSpecifiers")
     public void testGetInputStream(final String referenceString, final String expectedFileContents) throws IOException {
-        final PathURI htsURI = new GATKPathSpecifier(referenceString);
+        final PathURI htsURI = new GATKPath(referenceString);
 
         try (final InputStream is = htsURI.getInputStream();
              final DataInputStream dis = new DataInputStream(is)) {
@@ -261,7 +261,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test
     public void testStdIn() throws IOException {
-        final PathURI htsURI = new GATKPathSpecifier(
+        final PathURI htsURI = new GATKPath(
                 SystemUtils.IS_OS_WINDOWS ?
                         "-" :
                         "/dev/stdin");
@@ -280,7 +280,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
             // stdout is not addressable as a device in the file system namespace on Windows, so skip
             throw new SkipException(("No stdout test on Windows"));
         } else {
-            final PathURI pathURI = new GATKPathSpecifier("/dev/stdout");
+            final PathURI pathURI = new GATKPath("/dev/stdout");
             try (final OutputStream os = pathURI.getOutputStream();
                  final DataOutputStream dos = new DataOutputStream(os)) {
                 dos.write("some stuff".getBytes());
@@ -311,7 +311,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "getExtensionTestCases")
     public void testGetExtension(final String spec, final String expectedExtension) {
-        final GATKPathSpecifier pathSpec = new GATKPathSpecifier(spec);
+        final GATKPath pathSpec = new GATKPath(spec);
         final Optional<String> actualExtension = pathSpec.getExtension();
 
         Assert.assertEquals(actualExtension.get(), expectedExtension);
@@ -339,7 +339,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "negativeGetExtensionTestCases")
     public void testNegativeGetExtension(final String spec) {
-        Assert.assertFalse(new GATKPathSpecifier(spec).getExtension().isPresent());
+        Assert.assertFalse(new GATKPath(spec).getExtension().isPresent());
     }
 
     @DataProvider(name = "hasExtensionTestCases")
@@ -366,7 +366,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "hasExtensionTestCases")
     public void testHasExtension(final String spec, final String extension) {
-        Assert.assertTrue(new GATKPathSpecifier(spec).hasExtension(extension));
+        Assert.assertTrue(new GATKPath(spec).hasExtension(extension));
     }
 
     @DataProvider(name = "negativeHasExtensionTestCases")
@@ -389,7 +389,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "negativeHasExtensionTestCases")
     public void testNegativeHasExtension(final String spec, final String extension) {
-        Assert.assertFalse(new GATKPathSpecifier(spec).hasExtension(extension));
+        Assert.assertFalse(new GATKPath(spec).hasExtension(extension));
     }
 
     @DataProvider(name = "illegalHasExtensionTestCases")
@@ -404,7 +404,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "illegalHasExtensionTestCases", expectedExceptions = IllegalArgumentException.class)
     public void testIllegalHasExtension(final String spec, final String extension) {
-        new GATKPathSpecifier(spec).hasExtension(extension);
+        new GATKPath(spec).hasExtension(extension);
     }
 
     @DataProvider(name = "getBaseNameTestCases")
@@ -437,7 +437,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "getBaseNameTestCases")
     public void testGetBaseName(final String spec, final String baseName) {
-        final Optional<String> actualBaseName = new GATKPathSpecifier(spec).getBaseName();
+        final Optional<String> actualBaseName = new GATKPath(spec).getBaseName();
         Assert.assertTrue(actualBaseName.isPresent());
         Assert.assertEquals(actualBaseName.get(), baseName);
     }
@@ -461,7 +461,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "negativeGetBaseNameTestCases")
     public void testNegativeGetBaseName(final String spec) {
-        final Optional<String> actualBaseName = new GATKPathSpecifier(spec).getBaseName();
+        final Optional<String> actualBaseName = new GATKPath(spec).getBaseName();
         Assert.assertFalse(actualBaseName.isPresent());
     }
 
@@ -482,7 +482,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "isFastaTestCases")
     public void testIsFasta(final String referenceSpec, final boolean expectedIsFasta) {
-        Assert.assertEquals(new GATKPathSpecifier(referenceSpec).isFasta(), expectedIsFasta);
+        Assert.assertEquals(new GATKPath(referenceSpec).isFasta(), expectedIsFasta);
     }
 
     @DataProvider(name="isSamTestCases")
@@ -500,7 +500,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "isSamTestCases")
     public void testIsSam(final String pathSpec, final boolean expectedMatch) {
-        Assert.assertEquals(new GATKPathSpecifier(pathSpec).isSam(), expectedMatch);
+        Assert.assertEquals(new GATKPath(pathSpec).isSam(), expectedMatch);
     }
 
     @DataProvider(name="isBamTestCases")
@@ -518,7 +518,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "isBamTestCases")
     public void testIsBam(final String pathSpec, final boolean expectedMatch) {
-        Assert.assertEquals(new GATKPathSpecifier(pathSpec).isBam(), expectedMatch);
+        Assert.assertEquals(new GATKPath(pathSpec).isBam(), expectedMatch);
     }
 
     @DataProvider(name="isCramTestCases")
@@ -536,13 +536,13 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "isCramTestCases")
     public void testIsCram(final String pathSpec, final boolean expectedMatch) {
-        Assert.assertEquals(new GATKPathSpecifier(pathSpec).isCram(), expectedMatch);
+        Assert.assertEquals(new GATKPath(pathSpec).isCram(), expectedMatch);
     }
 
     @DataProvider(name="isHadoopURLTestCases")
     public Object[][] isHadoopURLTestCases() {
         return new Object[][] {
-                { GATKPathSpecifier.HDFS_SCHEME + "://someFile", true },
+                { GATKPath.HDFS_SCHEME + "://someFile", true },
                 { "file://someFile.bam", false },
                 { "someFile.bam", false },
         };
@@ -550,7 +550,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "isHadoopURLTestCases")
     public void testIsHadoopURL(final String referenceSpec, final boolean expectedIsHadoop) {
-        Assert.assertEquals(new GATKPathSpecifier(referenceSpec).isHadoopURL(), expectedIsHadoop);
+        Assert.assertEquals(new GATKPath(referenceSpec).isHadoopURL(), expectedIsHadoop);
     }
 
     /**
@@ -567,7 +567,7 @@ public class GATKPathSpecifierUnitTest extends GATKBaseTest {
     private void doStreamRoundTrip(final String referenceString) throws IOException {
         final String expectedFileContents = "Test contents";
 
-        final PathURI pathURI = new GATKPathSpecifier(referenceString);
+        final PathURI pathURI = new GATKPath(referenceString);
         try (final OutputStream os = pathURI.getOutputStream();
              final DataOutputStream dos = new DataOutputStream(os)) {
             dos.write(expectedFileContents.getBytes());
