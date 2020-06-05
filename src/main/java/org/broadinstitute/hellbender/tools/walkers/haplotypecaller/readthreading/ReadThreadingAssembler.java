@@ -62,7 +62,7 @@ public final class ReadThreadingAssembler {
     private boolean recoverDanglingBranches = true;
     private boolean recoverAllDanglingBranches = false;
     private int minDanglingBranchLength = 0;
-    
+
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
     private int pruneFactor;
     private final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> chainPruner;
