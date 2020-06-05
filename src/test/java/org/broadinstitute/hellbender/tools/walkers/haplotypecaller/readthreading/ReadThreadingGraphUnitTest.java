@@ -448,7 +448,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(alt.getBytes(), Utils.dupBytes((byte) 30, alt.length()), alt.length() + "M");
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         rtgraph.addRead(read, header);
-        rtgraph.setMaxMismatchesInDanglingHead(10);
+        //rtgraph.setMaxMismatchesInDanglingHead(10);
         rtgraph.buildGraphIfNecessary();
 
         // confirm that we have just a single dangling head

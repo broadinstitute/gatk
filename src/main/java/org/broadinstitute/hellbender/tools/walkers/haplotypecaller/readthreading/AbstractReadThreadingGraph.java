@@ -6,7 +6,9 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.KmerSearchableGraph;
@@ -36,6 +38,8 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     private static final boolean DEBUG_NON_UNIQUE_CALC = false;
     private static final int MAX_CIGAR_COMPLEXITY = 3;
     private static final boolean INCREASE_COUNTS_BACKWARDS = true;
+    private int minMachingBasesToDanglngEndRecovery = 3;
+
     /**
      * for debugging info printing
      */
@@ -76,13 +80,14 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      *
      * @param kmerSize must be >= 1
      */
-    public AbstractReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples) {
+    public AbstractReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples, final int numDanglingMatchingPrefixBases) {
         super(kmerSize, new MyEdgeFactory(numPruningSamples));
 
         Utils.validateArg(kmerSize > 0, () -> "bad minkKmerSize " + kmerSize);
 
         this.debugGraphTransformations = debugGraphTransformations;
         this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
+        this.minMachingBasesToDanglngEndRecovery = numDanglingMatchingPrefixBases;
     }
 
     /**
@@ -466,6 +471,88 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     }
 
     /**
+     * Finds the index of the best extent of the prefix match between the provided paths, for dangling head merging.
+     * Requires that at a minimum there are at least #getMinMatchingBases() matches between the reference and the read
+     * at the end in order to emit an alignmet offset.
+     *
+     * @param cigarElements cigar elements corresponding to the alignment between path1 and path2
+     * @param path1  the first path
+     * @param path2  the second path
+     * @return an integer pair object where the key is the offset into path1 and the value is offset into path2 (both -1 if no path is found)
+     */
+    private Pair<Integer, Integer> bestPrefixMatch(final List<CigarElement> cigarElements, final byte[] path1, final byte[] path2) {
+        final int getMinMatchingBases = getMinMatchingBases();
+        int matchesSinceLastMismatch = 0;
+        int refIndex = 0, readIdx = 0;
+        int bestRefIndex = 0, bestReadIdx = 0;
+        // we want to paste the base before the last read base, thus we need to handle it in the next iteration when we find a mismatch
+        boolean wasLastIndexAMismatch = false;
+
+        for (final CigarElement ce : cigarElements) {
+            final int elementLength = ce.getLength();
+            switch (ce.getOperator()) {
+                case X:case EQ:case M:
+                    for (int j = 0; j < elementLength; j++, refIndex++, readIdx++)
+                        if (path1[refIndex] != path2[readIdx]) {
+                            bestReadIdx = readIdx;
+                            matchesSinceLastMismatch = 0;
+                            wasLastIndexAMismatch = true;
+                        } else {
+                            // We want the index BEFORE the mismatch on the ref so we can connect it
+                            if (wasLastIndexAMismatch) {
+                                bestRefIndex = refIndex;
+                                wasLastIndexAMismatch = false;
+                            }
+                            matchesSinceLastMismatch++;
+                        }
+                    break;
+                // If there is an insertion, set the bestReadIndex to the last base of said insertion
+                case I:
+                    wasLastIndexAMismatch = true;
+                    matchesSinceLastMismatch = 0;
+                    readIdx += elementLength;
+                    bestReadIdx = readIdx -1; // Compensate for the last iteration in a matching field being excessive
+                    break;
+                // If there is a deletion, set the bestReadIndex to the last base before the deletion
+                case D:
+                    bestReadIdx = readIdx - 1; // Compensate for the last iteration in a matching field being excessive
+                    wasLastIndexAMismatch = true;
+                    matchesSinceLastMismatch = 0;
+                    refIndex += elementLength;
+                    break;
+                case H:
+                case P:
+                    break;
+                default:
+                    throw new GATKException("The " + ce.getOperator() + " cigar element is not currently supported");
+            }
+        }
+        if (matchesSinceLastMismatch >= getMinMatchingBases) {
+            return Pair.of(bestRefIndex, bestReadIdx);
+        } else {
+            return Pair.of(-1, -1);
+        }
+    }
+
+//    /**
+//     * Determine the maximum number of mismatches permitted on the branch.
+//     * Unless it's preset (e.g. by unit tests) it should be the length of the branch divided by the kmer size.
+//     *
+//     * @param lengthOfDanglingBranch  the length of the branch itself
+//     * @return positive integer
+//     */
+//    private int getMaxMismatches(final int lengthOfDanglingBranch) {
+//        return maxMismatchesInDanglingHead > 0 ? maxMismatchesInDanglingHead : Math.max(1, (lengthOfDanglingBranch / kmerSize));
+//    }
+
+    /**
+     * Determine the minimum number of matches to be considered allowable for recovering dangling ends
+     */
+    private int getMinMatchingBases() {
+        return minMachingBasesToDanglngEndRecovery;
+    }
+
+    /**
      * Attempt to attach vertex with in-degree == 0, or a vertex on its path, to the graph
      *
      * @param vertex                  the vertex to recover
@@ -536,7 +623,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     /**
      * Actually merge the dangling head if possible
      *
-     * @param danglingHeadMergeResult the result from generating a Cigar for the dangling head against the reference
+     * @param danglingHeadMergeResult   the result from generating a Cigar for the dangling head against the reference
      * @return 1 if merge was successful, 0 otherwise
      */
     @VisibleForTesting
@@ -544,25 +631,25 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
         final List<CigarElement> elements = danglingHeadMergeResult.cigar.getCigarElements();
         final CigarElement firstElement = elements.get(0);
-        Utils.validateArg(firstElement.getOperator() == CigarOperator.M, "The first Cigar element must be an M");
+        Utils.validateArg( firstElement.getOperator() == CigarOperator.M, "The first Cigar element must be an M");
 
-        final int indexesToMerge = bestPrefixMatch(danglingHeadMergeResult.referencePathString, danglingHeadMergeResult.danglingPathString, firstElement.getLength());
-        if (indexesToMerge <= 0) {
+        final Pair<Integer, Integer> indexesToMerge = bestPrefixMatch(elements, danglingHeadMergeResult.referencePathString, danglingHeadMergeResult.danglingPathString);
+        if ( indexesToMerge.getKey() <= 0 ||  indexesToMerge.getValue() <= 0 ) {
             return 0;
         }
 
         // we can't push back the reference path
-        if (indexesToMerge >= danglingHeadMergeResult.referencePath.size() - 1) {
+        if ( indexesToMerge.getKey() >= danglingHeadMergeResult.referencePath.size() - 1 ) {
             return 0;
         }
 
         // but we can manipulate the dangling path if we need to
-        if (indexesToMerge >= danglingHeadMergeResult.danglingPath.size() &&
-                !extendDanglingPathAgainstReference(danglingHeadMergeResult, indexesToMerge - danglingHeadMergeResult.danglingPath.size() + 2)) {
+        if ( indexesToMerge.getValue() >= danglingHeadMergeResult.danglingPath.size() &&
+                ! extendDanglingPathAgainstReference(danglingHeadMergeResult, indexesToMerge.getValue() - danglingHeadMergeResult.danglingPath.size() + 2) ) {
             return 0;
         }
 
-        addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge + 1), danglingHeadMergeResult.danglingPath.get(indexesToMerge), ((MyEdgeFactory) getEdgeFactory()).createEdge(false, 1));
+        addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge.getKey()), danglingHeadMergeResult.danglingPath.get(indexesToMerge.getValue()), ((MyEdgeFactory)getEdgeFactory()).createEdge(false, 1));
 
         return 1;
     }
