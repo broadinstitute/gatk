@@ -178,7 +178,7 @@ public final class AlleleLikelihoodsUnitTest {
 
         checkEvidenceToIndexMapIsCorrect(result);
 
-        result.filterPoorlyModeledEvidence(read -> -100);
+        result.filterPoorlyModeledEvidence(read -> -100, null);
 
         checkEvidenceToIndexMapIsCorrect(result);
 
@@ -234,7 +234,7 @@ public final class AlleleLikelihoodsUnitTest {
 
         final SimpleInterval evenReadOverlap = new SimpleInterval(SAM_HEADER.getSequenceDictionary().getSequences().get(0).getSequenceName(), EVEN_READ_START, EVEN_READ_START);
 
-        result.filterPoorlyModeledEvidence(read -> -100);
+        result.filterPoorlyModeledEvidence(read -> -100, null);
 
         checkEvidenceToIndexMapIsCorrect(result);
         result.retainEvidence(evenReadOverlap::overlaps);

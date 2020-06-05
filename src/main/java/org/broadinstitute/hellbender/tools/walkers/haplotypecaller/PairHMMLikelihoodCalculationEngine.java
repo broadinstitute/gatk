@@ -196,9 +196,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         result.normalizeLikelihoods(log10globalReadMismappingRate, symmetricallyNormalizeAllelesToReference);
 
         if (dynamicDisqualification) {
-            result.filterPoorlyModeledEvidence(daynamicLog10MinLiklihoodModel(readDisqualificationScale, log10MinTrueLikelihood(expectedErrorRatePerBase, false)));
+            result.filterPoorlyModeledEvidence(daynamicLog10MinLiklihoodModel(readDisqualificationScale, log10MinTrueLikelihood(expectedErrorRatePerBase, false)), genotyperDebugOutStream);
         } else {
-            result.filterPoorlyModeledEvidence(log10MinTrueLikelihood(expectedErrorRatePerBase, true));
+            result.filterPoorlyModeledEvidence(log10MinTrueLikelihood(expectedErrorRatePerBase, true), genotyperDebugOutStream);
         }
         return result;
     }
@@ -347,7 +347,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         final List<GATKRead> result = new ArrayList<>(reads.size());
 
         for (final GATKRead read : reads) {
-            final GATKRead unclipped = read;
+            final GATKRead unclipped = ReadClipper.revertSoftClippedBases(read);
             final byte[] readBases = unclipped.getBases();
 
             // NOTE -- must clone anything that gets modified here so we don't screw up future uses of the read
@@ -359,6 +359,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             applyPCRErrorModel(readBases, readInsQuals, readDelQuals);
             capMinimumReadQualities(unclipped, readQuals, readInsQuals, readDelQuals, baseQualityScoreThreshold, disableCapReadQualitiesToMapQ);
 
+            // Store the actual qualities
             read.setTransientAttribute("HMMQuals", readQuals);
             // Create a new copy of the read and sets its base qualities to the modified versions.
             result.add(createQualityModifiedRead(unclipped, readBases, readQuals, readInsQuals, readDelQuals));

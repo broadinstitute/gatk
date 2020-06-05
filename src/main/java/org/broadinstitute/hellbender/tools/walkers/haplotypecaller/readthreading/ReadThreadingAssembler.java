@@ -131,15 +131,11 @@ public final class ReadThreadingAssembler {
         Utils.validateArg( fullReferenceWithPadding.length == refLoc.size(), "Reference bases and reference loc must be the same size.");
         ParamUtils.isPositiveOrZero(pruneFactor, "Pruning factor cannot be negative");
 
-        // Note that error correction does not modify the original reads, which are used for genotyping
+        // Note that error correction does not modify the original reads, which are used for genotyping TODO this might come before error correction /
         List<GATKRead> correctedReads = readErrorCorrector == null ? assemblyRegion.getReads() : readErrorCorrector.correctReads(assemblyRegion.getReads());
 
-        //TODO very bad must undo
+        // Revert clipped bases if necessary (since we do not want to assemble them)
         correctedReads = correctedReads.stream().map(r -> ReadClipper.revertSoftClippedBases(r)).collect(Collectors.toList());
-//        System.out.println("\n\n\n\n"+assemblyRegion.getSpan()+"\nNumber of reads in region: " + correctedReads.size() + "     they are:");
-//        for (GATKRead read : correctedReads) {
-//            System.out.println(read.getName() + "   " + read.convertToSAMRecord(assemblyRegion.getHeader()).getFlags()+"   pos:["+read.getStart()+"-"+read.getEnd()+"] "+read.getCigar());
-//        }
 
         final List<AbstractReadThreadingGraph> nonRefRTGraphs = new LinkedList<>();
         final List<SeqGraph> nonRefSeqGraphs = new LinkedList<>();
