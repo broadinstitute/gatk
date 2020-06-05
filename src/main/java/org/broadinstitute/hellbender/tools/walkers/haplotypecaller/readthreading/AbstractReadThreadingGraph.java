@@ -38,7 +38,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     private static final boolean DEBUG_NON_UNIQUE_CALC = false;
     private static final int MAX_CIGAR_COMPLEXITY = 3;
     private static final boolean INCREASE_COUNTS_BACKWARDS = true;
-    private int minMachingBasesToDanglngEndRecovery = 3;
+    private int minMatchingBasesToDangingEndRecovery = -1;
 
     /**
      * for debugging info printing
@@ -87,7 +87,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
         this.debugGraphTransformations = debugGraphTransformations;
         this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
-        this.minMachingBasesToDanglngEndRecovery = numDanglingMatchingPrefixBases;
+        this.minMatchingBasesToDangingEndRecovery = numDanglingMatchingPrefixBases;
     }
 
     /**
@@ -473,7 +473,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     /**
      * Finds the index of the best extent of the prefix match between the provided paths, for dangling head merging.
      * Requires that at a minimum there are at least #getMinMatchingBases() matches between the reference and the read
-     * at the end in order to emit an alignmet offset.
+     * at the end in order to emit an alignment offset.
      *
      * @param cigarElements cigar elements corresponding to the alignment between path1 and path2
      * @param path1  the first path
@@ -481,7 +481,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      * @return an integer pair object where the key is the offset into path1 and the value is offset into path2 (both -1 if no path is found)
      */
     private Pair<Integer, Integer> bestPrefixMatch(final List<CigarElement> cigarElements, final byte[] path1, final byte[] path2) {
-        final int getMinMatchingBases = getMinMatchingBases();
+        final int minMismatchingBases = getMinMatchingBases();
         int matchesSinceLastMismatch = 0;
         int refIndex = 0, readIdx = 0;
         int bestRefIndex = 0, bestReadIdx = 0;
@@ -527,29 +527,18 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                     throw new GATKException("The " + ce.getOperator() + " cigar element is not currently supported");
             }
         }
-        if (matchesSinceLastMismatch >= getMinMatchingBases) {
+        if (matchesSinceLastMismatch >= minMismatchingBases) {
             return Pair.of(bestRefIndex, bestReadIdx);
         } else {
             return Pair.of(-1, -1);
         }
     }
 
-//    /**
-//     * Determine the maximum number of mismatches permitted on the branch.
-//     * Unless it's preset (e.g. by unit tests) it should be the length of the branch divided by the kmer size.
-//     *
-//     * @param lengthOfDanglingBranch  the length of the branch itself
-//     * @return positive integer
-//     */
-//    private int getMaxMismatches(final int lengthOfDanglingBranch) {
-//        return maxMismatchesInDanglingHead > 0 ? maxMismatchesInDanglingHead : Math.max(1, (lengthOfDanglingBranch / kmerSize));
-//    }
-
     /**
-     * Determine the minimum number of matches to be considered allowable for recovering dangling ends
+     * The minimum number of matches to be considered allowable for recovering dangling ends
      */
     private int getMinMatchingBases() {
-        return minMachingBasesToDanglngEndRecovery;
+        return minMatchingBasesToDangingEndRecovery;
     }
 
     /**
@@ -576,7 +565,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         }
 
         // merge
-        return mergeDanglingHead(danglingHeadMergeResult);
+        return minMatchingBasesToDangingEndRecovery >= 0 ? mergeDanglingHead(danglingHeadMergeResult) : mergeDanglingHeadLegacy(danglingHeadMergeResult);
     }
 
     /**
@@ -594,7 +583,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
         final int lastRefIndex = danglingTailMergeResult.cigar.getReferenceLength() - 1;
         final int matchingSuffix = Math.min(longestSuffixMatch(danglingTailMergeResult.referencePathString, danglingTailMergeResult.danglingPathString, lastRefIndex), lastElement.getLength());
-        if (matchingSuffix == 0) {
+        if (matchingSuffix == 0 && matchingSuffix >= minMatchingBasesToDangingEndRecovery ) {
             return 0;
         }
 
@@ -619,6 +608,41 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
         return 1;
     }
+
+    /**
+     * Actually merge the dangling head if possible, this is the old codepath that does not handle indels
+     *
+     * @param danglingHeadMergeResult   the result from generating a Cigar for the dangling head against the reference
+     * @return 1 if merge was successful, 0 otherwise
+     */
+    @VisibleForTesting
+    int mergeDanglingHeadLegacy(final DanglingChainMergeHelper danglingHeadMergeResult) {
+
+            final List<CigarElement> elements = danglingHeadMergeResult.cigar.getCigarElements();
+            final CigarElement firstElement = elements.get(0);
+            Utils.validateArg(firstElement.getOperator() == CigarOperator.M, "The first Cigar element must be an M");
+
+            final int indexesToMerge = bestPrefixMatchLegacy(danglingHeadMergeResult.referencePathString, danglingHeadMergeResult.danglingPathString, firstElement.getLength());
+            if (indexesToMerge <= 0) {
+                return 0;
+            }
+
+            // we can't push back the reference path
+            if (indexesToMerge >= danglingHeadMergeResult.referencePath.size() - 1) {
+                return 0;
+            }
+
+            // but we can manipulate the dangling path if we need to
+            if (indexesToMerge >= danglingHeadMergeResult.danglingPath.size() &&
+                    !extendDanglingPathAgainstReference(danglingHeadMergeResult, indexesToMerge - danglingHeadMergeResult.danglingPath.size() + 2)) {
+                return 0;
+            }
+
+            addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge + 1), danglingHeadMergeResult.danglingPath.get(indexesToMerge), ((MyEdgeFactory) getEdgeFactory()).createEdge(false, 1));
+
+            return 1;
+        }
+
 
     /**
      * Actually merge the dangling head if possible
@@ -869,8 +893,8 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      * @param maxIndex the maximum index to traverse (not inclusive)
      * @return the index of the ideal prefix match or -1 if it cannot find one, must be less than maxIndex
      */
-    private int bestPrefixMatch(final byte[] path1, final byte[] path2, final int maxIndex) {
-        final int maxMismatches = getMaxMismatches(maxIndex);
+    private int bestPrefixMatchLegacy(final byte[] path1, final byte[] path2, final int maxIndex) {
+        final int maxMismatches = getMaxMismatchesLegacy(maxIndex);
         int mismatches = 0;
         int index = 0;
         int lastGoodIndex = -1;
@@ -888,13 +912,15 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     }
 
     /**
+     * NOTE: this method is only used for dangling heads and not tails.
+     * 
      * Determine the maximum number of mismatches permitted on the branch.
      * Unless it's preset (e.g. by unit tests) it should be the length of the branch divided by the kmer size.
      *
      * @param lengthOfDanglingBranch the length of the branch itself
      * @return positive integer
      */
-    private int getMaxMismatches(final int lengthOfDanglingBranch) {
+    private int getMaxMismatchesLegacy(final int lengthOfDanglingBranch) {
         return maxMismatchesInDanglingHead > 0 ? maxMismatchesInDanglingHead : Math.max(1, (lengthOfDanglingBranch / kmerSize));
     }
 

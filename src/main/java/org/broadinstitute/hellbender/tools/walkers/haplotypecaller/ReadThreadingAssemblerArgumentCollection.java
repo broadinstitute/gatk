@@ -187,8 +187,8 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public boolean captureAssemblyFailureBAM = false;
 
     @Hidden
-    @Argument(fullName = "num-matching-prefix-bases-in-end-to-recover", doc = "Sets the number of bases that must exactly match in a dangling end for it to be recoverd", optional = true)
-    public int minMachingBasesToDanglngEndRecovery = 3;
+    @Argument(fullName = "num-matching-bases-in-dangling-end-to-recover", doc = "Sets the number of exactly matching bases in the suffix of a dangling tail and the prefix for a dangling head necessary in order to recover the path. (-1 indicates legacy behavior)", optional = true)
+    public int minMatchingBasesToDanglingEndRecovery = -1;
 
     //---------------------------------------------------------------------------------------------------------------
     //
