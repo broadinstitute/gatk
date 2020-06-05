@@ -197,7 +197,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             }
             if (genotyperDebugOutStream != null) {
                 genotyperDebugOutStream.println("\n=============================================================================");
-                genotyperDebugOutStream.println("Event at: " + mergedVC + " with " + readAlleleLikelihoods.evidenceCount() + " reads");
+                genotyperDebugOutStream.println("Event at: " + mergedVC + " with " + readAlleleLikelihoods.evidenceCount() + " reads and "+readAlleleLikelihoods.filteredSampleEvidence(0).size()+" disqualified");
                 genotyperDebugOutStream.println("=============================================================================");
             }
 

@@ -11,7 +11,9 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.PrintStream;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
@@ -1207,7 +1209,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      * @throws IllegalArgumentException if {@code maximumErrorPerBase} is negative.
      */
     @VisibleForTesting
-    public void filterPoorlyModeledEvidence(final ToDoubleFunction<EVIDENCE> log10MinTrueLikelihood) {
+    public void filterPoorlyModeledEvidence(final ToDoubleFunction<EVIDENCE> log10MinTrueLikelihood, final PrintStream genotyperDebugOutStream) {
         Utils.validateArg(alleles.numberOfAlleles() > 0, "unsupported for read-likelihood collections with no alleles");
 
         final int numberOfSamples = samples.numberOfSamples();
@@ -1224,7 +1226,9 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             // Retain the filtered evidence for later genotyping purposes
             final List<EVIDENCE> filtered = filteredEvidenceBySampleIndex.get(sampleIndex);
             Arrays.stream(indexesToRemove).forEach(idx -> {
-//                System.out.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName());
+                if (genotyperDebugOutStream != null) {
+                    genotyperDebugOutStream.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName());
+                }
                 filtered.add(sampleEvidence.get(idx));
             });
 

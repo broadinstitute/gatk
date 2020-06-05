@@ -163,7 +163,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         this.aligner = SmithWatermanAligner.getAligner(hcArgs.smithWatermanImplementation);
         trimmer = new AssemblyRegionTrimmer(assemblyRegionArgs, readsHeader.getSequenceDictionary());
         forceCallingAllelesPresent = hcArgs.alleles != null;
-        initialize(createBamOutIndex, createBamOutMD5);
 
         // Add necessary debug streams to the output
         if (hcArgs.assemblyStateOutput != null) {
@@ -184,6 +183,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         } else {
             genotyperDebugOutStream = null;
         }
+
+        initialize(createBamOutIndex, createBamOutMD5);
     }
 
     /**
