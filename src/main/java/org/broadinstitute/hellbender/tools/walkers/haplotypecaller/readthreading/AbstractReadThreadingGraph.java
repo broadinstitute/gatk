@@ -591,7 +591,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
         final List<CigarElement> elements = danglingHeadMergeResult.cigar.getCigarElements();
         final CigarElement firstElement = elements.get(0);
-        Utils.validateArg(firstElement.getOperator() == CigarOperator.M, "The first Cigar element must be an M");
+        Utils.validateArg( firstElement.getOperator() == CigarOperator.M, "The first Cigar element must be an M");
 
         final int indexesToMerge = bestPrefixMatchLegacy(danglingHeadMergeResult.referencePathString, danglingHeadMergeResult.danglingPathString, firstElement.getLength());
         if (indexesToMerge <= 0) {
@@ -599,7 +599,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         }
 
         // we can't push back the reference path
-        if (indexesToMerge >= danglingHeadMergeResult.referencePath.size() - 1) {
+        if ( indexesToMerge.getKey() >= danglingHeadMergeResult.referencePath.size() - 1 ) {
             return 0;
         }
 
@@ -609,7 +609,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
             return 0;
         }
 
-        addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge + 1), danglingHeadMergeResult.danglingPath.get(indexesToMerge), ((MyEdgeFactory) getEdgeFactory()).createEdge(false, 1));
+        addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge.getKey()), danglingHeadMergeResult.danglingPath.get(indexesToMerge.getValue()), ((MyEdgeFactory)getEdgeFactory()).createEdge(false, 1));
 
         return 1;
     }
