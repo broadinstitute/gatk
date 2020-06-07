@@ -347,7 +347,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         final List<GATKRead> result = new ArrayList<>(reads.size());
 
         for (final GATKRead read : reads) {
-            final GATKRead unclipped = ReadClipper.revertSoftClippedBases(read);
+            final GATKRead unclipped = ReadClipper.hardClipSoftClippedBases(read);    //Clip the bases here to remove hap
             final byte[] readBases = unclipped.getBases();
 
             // NOTE -- must clone anything that gets modified here so we don't screw up future uses of the read
