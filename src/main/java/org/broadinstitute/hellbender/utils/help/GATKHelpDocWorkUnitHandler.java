@@ -1,10 +1,19 @@
 package org.broadinstitute.hellbender.utils.help;
 
+import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.NamedArgumentDefinition;
 import org.broadinstitute.barclay.help.DefaultDocWorkUnitHandler;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 
 import org.broadinstitute.barclay.help.HelpDoclet;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * The GATK Documentation work unit handler class that is the companion to GATKHelpDoclet.
@@ -56,6 +65,77 @@ public class GATKHelpDocWorkUnitHandler extends DefaultDocWorkUnitHandler {
             final CommandLineProgramProperties clpProperties = currentWorkUnit.getCommandLineProperties();
             currentWorkUnit.setProperty("picardsummary", clpProperties.summary());
         }
+    }
+
+    @Override
+    protected void addDefaultPlugins(
+            final DocWorkUnit currentWorkUnit,
+            final List<? extends CommandLinePluginDescriptor<?>> pluginDescriptors) {
+        super.addDefaultPlugins(currentWorkUnit, pluginDescriptors);
+
+        final String readFilterDescriptorName = new GATKReadFilterPluginDescriptor(
+                Collections.emptyList()).getDisplayName();
+        final String annotationDescriptorName = new GATKAnnotationPluginDescriptor(
+                Collections.emptyList(),
+                Collections.emptyList()).getDisplayName();
+
+        // for the --read-filters and --annotations arguments, we need to artificially present the default
+        // plugin values that are programmatically set by tools as if they were "default" values for the corresponding
+        // arguments so they show up in the doc for each tool
+        pluginDescriptors.forEach(
+                descriptor -> {
+                    if (descriptor.getDisplayName().equals(readFilterDescriptorName)) {
+                        propagatePluginDefaults(
+                                currentWorkUnit,
+                                readFilterDescriptorName,
+                                ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME);
+                    } else if (descriptor.getDisplayName().equals(annotationDescriptorName)) {
+                        propagatePluginDefaults(
+                                currentWorkUnit,
+                                annotationDescriptorName,
+                                StandardArgumentDefinitions.ANNOTATION_LONG_NAME);
+                    }
+                });
+
+    }
+
+    // add the default instances for plugin "descriptorName" as default values for "targetArgumentName"
+    @SuppressWarnings("unchecked")
+    private void propagatePluginDefaults(
+            final DocWorkUnit currentWorkUnit,
+            final String descriptorName,
+            final String targetArgumentName) {
+        final List<String> defaultReadFilterNames = new ArrayList<>();
+
+        final HashSet<HashMap<String, Object>> defaultsForPlugins =
+                (HashSet<HashMap<String, Object>>) currentWorkUnit.getProperty(descriptorName);
+        if (defaultsForPlugins != null) {
+            for (final HashMap<String, Object> pluginMap : defaultsForPlugins) {
+                defaultReadFilterNames.add((String) pluginMap.get("name"));
+            }
+        }
+        final Map<String, List<Map<String, Object>>> argsMap =
+                (Map<String, List<Map<String, Object>>>) currentWorkUnit.getProperty("arguments");
+        final List<Map<String, Object>> readFilterArgList =
+                argsMap.get("all").stream().filter(
+                        m -> m.containsKey("name") && m.get("name").equals("--" + targetArgumentName)
+                ).collect(Collectors.toList());
+        if (readFilterArgList.size() != 1) {
+            throw new IllegalStateException(String.format("Can't find argument %s for descriptor %s in %s",
+                    targetArgumentName,
+                    descriptorName,
+                    currentWorkUnit.getClazz()));
+        }
+        final Map<String, Object> readFilterArg = readFilterArgList.get(0);
+        final String oldDefaultValue = (String) readFilterArg.get("defaultValue");
+        if (oldDefaultValue != null &&
+                oldDefaultValue.length() != 0 && !oldDefaultValue.equals("") && !oldDefaultValue.equals("[]")) {
+            throw new IllegalStateException(String.format("%s argument property for argument %s for descriptor %s in %s is already populated",
+                    "defaultValue",
+                    targetArgumentName,
+                    currentWorkUnit.getClazz()));
+        }
+        readFilterArg.put("defaultValue", defaultReadFilterNames.stream().collect(Collectors.joining(", ")));
     }
 
 }
