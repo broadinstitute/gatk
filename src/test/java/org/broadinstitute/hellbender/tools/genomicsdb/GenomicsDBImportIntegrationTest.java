@@ -1026,7 +1026,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         Assert.assertTrue(generatedInterval.sorted().equals(expectedInterval.sorted()));
     }
 
-    void basicWriteAndQueryWithOptions(String workspace, Map<String, Object> options) throws IOException {
+    /*void basicWriteAndQueryWithOptions(String workspace, Map<String, Object> options) throws IOException {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.add(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
         INTERVAL.forEach(args::addInterval);
@@ -1068,7 +1068,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         } catch (GenomicsDBImport.UnableToCreateGenomicsDBWorkspace e) {
             // pass
         }
-    }
+    }*/
 
   @Test(groups = {"bucket"})
     public void testWriteToAndQueryFromGCS() throws IOException {
