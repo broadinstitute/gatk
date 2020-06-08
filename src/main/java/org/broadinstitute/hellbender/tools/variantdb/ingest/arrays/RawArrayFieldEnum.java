@@ -1,13 +1,8 @@
 package org.broadinstitute.hellbender.tools.variantdb.ingest.arrays;
 
-import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
-import org.apache.commons.lang3.StringUtils;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
-
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -29,7 +24,6 @@ public enum RawArrayFieldEnum {
     // This where the validation step (required vs not) lives  -- fail if there is missing data for a required field
     // and just leave it empty if not required
 
-//    position, // Required-- start position for sample
     sample_id, // Required-- sample Id for sample
 
 
@@ -43,50 +37,27 @@ public enum RawArrayFieldEnum {
         }
     },
 
-    ref { // Required
+    filter {
         public String getColumnValue(final VariantContext variant) {
-            final String referenceBase = variant.getReference().getBaseString();
-            if (referenceBase == null) {
-                throw new IllegalArgumentException("Cannot be missing required value for reference_bases"); // TODO, should this be UserException too?
-            }
-            return referenceBase;
+            Set<String> outList = variant.getFilters();
+            return outList.isEmpty() ? "null" : String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, outList);
         }
     },
 
-    alt { // remove "<NON_REF>"
-        //TODO what if this field is null and if <NON_REF> is not there--throw an error
+    call_GT_encoded {
         public String getColumnValue(final VariantContext variant) {
-            List<String> outList = new ArrayList<>();
-            for(Allele a : variant.getAlternateAlleles()) {
-                if (!a.isNonRefAllele()) { // TODO unit test this
-                    outList.add(a.getDisplayString());
-                }
+            Genotype g = variant.getGenotype(0);
+            RawArrayTsvCreator.GT_encoding gt = RawArrayTsvCreator.GT_encoding.MISSING;
+            if (g.isHomRef()) {
+                gt = RawArrayTsvCreator.GT_encoding.HOM_REF;
+            } else if (g.isHomVar()) {
+                gt = RawArrayTsvCreator.GT_encoding.HOM_VAR;
+            } else if (g.isHetNonRef()) {
+                gt = RawArrayTsvCreator.GT_encoding.HET_NON_REF;
+            } else if (g.isHet()) {
+                gt = RawArrayTsvCreator.GT_encoding.HET;
             }
-            return String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, outList);
-        }
-    },
-
-//    filter {
-//        //TODO remove - just for looking at the data
-//        public String getColumnValue(final VariantContext variant) {
-//            Set<String> outList = variant.getFilters();
-//            return outList.isEmpty() ? "null" : String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, outList);
-//        }
-//    },
-
-    call_GT {
-        public String getColumnValue(final VariantContext variant) {
-            IndexedAlleleList<Allele> alleleList = new IndexedAlleleList<>(variant.getAlleles());
-            ArrayList<Integer> allele_indices = new ArrayList<Integer>();
-
-            for (Allele allele : variant.getGenotype(0).getAlleles()) {
-                allele_indices.add(alleleList.indexOfAllele(allele));
-            }
-            if (allele_indices.size() != 2){
-                throw new IllegalArgumentException("GT doesnt have two alleles");
-            }
-            String separator = variant.getGenotype(0).isPhased() ? VCFConstants.PHASED : VCFConstants.UNPHASED;
-            return StringUtils.join(allele_indices, separator);
+            return gt.getValue();
         }
     },
 
@@ -120,11 +91,11 @@ public enum RawArrayFieldEnum {
         throw new IllegalArgumentException("Not implemented");
     }
 
-    private static String getAttribute(VariantContext vc, String key, String defaultValue){
-        Object attr = vc.getAttribute(key);
-        if ( attr == null ) return defaultValue;
-        if ( attr instanceof String ) return (String)attr;
-        if ( attr instanceof List) return StringUtils.join((List)attr, VCFConstants.INFO_FIELD_ARRAY_SEPARATOR);
-        return String.valueOf(attr); // throws an exception if this isn't a string
-    }
+//    private static String getAttribute(VariantContext vc, String key, String defaultValue){
+//        Object attr = vc.getAttribute(key);
+//        if ( attr == null ) return defaultValue;
+//        if ( attr instanceof String ) return (String)attr;
+//        if ( attr instanceof List) return StringUtils.join((List)attr, VCFConstants.INFO_FIELD_ARRAY_SEPARATOR);
+//        return String.valueOf(attr); // throws an exception if this isn't a string
+//    }
 }

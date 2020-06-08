@@ -83,6 +83,10 @@ public final class PetTsvCreator {
             this.value = value;
         }
 
+        public String getValue() {
+            return value;
+        }
+
     }
 
     public void apply(VariantContext variant, List<GenomeLoc> intervalsToWrite) {
