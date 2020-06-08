@@ -36,8 +36,10 @@ public class TabCompletionIntegrationTest extends CommandLineProgramTest {
         );
     }
 
+    // suppress deprecation warning on Java 11 since we're using deprecated javadoc APIs
+    @SuppressWarnings({"deprecation","removal"})
     @Test
-    public static void tabCompleteSmokeTest() throws IOException, InterruptedException {
+    public static void tabCompleteSmokeTest() {
         final File tabCompletionTestTarget = createTempDir("tabCompletionTest");
 
         // Setup rote input arguments:

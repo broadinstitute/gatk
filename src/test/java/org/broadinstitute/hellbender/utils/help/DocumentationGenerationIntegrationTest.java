@@ -5,7 +5,6 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -34,8 +33,10 @@ public class DocumentationGenerationIntegrationTest extends CommandLineProgramTe
             "picard.analysis"
     };
 
+    // suppress deprecation warning on Java 11 since we're using deprecated javadoc APIs
+    @SuppressWarnings({"deprecation","removal"})
     @Test
-    public static void documentationSmokeTest() throws IOException {
+    public static void documentationSmokeTest() {
         final File docTestTarget = createTempDir("docgentest");
         final String[] argArray = new String[]{
                 "javadoc",
