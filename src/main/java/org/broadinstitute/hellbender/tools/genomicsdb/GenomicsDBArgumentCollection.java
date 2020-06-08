@@ -9,9 +9,11 @@ import java.io.Serializable;
 public class GenomicsDBArgumentCollection implements Serializable {
   private static final long serialVersionUID = 1L;
   public static final String USE_VCF_CODEC_LONG_NAME = "genomicsdb-use-vcf-codec";
+  public static final String SHARED_POSIXFS_OPTIMIZATIONS = "genomicsdb-shared-posixfs-optimizations";
 
   private static final boolean DEFAULT_CALL_GENOTYPES = false;
   private static final boolean DEFAULT_USE_VCF_CODEC = false;
+  private static final boolean DEFAULT_SHARED_POSIXFS_OPTIMIZATIONS = false;
 
   /**
    * Not full-fledged arguments for now.
@@ -31,4 +33,10 @@ public class GenomicsDBArgumentCollection implements Serializable {
       doc = "Use VCF Codec Streaming for data from GenomicsDB instead of the default BCF",
       optional = true)
   public boolean useVCFCodec = DEFAULT_USE_VCF_CODEC;
+
+  @Argument(fullName = SHARED_POSIXFS_OPTIMIZATIONS,
+          doc = "Allow for optimizations to improve the usability and performance for shared Posix Filesystems(e.g. NFS, Lustre). " +
+                  "If set, file level locking is disabled and file system writes are minimized.",
+          optional = true)
+  public boolean sharedPosixFSOptimizations = DEFAULT_SHARED_POSIXFS_OPTIMIZATIONS;
 }
