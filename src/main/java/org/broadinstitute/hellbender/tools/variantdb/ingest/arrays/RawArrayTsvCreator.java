@@ -19,11 +19,27 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class RawArrayTsvCreator{
+public final class RawArrayTsvCreator {
     static final Logger logger = LogManager.getLogger(RawArrayTsvCreator.class);
 
     private SimpleXSVWriter rawArrayWriter = null;
     private final String sampleId;
+
+    enum GT_encoding {
+        HOM_REF("null"),
+        HET("X"),
+        HOM_VAR("V"),
+        HET_NON_REF("T"),
+        MISSING("U");
+
+        String value;
+        GT_encoding(String v) {
+            value = v;
+        }
+        String getValue() {
+            return value;
+        }
+    }
 
     public RawArrayTsvCreator(String sampleName, String sampleId, Path sampleDirectoryPath) {
         this.sampleId = sampleId;
@@ -47,9 +63,8 @@ public final class RawArrayTsvCreator{
         }
     }
 
-    public List<String> createRow(final long start, final VariantContext variant, final String sampleId) {
+    public List<String> createRow(final VariantContext variant, final String sampleId) {
         List<String> row = new ArrayList<>();
-        row.add(String.valueOf(start));
         row.add(sampleId);
         for ( final RawArrayFieldEnum fieldEnum : RawArrayFieldEnum.values() ) {
             if (!fieldEnum.equals(RawArrayFieldEnum.sample_id)) {
@@ -69,8 +84,8 @@ public final class RawArrayTsvCreator{
     }
 
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        if (!variant.getFilters().contains("DUPE") && !variant.getFilters().contains("ZERO")) {
-            final List<String> TSVLinesToCreate = createRow(SchemaUtils.encodeLocation(variant.getContig(), variant.getStart()), variant, sampleId);
+        if (!variant.getFilters().contains("ZEROED_OUT_ASSAY")) {
+            final List<String> TSVLinesToCreate = createRow(variant, sampleId);
 
             // write the row to the XSV
             SimpleXSVWriter.LineBuilder rawLine = rawArrayWriter.getNewLineBuilder();
