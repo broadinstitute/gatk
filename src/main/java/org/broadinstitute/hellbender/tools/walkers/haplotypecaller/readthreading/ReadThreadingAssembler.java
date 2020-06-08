@@ -66,7 +66,7 @@ public final class ReadThreadingAssembler {
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
     private int pruneFactor;
     private final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> chainPruner;
-    private final int minMachingBasesToDanglngEndRecovery;
+    private int minMachingBasesToDanglngEndRecovery;
 
     private File debugGraphOutputPath = null;  //Where to write debug graphs, if unset it defaults to the current working dir
     private File graphOutputPath = null;
@@ -106,6 +106,12 @@ public final class ReadThreadingAssembler {
     @VisibleForTesting
     ReadThreadingAssembler() {
         this(DEFAULT_NUM_PATHS_PER_GRAPH, Arrays.asList(25), 2);
+    }
+
+    // this method should not be used, only exposed for testing purposes. This should be set in the constructor.
+    @VisibleForTesting
+    void setMinMachingBasesToDanglngEndRecovery(final int mimMatchingBases) {
+        this.minMachingBasesToDanglngEndRecovery = mimMatchingBases;
     }
 
     /**

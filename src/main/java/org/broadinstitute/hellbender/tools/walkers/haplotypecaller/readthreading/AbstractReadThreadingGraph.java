@@ -61,7 +61,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     // --------------------------------------------------------------------------------
     private Kmer refSource = null;
     private boolean startThreadingOnlyAtExistingVertex = false;
-    private int maxMismatchesInDanglingHead = -1;
+    private int maxMismatchesInDanglingHead = -1; // this argument exists purely for testing purposes in constructing helpful tests and is currently not hooked up
     private boolean increaseCountsThroughBranches = false; // this may increase the branches without bounds
 
     protected enum TraversalDirection {
@@ -178,6 +178,11 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     @VisibleForTesting
     protected void setAlreadyBuilt() {
         alreadyBuilt = true;
+    }
+
+    @VisibleForTesting
+    void setMinMatchingBasesToDangingEndRecovery(final int minMatchingBasesToDangingEndRecovery) {
+        this.minMatchingBasesToDangingEndRecovery = minMatchingBasesToDangingEndRecovery;
     }
 
     @VisibleForTesting
@@ -618,30 +623,30 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     @VisibleForTesting
     int mergeDanglingHeadLegacy(final DanglingChainMergeHelper danglingHeadMergeResult) {
 
-            final List<CigarElement> elements = danglingHeadMergeResult.cigar.getCigarElements();
-            final CigarElement firstElement = elements.get(0);
-            Utils.validateArg(firstElement.getOperator() == CigarOperator.M, "The first Cigar element must be an M");
+        final List<CigarElement> elements = danglingHeadMergeResult.cigar.getCigarElements();
+        final CigarElement firstElement = elements.get(0);
+        Utils.validateArg(firstElement.getOperator() == CigarOperator.M, "The first Cigar element must be an M");
 
-            final int indexesToMerge = bestPrefixMatchLegacy(danglingHeadMergeResult.referencePathString, danglingHeadMergeResult.danglingPathString, firstElement.getLength());
-            if (indexesToMerge <= 0) {
-                return 0;
-            }
-
-            // we can't push back the reference path
-            if (indexesToMerge >= danglingHeadMergeResult.referencePath.size() - 1) {
-                return 0;
-            }
-
-            // but we can manipulate the dangling path if we need to
-            if (indexesToMerge >= danglingHeadMergeResult.danglingPath.size() &&
-                    !extendDanglingPathAgainstReference(danglingHeadMergeResult, indexesToMerge - danglingHeadMergeResult.danglingPath.size() + 2)) {
-                return 0;
-            }
-
-            addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge + 1), danglingHeadMergeResult.danglingPath.get(indexesToMerge), ((MyEdgeFactory) getEdgeFactory()).createEdge(false, 1));
-
-            return 1;
+        final int indexesToMerge = bestPrefixMatchLegacy(danglingHeadMergeResult.referencePathString, danglingHeadMergeResult.danglingPathString, firstElement.getLength());
+        if (indexesToMerge <= 0) {
+            return 0;
         }
+
+        // we can't push back the reference path
+        if (indexesToMerge >= danglingHeadMergeResult.referencePath.size() - 1) {
+            return 0;
+        }
+
+        // but we can manipulate the dangling path if we need to
+        if (indexesToMerge >= danglingHeadMergeResult.danglingPath.size() &&
+                !extendDanglingPathAgainstReference(danglingHeadMergeResult, indexesToMerge - danglingHeadMergeResult.danglingPath.size() + 2)) {
+            return 0;
+        }
+
+        addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge + 1), danglingHeadMergeResult.danglingPath.get(indexesToMerge), ((MyEdgeFactory) getEdgeFactory()).createEdge(false, 1));
+
+        return 1;
+    }
 
 
     /**

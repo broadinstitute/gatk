@@ -36,7 +36,7 @@ public class ReadThreadingGraph extends AbstractReadThreadingGraph {
      * @throws IllegalArgumentException if (@code kmerSize) < 1.
      */
     public ReadThreadingGraph(final int kmerSize) {
-        this(kmerSize, false, (byte)6, 1, 3);
+        this(kmerSize, false, (byte)6, 1, -1);
     }
 
     /**
