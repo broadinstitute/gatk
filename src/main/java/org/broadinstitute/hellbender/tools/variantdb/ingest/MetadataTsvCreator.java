@@ -53,7 +53,7 @@ public class MetadataTsvCreator {
         if (inferredMissingState == null) {
             row.add("");
         } else {
-            row.add(inferredMissingState.value);
+            row.add(inferredMissingState.getValue());
         }
 
         return row;
