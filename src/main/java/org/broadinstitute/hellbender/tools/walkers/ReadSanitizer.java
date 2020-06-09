@@ -83,7 +83,7 @@ public final class ReadSanitizer extends ReadWalker {
         final GATKRead sanitizedRead = sanitizeRead(read, referenceContext);
 
         // Write the read to the output file:
-        outputWriter.addRead(read);
+        outputWriter.addRead(sanitizedRead);
     }
 
     private GATKRead sanitizeRead(final GATKRead read, final ReferenceContext referenceContext) {
