@@ -325,8 +325,7 @@ public final class GATKVariantContextUtils {
                 double bestPosterior = Double.NEGATIVE_INFINITY;
                 int bestGenotypeIndex = 0;
                 for (int i = 0; i < genotypeLikelihoods.length; i++) {
-                    final double log10Posterior = log10Posteriors[i] = log10Priors[i] + genotypeLikelihoods[i]
-                            + glCalc.genotypeAlleleCountsAt(i).log10CombinationCount();
+                    final double log10Posterior = log10Posteriors[i] = log10Priors[i] + genotypeLikelihoods[i];
                     if (log10Posterior > bestPosterior) {
                         bestGenotypeIndex = i;
                         bestPosterior = log10Posterior;
