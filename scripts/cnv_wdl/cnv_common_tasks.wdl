@@ -688,11 +688,13 @@ task ScatterPloidyCallsBySample {
 
       # Archive call files by sample, renaming so they will be glob'd in order
       sample_ids=(~{sep=" " samples})
+      num_samples=~{num_samples}
+      num_digits=${#num_samples}
       for (( i=0; i<~{num_samples}; i++ ))
       do
         sample_id=${sample_ids[$i]}
-        sample_no=`printf %04d $i`
-        tar -czf sample_${sample_no}.${sample_id}.contig_ploidy_calls.tar.gz -C calls/SAMPLE_${i} .
+        padded_sample_index=$(printf "%0${num_digits}d" $i)
+        tar -czf sample_${padded_sample_index}.${sample_id}.contig_ploidy_calls.tar.gz -C calls/SAMPLE_${i} .
       done
     >>>
     runtime {
