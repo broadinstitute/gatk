@@ -300,6 +300,20 @@ public final class AlignmentUtils {
         }
     }
 
+    /**
+     * Returns the number of bases in a read minus the number of softclipped bases.
+     */
+    public static int unclipedReadLength(final GATKRead read) {
+        int softClippedBases = 0;
+        for (CigarElement element : read.getCigarElements()) {
+            if (element.getOperator()== CigarOperator.SOFT_CLIP) {
+                softClippedBases+= element.getLength();
+            }
+        }
+        return read.getLength() - softClippedBases;
+    }
+
+
     public static class MismatchCount {
         public int numMismatches = 0;
         public long mismatchQualities = 0;
