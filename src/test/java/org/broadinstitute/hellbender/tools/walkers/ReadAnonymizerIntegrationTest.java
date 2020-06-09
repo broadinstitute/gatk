@@ -10,23 +10,23 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 
-public class ReadSanitizerIntegrationTest extends CommandLineProgramIntegrationTest {
+public class ReadAnonymizerIntegrationTest extends CommandLineProgramIntegrationTest {
 
     @DataProvider
-    Object[][] provideForTestReadSanitizer() {
+    Object[][] provideForTestReadAnonymizer() {
         return new Object[][] {
                 {
-                    publicTestDir + "read_sanitizer_test.sam",
-                    publicTestDir + "read_sanitizer_expected.sam"
+                    publicTestDir + "read_anonymizer_test.sam",
+                    publicTestDir + "read_anonymizer_expected.sam"
                 }
         };
     }
 
-    @Test(dataProvider = "provideForTestReadSanitizer")
-    public void testReadSanitizer(final String inputFilePath, final String expectedOutputFilePath) {
+    @Test(dataProvider = "provideForTestReadAnonymizer")
+    public void testReadAnonymizer(final String inputFilePath, final String expectedOutputFilePath) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
-        final File outputFile = createTempFile("testReadSanitizer.tmpOut", ".sam");
+        final File outputFile = createTempFile("testReadAnonymizer.tmpOut", ".sam");
 
         arguments.addInput(inputFilePath);
         arguments.addOutput(outputFile);

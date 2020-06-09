@@ -36,7 +36,7 @@ import java.util.List;
         oneLineSummary = "Replace bases in reads with reference bases.",
         programGroup = OtherProgramGroup.class
 )
-public final class ReadSanitizer extends ReadWalker {
+public final class ReadAnonymizer extends ReadWalker {
 
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -80,13 +80,13 @@ public final class ReadSanitizer extends ReadWalker {
     @Override
     public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
 
-        final GATKRead sanitizedRead = sanitizeRead(read, referenceContext);
+        final GATKRead sanitizedRead = anonymizeRead(read, referenceContext);
 
         // Write the read to the output file:
         outputWriter.addRead(sanitizedRead);
     }
 
-    private GATKRead sanitizeRead(final GATKRead read, final ReferenceContext referenceContext) {
+    private GATKRead anonymizeRead(final GATKRead read, final ReferenceContext referenceContext) {
         final SimpleInterval readInterval  = new SimpleInterval(read.getContig(), read.getStart(), read.getEnd());
         final byte[]         readBases     = read.getBasesNoCopy();
         final byte[]         readbaseQuals = read.getBaseQualitiesNoCopy();
