@@ -260,7 +260,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
     private ToDoubleFunction<GATKRead> log10MinTrueLikelihood(final double maximumErrorPerBase, final boolean capLikelihoods) {
         return read -> {
-            final double maxErrorsForRead = capLikelihoods ? Math.min(2.0, Math.ceil(read.getLength() * maximumErrorPerBase)) : Math.ceil(read.getLength() * maximumErrorPerBase);
+            // TODO this might be replaced by an explicit calculation
+            final int qualifiedReadLength = read.getTransientAttribute("HMMQuals") != null ? ((byte[])read.getTransientAttribute("HMMQuals")).length : read.getLength();
+            final double maxErrorsForRead = capLikelihoods ? Math.min(2.0, Math.ceil(qualifiedReadLength * maximumErrorPerBase)) : Math.ceil(qualifiedReadLength * maximumErrorPerBase);
             final double log10QualPerBase = -4.0;
             return maxErrorsForRead * log10QualPerBase;
         };
