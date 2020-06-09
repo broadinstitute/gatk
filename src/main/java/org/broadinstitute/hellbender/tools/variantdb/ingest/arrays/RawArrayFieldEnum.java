@@ -27,7 +27,7 @@ public enum RawArrayFieldEnum {
     sample_id, // Required-- sample Id for sample
 
 
-    site_name { // Required
+    rsid { // Required
         public String getColumnValue(final VariantContext variant) {
             final String siteId = variant.getID();
             if (siteId == null) {
