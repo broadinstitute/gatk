@@ -6,8 +6,8 @@ import htsjdk.samtools.CigarOperator;
 import org.aeonbits.owner.util.Collections;
 import org.apache.commons.lang.ArrayUtils;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -45,7 +45,7 @@ import java.util.List;
  * sequence information.
  */
 @DocumentedFeature
-@BetaFeature
+@ExperimentalFeature
 @CommandLineProgramProperties(
         summary = "Replace bases in reads with reference bases.",
         oneLineSummary = "Replace bases in reads with reference bases.",
@@ -92,6 +92,7 @@ public final class ReadAnonymizer extends ReadWalker {
             ReadFilterLibrary.READLENGTH_EQUALS_CIGARLENGTH,
             ReadFilterLibrary.SEQ_IS_STORED,
             ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS,
+            ReadFilterLibrary.MAPPED,
             new AlignmentAgreesWithHeaderReadFilter()
         );
     }
@@ -159,7 +160,7 @@ public final class ReadAnonymizer extends ReadWalker {
                             newBaseQualities.add(readbaseQuals[readIndex + i]);
                         }
                         else {
-                            // Since we replaced the reference base we set the quality to 60:
+                            // Since we replaced the reference base we set the quality to our default:
                             newBaseQualities.add((byte)refQual);
                         }
                     }
