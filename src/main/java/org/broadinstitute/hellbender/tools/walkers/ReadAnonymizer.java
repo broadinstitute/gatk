@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.aeonbits.owner.util.Collections;
 import org.apache.commons.lang.ArrayUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -13,7 +14,8 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.AlignmentAgreesWithHeaderReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -27,7 +29,20 @@ import java.util.List;
 /**
  * Replace bases in reads with reference bases.
  *
- * Used to sanitize data from samples for the purposes of eliminating Personal Identifiable Information.
+ * Used to anonymize reads with information from the reference.
+ * This tool is useful in the case where you want to use data for analysis,
+ * but cannot publish the data without anonymizing the sequence information.
+ *
+ * Reads are processed, then emitted in a new file.  For a read to be processed
+ * it must have valid start/end positions, sequence information, and consistent
+ * lengths between the sequence, base qualities, and CIGAR string.  In addition
+ * reads must be consistent with the read file header's sequence dictionary.
+ *
+ * For each aligned read, any base that does not match the reference is transformed
+ * to the reference base.  For any transformed bases, the quality is set to a constant
+ * value ({@link #refQual}).  For bases not transformed, the quality is preserved.
+ * Reads transformed in this way also have their CIGARs rewritten to match the new
+ * sequence information.
  */
 @DocumentedFeature
 @BetaFeature
@@ -42,7 +57,7 @@ public final class ReadAnonymizer extends ReadWalker {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="Output bam file.")
-    public GATKPath OUTPUT;
+    public GATKPath output;
 
     @Argument(
             fullName = "ref-base-quality",
@@ -55,12 +70,12 @@ public final class ReadAnonymizer extends ReadWalker {
     public int refQual = 60;
 
     @Argument(
-            fullName = "use-extended-cigar",
-            shortName = "use-extended-cigar",
-            doc = "If true, will produce `=` instead of `M` for matching bases.",
+            fullName = "use-simple-cigar",
+            shortName = "use-simple-cigar",
+            doc = "If true, will produce a simplified cigar string (without `=` and `X`).",
             optional = true
     )
-    public boolean useExtendedCigar = true;
+    public boolean useSimpleCigar = false;
 
     private SAMFileGATKReadWriter outputWriter;
 
@@ -68,13 +83,22 @@ public final class ReadAnonymizer extends ReadWalker {
     public boolean requiresReference() { return true; }
 
     @Override
-    public CountingReadFilter makeReadFilter(){
-        return new CountingReadFilter(ReadFilterLibrary.ALLOW_ALL_READS);
+    public List<ReadFilter> getDefaultReadFilters() {
+        // Because of the operations we perform on the reads,
+        // we must guarantee that certain information is contained in each read:
+        return Collections.list(
+            ReadFilterLibrary.VALID_ALIGNMENT_START,
+            ReadFilterLibrary.VALID_ALIGNMENT_END,
+            ReadFilterLibrary.READLENGTH_EQUALS_CIGARLENGTH,
+            ReadFilterLibrary.SEQ_IS_STORED,
+            ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS,
+            new AlignmentAgreesWithHeaderReadFilter()
+        );
     }
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(OUTPUT, false);
+        outputWriter = createSAMWriter(output, false);
     }
 
     @Override
@@ -108,66 +132,58 @@ public final class ReadAnonymizer extends ReadWalker {
 
         for ( final CigarElement cigarElement :  read.getCigar().getCigarElements() ) {
 
-            // For these elements we don't have to do anything special:
-            if (cigarElement.getOperator().equals(CigarOperator.H) ||
-                    cigarElement.getOperator().equals(CigarOperator.N) ||
-                    cigarElement.getOperator().equals(CigarOperator.P)) {
-
-                iterCigarOp = cigarElement.getOperator();
-                iterCigarOpCount = cigarElement.getLength();
-            }
-            else if ( cigarElement.getOperator().equals(CigarOperator.S) ) {
-                for (int i = 0; i < cigarElement.getLength(); ++i) {
-                    newReadBases.add(readBases[readIndex + i]);
-                    newBaseQualities.add(readbaseQuals[readIndex + i]);
-                }
-                iterCigarOp = cigarElement.getOperator();
-                iterCigarOpCount = cigarElement.getLength();
-            }
-            else if ( cigarElement.getOperator().equals(CigarOperator.EQ) ) {
-                for (int i = 0; i < cigarElement.getLength(); ++i) {
-                    newReadBases.add(readBases[readIndex + i]);
-                    newBaseQualities.add(readbaseQuals[readIndex + i]);
-                }
-                iterCigarOp = cigarElement.getOperator();
-                iterCigarOpCount = cigarElement.getLength();
-            }
-            // For the rest of the elements, we have to do something more:
-            else if (cigarElement.getOperator().equals(CigarOperator.M)) {
-                for (int i = 0; i < cigarElement.getLength(); ++i) {
-                    newReadBases.add(refBases[refIndex + i]);
-
-                    if (readBases[readIndex + i] == refBases[refIndex + i]) {
-                        // Since the base is the same as the reference anyway, we keep the qual:
+            switch (cigarElement.getOperator()) {
+                // For these elements we don't have to do anything special:
+                case H:
+                case N:
+                case P:
+                    iterCigarOp = cigarElement.getOperator();
+                    iterCigarOpCount = cigarElement.getLength();
+                    break;
+                case S:
+                case EQ:
+                    for (int i = 0; i < cigarElement.getLength(); ++i) {
+                        newReadBases.add(readBases[readIndex + i]);
                         newBaseQualities.add(readbaseQuals[readIndex + i]);
                     }
-                    else {
-                        // Since we replaced the reference base we se teh quality to 60:
+                    iterCigarOp = cigarElement.getOperator();
+                    iterCigarOpCount = cigarElement.getLength();
+                    break;
+                // For the rest of the elements, we have to do something more:
+                case M:
+                    for (int i = 0; i < cigarElement.getLength(); ++i) {
+                        newReadBases.add(refBases[refIndex + i]);
+
+                        if (readBases[readIndex + i] == refBases[refIndex + i]) {
+                            // Since the base is the same as the reference anyway, we keep the qual:
+                            newBaseQualities.add(readbaseQuals[readIndex + i]);
+                        }
+                        else {
+                            // Since we replaced the reference base we set the quality to 60:
+                            newBaseQualities.add((byte)refQual);
+                        }
+                    }
+                    iterCigarOp = useSimpleCigar ? CigarOperator.M : CigarOperator.EQ;
+                    iterCigarOpCount = cigarElement.getLength();
+                    break;
+                case X:
+                case D:
+                    // For these operators we need to add in the reference bases as matches:
+                    for (int i = 0; i < cigarElement.getLength(); ++i) {
+                        newReadBases.add(refBases[refIndex + i]);
+                        // Since we know it's the reference base, we set it to the max quality (60):
                         newBaseQualities.add((byte)refQual);
                     }
-                }
-                iterCigarOp = useExtendedCigar ? CigarOperator.EQ : CigarOperator.M;
-                iterCigarOpCount = cigarElement.getLength();
-            }
-            else if (cigarElement.getOperator().equals(CigarOperator.X) ||
-                    cigarElement.getOperator().equals(CigarOperator.D) ) {
-
-                // For these operators we need to add in the reference bases as matches:
-                for (int i = 0; i < cigarElement.getLength(); ++i) {
-                    newReadBases.add(refBases[refIndex + i]);
-                    // Since we know it's the reference base, we set it to the max quality (60):
-                    newBaseQualities.add((byte)refQual);
-                }
-                iterCigarOp = useExtendedCigar ? CigarOperator.EQ : CigarOperator.M;
-                iterCigarOpCount = cigarElement.getLength();
-            }
-            else if (cigarElement.getOperator().equals(CigarOperator.I)) {
-                // Inserted bases are simply removed and ignored.
-                iterCigarOp = currentNewCigarOp;
-                iterCigarOpCount = 0;
-            }
-            else {
-                throw new UserException.MalformedFile("Unexpected cigar operation: " + cigarElement.toString());
+                    iterCigarOp = useSimpleCigar ? CigarOperator.M : CigarOperator.EQ;
+                    iterCigarOpCount = cigarElement.getLength();
+                    break;
+                case I:
+                    // Inserted bases are simply removed and ignored.
+                    iterCigarOp = currentNewCigarOp;
+                    iterCigarOpCount = 0;
+                    break;
+                default:
+                    throw new UserException.MalformedFile("Unexpected cigar operation: " + cigarElement.toString());
             }
 
             // Update Cigar:
@@ -192,9 +208,7 @@ public final class ReadAnonymizer extends ReadWalker {
         }
 
         // Add in the last cigar element now that we're done iterating:
-        if ( iterCigarOp == currentNewCigarOp ) {
-            newCigar.add(new CigarElement(currentNewCigarOpCount, currentNewCigarOp));
-        }
+        newCigar.add(new CigarElement(currentNewCigarOpCount, currentNewCigarOp));
 
         // Replace the old read data with the new data:
         read.setCigar(new Cigar(newCigar));
@@ -204,6 +218,11 @@ public final class ReadAnonymizer extends ReadWalker {
 
         final Byte[] newQualitites = newBaseQualities.toArray(new Byte[newBaseQualities.size()]);
         read.setBaseQualities(ArrayUtils.toPrimitive(newQualitites));
+
+        // Clean the attributes except the read group:
+        final String readGroup = read.getReadGroup();
+        read.clearAttributes();
+        read.setReadGroup(readGroup);
 
         return read;
     }
