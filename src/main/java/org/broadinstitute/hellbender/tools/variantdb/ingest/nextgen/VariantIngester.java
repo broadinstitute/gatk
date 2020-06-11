@@ -98,7 +98,7 @@ public final class VariantIngester extends VariantWalker {
         sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
 
         // Mod the sample directories
-        int sampleDirectoryNumber = IngestUtils.getSampleDirectoryNumber(sampleId, IngestConstants.partitionPerTable);
+        int sampleDirectoryNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
 
         parentDirectory = parentOutputDirectory.toPath(); // TODO do we need this? More efficient way to do this?
         final Path sampleDirectoryPath = IngestUtils.createSampleDirectory(parentDirectory, sampleDirectoryNumber);
