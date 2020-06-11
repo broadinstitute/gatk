@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.variantdb.ingest.arrays;
 
+import com.google.cloud.bigquery.TableResult;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -12,9 +14,13 @@ import org.broadinstitute.hellbender.tools.variantdb.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestConstants;
 import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestUtils;
 import org.broadinstitute.hellbender.tools.variantdb.ingest.MetadataTsvCreator;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.bigquery.QueryAPIRowReader;
+import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Map;
 
 /**
  * Ingest variant walker
@@ -28,27 +34,25 @@ import java.nio.file.Path;
 public final class ArraysIngester extends VariantWalker {
     static final Logger logger = LogManager.getLogger(ArraysIngester.class);
 
-    private MetadataTsvCreator metadataTsvCreator;
+    private ArrayMetadataTsvCreator metadataTsvCreator;
     private RawArrayTsvCreator tsvCreator;
 
     private String sampleName;
     private String sampleId;
 
-    // Inside the parent directory, a directory for each chromosome will be created, with a pet directory and vet directory in each one.
-    // Each pet and vet directory will hold all of the pet and vet tsvs for each sample
-    // A metadata directory will be created, with a metadata tsv for each sample
-
-    @Argument(fullName = "output-path",
-            shortName = "VPO",
-            doc = "Path to the directory where the output TSVs should be written")
-    public GATKPathSpecifier parentOutputDirectory = null;
-    public Path parentDirectory = null;
-
     @Argument(fullName = "sample-name-mapping",
             shortName = "SNM",
             doc = "Sample name to sample id mapping",
-            optional = true)
+            optional = false)
     public File sampleMap;
+
+
+    @Argument(fullName = "probe-info",
+            shortName = "PI",
+            doc = "Fully qualified table name for the probe info table",
+            optional = false)
+    public String probeFQTablename;
+
 
     @Argument(
             fullName = "ref-version",
@@ -60,24 +64,27 @@ public final class ArraysIngester extends VariantWalker {
     @Override
     public void onTraversalStart() {
 
-        // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
-        ChromosomeEnum.setRefVersion(refVersion);
-
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
         sampleName = IngestUtils.getSampleName(inputVCFHeader);
         sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
 
         // Mod the sample directories
-        int sampleDirectoryNumber = IngestUtils.getSampleDirectoryNumber(sampleId, IngestConstants.partitionPerTable);
+        int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
+        String tableNumberPrefix = String.format("%3d_", sampleTableNumber);
 
-        parentDirectory = parentOutputDirectory.toPath(); // TODO do we need this? More efficient way to do this?
-        // If this sample set directory doesn't exist yet -- create it
-        parentDirectory = parentOutputDirectory.toPath(); // TODO do we need this? More efficient way to do this?
-        final Path sampleDirectoryPath = IngestUtils.createSampleDirectory(parentDirectory, sampleDirectoryNumber);
-        metadataTsvCreator = new MetadataTsvCreator(sampleDirectoryPath);
-        metadataTsvCreator.createRow(sampleName, sampleId);
-        tsvCreator = new RawArrayTsvCreator(sampleName, sampleId, sampleDirectoryPath);
+        metadataTsvCreator = new ArrayMetadataTsvCreator();
+        metadataTsvCreator.createRow(sampleName, sampleId, tableNumberPrefix);
+
+        TableReference probeInfoTable = new TableReference(probeFQTablename, ProbeInfoSchema.PROBE_INFO_FIELDS);
+        String q = "SELECT " + StringUtils.join(ProbeInfoSchema.PROBE_INFO_FOR_INGEST_FIELDS,",") + " FROM " + probeInfoTable.getFQTableName();
+        TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), probeInfoTable.tableProject, probeInfoTable.tableDataset, q);
+
+        Map<String, ProbeInfo> probeData = ProbeInfo.createProbeDataForIngest(new QueryAPIRowReader(tr));
+        // Set reference version
+        ChromosomeEnum.setRefVersion(refVersion);
+
+        tsvCreator = new RawArrayTsvCreator(sampleName, sampleId, tableNumberPrefix, probeData);
     }
 
 
