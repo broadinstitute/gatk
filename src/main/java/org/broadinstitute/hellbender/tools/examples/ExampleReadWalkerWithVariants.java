@@ -5,15 +5,9 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.ReadWalker;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.List;
 
@@ -33,7 +27,7 @@ public final class ExampleReadWalkerWithVariants extends ReadWalker {
     private List<FeatureInput<VariantContext>> variants;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    private File outputFile;
+    private GATKPath outputFile;
 
     @Argument(fullName = "groupVariantsBySource", shortName = "groupVariantsBySource", doc = "If true, group overlapping variants by their source when outputting them", optional = true)
     private boolean groupVariantsBySource = false;
@@ -42,12 +36,7 @@ public final class ExampleReadWalkerWithVariants extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        try {
-            outputStream = outputFile != null ? new PrintStream(outputFile) : System.out;
-        }
-        catch ( FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(outputFile, e);
-        }
+        outputStream = outputFile != null ? new PrintStream(outputFile.getOutputStream()) : System.out;
     }
 
     @Override

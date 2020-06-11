@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -43,7 +44,7 @@ public final class VariantGaussianMixtureModelUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = {UserException.MalformedFile.class})
     public final void readBadFormat() throws java.io.FileNotFoundException, java.io.IOException {
-        TruthSensitivityTranche.readTranches(QUAL_DATA);
+        TruthSensitivityTranche.readTranches(new GATKPath(QUAL_DATA.getAbsolutePath()));
     }
 
     @Test
@@ -56,8 +57,8 @@ public final class VariantGaussianMixtureModelUnitTest extends GATKBaseTest {
         read(EXPECTED_TRANCHES_OLD);
     }
 
-    public final List<TruthSensitivityTranche> read(File f) throws java.io.FileNotFoundException, java.io.IOException {
-        return TruthSensitivityTranche.readTranches(f);
+    public final List<TruthSensitivityTranche> read(File f) throws java.io.IOException {
+        return TruthSensitivityTranche.readTranches(new GATKPath(f.getAbsolutePath()));
     }
 
     private static void assertTranchesAreTheSame(List<TruthSensitivityTranche> newFormat, List<TruthSensitivityTranche> oldFormat, boolean completeP, boolean includeName) {

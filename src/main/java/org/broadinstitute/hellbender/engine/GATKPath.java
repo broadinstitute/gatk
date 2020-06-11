@@ -22,7 +22,7 @@ import java.util.Objects;
  * GATK tool command line arguments that are input or output resources. These can
  * have an optional name supplied on the command line, as well as one or more optional tag/value pairs.
  */
-public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, Serializable {
+public class GATKPath extends PathSpecifier implements TaggedArgument, Serializable {
     private static final long serialVersionUID = 1L;
 
     public static final String HDFS_SCHEME = "hdfs";
@@ -34,7 +34,7 @@ public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, 
      * The raw value for this specifier as provided by the user. Can be a local file or valid URI.
      * @param uriString
      */
-    public GATKPathSpecifier(final String uriString) {
+    public GATKPath(final String uriString) {
         super(uriString);
     }
 
@@ -80,7 +80,7 @@ public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, 
 
             return inputStream;
         } catch (IOException e) {
-            throw new UserException.CouldNotReadInputFile(getRawInputString(), e);
+            throw new UserException.CouldNotReadInputFile(this, "Can't create input stream", e);
         }
     }
 
@@ -110,6 +110,13 @@ public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, 
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(getRawInputString(), e);
         }
+    }
+
+    /**
+     * Returns true if this is a HDFS (Hadoop filesystem) URL.
+     */
+    public boolean isHadoopURL() {
+        return getScheme().equals(HDFS_SCHEME);
     }
 
     @Override
@@ -158,10 +165,10 @@ public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof GATKPathSpecifier)) return false;
+        if (!(o instanceof GATKPath)) return false;
         if (!super.equals(o)) return false;
 
-        return tagNameAndAttributesAreEqual(this, (GATKPathSpecifier) o);
+        return tagNameAndAttributesAreEqual(this, (GATKPath) o);
     }
 
     @Override

@@ -1148,6 +1148,50 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         Assert.assertTrue(generatedInterval.sorted().equals(expectedInterval.sorted()));
     }
 
+    void basicWriteAndQueryWithOptions(String workspace, Map<String, Object> options) throws IOException {
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
+        INTERVAL.forEach(args::addInterval);
+        LOCAL_GVCFS.forEach(vcf -> args.add("V", vcf));
+        for ( String key : options.keySet()) {
+            if (key.equals(GenomicsDBImport.SHARED_POSIXFS_OPTIMIZATIONS)) {
+                Assert.assertTrue(options.get(key) instanceof Boolean);
+                args.add(GenomicsDBImport.SHARED_POSIXFS_OPTIMIZATIONS, (Boolean)options.get(key));
+            }
+            if (key.equals(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME)) {
+                Assert.assertTrue(options.get(key) instanceof Boolean);
+                args.add(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, (Boolean)options.get(key));
+            }
+        }
+        runCommandLine(args);
+        checkJSONFilesAreWritten(workspace);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
+    }
+
+    @Test
+    public void testWithMiscOptions() throws IOException {
+        final String workspace = createTempDir("genomicsdb-misc-options").getAbsolutePath() + "/workspace";
+        IOUtils.deleteOnExit(IOUtils.getPath(workspace));
+        Map<String, Object> options = new HashMap<String, Object>();
+
+        // Test with shared posixfs optimizations set
+        options.put(GenomicsDBImport.SHARED_POSIXFS_OPTIMIZATIONS, true);
+        basicWriteAndQueryWithOptions(workspace, options);
+
+        // Test with shared posixfs optimizations and overwrite workspace set
+        options.put(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, true);
+        basicWriteAndQueryWithOptions(workspace, options);
+
+        // Test with overwrite workspace set to false - should throw an exception
+        options.replace(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, false);
+        try {
+            basicWriteAndQueryWithOptions(workspace, options);
+            Assert.fail();
+        } catch (GenomicsDBImport.UnableToCreateGenomicsDBWorkspace e) {
+            // pass
+        }
+    }
+
     @Test(groups = {"bucket"})
     public void testWriteToAndQueryFromGCS() throws IOException {
         final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";

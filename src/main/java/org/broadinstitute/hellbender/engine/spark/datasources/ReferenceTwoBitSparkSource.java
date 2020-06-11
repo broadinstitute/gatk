@@ -8,7 +8,7 @@ import org.bdgenomics.adam.util.TwoBitFile;
 import org.bdgenomics.adam.util.TwoBitRecord;
 import org.bdgenomics.formats.avro.Strand;
 import org.bdgenomics.utils.io.ByteAccess;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -37,9 +37,9 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
     private final TwoBitFile twoBitFile;
     private final Map<String, TwoBitRecord> twoBitSeqEntries;
 
-    public ReferenceTwoBitSparkSource( GATKPathSpecifier referencePathSpecifier) throws IOException {
-        // It would simplify this class if we could cache the GATKPathSpecifier, but ReferenceFileSparkSource
-        // objects are used as Spark broadcast variables, and caching GATKPathSpecifier here triggers a known
+    public ReferenceTwoBitSparkSource( GATKPath referencePathSpecifier) throws IOException {
+        // It would simplify this class if we could cache the GATKPath, but ReferenceFileSparkSource
+        // objects are used as Spark broadcast variables, and caching GATKPath here triggers a known
         // issue during broadcast with the Java 11 GATK build. See https://issues.apache.org/jira/browse/SPARK-26963.
         this.referenceURL = referencePathSpecifier.getRawInputString();
         Utils.validateArg(isTwoBit(referencePathSpecifier), "ReferenceTwoBitSource can only take .2bit files");
@@ -75,7 +75,7 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
         return new SAMSequenceDictionary(records);
     }
 
-    public static boolean isTwoBit(final GATKPathSpecifier referenceSpecifier) {
+    public static boolean isTwoBit(final GATKPath referenceSpecifier) {
         return referenceSpecifier.getURI().getPath().endsWith(TWO_BIT_EXTENSION);
     }
 

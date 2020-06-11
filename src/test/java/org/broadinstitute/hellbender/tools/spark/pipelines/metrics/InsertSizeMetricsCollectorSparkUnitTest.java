@@ -5,7 +5,7 @@ import htsjdk.samtools.ValidationStringency;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -50,16 +50,16 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
         };
     }
 
-    @Test(dataProvider="metricsfiles", groups="spark")
+    @Test(dataProvider="metricsfiles", groups={"R", "spark"})
     public void test(
             final String fileName,
             final String referenceName,
             final boolean allLevels,
             final String expectedResultsFile) throws IOException {
 
-        final String inputPath = new File(TEST_DATA_DIR, fileName).getAbsolutePath();
-        final GATKPathSpecifier referencePath = referenceName != null ?
-                new GATKPathSpecifier(referenceName) :
+        final GATKPath inputPathSpecifier = new GATKPath(new File(TEST_DATA_DIR, fileName).getAbsolutePath());
+        final GATKPath referencePath = referenceName != null ?
+                new GATKPath(referenceName) :
                 null;
 
         final File outfile = GATKBaseTest.createTempFile("test", ".insert_size_metrics");
@@ -67,8 +67,8 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         ReadsSparkSource readSource = new ReadsSparkSource(ctx, ValidationStringency.DEFAULT_STRINGENCY);
 
-        SAMFileHeader samHeader = readSource.getHeader(inputPath, referencePath);
-        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputPath, referencePath);
+        SAMFileHeader samHeader = readSource.getHeader(inputPathSpecifier, referencePath);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputPathSpecifier, referencePath);
 
         InsertSizeMetricsArgumentCollection isArgs = new InsertSizeMetricsArgumentCollection();
         isArgs.output = outfile.getAbsolutePath();

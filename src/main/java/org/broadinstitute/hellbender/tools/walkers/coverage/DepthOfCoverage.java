@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.coverage;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.util.Locatable;
-import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -62,6 +61,7 @@ import java.util.*;
  * <ul>
  *     <li>DepthOfCoverage currently only supports typical nucleotide (and N) bases, IUPAC ambiguity codes or other non-ATCGN bases will cause exceptions</li>
  *     <li>Read filters are applied to the reads before being counted in coverage information. By default Duplicate Marked and non-primary alignments are not counted. This can be disabled with --disable-tool-default-read-filters.</li>
+ *     <li>In order to filter reads out by their mapping qualities, the recommended approach is to use the MappingQualityReadFilter with the --minimum-mapping-quality or --maximum-mapping-quality arguments specified</li>
  * </ul>
  *
  * <h3>Usage example</h3>
@@ -85,7 +85,6 @@ import java.util.*;
 @BetaFeature
 @DocumentedFeature
 public class DepthOfCoverage extends LocusWalkerByInterval {
-    private final static Logger logger = Logger.getLogger(DepthOfCoverage.class);
     private CoverageOutputWriter writer;
     // Map used to store running aggregate counts for intervals that are being recorded by DepthOfCoverage
     private Map<Locatable, DepthOfCoveragePartitionedDataStore> activeCoveragePartitioner = new HashMap<>();
@@ -345,6 +344,7 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
                 for (DoCOutputType.Partition p : partitionTypes) {
                     // Write the per-interval depth information as necessary
                     final DepthOfCoverageStats coverageByAggregationPartitionType = partitionerToRemove.getCoverageByAggregationType(p);
+                    writer.writePerIntervalDepthInformation(p, (SimpleInterval) activeInterval, coverageByAggregationPartitionType, globalIdentifierMap.get(p));
 
                     // Create a new table if necessary
                     if (!perIntervalStatisticsAggregationByPartitioning.containsKey(p)) {

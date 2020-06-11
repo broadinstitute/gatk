@@ -197,7 +197,7 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
         final MetricsFile<?, Integer> metricsFile = calculateMeanQualityByCycle(reads);
-        saveResults(metricsFile, getHeaderForReads(), getReadSourceName().get(0));
+        saveResults(metricsFile, getHeaderForReads(), getReadSourceName());
     }
 
     /**

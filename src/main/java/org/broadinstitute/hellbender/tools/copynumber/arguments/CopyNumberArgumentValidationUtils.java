@@ -226,7 +226,7 @@ public final class CopyNumberArgumentValidationUtils {
                     if (input.isFile()) {
                         IOUtils.canReadFile(input);
                     } else if (input.isDirectory() && !input.canRead()) {
-                        throw new UserException.CouldNotReadInputFile(input);
+                        throw new UserException.CouldNotReadInputFile(input.getAbsolutePath());
                     }
                 }
             }
@@ -254,7 +254,7 @@ public final class CopyNumberArgumentValidationUtils {
         for (final File outputFile : outputFiles) {
             Utils.nonNull(outputFile);
             if ((outputFile.exists() && !outputFile.canWrite()) || (!outputFile.exists() && !outputFile.getAbsoluteFile().getParentFile().canWrite())) {
-                throw new UserException.CouldNotCreateOutputFile(outputFile, ": The output file is not writeable.");
+                throw new UserException.CouldNotCreateOutputFile(outputFile.getAbsolutePath(), ": The output file is not writeable.");
             }
         }
     }
@@ -268,13 +268,13 @@ public final class CopyNumberArgumentValidationUtils {
             Utils.nonNull(outputDirectory);
             if (outputDirectory.exists()) {
                 if (!outputDirectory.canWrite()) {
-                    throw new UserException.CouldNotCreateOutputFile(outputDirectory, ": The output directory is not writeable.");
+                    throw new UserException.CouldNotCreateOutputFile(outputDirectory.getAbsolutePath(), ": The output directory is not writeable.");
                 }
             } else {
                 try {
                     IOUtils.createDirectory(outputDirectory.getAbsolutePath());
                 } catch (final IOException e) {
-                    throw new UserException.CouldNotCreateOutputFile(outputDirectory, ": The output directory does not exist and could not be created.");
+                    throw new UserException.CouldNotCreateOutputFile(outputDirectory.getAbsolutePath(), ": The output directory does not exist and could not be created.");
                 }
             }
         }

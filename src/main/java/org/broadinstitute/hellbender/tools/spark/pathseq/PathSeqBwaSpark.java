@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -35,7 +36,7 @@ import java.io.IOException;
  *     <li>Unaligned queryname-sorted BAM file containing only paired reads (paired-end reads with mates)</li>
  *     <li>Unaligned BAM file containing only unpaired reads (paired-end reads without mates and/or single-end reads)</li>
  *     <li>*Microbe reference BWA-MEM index image generated using BwaMemIndexImageCreator</li>
- *     <li>*Indexed microbe reference FASTA file</li>
+ *     <li>*Indexed microbe reference dictionary (fasta file NOT required)</li>
  * </ul>
  *
  * <p>*A standard microbe reference is available in the <a href="https://software.broadinstitute.org/gatk/download/bundle">GATK Resource Bundle</a>.</p>
@@ -63,7 +64,7 @@ import java.io.IOException;
  *   --paired-output output_reads_paired.bam \
  *   --unpaired-output output_reads_unpaired.bam \
  *   --microbe-bwa-image reference.img \
- *   --microbe-fasta reference.fa
+ *   --microbe-dict reference.dict
  * </pre>
  *
  * <h4>Spark cluster on Google Cloud DataProc with 6 32-core / 208GB memory worker nodes:</h4>
@@ -75,7 +76,7 @@ import java.io.IOException;
  *   --paired-output gs://my-gcs-bucket/output_reads_paired.bam \
  *   --unpaired-output gs://my-gcs-bucket/output_reads_unpaired.bam \
  *   --microbe-bwa-image /references/reference.img \
- *   --microbe-fasta hdfs://my-cluster-m:8020//references/reference.fa \
+ *   --microbe-dict hdfs://my-cluster-m:8020//references/reference.dict \
  *   --bam-partition-size 4000000 \
  *   -- \
  *   --sparkRunner GCS \
@@ -110,35 +111,27 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     public static final String PAIRED_INPUT_LONG_NAME = "paired-input";
-    public static final String PAIRED_INPUT_SHORT_NAME = "PI";
     public static final String UNPAIRED_INPUT_LONG_NAME = "unpaired-input";
-    public static final String UNPAIRED_INPUT_SHORT_NAME = "UI";
     public static final String PAIRED_OUTPUT_LONG_NAME = "paired-output";
-    public static final String PAIRED_OUTPUT_SHORT_NAME = "PO";
     public static final String UNPAIRED_OUTPUT_LONG_NAME = "unpaired-output";
-    public static final String UNPAIRED_OUTPUT_SHORT_NAME = "UO";
 
     @Argument(doc = "Input queryname-sorted BAM containing only paired reads",
             fullName = PAIRED_INPUT_LONG_NAME,
-            shortName = PAIRED_INPUT_SHORT_NAME,
             optional = true)
     public String inputPaired = null;
 
     @Argument(doc = "Input BAM containing only unpaired reads",
             fullName = UNPAIRED_INPUT_LONG_NAME,
-            shortName = UNPAIRED_INPUT_SHORT_NAME,
             optional = true)
     public String inputUnpaired = null;
 
     @Argument(doc = "Output BAM containing only paired reads",
             fullName = PAIRED_OUTPUT_LONG_NAME,
-            shortName = PAIRED_OUTPUT_SHORT_NAME,
             optional = true)
     public String outputPaired = null;
 
     @Argument(doc = "Output BAM containing only unpaired reads",
             fullName = UNPAIRED_OUTPUT_LONG_NAME,
-            shortName = UNPAIRED_OUTPUT_SHORT_NAME,
             optional = true)
     public String outputUnpaired = null;
 
@@ -152,12 +145,12 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
                                                              final ReadsSparkSource readsSource) {
         if (path == null) return null;
         if (BucketUtils.fileExists(path)) {
-            final SAMFileHeader header = readsSource.getHeader(path, null);
+            final SAMFileHeader header = readsSource.getHeader(new GATKPath(path), null);
             if (header.getSequenceDictionary() != null && !header.getSequenceDictionary().isEmpty()) {
                 throw new UserException.BadInput("Input BAM should be unaligned, but found one or more sequences in the header.");
             }
-            PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath, getReferenceWindowFunction());
-            final JavaRDD<GATKRead> reads = readsSource.getParallelReads(path, null, null, bamPartitionSplitSize, useNio);
+            PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.microbeDictionary);
+            final JavaRDD<GATKRead> reads = readsSource.getParallelReads(new GATKPath(path), null, null, bamPartitionSplitSize);
             return new Tuple2<>(header, reads);
         }
         logger.warn("Could not find file " + path + ". Skipping...");
@@ -178,7 +171,7 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
 
         final String outputPath = isPaired ? outputPaired : outputUnpaired;
         try {
-            ReadsSparkSink.writeReads(ctx, outputPath, bwaArgs.referencePath, reads, header,
+            ReadsSparkSink.writeReads(ctx, outputPath, null, reads, header,
                     shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
                     PSUtils.pathseqGetRecommendedNumReducers(inputBamPath, numReducers, getTargetPartitionSize()), shardedPartsDir, true, splittingIndexGranularity);
         } catch (final IOException e) {
@@ -211,9 +204,12 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        if (!readArguments.getReadFiles().isEmpty()) {
+        if (!readArguments.getReadPathSpecifiers().isEmpty()) {
             throw new UserException.BadInput("Please use --paired-input or --unpaired-input instead of --input");
         }
+        Utils.validateArg((outputPaired == null || new GATKPath(outputPaired).isBam()) &&
+                        (outputUnpaired == null || new GATKPath(outputUnpaired).isBam()),
+                        "Only BAM output is supported");
         final ReadsSparkSource readsSource = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
 
         final PSBwaAlignerSpark aligner = new PSBwaAlignerSpark(ctx, bwaArgs);

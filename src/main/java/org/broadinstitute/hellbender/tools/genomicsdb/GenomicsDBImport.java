@@ -204,6 +204,8 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String MERGE_CHROMOSOMES_INTO_NUM_PARTITIONS = "merge-chromosomes-into-num-partitions";
     public static final int INTERVAL_LIST_SIZE_WARNING_THRESHOLD = 100;
 
+    public static final String SHARED_POSIXFS_OPTIMIZATIONS = "genomicsdb-shared-posixfs-optimizations";
+
     @Argument(fullName = WORKSPACE_ARG_LONG_NAME,
               doc = "Workspace for GenomicsDB. Must be a POSIX file system path, but can be a relative path. " +
                     "Use this argument when creating a new GenomicsDB workspace. " +
@@ -223,22 +225,20 @@ public final class GenomicsDBImport extends GATKTool {
 
     @Argument(fullName = SEGMENT_SIZE_ARG_LONG_NAME,
               doc = "Buffer size in bytes allocated for GenomicsDB attributes during " +
-                    "import. Should be large enough to hold data from one site. " +
-                    " Defaults to " + DEFAULT_SEGMENT_SIZE,
+                    "import. Should be large enough to hold data from one site. ",
               optional = true)
     private long segmentSize = DEFAULT_SEGMENT_SIZE;
 
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
               shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
               doc = "GVCF files to be imported to GenomicsDB. Each file must contain" +
-                    "data for only a single sample. Either this or " + SAMPLE_NAME_MAP_LONG_NAME +
+                    " data for only a single sample. Either this or " + SAMPLE_NAME_MAP_LONG_NAME +
                     " must be specified.",
               optional = true,
               mutex = {SAMPLE_NAME_MAP_LONG_NAME})
     private List<String> variantPaths;
 
     @Argument(fullName = VCF_BUFFER_SIZE_ARG_NAME,
-              shortName = VCF_BUFFER_SIZE_ARG_NAME,
               doc = "Buffer size in bytes to store variant contexts." +
                     " Larger values are better as smaller values cause frequent disk writes." +
                     " Defaults to " + DEFAULT_VCF_BUFFER_SIZE_PER_SAMPLE + " which was empirically determined to work" +
@@ -266,7 +266,6 @@ public final class GenomicsDBImport extends GATKTool {
     private int batchSize = DEFAULT_ZERO_BATCH_SIZE;
 
     @Argument(fullName = CONSOLIDATE_ARG_NAME,
-              shortName = CONSOLIDATE_ARG_NAME,
               doc = "Boolean flag to enable consolidation. If importing data in batches, a new fragment is created for " +
                     "each batch. In case thousands of fragments are created, GenomicsDB feature readers will try " +
                     "to open ~20x as many files. Also, internally GenomicsDB would consume more memory to maintain " +
@@ -289,7 +288,6 @@ public final class GenomicsDBImport extends GATKTool {
     private String sampleNameMapFile;
 
     @Argument(fullName = VALIDATE_SAMPLE_MAP_LONG_NAME,
-            shortName = VALIDATE_SAMPLE_MAP_LONG_NAME,
             doc = "Boolean flag to enable checks on the sampleNameMap file. If true, tool checks whether" +
                 "feature readers are valid and shows a warning if sample names do not match with the headers. " +
                 "Defaults to false",
@@ -297,13 +295,11 @@ public final class GenomicsDBImport extends GATKTool {
     private Boolean validateSampleToReaderMap = false;
 
     @Argument(fullName = MERGE_INPUT_INTERVALS_LONG_NAME,
-            shortName = MERGE_INPUT_INTERVALS_LONG_NAME,
             doc = "Boolean flag to import all data in between intervals.  Improves performance using large lists of " +
                 "intervals, as in exome sequencing, especially if GVCF data only exists for specified intervals.")
     private boolean mergeInputIntervals = false;
 
     @Argument(fullName = INTERVAL_LIST_LONG_NAME,
-            shortName = INTERVAL_LIST_LONG_NAME,
             doc = "Path to output file where intervals from existing workspace should be written." +
                   "If this option is specified, the tools outputs the interval_list of the workspace pointed to " +
                   "by "+INCREMENTAL_WORKSPACE_ARG_LONG_NAME+" at the path specified here in a Picard-style interval_list " +
@@ -314,7 +310,6 @@ public final class GenomicsDBImport extends GATKTool {
 
     @Advanced
     @Argument(fullName = VCF_INITIALIZER_THREADS_LONG_NAME,
-            shortName = VCF_INITIALIZER_THREADS_LONG_NAME,
             doc = "How many simultaneous threads to use when opening VCFs in batches; higher values may improve performance " +
                     "when network latency is an issue. Multiple reader threads are not supported when running with multiple intervals.",
             optional = true,
@@ -323,7 +318,6 @@ public final class GenomicsDBImport extends GATKTool {
 
     @Advanced
     @Argument(fullName = MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL,
-            shortName = MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL,
             doc = "Max number of intervals to import in parallel; higher values may improve performance, but require more" +
                   " memory and a higher number of file descriptors open at the same time",
             optional = true,
@@ -351,6 +345,14 @@ public final class GenomicsDBImport extends GATKTool {
             optional = true,
             minValue = 0)
     private int mergeChromosomesIntoNumPartitions = 0;
+
+    @Argument(fullName = SHARED_POSIXFS_OPTIMIZATIONS,
+            doc = "Allow for optimizations to improve the usability and performance for shared Posix Filesystems(e.g. NFS, Lustre). " +
+                  "If set, file level locking is disabled and file system writes are minimized by keeping a higher number of " +
+                  "file descriptors open for longer periods of time. Use with " + BATCHSIZE_ARG_LONG_NAME + " option if keeping a " +
+                  "large number of file descriptors open is an issue",
+            optional = true)
+    private boolean sharedPosixFSOptimizations = false;
 
     //executor service used when vcfInitializerThreads > 1
     private ExecutorService inputPreloadExecutorService;
@@ -458,12 +460,11 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     private void assertOverwriteWorkspaceAndIncrementalImportMutuallyExclusive() {
-        if ( overwriteExistingWorkspace && doIncrementalImport) {
+        if (overwriteExistingWorkspace && doIncrementalImport) {
             throw new CommandLineException(OVERWRITE_WORKSPACE_LONG_NAME + " cannot be set to true when " +
                     INCREMENTAL_WORKSPACE_ARG_LONG_NAME + " is set");
         }
     }
-
 
     private void assertVariantPathsOrSampleNameFileWasSpecified(){
         if ( (variantPaths == null || variantPaths.isEmpty()) && sampleNameMapFile == null && !getIntervalsFromExistingWorkspace) {
@@ -677,12 +678,12 @@ public final class GenomicsDBImport extends GATKTool {
 
         if (doIncrementalImport) {
             logger.info("Callset Map JSON file will be re-written to " + callsetMapJSONFile);
-            logger.info("Incrementally importing to array - " + workspaceDir + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
+            logger.info("Incrementally importing to workspace - " + workspaceDir);
         } else {
             logger.info("Vid Map JSON file will be written to " + vidMapJSONFile);
             logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
             logger.info("Complete VCF Header will be written to " + vcfHeaderFile);
-            logger.info("Importing to array - " + workspaceDir + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
+            logger.info("Importing to workspace - " + workspaceDir);
         }
         initializeInputPreloadExecutorService();
     }
@@ -817,6 +818,7 @@ public final class GenomicsDBImport extends GATKTool {
         importConfigurationBuilder.setFailIfUpdating(true && !doIncrementalImport);
         importConfigurationBuilder.setSegmentSize(segmentSize);
         importConfigurationBuilder.setConsolidateTiledbArrayAfterLoad(doConsolidation);
+        importConfigurationBuilder.setEnableSharedPosixfsOptimizations(sharedPosixFSOptimizations);
         ImportConfig importConfig = new ImportConfig(importConfigurationBuilder.build(), validateSampleToReaderMap, true,
                 batchSize, mergedHeaderLines, sampleNameToVcfPath, useNativeVcfReader ? null : this::createSampleToReaderMap, 
                 doIncrementalImport);

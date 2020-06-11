@@ -4,15 +4,15 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import scala.Tuple2;
 
 import java.io.IOException;
@@ -26,11 +26,11 @@ import static org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils.getCano
 public final class TestUtilsForAssemblyBasedSVDiscovery {
 
     public static final ReferenceMultiSparkSource b37_reference = new ReferenceMultiSparkSource(
-            new GATKPathSpecifier(GATKBaseTest.b37_reference_20_21), ReferenceWindowFunctions.IDENTITY_FUNCTION);
+            new GATKPath(GATKBaseTest.b37_reference_20_21), ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary b37_seqDict = b37_reference.getReferenceSequenceDictionary(null);
     public static final Set<String> b37_canonicalChromosomes = getCanonicalChromosomes(null, b37_seqDict);
     public static final ReferenceMultiSparkSource b38_reference_chr20_chr21 = new ReferenceMultiSparkSource(
-            new GATKPathSpecifier(GATKBaseTest.b38_reference_20_21), ReferenceWindowFunctions.IDENTITY_FUNCTION);
+            new GATKPath(GATKBaseTest.b38_reference_20_21), ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary b38_seqDict_chr20_chr21 = b38_reference_chr20_chr21.getReferenceSequenceDictionary(null);
     public static final Set<String> b38_canonicalChromosomes = getCanonicalChromosomes(null, b38_seqDict_chr20_chr21);
 
@@ -91,8 +91,8 @@ public final class TestUtilsForAssemblyBasedSVDiscovery {
 
         final SimpleInterval refSpan = new SimpleInterval(chr, start, start - 1 + cigar.getReferenceLength());
         return new AlignmentInterval(refSpan,
-                SvCigarUtils.getNumClippedBases(true, readCigar) + 1,
-                SvCigarUtils.getUnclippedReadLength(readCigar) - SvCigarUtils.getNumClippedBases(false, readCigar),
+                CigarUtils.countClippedBases(readCigar, ClippingTail.LEFT_TAIL) + 1,
+                CigarUtils.countUnclippedReadBases(readCigar) - CigarUtils.countClippedBases(readCigar, ClippingTail.RIGHT_TAIL),
                 readCigar,
                 forwardStrand,
                 mapQual, numMismatch, alignerScore,

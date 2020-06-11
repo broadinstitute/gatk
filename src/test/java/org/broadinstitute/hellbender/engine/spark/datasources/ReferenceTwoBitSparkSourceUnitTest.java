@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -16,8 +16,8 @@ public class ReferenceTwoBitSparkSourceUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "goodIntervals")
     public Object[][] goodIntervals() throws IOException {
-        ReferenceSparkSource fastaRef = new ReferenceFileSparkSource(new GATKPathSpecifier(fastaRefURL));
-        ReferenceSparkSource twoBitRef = new ReferenceTwoBitSparkSource(new GATKPathSpecifier(twoBitRefURL));
+        ReferenceSparkSource fastaRef = new ReferenceFileSparkSource(new GATKPath(fastaRefURL));
+        ReferenceSparkSource twoBitRef = new ReferenceTwoBitSparkSource(new GATKPath(twoBitRefURL));
         return new Object[][]{
                 {fastaRef, twoBitRef, "20:2-10"},
                 {fastaRef, twoBitRef, "20:4-5"},
@@ -36,7 +36,7 @@ public class ReferenceTwoBitSparkSourceUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "outOfBoundsIntervals")
     public Object[][] getOutOfBoundsIntervals() throws IOException {
-        final ReferenceTwoBitSparkSource twoBitRef = new ReferenceTwoBitSparkSource(new GATKPathSpecifier(publicTestDir + "large/human_g1k_v37.20.21.2bit"));
+        final ReferenceTwoBitSparkSource twoBitRef = new ReferenceTwoBitSparkSource(new GATKPath(publicTestDir + "large/human_g1k_v37.20.21.2bit"));
         final int chr20End = 63025520;
 
         return new Object[][] {
@@ -75,7 +75,7 @@ public class ReferenceTwoBitSparkSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "referenceTestCases")
     public void testIsTwoBit(final String referenceSpec, final boolean expectedIsTwoBit) {
-        Assert.assertEquals(ReferenceTwoBitSparkSource.isTwoBit(new GATKPathSpecifier(referenceSpec)), expectedIsTwoBit);
+        Assert.assertEquals(ReferenceTwoBitSparkSource.isTwoBit(new GATKPath(referenceSpec)), expectedIsTwoBit);
     }
 
 }

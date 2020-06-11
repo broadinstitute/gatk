@@ -95,7 +95,7 @@ public final class GibbsSamplerCopyRatioUnitTest extends GATKBaseTest {
         try {
             return FileUtils.readLines(file, StandardCharsets.UTF_8).stream().map(parse).collect(Collectors.toList());
         } catch (final IOException e) {
-            throw new UserException.CouldNotReadInputFile(file, e);
+            throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(), e);
         }
     }
 

@@ -5,13 +5,11 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.PrintStream;
 
 /**
@@ -27,18 +25,13 @@ import java.io.PrintStream;
 public final class ExampleReadWalkerWithReference extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    private File OUTPUT_FILE = null;
+    private GATKPath OUTPUT_FILE = null;
 
     private PrintStream outputStream = null;
 
     @Override
     public void onTraversalStart() {
-        try {
-            outputStream = OUTPUT_FILE != null ? new PrintStream(OUTPUT_FILE) : System.out;
-        }
-        catch ( FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(OUTPUT_FILE, e);
-        }
+        outputStream = OUTPUT_FILE != null ? new PrintStream(OUTPUT_FILE.getOutputStream()) : System.out;
     }
 
     @Override

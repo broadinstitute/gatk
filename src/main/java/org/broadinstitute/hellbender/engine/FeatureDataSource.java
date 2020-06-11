@@ -384,7 +384,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
     }
 
-    protected static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final GATKPathSpecifier path, final File reference, final GenomicsDBOptions genomicsDBOptions) {
+    protected static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final GATKPath path, final File reference, final GenomicsDBOptions genomicsDBOptions) {
         final String workspace = IOUtils.getGenomicsDBAbsolutePath(path) ;
         if (workspace == null) {
             throw new IllegalArgumentException("Trying to create a GenomicsDBReader from  non-GenomicsDB inputpath " + path);

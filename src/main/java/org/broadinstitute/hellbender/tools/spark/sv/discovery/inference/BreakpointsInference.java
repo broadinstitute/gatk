@@ -11,9 +11,9 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.Alignmen
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.BreakpointComplications.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleChimera.DistancesBetweenAlignmentsOnRefAndOnRead;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import scala.Tuple2;
 
 import java.util.Arrays;
@@ -344,7 +344,7 @@ public abstract class BreakpointsInference {
 
                 Cigar cigar = simpleChimera.regionWithLowerCoordOnContig.cigarAlong5to3DirectionOfContig;
                 int hardClipOffset = cigar.getFirstCigarElement().getOperator().equals(CigarOperator.H) ? cigar.getFirstCigarElement().getLength() : 0;
-                int distOnRead = SvCigarUtils
+                int distOnRead = CigarUtils
                         .computeAssociatedDistOnRead(cigar,
                                 distances.firstAlnCtgEnd - hardClipOffset,
                                 -distances.gapBetweenAlignRegionsOnRef,
@@ -353,7 +353,7 @@ public abstract class BreakpointsInference {
 
                 cigar = simpleChimera.regionWithHigherCoordOnContig.cigarAlong5to3DirectionOfContig;
                 hardClipOffset = cigar.getFirstCigarElement().getOperator().equals(CigarOperator.H) ? cigar.getFirstCigarElement().getLength() : 0;
-                distOnRead = SvCigarUtils
+                distOnRead = CigarUtils
                         .computeAssociatedDistOnRead(cigar,
                                 distances.secondAlnCtgStart - hardClipOffset,
                                 -distances.gapBetweenAlignRegionsOnRef,
@@ -478,14 +478,14 @@ public abstract class BreakpointsInference {
                     if (alpha == omega) {
                         walkOnReadUntilDuplicatedSequence = 0;
                     } else {
-                        walkOnReadUntilDuplicatedSequence = SvCigarUtils.computeAssociatedDistOnRead(firstAlignmentInterval.cigarAlong5to3DirectionOfContig,
+                        walkOnReadUntilDuplicatedSequence = CigarUtils.computeAssociatedDistOnRead(firstAlignmentInterval.cigarAlong5to3DirectionOfContig,
                                 firstAlignmentInterval.startInAssembledContig, omega - alpha, false);
                     }
                     start = firstAlignmentInterval.startInAssembledContig + walkOnReadUntilDuplicatedSequence - 1;
                     end = secondAlignmentInterval.endInAssembledContig;
                     needRC = false;
                 } else {
-                    final int walkOnReadUntilDuplicatedSequence = SvCigarUtils.computeAssociatedDistOnRead(secondAlignmentInterval.cigarAlong5to3DirectionOfContig,
+                    final int walkOnReadUntilDuplicatedSequence = CigarUtils.computeAssociatedDistOnRead(secondAlignmentInterval.cigarAlong5to3DirectionOfContig,
                             secondAlignmentInterval.endInAssembledContig, alpha - omega, true);
                     start = firstAlignmentInterval.startInAssembledContig - 1;
                     end = secondAlignmentInterval.endInAssembledContig - walkOnReadUntilDuplicatedSequence;
@@ -499,14 +499,14 @@ public abstract class BreakpointsInference {
                     if (alpha == omega) {
                         walkOnReadUntilDuplicatedSequence = 0;
                     } else {
-                        walkOnReadUntilDuplicatedSequence = SvCigarUtils.computeAssociatedDistOnRead(firstAlignmentInterval.cigarAlong5to3DirectionOfContig,
+                        walkOnReadUntilDuplicatedSequence = CigarUtils.computeAssociatedDistOnRead(firstAlignmentInterval.cigarAlong5to3DirectionOfContig,
                                 firstAlignmentInterval.startInAssembledContig, alpha - omega, false);
                     }
                     start = firstAlignmentInterval.startInAssembledContig + walkOnReadUntilDuplicatedSequence - 1;
                     end = secondAlignmentInterval.endInAssembledContig;
                     needRC = true;
                 } else {
-                    final int walkOnReadUntilDuplicatedSequence = SvCigarUtils.computeAssociatedDistOnRead(secondAlignmentInterval.cigarAlong5to3DirectionOfContig,
+                    final int walkOnReadUntilDuplicatedSequence = CigarUtils.computeAssociatedDistOnRead(secondAlignmentInterval.cigarAlong5to3DirectionOfContig,
                             secondAlignmentInterval.endInAssembledContig, omega - alpha, true);
                     start = firstAlignmentInterval.startInAssembledContig - 1;
                     end = secondAlignmentInterval.endInAssembledContig - walkOnReadUntilDuplicatedSequence;

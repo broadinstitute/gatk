@@ -13,6 +13,7 @@ public final class GenomicsDBOptions {
     final private int maxDiploidAltAllelesThatCanBeGenotyped;
     final private int maxGenotypeCount;
     final private boolean useVCFCodec;
+    final private boolean sharedPosixFSOptimizations;
 
     public GenomicsDBOptions() {
         this(null);
@@ -32,6 +33,7 @@ public final class GenomicsDBOptions {
         this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;
         this.maxGenotypeCount = genotypeCalcArgs.MAX_GENOTYPE_COUNT;
         this.useVCFCodec = genomicsdbArgs.useVCFCodec;
+        this.sharedPosixFSOptimizations = genomicsdbArgs.sharedPosixFSOptimizations;
     }
 
     public Path getReference() {
@@ -52,5 +54,9 @@ public final class GenomicsDBOptions {
 
     public boolean useVCFCodec() {
         return useVCFCodec;
+    }
+
+    public boolean sharedPosixFSOptimizations() {
+        return sharedPosixFSOptimizations;
     }
 }
