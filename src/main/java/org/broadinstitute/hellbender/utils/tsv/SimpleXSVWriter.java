@@ -200,7 +200,7 @@ public class SimpleXSVWriter implements Closeable {
          * Constructs the line and writes it out to the output
          */
         public void write() {
-            Utils.validate(!Arrays.stream(lineToBuild).anyMatch(Objects::isNull), "Attempted to construct an incomplete line, make sure all columns are filled");
+            Utils.validate(!Arrays.stream(lineToBuild).anyMatch(Objects::isNull), "Attempted to construct an incomplete line, make sure all columns are filled: " + Arrays.toString(lineToBuild));
             writeLine(lineToBuild);
             hasBuilt = true;
         }
