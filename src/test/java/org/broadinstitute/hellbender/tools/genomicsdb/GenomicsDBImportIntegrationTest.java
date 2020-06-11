@@ -95,6 +95,8 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String INTERVAL_PICARD_STYLE_EXPECTED = toolsTestDir + "GenomicsDBImport/interval_expected.interval_list";
     private static final String MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS_PICARD_STYLE_EXPECTED = 
             toolsTestDir + "GenomicsDBImport/multiple_non_adjacent_intervals_combine_gvcfs_expected.interval_list";
+    private static final String MERGED_CONTIGS_INTERVAL_PICARD_STYLE_EXPECTED =
+            toolsTestDir + "GenomicsDBImport/chr20_chr21_merged_contigs_expected.interval_list";
     //Consider a gVCF with a REF block chr20:50-150. Importing this data into GenomicsDB using multiple intervals
     //-L chr20:1-100 and -L chr20:101-200 will cause the REF block to be imported into both the arrays
     //Now, when reading data from the workspace (assume full scan) - the data is split into 2 REF block intervals chr20:50-100
@@ -210,8 +212,18 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
-    public void testGenomicsDBImportFileInputsAgainstCombineGVCFMergeChromosomesToSinglePartition() throws IOException {
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFMergeContigsToSinglePartition() throws IOException {
         testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, INTERVAL_20_21, b38_reference_20_21, new String[0], 1, 1, false);
+    }
+
+    @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFMergeContigsToSinglePartitionNativeReader() throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, INTERVAL_20_21, b38_reference_20_21, new String[0], 1, 1, true);
+    }
+
+    @Test(expectedExceptions = {UserException.class}, expectedExceptionsMessageRegExp=".*entire contigs be specified.*")
+    public void testGenomicsDBMergeContigsThrowsOnNotInputIntervalLessThanContigLength() throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, INTERVAL, b38_reference_20_21, new String[0], 1, 1, false);
     }
 
     @Test
@@ -603,7 +615,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         args.add(GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME, mergeIntervals);
         args.add(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, overwriteWorkspace);
         if (chrsToPartitions != 0) {
-            args.add(GenomicsDBImport.MERGE_CHROMOSOMES_INTO_NUM_PARTITIONS, String.valueOf(chrsToPartitions));
+            args.add(GenomicsDBImport.MERGE_CONTIGS_INTO_NUM_PARTITIONS, String.valueOf(chrsToPartitions));
         }
         args.add(GenomicsDBImport.USE_NATIVE_VCF_READER_LONG_NAME, useNativeReader);
         if (useBufferSize) {
@@ -1109,10 +1121,10 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
-    public void testGenomicsDBIncrementalAndBatchSize1WithNonAdjacentIntervalsMergeChromosomesIntoPartitions() throws IOException {
+    public void testGenomicsDBIncrementalAndBatchSize1WithNonAdjacentIntervalsMergeContigsIntoPartitions() throws IOException {
         final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
         testIncrementalImport(2, INTERVAL_20_21, workspace, 1, false, true, "", 1, false);
-        createAndCheckIntervalListFromExistingWorkspace(workspace, false);
+        createAndCheckIntervalListFromExistingWorkspace(workspace, false, true);
     }
 
     @Test
@@ -1130,6 +1142,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     private void createAndCheckIntervalListFromExistingWorkspace(final String workspace, final Boolean singleInterval) {
+        createAndCheckIntervalListFromExistingWorkspace(workspace, singleInterval, false);
+    }
+
+    private void createAndCheckIntervalListFromExistingWorkspace(final String workspace, final Boolean singleInterval,
+                                                                 final Boolean mergedContigs) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         final String outputIntervalList = workspace + "interval_output";
         args.add(GenomicsDBImport.INCREMENTAL_WORKSPACE_ARG_LONG_NAME, workspace);
@@ -1138,7 +1155,10 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         runCommandLine(args);
 
         String expectedOutput;
-        if (singleInterval) {
+        if (mergedContigs) {
+            expectedOutput = MERGED_CONTIGS_INTERVAL_PICARD_STYLE_EXPECTED;
+        }
+        else if (singleInterval) {
             expectedOutput = INTERVAL_PICARD_STYLE_EXPECTED;
         } else {
             expectedOutput = MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS_PICARD_STYLE_EXPECTED;
