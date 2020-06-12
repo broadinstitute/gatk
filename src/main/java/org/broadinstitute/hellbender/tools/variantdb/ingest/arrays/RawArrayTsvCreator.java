@@ -27,10 +27,10 @@ public final class RawArrayTsvCreator {
     private static String RAW_FILETYPE_PREFIX = "raw_";
 
     enum GT_encoding {
-        AA("null"),
-        AB("X"),
-        BB("B"),
-        MISSING("U");
+        AA("AA"),
+        AB("AB"),
+        BB("BB"),
+        MISSING(".");
 
         String value;
         GT_encoding(String v) {
