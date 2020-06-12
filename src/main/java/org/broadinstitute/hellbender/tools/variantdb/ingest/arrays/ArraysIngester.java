@@ -71,7 +71,7 @@ public final class ArraysIngester extends VariantWalker {
 
         // Mod the sample directories
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
-        String tableNumberPrefix = String.format("%3d_", sampleTableNumber);
+        String tableNumberPrefix = String.format("%03d_", sampleTableNumber);
 
         metadataTsvCreator = new ArrayMetadataTsvCreator();
         metadataTsvCreator.createRow(sampleName, sampleId, tableNumberPrefix);
