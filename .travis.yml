@@ -50,7 +50,7 @@ matrix:
        env: SCALA_VERSION=2.12 TEST_TYPE=integration TEST_VERBOSITY=minimal
      - jdk: openjdk11
        language: java
-       env: SCALA_VERSION=2.12 TEST_TYPE=unit TEST_VERBOSITY=minimal
+       env: SCALA_VERSION=2.12 TEST_TYPE=unit
      - jdk: openjdk11
        language: java
        env: SCALA_VERSION=2.12 TEST_TYPE=cloud TESTS_REQUIRE_GCLOUD=true TEST_VERBOSITY=minimal
@@ -162,7 +162,8 @@ script:
     $( exit ${TEST_EXIT_VALUE} );
   else
     ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
-    travis_wait 50 ./gradlew -Dscala.version=${SCALA_VERSION} jacocoTestReport;
+    ./gradlew test --tests VectorPairHMMUnitTest;
+    # travis_wait 50 ./gradlew -Dscala.version=${SCALA_VERSION} jacocoTestReport;
   fi;
 # This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
 # This also constructs the Docker image and uploads it to https://cloud.docker.com/u/broadinstitute/repository/docker/broadinstitute/gatk-nightly/

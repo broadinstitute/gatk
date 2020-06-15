@@ -36,6 +36,7 @@ public final class VectorPairHMMUnitTest extends GATKBaseTest {
         for (final VectorLoglessPairHMM.Implementation imp : VectorLoglessPairHMM.Implementation.values()) {
             PairHMM hmm;
             try {
+                logger.warn(String.format("Trying PairHMM implementation %s...", imp.name()));
                 hmm = new VectorLoglessPairHMM(imp, args);
                 //hmm.doNotUseTristateCorrection();
             } catch (final UserException.HardwareFeatureException e ) {
