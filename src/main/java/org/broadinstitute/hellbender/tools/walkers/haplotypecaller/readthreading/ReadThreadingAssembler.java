@@ -135,7 +135,7 @@ public final class ReadThreadingAssembler {
         List<GATKRead> correctedReads = readErrorCorrector == null ? assemblyRegion.getReads() : readErrorCorrector.correctReads(assemblyRegion.getReads());
 
         // Revert clipped bases if necessary (since we do not want to assemble them)
-        correctedReads = correctedReads.stream().map(r -> ReadClipper.revertSoftClippedBases(r)).collect(Collectors.toList());
+        correctedReads = correctedReads.stream().map(r -> ReadClipper.hardClipSoftClippedBases(r)).collect(Collectors.toList());
 
         final List<AbstractReadThreadingGraph> nonRefRTGraphs = new LinkedList<>();
         final List<SeqGraph> nonRefSeqGraphs = new LinkedList<>();
