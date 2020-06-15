@@ -1227,7 +1227,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             final List<EVIDENCE> filtered = filteredEvidenceBySampleIndex.get(sampleIndex);
             Arrays.stream(indexesToRemove).forEach(idx -> {
                 if (genotyperDebugOutStream != null) {
-                    genotyperDebugOutStream.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName());
+                    genotyperDebugOutStream.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName()+ " with max likelihood " +maximumLikelihoodOverAllAlleles(sampleIndex, idx) +" and threshold "+log10MinTrueLikelihood.applyAsDouble(sampleEvidence.get(idx)));
                 }
                 filtered.add(sampleEvidence.get(idx));
             });

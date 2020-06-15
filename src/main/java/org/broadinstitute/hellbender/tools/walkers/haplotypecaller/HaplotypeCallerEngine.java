@@ -162,7 +162,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         this.referenceReader = Utils.nonNull(referenceReader);
         this.annotationEngine = Utils.nonNull(annotationEngine);
         this.aligner = SmithWatermanAligner.getAligner(hcArgs.smithWatermanImplementation);
-        trimmer = new AssemblyRegionTrimmer(assemblyRegionArgs, readsHeader.getSequenceDictionary());
         forceCallingAllelesPresent = hcArgs.alleles != null;
 
         // Add necessary debug streams to the output
@@ -185,6 +184,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             genotyperDebugOutStream = null;
         }
 
+        trimmer = new AssemblyRegionTrimmer(assemblyRegionArgs, readsHeader.getSequenceDictionary(), genotyperDebugOutStream);
         initialize(createBamOutIndex, createBamOutMD5);
     }
 
@@ -630,11 +630,18 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, regionForGenotyping.getReads());
 
         if (genotyperDebugOutStream != null) {
-            genotyperDebugOutStream.println("Haplotyes:");
-            for (Haplotype haplotype : haplotypes) {
-                genotyperDebugOutStream.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
+            genotyperDebugOutStream.println("\nUnclipped Haplotypes("+haplotypes.size()+"):");
+            for (Haplotype haplotype : untrimmedAssemblyResult.getHaplotypeList()) {
+                genotyperDebugOutStream.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] k="+haplotype.getKmerSize()+" len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
                 genotyperDebugOutStream.println(haplotype);
             }
+
+            genotyperDebugOutStream.println("\nClipped Haplotyes("+haplotypes.size()+"):");
+            for (Haplotype haplotype : haplotypes) {
+                genotyperDebugOutStream.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] k="+haplotype.getKmerSize()+" len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
+                genotyperDebugOutStream.println(haplotype);
+            }
+            genotyperDebugOutStream.println("");
         }
 
         // Calculate the likelihoods: CPU intensive part.
@@ -642,8 +649,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult, samplesList, reads);
 
         // Realign reads to their best haplotype.
-        final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner);
-        readLikelihoods.changeEvidence(readRealignments);
+        if (!hcArgs.retainBasedOnOriginalAlignment) {
+            final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner);
+            readLikelihoods.changeEvidence(readRealignments);
+        }
 
         // Note: we used to subset down at this point to only the "best" haplotypes in all samples for genotyping, but there
         //  was a bad interaction between that selection and the marginalization that happens over each event when computing
