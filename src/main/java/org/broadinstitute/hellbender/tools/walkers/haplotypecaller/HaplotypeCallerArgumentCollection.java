@@ -132,6 +132,9 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName = "disable-spanning-event-genotyping", doc = "If enabled this argument will diable inclusion of the '*' spanning event when genotyping events that overlap deletions", optional = true)
     public boolean disableSpanningEventGenotyping = false;
     @Advanced
+    @Argument(fullName = "use-original-alignments-for-genotyping-overlap", doc = "Rely on original alignments of reads for deciding on overlap when selecting relevant reads for genotyping", optional = true)
+    public boolean retainBasedOnOriginalAlignment = false;
+    @Advanced
     @Argument(fullName = "transform-dragen-mapping-quality", doc = "If enabled this argument will map DRAGEN aligner aligned reads with mapping quality <=250 to scale up to MQ 50", optional = true)
     public boolean transformDRAGENMapQ = false;
     //TODO NOTE TO THE REVIEWER, THIS ARGUMENT IS INSUFFICIENT BOTH THIS AND --minimum-mapping-quality must be set, unfortunatley

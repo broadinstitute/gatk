@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.PrintStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
  */
 public final class AssemblyRegionTrimmer {
 
+    private PrintStream genotyperDebugOutputStream = null;
     private AssemblyRegionArgumentCollection assemblyRegionArgs;
 
     private SAMSequenceDictionary sequenceDictionary;
@@ -48,9 +50,10 @@ public final class AssemblyRegionTrimmer {
      * @throws IllegalArgumentException if the input location parser is {@code null}.
      * @throws CommandLineException.BadArgumentValue if any of the user argument values is invalid.
      */
-    public AssemblyRegionTrimmer(final AssemblyRegionArgumentCollection assemblyRegionArgs, final SAMSequenceDictionary sequenceDictionary) {
-        this.assemblyRegionArgs = Utils.nonNull(assemblyRegionArgs);;
+    public AssemblyRegionTrimmer(final AssemblyRegionArgumentCollection assemblyRegionArgs, final SAMSequenceDictionary sequenceDictionary, final PrintStream genotyperDebugOutputStream) {
+        this.assemblyRegionArgs = Utils.nonNull(assemblyRegionArgs);
         this.sequenceDictionary = sequenceDictionary;
+        this.genotyperDebugOutputStream = genotyperDebugOutputStream;
         assemblyRegionArgs.validate();
     }
 
@@ -192,7 +195,9 @@ public final class AssemblyRegionTrimmer {
 
         final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region.getPaddedSpan());
 
-//        System.out.println("Padded and trimmed the region to this span: "+ paddedVariantSpan);
+        if (genotyperDebugOutputStream != null) {
+            genotyperDebugOutputStream.println("Padded and trimmed the region to this span: "+ paddedVariantSpan);
+        }
         return new Result(region, variantSpan, paddedVariantSpan);
     }
 
@@ -245,14 +250,16 @@ public final class AssemblyRegionTrimmer {
 
         final Pair<SimpleInterval, SimpleInterval> nonVariantRegions = nonVariantTargetRegions(originalRegion, callableSpan);
 
-
-//        System.out.println("events       : " + withinActiveRegion);
-//        System.out.println("region       : " + originalRegion);
-//        System.out.println("callableSpan : " + callableSpan);
-//        System.out.println("padding      : " + padding);
-//        System.out.println("idealSpan    : " + idealSpan);
-//        System.out.println("maximumSpan  : " + maximumSpan);
-//        System.out.println("finalSpan    : " + finalSpan);
+        // TODO add equivalent debug garbage to the real assembly region trimming code
+        if (genotyperDebugOutputStream != null) {
+            genotyperDebugOutputStream.println("events       : " + withinActiveRegion);
+            genotyperDebugOutputStream.println("region       : " + originalRegion);
+            genotyperDebugOutputStream.println("callableSpan : " + callableSpan);
+            genotyperDebugOutputStream.println("padding      : " + padding);
+            genotyperDebugOutputStream.println("idealSpan    : " + idealSpan);
+            genotyperDebugOutputStream.println("maximumSpan  : " + maximumSpan);
+            genotyperDebugOutputStream.println("finalSpan    : " + finalSpan);
+        }
 
 
         return new Result(originalRegion, variantSpan, finalSpan);

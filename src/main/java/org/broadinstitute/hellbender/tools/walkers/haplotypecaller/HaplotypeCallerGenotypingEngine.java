@@ -184,12 +184,22 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
             AlleleLikelihoods<GATKRead, Allele> readAlleleLikelihoods = readLikelihoods.marginalize(alleleMapper);
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
+            //TODO evaluate this very very very bad deletions behavior
             final SimpleInterval variantCallingRelevantOverlap = new SimpleInterval(mergedVC).expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
+//            final SimpleInterval variantCallingRelevantOverlap = new SimpleInterval(mergedVC.getContig(), mergedVC.getStart(), mergedVC.getStart()).expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
+
             // We want to retian evidence that overlaps within its softclipping edges.
             //TODO this will need to be paramertramtrized in the future.
             if (hcArgs.applyBQD || hcArgs.applyFRD) {
-                readAlleleLikelihoods.retainEvidence(r -> r.getUnclippedStart() <= r.getUnclippedEnd() && new SimpleInterval(r.getContig(), r.getUnclippedStart(), r.getUnclippedEnd()).overlaps(variantCallingRelevantOverlap));
-//                readAlleleLikelihoods.retainEvidence(r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
+                if (hcArgs.retainBasedOnOriginalAlignment) {
+                readAlleleLikelihoods.retainEvidence(r -> {GATKRead original = (GATKRead)(r.getTransientAttribute("originalAlignment"));
+//                        original = original == null ? r : original;//Reads that were disqualified don't have original alignments (since they weren't ever realigned).
+                        return original.getSoftStart() <= original.getSoftEnd() && new SimpleInterval(original.getContig(), original.getSoftStart(), original.getSoftEnd()).overlaps(variantCallingRelevantOverlap);});
+                } else {
+//                    readAlleleLikelihoods.retainEvidence(r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
+
+                    readAlleleLikelihoods.retainEvidence(r -> r.getUnclippedStart() <= r.getUnclippedEnd() && new SimpleInterval(r.getContig(), r.getSoftStart(), r.getEnd()).overlaps(variantCallingRelevantOverlap));
+                }
             } else {
                 readAlleleLikelihoods.retainEvidence(r -> r.overlaps(variantCallingRelevantOverlap));
             }
@@ -201,6 +211,17 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 genotyperDebugOutStream.println("\n=============================================================================");
                 genotyperDebugOutStream.println("Event at: " + mergedVC + " with " + readAlleleLikelihoods.evidenceCount() + " reads and "+readAlleleLikelihoods.filteredSampleEvidence(0).size()+" disqualified");
                 genotyperDebugOutStream.println("=============================================================================");
+//                genotyperDebugOutStream.println("Reads:");
+//                List<GATKRead> readsCombined = new ArrayList<>(readAlleleLikelihoods.sampleEvidence(0));
+//                readsCombined.addAll(readAlleleLikelihoods.filteredSampleEvidence(0));
+//                int counter = 0;
+//                for (GATKRead read : readAlleleLikelihoods.sampleEvidence(0)) {
+//                    GATKRead original = (GATKRead)(read.getTransientAttribute("originalAlignment"));
+//                    genotyperDebugOutStream.println("Original Read: "+original+" "+(original==null?"":original.getCigar())+ "    Realigned: "+read+" "+read.getCigar());
+//                    if (original != null && (!original.getCigar().equals(read.getCigar()) || original.getStart() != read.getStart())) {
+//                        genotyperDebugOutStream.println("(realigned)");
+//                    }
+//                }
             }
 
             if (emitReferenceConfidence) {
