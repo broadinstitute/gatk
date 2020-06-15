@@ -83,6 +83,7 @@ public final class AssemblyBasedCallerUtils {
             final boolean isInformative = bestAllele.isInformative();
             final GATKRead realignedRead = AlignmentUtils.createReadAlignedToRef(originalRead, bestHaplotype, refHaplotype, paddedReferenceLoc.getStart(), isInformative, aligner);
             result.put(originalRead, realignedRead);
+            realignedRead.setTransientAttribute("originalAlignment", originalRead); //TODO this is a test
         }
         return result;
     }

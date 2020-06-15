@@ -162,7 +162,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         this.referenceReader = Utils.nonNull(referenceReader);
         this.annotationEngine = Utils.nonNull(annotationEngine);
         this.aligner = SmithWatermanAligner.getAligner(hcArgs.smithWatermanImplementation);
-        trimmer = new AssemblyRegionTrimmer(assemblyRegionArgs, readsHeader.getSequenceDictionary());
         forceCallingAllelesPresent = hcArgs.alleles != null;
 
         // Add necessary debug streams to the output
@@ -185,6 +184,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             genotyperDebugOutStream = null;
         }
 
+        trimmer = new AssemblyRegionTrimmer(assemblyRegionArgs, readsHeader.getSequenceDictionary(), genotyperDebugOutStream);
         initialize(createBamOutIndex, createBamOutMD5);
     }
 
@@ -630,11 +630,18 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, regionForGenotyping.getReads());
 
         if (genotyperDebugOutStream != null) {
-            genotyperDebugOutStream.println("Haplotyes:");
+            genotyperDebugOutStream.println("\nUnclipped Haplotypes");
+            for (Haplotype haplotype : untrimmedAssemblyResult.getHaplotypeList()) {
+                genotyperDebugOutStream.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
+                genotyperDebugOutStream.println(haplotype);
+            }
+
+            genotyperDebugOutStream.println("\nClipped Haplotyes:");
             for (Haplotype haplotype : haplotypes) {
                 genotyperDebugOutStream.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
                 genotyperDebugOutStream.println(haplotype);
             }
+            genotyperDebugOutStream.println("");
         }
 
         // Calculate the likelihoods: CPU intensive part.
