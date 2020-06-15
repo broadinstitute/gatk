@@ -82,6 +82,9 @@ public class DRAGENGenotypesModel implements GenotypersModel {
                 genotyperDebugStream.println("API found: " + api + " with period used: " + period + "  and repeats: " + repeats);
             }
         } else {
+            if (genotyperDebugStream != null) {
+                genotyperDebugStream.println("No API from DRAGStrs found, falling back on snp het prior for indels");
+            }
             api = FLAT_SNP_HET_PRIOR;
         }
 
@@ -253,6 +256,14 @@ public class DRAGENGenotypesModel implements GenotypersModel {
             return underlyingRead.getBaseQuality(offsetIntoReadForBaseQuality);
         }
 
+        public int getForwardsFeatherEnd() {
+            return (underlyingRead.getSoftStart() - underlyingRead.getUnclippedStart()) + offsetIntoReadForBaseQuality;
+        }
+
+        public int getReverseFeatherEnd() {
+            return (underlyingRead.getUnclippedEnd() - underlyingRead.getSoftEnd()) + (underlyingRead.getLength() - offsetIntoReadForBaseQuality);
+        }
+
         public double getPhredScaledMappingQuality() {
             return DRAGENMappingQualityReadTransformer.mapValue(underlyingRead.getMappingQuality());
         }
@@ -277,6 +288,7 @@ public class DRAGENGenotypesModel implements GenotypersModel {
 
     //MAJOR TODO THIS IS CURRENTLY BASED OFF OF THE REFERENCE UNCLIPPED START AND NOT THE BASES IN THE READ CONSEQUENTLY AT SITES WITH
     //      TODO INDELS PRESENT WE ARE GOING TO BE LOOKING AT THE WRONG OFFSETS FOR THIS SORT... a minor issue but still...
+    //UPDATE:APPARENTLY DRAGEN ONLY USES THE ORIGINAL BASE ALIGNMENT OFFSETS HERE (NO HARDCLIPPED BASES OR INDEL SITE HANDLING)
 
     // Orders the reads based on the number of bases there are to the left of the fatherEndComparisonLocation as aligned according to the cigar
     // NOTE: here we compare the un-hardclipped edges for these reads as the model itself cares about the cycle count of the sequencer, and
@@ -291,7 +303,10 @@ public class DRAGENGenotypesModel implements GenotypersModel {
         @Override
         public int compare(final DragenReadContainer read1, final DragenReadContainer read2) {
             //NOTE: here we want the reads to wind up in ascending order by unclipped position because the unclipped position should be on the left
-            int diffVal = read1.getUnclippedPosition() - read2.getUnclippedPosition();
+
+            int diffVal =  read2.getForwardsFeatherEnd() - read1.getForwardsFeatherEnd();
+//
+//            int diffVal = read1.getUnclippedPosition() - read2.getUnclippedPosition();
             if (diffVal == 0) {
                 diffVal = (read1.hasValidBaseQuality() ? read1.getBaseQuality() : 0)
                         - (read2.hasValidBaseQuality() ? read2.getBaseQuality() : 0);
@@ -313,7 +328,8 @@ public class DRAGENGenotypesModel implements GenotypersModel {
         @Override
         public int compare(final DragenReadContainer read1, final DragenReadContainer read2) {
             //NOTE: here we want the reads to wind up in decending order by unclipped position because the unclipped position should be on the left
-            int diffVal = read2.getUnclippedPosition() - read1.getUnclippedPosition();
+            int diffVal = read2.getReverseFeatherEnd() - read1.getReverseFeatherEnd();
+//            int diffVal = read2.getUnclippedPosition() - read1.getUnclippedPosition();
             if (diffVal==0) {
                 diffVal = (read1.hasValidBaseQuality() ? read1.getBaseQuality() : 0)
                         - (read2.hasValidBaseQuality() ? read2.getBaseQuality() : 0);

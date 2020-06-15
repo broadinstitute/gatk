@@ -321,6 +321,7 @@ public final class ReadThreadingAssembler {
                     assemblyResult.setContainsSuspectHaplotypes(true);
                 }
                 final Haplotype h = kBestHaplotype.haplotype();
+                h.setKmerSize(kBestHaplotype.getGraph().getKmerSize());
 
                 if (!returnHaplotypes.contains(h)) {
                     // TODO this score seems to be irrelevant at this point...
