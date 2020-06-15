@@ -43,10 +43,6 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-//TODO:
-//UserException overloads
-//VCF outs
-
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
  * the pre-packaged Walker traversals should feel free to extend this class directly. All other

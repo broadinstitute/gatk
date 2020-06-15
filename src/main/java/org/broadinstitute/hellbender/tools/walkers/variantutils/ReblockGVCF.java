@@ -88,7 +88,7 @@ public final class ReblockGVCF extends VariantWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written")
-    private File outputFile;
+    private GATKPath outputFile;
 
     @ArgumentCollection
     public GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();

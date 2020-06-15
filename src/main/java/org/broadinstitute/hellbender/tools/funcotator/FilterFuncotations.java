@@ -13,10 +13,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.TwoPassVariantWalker;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ArHetvarFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ArHomvarFilter;
@@ -100,7 +97,7 @@ public class FilterFuncotations extends TwoPassVariantWalker {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "Output VCF file to which filtered variants should be written.")
-    protected File outputFile;
+    protected GATKPath outputFile;
 
     @Argument(
             fullName =  FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME,

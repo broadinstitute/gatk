@@ -134,7 +134,7 @@ public final class VariantFiltration extends VariantWalker {
     public FeatureInput<Feature> mask;
 
     @Argument(doc="File to which variants should be written", fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, optional = false)
-    public String out = null;
+    public GATKPath out = null;
 
     /**
      * VariantFiltration accepts any number of JEXL expressions (so you can have two named filters by using
@@ -273,7 +273,7 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     private void initializeVcfWriter() {
-        writer = createVCFWriter(new File(out));
+        writer = createVCFWriter(out);
 
         // setup the header fields
         final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>();

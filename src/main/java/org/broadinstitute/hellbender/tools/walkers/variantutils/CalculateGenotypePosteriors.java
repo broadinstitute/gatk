@@ -172,7 +172,7 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
     public List<FeatureInput<VariantContext>> supportVariants = new ArrayList<>();
 
     @Argument(doc="File to which variants should be written", fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, optional = false)
-    public File out = null;
+    public GATKPath out = null;
 
     /**
      * Prior SNP pseudocounts for Dirichlet distribution of allele frequencies. The posterior distribution is a

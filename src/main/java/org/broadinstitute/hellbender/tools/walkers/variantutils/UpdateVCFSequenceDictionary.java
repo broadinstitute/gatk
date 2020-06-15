@@ -13,13 +13,10 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
@@ -86,7 +83,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which updated variants should be written")
-    public String outFile = null;
+    public GATKPath outFile = null;
 
     public final static String DICTIONARY_ARGUMENT_NAME = "source-dictionary";
     @Argument(fullName=DICTIONARY_ARGUMENT_NAME,
@@ -136,7 +133,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
         }
 
         outputHeader.setSequenceDictionary(sourceDictionary);
-        vcfWriter = createVCFWriter(new File(outFile));
+        vcfWriter = createVCFWriter(outFile);
         vcfWriter.writeHeader(outputHeader);
     }
 

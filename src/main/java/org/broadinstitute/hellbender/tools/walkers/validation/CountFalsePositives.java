@@ -67,7 +67,7 @@ public class CountFalsePositives extends VariantWalker {
     public void onTraversalStart() {
         // TODO: ideally we would identify the tumor sample name and normal sample name from the vcf header but
         // there doesn't seem to be a function that let us query a sample name by its ID (e.g. Tumor/Normal) in VCFHeader class.
-        id = FilenameUtils.getBaseName(drivingVariantFile);
+        id = drivingVariantFile.getBaseName().get();
     }
 
     @Override

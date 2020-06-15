@@ -170,11 +170,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // Add necessary debug streams to the output
         if (hcArgs.assemblyStateOutput != null) {
-            try {
-                assemblyDebugOutStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput)));
-            } catch (IOException e) {
-                throw new UserException.CouldNotCreateOutputFile(hcArgs.assemblyStateOutput, "Provided argument for assembly debug graph location could not be created");
-            }
+            assemblyDebugOutStream = new PrintStream(hcArgs.assemblyStateOutput.getOutputStream());
         } else {
             assemblyDebugOutStream = null;
         }
@@ -363,7 +359,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param readsDictionary sequence dictionary for the reads
      * @return a VCF or GVCF writer as appropriate, ready to use
      */
-    public VariantContextWriter makeVCFWriter( final String outputVCF, final SAMSequenceDictionary readsDictionary,
+    public VariantContextWriter makeVCFWriter( final GATKPath outputVCF, final SAMSequenceDictionary readsDictionary,
                                                final boolean createOutputVariantIndex, final boolean  createOutputVariantMD5,
                                                final boolean sitesOnlyMode ) {
         Utils.nonNull(outputVCF);
@@ -374,7 +370,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if (sitesOnlyMode) {options.add(Options.DO_NOT_WRITE_GENOTYPES);}
 
         VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(
-                IOUtils.getPath(outputVCF),
+                outputVCF.toPath(),
                 readsDictionary,
                 createOutputVariantMD5,
                 options.toArray(new Options[options.size()])

@@ -21,10 +21,10 @@ import java.util.Spliterator;
  */
 public abstract class VariantWalker extends VariantWalkerBase {
 
-    // NOTE: using File rather than FeatureInput<VariantContext> here so that we can keep this driving source
+    // NOTE: using GATKPath rather than FeatureInput<VariantContext> here so that we can keep this driving source
     //       of variants separate from any other potential sources of Features
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF file containing variants", common = false, optional = false)
-    public String drivingVariantFile;
+    public GATKPath drivingVariantFile;
 
     // NOTE: keeping the driving source of variants separate from other, supplementary FeatureInputs in our FeatureManager in GATKTool
     // we do add the driving source to the Feature manager but we do need to treat it differently and thus this field.
@@ -50,7 +50,8 @@ public abstract class VariantWalker extends VariantWalkerBase {
 
     @Override
     protected void initializeDrivingVariants() {
-        drivingVariantsFeatureInput = new FeatureInput<>(drivingVariantFile, "drivingVariantFile");
+        // use getRawInputString() on the original GATKPath here to ensure that we propagate any argument tags
+        drivingVariantsFeatureInput = new FeatureInput<>(drivingVariantFile.getRawInputString(), "drivingVariantFile");
 
         // Create a FeatureDataSource for the driving variants FeatureInput, using the
         // cache lookahead value from getDrivingVariantCacheLookAheadBases()
