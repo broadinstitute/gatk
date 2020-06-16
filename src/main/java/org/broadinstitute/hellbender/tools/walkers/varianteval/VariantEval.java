@@ -180,7 +180,7 @@ public class VariantEval extends MultiVariantWalker {
     protected Set<String> SAMPLE_EXPRESSIONS = new TreeSet<>();
 
     @Argument(fullName = StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, shortName = StandardArgumentDefinitions.PEDIGREE_FILE_SHORT_NAME, doc="Pedigree file for determining the population \"founders\"", optional=true)
-    private File pedigreeFile;
+    private GATKPath pedigreeFile;
 
     /**
      * List of feature tracks to be used for specifying "known" variants other than dbSNP.

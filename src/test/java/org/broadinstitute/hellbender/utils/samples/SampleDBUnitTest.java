@@ -1,19 +1,19 @@
 package org.broadinstitute.hellbender.utils.samples;
 
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.util.*;
 
 
 public class SampleDBUnitTest extends GATKBaseTest {
     private static SampleDBBuilder builder;
     // all the test sample files are located here
-    private File testPED = new File(getToolTestDataDir() +  "testtrio.ped");
+    private GATKPath testPED = new GATKPath(getToolTestDataDir() +  "testtrio.ped");
 
     private static final Set<Sample> testPEDSamples = new LinkedHashSet<>(Arrays.asList(
             new Sample("kid", "fam1", "dad", "mom", Sex.MALE, Affection.AFFECTED),
@@ -130,7 +130,8 @@ public class SampleDBUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.class)
     public void loadNonExistentFile() {
-        builder.addSamplesFromPedigreeFiles(Arrays.asList(GATKBaseTest.getSafeNonExistentFile("non-existence-file.txt")));
+        builder.addSamplesFromPedigreeFiles(Arrays.asList(
+                GATKBaseTest.getSafeNonExistentGATKPath("non-existence-file.txt")));
         SampleDB db = builder.getFinalSampleDB();
         Assert.assertEquals(db.getSamples(), testSAMSamples);
     }

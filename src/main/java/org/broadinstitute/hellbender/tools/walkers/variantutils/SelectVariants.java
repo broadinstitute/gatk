@@ -41,7 +41,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.*;
 
-import java.io.File;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -281,7 +280,7 @@ public final class SelectVariants extends VariantWalker {
     private double mendelianViolationQualThreshold = 0;
 
     @Argument(fullName=StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, shortName=StandardArgumentDefinitions.PEDIGREE_FILE_SHORT_NAME, doc="Pedigree file", optional=true)
-    private File pedigreeFile = null;
+    private GATKPath pedigreeFile = null;
 
     /**
      * The value of this argument should be a number between 0 and 1 specifying the fraction of total variants to be

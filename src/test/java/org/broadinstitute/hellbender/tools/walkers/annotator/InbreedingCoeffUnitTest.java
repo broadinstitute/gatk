@@ -207,7 +207,7 @@ public final class InbreedingCoeffUnitTest extends GATKBaseTest {
                 makeG("s17", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931)
         );
 
-        final Map<String, Object> foundersOnly = new InbreedingCoeff(getTestFile("testtrio.ped")).annotate(null, vc, null);
+        final Map<String, Object> foundersOnly = new InbreedingCoeff(getTestFileGATKPath("testtrio.ped")).annotate(null, vc, null);
         final double ICresultFoundersOnly = Double.valueOf((String) foundersOnly.get(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY));
         Assert.assertEquals(ICresultFoundersOnly, -0.3333333, DELTA_PRECISION, "ICresultFoundersOnly");
 

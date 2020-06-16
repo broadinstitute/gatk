@@ -134,7 +134,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
         Assert.assertEquals(Double.parseDouble((String)annots.values().iterator().next()), result, DELTA_PRECISION, "het");
 
         //test the annotate method with a Pedigree File
-        annots = new ExcessHet(getTestFile("testPedigree.ped")).annotate(null, test2, null);
+        annots = new ExcessHet(getTestFileGATKPath("testPedigree.ped")).annotate(null, test2, null);
         Assert.assertEquals(annots.keySet(), Collections.singleton(GATKVCFConstants.EXCESS_HET_KEY), "annots");
         Assert.assertEquals(annots.values().size(), 1, "size");
         Assert.assertEquals(Double.parseDouble((String)annots.values().iterator().next()), result, DELTA_PRECISION, "het");

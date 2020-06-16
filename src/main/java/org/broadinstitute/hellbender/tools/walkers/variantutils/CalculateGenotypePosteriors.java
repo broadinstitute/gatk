@@ -255,7 +255,7 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
      *
      */
     @Argument(fullName=StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, shortName=StandardArgumentDefinitions.PEDIGREE_FILE_SHORT_NAME, doc="Pedigree file for samples", optional=true)
-    private File pedigreeFile = null;
+    private GATKPath pedigreeFile = null;
 
     private FamilyLikelihoods famUtils;
 
