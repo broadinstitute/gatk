@@ -13,6 +13,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -455,8 +456,16 @@ public abstract class GATKTool extends CommandLineProgram {
                 factory = factory.enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES);
             }
 
-            reads = new ReadsPathDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
-                (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer));
+            final Map<String, List<GATKPath>> pathsByScheme = readArguments.getReadPathSpecifiers().stream()
+                .collect(Collectors.groupingBy(path -> path.getURI().getScheme()));
+
+            if (pathsByScheme.get(GATKPath.HTSGET_SCHEME) != null) {
+                reads = new ReadsHtsgetDataSource(pathsByScheme.get(GATKPath.HTSGET_SCHEME), factory);
+            } else {
+                reads = new ReadsPathDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
+                    (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer));
+            }
+
         }
         else {
             reads = null;

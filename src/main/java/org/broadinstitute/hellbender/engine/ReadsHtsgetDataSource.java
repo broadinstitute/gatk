@@ -24,7 +24,6 @@ import org.broadinstitute.hellbender.utils.read.ReadConstants;
 import javax.annotation.Nonnull;
 import java.io.*;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -75,14 +74,14 @@ public class ReadsHtsgetDataSource implements ReadsDataSource {
             try {
                 // Ensure each source can be obtained from htsget server
                 final URI sourceURI = source.getURI();
-                final HtsgetRequest req = new HtsgetRequest(new URI("//" + sourceURI.getHost()), sourceURI.getPath())
+                final HtsgetRequest req = new HtsgetRequest(source)
                     .withDataClass(HtsgetClass.header);
 
                 // Request only the headers and use them to construct SAMFileHeader for each source
                 final InputStream headerStream = new SequenceInputStream(Collections.enumeration(
                     req.getResponse().streamData().collect(Collectors.toList())));
                 this.headers.put(source, readerFactory.open(SamInputResource.of(headerStream)).getFileHeader());
-            } catch (final URISyntaxException | UserException e) {
+            } catch (final UserException e) {
                 throw new UserException(source.toString(), e);
             }
         }
