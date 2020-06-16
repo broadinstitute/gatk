@@ -13,10 +13,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.VariantWalker;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFs;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
@@ -39,7 +36,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 import org.reflections.Reflections;
 
-import java.io.File;
 import java.util.*;
 
 /**
@@ -98,11 +94,11 @@ public final class GnarlyGenotyper extends VariantWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
-    private File outputFile;
+    private GATKPath outputFile;
 
     @Argument(fullName = "output-database-name", shortName = "output-db",
             doc="File to which the sites-only annotation database derived from these input samples should be written", optional=true)
-    private String outputDbName = null;
+    private GATKPath outputDbName = null;
 
     @ArgumentCollection
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
@@ -245,7 +241,7 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         vcfWriter = createVCFWriter(outputFile);
         if (outputDbName != null) {
-            annotationDatabaseWriter = createVCFWriter(new File(outputDbName));
+            annotationDatabaseWriter = createVCFWriter(outputDbName);
         }
 
         final Set<String> sampleNameSet = samples.asSetOfSamples();

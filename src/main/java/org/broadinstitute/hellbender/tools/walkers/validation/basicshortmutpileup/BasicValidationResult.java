@@ -2,16 +2,15 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -119,8 +118,8 @@ public class BasicValidationResult implements Locatable {
     }
 
     //----- The following two public static methods read and write files
-    public static void write(final List<BasicValidationResult> records, final File file) {
-        try (final BasicValidationResult.BasicValidationResultTableWriter writer = new BasicValidationResult.BasicValidationResultTableWriter(IOUtils.fileToPath(file))) {
+    public static void write(final List<BasicValidationResult> records, final GATKPath file) {
+        try (final BasicValidationResult.BasicValidationResultTableWriter writer = new BasicValidationResult.BasicValidationResultTableWriter(file.toPath())) {
             writer.writeHeaderIfApplies();
             writer.writeAllRecords(records);
         } catch (final IOException e){
@@ -128,8 +127,8 @@ public class BasicValidationResult implements Locatable {
         }
     }
 
-    public static List<BasicValidationResult> read(final File file) {
-        try(final BasicValidationResult.BasicValidationResultTableReader reader = new BasicValidationResult.BasicValidationResultTableReader(IOUtils.fileToPath(file))) {
+    public static List<BasicValidationResult> read(final GATKPath file) {
+        try(final BasicValidationResult.BasicValidationResultTableReader reader = new BasicValidationResult.BasicValidationResultTableReader(file.toPath())) {
             return reader.toList();
         } catch (final IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", file));

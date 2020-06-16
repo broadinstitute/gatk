@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.File;
 import java.io.PrintStream;
 
 /**

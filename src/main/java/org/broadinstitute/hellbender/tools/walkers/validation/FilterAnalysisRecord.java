@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import java.nio.file.Path;
+
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -45,8 +47,8 @@ public class FilterAnalysisRecord {
     public void incrementUniqueFalseNegative() { uniqueFalseNegativeCount++; }
 
     //----- The following four public static methods read and write contamination files
-    public static void writeToFile(final Collection<FilterAnalysisRecord> records, final File outputTable) {
-        writeToPath(records, IOUtils.fileToPath(outputTable));
+    public static void writeToFile(final Collection<FilterAnalysisRecord> records, final GATKPath outputTable) {
+        writeToPath(records, outputTable.toPath());
     }
 
     public static void writeToPath(final Collection<FilterAnalysisRecord> records, final Path outputTable) {

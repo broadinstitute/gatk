@@ -7,13 +7,9 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.*;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.VariantWalker;
 
-import java.io.File;
 import java.util.ArrayDeque;
 
 /**
@@ -51,7 +47,7 @@ public class RemoveNearbyIndels extends VariantWalker {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "The output filtered VCF file",
             optional = false)
-    private final String outputVcf = null;
+    private final GATKPath outputVcf = null;
 
     @Argument(fullName = MIN_INDEL_SPACING_NAME,
             shortName = MIN_INDEL_SPACING_NAME,
@@ -68,7 +64,7 @@ public class RemoveNearbyIndels extends VariantWalker {
         final VCFHeader inputHeader = getHeaderForVariants();
         final VCFHeader vcfHeader = new VCFHeader(inputHeader.getMetaDataInSortedOrder(), inputHeader.getGenotypeSamples());
         getDefaultToolVCFHeaderLines().forEach(vcfHeader::addMetaDataLine);
-        vcfWriter = createVCFWriter(new File(outputVcf));
+        vcfWriter = createVCFWriter(outputVcf);
         vcfWriter.writeHeader(vcfHeader);
     }
 

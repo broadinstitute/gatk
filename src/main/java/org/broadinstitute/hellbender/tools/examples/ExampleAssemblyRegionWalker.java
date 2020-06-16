@@ -6,12 +6,9 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.PrintStream;
 
 /**
@@ -29,7 +26,7 @@ import java.io.PrintStream;
 public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    private File outputFile = null;
+    private GATKPath outputFile = null;
 
     @Argument(fullName="knownVariants", shortName="knownVariants", doc="Known set of variants", optional=true)
     private FeatureInput<VariantContext> knownVariants;
@@ -45,12 +42,7 @@ public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
 
     @Override
     public void onTraversalStart() {
-        try {
-            outputStream = outputFile != null ? new PrintStream(outputFile) : System.out;
-        }
-        catch ( final FileNotFoundException e ) {
-            throw new UserException.CouldNotCreateOutputFile(outputFile, e);
-        }
+        outputStream = outputFile != null ? new PrintStream(outputFile.getOutputStream()) : System.out;
     }
 
     @Override

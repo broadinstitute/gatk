@@ -9,18 +9,13 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.TwoPassVariantWalker;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
-import java.io.File;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -38,7 +33,7 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output VCF file")
-    private String outputVcf = null;
+    private GATKPath outputVcf = null;
 
     @Argument(fullName = MAX_ALLOWED_LOW_HETS_LONG_NAME,
             doc = "Number of low het sites allowed to pass other filters before filtering out all low het sites. Default is 3",
@@ -59,7 +54,7 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
     public void onTraversalStart() {
         final VCFHeader header = getHeaderForVariants();
         header.addMetaDataLine(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_HET_FILTER_NAME));
-        vcfWriter = createVCFWriter(new File(outputVcf));
+        vcfWriter = createVCFWriter(outputVcf);
         vcfWriter.writeHeader(header);
     }
 

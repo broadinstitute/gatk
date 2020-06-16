@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import java.util.*;
-import java.io.File;
 import java.util.stream.Collectors;
 
 import htsjdk.tribble.TribbleException;
@@ -19,7 +18,6 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -119,7 +117,7 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output VCF file")
-    private String outputVcf = null;
+    private GATKPath outputVcf = null;
 
     @Argument(fullName="snp-tranche",
             shortName="snp-tranche",
@@ -168,7 +166,7 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
     public void onTraversalStart() {
         snpTranches = validateTranches(snpTranches);
         indelTranches = validateTranches(indelTranches);
-        vcfWriter = createVCFWriter(new File(outputVcf));
+        vcfWriter = createVCFWriter(outputVcf);
         writeVCFHeader(vcfWriter);
     }
 

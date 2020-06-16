@@ -12,17 +12,13 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.VariantWalker;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.OtherProgramGroup;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,7 +41,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
     @Argument(fullName = GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME,
             doc="the same sampleNameMap file which was used to import the callset using GenomicsDBImport",
             optional = false)
-    public String sampleNameMapPath;
+    public GATKPath sampleNameMapPath;
 
     @Argument(fullName = GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME,
             doc="the exact batch size that was used to import the callset using GenomicsDBImport",
@@ -71,7 +67,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="where to write a reheadered version of the input VCF with the sample names in the correct order",
             optional = false)
-    public File output;
+    public GATKPath output;
 
     @Argument(fullName = SKIP_PROMPT_LONG_NAME,
             shortName = "Y",
@@ -125,7 +121,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
     }
 
     private void loadSampleNameMappings() {
-        sampleNameMapFromGenomicsDBImport = GenomicsDBImport.loadSampleNameMapFile(IOUtils.getPath(sampleNameMapPath));
+        sampleNameMapFromGenomicsDBImport = GenomicsDBImport.loadSampleNameMapFile(sampleNameMapPath.toPath());
         gvcfToHeaderSampleMap = loadGvcfToHeaderSampleMap();
     }
 
