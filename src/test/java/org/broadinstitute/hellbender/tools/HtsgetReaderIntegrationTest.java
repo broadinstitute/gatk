@@ -37,7 +37,7 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
                 ImmutableMap.of(
                     HtsgetReader.ID_LONG_NAME, FILE_ID,
                     StandardArgumentDefinitions.INTERVALS_LONG_NAME, "chr1",
-                    HtsgetReader.NUM_THREADS_LONG_NAME, "2"),
+                    HtsgetReader.PARALLEL_DOWNLOAD_LONG_NAME, true),
                 "A1-B000168-3_57_F-1-1_R2.mus.Aligned.out.sorted.bam.refname"
             },
             { // header only
@@ -91,7 +91,7 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
             .add(HtsgetReader.URL_LONG_NAME, ENDPOINT)
             .add(HtsgetReader.ID_LONG_NAME, LARGE_FILE_ID)
-            .add(HtsgetReader.NUM_THREADS_LONG_NAME, 4)
+            .add(HtsgetReader.PARALLEL_DOWNLOAD_LONG_NAME, true)
             .addOutput(output);
 
         runCommandLine(args);
