@@ -90,7 +90,7 @@ import java.util.stream.Collectors;
 public class RevertSamSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    static final String USAGE_SUMMARY = "Reverts SAM or BAM files to a previous state.";
+    static final String USAGE_SUMMARY = "Reverts SAM, BAM or CRAM files to a previous state.";
     static final String USAGE_DETAILS = "This tool removes or restores certain properties of the SAM records, including alignment " +
             "information, which can be used to produce an unmapped BAM (uBAM) from a previously aligned BAM. It is also capable of " +
             "restoring the original quality scores of a BAM file that has already undergone base quality score recalibration (BQSR) if the" +
@@ -107,7 +107,7 @@ public class RevertSamSpark extends GATKSparkTool {
             "     --output-by-readgroup \\\n" +
             "     --output-map reverted_bam_paths.tsv\n" +
             "\n" +
-            "Will output a BAM/SAM file per read group.\n" +
+            "Will output a BAM/CRAM/SAM file per read group.\n" +
             "<h4>Example outputting by read group without output map:</h4>\n" +
             "gatk RevertSamSpark \\\n" +
             "     -I input.bam \\\n" +
@@ -128,7 +128,7 @@ public class RevertSamSpark extends GATKSparkTool {
 
     @Argument(mutex = {OUTPUT_MAP_LONG_NAME}, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "The output SAM/BAM file to create, or an output directory if '--output-by-readgroup' is set.")
+            doc = "The output SAM/BAM/CRAM file to create, or an output directory if '--output-by-readgroup' is set.")
     public String output;
 
     public static final String OUTPUT_MAP_LONG_NAME = "output-map";

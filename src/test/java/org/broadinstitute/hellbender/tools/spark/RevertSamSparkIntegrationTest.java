@@ -242,10 +242,9 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
     @DataProvider
     public Object[][] getFileTypes(){
         return new Object[][] {
-//                {".sam""},
-//                {RevertSam.FileType.bam},
-//                {RevertSam.FileType.cram},
-                {".sam"},{".bam"},{".cram"}
+                {".sam"},
+                {".bam"},
+                {".cram"}
         };
     }
 
