@@ -16,13 +16,13 @@ public class HtsgetRequestUnitTest extends GATKBaseTest {
 
     @Test
     public void testOnlyId() throws URISyntaxException {
-        final HtsgetRequestBuilder req = new HtsgetRequestBuilder(new URI(endpoint), "1");
+        final HtsgetRequest req = new HtsgetRequest(new URI(endpoint), "1");
         Assert.assertEquals(req.toURI().toString(), "https://example.com/1");
     }
 
     @Test
     public void testBasicFields() throws URISyntaxException {
-        final HtsgetRequestBuilder req = new HtsgetRequestBuilder(new URI(endpoint), "1")
+        final HtsgetRequest req = new HtsgetRequest(new URI(endpoint), "1")
             .withFormat(HtsgetFormat.BAM)
             .withDataClass(HtsgetClass.body)
             .withInterval(new SimpleInterval("chr1:1-16"));
@@ -31,7 +31,7 @@ public class HtsgetRequestUnitTest extends GATKBaseTest {
 
     @Test
     public void testCompositeFields() throws URISyntaxException {
-        final HtsgetRequestBuilder req = new HtsgetRequestBuilder(new URI(endpoint), "1")
+        final HtsgetRequest req = new HtsgetRequest(new URI(endpoint), "1")
             .withField(HtsgetRequestField.QNAME)
             .withField(HtsgetRequestField.FLAG)
             .withTag("tag1")
@@ -48,32 +48,32 @@ public class HtsgetRequestUnitTest extends GATKBaseTest {
     public Object[][] invalidParams() throws URISyntaxException {
         return new Object[][]{
             // class=header while interval also specified
-            {new HtsgetRequestBuilder(new URI(endpoint), "1")
+            {new HtsgetRequest(new URI(endpoint), "1")
                 .withDataClass(HtsgetClass.header)
                 .withInterval(new SimpleInterval("chr1:1-16"))},
             // class=header while field also specified
-            {new HtsgetRequestBuilder(new URI(endpoint), "1")
+            {new HtsgetRequest(new URI(endpoint), "1")
                 .withDataClass(HtsgetClass.header)
                 .withField(HtsgetRequestField.QNAME)},
             // class=header while tag also specified
-            {new HtsgetRequestBuilder(new URI(endpoint), "1")
+            {new HtsgetRequest(new URI(endpoint), "1")
                 .withDataClass(HtsgetClass.header)
                 .withTag("NH")},
             // class=header while notag also specified
-            {new HtsgetRequestBuilder(new URI(endpoint), "1")
+            {new HtsgetRequest(new URI(endpoint), "1")
                 .withDataClass(HtsgetClass.header)
                 .withNotag("NH")},
             // tags and notags overlap
-            {new HtsgetRequestBuilder(new URI(endpoint), "1")
+            {new HtsgetRequest(new URI(endpoint), "1")
                 .withDataClass(HtsgetClass.header)
                 .withTag("NH")
                 .withNotag("NH")},
             // .bam file requested while format is variant
-            {new HtsgetRequestBuilder(new URI(endpoint), "example.bam")
+            {new HtsgetRequest(new URI(endpoint), "example.bam")
                 .withFormat(HtsgetFormat.VCF)
             },
             // .vcf file requested while format is read
-            {new HtsgetRequestBuilder(new URI(endpoint), "example.vcf")
+            {new HtsgetRequest(new URI(endpoint), "example.vcf")
                 .withFormat(HtsgetFormat.BAM)
             }
         };
@@ -81,7 +81,7 @@ public class HtsgetRequestUnitTest extends GATKBaseTest {
 
     // Expect a validation failure for invalid combinations of query parameters
     @Test(dataProvider = "invalidParams", expectedExceptions = UserException.class)
-    public void testValidationFailure(final HtsgetRequestBuilder query) {
+    public void testValidationFailure(final HtsgetRequest query) {
         query.toURI();
     }
 }

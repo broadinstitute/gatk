@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.function.Predicate;
 
 /**
  * An iterator that filters reads from an existing iterator of reads.
@@ -13,7 +14,7 @@ import java.util.NoSuchElementException;
 public class ReadFilteringIterator implements Iterator<GATKRead>, Iterable<GATKRead> {
 
     private final Iterator<GATKRead> nestedIterator;
-    private final ReadFilter readFilter;
+    private final Predicate<GATKRead> readFilter;
     private GATKRead nextRead;
 
     /**
@@ -23,7 +24,7 @@ public class ReadFilteringIterator implements Iterator<GATKRead>, Iterable<GATKR
      * @param nestedIterator underlying iterator from which to pull reads (may not be null)
      * @param readFilter filter to apply to the reads (may not be null)
      */
-    public ReadFilteringIterator( final Iterator<GATKRead> nestedIterator, final ReadFilter readFilter ) {
+    public ReadFilteringIterator( final Iterator<GATKRead> nestedIterator, final Predicate<GATKRead> readFilter) {
         Utils.nonNull(nestedIterator);
         Utils.nonNull(readFilter);
 

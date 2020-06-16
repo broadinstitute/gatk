@@ -1,28 +1,24 @@
 package org.broadinstitute.hellbender.tools.htsgetreader;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.*;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonRootName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
-import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.commons.io.input.AutoCloseInputStream;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.HttpUtils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 /**
  * Class allowing deserialization from json htsget response
@@ -64,15 +60,9 @@ public class HtsgetResponse {
                 case "https":
                     final HttpGet get = new HttpGet(this.getUri());
                     this.getHeaders().forEach(get::addHeader);
-                    try (final CloseableHttpResponse resp = HttpUtils.getClient().execute(get)) {
-                        final Path outputFile = IOUtils.createTempPath("htsget-temp", "");
-                        try (final OutputStream ostream = Files.newOutputStream(outputFile);
-                             final InputStream istream = resp.getEntity().getContent()) {
-                            org.apache.commons.io.IOUtils.copy(istream, ostream);
-                        } catch (final IOException e) {
-                            throw new UserException("Could not write to temp file", e);
-                        }
-                        return Files.newInputStream(outputFile);
+                    try {
+                        final HttpResponse resp = HttpUtils.getClient().execute(get);
+                        return new AutoCloseInputStream(resp.getEntity().getContent());
                     } catch (final IOException e) {
                         throw new UserException("Could not retrieve data from block", e);
                     }
@@ -109,5 +99,9 @@ public class HtsgetResponse {
 
     public String getMd5() {
         return this.md5;
+    }
+
+    public Stream<InputStream> streamData() {
+        return this.getBlocks().stream().map(HtsgetResponse.Block::getData);
     }
 }
