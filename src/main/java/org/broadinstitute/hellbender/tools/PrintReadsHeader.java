@@ -6,11 +6,10 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
-import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 
 @CommandLineProgramProperties(
@@ -22,7 +21,7 @@ import java.io.PrintWriter;
 public class PrintReadsHeader extends GATKTool {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "file to write the bam header to", optional = false)
-    private String outputFile;
+    private GATKPath outputFile;
 
     @Override
     public boolean requiresReads() {
@@ -33,11 +32,9 @@ public class PrintReadsHeader extends GATKTool {
     public void traverse() {
         final SAMFileHeader bamHeader = getHeaderForReads();
 
-        try ( final PrintWriter outputWriter = new PrintWriter(outputFile) ) {
+        try ( final PrintWriter outputWriter = new PrintWriter(outputFile.getOutputStream()) ) {
             final SAMTextHeaderCodec codec = new SAMTextHeaderCodec();
             codec.encode(outputWriter, bamHeader);
-        } catch (FileNotFoundException e ) {
-            throw new UserException.CouldNotCreateOutputFile("Error writing reads header to " + outputFile, e);
         }
 
         logger.info("Successfully wrote reads header to destination: " + outputFile);
