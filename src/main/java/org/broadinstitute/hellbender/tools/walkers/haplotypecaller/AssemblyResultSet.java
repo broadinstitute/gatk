@@ -538,11 +538,11 @@ public final class AssemblyResultSet {
                         Utils.validate(v2Alleles.size() == 2, () -> "Error Haplotype event map Variant Context has too many alleles: "+v2);
 
                         int diff = v1.getReference().length() - v2.getReference().length();
-                        if (diff != 0) {
+                        if (diff == 0) {
                             byte[] v1allele = v1.getAlternateAllele(0).getBases();
                             byte[] v2allele = v2.getAlternateAllele(0).getBases();
                             diff = v1allele.length - v2allele.length;
-                            if (diff != 0) {
+                            if (diff == 0) {
                                 for (int i = 0; i < v1allele.length; i++) {
                                     diff = v1allele[i] - v2allele[i];
                                     if (diff != 0) {
