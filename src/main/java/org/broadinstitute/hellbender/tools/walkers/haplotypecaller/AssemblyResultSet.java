@@ -539,17 +539,9 @@ public final class AssemblyResultSet {
 
                         int diff = v1.getReference().length() - v2.getReference().length();
                         if (diff == 0) {
-                            byte[] v1allele = v1.getAlternateAllele(0).getBases();
-                            byte[] v2allele = v2.getAlternateAllele(0).getBases();
-                            diff = v1allele.length - v2allele.length;
-                            if (diff == 0) {
-                                for (int i = 0; i < v1allele.length; i++) {
-                                    diff = v1allele[i] - v2allele[i];
-                                    if (diff != 0) {
-                                        break;
-                                    }
-                                }
-                            }
+                            Allele v1allele = v1.getAlternateAllele(0);
+                            Allele v2allele = v2.getAlternateAllele(0);
+                            return v1allele.compareTo(v2allele);
                         }
                         return diff;
                     }
