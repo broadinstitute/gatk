@@ -630,13 +630,13 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, regionForGenotyping.getReads());
 
         if (genotyperDebugOutStream != null) {
-            genotyperDebugOutStream.println("\nUnclipped Haplotypes");
+            genotyperDebugOutStream.println("\nUnclipped Haplotypes("+haplotypes.size()+"):");
             for (Haplotype haplotype : untrimmedAssemblyResult.getHaplotypeList()) {
                 genotyperDebugOutStream.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] k="+haplotype.getKmerSize()+" len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
                 genotyperDebugOutStream.println(haplotype);
             }
 
-            genotyperDebugOutStream.println("\nClipped Haplotyes:");
+            genotyperDebugOutStream.println("\nClipped Haplotyes("+haplotypes.size()+"):");
             for (Haplotype haplotype : haplotypes) {
                 genotyperDebugOutStream.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] k="+haplotype.getKmerSize()+" len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
                 genotyperDebugOutStream.println(haplotype);
