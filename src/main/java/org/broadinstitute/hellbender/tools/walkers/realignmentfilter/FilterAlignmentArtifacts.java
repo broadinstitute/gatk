@@ -81,9 +81,8 @@ import java.util.stream.Collectors;
  *     <a href="https://github.com/broadinstitute/gatk/tree/master/scripts/mutect2_wdl">Mutect2 WDL scripts directory</a>.
  * </p>
  * <p>
- *     The bam input to this tool should be the reassembly bamout produced by HaplotypeCaller or Mutect2 in the process of generating
- *     the input callset.  The original bam will also work but might fail to filter some indels.  The reference passed with the -R argument
- *     must be the reference to which the input bam was realigned.  This does not need to correspond to the reference of the BWA-MEM
+ *     The input bam to this tool should be the same tumor bam that Mutect2 was run on.  The reference passed with the -R argument
+ *     must be the reference to which the input bam was aligned.  This does not need to correspond to the reference of the BWA-MEM
  *     index image.  The latter should be derived from the best available reference, for example hg38 in humans as of February 2018.
  * </p>
  *
