@@ -59,6 +59,15 @@ public final class ArgumentsBuilderTest{
         Assert.assertEquals(args.getArgsArray(), new String[]{"--foo", file.getAbsolutePath()});
     }
 
+    private enum AnEnum { OPTION1, OPTION2}
+
+    @Test
+    public void testAddEnum() {
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("anenum", AnEnum.OPTION1);
+        Assert.assertEquals(args.getArgsArray(), new String[]{"--anenum", "OPTION1"});
+    }
+
     @Test
     public void testInput() throws Exception {
         ArgumentsBuilder args = new ArgumentsBuilder();
