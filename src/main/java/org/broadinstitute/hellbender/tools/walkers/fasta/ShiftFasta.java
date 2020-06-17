@@ -63,6 +63,11 @@ public class ShiftFasta extends GATKTool {
     "If not specified, the contig will be shifted by half the number of bases. To skip the shifting of a contig, specify 0 in the list.", optional = true)
     private List<Integer> shiftOffsets = null;
 
+    public static final String INTERAL_FILE_NAME = "interval-file-name";
+    @Argument(fullName = INTERAL_FILE_NAME,
+            doc="Base name for interval files. Intervals will be midway between beginning and computed offset. If not specified or if custom offsets are specified, no interval files will be written.", optional = true)
+    private String intervalFilename;
+
     public static final String LINE_WIDTH_LONG_NAME = "line-width";
     @Argument(fullName= LINE_WIDTH_LONG_NAME, doc="Maximum length of sequence to write per line", optional=true)
     public int basesPerLine = FastaReferenceWriter.DEFAULT_BASES_PER_LINE;
@@ -70,6 +75,8 @@ public class ShiftFasta extends GATKTool {
     ReferenceDataSource refSource;
     FastaReferenceWriter refWriter;
     FileWriter chainFileWriter;
+    FileWriter intervalRegularWriter;
+    FileWriter intervalShiftedWriter;
 
     int chainId = 0;
 
@@ -89,6 +96,10 @@ public class ShiftFasta extends GATKTool {
                     .setBasesPerLine(basesPerLine)
                     .build();
             chainFileWriter = new FileWriter(shiftBackOutput);
+            if (intervalFilename != null) {
+                intervalRegularWriter = new FileWriter(intervalFilename+ ".intervals");
+                intervalShiftedWriter = new FileWriter(intervalFilename + ".shifted.intervals");
+            }
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile("Couldn't create " + output + ", encountered exception: " + e.getMessage(), e);
         }
@@ -115,6 +126,7 @@ public class ShiftFasta extends GATKTool {
             byte[] basesAtEnd = Arrays.copyOfRange(bases, shiftOffset, bases.length);
             byte[] basesAtStart = Arrays.copyOf(bases, shiftOffset);
             int shiftBackOffset = bases.length - shiftOffset;
+
             try {
                 refWriter.startSequence(seq.getSequenceName(), basesPerLine);
                 refWriter.appendBases(basesAtEnd).appendBases(basesAtStart);
@@ -122,6 +134,14 @@ public class ShiftFasta extends GATKTool {
                 chainFileWriter.append("\n" + shiftBackOffset + "\n\n");
                 chainFileWriter.append(createChainString(seq.getSequenceName(), shiftOffset - 1, contigLength, 0, shiftOffset, shiftBackOffset, bases.length, chainId++));
                 chainFileWriter.append("\n" + shiftOffset + "\n\n");
+                if (intervalFilename != null && shiftOffsetsIt == null) {
+                    int intervalStart = shiftOffset/2;
+                    int intervalEnd = intervalStart + contigLength/2 - 1;
+                    int shiftedIntervalStart = intervalStart;
+                    int shiftedIntervalEnd = intervalEnd + contigLength % 2;
+                    intervalRegularWriter.append(seq.getSequenceName() + ":" + intervalStart + "-" + intervalEnd + "\n");
+                    intervalShiftedWriter.append(seq.getSequenceName() + ":" + shiftedIntervalStart + "-" + shiftedIntervalEnd + "\n");
+                }
             } catch (IOException e) {
                 throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
             }
@@ -171,7 +191,19 @@ public class ShiftFasta extends GATKTool {
         } catch (IllegalStateException e){
             //sink this
         } catch (IOException e) {
-            throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
+            throw new UserException("Failed to write chain file due to " + e.getMessage(), e);
+        }
+        try{
+            if (intervalRegularWriter != null) {
+                intervalRegularWriter.close();
+            }
+            if (intervalShiftedWriter != null) {
+                intervalShiftedWriter.close();
+            }
+        } catch (IllegalStateException e){
+            //sink this
+        } catch (IOException e) {
+            throw new UserException("Failed to write intervals due to " + e.getMessage(), e);
         }
     }
 
