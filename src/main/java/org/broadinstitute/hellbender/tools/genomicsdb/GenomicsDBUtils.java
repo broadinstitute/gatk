@@ -106,7 +106,8 @@ public class GenomicsDBUtils {
                         .setProduceGTWithMinPLValueForSpanningDeletions(false)
                         .setSitesOnlyQuery(false)
                         .setMaxDiploidAltAllelesThatCanBeGenotyped(genomicsDBOptions.getMaxDiploidAltAllelesThatCanBeGenotyped())
-                        .setMaxGenotypeCount(genomicsDBOptions.getMaxGenotypeCount());
+                        .setMaxGenotypeCount(genomicsDBOptions.getMaxGenotypeCount())
+                        .setEnableSharedPosixfsOptimizations(genomicsDBOptions.sharedPosixFSOptimizations());
 
         final Path arrayFolder = Paths.get(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
 
