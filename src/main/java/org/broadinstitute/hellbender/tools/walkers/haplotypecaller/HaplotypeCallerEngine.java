@@ -632,13 +632,13 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if (genotyperDebugOutStream != null) {
             genotyperDebugOutStream.println("\nUnclipped Haplotypes");
             for (Haplotype haplotype : untrimmedAssemblyResult.getHaplotypeList()) {
-                genotyperDebugOutStream.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
+                genotyperDebugOutStream.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] k="+haplotype.getKmerSize()+" len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
                 genotyperDebugOutStream.println(haplotype);
             }
 
             genotyperDebugOutStream.println("\nClipped Haplotyes:");
             for (Haplotype haplotype : haplotypes) {
-                genotyperDebugOutStream.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
+                genotyperDebugOutStream.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] k="+haplotype.getKmerSize()+" len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
                 genotyperDebugOutStream.println(haplotype);
             }
             genotyperDebugOutStream.println("");

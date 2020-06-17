@@ -82,6 +82,9 @@ public class DRAGENGenotypesModel implements GenotypersModel {
                 genotyperDebugStream.println("API found: " + api + " with period used: " + period + "  and repeats: " + repeats);
             }
         } else {
+            if (genotyperDebugStream != null) {
+                genotyperDebugStream.println("No API from DRAGStrs found, falling back on snp het prior for indels");
+            }
             api = FLAT_SNP_HET_PRIOR;
         }
 
@@ -130,7 +133,7 @@ public class DRAGENGenotypesModel implements GenotypersModel {
                     strandForward.add(new DragenReadContainer(filteredReadForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(filteredReadForSample), -1));
                 }
             }
-            strandForward.sort(new ReadFeatherEndForwardComparitor());
+            strandForward.sort(new ReadFeatherEndForwardComparitor());//data.readLikelihoods().getVariantCallingSubsetApplied().getContig(), variantOffset);
             strandReverse.sort(new ReadFeatherEndRevereseComparitor());
 
             // Compute default liklihoods as normal (before we go ahead and alter the liklihoods for the call)
@@ -253,6 +256,14 @@ public class DRAGENGenotypesModel implements GenotypersModel {
             return underlyingRead.getBaseQuality(offsetIntoReadForBaseQuality);
         }
 
+        public int getForwardsFeatherEnd() {
+            return (underlyingRead.getSoftStart() - underlyingRead.getUnclippedStart()) + indexInLikelihoodsObject;
+        }
+
+        public int getReverseFeatherEnd() {
+            return (underlyingRead.getUnclippedEnd() - underlyingRead.getSoftEnd()) + (underlyingRead.getLength() - indexInLikelihoodsObject);
+        }
+
         public double getPhredScaledMappingQuality() {
             return DRAGENMappingQualityReadTransformer.mapValue(underlyingRead.getMappingQuality());
         }
@@ -291,7 +302,10 @@ public class DRAGENGenotypesModel implements GenotypersModel {
         @Override
         public int compare(final DragenReadContainer read1, final DragenReadContainer read2) {
             //NOTE: here we want the reads to wind up in ascending order by unclipped position because the unclipped position should be on the left
-            int diffVal = read1.getUnclippedPosition() - read2.getUnclippedPosition();
+
+            int diffVal =  read2.getForwardsFeatherEnd() - read1.getForwardsFeatherEnd();
+//
+//            int diffVal = read1.getUnclippedPosition() - read2.getUnclippedPosition();
             if (diffVal == 0) {
                 diffVal = (read1.hasValidBaseQuality() ? read1.getBaseQuality() : 0)
                         - (read2.hasValidBaseQuality() ? read2.getBaseQuality() : 0);
@@ -313,7 +327,7 @@ public class DRAGENGenotypesModel implements GenotypersModel {
         @Override
         public int compare(final DragenReadContainer read1, final DragenReadContainer read2) {
             //NOTE: here we want the reads to wind up in decending order by unclipped position because the unclipped position should be on the left
-            int diffVal = read2.getUnclippedPosition() - read1.getUnclippedPosition();
+            int diffVal = read2.getReverseFeatherEnd() - read1.getReverseFeatherEnd();
             if (diffVal==0) {
                 diffVal = (read1.hasValidBaseQuality() ? read1.getBaseQuality() : 0)
                         - (read2.hasValidBaseQuality() ? read2.getBaseQuality() : 0);

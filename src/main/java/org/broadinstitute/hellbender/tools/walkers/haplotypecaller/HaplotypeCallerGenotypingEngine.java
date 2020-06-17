@@ -191,11 +191,11 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             // We want to retian evidence that overlaps within its softclipping edges.
             //TODO this will need to be paramertramtrized in the future.
             if (hcArgs.applyBQD || hcArgs.applyFRD) {
-                readAlleleLikelihoods.retainEvidence(r -> {GATKRead original = (GATKRead)(r.getTransientAttribute("originalAlignment"));
-                        original = original == null ? r : original;//Reads that were disqualified don't have original alignments (since they weren't ever realigned).
-                        return original.getUnclippedStart() <= original.getUnclippedEnd() && new SimpleInterval(original.getContig(), original.getUnclippedStart(), original.getUnclippedEnd()).overlaps(variantCallingRelevantOverlap);});
+//                readAlleleLikelihoods.retainEvidence(r -> {GATKRead original = (GATKRead)(r.getTransientAttribute("originalAlignment"));
+//                        original = original == null ? r : original;//Reads that were disqualified don't have original alignments (since they weren't ever realigned).
+//                        return original.getUnclippedStart() <= original.getUnclippedEnd() && new SimpleInterval(original.getContig(), original.getUnclippedStart(), original.getUnclippedEnd()).overlaps(variantCallingRelevantOverlap);});
 
-//                readAlleleLikelihoods.retainEvidence(r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
+                readAlleleLikelihoods.retainEvidence(r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
             } else {
                 readAlleleLikelihoods.retainEvidence(r -> r.overlaps(variantCallingRelevantOverlap));
             }

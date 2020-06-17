@@ -176,7 +176,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 errorAlleleContribution = 0;
             }
 
-//            genotyperDebugStream.println("read index:"+readIndex+" ihomGT:"+homozygousGenotypeContribution+"  errorAlleleContribution:"+errorAlleleContribution + " difference in log10: "+ (errorAlleleContribution - homozygousGenotypeContribution));
+//            genotyperDebugStream.println("read index:"+readIndex+" read: "+container.underlyingRead+" "+container.underlyingRead.getCigar()+"  forward feather end: "+container.getForwardsFeatherEnd()+" reverse: "+container.getReverseFeatherEnd()+" ihomGT:"+homozygousGenotypeContribution+"  errorAlleleContribution:"+errorAlleleContribution + " difference in log10: "+ (errorAlleleContribution - homozygousGenotypeContribution));
 
             // Populate the error probability array in phred space
             // Calculation: Alpha * P(r|E_allele) + (1 - Alpha) * P(r | G_homozygousGT))
