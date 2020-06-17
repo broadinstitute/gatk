@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import htsjdk.samtools.ValidationStringency;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -53,32 +55,22 @@ public abstract class ReadInputArgumentCollection implements Serializable {
     /**
      * Get the raw list of BAM/SAM/CRAM inputs specified at the command line.
      * GATKPath is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
-     * These will be processed to resolve bundle files.
+     * This returns the raw paths given on the commandline and must be processed in order to resolve bundle files.
      */
     protected abstract List<GATKPath> getRawReadPathSpecifiers();
 
 
     /**
      * Get the list of BAM/SAM/CRAM files specified at the command line.
-     * Paths are the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
+     * GATKPath is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
-
-    public List<Path> getReadPaths() {
-        return getReadPathSpecifiers().stream().map(GATKPath::toPath).collect(Collectors.toList());
-    }
-
-    /**
-     *
-     * @return
-     */
-    public List<GATKPath> getReadPathSpecifiers(){
+    public List<GATKPath> getReadPaths(){
         return getReadIndexPairs().stream().map(ReadIndexPair::getReads).collect(Collectors.toList());
     }
 
 
     /**
      * Get the matched pairs of BAM/SAM/CRAM and resolved indexes that were specified on the command line
-     * @return
      */
     public List<ReadIndexPair> getReadIndexPairs() {
         //check if it's already been cached
@@ -88,7 +80,7 @@ public abstract class ReadInputArgumentCollection implements Serializable {
             final int numberOfReadSourcesSpecified = rawReadPathSpecifiers.size();
             final int numberOfReadIndexesSpecified = readIndices.size();
             if( !readIndices.isEmpty() && numberOfReadSourcesSpecified != numberOfReadIndexesSpecified){
-                throw new UserException("If  --"+ StandardArgumentDefinitions.READ_INDEX_LONG_NAME + " is specified " +
+                throw new UserException.MissingIndex("If  --"+ StandardArgumentDefinitions.READ_INDEX_LONG_NAME + " is specified " +
                         "it must be specified once for every read input that is specified. " +
                         "\n Found " + numberOfReadSourcesSpecified +"  read sources and " + numberOfReadIndexesSpecified + " read indexes.");
             }
