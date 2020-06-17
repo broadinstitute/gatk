@@ -35,6 +35,8 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
  * to a URI after validating that it is properly formed
  */
 public class HtsgetRequest {
+    public static final SimpleInterval UNMAPPED_UNPLACED_INTERVAL = new SimpleInterval("*");
+
     final private URI endpoint;
     final private String id;
 

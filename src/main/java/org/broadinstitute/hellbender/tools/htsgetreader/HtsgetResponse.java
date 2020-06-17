@@ -2,12 +2,8 @@ package org.broadinstitute.hellbender.tools.htsgetreader;
 
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -49,10 +45,8 @@ public class HtsgetResponse {
         }
 
         /**
-         * Returns InputStream containing data of a single block from the htsget response
-         *
-         * Large blocks (those behind an http(s) URI) are first saved
-         * to a temp file that is deleted upon program exit
+         * Gets data from this block either from its base64 encoded data url or by making an http request
+         * @return InputStream of data from this block
          */
         public InputStream getData() {
             switch (this.getUri().getScheme()) {
@@ -101,7 +95,24 @@ public class HtsgetResponse {
         return this.md5;
     }
 
-    public Stream<InputStream> streamData() {
-        return this.getBlocks().stream().map(HtsgetResponse.Block::getData);
+    /**
+     * Lazily generates an InputStream over this response's data from the concatenation of the InputStreams from
+     * each of the response's data blocks
+     * @return InputStream over this response's data
+     */
+    public InputStream getDataStream() {
+        return new SequenceInputStream(new Enumeration<InputStream>() {
+            private final Iterator<Block> iterator = HtsgetResponse.this.blocks.iterator();
+
+            @Override
+            public boolean hasMoreElements() {
+                return this.iterator.hasNext();
+            }
+
+            @Override
+            public InputStream nextElement() {
+                return this.iterator.next().getData();
+            }
+        });
     }
 }

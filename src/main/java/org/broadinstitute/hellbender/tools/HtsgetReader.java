@@ -111,7 +111,7 @@ public class HtsgetReader extends CommandLineProgram {
         fullName = PARALLEL_DOWNLOAD_LONG_NAME,
         shortName = PARALLEL_DOWNLOAD_LONG_NAME,
         optional = true)
-    private boolean parallelDownload = false;
+    private final boolean parallelDownload = false;
 
     @Argument(fullName = CHECK_MD5_LONG_NAME, shortName = CHECK_MD5_LONG_NAME, doc = "Boolean determining whether to calculate the md5 digest of the assembled file "
             + "and validate it against the provided md5 hash, if it exists.", optional = true)
@@ -138,7 +138,6 @@ public class HtsgetReader extends CommandLineProgram {
             .withFields(fields)
             .withTags(tags)
             .withNotags(notags);
-        final URI reqURI = req.toURI();
 
         final HtsgetResponse resp = req.getResponse();
         if (resp.getMd5() == null) {
@@ -147,25 +146,29 @@ public class HtsgetReader extends CommandLineProgram {
         }
 
         try (final OutputStream outputstream = new FileOutputStream(this.outputFile)) {
-            // Download to temp files if parallel download is requested
-            final Stream<InputStream> chunkStream = this.parallelDownload
-                ? resp.streamData().parallel().map(inputStream -> {
-                    final Path tempFile = org.broadinstitute.hellbender.utils.io.IOUtils.createTempPath("htsget-temp", "");
-                    try (final OutputStream ostream = Files.newOutputStream(tempFile)) {
-                        org.apache.commons.io.IOUtils.copy(inputStream, ostream);
-                        return Files.newInputStream(tempFile);
-                    } catch (final IOException e) {
-                        throw new UserException("Error while downloading htsget block", e);
-                    }
-                })
-                : resp.streamData();
-            chunkStream.forEachOrdered(inputStream -> {
+            if (this.parallelDownload) {
+                resp.getBlocks().parallelStream().map(block -> {
+                        final Path tempFile = org.broadinstitute.hellbender.utils.io.IOUtils.createTempPath("htsget-temp", "");
+                        try (final OutputStream ostream = Files.newOutputStream(tempFile)) {
+                            org.apache.commons.io.IOUtils.copy(block.getData(), ostream);
+                            return Files.newInputStream(tempFile);
+                        } catch (final IOException e) {
+                            throw new UserException("Error while downloading htsget block", e);
+                        }
+                    }).forEachOrdered(inputStream -> {
+                        try {
+                            IOUtils.copy(inputStream, outputstream);
+                        } catch (final IOException e) {
+                            throw new UserException("IOException while writing output file", e);
+                        }
+                    });
+            } else {
                 try {
-                    IOUtils.copy(inputStream, outputstream);
+                    IOUtils.copy(resp.getDataStream(), outputstream);
                 } catch (final IOException e) {
                     throw new UserException("IOException while writing output file", e);
                 }
-            });
+            }
         } catch (final IOException e) {
             throw new UserException("IOException during htsget download", e);
         }
