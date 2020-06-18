@@ -453,58 +453,82 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     private BestAllele searchBestAllele(final int sampleIndex, final int evidenceIndex, final boolean canBeReference, Optional<double[]> priorities) {
         final int alleleCount = alleles.numberOfAlleles();
         if (alleleCount == 0 || (alleleCount == 1 && referenceAlleleIndex == 0 && !canBeReference)) {
-            return new BestAllele(sampleIndex, evidenceIndex, MISSING_INDEX, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
+            return new BestAllele(sampleIndex, evidenceIndex, -1, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
         }
 
         final double[][] sampleValues = valuesBySampleIndex[sampleIndex];
         int bestAlleleIndex = canBeReference || referenceAlleleIndex != 0 ? 0 : 1;
 
-        int secondBestIndex = 0;
         double bestLikelihood = sampleValues[bestAlleleIndex][evidenceIndex];
         double secondBestLikelihood = Double.NEGATIVE_INFINITY;
-
         for (int a = bestAlleleIndex + 1; a < alleleCount; a++) {
             if (!canBeReference && referenceAlleleIndex == a) {
                 continue;
             }
             final double candidateLikelihood = sampleValues[a][evidenceIndex];
             if (candidateLikelihood > bestLikelihood) {
-                secondBestIndex = bestAlleleIndex;
                 bestAlleleIndex = a;
                 secondBestLikelihood = bestLikelihood;
                 bestLikelihood = candidateLikelihood;
             } else if (candidateLikelihood > secondBestLikelihood) {
-                secondBestIndex = a;
                 secondBestLikelihood = candidateLikelihood;
             }
         }
+        return new BestAllele(sampleIndex,evidenceIndex,bestAlleleIndex,bestLikelihood,secondBestLikelihood);
+//        final int alleleCount = alleles.numberOfAlleles();
+//        if (alleleCount == 0 || (alleleCount == 1 && referenceAlleleIndex == 0 && !canBeReference)) {
+//            return new BestAllele(sampleIndex, evidenceIndex, MISSING_INDEX, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
+//        }
+//
+//        final double[][] sampleValues = valuesBySampleIndex[sampleIndex];
+//        int bestAlleleIndex = canBeReference || referenceAlleleIndex != 0 ? 0 : 1;
+//
+//        int secondBestIndex = 0;
+//        double bestLikelihood = sampleValues[bestAlleleIndex][evidenceIndex];
+//        double secondBestLikelihood = Double.NEGATIVE_INFINITY;
+//
+//        for (int a = bestAlleleIndex + 1; a < alleleCount; a++) {
+//            if (!canBeReference && referenceAlleleIndex == a) {
+//                continue;
+//            }
+//            final double candidateLikelihood = sampleValues[a][evidenceIndex];
+//            if (candidateLikelihood > bestLikelihood) {
+//                secondBestIndex = bestAlleleIndex;
+//                bestAlleleIndex = a;
+//                secondBestLikelihood = bestLikelihood;
+//                bestLikelihood = candidateLikelihood;
+//            } else if (candidateLikelihood > secondBestLikelihood) {
+//                secondBestIndex = a;
+//                secondBestLikelihood = candidateLikelihood;
+//            }
+//        }
+//
+//        if (priorities.isPresent() && bestLikelihood - secondBestLikelihood < getInformativeThreshold()) {
+//            double bestPriority = priorities.get()[bestAlleleIndex];
+//            double secondBestPriority = priorities.get()[secondBestIndex];
+//            for (int a = 0; a < alleleCount; a++) {
+//                final double candidateLikelihood = sampleValues[a][evidenceIndex];
+//                if (a == bestAlleleIndex || (!canBeReference && a == referenceAlleleIndex) || bestLikelihood - candidateLikelihood > getInformativeThreshold()) {
+//                    continue;
+//                }
+//                final double candidatePriority = priorities.get()[a];
+//
+//                if (candidatePriority > bestPriority) {
+//                    secondBestIndex = bestAlleleIndex;
+//                    bestAlleleIndex = a;
+//                    secondBestPriority = bestPriority;
+//                    bestPriority = candidatePriority;
+//                } else if (candidatePriority > secondBestPriority) {
+//                    secondBestIndex = a;
+//                    secondBestPriority = candidatePriority;
+//                }
+//            }
+//        }
+//
+//        bestLikelihood = sampleValues[bestAlleleIndex][evidenceIndex];
+//        secondBestLikelihood = secondBestIndex != bestAlleleIndex ? sampleValues[secondBestIndex][evidenceIndex] : Double.NEGATIVE_INFINITY;
 
-        if (priorities.isPresent() && bestLikelihood - secondBestLikelihood < getInformativeThreshold()) {
-            double bestPriority = priorities.get()[bestAlleleIndex];
-            double secondBestPriority = priorities.get()[secondBestIndex];
-            for (int a = 0; a < alleleCount; a++) {
-                final double candidateLikelihood = sampleValues[a][evidenceIndex];
-                if (a == bestAlleleIndex || (!canBeReference && a == referenceAlleleIndex) || bestLikelihood - candidateLikelihood > getInformativeThreshold()) {
-                    continue;
-                }
-                final double candidatePriority = priorities.get()[a];
-
-                if (candidatePriority > bestPriority) {
-                    secondBestIndex = bestAlleleIndex;
-                    bestAlleleIndex = a;
-                    secondBestPriority = bestPriority;
-                    bestPriority = candidatePriority;
-                } else if (candidatePriority > secondBestPriority) {
-                    secondBestIndex = a;
-                    secondBestPriority = candidatePriority;
-                }
-            }
-        }
-
-        bestLikelihood = sampleValues[bestAlleleIndex][evidenceIndex];
-        secondBestLikelihood = secondBestIndex != bestAlleleIndex ? sampleValues[secondBestIndex][evidenceIndex] : Double.NEGATIVE_INFINITY;
-
-        return new BestAllele(sampleIndex, evidenceIndex, bestAlleleIndex, bestLikelihood, secondBestLikelihood);
+//        return new BestAllele(sampleIndex, evidenceIndex, bestAlleleIndex, bestLikelihood, secondBestLikelihood);
     }
 
     private BestAllele searchBestAllele(final int sampleIndex, final int evidenceIndex, final boolean canBeReference) {
