@@ -23,11 +23,13 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class ReadThreadingAssembler {
     private static final Logger logger = LogManager.getLogger(ReadThreadingAssembler.class);
@@ -70,6 +72,7 @@ public final class ReadThreadingAssembler {
     private File graphHaplotypeHistogramPath = null;
     private Histogram haplotypeHistogram = null;
     private Histogram kmersUsedHistogram = null;
+    private SimpleXSVWriter debugActiveRegionOutputStream = null;
 
     public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes,
                                   final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
@@ -164,6 +167,15 @@ public final class ReadThreadingAssembler {
             }
         }
         if ( graphHaplotypeHistogramPath != null ) { haplotypeHistogram.add((double)resultSet.getHaplotypeCount()); }
+        if ( debugActiveRegionOutputStream != null ) {
+            debugActiveRegionOutputStream.getNewLineBuilder()
+                    .setRow(new String[]{
+                            assemblyRegion.getSpan().toString(),
+                            assemblyRegion.getPaddedSpan().toString(),
+                            !resultSet.getKmerSizes().isEmpty() ?  resultSet.getKmerSizes().stream().map(Object::toString).collect(Collectors.joining(",")) : "ASSEMBLY_FAILED",
+                            Integer.toString(resultSet.getHaplotypeCount())
+                    }).write();
+        }
 
         return resultSet;
     }
@@ -256,7 +268,6 @@ public final class ReadThreadingAssembler {
                 }
             }
         }
-
 
         // This indicates that we have thrown everything away... we should go back and check that we weren't too conservative about assembly results that might otherwise be good
         if (!hasAdequatelyAssembledGraph) {
@@ -360,7 +371,7 @@ public final class ReadThreadingAssembler {
                     h.setGenomeLocation(activeRegionWindow);
                     returnHaplotypes.add(h);
                     if (resultSet != null) {
-                        resultSet.add(h);
+                        resultSet.add(h, assemblyResult);
                     }
 
                     if (debug) {
@@ -744,9 +755,25 @@ public final class ReadThreadingAssembler {
     }
 
     /**
+     * Cleans and closes any streams that might have been opened by the engine for debugging purposes
+     */
+    public void close() {
+        printDebugHistograms();
+
+        if (debugActiveRegionOutputStream != null) {
+            try {
+                debugActiveRegionOutputStream.close();
+            } catch (IOException e) {
+                throw new UserException.CouldNotCreateOutputFile("Error closing the AssemblyRegion debug output", e);
+            }
+        }
+    }
+
+
+    /**
      * Print the generated graphs to the graphWriter
      */
-    public void printDebugHistograms() {
+    private void printDebugHistograms() {
         if (graphHaplotypeHistogramPath != null) {
 
             try (final PrintStream histogramWriter = new PrintStream(graphHaplotypeHistogramPath)) {
@@ -798,6 +825,17 @@ public final class ReadThreadingAssembler {
         this.graphHaplotypeHistogramPath = file;
         this.haplotypeHistogram = new Histogram(1.0);
         this.kmersUsedHistogram = new Histogram(1.0);
+    }
+
+    public static List<String> DEBUG_ACTIVE_REGION_OUT_HEADER_LINES = Arrays.asList("called_interval", "assembly_interval", "kmers_assembled", "haplotypes_found");
+
+    public void setDebugActiveRegionOut(final File file){
+        try {
+            this.debugActiveRegionOutputStream = new SimpleXSVWriter(file.toPath(), '\t', "HEADER");
+            debugActiveRegionOutputStream.setHeaderLine(DEBUG_ACTIVE_REGION_OUT_HEADER_LINES);
+        } catch (IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(file, "Unable to create output file for activeRegion data", e);
+        }
     }
 
     public void setDebugGraphTransformations(final boolean debugHaplotypeFinding) {

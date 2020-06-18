@@ -269,6 +269,7 @@ public final class AssemblyResultSet {
 
         if (haplotypes.contains(h)) {
             final AssemblyResult previousAr = assemblyResultByHaplotype.get(h);
+            kmerSizes.add(ar.getKmerSize());
             if (previousAr == null) {
                 assemblyResultByHaplotype.put(h, ar);
                 return true;
@@ -280,6 +281,7 @@ public final class AssemblyResultSet {
         } else {
             haplotypes.add(h);
             assemblyResultByHaplotype.put(h,ar);
+            kmerSizes.add(ar.getKmerSize());
             updateReferenceHaplotype(h);
             if (h.isNonReference()) {
                 variationPresent = true;
@@ -421,6 +423,14 @@ public final class AssemblyResultSet {
             throw new IllegalStateException("there is yet no kmerSize in this assembly result set");
         }
         return kmerSizes.first();
+    }
+
+    /**
+     * Returns an unmodifiable view of the kmersizes represented by this results set
+     * @return
+     */
+    public SortedSet<Integer> getKmerSizes() {
+        return Collections.unmodifiableSortedSet(kmerSizes);
     }
 
     /**

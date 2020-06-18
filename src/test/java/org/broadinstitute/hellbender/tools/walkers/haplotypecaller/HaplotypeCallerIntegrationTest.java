@@ -103,6 +103,35 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     /*
      * Test that in JunctionTree mode we're consistent with past JunctionTree results (over non-complicated data)
      */
+    @Test
+    public void testAssemblyRegionOutFile() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File outputAssemblyRegion = createTempFile("testAssemblyRegionOutput", ".table");
+        final File expectedOutputAssemblyRegion = new File(TEST_FILES_DIR, "testAssemblyRegionOutput.table");
+
+        final String assemblyRegionOutPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expectedOutputAssemblyRegion.getAbsolutePath() : outputAssemblyRegion.getAbsolutePath();
+
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10100000",
+                "-O", output.getAbsolutePath(),
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + ReadThreadingAssemblerArgumentCollection.ACTIVE_REGION_OUT_LONG_NAME, assemblyRegionOutPath,
+                "--" + AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "2",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(outputAssemblyRegion, expectedOutputAssemblyRegion);
+        }
+    }
+
     @Test(dataProvider="HaplotypeCallerTestInputs")
     public void testLinkedDebruijnModeIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();

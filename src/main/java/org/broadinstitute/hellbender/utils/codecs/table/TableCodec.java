@@ -34,7 +34,7 @@ import java.util.List;
  *
  * <h2>File format example 1</h2>
  * <pre>
- *     HEADER a b c
+ *     HEADER pos a b c
  *     1:1  1   2   3
  *     1:2  4   5   6
  *     1:3  7   8   9
@@ -112,7 +112,7 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
                     throw new UserException.MalformedFile("Input table file seems to have two header lines.  The second is = " + line);
                 }
                 final String[] spl = line.split(delimiter_regex);
-                Collections.addAll(header, spl);
+                Collections.addAll(header, spl[0].equals(headerDelimiter) ? Arrays.copyOfRange(spl, 1, spl.length) : spl);
                 return header;
             } else if (line.startsWith(COMMENT_DELIMITER)) {
                 reader.next(); // "Commit" the peek
