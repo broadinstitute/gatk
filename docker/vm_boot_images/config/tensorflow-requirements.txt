@@ -16,8 +16,8 @@ bokeh
 Pillow==7.0.0
 notebook
 pytest
-tensorflow-addons
-tensorflow_probability
+tensorflow-addons==0.9.1
+tensorflow_probability==0.9.0
 numcodecs
 beautifulsoup4
 lxml

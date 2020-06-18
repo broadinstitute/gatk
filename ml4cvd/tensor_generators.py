@@ -552,14 +552,14 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
     # If no matches, assume the first column is MRN
     if not matches:
         mrn_col_name = df.columns[0]
+    else:
+         # Get first string from set of matches to use as column name
+        mrn_col_name = next(iter(matches))
 
-    elif len(matches) > 1:
+    if len(matches) > 1:
         logging.warning(
             f"{sample_csv} has more than one potential column for MRNs. Inferring most likely column name, but recommend explicitly setting MRN column name.",
         )
-
-        # Get one string from the set of matches; this is the column name
-        mrn_col_name = next(iter(matches))
 
     # Isolate this column from the dataframe, and cast to strings
     sample_ids = df[mrn_col_name].apply(str)

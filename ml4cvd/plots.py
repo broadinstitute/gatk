@@ -704,8 +704,8 @@ def _partners_top_panel(data, ax0):
     ax0.text(0.55, 0.9, f"{data['sitename']}", weight='bold')
 
     ax0.text(0.0, 0.75, f"{dob} ({age} yr)", weight='bold')  # TODO age units
-    gender = {value: key for key, value in data['gender'].items()}
-    ax0.text(0.0, 0.67, f"{gender[1]}".title(), weight='bold')
+    sex = {value: key for key, value in data['sex'].items()}
+    ax0.text(0.0, 0.67, f"{sex[1]}".title(), weight='bold')
     ax0.text(0.0, 0.51, f"Room: ", weight='bold')  # TODO room?
     ax0.text(0.0, 0.43, f"Loc: {data['location']}", weight='bold')
 
@@ -988,7 +988,7 @@ def _partners_clinical(data, args):
 def plot_partners_ecgs(args):
     plot_tensors = [
         'partners_ecg_patientid',   'partners_ecg_firstname', 'partners_ecg_lastname',
-        'partners_ecg_gender',      'partners_ecg_dob',       'partners_ecg_age',
+        'partners_ecg_sex',         'partners_ecg_dob',       'partners_ecg_age',
         'partners_ecg_datetime',    'partners_ecg_sitename',  'partners_ecg_location',
         'partners_ecg_read_md_raw', 'partners_ecg_taxis_md',  'partners_ecg_rate_md',
         'partners_ecg_pr_md',       'partners_ecg_qrs_md',    'partners_ecg_qt_md',

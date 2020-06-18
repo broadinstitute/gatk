@@ -75,14 +75,13 @@ def make_shallow_model(
     my_metrics = {}
     loss_weights = []
     input_tensors = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
-    if len(input_tensors) > 1:
-        logging.warning('multi input tensors not fully supported')
-    for it in input_tensors:
-        for ot in tensor_maps_out:
-            losses.append(ot.loss)
-            loss_weights.append(ot.loss_weight)
-            my_metrics[ot.output_name()] = ot.metrics
-            outputs.append(Dense(units=len(ot.channel_map), activation=ot.activation, name=ot.output_name())(it))
+
+    it = concatenate(input_tensors) if len(input_tensors) > 1 else input_tensors[0]
+    for ot in tensor_maps_out:
+        losses.append(ot.loss)
+        loss_weights.append(ot.loss_weight)
+        my_metrics[ot.output_name()] = ot.metrics
+        outputs.append(Dense(units=len(ot.channel_map), activation=ot.activation, name=ot.output_name())(it))
 
     opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
     m = Model(inputs=input_tensors, outputs=outputs)
