@@ -191,11 +191,13 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             // We want to retian evidence that overlaps within its softclipping edges.
             //TODO this will need to be paramertramtrized in the future.
             if (hcArgs.applyBQD || hcArgs.applyFRD) {
-//                readAlleleLikelihoods.retainEvidence(r -> {GATKRead original = (GATKRead)(r.getTransientAttribute("originalAlignment"));
-//                        original = original == null ? r : original;//Reads that were disqualified don't have original alignments (since they weren't ever realigned).
-//                        return original.getUnclippedStart() <= original.getUnclippedEnd() && new SimpleInterval(original.getContig(), original.getUnclippedStart(), original.getUnclippedEnd()).overlaps(variantCallingRelevantOverlap);});
-
-                readAlleleLikelihoods.retainEvidence(r -> r.getUnclippedStart() <= r.getUnclippedEnd() && new SimpleInterval(r.getContig(), r.getUnclippedStart(), r.getUnclippedEnd()).overlaps(variantCallingRelevantOverlap));
+                if (hcArgs.retainBasedOnOriginalAlignment) {
+                readAlleleLikelihoods.retainEvidence(r -> {GATKRead original = (GATKRead)(r.getTransientAttribute("originalAlignment"));
+                        original = original == null ? r : original;//Reads that were disqualified don't have original alignments (since they weren't ever realigned).
+                        return original.getUnclippedStart() <= original.getUnclippedEnd() && new SimpleInterval(original.getContig(), original.getUnclippedStart(), original.getUnclippedEnd()).overlaps(variantCallingRelevantOverlap);});
+                } else {
+                    readAlleleLikelihoods.retainEvidence(r -> r.getUnclippedStart() <= r.getUnclippedEnd() && new SimpleInterval(r.getContig(), r.getUnclippedStart(), r.getUnclippedEnd()).overlaps(variantCallingRelevantOverlap));
+                }
             } else {
                 readAlleleLikelihoods.retainEvidence(r -> r.overlaps(variantCallingRelevantOverlap));
             }
