@@ -257,11 +257,11 @@ public class DRAGENGenotypesModel implements GenotypersModel {
         }
 
         public int getForwardsFeatherEnd() {
-            return (underlyingRead.getSoftStart() - underlyingRead.getUnclippedStart()) + indexInLikelihoodsObject;
+            return (underlyingRead.getSoftStart() - underlyingRead.getUnclippedStart()) + offsetIntoReadForBaseQuality;
         }
 
         public int getReverseFeatherEnd() {
-            return (underlyingRead.getUnclippedEnd() - underlyingRead.getSoftEnd()) + (underlyingRead.getLength() - indexInLikelihoodsObject);
+            return (underlyingRead.getUnclippedEnd() - underlyingRead.getSoftEnd()) + (underlyingRead.getLength() - offsetIntoReadForBaseQuality);
         }
 
         public double getPhredScaledMappingQuality() {
@@ -328,6 +328,7 @@ public class DRAGENGenotypesModel implements GenotypersModel {
         public int compare(final DragenReadContainer read1, final DragenReadContainer read2) {
             //NOTE: here we want the reads to wind up in decending order by unclipped position because the unclipped position should be on the left
             int diffVal = read2.getReverseFeatherEnd() - read1.getReverseFeatherEnd();
+//            int diffVal = read2.getUnclippedPosition() - read1.getUnclippedPosition();
             if (diffVal==0) {
                 diffVal = (read1.hasValidBaseQuality() ? read1.getBaseQuality() : 0)
                         - (read2.hasValidBaseQuality() ? read2.getBaseQuality() : 0);
