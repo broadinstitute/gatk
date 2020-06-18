@@ -583,11 +583,6 @@ public final class PairHMMUnitTest extends GATKBaseTest {
             public GATKRead getEvidence(int evidenceIndex) {
                 throw new UnsupportedOperationException();
             }
-
-            @Override
-            public void copyAlleleLikelihoods(int alleleIndex, double[] dest, int offset) {
-                throw new UnsupportedOperationException();
-            }
         };
     }
 

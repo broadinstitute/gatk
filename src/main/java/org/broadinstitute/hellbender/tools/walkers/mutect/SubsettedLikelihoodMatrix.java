@@ -73,9 +73,4 @@ public class SubsettedLikelihoodMatrix<EVIDENCE extends Locatable, A extends All
 
     @Override
     public EVIDENCE getEvidence(final int evidenceIndex) { return matrix.getEvidence(evidenceIndex); }
-
-    @Override
-    public void copyAlleleLikelihoods(final int alleleIndex, final double[] dest, final int offset) {
-        throw new UnsupportedOperationException("Subsetted likelihood matrices are not meant to be copied.");
-    }
 }

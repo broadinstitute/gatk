@@ -662,7 +662,9 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
 
 
     public void forEachAlleleIndexAndCount(final IntBiConsumer action) {
-        new IndexRange(0, distinctAlleleCount).forEach(n -> action.accept(sortedAlleleCounts[2*n], sortedAlleleCounts[2*n+1]));
+        for (int n = 0; n < distinctAlleleCount; n++) {
+            action.accept(sortedAlleleCounts[2*n], sortedAlleleCounts[2*n+1]);
+        }
     }
 
     /**

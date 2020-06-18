@@ -107,10 +107,18 @@ public interface LikelihoodMatrix<EVIDENCE,A extends Allele> extends AlleleList<
 
 
     /**
-     * Copies the likelihood of all the evidence for a given allele into an array from a particular offset.
-     * @param alleleIndex the targeted allele
-     * @param dest the destination array.
-     * @param offset the copy offset within the destination allele
+     * Copies the likelihood of all the evidence for a given allele into a 2D array
      */
-    public void copyAlleleLikelihoods(final int alleleIndex, final double[] dest, final int offset);
+    default double[][] copyAlleleLikelihoods() {
+        final int alleleCount = numberOfAlleles();
+        final int evidenceCount = evidenceCount();
+        final double[][] result = new double[alleleCount][evidenceCount];
+        for (int a = 0; a < alleleCount; a++) {
+            for (int e = 0; e < evidenceCount; e++) {
+                result[a][e] = get(a,e);
+            }
+        }
+
+        return result;
+    }
 }

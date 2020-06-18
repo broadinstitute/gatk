@@ -1259,12 +1259,5 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             Utils.validIndex(evidenceIndex, sampleEvidence.size());
             return sampleEvidence.get(evidenceIndex);
         }
-
-        @Override
-        public void copyAlleleLikelihoods(final int alleleIndex, final double[] dest, final int offset) {
-            Utils.nonNull(dest);
-            Utils.validIndex(alleleIndex, valuesBySampleIndex[sampleIndex].length);
-            System.arraycopy(valuesBySampleIndex[sampleIndex][alleleIndex], 0, dest, offset, numberOfEvidences[sampleIndex]);
-        }
     }
 }

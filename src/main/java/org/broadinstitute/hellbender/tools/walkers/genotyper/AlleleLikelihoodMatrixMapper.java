@@ -90,13 +90,6 @@ public class AlleleLikelihoodMatrixMapper<A extends Allele> {
                 Utils.validateArg(evidenceIndex >= 0, "readIndex");
                 return original.getEvidence(evidenceIndex);
             }
-
-            @Override
-            public void copyAlleleLikelihoods(final int alleleIndex, final double[] dest, final int offset) {
-                Utils.validateArg(alleleIndex >= 0, "alleleIndex");
-                Utils.nonNull(dest);
-                original.copyAlleleLikelihoods(permutation.fromIndex(alleleIndex), dest, offset);
-            }
         };
     }
 }

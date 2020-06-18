@@ -31,9 +31,13 @@ public final class GenotypeLikelihoodCalculators {
     private int maximumPloidy = 2; // its initial value is the initial capacity of the shared tables.
 
     /**
-     * Maximum possible number of genotypes that this calculator can handle.
+     * Maximum possible number of {@link GenotypeAlleleCounts} a {@link GenotypeLikelihoodCalculator} of fixed ploidy
+     * and allele count may cache in an array, allowing for fast random access of genotypes.
+     *
+     * Iterating over all genotypes via the {@code increase} method is always fast, but accessing the allele counts
+     * for a particular genotype index, eg the one with the greatest likelihood, is slow without a cache.
      */
-    public static final int MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY = 1000;
+    public static final int MAXIMUM_NUMBER_OF_CACHED_GENOTYPE_ALLELE_COUNTS_PER_CALCULATOR = 1000;
 
     /**
      * Mark to indicate genotype-count overflow due to a large number of allele and ploidy;
@@ -238,7 +242,7 @@ public final class GenotypeLikelihoodCalculators {
         Utils.validateArg(ploidy >= 0, () -> "the requested ploidy cannot be negative: " + ploidy);
         Utils.validateArg(alleleCount >= 0, () -> "the requested maximum allele cannot be negative: " + alleleCount);
         final int length = genotypeOffsetTable[ploidy][alleleCount];
-        final int strongRefLength = length == GENOTYPE_COUNT_OVERFLOW ? MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY : Math.min(length, MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY);
+        final int strongRefLength = length == GENOTYPE_COUNT_OVERFLOW ? MAXIMUM_NUMBER_OF_CACHED_GENOTYPE_ALLELE_COUNTS_PER_CALCULATOR : Math.min(length, MAXIMUM_NUMBER_OF_CACHED_GENOTYPE_ALLELE_COUNTS_PER_CALCULATOR);
         final GenotypeAlleleCounts[] result = new GenotypeAlleleCounts[strongRefLength];
         result[0] = GenotypeAlleleCounts.first(ploidy);
         for (int genotypeIndex = 1; genotypeIndex < strongRefLength; genotypeIndex++) {

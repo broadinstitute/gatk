@@ -135,7 +135,7 @@ public final class GenotypeLikelihoodCalculatorUnitTest {
             return 0;
         else {
             return calculateGenotypeCount(ploidy - 1, alleleCount) +
-                        calculateGenotypeCount(ploidy, alleleCount - 1);
+                    calculateGenotypeCount(ploidy, alleleCount - 1);
         }
     }
 
@@ -157,7 +157,7 @@ public final class GenotypeLikelihoodCalculatorUnitTest {
         for (final int i : PLOIDY)
             for (final int j : MAXIMUM_ALLELE)
                 for (final int[] k : READ_COUNTS)
-                result[index++] = new Object[] { i, j, k };
+                    result[index++] = new Object[] { i, j, k };
         return result;
     }
 
@@ -167,7 +167,7 @@ public final class GenotypeLikelihoodCalculatorUnitTest {
         int index = 0;
         for (final int i : PLOIDY)
             for (final int j : MAXIMUM_ALLELE)
-                    result[index++] = new Object[] { i, j };
+                result[index++] = new Object[] { i, j };
         return result;
     }
 
