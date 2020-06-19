@@ -1,0 +1,5 @@
+{
+  "schemaType": "VariantBundle",
+  "schemaVersion": "0.1.0",
+  "reads":{"path":"a file", "fileType":"cram"}
+}
