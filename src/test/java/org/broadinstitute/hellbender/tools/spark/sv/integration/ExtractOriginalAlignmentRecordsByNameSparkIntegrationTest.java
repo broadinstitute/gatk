@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMRecord;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -40,7 +41,7 @@ public final class ExtractOriginalAlignmentRecordsByNameSparkIntegrationTest ext
 
         final SAMFileHeader expectedHeader;
         final List<SAMRecord> expectedRecordsNormalMatch;
-        try (final ReadsDataSource readsSource = new ReadsDataSource(IOUtils.getPath(SVIntegrationTestDataProvider.TEST_BAM))) {
+        try (final ReadsDataSource readsSource = new ReadsPathDataSource(IOUtils.getPath(SVIntegrationTestDataProvider.TEST_BAM))) {
             expectedHeader = readsSource.getHeader();
             expectedRecordsNormalMatch = Utils.stream(readsSource.iterator()).filter(r -> cleanReaNames.contains(r.getName()))
                     .sorted(Comparator.comparingInt(GATKRead::getAssignedStart)).map(r -> r.convertToSAMRecord(expectedHeader)).collect(Collectors.toList());
@@ -51,7 +52,7 @@ public final class ExtractOriginalAlignmentRecordsByNameSparkIntegrationTest ext
         data.add(new Object[]{IOUtils.getPath(tempWorkingDir+"/names.bam"), normalArgs, expectedHeader, expectedRecordsNormalMatch});
 
         final List<SAMRecord> expectedRecordsInvertedMatch;
-        try (final ReadsDataSource readsSource = new ReadsDataSource(IOUtils.getPath(SVIntegrationTestDataProvider.TEST_BAM))) {
+        try (final ReadsDataSource readsSource = new ReadsPathDataSource(IOUtils.getPath(SVIntegrationTestDataProvider.TEST_BAM))) {
             expectedRecordsInvertedMatch = Utils.stream(readsSource.iterator()).filter(r -> !cleanReaNames.contains(r.getName()))
                     .sorted(Comparator.comparingInt(GATKRead::getAssignedStart)).map(r -> r.convertToSAMRecord(expectedHeader)).collect(Collectors.toList());
         }
@@ -70,7 +71,7 @@ public final class ExtractOriginalAlignmentRecordsByNameSparkIntegrationTest ext
                                                                final SAMFileHeader expectedHeader, final List<SAMRecord> expectedRecords) {
         runCommandLine(args);
 
-        try (final ReadsDataSource readsSource = new ReadsDataSource(bamPath)) {
+        try (final ReadsDataSource readsSource = new ReadsPathDataSource(bamPath)) {
             Assert.assertEquals(readsSource.getHeader(), expectedHeader);
             final List<SAMRecord> samRecords = Utils.stream(readsSource.iterator()).map(r -> r.convertToSAMRecord(expectedHeader)).collect(Collectors.toList());
             Assert.assertEquals(samRecords.stream().map(SAMRecord::getSAMString).sorted().collect(Collectors.toList()),

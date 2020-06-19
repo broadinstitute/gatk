@@ -20,7 +20,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
 
-public final class ReadsDataSourceUnitTest extends GATKBaseTest {
+public final class ReadsPathDataSourceUnitTest extends GATKBaseTest {
     private static final String READS_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private final Path FIRST_TEST_BAM = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test1.bam");
     private final Path SECOND_TEST_BAM = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test2.bam");
@@ -30,23 +30,23 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleNullFile() {
         Path nullFile = null;
-        ReadsDataSource readsSource = new ReadsDataSource(nullFile);
+        ReadsDataSource readsSource = new ReadsPathDataSource(nullFile);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleNullFileList() {
         List<Path> nullList = null;
-        ReadsDataSource readsSource = new ReadsDataSource(nullList);
+        ReadsDataSource readsSource = new ReadsPathDataSource(nullList);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleEmptyFileList() {
-        ReadsDataSource readsSource = new ReadsDataSource(new ArrayList<>());
+        ReadsDataSource readsSource = new ReadsPathDataSource(new ArrayList<>());
     }
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testHandleNonExistentFile() {
-        new ReadsDataSource(GATKBaseTest.getSafeNonExistentPath("nonexistent.bam"));
+        new ReadsPathDataSource(GATKBaseTest.getSafeNonExistentPath("nonexistent.bam"));
     }
 
     @Test(expectedExceptions = UserException.class)
@@ -54,7 +54,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
         // Cannot initialize a reads source with intervals unless all files are indexed
         final Path unindexed = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam");
         Assert.assertNull(SamFiles.findIndex(unindexed), "Expected file to have no index, but found an index file. " + unindexed.toAbsolutePath());
-        ReadsDataSource readsSource = new ReadsDataSource(unindexed);
+        ReadsDataSource readsSource = new ReadsPathDataSource(unindexed);
         readsSource.setTraversalBounds(Arrays.asList(new SimpleInterval("1", 1, 5)));
     }
 
@@ -63,14 +63,14 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
         // Construction should succeed, since we don't pass in any intervals, but the query should throw.
         final Path unindexed = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam");
         Assert.assertNull(SamFiles.findIndex(unindexed), "Expected file to have no index, but found an index file" + unindexed.toAbsolutePath());
-        ReadsDataSource readsSource = new ReadsDataSource(unindexed);
+        ReadsDataSource readsSource = new ReadsPathDataSource(unindexed);
         readsSource.query(new SimpleInterval("1", 1, 5));
     }
 
     @Test
     public void testDefaultSamReaderValidationStringency() {
         // Default validation stringency = SILENT results in no validation errors on invalid coordinate sort
-        final ReadsDataSource readsSource = new ReadsDataSource(FIRST_TEST_SAM);
+        final ReadsDataSource readsSource = new ReadsPathDataSource(FIRST_TEST_SAM);
         //noinspection StatementWithEmptyBody
         for ( @SuppressWarnings("unused") final GATKRead read : readsSource ) {
         }
@@ -79,7 +79,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
     @Test(expectedExceptions = SAMFormatException.class)
     public void testCustomSamReaderFactory() {
         // Custom SamReaderFactory with validation stringency = STRICT fails on invalid coordinate sort
-        final ReadsDataSource readsSource = new ReadsDataSource(
+        final ReadsDataSource readsSource = new ReadsPathDataSource(
                 FIRST_TEST_SAM,
                 SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT));
         //noinspection StatementWithEmptyBody
@@ -100,7 +100,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "SupportsSerialIteration")
     public void testSupportsSerialIteration(final List<Path> inputs, final boolean expectedSupportsSerialIteration) {
-        try (ReadsDataSource readsSource = new ReadsDataSource(inputs)) {
+        try (ReadsDataSource readsSource = new ReadsPathDataSource(inputs)) {
             Assert.assertEquals(readsSource.supportsSerialIteration(), expectedSupportsSerialIteration);
         }
     }
@@ -117,14 +117,14 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "SingleFileCompleteTraversalData")
     public void testSingleFileCompleteTraversal( final Path samFile, final List<String> expectedReadNames ) {
-        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+        try (ReadsDataSource readsSource = new ReadsPathDataSource(samFile)) {
             traverseOnce(readsSource, samFile, expectedReadNames);
         }
     }
 
     @Test(dataProvider = "SingleFileCompleteTraversalData")
     public void testSingleFileSerialTraversal( final Path samFile, final List<String> expectedReadNames ) {
-        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+        try (ReadsDataSource readsSource = new ReadsPathDataSource(samFile)) {
             Assert.assertTrue(readsSource.supportsSerialIteration());
 
             traverseOnce(readsSource, samFile, expectedReadNames);
@@ -181,7 +181,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "SingleFileTraversalWithIntervalsData")
     public void testSingleFileTraversalWithIntervals( final Path samFile, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
-        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+        try (ReadsPathDataSource readsSource = new ReadsPathDataSource(samFile)) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Indices should be reported as available for this reads source");
 
             readsSource.setTraversalBounds(intervals);
@@ -234,7 +234,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "SingleFileQueryByIntervalData")
     public void testSingleFileQueryByInterval( final Path samFile, final SimpleInterval interval, final List<String> expectedReadNames ) {
-        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+        try (ReadsPathDataSource readsSource = new ReadsPathDataSource(samFile)) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Indices should be reported as available for this reads source");
             traverseOnceByInterval(readsSource, samFile, interval, expectedReadNames);
         }
@@ -242,7 +242,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "SingleFileQueryByIntervalData")
     public void testSingleFileQueryByIntervalSerialIteration( final Path samFile, final SimpleInterval interval, final List<String> expectedReadNames ) {
-        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+        try (ReadsPathDataSource readsSource = new ReadsPathDataSource(samFile)) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Indices should be reported as available for this reads source");
             Assert.assertTrue(readsSource.supportsSerialIteration());
 
@@ -252,7 +252,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
         }
     }
 
-    private void traverseOnceByInterval( final ReadsDataSource readsSource, final Path samFile, final SimpleInterval interval, final List<String> expectedReadNames) {
+    private void traverseOnceByInterval(final ReadsDataSource readsSource, final Path samFile, final SimpleInterval interval, final List<String> expectedReadNames) {
         List<GATKRead> reads = new ArrayList<>();
         Iterator<GATKRead> queryIterator = readsSource.query(interval);
         while (queryIterator.hasNext()) {
@@ -281,7 +281,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "MultipleFilesCompleteTraversalData")
     public void testMultipleFilesCompleteTraversal(final List<Path> samFiles, final List<String> expectedReadNames) {
-        try (ReadsDataSource readsSource = new ReadsDataSource(samFiles)) {
+        try (ReadsDataSource readsSource = new ReadsPathDataSource(samFiles)) {
             List<GATKRead> reads = new ArrayList<>();
 
             for (GATKRead read : readsSource) {
@@ -331,7 +331,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "MultipleFilesTraversalWithIntervalsData")
     public void testMultipleFilesTraversalWithIntervals( final List<Path> samFiles, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
-        try (ReadsDataSource readsSource = new ReadsDataSource(samFiles)) {
+        try (ReadsPathDataSource readsSource = new ReadsPathDataSource(samFiles)) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Indices should be reported as available for this reads source");
 
             readsSource.setTraversalBounds(intervals);
@@ -380,7 +380,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "MultipleFilesQueryByIntervalData")
     public void testMultipleFilesQueryByInterval( final List<Path> samFiles, final SimpleInterval interval, final List<String> expectedReadNames ) {
-        try (ReadsDataSource readsSource = new ReadsDataSource(samFiles)) {
+        try (ReadsPathDataSource readsSource = new ReadsPathDataSource(samFiles)) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Indices should be reported as available for this reads source");
 
             List<GATKRead> reads = new ArrayList<>();
@@ -454,7 +454,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "TraversalWithUnmappedReadsTestData")
     public void testTraversalWithUnmappedReads( final Path samFile, final List<SimpleInterval> queryIntervals, final boolean queryUnmapped, final List<String> expectedReadNames ) {
-        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+        try (ReadsDataSource readsSource = new ReadsPathDataSource(samFile)) {
             readsSource.setTraversalBounds(queryIntervals, queryUnmapped);
 
             if ( (queryIntervals != null && ! queryIntervals.isEmpty()) || queryUnmapped ) {
@@ -489,7 +489,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "QueryUnmappedTestData")
     public void testQueryUnmapped( final Path samFile, final List<String> expectedReadNames ) {
-        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+        try (ReadsDataSource readsSource = new ReadsPathDataSource(samFile)) {
             List<GATKRead> reads = new ArrayList<>();
             Iterator<GATKRead> queryIterator = readsSource.queryUnmapped();
             while (queryIterator.hasNext()) {
@@ -536,7 +536,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
         final File testFile1 = getFileWithAddedContig(FIRST_TEST_BAM, "EXTRA_CONTIG_1", "test1", ".bam");
         final File testFile2 = getFileWithAddedContig(SECOND_TEST_BAM, "EXTRA_CONTIG_2", "test2", ".bam");
 
-        try (final ReadsDataSource readsSource = new ReadsDataSource(Arrays.asList(testFile1.toPath(), testFile2.toPath()))) {
+        try (final ReadsDataSource readsSource = new ReadsPathDataSource(Arrays.asList(testFile1.toPath(), testFile2.toPath()))) {
             SAMFileHeader samHeader = readsSource.getHeader();
             SAMSequenceDictionary sequenceDictionary = readsSource.getSequenceDictionary();
 
@@ -567,7 +567,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
             final String outputName,
             final String extension) {
         final File outputFile = GATKBaseTest.createTempFile(outputName, extension);
-        try (ReadsDataSource readsSource = new ReadsDataSource(inputPath)) {
+        try (ReadsDataSource readsSource = new ReadsPathDataSource(inputPath)) {
             SAMFileHeader header = readsSource.getHeader();
             SAMSequenceRecord fakeSequenceRec = new SAMSequenceRecord(extraContig, 100);
             header.addSequence(fakeSequenceRec);
@@ -607,7 +607,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "manuallySpecifiedIndexTestData")
     public void testManuallySpecifiedIndices( final List<Path> bams, final List<Path> indices ) {
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices) ) {
+        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(bams, indices) ) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
 
             final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
@@ -624,7 +624,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
     public void testManuallySpecifiedIndicesWithCustomReaderFactory( final List<Path> bams, final List<Path> indices ) {
         final SamReaderFactory customFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT);
 
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices, customFactory) ) {
+        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(bams, indices, customFactory) ) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
 
             final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
@@ -644,7 +644,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
         // So we pass this invalid wrapper: if the code tries to use it, it'll blow up.
         Function<SeekableByteChannel, SeekableByteChannel> nullWrapper = (SeekableByteChannel) -> null;
 
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices, customFactory, nullWrapper, nullWrapper) ) {
+        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(bams, indices, customFactory, nullWrapper, nullWrapper) ) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
 
             final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
@@ -679,7 +679,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
         Function<SeekableByteChannel, SeekableByteChannel> xorData = XorWrapper.forKey((byte)74);
         Function<SeekableByteChannel, SeekableByteChannel> xorIndex = XorWrapper.forKey((byte)80);
 
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices, customFactory, xorData, xorIndex) ) {
+        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(bams, indices, customFactory, xorData, xorIndex) ) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
 
             final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
@@ -694,14 +694,14 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "manuallySpecifiedIndexTestData")
     public void testManuallySpecifiedIndicesNullIndexListOK( final List<Path> bams, final List<Path> indices ) {
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, (List<Path>)null) ) {
+        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(bams, (List<Path>)null) ) {
             Assert.assertFalse(readsSource.indicesAvailable(), "Bams not indexed and explicit indices not provided, but indicesAvailable() returns true");
         }
     }
 
     @Test(dataProvider = "manuallySpecifiedIndexTestData", expectedExceptions = UserException.class)
     public void testManuallySpecifiedIndicesEmptyIndexList( final List<Path> bams, final List<Path> indices ) {
-        final ReadsDataSource readsSource = new ReadsDataSource(bams, Collections.emptyList());
+        final ReadsDataSource readsSource = new ReadsPathDataSource(bams, Collections.emptyList());
     }
 
     @Test(dataProvider = "manuallySpecifiedIndexTestData", expectedExceptions = UserException.class)
@@ -709,7 +709,7 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
         final List<Path> wrongIndices = new ArrayList<>();
         wrongIndices.add(indices.get(0)); // Add one index, but not the other
 
-        final ReadsDataSource readsSource = new ReadsDataSource(bams, wrongIndices);
+        final ReadsDataSource readsSource = new ReadsPathDataSource(bams, wrongIndices);
     }
 
 
@@ -741,6 +741,6 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "readHeaders")
     public void testIdentifySortOrder(final List<SAMFileHeader> headers, final SAMFileHeader.SortOrder expected) {
-        Assert.assertEquals(ReadsDataSource.identifySortOrder(headers), expected);
+        Assert.assertEquals(ReadsPathDataSource.identifySortOrder(headers), expected);
     }
 }

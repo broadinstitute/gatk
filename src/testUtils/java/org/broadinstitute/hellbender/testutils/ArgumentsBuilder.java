@@ -92,6 +92,11 @@ public final class ArgumentsBuilder {
         return add(argumentName, value.toString());
     }
 
+    public ArgumentsBuilder add(final String argumentName, final Enum<?> enummerationValue){
+        Utils.nonNull(enummerationValue);
+        return add(argumentName, enummerationValue.name());
+    }
+
     // CONVENIENCE METHODS WITH BUILT-IN STANDARD ARGUMENTS
 
     // INPUT

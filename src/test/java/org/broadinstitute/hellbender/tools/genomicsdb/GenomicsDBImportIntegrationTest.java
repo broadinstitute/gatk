@@ -1201,15 +1201,18 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         // Test with shared posixfs optimizations and overwrite workspace set
         options.put(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, true);
         basicWriteAndQueryWithOptions(workspace, options);
+    }
 
-        // Test with overwrite workspace set to false - should throw an exception
+    @Test(expectedExceptions = GenomicsDBImport.UnableToCreateGenomicsDBWorkspace.class)
+    public void testWithMiscOptionsNoOverwrite() throws IOException {
+        final String workspace = createTempDir("genomicsdb-misc-options-nooverwrite").getAbsolutePath() + "/workspace";
+        IOUtils.deleteOnExit(IOUtils.getPath(workspace));
+        Map<String, Object> options = new HashMap<String, Object>();
+        basicWriteAndQueryWithOptions(workspace, options);
+
+        // Test with overwrite workspace set to false - should throw an exception - GenomicsDBImport.UnableToCreateGenomicsDBWorkspace
         options.replace(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, false);
-        try {
-            basicWriteAndQueryWithOptions(workspace, options);
-            Assert.fail();
-        } catch (GenomicsDBImport.UnableToCreateGenomicsDBWorkspace e) {
-            // pass
-        }
+        basicWriteAndQueryWithOptions(workspace, options);
     }
 
     @Test(groups = {"bucket"})

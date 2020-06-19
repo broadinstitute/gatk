@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * Base class for pre-packaged walker traversals in the GATK engine.

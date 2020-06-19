@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -27,7 +28,7 @@ public class ConvertHeaderlessHadoopBamShardToBamIntegrationTest extends Command
         runCommandLine(args);
 
         int actualCount = 0;
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(output.toPath()) ) {
+        try ( final ReadsDataSource readsSource = new ReadsPathDataSource(output.toPath()) ) {
             for ( final GATKRead read : readsSource ) { ++actualCount; }
         }
 
