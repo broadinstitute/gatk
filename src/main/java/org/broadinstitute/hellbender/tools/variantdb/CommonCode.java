@@ -10,6 +10,27 @@ import java.util.Set;
 
 //TODO rename this or get rid of it. a place holder for now
 public class CommonCode {
+    public static final String NORMX = "NORMX";
+    public static final String NORMY = "NORMY";
+    public static final String BAF = "BAF";
+    public static final String LRR = "LRR";
+
+
+    public static VCFHeader generateRawArrayVcfHeader(Set<String> sampleNames, final SAMSequenceDictionary sequenceDictionary) {       
+        final Set<VCFHeaderLine> lines = new HashSet<>();
+
+        lines.add(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_KEY));
+        lines.add(new VCFFormatHeaderLine(NORMX, 1, VCFHeaderLineType.Float, "Normalized X intensity"));
+        lines.add(new VCFFormatHeaderLine(NORMY, 1, VCFHeaderLineType.Float, "Normalized Y intensity"));
+        lines.add(new VCFFormatHeaderLine(BAF, 1, VCFHeaderLineType.Float, "B Allele Frequency"));
+        lines.add(new VCFFormatHeaderLine(LRR, 1, VCFHeaderLineType.Float, "Log R Ratio"));
+
+
+        final VCFHeader header = new VCFHeader(lines, sampleNames);
+        header.setSequenceDictionary(sequenceDictionary);
+
+        return header;
+    }
 
     public static VCFHeader generateVcfHeader(Set<String> sampleNames,//) { //final Set<VCFHeaderLine> defaultHeaderLines,
                                         final SAMSequenceDictionary sequenceDictionary) {
