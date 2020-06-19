@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools;
 
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -13,6 +15,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
@@ -58,18 +61,18 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
                     StandardArgumentDefinitions.INTERVALS_LONG_NAME, "chr1:24000000-25000000"),
                 "A1-B000168-3_57_F-1-1_R2.mus.Aligned.out.sorted.bam.startend"
             },
-            { // filter by field
-                ImmutableMap.of(
-                    HtsgetReader.ID_LONG_NAME, FILE_ID,
-                    HtsgetReader.FIELDS_LONG_NAME, "QNAME"),
-                "A1-B000168-3_57_F-1-1_R2.mus.Aligned.out.sorted.bam.field"
-            }
+//            TODO enable when server update goes in
+//            { // filter by field
+//                ImmutableMap.of(
+//                    HtsgetReader.ID_LONG_NAME, FILE_ID,
+//                    HtsgetReader.FIELDS_LONG_NAME, "QNAME"),
+//                "A1-B000168-3_57_F-1-1_R2.mus.Aligned.out.sorted.bam.field"
+//            }
         };
     }
 
     // Test successful combinations of query parameters
-    // TODO: re-enable and add tags/notags tests once reference server is stable
-    @Test(dataProvider = "successfulParameters", enabled = false)
+    @Test(dataProvider = "successfulParameters")
     public void testSuccessfulParameters(final Map<String, String> params, final String expectedFileName) throws IOException {
         final File expected = new File(getToolTestDataDir(), expectedFileName);
         final File output = createTempFile("output", ".bam");
@@ -80,9 +83,10 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
         params.forEach(args::add);
         
         runCommandLine(args);
-        IntegrationTestSpec.assertEqualTextFiles(output, expected, null);
+        SamAssertionUtils.assertEqualBamFiles(output, expected, false, ValidationStringency.LENIENT);
     }
 
+    //This test is disabled because it takes a long time.  It's included in order to run it manually.
     @Test(enabled = false)
     public void testLargeFileParallelDownload() throws IOException {
         final String expectedMd5 = new String(Files.readAllBytes(new File(getToolTestDataDir(), LARGE_FILE_MD5_FILE).toPath()));
