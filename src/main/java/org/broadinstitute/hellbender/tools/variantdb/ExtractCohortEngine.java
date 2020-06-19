@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import static org.broadinstitute.hellbender.tools.variantdb.ExtractCohortBQ.*;
 
 public class ExtractCohortEngine {
     private static final Logger logger = LogManager.getLogger(ExtractCohortEngine.class);
@@ -158,20 +159,7 @@ public class ExtractCohortEngine {
 
     }
 
-    public static SortingCollection<GenericRecord> getAvroSortingCollection(org.apache.avro.Schema schema, int localSortMaxRecordsInRam) {
-        final SortingCollection.Codec<GenericRecord> sortingCollectionCodec = new AvroSortingCollectionCodec(schema);
-        final Comparator<GenericRecord> sortingCollectionComparator = new Comparator<GenericRecord>() {
-            @Override
-            public int compare( GenericRecord o1, GenericRecord o2 ) {
-                final long firstPosition = Long.parseLong(o1.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-                final long secondPosition = Long.parseLong(o2.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-
-                return Long.compare(firstPosition, secondPosition);
-            }
-        };
-        return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam);
-    }
-
+   
 
 
 
