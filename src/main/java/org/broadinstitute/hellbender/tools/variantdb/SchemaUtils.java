@@ -13,6 +13,8 @@ public class SchemaUtils {
 
     public static final String SAMPLE_NAME_FIELD_NAME = "sample_name";
     public static final String SAMPLE_ID_FIELD_NAME = "sample_id";
+    public static final String RAW_ARRAY_DATA_FIELD_NAME = "raw_array_data";
+
     // TODO remove this one - we should not have this ambiguous field
 //    public static final String SAMPLE_FIELD_NAME = "sample";
     public static final String STATE_FIELD_NAME = "state";
@@ -32,6 +34,11 @@ public class SchemaUtils {
 
     public static final List<String> COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_NAME_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, "call_GT", "call_GQ", "call_RGQ");
     public static final List<String> ARRAY_COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_NAME_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, "call_GT", "call_GQ");
+
+    public static final List<String> RAW_ARRAY_COHORT_FIELDS_COMPRESSED = Arrays.asList(SAMPLE_ID_FIELD_NAME, RAW_ARRAY_DATA_FIELD_NAME);
+    public static final List<String> RAW_ARRAY_COHORT_FIELDS_UNCOMPRESSED = 
+        Arrays.asList(SAMPLE_ID_FIELD_NAME, "probe_id", "GT_encoded","NORMX","NORMY","BAF","LRR");
+
     public static final List<String> SAMPLE_FIELDS = Arrays.asList(SAMPLE_NAME_FIELD_NAME);
     public static final List<String> YNG_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME);
 
