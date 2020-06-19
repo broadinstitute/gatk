@@ -1,35 +1,25 @@
 package org.broadinstitute.hellbender.tools.variantdb;
 
-import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.TableResult;
-import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.variantdb.RawArrayData.ArrayGenotype;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
-import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.*;
-import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollectionCodec;
 import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.text.DecimalFormat;
 import java.util.*;
-import java.util.stream.Collectors;
 import static org.broadinstitute.hellbender.tools.variantdb.ExtractCohortBQ.*;
 
 
@@ -128,6 +118,7 @@ public class ArrayExtractCohortEngine {
         schema.getFields().forEach(field -> columnNames.add(field.name()));
 
         Comparator<GenericRecord> comparator = this.useCompressedData ? COMPRESSED_PROBE_ID_COMPARATOR : UNCOMPRESSED_PROBE_ID_COMPARATOR;
+
         SortingCollection<GenericRecord> sortingCollection =  getAvroProbeIdSortingCollection(schema, localSortMaxRecordsInRam, comparator);
         for ( final GenericRecord queryRow : avroReader ) {
             sortingCollection.add(queryRow);
@@ -261,7 +252,7 @@ public class ArrayExtractCohortEngine {
 
         builder.chr(contig);
         builder.start(startPosition);
-
+        builder.id(probeInfo.name);
         
         final List<Allele> alleles = new ArrayList<>();
         Allele ref = Allele.create(probeInfo.ref, true);        
@@ -313,33 +304,60 @@ public class ArrayExtractCohortEngine {
                 genotypeAlleles.add(alleleB);
             }
         } else {
-            // TODO: constantize
-            try {
-                normx = getNullableFloatFromDouble(sampleRecord.get("call_NORMX"));
-                normy = getNullableFloatFromDouble(sampleRecord.get("call_NORMY"));            
-                baf = getNullableFloatFromDouble(sampleRecord.get("call_BAF"));
-                lrr = getNullableFloatFromDouble(sampleRecord.get("call_LRR"));
-            } catch (NullPointerException npe) {
-                System.out.println("NPE on " + sampleRecord);
-                System.out.println("NPE on BAF " + sampleRecord.get("call_BAF"));
-                System.out.println("NPE on LRR " +sampleRecord.get("call_LRR"));
-                throw npe;
-            }
-
-            Object gt = sampleRecord.get("call_GT_encoded)");
-            // TODO: Genotype -- what about no-call?
+            Object gt = sampleRecord.get("GT_encoded");
+            ArrayGenotype agt;
             if (gt == null || gt.toString().length() == 0) {
                 genotypeAlleles.add(alleleA);
                 genotypeAlleles.add(alleleA);
+                agt =  ArrayGenotype.AA;
             } else if ("X".equals(gt.toString())) {
                 genotypeAlleles.add(alleleA);
                 genotypeAlleles.add(alleleB);
+                agt =  ArrayGenotype.AB;
             } else if ("B".equals(gt.toString())) {
                 genotypeAlleles.add(alleleB);
                 genotypeAlleles.add(alleleB);
+                agt =  ArrayGenotype.BB;
+            } else if ("U".equals(gt.toString())) {
+                genotypeAlleles.add(Allele.NO_CALL);
+                genotypeAlleles.add(Allele.NO_CALL);
+                agt =  ArrayGenotype.NO_CALL;
             } else {
                 System.out.println("Processing getnotype " + gt.toString());
+                throw new RuntimeException();
             }
+
+            // TODO: constantize
+            try {
+                normx = getNullableFloatFromDouble(sampleRecord.get("NORMX"));
+                normy = getNullableFloatFromDouble(sampleRecord.get("NORMY"));            
+                baf = getNullableFloatFromDouble(sampleRecord.get("BAF"));
+                lrr = getNullableFloatFromDouble(sampleRecord.get("LRR"));
+
+                // Hack to pack and unpack data
+                RawArrayData d = new RawArrayData();
+                d.probeId = (int) probeInfo.probeId;
+                d.genotype = agt;
+                d.baf = baf;
+                d.lrr = lrr;
+                d.normx = normx;
+                d.normy = normy;
+
+                long bits = d.encode();
+                RawArrayData d2 = RawArrayData.decode(bits);
+                normx = d2.normx;
+                normy = d2.normy;
+                baf = d2.baf;
+                lrr = d2.lrr;
+
+            } catch (NullPointerException npe) {
+                System.out.println("NPE on " + sampleRecord);
+                System.out.println("NPE on BAF " + sampleRecord.get("BAF"));
+                System.out.println("NPE on LRR " +sampleRecord.get("LRR"));
+                throw npe;
+            }
+
+
         }
         genotypeBuilder.alleles(genotypeAlleles);
 

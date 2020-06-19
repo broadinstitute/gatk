@@ -11,16 +11,34 @@ public class BinaryUtils {
         return (mask) & (number >>> p); 
     } 
 
-    static long encodeTo8Bits(float e, float minValue, float maxValue) {
+    // 0xFF (255) is reserved as NULL
+    static long encodeTo8Bits(Float e, float minValue, float maxValue) {
+        if (e == null) {
+            return 255;
+        }
+
+        if (e > maxValue) {
+            e = maxValue;
+        }
+
+        if (e < minValue) {
+            e = minValue;
+        }
+
         float range = maxValue - minValue;
         float n = (e - minValue) / range;
-        return Math.round(n * 256.0f);
+        return Math.round(n * 254.0f);
     } 
 
 
-    static float decodeFrom8Bits(int i, float minValue, float maxValue) {
+    // 0xFF (255) is reserved as NULL
+    static Float decodeFrom8Bits(int i, float minValue, float maxValue) {
+        if (i == 255) {
+            return null;
+        }
+
         float range = maxValue - minValue;
-        float n = (1.0f / 256.0f) * ((float) i);
+        float n = (1.0f / 254.0f) * ((float) i);
         return n * range + minValue;
     } 
 
