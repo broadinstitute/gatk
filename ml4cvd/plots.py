@@ -31,11 +31,13 @@ from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 
 from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
+from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score
+from sklearn.calibration import calibration_curve
 from sksurv.metrics import concordance_index_censored
-
 import seaborn as sns
 from biosppy.signals import ecg
 from scipy.ndimage.filters import gaussian_filter
+from scipy import stats
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import concordance_index, coefficient_of_determination
@@ -75,7 +77,7 @@ ECG_REST_PLOT_AMP_LEADS = [
 
 def evaluate_predictions(
     tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
-    max_melt: int = 15000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
+    max_melt: int = 30000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
     scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
 ) -> Dict[str, float]:
     """ Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
@@ -97,6 +99,7 @@ def evaluate_predictions(
         logging.info(f"For tm:{tm.name} with channel map:{tm.channel_map} examples:{y_predictions.shape[0]}")
         logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
         plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder)
+        plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 2:
@@ -106,6 +109,7 @@ def evaluate_predictions(
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 3:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2], y_predictions.shape[3])
@@ -114,6 +118,7 @@ def evaluate_predictions(
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 4:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2] * y_predictions.shape[3], y_predictions.shape[4])
@@ -122,16 +127,33 @@ def evaluate_predictions(
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_survival_curve():
-        plot_survival(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder)
+        performance_metrics.update(plot_survival(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder))
         plot_survival_curves(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder, paths=test_paths)
+        time_steps = tm.shape[-1]//2
+        days_per_step = 1 + tm.days_window // time_steps
+        predictions_at_end = 1 - np.cumprod(y_predictions[:, :time_steps], axis=-1)[:, -1]
+        events_at_end = np.cumsum(y_truth[:, time_steps:], axis=-1)[:, -1]
+        follow_up = np.cumsum(y_truth[:, :time_steps], axis=-1)[:, -1] * days_per_step
+        logging.info(f'Shapes event {events_at_end.shape}, preds shape {predictions_at_end.shape} new ax shape {events_at_end[:, np.newaxis].shape}')
+        calibration_title = f'{title}_at_{tm.days_window}_days'
+        plot_prediction_calibration(predictions_at_end[:, np.newaxis], events_at_end[:, np.newaxis], {tm.name: 0}, calibration_title, folder)
+        plot_survivorship(events_at_end, follow_up, predictions_at_end, tm.name, folder, tm.days_window)
     elif tm.is_time_to_event():
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
-        logging.info(f"{[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
+        logging.info(f"{[f'{label}: {value:.3f}' for label, value in zip(concordance_return_values, c_index)]}")
         new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
+        calibration_title = f'{title}_at_{tm.days_window}_days'
+        plot_prediction_calibration(y_predictions, y_truth[:, 0, np.newaxis], {tm.name: 0}, calibration_title, folder)
+        plot_survivorship(y_truth[:, 0], y_truth[:, 1], y_predictions[:, 0], tm.name, folder, tm.days_window)
+    elif tm.is_language():
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
@@ -189,6 +211,151 @@ def plot_metric_history(history, training_steps: int, title: str, prefix='./figu
     plt.savefig(figure_path)
     plt.clf()
     logging.info(f"Saved learning curves at:{figure_path}")
+
+
+def plot_rocs(predictions: Dict[str, np.ndarray], truth: np.ndarray, labels: Dict[str, int], title: str, prefix: str = './figures/'):
+    """Plot Receiver Operating Characteristic (ROC) curves from a dictionary of predictions
+
+    Typically this function is used to compare several models predictions across multiple labels.
+    As a hack to avoid repetitive ROC curves for binary classification label string containing 'no_' are skipped.
+
+    :param predictions: The keys are strings identifying the model the values are numpy arrays
+                        The arrays have shape (num_samples, num_classes)
+    :param truth: The true classifications of each class, one hot encoded of shape (num_samples, num_classes)
+    :param labels: Dictionary mapping strings describing each class to their corresponding index in the arrays
+    :param title: The name of this plot
+    :param prefix: Optional path prefix where the plot will be saved
+    """
+    lw = 2
+    true_sums = np.sum(truth, axis=0)
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+
+    for p in predictions:
+        fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
+        for key in labels:
+            if 'no_' in key and len(labels) == 2:
+                continue
+            color = _hash_string_to_color(p+key)
+            label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
+            plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+            logging.info(f"ROC Label {label_text}")
+
+    plt.xlim([0.0, 1.0])
+    plt.ylim([-0.02, 1.03])
+    plt.ylabel(RECALL_LABEL)
+    plt.xlabel(FALLOUT_LABEL)
+    plt.legend(loc='lower right')
+    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
+    plt.title(f'ROC {title} n={np.sum(true_sums):.0f}\n')
+
+    figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    plt.clf()
+    logging.info(f"Saved ROC curve at: {figure_path}")
+
+
+def plot_prediction_calibrations(predictions: Dict[str, np.ndarray], truth: np.ndarray, labels: Dict[str, int],
+                                 title: str, prefix: str = './figures/', n_bins: int = 10):
+    """Plot calibration performance and compute Brier Score.
+
+    Typically this function is used to compare several models predictions across multiple labels.
+
+    :param predictions: The keys are strings identifying the model the values are numpy arrays
+                        The arrays have shape (num_samples, num_classes)
+    :param truth: The true classifications of each class, one hot encoded of shape (num_samples, num_classes)
+    :param labels: Dictionary mapping strings describing each class to their corresponding index in the arrays
+    :param title: The name of this plot
+    :param prefix: Optional path prefix where the plot will be saved
+    :param n_bins: Number of bins to quantize predictions into
+    """
+    _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+    ax2 = plt.subplot2grid((3, 1), (2, 0))
+
+    true_sums = np.sum(truth, axis=0)
+    ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
+
+    for p in predictions:
+        for k in labels:
+            color = _hash_string_to_color(p+k)
+            brier_score = brier_score_loss(truth[..., labels[k]], predictions[p][..., labels[k]], pos_label=1)
+            fraction_of_positives, mean_predicted_value = calibration_curve(truth[..., labels[k]], predictions[p][..., labels[k]], n_bins=n_bins)
+            ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{p} {k} Brier: {brier_score:0.3f}", color=color)
+            ax2.hist(predictions[p][..., labels[k]], range=(0, 1), bins=10, label=f'{p} {k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
+            logging.info(f'{p} {k} n={true_sums[labels[k]]:.0f}\nBrier score: {brier_score:0.3f}')
+    ax1.set_ylabel("Fraction of positives")
+    ax1.set_ylim([-0.05, 1.05])
+    ax1.legend(loc="lower right")
+    ax1.set_title('Calibrations plots  (reliability curve)')
+
+    ax2.set_xlabel("Mean predicted value")
+    ax2.set_ylabel("Count")
+    ax2.legend(loc="upper center")
+    plt.tight_layout()
+
+    figure_path = os.path.join(prefix, 'calibrations_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    logging.info(f"Try to save calibration comparison plot at: {figure_path}")
+    plt.savefig(figure_path)
+    plt.clf()
+
+
+def plot_prediction_calibration(prediction: np.ndarray, truth: np.ndarray, labels: Dict[str, int],
+                                title: str, prefix: str = './figures/', n_bins: int = 10):
+    """Plot calibration performance and compute Brier Score.
+
+    :param prediction: Array of probabilistic predictions with shape (num_samples, num_classes)
+    :param truth: The true classifications of each class, one hot encoded of shape (num_samples, num_classes)
+    :param labels: Dictionary mapping strings describing each class to their corresponding index in the arrays
+    :param title: The name of this plot
+    :param prefix: Optional path prefix where the plot will be saved
+    :param n_bins: Number of bins to quantize predictions into
+    """
+    _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(SUBPLOT_SIZE, 2*SUBPLOT_SIZE))
+
+    true_sums = np.sum(truth, axis=0)
+    ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
+    ax3.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
+
+    for k in labels:
+        y_true = truth[..., labels[k]]
+        y_prob = prediction[..., labels[k]]
+        color = _hash_string_to_color(k)
+        brier_score = brier_score_loss(y_true, prediction[..., labels[k]], pos_label=1)
+        fraction_of_positives, mean_predicted_value = calibration_curve(y_true, y_prob, n_bins=n_bins)
+        ax3.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
+        ax2.hist(y_prob, range=(0, 1), bins=n_bins, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
+
+        bins = stats.mstats.mquantiles(y_prob, np.arange(0.0, 1.0, 1.0/n_bins))
+        binids = np.digitize(y_prob, bins) - 1
+
+        bin_sums = np.bincount(binids, weights=y_prob, minlength=len(bins))
+        bin_true = np.bincount(binids, weights=y_true, minlength=len(bins))
+        bin_total = np.bincount(binids, minlength=len(bins))
+
+        nonzero = bin_total != 0
+        prob_true = (bin_true[nonzero] / bin_total[nonzero])
+        prob_pred = (bin_sums[nonzero] / bin_total[nonzero])
+        ax1.plot(prob_pred, prob_true, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
+    ax1.set_ylabel("Fraction of positives")
+    ax1.set_ylim([-0.05, 1.05])
+    ax1.legend(loc="lower right")
+    ax1.set_title(f'{title.replace("_", " ")}\nCalibration plot (equally sized bins)')
+    ax2.set_xlabel("Mean predicted value")
+    ax2.set_ylabel("Count")
+    ax2.legend(loc="upper center", ncol=2)
+    ax3.set_title('Calibration plot (equally spaced bins)')
+    plt.tight_layout()
+
+    figure_path = os.path.join(prefix, 'calibrations_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    logging.info(f"Try to save calibrations plot at: {figure_path}")
+    plt.savefig(figure_path)
+    plt.clf()
 
 
 def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
@@ -342,7 +509,78 @@ def subplot_comparison_scatters(
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def plot_survival(prediction, truth, title, days_window, prefix='./figures/', paths=None):
+def plot_survivorship(events: np.ndarray, days_follow_up: np.ndarray, predictions: np.ndarray,
+                      title: str, prefix: str = './figures/', days_window: int = 1825):
+    """Plot Kaplan-Meier survivorship curves and stratify by median model prediction.
+    All input arrays have the same shape: (num_samples,)
+
+    :param events: Array indicating if each sample had an event (1) or not (0) by the end of follow up
+    :param days_follow_up: Array with the total days of follow up for each sample
+    :param predictions: Array with model predictions of an event before the end of follow up.
+    :param title: Title for the plot
+    :param prefix: Path prefix where plot will be saved
+    :param days_window: Maximum days of follow up
+    """
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    days_sorted_index = np.argsort(days_follow_up)
+    days_sorted = days_follow_up[days_sorted_index]
+    alive_per_step = len(events)
+    sick_per_step = 0
+    censored = 0
+    survivorship = [1.0]
+    real_survivorship = [1.0]
+    for cur_day, day_index in enumerate(days_sorted_index):
+        if days_follow_up[day_index] > days_window:
+            break
+        sick_per_step += events[day_index]
+        censored += 1 - events[day_index]
+        alive_per_step -= events[day_index]
+        survivorship.append(1 - (sick_per_step / (alive_per_step+sick_per_step)))
+        real_survivorship.append(real_survivorship[cur_day] * (1 - (events[day_index] / alive_per_step)))
+    logging.info(f'Cur day {cur_day} totL {len(real_survivorship)} totL {len(days_sorted)} First day {days_sorted[0]} Last day, day {days_follow_up[day_index]}, censored {censored}')
+    plt.plot([0]+days_sorted[:cur_day+1], real_survivorship[:cur_day+1], marker='.', label='Survivorship')
+    groups = ['High risk', 'Low risk']
+    predicted_alive = {g: len(events) // 2 for g in groups}
+    predicted_sick = {g: 0 for g in groups}
+    predicted_days = defaultdict(list)
+    predicted_survival = defaultdict(list)
+    threshold = np.median(predictions)
+    for cur_day, day_index in enumerate(days_sorted_index):
+        if days_follow_up[day_index] > days_window:
+            break
+        group = 'High risk' if predictions[day_index] > threshold else 'Low risk'
+        predicted_sick[group] += events[day_index]
+        predicted_survival[group].append(1 - (predicted_sick[group] / (predicted_alive[group]+predicted_sick[group])))
+        predicted_alive[group] -= events[day_index]
+        predicted_days[group].append(days_follow_up[day_index])
+
+    for group in groups:
+        plt.plot([0]+predicted_days[group], [1]+predicted_survival[group], color='r' if 'High' in group else 'g', marker='o', label=f'{group} group had {predicted_sick[group]} events')
+    plt.title(f'{title}\nEnrolled: {len(events)}, Censored: {censored:.0f}, {100 * (censored / len(events)):2.1f}%, Events: {sick_per_step:.0f}, {100 * (sick_per_step / len(events)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
+    plt.xlabel('Follow up time (days)')
+    plt.ylabel('Proportion Surviving')
+    plt.legend(loc="lower left")
+
+    figure_path = os.path.join(prefix, f'survivorship_fu_{days_window}_{title}{IMAGE_EXT}')
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    logging.info(f'Try to save survival plot at: {figure_path}')
+    plt.savefig(figure_path)
+    return {}
+
+
+def plot_survival(prediction: np.ndarray, truth: np.ndarray, title: str, days_window: int,
+                  prefix: str = './figures/') -> Dict[str, float]:
+    """Plot Kaplan-Meier survivorship and predicted proportion surviving, calculate and return C-Index
+
+    :param prediction: Array with model predictions of an event at each time step, with shape (num_samples, intervals*2).
+    :param truth: Array with survival at each time step followed by events, shape is (num_samples, intervals*2)
+    :param title: Title for the plot
+    :param days_window: Maximum days of follow up
+    :param prefix: Path prefix where plot will be saved
+
+    :return: Dictionary mapping metric names to their floating point values
+    """
     c_index, concordant, discordant, tied_risk, tied_time = concordance_index(prediction, truth)
     logging.info(f"C-index:{c_index} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
     intervals = truth.shape[-1] // 2
@@ -358,13 +596,14 @@ def plot_survival(prediction, truth, title, days_window, prefix='./figures/', pa
     logging.info(f"Survivors at each step is: {alive_per_step} out of {truth.shape[0]}")
     logging.info(f"Cumulative Censored: {cumulative_censored} or {np.max(truth[:, :intervals]+truth[:, intervals:])}")
     predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
-    if paths is not None:
-        pass
+
     plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.3f}')
     plt.plot(range(0, days_window, 1 + days_window // intervals), survivorship, marker='o', label='Survivorship')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
-    plt.title(f'{title} Enrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]}, Failed: {cumulative_sick[-1]}\n')
+    plt.title(
+        f'{title}\nEnrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]:.0f}, {100 * (cumulative_censored[-1] / truth.shape[0]):2.1f}%, '
+        f'Events: {cumulative_sick[-1]:.0f}, {100 * (cumulative_sick[-1] / truth.shape[0]):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
     plt.legend(loc="upper right")
 
     figure_path = os.path.join(prefix, 'proportional_hazards_' + title + IMAGE_EXT)
@@ -372,7 +611,7 @@ def plot_survival(prediction, truth, title, days_window, prefix='./figures/', pa
         os.makedirs(os.path.dirname(figure_path))
     logging.info(f'Try to save survival plot at: {figure_path}')
     plt.savefig(figure_path)
-    return {}
+    return {'c_index': c_index, 'concordant': concordant, 'discordant': discordant, 'tied_risk': tied_risk, 'tied_time': tied_time}
 
 
 def plot_survival_curves(prediction, truth, title, days_window, prefix='./figures/', num_curves=30, paths=None):
@@ -1312,20 +1551,20 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         color = _hash_string_to_color(key)
         label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-        logging.info(f'ROC Label {label_text}')
+        logging.info(f'ROC Label {label_text} Truth shape {truth.shape}, true sums {true_sums}')
 
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
     plt.ylabel(RECALL_LABEL)
     plt.xlabel(FALLOUT_LABEL)
-    plt.legend(loc="lower right")
+    plt.legend(loc="lower right", bbox_to_anchor=(0.98, 0))
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
-    plt.title(f'ROC {title} n={np.sum(true_sums):.0f}\n')
+    plt.title(f'ROC {title} n={truth.shape[0]:.0f}\n')
 
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
-    plt.savefig(figure_path)
+    plt.savefig(figure_path, bbox_inches='tight')
     plt.clf()
     logging.info("Saved ROC curve at: {}".format(figure_path))
     return labels_to_areas
@@ -1552,7 +1791,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
 
     n_components = 2
     rows = max(2, len(label_dict))
-    perplexities = [10, 25, 60]
+    perplexities = [25, 75]
     (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*SUBPLOT_SIZE*2, rows*SUBPLOT_SIZE*2))
 
     p2y = {}
@@ -1566,9 +1805,11 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
         if j == rows:
             break
         categorical_subsets = {}
+        categorical_counts = Counter()
         if tm in categorical_labels + gene_labels:
             for c in tm.channel_map:
                 categorical_subsets[tm.channel_map[c]] = label_dict[tm] == tm.channel_map[c]
+                categorical_counts[tm.channel_map[c]] = np.sum(categorical_subsets[tm.channel_map[c]])
         elif tm in continuous_labels:
             colors = label_dict[tm]
         for i, p in enumerate(perplexities):
@@ -1579,7 +1820,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
                 for c in tm.channel_map:
                     channel_index = tm.channel_map[c]
                     color = _hash_string_to_color(c)
-                    color_labels.append(c)
+                    color_labels.append(f'{c} n={categorical_counts[tm.channel_map[c]]}')
                     ax.scatter(p2y[p][categorical_subsets[channel_index], 0], p2y[p][categorical_subsets[channel_index], 1], c=color, alpha=alpha)
                 ax.legend(color_labels, loc='lower left')
             elif tm in continuous_labels:
@@ -1619,7 +1860,7 @@ def plot_find_learning_rate(
     plt.clf()
 
 
-def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
+def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, paths: List, prefix: str):
     """Plot saliency maps of a batch of input tensors.
 
     Saliency maps for each input tensor in the batch will be saved at the file path indicated by prefix.
@@ -1629,6 +1870,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
 
     :param data: A batch of input tensors
     :param gradients: A corresponding batch of gradients for those inputs, must be the same shape as data
+    :param paths: A List of paths corresponding to each input tensor
     :param prefix: file path prefix where saliency maps will be saved
     """
     if data.shape[-1] == 1:
@@ -1636,14 +1878,16 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
         gradients = gradients[..., 0]
 
     mean_saliency = np.zeros(data.shape[1:4] + (3,))
-    for batch_i in range(data.shape[0]):
+    for batch_i, path in enumerate(paths):
+        sample_id = os.path.basename(path).replace(TENSOR_EXT, '')
         if len(data.shape) == 3:
-            ecgs = {'raw': data[batch_i], 'gradients': gradients[batch_i]}
-            _plot_ecgs(ecgs, f'{prefix}_saliency_map_{batch_i}{IMAGE_EXT}')
+            ecgs = {f'{sample_id}_raw': data[batch_i], 'gradients': gradients[batch_i]}
+            _plot_ecgs(ecgs, f'{prefix}_{sample_id}_saliency_{batch_i}{IMAGE_EXT}')
         elif len(data.shape) == 4:
             cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
-            _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_i], gradients[batch_i]), f'{prefix}_saliency_{batch_i}{IMAGE_EXT}', cols, rows)
+            title = f'{prefix}_{sample_id}_saliency_{batch_i}{IMAGE_EXT}'
+            _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_i], gradients[batch_i]), title, cols, rows)
             saliency = _saliency_blurred_and_scaled(gradients[batch_i], blur_radius=5.0, max_value=1.0/data.shape[0])
             mean_saliency[..., 0] -= saliency
             mean_saliency[..., 1] += saliency
@@ -1692,7 +1936,7 @@ def _saliency_map_rgb(image, gradients, blur_radius=0):
 
 def _plot_ecgs(ecgs, figure_path, rows=3, cols=4, time_interval=2.5, raw_scale=0.005, hertz=500, lead_dictionary=ECG_REST_LEADS):
     index2leads = {v: k for k, v in lead_dictionary.items()}
-    _, axes = plt.subplots(rows, cols, figsize=(18, 16))
+    _, axes = plt.subplots(rows, cols, figsize=(18, 16), sharey=True)
     for i in range(rows):
         for j in range(cols):
             start = int(i*time_interval*hertz)
@@ -1721,7 +1965,7 @@ def _plot_3d_tensor_slices_as_rgb(tensor, figure_path, cols=3, rows=10):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     plt.clf()
-
+    
 
 def _hash_string_to_color(string):
     """Hash a string to color (using hashlib and not the built-in hash for consistency between runs)"""
