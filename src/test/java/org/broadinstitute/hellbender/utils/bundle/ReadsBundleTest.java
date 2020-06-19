@@ -5,6 +5,8 @@ import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.util.Collections;
+
 public class ReadsBundleTest extends BaseTest {
 
     @Test
@@ -28,14 +30,16 @@ public class ReadsBundleTest extends BaseTest {
     public void testRead(){
         final String json = "{\"reads\":{\"path\":\"a file\",\"fileType\":\"bam\"},\"index\":{\"path\":\"an index\",\"fileType\":\"bai\"}}";
         final ReadsBundle readsBundle1 = ReadsBundle.fromJson(json);
-        Assert.assertEquals(readsBundle1.getReads(), "a file");
+        final GATKPath path = new GATKPath("a file");
+        path.setTagAttributes(Collections.singletonMap("type", "bam"));
+        Assert.assertEquals(readsBundle1.getReads(), path);
     }
 
     @Test
     public void testReadFromFile(){
         final GATKPath json = getTestPath("reads1.json");
         final ReadsBundle readsBundle1 = ReadsBundle.fromPath(json);
-        Assert.assertEquals(readsBundle1.getReads(), "a file");
+        Assert.assertEquals(readsBundle1.getReads(), new GATKPath("a file"));
     }
 
 }

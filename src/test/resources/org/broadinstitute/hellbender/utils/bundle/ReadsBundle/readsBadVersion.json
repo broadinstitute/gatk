@@ -1,6 +1,6 @@
 {
   "schemaType": "ReadsBundle",
-  "schemaVersion": "0.1.0",
+  "schemaVersion": "-1",
   "reads":{"path":"a file", "fileType":"bam"},
   "index":{"path":"an index", "fileType":"bai"}
 }
