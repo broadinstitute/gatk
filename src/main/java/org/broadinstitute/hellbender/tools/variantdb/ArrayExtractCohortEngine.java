@@ -27,10 +27,7 @@ public class ArrayExtractCohortEngine {
     private final DecimalFormat df = new DecimalFormat();
     private final String DOT = ".";
     
-    static {
-    }
-    
-    private static final Logger logger = LogManager.getLogger(ExtractCohortEngine.class);
+    private static final Logger logger = LogManager.getLogger(ArrayExtractCohortEngine.class);
 
     private final VariantContextWriter vcfWriter;
 
@@ -52,14 +49,6 @@ public class ArrayExtractCohortEngine {
 
     private int totalNumberOfVariants = 0;
     private int totalNumberOfSites = 0;
-
-    /**
-     * The conf threshold above which variants are not included in the position tables.
-     * This value is used to construct the genotype information of those missing samples
-     * when they are merged together into a {@link VariantContext} object
-     */
-    public static int MISSING_CONF_THRESHOLD = 60;
-
 
     public ArrayExtractCohortEngine(final String projectID,
                                     final VariantContextWriter vcfWriter,
@@ -93,7 +82,7 @@ public class ArrayExtractCohortEngine {
         this.printDebugInformation = printDebugInformation;
         this.progressMeter = progressMeter;
 
-        // KCIBUL: what is the right variant context merger for arrays?
+        // TODO: what is the right variant context merger for arrays?
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
     }
@@ -292,16 +281,18 @@ public class ArrayExtractCohortEngine {
             lrr = data.lrr;
             baf = data.baf;
 
-            // Genotype -- what about no-call?
             if (data.genotype == ArrayGenotype.AA) {
                 genotypeAlleles.add(alleleA);
                 genotypeAlleles.add(alleleA);
             } else if (data.genotype == ArrayGenotype.AB) {
                 genotypeAlleles.add(alleleA);
                 genotypeAlleles.add(alleleB);
-            } else if  (data.genotype == ArrayGenotype.BB) {
+            } else if (data.genotype == ArrayGenotype.BB) {
                 genotypeAlleles.add(alleleB);
                 genotypeAlleles.add(alleleB);
+            } else {
+                genotypeAlleles.add(Allele.NO_CALL);
+                genotypeAlleles.add(Allele.NO_CALL);
             }
         } else {
             Object gt = sampleRecord.get("GT_encoded");
