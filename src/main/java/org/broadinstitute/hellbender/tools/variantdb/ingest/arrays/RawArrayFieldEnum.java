@@ -11,12 +11,11 @@ import java.util.Set;
  * Expected headers for the Variant Table (VET)
  *     sample, // req
  *     probe_id, // req
- *     filter,
- *     call_GT_encoded,
- *     call_NORMX, // intensity
- *     call_NORMY, // intensity
- *     call_BAF // b allele fraction --> AD proxy
- *     call_LRR // Log R ratio --> intensity value instead of DP
+ *     GT_encoded,
+ *     NORMX, // intensity
+ *     NORMY, // intensity
+ *     BAF // b allele fraction --> AD proxy
+ *     LRR // Log R ratio --> intensity value instead of DP
  *
  */
 
@@ -33,14 +32,7 @@ public enum RawArrayFieldEnum {
         }
     },
 
-    filter {
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
-            Set<String> outList = variant.getFilters();
-            return outList.isEmpty() ? "null" : String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, outList);
-        }
-    },
-
-    call_GT_encoded {
+    GT_encoded {
         public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
             Genotype g = variant.getGenotype(0);
             RawArrayTsvCreator.GT_encoding gt = RawArrayTsvCreator.GT_encoding.MISSING;
@@ -60,22 +52,22 @@ public enum RawArrayFieldEnum {
         }
     },
 
-    call_NORMX {
+    NORMX {
         public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
             return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("NORMX"));
         }
     },
-    call_NORMY {
+    NORMY {
         public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
             return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("NORMY"));
         }
     },
-    call_BAF {
+    BAF {
         public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
             return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("BAF"));
         }
     },
-    call_LRR {
+    LRR {
         public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
             return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("LRR"));
         }
