@@ -31,8 +31,8 @@ import java.util.Map;
         programGroup = ShortVariantDiscoveryProgramGroup.class,
         omitFromCommandLine = true
 )
-public final class ArraysIngester extends VariantWalker {
-    static final Logger logger = LogManager.getLogger(ArraysIngester.class);
+public final class CreateArrayIngestFiles extends VariantWalker {
+    static final Logger logger = LogManager.getLogger(CreateArrayIngestFiles.class);
 
     private ArrayMetadataTsvCreator metadataTsvCreator;
     private RawArrayTsvCreator tsvCreator;
@@ -43,9 +43,14 @@ public final class ArraysIngester extends VariantWalker {
     @Argument(fullName = "sample-name-mapping",
             shortName = "SNM",
             doc = "Sample name to sample id mapping",
-            optional = false)
+            optional = true)
     public File sampleMap;
 
+    @Argument(fullName = "sample-id",
+            shortName = "SID",
+            doc = "Sample id",
+            optional = true)
+    public Long sampleIdParam;
 
     @Argument(fullName = "probe-info",
             shortName = "PI",
@@ -67,7 +72,14 @@ public final class ArraysIngester extends VariantWalker {
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
         sampleName = IngestUtils.getSampleName(inputVCFHeader);
-        sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
+	if (sampleIdParam == null && sampleMap == null) {
+            throw new IllegalArgumentException("One of sample-id or sample-name-mapping must be specified");
+        }
+	if (sampleIdParam != null) {
+            sampleId = String.valueOf(sampleIdParam);
+        } else {
+            sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
+        }
 
         // Mod the sample directories
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
