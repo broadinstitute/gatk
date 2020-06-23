@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -36,7 +37,7 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
         final Random rnd = Utils.getRandomGenerator();
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
 
-        for(int i = 0; i < 10; i++) {
+        for (int i = 0; i < 10; i++) {
             final GATKRead read = ArtificialReadUtils.createRandomRead(header, 1000, false);
 
             read.setIsReverseStrand(rnd.nextBoolean());
@@ -50,7 +51,6 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
         }
     }
 
-
     private static void verifyCovariateArray(final int[][] values, final int contextSize, final GATKRead read, final Covariate contextCovariate, final byte lowQualTail) {
         for (int i = 0; i < values.length; i++) {
             Assert.assertEquals(contextCovariate.formatKey(values[i][0]), expectedContext(read, i, contextSize, lowQualTail), "offset " + i);
@@ -59,34 +59,38 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
 
     @DataProvider
     Iterator<Object[]> AnnoyingReads() {
-        final String IUPAC_bases = "NBTRML";
-        final int readLength = 1000;
-        final double pStop = 0.02;
-        final int nTests = 100;
-        final List<Object[]> tests = new ArrayList<>();
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
 
-        final Random randomGenerator = Utils.getRandomGenerator();
-        for (int i = 0; i < nTests; i++) {
-            final List<Byte> bases = new ArrayList<>();
-            final List<Integer> positions = new ArrayList<>();
-            while (randomGenerator.nextDouble() > pStop) {
-                bases.add(IUPAC_bases.getBytes()[randomGenerator.nextInt(IUPAC_bases.length())]);
-                positions.add(randomGenerator.nextInt(readLength));
+        final String[] bases = new String[] {
+//           A string of all IUPAC bases
+                "NBTRMLNACMGRSVTWYHKDBNABTRMLNBTRML",
+//           A string that starts with an ACGT base, then has a mix of ACGT and IUPAC bases
+                "ACTNBTRMLACMGRSVTWYHKDBNANBTRMLNBTRML",
+//           A string that starts with an IUPAC base, then has a mix of ACGT and IUPAC bases
+                "NBTRMLACTACMGRSVTWYHKDBNANBTGTRMCLNABTGRML",
+//           A string that ends with an ACGT base, and has a mix of ACGT and IUPAC bases
+                "NBTRMLACTACMGRSVTWYHKDBNANBTGTRMCLNABTGRMLACGT",
+//           A string that ends with an IUPAC base, and has a mix of ACGT and IUPAC bases
+                "ACGTNBTRMACMGRSVTWYHKDBNALACTNBTGTRMCLNABTGRML"
+        };
+
+        final List<Object[]> tests = new ArrayList<>();
+        for (final String seq_bases : bases) {
+            for (final boolean reverse : new boolean[]{true, false}) {
+
+                final GATKRead read = ArtificialReadUtils.createRandomRead(header, seq_bases.length(), false);
+                read.setBases(seq_bases.getBytes());
+                read.setBaseQualities(StringUtils.repeat("A", seq_bases.length()).getBytes());
+                read.setIsReverseStrand(reverse);
+                tests.add(new Object[]{read,header});
+
             }
-            tests.add(new Object[]{bases, positions, randomGenerator.nextBoolean(), readLength});
         }
         return tests.iterator();
     }
 
     @Test(dataProvider = "AnnoyingReads")
-    public void testContextsAnnoyingReads(final List<Byte> bases, final List<Integer> positions, final boolean strand, final int readLength){
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
-        final GATKRead read = ArtificialReadUtils.createRandomRead(header, readLength,false);
-
-        for(int i = 0; i< bases.size(); i++) {
-            read.getBasesNoCopy()[positions.get(i)] = bases.get(i);
-        }
-        read.setIsReverseStrand(strand);
+    public void testContextsAnnoyingReads(final GATKRead read, final SAMFileHeader header ) {
 
         final GATKRead clippedRead = ReadClipper.clipLowQualEnds(read, RAC.LOW_QUAL_TAIL, ClippingRepresentation.WRITE_NS);
         final ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1, new CovariateKeyCache());
@@ -97,43 +101,43 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
         verifyCovariateArray(readCovariates.getDeletionsKeySet(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
     }
 
-
-    @DataProvider(name="strandedBytes")
+    @DataProvider(name = "strandedBytes")
     public Object[][] strandedBytes() {
         return new Object[][]{
                 {"AAAAA", new byte[]{10, 11, 12, 11, 10}, "5M", false, 10, "NAAAN"},
                 {"AAAAA", new byte[]{10, 11, 12, 11, 10}, "5M", false, 11, "NNANN"},
                 {"AAAAA", new byte[]{10, 11, 12, 11, 10}, "5M", false, 12, ""},
                 {"TCGAT", new byte[]{10, 11, 12, 11, 10}, "5M", false, 10, "NCGAN"},
-                {"TCGAT", new byte[]{10, 11, 12, 11, 10}, "5M", true,  10, "NTCGN"},
+                {"TCGAT", new byte[]{10, 11, 12, 11, 10}, "5M", true, 10, "NTCGN"},
         };
     }
+
     @Test(dataProvider = "strandedBytes")
-    public void testStrandedBytes(final String baseStr, final byte[] quals, final String cigar, final boolean neg, final int lowQTail, final String expecteBaseStr){
+    public void testStrandedBytes(final String baseStr, final byte[] quals, final String cigar, final boolean neg, final int lowQTail, final String expecteBaseStr) {
         final byte[] bases = baseStr.getBytes();
 
         final GATKRead read = ArtificialReadUtils.createArtificialRead(bases, quals, cigar);
         read.setIsReverseStrand(neg);
-        final byte[] strandedBaseArray = ContextCovariate.getStrandedClippedBytes(read, (byte)lowQTail);   //note the cast is due to TestNG limitation - can't use byte as type for lowQTail
+        final byte[] strandedBaseArray = ContextCovariate.getStrandedClippedBytes(read, (byte) lowQTail);   //note the cast is due to TestNG limitation - can't use byte as type for lowQTail
         final byte[] expected = expecteBaseStr.getBytes();
         Assert.assertEquals(new String(strandedBaseArray), new String(expected));
     }
 
-    @DataProvider(name="strandedOffset")
+    @DataProvider(name = "strandedOffset")
     public Object[][] strandedOffset() {
         return new Object[][]{
                 {false, 10, 20, 10},   //for positive strand offset is the same
                 {false, 10, 100, 10},
-                {true, 10, 20, 20-10-1},
-                {true, 10, 100, 100-10-1},
+                {true, 10, 20, 20 - 10 - 1},
+                {true, 10, 100, 100 - 10 - 1},
         };
     }
+
     @Test(dataProvider = "strandedOffset")
-    public void strandedOffset(final boolean isNegativeStrand, final int offset, final int clippedReadLength, final int expectedStrandedOffset){
+    public void strandedOffset(final boolean isNegativeStrand, final int offset, final int clippedReadLength, final int expectedStrandedOffset) {
         final int strandedOffset = ContextCovariate.getStrandedOffset(isNegativeStrand, offset, clippedReadLength);
         Assert.assertEquals(strandedOffset, expectedStrandedOffset);
     }
-
 
     static String expectedContext(final GATKRead originalRead, final int offset, final int contextSize, final byte lowQualTail) {
         final byte[] strandedBaseArray = ContextCovariate.getStrandedClippedBytes(originalRead, lowQualTail);
