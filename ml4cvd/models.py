@@ -327,9 +327,9 @@ class ResidualBlock:
             dimension: int,
             filters_per_conv: List[int],
             conv_layer_type: str,
-            conv_x: int,
-            conv_y: int,
-            conv_z: int,
+            conv_x: List[int],
+            conv_y: List[int],
+            conv_z: List[int],
             activation: str,
             normalization: str,
             regularization: str,
@@ -337,16 +337,18 @@ class ResidualBlock:
             dilate: bool,
     ):
         block_size = len(filters_per_conv)
-        conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
+        assert len(conv_x) == len(conv_y) == len(conv_z) == block_size
+        conv_layer, kernels = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
         self.conv_layers = [
             conv_layer(filters=num_filters, kernel_size=kernel, padding='same', dilation_rate=2**i if dilate else 1)
-            for i, num_filters in enumerate(filters_per_conv)
+            for i, (num_filters, kernel) in enumerate(zip(filters_per_conv, kernels))
         ]
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
         residual_conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
         self.residual_convs = [residual_conv_layer(filters=filters_per_conv[0], kernel_size=_one_by_n_kernel(dimension)) for _ in range(block_size - 1)]
+        logging.info(f'Residual Block Convolutional Layers (num_filters, kernel_size): {list(zip(filters_per_conv, kernels))}')
 
     def __call__(self, x: Tensor) -> Tensor:
         previous = x
@@ -368,19 +370,20 @@ class DenseConvolutionalBlock:
             block_size: int,
             conv_layer_type: str,
             filters: int,
-            conv_x: int,
-            conv_y: int,
-            conv_z: int,
+            conv_x: List[int],
+            conv_y: List[int],
+            conv_z: List[int],
             activation: str,
             normalization: str,
             regularization: str,
             regularization_rate: float,
     ):
-        conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
-        self.conv_layers = [conv_layer(filters=filters, kernel_size=kernel, padding='same') for _ in range(block_size)]
+        conv_layer, kernels = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
+        self.conv_layers = [conv_layer(filters=filters, kernel_size=kernel, padding='same') for kernel in kernels]
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
+        logging.info(f'Dense Block Convolutional Layers (num_filters, kernel_size): {list(zip([filters]*len(kernels), kernels))}')
 
     def __call__(self, x: Tensor) -> Tensor:
         dense_connections = [x]
@@ -613,9 +616,9 @@ class ConvEncoder:
             dimension: int,
             res_filters: List[int],
             conv_layer_type: str,
-            conv_x: int,
-            conv_y: int,
-            conv_z: int,
+            conv_x: List[int],
+            conv_y: List[int],
+            conv_z: List[int],
             block_size: int,
             activation: str,
             normalization: str,
@@ -627,17 +630,21 @@ class ConvEncoder:
             pool_y: int,
             pool_z: int,
     ):
+        num_res = len(res_filters)
+        res_x, res_y, res_z = conv_x[:num_res], conv_y[:num_res], conv_z[:num_res]
         self.res_block = ResidualBlock(
-            dimension=dimension, filters_per_conv=res_filters, conv_layer_type=conv_layer_type, conv_x=conv_x,
-            conv_y=conv_y, conv_z=conv_z, activation=activation, normalization=normalization,
+            dimension=dimension, filters_per_conv=res_filters, conv_layer_type=conv_layer_type, conv_x=res_x,
+            conv_y=res_y, conv_z=res_z, activation=activation, normalization=normalization,
             regularization=regularization, regularization_rate=regularization_rate, dilate=dilate,
         )
+
+        dense_x, dense_y, dense_z = conv_x[num_res:], conv_y[num_res:], conv_z[num_res:]
         self.dense_blocks = [
             DenseConvolutionalBlock(
-                dimension=dimension, conv_layer_type=conv_layer_type, filters=filters, conv_x=conv_x, conv_y=conv_y,
-                conv_z=conv_z, block_size=block_size, activation=activation, normalization=normalization,
+                dimension=dimension, conv_layer_type=conv_layer_type, filters=filters, conv_x=[x]*block_size, conv_y=[y]*block_size,
+                conv_z=[z]*block_size, block_size=block_size, activation=activation, normalization=normalization,
                 regularization=regularization, regularization_rate=regularization_rate,
-            ) for filters in filters_per_dense_block
+            ) for filters, x, y, z in zip(filters_per_dense_block, dense_x, dense_y, dense_z)
         ]
         self.pools = _pool_layers_from_kind_and_dimension(dimension, pool_type, len(filters_per_dense_block) + 1, pool_x, pool_y, pool_z)
 
@@ -690,9 +697,9 @@ class ConvDecoder:
             tensor_map_out: TensorMap,
             filters_per_dense_block: List[int],
             conv_layer_type: str,
-            conv_x: int,
-            conv_y: int,
-            conv_z: int,
+            conv_x: List[int],
+            conv_y: List[int],
+            conv_z: List[int],
             block_size: int,
             activation: str,
             normalization: str,
@@ -706,11 +713,11 @@ class ConvDecoder:
         dimension = tensor_map_out.axes()
         self.dense_blocks = [
             DenseConvolutionalBlock(
-                dimension=tensor_map_out.axes(), conv_layer_type=conv_layer_type, filters=filters, conv_x=conv_x,
-                conv_y=conv_y, conv_z=conv_z, block_size=block_size, activation=activation, normalization=normalization,
+                dimension=tensor_map_out.axes(), conv_layer_type=conv_layer_type, filters=filters, conv_x=[x]*block_size,
+                conv_y=[y]*block_size, conv_z=[z]*block_size, block_size=block_size, activation=activation, normalization=normalization,
                 regularization=regularization, regularization_rate=regularization_rate,
             )
-            for filters in filters_per_dense_block
+            for filters, x, y, z in zip(filters_per_dense_block, conv_x, conv_y, conv_z)
         ]
         conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
         self.conv_label = conv_layer(tensor_map_out.shape[-1], _one_by_n_kernel(dimension), activation=tensor_map_out.activation, name=tensor_map_out.output_name())
@@ -758,6 +765,18 @@ def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}
 
 
+def _repeat_dimension(dim: List[int], name: str, num_filters_needed: int) -> List[int]:
+        if len(dim) != num_filters_needed:
+            logging.warning(
+                f'Number of {name} dimensions for convolutional kernel sizes ({len(dim)}) '
+                f'do not match number of convolutional layers/blocks ({num_filters_needed}), '
+                f'matching values to fit {num_filters_needed} convolutional layers/blocks.',
+            )
+            repeat = num_filters_needed // len(dim) + 1
+            dim = (dim * repeat)[:num_filters_needed]
+        return dim
+
+
 def make_multimodal_multitask_model(
         tensor_maps_in: List[TensorMap],
         tensor_maps_out: List[TensorMap],
@@ -773,9 +792,9 @@ def make_multimodal_multitask_model(
         conv_type: str = None,
         conv_normalize: str = None,
         conv_regularize: str = None,
-        conv_x: int = None,
-        conv_y: int = None,
-        conv_z: int = None,
+        conv_x: List[int] = None,
+        conv_y: List[int] = None,
+        conv_z: List[int] = None,
         conv_dropout: float = None,
         conv_dilate: bool = None,
         u_connect: DefaultDict[TensorMap, Set[TensorMap]] = None,
@@ -847,6 +866,14 @@ def make_multimodal_multitask_model(
     dense_regularize_rate = dropout
     conv_regularize_rate = conv_dropout
 
+    # list of filter dimensions should match the number of convolutional layers = len(dense_blocks) + [ + len(conv_layers) if convolving input tensors]
+    num_dense = len(dense_blocks)
+    num_res = len(conv_layers) if any(tm.axes() > 1 for tm in tensor_maps_in) else 0
+    num_filters_needed = num_res + num_dense
+    conv_x = _repeat_dimension(conv_x, 'x', num_filters_needed)
+    conv_y = _repeat_dimension(conv_y, 'y', num_filters_needed)
+    conv_z = _repeat_dimension(conv_z, 'z', num_filters_needed)
+
     encoders: Dict[TensorMap: Layer] = {}
     for tm in tensor_maps_in:
         if tm.axes() > 1:
@@ -917,6 +944,7 @@ def make_multimodal_multitask_model(
     else:
         raise NotImplementedError(f'Unknown BottleneckType {bottleneck_type}.')
 
+    conv_x, conv_y, conv_z = conv_x[num_res:], conv_y[num_res:], conv_z[num_res:]
     decoders: Dict[TensorMap, Layer] = {}
     for tm in tensor_maps_out:
         if tm.axes() > 1:
@@ -1089,29 +1117,29 @@ def _one_by_n_kernel(dimension):
 
 
 def _conv_layer_from_kind_and_dimension(
-        dimension: int, conv_layer_type: str, conv_x: int, conv_y: int, conv_z: int,
-) -> Tuple[Layer, Tuple[int, ...]]:
+        dimension: int, conv_layer_type: str, conv_x: List[int], conv_y: List[int], conv_z: List[int],
+) -> Tuple[Layer, List[Tuple[int, ...]]]:
     if dimension == 4 and conv_layer_type == 'conv':
         conv_layer = Conv3D
-        kernel = (conv_x, conv_y, conv_z)
+        kernel = zip(conv_x, conv_y, conv_z)
     elif dimension == 3 and conv_layer_type == 'conv':
         conv_layer = Conv2D
-        kernel = (conv_x, conv_y)
+        kernel = zip(conv_x, conv_y)
     elif dimension == 2 and conv_layer_type == 'conv':
         conv_layer = Conv1D
-        kernel = conv_x
+        kernel = zip(conv_x)
     elif dimension == 3 and conv_layer_type == 'separable':
         conv_layer = SeparableConv2D
-        kernel = (conv_x, conv_y)
+        kernel = zip(conv_x, conv_y)
     elif dimension == 2 and conv_layer_type == 'separable':
         conv_layer = SeparableConv1D
-        kernel = conv_x
+        kernel = zip(conv_x)
     elif dimension == 3 and conv_layer_type == 'depth':
         conv_layer = DepthwiseConv2D
-        kernel = (conv_x, conv_y)
+        kernel = zip(conv_x, conv_y)
     else:
         raise ValueError(f'Unknown convolution type: {conv_layer_type} for dimension: {dimension}')
-    return conv_layer, kernel
+    return conv_layer, list(kernel)
 
 
 def _pool_layers_from_kind_and_dimension(dimension, pool_type, pool_number, pool_x, pool_y, pool_z):
