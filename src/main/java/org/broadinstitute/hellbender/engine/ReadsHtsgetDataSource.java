@@ -1,9 +1,10 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import htsjdk.samtools.*;
 
+import htsjdk.samtools.filter.FilteringSamIterator;
+import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.DelegatingIterator;
 import org.apache.logging.log4j.LogManager;
@@ -11,27 +12,21 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.htsgetreader.*;
-import org.broadinstitute.hellbender.transformers.SamRecordTransformer;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
-import org.broadinstitute.hellbender.utils.iterators.SamRecordTransformingIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import javax.annotation.Nonnull;
 import java.io.*;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
- * Manages traversals and queries over sources of reads which are accessible via {@link Path}s pointing to a file
+ * Manages traversals and queries over sources of reads which are accessible via {@link GATKPath}s pointing to a file
  * behind an htsget server
  * (for now, SAM/BAM/CRAM files only).
  *
@@ -70,12 +65,9 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     /**
      * Mapping from the paths provided to this data source and their SAM headers
      */
-    private final Map<GATKPath, SAMFileHeader> headers;
+    private final Map<GATKPath, SamReader> readers;
 
-    /**
-     * Used to create a merged Sam header when we're dealing with multiple readers. Null if we only have a single reader.
-     */
-    private final SamFileHeaderMerger samHeaderMerger;
+    private final List<CloseableIterator<SAMRecord>> iterators;
 
     /**
      * The merged header for this data source
@@ -88,10 +80,9 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     private final SamReaderFactory readerFactory;
 
     /**
-     * The inner iterator this source returns when queried either by interval, for unmapped reads or a full
-     * iteration is requested
+     * Executor service used to spawn threads to initialize iterators in parallel
      */
-    private CloseableIterator<GATKRead> iterator;
+    private final ExecutorService executorService;
 
     /**
      * Initialize this data source with a single SAM/BAM file and validation stringency SILENT.
@@ -99,7 +90,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
      * @param source SAM/BAM file, not null.
      */
     public ReadsHtsgetDataSource(final GATKPath source) {
-        this(source, null);
+        this(source != null ? Collections.singletonList(source) : null, null);
     }
 
     /**
@@ -139,24 +130,32 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
                 : customSamReaderFactory;
 
         this.sources = sources;
-        this.headers = new HashMap<>(sources.size());
+        this.readers = new HashMap<>(sources.size());
+        this.iterators = new ArrayList<>();
 
         for (final GATKPath source : sources) {
             try {
                 // Ensure each source can be obtained from htsget server
                 final HtsgetRequest req = new HtsgetRequest(source).withDataClass(HtsgetClass.header);
                 // Request only the headers and use them to construct SAMFileHeader for each source
-                final InputStream headerStream = getRequestInputStream(req);
-                this.headers.put(source, readerFactory.open(SamInputResource.of(headerStream)).getFileHeader());
+                final InputStream headerStream = req.getResponse().getDataStream();
+                this.readers.put(source, readerFactory.open(SamInputResource.of(headerStream)));
             } catch (final UserException e) {
                 throw new UserException(source.toString(), e);
             }
         }
 
-        this.samHeaderMerger = createHeaderMerger(this.headers.values());
-        this.header = sources.size() > 1
-            ? this.samHeaderMerger.getMergedHeader()
-            : headers.values().iterator().next();
+        this.executorService = Executors.newFixedThreadPool(8, new ThreadFactoryBuilder()
+            .setNameFormat("readerInitializer-thread-%d")
+            .setDaemon(true)
+            .build());
+
+        if (sources.size() > 1) {
+            final Set<SAMFileHeader> headers = this.readers.values().stream().map(SamReader::getFileHeader).collect(Collectors.toSet());
+            this.header = createHeaderMerger(headers).getMergedHeader();
+        } else {
+            this.header = this.readers.values().iterator().next().getFileHeader();
+        }
     }
 
     /**
@@ -204,8 +203,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     @Override
     @Nonnull
     public Iterator<GATKRead> iterator() {
-        this.iterator = new MergingHtsgetIterator(this.intervals, this.traverseUnmapped);
-        return this.iterator;
+        return this.prepareIteratorsForTraversal(this.intervals, this.traverseUnmapped);
     }
 
     /**
@@ -217,8 +215,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
      */
     @Override
     public Iterator<GATKRead> query(final SimpleInterval interval) {
-        this.iterator = new MergingHtsgetIterator(Collections.singletonList(interval), false);
-        return this.iterator;
+        return this.prepareIteratorsForTraversal(Collections.singletonList(interval), false);
     }
 
     /**
@@ -227,8 +224,72 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
      */
     @Override
     public Iterator<GATKRead> queryUnmapped() {
-        this.iterator = new MergingHtsgetIterator(null, true);
-        return this.iterator;
+        return this.prepareIteratorsForTraversal(null, true);
+    }
+
+    private Iterator<GATKRead> prepareIteratorsForTraversal(final List<SimpleInterval> intervals, final boolean traverseUnmapped) {
+        final Map<SamReader, CloseableIterator<SAMRecord>> mapping;
+        if (intervals == null) {
+            mapping = this.getReaders(traverseUnmapped);
+        } else {
+            mapping = this.getReadersWithIntervals(intervals, traverseUnmapped);
+        }
+
+        final CloseableIterator<SAMRecord> samRecordIterator;
+        if (mapping.size() == 1) {
+            samRecordIterator = mapping.values().iterator().next();
+        } else {
+            final Set<SAMFileHeader> headers = mapping.keySet().stream().map(SamReader::getFileHeader).collect(Collectors.toSet());
+            samRecordIterator = new MergingSamRecordIterator(this.createHeaderMerger(headers), mapping, true);
+        }
+        this.iterators.add(samRecordIterator);
+        return new SAMRecordToReadIterator(samRecordIterator);
+    }
+
+    private Map<SamReader, CloseableIterator<SAMRecord>> getReaders(final boolean traverseUnmapped) {
+        final Map<SamReader, CloseableIterator<SAMRecord>> mapping = new ConcurrentHashMap<>();
+        final List<Future<?>> futures = new ArrayList<>(this.sources.size());
+        this.sources.parallelStream()
+            .forEach(source -> futures.add(this.executorService.submit(() -> {
+                final HtsgetRequest req = new HtsgetRequest(source);
+                if (traverseUnmapped) req.setInterval(HtsgetRequest.UNMAPPED_UNPLACED_INTERVAL);
+                final SamReader reader = this.readerFactory.open(SamInputResource.of(req.getResponse().getDataStream()));
+                mapping.put(reader, this.wrapIteratorWithClose(reader.iterator(), reader));
+            })));
+        try {
+            for (final Future<?> future : futures) future.get();
+        } catch (final ExecutionException | InterruptedException e) {
+            throw new UserException("Interrupted while initializing iterator", e);
+        }
+        return mapping;
+    }
+
+    private Map<SamReader, CloseableIterator<SAMRecord>> getReadersWithIntervals(final List<SimpleInterval> intervals, final boolean traverseUnmapped) {
+        final Map<SamReader, CloseableIterator<SAMRecord>> mapping = new ConcurrentHashMap<>();
+        SimpleInterval prevInterval = null;
+        final List<Future<?>> futures = new ArrayList<>(this.sources.size());
+        for (final SimpleInterval interval : intervals) {
+            final SimpleInterval finalPrevInterval = prevInterval;
+            this.sources.parallelStream()
+                .filter(source -> IntervalUtils.intervalIsOnDictionaryContig(
+                    interval,
+                    this.readers.get(source).getFileHeader().getSequenceDictionary()))
+                .forEach(source -> futures.add(this.executorService.submit(() -> {
+                    final HtsgetRequest req = new HtsgetRequest(source).withInterval(interval);
+                    final SamReader reader = this.readerFactory.open(SamInputResource.of(req.getResponse().getDataStream()));
+                    mapping.put(reader, this.getIterWithInterval(reader, interval, finalPrevInterval));
+                })));
+            prevInterval = interval;
+        }
+        try {
+            for (final Future<?> future : futures) future.get();
+        } catch (final ExecutionException | InterruptedException e) {
+            throw new UserException("Interrupted while initializing iterator", e);
+        }
+        if (traverseUnmapped) {
+            mapping.putAll(this.getReaders(true));
+        }
+        return mapping;
     }
 
     @Override
@@ -241,7 +302,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
      */
     @Override
     public void close() {
-        this.iterator.close();
+        this.iterators.forEach(CloseableIterator::close);
     }
 
     /**
@@ -253,6 +314,46 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     @Override
     public SAMFileHeader getHeader() {
         return this.header;
+    }
+
+    private CloseableIterator<SAMRecord> getIterWithInterval(final SamReader samReader, final SimpleInterval currInterval, final SimpleInterval prevInterval) {
+        /*
+        To remove reads duplicated across two subsequent intervals, we take any read which is in
+        the current interval but NOT in the previous interval, unless the current interval is the first,
+        in which case we take any read overlapping it
+        */
+        final CloseableIterator<SAMRecord> filteredSamRecords = new FilteringSamIterator(samReader.iterator(), new SamRecordFilter() {
+            @Override
+            public boolean filterOut(final SAMRecord record) {
+                return !currInterval.overlaps(record) || (prevInterval != null && prevInterval.overlaps(record));
+            }
+
+            @Override
+            public boolean filterOut(final SAMRecord first, final SAMRecord second) {
+                throw new UnsupportedOperationException();
+            }
+        });
+        return this.wrapIteratorWithClose(filteredSamRecords, samReader);
+    }
+
+    /**
+     * Wrap an iterator to allow us to free the backing SamReader without holding onto an explicit reference to it
+     * @param iterator the iterator to wrap
+     * @param samReader the SamReader to close once the iterator has been used up
+     * @return a wrapped CloseableIterator
+     */
+    private CloseableIterator<SAMRecord> wrapIteratorWithClose(final CloseableIterator<SAMRecord> iterator, final SamReader samReader) {
+        return new DelegatingIterator<SAMRecord>(iterator) {
+            @Override
+            public void close() {
+                try {
+                    iterator.close();
+                    samReader.close();
+                } catch (final IOException e) {
+                    throw new GATKException("Error closing SAMReader", e);
+                }
+            }
+        };
     }
 
     private SamFileHeaderMerger createHeaderMerger(final Collection<SAMFileHeader> headers) {
@@ -272,324 +373,4 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
         }
         return order;
     }
-
-    /**
-     * Returns an InputStream over the data contained in the response to the given htsget request
-     * Returns header requests immediately as these are usually small, and downloads larger requests to disk
-     * @param req the htsget request to return an InputStream for
-     * @return an InputStream over the contents of the request's data
-     */
-    @VisibleForTesting
-    private static InputStream getRequestInputStream(final HtsgetRequest req) {
-        return req.getResponse().getDataStream();
-    }
-
-    /**
-     * Get the sequence dictionary for this ReadsHtsgetDataSource
-     *
-     * @return SAMSequenceDictionary from the SAMReader backing this if there is only 1 input file, otherwise the merged SAMSequenceDictionary from the merged header
-     */
-    @Override
-    public SAMSequenceDictionary getSequenceDictionary() {
-        return this.header.getSequenceDictionary();
-    }
-
-    /**
-     * Manages iteration over the provided sources and intervals -- schedules downloads on background threads allowing
-     * main thread to begin processing reads while background threads initialize readers
-     */
-    private class MergingHtsgetIterator implements CloseableIterator<GATKRead> {
-        /**
-         * Only reads that overlap these intervals (and unmapped reads, if {@link #traverseUnmapped} is set) will be returned
-         * during a full iteration. Null if iteration is unbounded.
-         */
-        private final List<SimpleInterval> intervals;
-
-        /**
-         * If true, restrict traversals to unmapped reads (and reads overlapping any {@link #intervals}, if set).
-         * False if iteration is unbounded or bounded only by our {@link #intervals}.
-         *
-         * Note that this setting covers only unmapped reads that have no position -- unmapped reads that are assigned the
-         * position of their mates will be returned if an interval overlapping that position is provided.
-         */
-        private final boolean traverseUnmapped;
-
-        /**
-         * Executor used to schedule background download threads
-         */
-        private final ExecutorService executor;
-
-        /**
-         * Queue onto which background threads enqueue non-empty iterators and from which the main thread draws
-         * once it has exhausted its current iterator -- uses a fixed capacity blocking queue to automatically apply
-         * backpressure if background threads are producing or main thread is consuming too quickly
-         */
-        private final BlockingQueue<CloseableIterator<GATKRead>> queue;
-
-        /**
-         * Number of non-empty iterators the main thread expects to be able to draw from the queue
-         * Initially set to total number of iterators by main thread -- this may include some empty iterators
-         * Producing threads will not enqueue empty iterators, so they must decrement the counter to account for these
-         * missing iterators the main thread is expecting
-         * Main thread is responsible for decrementing counter to account for non-empty iterators it draws from the queue
-         * When this reaches 0, every iterator from every source has either been taken and used up, or was empty
-         */
-        private final AtomicInteger sourcesWaiting;
-
-        /**
-         * The current iterator to draw from
-         */
-        private CloseableIterator<GATKRead> currentIterator;
-
-        /**
-         * Initialize this iterator to only return reads that overlap the given intervals and to unmapped reads if specified.
-         * Instantiating this iterator begins downloading the specified sources
-         * @param intervals This iterator will return reads overlapping these intervals
-         * @param traverseUnmapped This iterator will return unmapped reads (this affects only unmapped reads that
-         *                         have no position -- unmapped reads that have the position of their mapped mates will be
-         *                         included if the interval overlapping that position is included).
-         */
-        public MergingHtsgetIterator(final List<SimpleInterval> intervals, final boolean traverseUnmapped) {
-            this.executor = Executors.newFixedThreadPool(4, new ThreadFactoryBuilder()
-                .setNameFormat("htsget-datasource-thread-%d")
-                .setDaemon(true)
-                .build());
-
-            this.intervals = intervals;
-            this.traverseUnmapped = traverseUnmapped;
-
-            this.queue = new ArrayBlockingQueue<>(4);
-            this.sourcesWaiting = new AtomicInteger(0);
-
-            if (this.intervals == null) {
-                this.startNoIntervals();
-            } else {
-                this.startIntervals();
-            }
-        }
-
-        /**
-         * Signal background threads to stop and close all existing iterators in the queue
-         */
-        @Override
-        public void close() {
-            this.executor.shutdownNow();
-            this.queue.forEach(CloseableIterator::close);
-        }
-
-        /**
-         * Return the next non-empty iterator, decrementing the count of sources waiting, or null if there are none
-         * @return A non-empty iterator
-         */
-        private CloseableIterator<GATKRead> nextIterator() {
-            try {
-                CloseableIterator<GATKRead> iterator = null;
-                while (iterator == null && this.sourcesWaiting.get() > 0) {
-                    iterator = this.queue.poll(1, TimeUnit.SECONDS);
-                }
-                if (iterator != null) {
-                    this.sourcesWaiting.decrementAndGet();
-                }
-                return iterator;
-            } catch (final InterruptedException e) {
-                throw new GATKException("Interrupted while dequeueing", e);
-            }
-        }
-
-        @Override
-        public boolean hasNext() {
-            if (this.currentIterator != null && this.currentIterator.hasNext()) {
-                return true;
-            }
-            if (this.currentIterator != null) this.currentIterator.close();
-            this.currentIterator = this.nextIterator();
-            return this.currentIterator != null;
-        }
-
-        @Override
-        public GATKRead next() {
-            return this.currentIterator.next();
-        }
-
-        /**
-         * Begin fetching sources from htsget server on background threads -- downloads either the whole file if
-         * complete iteration was requested, or only the unmapped reads if unmapped read iteration was requested
-         */
-        private void startNoIntervals() {
-            for (final GATKPath source : sources) {
-                this.sourcesWaiting.getAndIncrement();
-                // Enqueue an iterator over either the entire source or just its unmapped reads
-                this.executor.submit(this.traverseUnmapped
-                    ? () -> this.getSourceUnmapped(source)
-                    : () -> this.getSource(source));
-            }
-        }
-
-        /**
-         * Reduce the intervals down to only include ones that can actually intersect with this source
-         * @param source A source provided to this data source
-         * @return A list of intervals which overlap this source, based on its header
-         */
-        private List<SimpleInterval> intervalsOverlappingSource(final GATKPath source) {
-            final SAMSequenceDictionary sequenceDictionary = headers.get(source).getSequenceDictionary();
-            return this.intervals.stream()
-                .filter(interval -> IntervalUtils.intervalIsOnDictionaryContig(interval, sequenceDictionary))
-                .collect(Collectors.toList());
-        }
-
-        /**
-         * Begin fetching sources from htsget server on background threads -- makes a single request per source
-         * per overlapping interval, and possibly a request for the unmapped reads if this was requested
-         */
-        private void startIntervals() {
-            for (final GATKPath source : sources) {
-                SimpleInterval prevInterval = null;
-                // Enqueue iterators over the intervals of this source
-                for (final SimpleInterval currInterval : intervalsOverlappingSource(source)) {
-                    final SimpleInterval finalPrevInterval = prevInterval;
-                    this.sourcesWaiting.getAndIncrement();
-                    this.executor.submit(() -> this.getSourceWithInterval(source, finalPrevInterval, currInterval));
-                    prevInterval = currInterval;
-                }
-                // Enqueue an iterator over the unmapped reads only if traverseUnmapped is set to true
-                if (this.traverseUnmapped) {
-                    this.sourcesWaiting.getAndIncrement();
-                    this.executor.submit(() -> this.getSourceUnmapped(source));
-                }
-            }
-        }
-
-        /**
-         * Wrap an iterator to allow us to free the backing SamReader without holding onto an explicit reference to it
-         * @param iterator the iterator to wrap
-         * @param closeable the SamReader to close once the iterator has been used up
-         * @return a wrapped CloseableIterator
-         */
-        private CloseableIterator<GATKRead> wrapIteratorWithClose(final Iterator<GATKRead> iterator, final Closeable closeable) {
-            return new DelegatingIterator<GATKRead>(iterator) {
-                @Override
-                public void close() {
-                    try {
-                        closeable.close();
-                    } catch (final IOException e) {
-                        throw new GATKException("Error closing SAMReader", e);
-                    }
-                }
-            };
-        }
-
-        /**
-         * Wrap an iterator over SAMRecords to resolve its reference indices against this data source's merged header
-         * @param samReader the reader to resolve
-         * @return a wrapped iterator over SAMRrecords which resolves its records references
-         */
-        private Iterator<SAMRecord> wrapSamRecordWithMergedHeader(final SamReader samReader) {
-            return new SamRecordTransformingIterator(samReader.iterator(), (SamRecordTransformer) record -> {
-                // this will resolve the reference indices against the new, merged header
-                record.setHeader(samHeaderMerger.getMergedHeader());
-
-                // Fix the read group if needs be
-                if (samHeaderMerger.hasReadGroupCollisions()) {
-                    final String oldGroupId = (String) record.getAttribute(ReservedTagConstants.READ_GROUP_ID);
-                    if (oldGroupId != null) {
-                        final String newGroupId = samHeaderMerger.getReadGroupId(samReader.getFileHeader(), oldGroupId);
-                        record.setAttribute(ReservedTagConstants.READ_GROUP_ID, newGroupId);
-                    }
-                }
-
-                // Fix the program group if needs be
-                if (samHeaderMerger.hasProgramGroupCollisions()) {
-                    final String oldGroupId = (String) record.getAttribute(ReservedTagConstants.PROGRAM_GROUP_ID);
-                    if (oldGroupId != null) {
-                        final String newGroupId = samHeaderMerger.getProgramGroupId(samReader.getFileHeader(), oldGroupId);
-                        record.setAttribute(ReservedTagConstants.PROGRAM_GROUP_ID, newGroupId);
-                    }
-                }
-
-                return record;
-            });
-        }
-
-        /**
-         * Download all reads of the source and enqueue an iterator over them if the iterator is non-empty
-         * @param source the source to download
-         */
-        private void getSource(final GATKPath source) {
-            final HtsgetRequest req = new HtsgetRequest(source);
-            final SamReader samReader = readerFactory.open(SamInputResource.of(getRequestInputStream(req)));
-            // Resolve reference indices against merged header, fix read group/program id and return iterator
-            final Iterator<SAMRecord> transformedReader = this.wrapSamRecordWithMergedHeader(samReader);
-            final Iterator<GATKRead> readIterator = new SAMRecordToReadIterator(transformedReader);
-            final CloseableIterator<GATKRead> closeWrappedIterator = this.wrapIteratorWithClose(readIterator, samReader);
-            this.enqueueIfNotEmpty(closeWrappedIterator);
-        }
-
-        /**
-         * Download only the unmapped reads of the source and enqueue an iterator over them if the iterator is non-empty
-         * @param source the source to download
-         */
-        private void getSourceUnmapped(final GATKPath source) {
-            final HtsgetRequest req = new HtsgetRequest(source).withInterval(HtsgetRequest.UNMAPPED_UNPLACED_INTERVAL);
-            final SamReader samReader = readerFactory.open(SamInputResource.of(getRequestInputStream(req)));
-            final Iterator<GATKRead> readIterator = new SAMRecordToReadIterator(samReader.iterator());
-            final CloseableIterator<GATKRead> closeWrappedIterator = this.wrapIteratorWithClose(readIterator, samReader);
-            this.enqueueIfNotEmpty(closeWrappedIterator);
-        }
-
-        /**
-         * Get only the current interval from a source, excluding duplicate reads that overlap the previous interval
-         * and enqueue an iterator over them if the iterator is non-empty
-         * @param source the source to download
-         * @param prevInterval the previous interval, if it exists, whose reads should be excluded from this interval to avoid duplication
-         * @param currInterval the current interval to request
-         */
-        private void getSourceWithInterval(final GATKPath source, final SimpleInterval prevInterval, final SimpleInterval currInterval) {
-            final HtsgetRequest req = new HtsgetRequest(source).withInterval(currInterval);
-            final SamReader samReader = readerFactory.open(SamInputResource.of(getRequestInputStream(req)));
-            // Resolve reference indices against merged header, fix read group/program id and return iterator
-            final Iterator<SAMRecord> transformedReader = this.wrapSamRecordWithMergedHeader(samReader);
-            // Convert SAMRecords to GATKReads
-            final Iterator<GATKRead> readIterator = new SAMRecordToReadIterator(transformedReader);
-
-            /*
-            To remove reads duplicated across two subsequent intervals, we take any read which is in
-            the current interval but NOT in the previous interval, unless the current interval is the first,
-            in which case we take any read overlapping it
-             */
-            final Iterator<GATKRead> filteredIterator = new ReadFilteringIterator(
-                readIterator,
-                read -> currInterval.overlaps(read) &&
-                    (prevInterval == null || !prevInterval.overlaps(read))
-            );
-
-            // Wrap in CloseableIterator so we can close backing SamReader without explicitly keeping a reference to it
-            final CloseableIterator<GATKRead> closeWrappedIterator = this.wrapIteratorWithClose(filteredIterator, samReader);
-            // Only enqueue if the iterator is non-empty
-            this.enqueueIfNotEmpty(closeWrappedIterator);
-        }
-
-        /**
-         * Enqueue an iterator onto our queue of iterators the main thread will draw from only if it is non-empty
-         * or close it and decrement the count of sources waiting
-         */
-        private void enqueueIfNotEmpty(final CloseableIterator<GATKRead> iterator) {
-            if (!iterator.hasNext()) {
-                iterator.close();
-                /*
-                We need to decrement our count of sources waiting to be submitted because the main thread initially
-                expects all iterators to be non-empty and will wait on an empty queue if it is expecting more iterators
-                to be enqueued eventually, here we decrement to signal that it should not wait for this iterator since
-                it was empty
-                 */
-                this.sourcesWaiting.getAndDecrement();
-            } else {
-                try {
-                    this.queue.put(iterator);
-                } catch (final InterruptedException e) {
-                    throw new GATKException("Interrupted exception while enqueueing", e);
-                }
-            }
-        }
-    }
 }
-
