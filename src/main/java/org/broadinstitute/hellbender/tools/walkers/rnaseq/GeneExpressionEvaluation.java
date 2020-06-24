@@ -221,8 +221,8 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     @Argument(doc="Feature overlap types", fullName = "overlap-type")
     private Set<String> overlapType = new HashSet<>(Collections.singleton("exon"));
 
-    @Argument(doc="Attribute key to label features by in output", fullName = "feature-label-key")
-    private String featureLabelKey = "Name";
+    @Argument(doc="Whether to label features by ID or Name", fullName = "feature-label-key")
+    private FeatureLabelType featureLabelKey = FeatureLabelType.NAME;
 
     @Argument(doc = "Which read corresponds to the transcription strand", fullName = "transcription-read")
     private TrancriptionRead trancriptionRead = TrancriptionRead.R1;
@@ -243,6 +243,31 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     private String sampleName = null;
 
     final MappingQualityReadFilter mappingQualityFilter = new MappingQualityReadFilter();
+
+    enum FeatureLabelType {
+        NAME("Name") {
+            @Override
+            String getValue(final Gff3BaseData baseData) {
+                return baseData.getName();
+            }
+        },
+        ID("ID") {
+            @Override
+            String getValue(final Gff3BaseData baseData) {
+                return baseData.getId();
+            }
+        };
+
+        String key;
+        FeatureLabelType(final String key) {
+            this.key = key;
+        }
+        String getKey() {
+            return key;
+        }
+        abstract String getValue(final Gff3BaseData baseData);
+
+    }
 
     enum MultiOverlapMethod {
 
@@ -409,13 +434,13 @@ public final class GeneExpressionEvaluation extends ReadWalker {
 
     private Gff3BaseData shrinkBaseData(final Gff3BaseData baseData) {
         //remove all but featureLabelKey attributes
-        final Map<String, String> shrunkAttributes = baseData.getAttributes().entrySet().stream().filter(e -> e.getKey().equals(featureLabelKey)).collect(Collectors.toMap(Map.Entry::getKey,Map.Entry::getValue));
+        final Map<String, List<String>> shrunkAttributes = baseData.getAttributes().entrySet().stream().filter(e -> e.getKey().equals(featureLabelKey.getKey())).collect(Collectors.toMap(Map.Entry::getKey,Map.Entry::getValue));
         return new Gff3BaseData(baseData.getContig(), baseData.getSource(), baseData.getType(), baseData.getStart(), baseData.getEnd(), baseData.getScore(), baseData.getStrand(), baseData.getPhase(), shrunkAttributes);
     }
 
     private void addGroupingFeature(final Gff3BaseData groupingBaseData, final List<Interval> overlappingFeatures) {
-        final String geneID = groupingBaseData.getAttributes().get(featureLabelKey);
-        if (geneID == null) {
+        final String geneLabel = featureLabelKey.getValue(groupingBaseData);
+        if (geneLabel == null) {
             throw new UserException("no geneid field " + featureLabelKey + " found in feature at " + groupingBaseData.getContig() + ":" + groupingBaseData.getStart() + "-" + groupingBaseData.getEnd());
         }
 
@@ -549,22 +574,22 @@ public final class GeneExpressionEvaluation extends ReadWalker {
 
     public static class FragmentCountWriter extends TableWriter<SingleStrandFeatureCoverage> {
         final String name;
-        final String gene_id_key;
-        public FragmentCountWriter(final Path file , final String name, final String gene_id_key) throws IOException {
-            super(file, new TableColumnCollection("gene_id", "contig", "start", "stop", "strand", "sense_antisense", name+"_counts"));
+        final FeatureLabelType gene_label_key;
+        public FragmentCountWriter(final Path file , final String name, final FeatureLabelType gene_label_key) throws IOException {
+            super(file, new TableColumnCollection("gene_label", "contig", "start", "stop", "strand", "sense_antisense", name+"_counts"));
             this.name = name;
-            this.gene_id_key = gene_id_key;
+            this.gene_label_key = gene_label_key;
         }
 
         protected void composeLine(final SingleStrandFeatureCoverage fragmentCount, final DataLine dataLine) {
-            final String gene_label = fragmentCount.baseData.getAttributes().get(gene_id_key);
+            final String gene_label = gene_label_key.getValue(fragmentCount.baseData);
             dataLine.set("contig", fragmentCount.baseData.getContig())
                     .set("start", fragmentCount.baseData.getStart())
                     .set("stop", fragmentCount.baseData.getEnd())
                     .set("strand", fragmentCount.baseData.getStrand().encode())
                     .set("sense_antisense", fragmentCount.sense? "sense" : "antisense")
                     .set(name != null? name+"_counts" : "counts", fragmentCount.count, 2)
-                    .set("gene_id", gene_label == null? "" : gene_label);
+                    .set("gene_label", gene_label == null? "" : gene_label);
         }
     }
 
@@ -577,7 +602,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         protected GeneExpressionEvaluation.SingleStrandFeatureCoverage createRecord(final DataLine dataLine) {
             return new GeneExpressionEvaluation.SingleStrandFeatureCoverage(new Gff3BaseData(dataLine.get("contig"),".", ".",
                     dataLine.getInt("start"), dataLine.getInt("stop"), -1d, Strand.decode(dataLine.get("strand")), -1,
-                    Collections.singletonMap("ID", dataLine.get("gene_id"))), (float)dataLine.getDouble(6), dataLine.get("sense_antisense").equals("sense"));
+                    Collections.singletonMap("ID", Collections.singletonList(dataLine.get("gene_label")))), (float)dataLine.getDouble(6), dataLine.get("sense_antisense").equals("sense"));
         }
     }
 

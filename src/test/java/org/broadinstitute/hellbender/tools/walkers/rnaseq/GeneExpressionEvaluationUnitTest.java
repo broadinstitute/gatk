@@ -239,9 +239,9 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
          gene3        -------                 ---
         */
 
-        final Gff3BaseData gene1 = new Gff3BaseData("theContig", ".", "gene", 150, 450, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", "gene1"));
-        final Gff3BaseData gene2 = new Gff3BaseData("theContig", ".", "gene", 225, 600, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", "gene2"));
-        final Gff3BaseData gene3 = new Gff3BaseData("theContig", ".", "gene", 100, 410, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", "gene3"));
+        final Gff3BaseData gene1 = new Gff3BaseData("theContig", ".", "gene", 150, 450, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", Collections.singletonList("gene1")));
+        final Gff3BaseData gene2 = new Gff3BaseData("theContig", ".", "gene", 225, 600, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", Collections.singletonList("gene2")));
+        final Gff3BaseData gene3 = new Gff3BaseData("theContig", ".", "gene", 100, 410, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", Collections.singletonList("gene3")));
 
         final OverlapDetector<Pair<Gff3BaseData, Interval>> featureOverlapDetector = new OverlapDetector<>(0,0);
         //gene1 overlaps
@@ -376,9 +376,9 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "testMultiMapMethodDataProvider")
     public Object[][] testMultiMapMethodDataProvider() {
-        final Gff3BaseData gene1 = new Gff3BaseData("theContig", ".", "gene", 150, 450, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", "gene1"));
-        final Gff3BaseData gene2 = new Gff3BaseData("theContig", ".", "gene", 225, 600, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", "gene2"));
-        final Gff3BaseData gene3 = new Gff3BaseData("theContig", ".", "gene", 100, 410, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", "gene3"));
+        final Gff3BaseData gene1 = new Gff3BaseData("theContig", ".", "gene", 150, 450, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", Collections.singletonList("gene1")));
+        final Gff3BaseData gene2 = new Gff3BaseData("theContig", ".", "gene", 225, 600, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", Collections.singletonList("gene2")));
+        final Gff3BaseData gene3 = new Gff3BaseData("theContig", ".", "gene", 100, 410, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", Collections.singletonList("gene3")));
 
         final Map<Gff3BaseData, Float> previousWeights = new HashMap<>();
         previousWeights.put(gene1, (float)47/(float)3);
