@@ -203,7 +203,7 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String SHARED_POSIXFS_OPTIMIZATIONS = GenomicsDBArgumentCollection.SHARED_POSIXFS_OPTIMIZATIONS;
 
     @Argument(fullName = WORKSPACE_ARG_LONG_NAME,
-              doc = "Workspace for GenomicsDB. Must be a POSIX file system path, but can be a relative path. " +
+              doc = "Workspace for GenomicsDB. Can be a POSIX file system absolute or relative path or a HDFS/GCS URL. " +
                     "Use this argument when creating a new GenomicsDB workspace. " +
                     "Either this or "+INCREMENTAL_WORKSPACE_ARG_LONG_NAME+" must be specified." +
                     " Must be an empty or non-existent directory.",
@@ -211,7 +211,7 @@ public final class GenomicsDBImport extends GATKTool {
     private String workspace;
 
     @Argument(fullName = INCREMENTAL_WORKSPACE_ARG_LONG_NAME,
-              doc = "Workspace when updating GenomicsDB. Must be a POSIX file system path, but can be a relative path. " +
+              doc = "Workspace when updating GenomicsDB. Can be a POSIX file system absolute or relative path or a HDFS/GCS URL. " +
                     "Use this argument when adding new samples to an existing GenomicsDB workspace or "+
                     "when using the "+INTERVAL_LIST_LONG_NAME+" option. " +
                     "Either this or "+WORKSPACE_ARG_LONG_NAME+" must be specified. " +
