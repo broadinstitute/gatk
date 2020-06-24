@@ -12,7 +12,7 @@ if ( interactive() ) {
   args <- commandArgs(TRUE)
 } 
 
-data <- read.csv(args[1])
+data <- read.csv(args[1], stringsAsFactors = TRUE)
 
 data$Recalibration = as.factor(sapply(as.character(data$Recalibration),function(x) { 
   xu = toupper(x); 
