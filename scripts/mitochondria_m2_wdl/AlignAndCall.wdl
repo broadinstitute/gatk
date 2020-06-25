@@ -12,7 +12,6 @@ workflow AlignAndCall {
   input {
     File unmapped_bam
     Float? autosomal_coverage
-    String sample_name
     String base_name
 
     File mt_dict
@@ -159,7 +158,6 @@ workflow AlignAndCall {
       raw_vcf = LiftoverAndCombineVcfs.merged_vcf,
       raw_vcf_index = LiftoverAndCombineVcfs.merged_vcf_index,
       raw_vcf_stats = MergeStats.stats,
-      sample_name = sample_name,
       base_name = base_name,
       ref_fasta = mt_fasta,
       ref_fai = mt_fasta_index,
@@ -204,7 +202,6 @@ workflow AlignAndCall {
       contamination_major = GetContamination.major_level,
       contamination_minor = GetContamination.minor_level,
       verifyBamID = verifyBamID,
-      sample_name = sample_name,
       base_name = base_name,
       ref_fasta = mt_fasta,
       ref_fai = mt_fasta_index,
@@ -526,7 +523,6 @@ task Filter {
     File raw_vcf_stats
     Boolean compress
     Float? vaf_cutoff
-    String sample_name
     String base_name
 
     String? m2_extra_filtering_args
