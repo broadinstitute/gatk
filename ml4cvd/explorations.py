@@ -16,7 +16,7 @@ from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 import h5py
 import numpy as np
 import pandas as pd
-import multiprocess
+import multiprocessing as mp
 from tensorflow.keras.models import Model
 
 import matplotlib
@@ -670,95 +670,117 @@ def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
            len(obj.shape) == 1
 
 
-def _hd5_to_disk(tmaps, path, gen_name, tot, output_folder, id):
-    with count.get_lock():
-        i = count.value
-        if i % 500 == 0:
-            logging.info(f"Parsing {i}/{tot} ({i/tot*100:.1f}%) done")
-        count.value += 1
+class ExploreParallelWrapper():
+    def __init__(self, tmaps, paths,  num_workers, output_folder, run_id):
+        self.tmaps = tmaps
+        self.paths = paths
+        self.num_workers = num_workers
+        self.total = len(paths)
+        self.output_folder = output_folder
+        self.run_id = run_id
+        self.chunksize = self.total // num_workers
+        self.counter = mp.Value('l', 1)
 
-    # each worker should write to it's own file
-    pid = multiprocess.current_process().pid
-    fpath = os.path.join(output_folder, id, f'tensors_all_union_{pid}.csv')
-    write_header = not os.path.isfile(fpath)
 
-    try:
-        with h5py.File(path, "r") as hd5:
-            dict_of_tensor_dicts = defaultdict(dict)
-            # Iterate through each tmap
-            for tm in tmaps:
-                shape = tm.shape if tm.shape[0] is not None else tm.shape[1:]
-                try:
-                    tensors = tm.tensor_from_file(tm, hd5)
-                    if tm.shape[0] is not None:
-                        # If not a multi-tensor tensor, wrap in array to loop through
-                        tensors = np.array([tensors])
-                    for i, tensor in enumerate(tensors):
-                        if tensor is None:
-                            break
+    def _hd5_to_disk(self, path, gen_name):
+        with self.counter.get_lock():
+            i = self.counter.value
+            if i % 500 == 0:
+                logging.info(f"Parsing {i}/{self.total} ({i/self.total*100:.1f}%) done")
+            self.counter.value += 1
 
-                        error_type = ''
-                        try:
-                            tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
-                            # Append tensor to dict
-                            if tm.channel_map:
-                                for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = tensor[tm.channel_map[cm]]
-                            else:
-                                # If tensor is a scalar, isolate the value in the array;
-                                # otherwise, retain the value as array
-                                if shape[0] == 1:
-                                    if type(tensor) == np.ndarray:
-                                        tensor = tensor.item()
-                                dict_of_tensor_dicts[i][tm.name] = tensor
-                        except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                            if tm.channel_map:
-                                for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = np.nan
-                            else:
-                                dict_of_tensor_dicts[i][tm.name] = np.full(shape, np.nan)[0]
-                            error_type = type(e).__name__
-                        dict_of_tensor_dicts[i][f'error_type_{tm.name}'] = error_type
+        # each worker should write to it's own file
+        pid = mp.current_process().pid
+        fpath = os.path.join(self.output_folder, self.run_id, f'tensors_all_union_{pid}.csv')
+        write_header = not os.path.isfile(fpath)
 
-                except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                    # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
-                    if tm.channel_map:
-                        for cm in tm.channel_map:
-                            dict_of_tensor_dicts[0][f'{tm.name} {cm}'] = np.nan
-                    else:
-                        dict_of_tensor_dicts[0][tm.name] = np.full(shape, np.nan)[0]
-                    dict_of_tensor_dicts[0][f'error_type_{tm.name}'] = type(e).__name__
+        try:
+            with h5py.File(path, "r") as hd5:
+                dict_of_tensor_dicts = defaultdict(dict)
+                # Iterate through each tmap
+                for tm in self.tmaps:
+                    shape = tm.shape if tm.shape[0] is not None else tm.shape[1:]
+                    try:
+                        tensors = tm.tensor_from_file(tm, hd5)
+                        if tm.shape[0] is not None:
+                            # If not a multi-tensor tensor, wrap in array to loop through
+                            tensors = np.array([tensors])
+                        for i, tensor in enumerate(tensors):
+                            if tensor is None:
+                                break
 
-            for i in dict_of_tensor_dicts:
-                dict_of_tensor_dicts[i]['fpath'] = path
-                dict_of_tensor_dicts[i]['generator'] = gen_name
+                            error_type = ''
+                            try:
+                                tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
+                                # Append tensor to dict
+                                if tm.channel_map:
+                                    for cm in tm.channel_map:
+                                        dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = tensor[tm.channel_map[cm]]
+                                else:
+                                    # If tensor is a scalar, isolate the value in the array;
+                                    # otherwise, retain the value as array
+                                    if shape[0] == 1:
+                                        if type(tensor) == np.ndarray:
+                                            tensor = tensor.item()
+                                    dict_of_tensor_dicts[i][tm.name] = tensor
+                            except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+                                if tm.channel_map:
+                                    for cm in tm.channel_map:
+                                        dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = np.nan
+                                else:
+                                    dict_of_tensor_dicts[i][tm.name] = np.full(shape, np.nan)[0]
+                                error_type = type(e).__name__
+                            dict_of_tensor_dicts[i][f'error_type_{tm.name}'] = error_type
 
-            # write tdicts to disk
-            if len(dict_of_tensor_dicts) > 0:
-                keys = dict_of_tensor_dicts[0].keys()
-                with open(fpath, 'a') as output_file:
-                    dict_writer = csv.DictWriter(output_file, keys)
-                    if write_header:
-                        dict_writer.writeheader()
-                    dict_writer.writerows(dict_of_tensor_dicts.values())
-    except OSError as e:
-        logging.info(f"OSError {e}")
+                    except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+                        # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
+                        if tm.channel_map:
+                            for cm in tm.channel_map:
+                                dict_of_tensor_dicts[0][f'{tm.name} {cm}'] = np.nan
+                        else:
+                            dict_of_tensor_dicts[0][tm.name] = np.full(shape, np.nan)[0]
+                        dict_of_tensor_dicts[0][f'error_type_{tm.name}'] = type(e).__name__
+
+                for i in dict_of_tensor_dicts:
+                    dict_of_tensor_dicts[i]['fpath'] = path
+                    dict_of_tensor_dicts[i]['generator'] = gen_name
+
+                # write tdicts to disk
+                if len(dict_of_tensor_dicts) > 0:
+                    keys = dict_of_tensor_dicts[0].keys()
+                    with open(fpath, 'a') as output_file:
+                        dict_writer = csv.DictWriter(output_file, keys)
+                        if write_header:
+                            dict_writer.writeheader()
+                        dict_writer.writerows(dict_of_tensor_dicts.values())
+        except OSError as e:
+            logging.info(f"OSError {e}")
+
+
+    def mp_worker(self, worker_idx):
+        start = worker_idx * self.chunksize
+        end = start + self.chunksize
+        if worker_idx == self.num_workers - 1:
+            end = self.total
+        for path, gen in self.paths[start:end]:
+            self._hd5_to_disk(path, gen)
+
+
+    def run(self):
+        workers = []
+        for i in range(self.num_workers):
+            worker = mp.Process(target=self.mp_worker, args=(i,))
+            worker.start()
+            workers.append(worker)
+        for worker in workers:
+            worker.join()
 
 
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
-    global count # TODO figure out how to not use global
-    count = multiprocess.Value('l', 1)
     paths = [(path, gen.name.replace('_worker', '')) for gen in generators for worker_paths in gen.path_iters for path in worker_paths.paths]
-    num_hd5 = len(paths)
-    chunksize = num_hd5 // args.num_workers
-    with multiprocess.Pool(processes=args.num_workers) as pool:
-        pool.starmap(
-            _hd5_to_disk,
-            [(tmaps, path, gen_name, num_hd5, args.output_folder, args.id) for path, gen_name in paths],
-            chunksize=chunksize,
-        )
+    ExploreParallelWrapper(tmaps, paths, args.num_workers, args.output_folder, args.id).run()
 
     # get columns that should have dtype 'string' instead of dtype 'O'
     str_cols = ['fpath', 'generator']
@@ -781,7 +803,7 @@ def _tensors_to_df(args):
             logging.debug(f'Appended {fpath} to overall dataframe')
             temp_files.append(fpath)
 
-    logging.info(f"Extracted {len(tmaps)} tmaps from {len(df)} tensors across {num_hd5} hd5 files into DataFrame")
+    logging.info(f"Extracted {len(tmaps)} tmaps from {len(df)} tensors across {len(paths)} hd5 files into DataFrame")
 
     # remove temporary files
     for fpath in temp_files:
