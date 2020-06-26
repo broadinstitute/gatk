@@ -2,7 +2,7 @@ version 1.0
 
 import "AlignAndCall.wdl" as AlignAndCall
 
-#import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignAndCall/versions/12/plain-WDL/descriptor" as AlignAndCall
+#import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignAndCall/versions/24/plain-WDL/descriptor" as AlignAndCall
 
 workflow MitochondriaPipeline {
 
@@ -13,7 +13,6 @@ workflow MitochondriaPipeline {
   input {
     File wgs_aligned_input_bam_or_cram
     File wgs_aligned_input_bam_or_cram_index
-    String sample_name
     String contig_name = "chrM"
     Float autosomal_coverage = 30
 
@@ -75,7 +74,6 @@ workflow MitochondriaPipeline {
     vaf_filter_threshold: "Hard threshold for filtering low VAF sites"
     f_score_beta: "F-Score beta balances the filtering strategy between recall and precision. The relative weight of recall to precision."
     contig_name: "Name of mitochondria contig in reference that wgs_aligned_input_bam_or_cram is aligned to"
-    sample_name: "Name of file in final output vcf"
   }
 
   call SubsetBamToChrM {
@@ -98,11 +96,14 @@ workflow MitochondriaPipeline {
       preemptible_tries = preemptible_tries
   }
 
+  String base_name = basename(SubsetBamToChrM.output_bam, ".bam")
+
+
   call AlignAndCall.AlignAndCall as AlignAndCall {
     input:
       unmapped_bam = RevertSam.unmapped_bam,
       autosomal_coverage = autosomal_coverage,
-      sample_name = sample_name,
+      base_name = base_name,
       mt_dict = mt_dict,
       mt_fasta = mt_fasta,
       mt_fasta_index = mt_fasta_index,
@@ -157,6 +158,7 @@ workflow MitochondriaPipeline {
   call SplitMultiAllelicSites {
     input:
       input_vcf = AlignAndCall.out_vcf,
+      base_name = base_name,
       ref_fasta = mt_fasta,
       ref_fasta_index = mt_fasta_index,
       ref_dict = mt_dict,
@@ -229,12 +231,13 @@ task SubsetBamToChrM {
       --read-filter MateUnmappedAndUnmappedReadFilter \
       ~{"--gcs-project-for-requester-pays " + requester_pays_project} \
       -I ~{input_bam} \
+      --read-index ~{input_bai} \
       -O ~{basename}.bam
   >>>
   runtime {
     memory: "3 GB"
     disks: "local-disk " + disk_size + " HDD"
-    docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
+    docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
     preemptible: select_first([preemptible_tries, 5])
   }
   output {
@@ -367,10 +370,14 @@ task SplitMultiAllelicSites {
     File ref_fasta_index
     File ref_dict
     File input_vcf
+    String base_name
     Int? preemptible_tries
     File? gatk_override
     String? gatk_docker_override
   }
+
+  String output_vcf = base_name + ".final.split.vcf"
+  String output_vcf_index = output_vcf + ".idx"
 
   command {
     set -e
@@ -378,17 +385,17 @@ task SplitMultiAllelicSites {
     gatk LeftAlignAndTrimVariants \
       -R ~{ref_fasta} \
       -V ~{input_vcf} \
-      -O split.vcf \
+      -O ~{output_vcf} \
       --split-multi-allelics \
       --dont-trim-alleles \
       --keep-original-ac
   }
   output {
-    File split_vcf = "split.vcf"
-    File split_vcf_index = "split.vcf.idx"
+    File split_vcf = "~{output_vcf}"
+    File split_vcf_index = "~{output_vcf}"
   }
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])
