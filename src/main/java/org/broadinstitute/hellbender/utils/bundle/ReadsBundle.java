@@ -53,7 +53,7 @@ public class ReadsBundle {
     private static void checkSchema(final ReadsBundle readsBundle, String source) {
         if(!READS_BUNDLE_SCHEMA_TYPE.equals(readsBundle.schemaType)){
             throw new UserException("Failed while loading ReadsBundle from " + source +
-                    ".\n Json not include a correct schemaType key.  Expected " + READS_BUNDLE_SCHEMA_TYPE + " but found " +readsBundle.schemaType + " ." );
+                    ".\n Json does not include a correct schemaType key.  Expected " + READS_BUNDLE_SCHEMA_TYPE + " but found " +readsBundle.schemaType + " ." );
         }
         if (!SCHEMA_VERSION.equals(readsBundle.schemaVersion)) {
             LOG.warn("Loaded a reads bundle with an unexpected schema version.  Expected:"+ SCHEMA_VERSION +" but found: " + readsBundle.schemaVersion);

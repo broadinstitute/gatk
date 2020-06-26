@@ -22,7 +22,8 @@ public class ReadsBundleTest extends BaseTest {
                 "    \"path\": \"an index\",\n" +
                 "    \"fileType\": \"bai\"\n" +
                 "  },\n" +
-                "  \"schemaVersion\": \"0.1.0\"\n" +
+                "  \"schemaVersion\": \"0.1.0\",\n" +
+                "  \"schemaType\": \"ReadsBundle\"\n" +
                 "}");
     }
 
