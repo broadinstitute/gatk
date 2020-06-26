@@ -53,10 +53,10 @@ public final class ReadInputArgumentCollectionTest {
     @Test
     public void testJsonAndIndexesCantBeSpecifiedTogether() {
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addInput("file.bam");
-        args.add(StandardArgumentDefinitions.READ_INDEX_LONG_NAME, "file1.bai");
-        args.addInput("bundle.json");
-        args.add(StandardArgumentDefinitions.READ_INDEX_LONG_NAME, "file2.bai"); //the check for the correct number of indexes/inputs takes effect
+        args.addInput("file.bam")
+                .add(StandardArgumentDefinitions.READ_INDEX_LONG_NAME, "file1.bai")
+                .addInput("bundle.json")
+                .add(StandardArgumentDefinitions.READ_INDEX_LONG_NAME, "file2.bai"); //the check for the correct number of indexes/inputs takes effect
         ReadInputArgumentCollection ric = getInitializedReadArgumentInputCollection(args);
         assertAllGettersThrow(ric, UserException.class);
     }
