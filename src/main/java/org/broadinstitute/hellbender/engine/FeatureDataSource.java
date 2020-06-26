@@ -387,8 +387,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     protected static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final GATKPath path, final File reference, final GenomicsDBOptions genomicsDBOptions) {
         final String workspace = IOUtils.getGenomicsDBAbsolutePath(path) ;
         if (workspace == null) {
-            throw new IllegalArgumentException("Trying to create a GenomicsDBReader from  non-GenomicsDB inputpath " + path);
-        } else if (Files.notExists(IOUtils.getPath(workspace))) {
+            throw new IllegalArgumentException("Trying to create a GenomicsDBReader from  non-GenomicsDB input path " + path);
+        } else if (Files.notExists(IOUtils.getPath(workspace.endsWith("/") ? workspace : workspace + "/"))) {
             throw new UserException("GenomicsDB workspace " + path + " does not exist");
         }
 
@@ -401,10 +401,10 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         try {
             final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
                     createExportConfiguration(workspace, callsetJson, vidmapJson, vcfHeader, genomicsDBOptions);
-            if (genomicsDBOptions.useVCFCodec()) {
-                return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new VCFCodec(), Optional.empty());
-            } else {
+            if (genomicsDBOptions.useBCFCodec()) {
                 return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new BCF2Codec(), Optional.empty());
+            } else {
+                return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new VCFCodec(), Optional.empty());
             }
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);
