@@ -119,7 +119,7 @@ public final class BaseRecalibrator extends ReadWalker {
      */
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, doc = "The output recalibration table file to create", optional = false)
     @WorkflowOutput
-    private File recalTableFile = null;
+    private GATKPath recalTableFile = null;
 
     private BaseRecalibrationEngine recalibrationEngine;
 
@@ -216,11 +216,8 @@ public final class BaseRecalibrator extends ReadWalker {
     }
 
     private void generateReport() {
-        try ( PrintStream recalTableStream = new PrintStream(recalTableFile) ) {
+        try ( PrintStream recalTableStream = new PrintStream(recalTableFile.getOutputStream()) ) {
             RecalUtils.outputRecalibrationReport(recalTableStream, recalArgs, quantizationInfo, recalibrationEngine.getFinalRecalibrationTables(), recalibrationEngine.getCovariates());
-        }
-        catch (final IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(recalTableFile, e);
         }
     }
 }

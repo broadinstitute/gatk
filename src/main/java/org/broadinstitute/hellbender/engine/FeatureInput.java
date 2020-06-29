@@ -6,7 +6,6 @@ import htsjdk.tribble.FeatureCodec;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
-import java.io.File;
 import java.io.Serializable;
 import java.util.*;
 
@@ -123,7 +122,7 @@ public final class FeatureInput<T extends Feature> extends GATKPath implements S
         } else if (getScheme() != null && !getScheme().equals("file")) { // local files always have a "file" scheme
             return toPath().toAbsolutePath().toUri().toString();
         } else {
-            return new File(getURI()).getAbsolutePath();
+            return getURI().getPath();
         }
     }
 
