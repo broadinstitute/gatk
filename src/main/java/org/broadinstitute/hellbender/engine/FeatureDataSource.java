@@ -388,7 +388,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         final String workspace = IOUtils.getGenomicsDBAbsolutePath(path) ;
         if (workspace == null) {
             throw new IllegalArgumentException("Trying to create a GenomicsDBReader from  non-GenomicsDB input path " + path);
-        } else if (Files.notExists(IOUtils.getPath(workspace.endsWith("/")?workspace:workspace+"/"))) {
+        } else if (Files.notExists(IOUtils.getPath(workspace.endsWith("/") ? workspace : workspace + "/"))) {
             throw new UserException("GenomicsDB workspace " + path + " does not exist");
         }
 

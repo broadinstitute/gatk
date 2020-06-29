@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.collect.Lists;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -104,6 +105,8 @@ import java.util.stream.IntStream;
 public class VariantAnnotator extends VariantWalker {
     public static final String EXPRESSION_LONG_NAME = "expression";
     public static final String EXPRESSION_SHORT_NAME = "E";
+
+    private  SAMSequenceDictionary sequenceDictionary;
     private VariantContextWriter vcfWriter;
     private static final int REFERENCE_PADDING = 100;
 
@@ -190,6 +193,7 @@ public class VariantAnnotator extends VariantWalker {
     public void onTraversalStart() {
         // get the list of all sample names from the variant VCF, if applicable
         final List<String> samples = getHeaderForVariants().getGenotypeSamples();
+        sequenceDictionary = getBestAvailableSequenceDictionary();
         variantSamples = new IndexedSampleList(samples);
 
         annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, comps, false, false);
@@ -203,7 +207,7 @@ public class VariantAnnotator extends VariantWalker {
         hInfo = VcfUtils.updateHeaderContigLines(
                 hInfo,
                 hasReference() ? referenceArguments.getReferencePath() : null,
-                hasReference() ? getReferenceDictionary() : getBestAvailableSequenceDictionary(),
+                hasReference() ? getReferenceDictionary() : sequenceDictionary,
                 false);
 
         vcfWriter = createVCFWriter(outputFile);
@@ -226,7 +230,7 @@ public class VariantAnnotator extends VariantWalker {
         // if the reference is present and base is not ambiguous, we can annotate
         if (refContext.getBases().length ==0 || BaseUtils.simpleBaseToBaseIndex(refContext.getBase()) != -1 ) {
             final ReferenceContext expandedRefContext = !hasReference() ? refContext :
-                    new ReferenceContext(refContext, new SimpleInterval(vc).expandWithinContig(REFERENCE_PADDING, getBestAvailableSequenceDictionary()));
+                    new ReferenceContext(refContext, new SimpleInterval(vc).expandWithinContig(REFERENCE_PADDING, sequenceDictionary));
             VariantContext annotatedVC = annotatorEngine.annotateContext(vc, fc, expandedRefContext, makeLikelihoods(vc, readsContext), a -> true);
             vcfWriter.add(annotatedVC);
         } else {

@@ -97,6 +97,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
             toolsTestDir + "GenomicsDBImport/multiple_non_adjacent_intervals_combine_gvcfs_expected.interval_list";
     private static final String MERGED_CONTIGS_INTERVAL_PICARD_STYLE_EXPECTED =
             toolsTestDir + "GenomicsDBImport/chr20_chr21_merged_contigs_expected.interval_list";
+    private static final String TEST_INT64_SUPPORT_GENOMICSDB_BUNDLE = GENOMICSDB_TEST_DIR + "/int64_test.tar.gz";
     //Consider a gVCF with a REF block chr20:50-150. Importing this data into GenomicsDB using multiple intervals
     //-L chr20:1-100 and -L chr20:101-200 will cause the REF block to be imported into both the arrays
     //Now, when reading data from the workspace (assume full scan) - the data is split into 2 REF block intervals chr20:50-100
@@ -1146,6 +1147,27 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         // Test with overwrite workspace set to false - should throw an exception - GenomicsDBImport.UnableToCreateGenomicsDBWorkspace
         options.replace(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, false);
         basicWriteAndQueryWithOptions(workspace, options);
+    }
+
+    @Test
+    public void testQueryWithComputationsExceeding32BitsDefault() throws IOException {
+        final String folder = createTempDir("computations_exceed_32bits").getAbsolutePath();
+        IOUtils.extractTarGz(Paths.get(TEST_INT64_SUPPORT_GENOMICSDB_BUNDLE), Paths.get(folder));
+        IOUtils.deleteOnExit(IOUtils.getPath(folder));
+        final String workspace = folder + "/bigint_genomicsdb_ws";
+        checkGenomicsDBAgainstExpected(workspace, new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("1"))), folder+"/expected_combined_bigint.vcf",
+                folder+"/reference/chr1_10MB.fasta.gz", true, ATTRIBUTES_TO_IGNORE, false, false, true);
+    }
+
+    // The following test should fail with a Throwable because of limitations in BCF2Codec - see https://github.com/broadinstitute/gatk/issues/6548
+    @Test(expectedExceptions = Throwable.class)
+    public void testQueryWithComputationsExceeding32BitsBCFCodec() throws IOException {
+        final String folder = createTempDir("computations_exceed_32bits_bcf2codec").getAbsolutePath() + "/testQueryWithComputationsExceed32Bits";
+        IOUtils.extractTarGz(Paths.get(TEST_INT64_SUPPORT_GENOMICSDB_BUNDLE), Paths.get(folder));
+        IOUtils.deleteOnExit(IOUtils.getPath(folder));
+        final String workspace = folder + "/bigint_genomicsdb_ws";
+        checkGenomicsDBAgainstExpected(workspace, new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("1"))), folder+"/expected_combined_bigint.vcf",
+                folder+"/reference/chr1_10MB.fasta.gz", true, ATTRIBUTES_TO_IGNORE, false, false, false);
     }
 
     @Test(groups = {"bucket"})

@@ -147,7 +147,7 @@ def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage, sk
     if (JavaVersion.current().isJava8() && ToolProvider.getSystemToolClassLoader() == null) {
         throw new GradleException(
                 "The ClassLoader obtained from the Java ToolProvider is null. "
-                + "A Java $requiredJavaVersion JDK must be installed. $buildPrerequisitesMessage")
+                + "A full Java 8 or 11 JDK must be installed, check that you are not using a JRE. $buildPrerequisitesMessage")
     }
     if (!JavaVersion.current().isJava8() && !JavaVersion.current().isJava11()) {
         println("Warning: using Java ${JavaVersion.current()} but only Java 8 and Java 11 have been tested.")
