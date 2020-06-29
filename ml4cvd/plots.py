@@ -41,7 +41,7 @@ from scipy import stats
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import concordance_index, coefficient_of_determination
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT, ECG_REST_LEADS, PARTNERS_DATETIME_FORMAT, PARTNERS_DATE_FORMAT
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, PARTNERS_DATETIME_FORMAT, PARTNERS_DATE_FORMAT, HD5_GROUP_CHAR
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -1311,27 +1311,29 @@ def plot_cross_reference(args, xref_df, title, time_description, window_start, w
     logging.info(f'Saved histogram of days relative to {window_end} to {fpath}')
 
 
-def _ecg_rest_traces(hd5):
+def _ecg_rest_traces_and_text(hd5):
     """Extracts ECG resting traces from HD5 and returns a dictionary based on biosppy template"""
-    leads = {}
-    if 'ecg_rest' not in hd5:
+    path_prefix = 'ukb_ecg_rest'
+    ecg_text_group = 'ecg_rest_text'
+    if path_prefix not in hd5:
         raise ValueError('Tensor does not contain resting ECGs')
-    for field in hd5['ecg_rest']:
-        leads[field] = list(hd5['ecg_rest'][field])
     twelve_leads = defaultdict(dict)
-    for key, data in leads.items():
-        twelve_leads[key]['raw'] = leads[key]
-        if len(data) == 5000:
+    leads = list(ECG_REST_LEADS.keys())+list(ECG_REST_MEDIAN_LEADS.keys())
+    oldest_instance = sorted([instance for instance in hd5[path_prefix][leads[0]]])[0]
+    for lead in leads:
+        twelve_leads[lead]['raw'] = np.array(hd5[path_prefix][lead][oldest_instance], dtype=np.float32)
+        if len(twelve_leads[lead]['raw']) == 5000:
             try:
                 # Attempt analysis by biosppy, which may fail if not enough beats
                 (
-                    twelve_leads[key]['ts_reference'], twelve_leads[key]['filtered'], twelve_leads[key]['rpeaks'],
-                    twelve_leads[key]['template_ts'], twelve_leads[key]['templates'], twelve_leads[key]['heart_rate_ts'],
-                    twelve_leads[key]['heart_rate'],
-                ) = ecg.ecg(signal=leads[key], sampling_rate = 500., show=False)
+                    twelve_leads[lead]['ts_reference'], twelve_leads[lead]['filtered'], twelve_leads[lead]['rpeaks'],
+                    twelve_leads[lead]['template_ts'], twelve_leads[lead]['templates'], twelve_leads[lead]['heart_rate_ts'],
+                    twelve_leads[lead]['heart_rate'],
+                ) = ecg.ecg(signal=twelve_leads[lead]['raw'], sampling_rate = 500., show=False)
             except:
-                twelve_leads[key]['ts_reference'] = np.linspace(0, len(data)/500., len(data))
-    return twelve_leads
+                twelve_leads[lead]['ts_reference'] = np.linspace(0, len(twelve_leads[lead]['raw'])/500., len(twelve_leads[lead]['raw']))
+    ecg_rest_text = np.array(hd5[path_prefix][ecg_text_group][oldest_instance]).tolist()
+    return twelve_leads, ecg_rest_text
 
 
 def _ecg_rest_ylims(yrange, yplot):
@@ -1370,7 +1372,7 @@ def _ecg_rest_yrange(twelve_leads, default_yrange, raw_scale, time_interval):
     return min(yrange, ECG_REST_PLOT_MAX_YRANGE)
 
 
-def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, ax, yrange, offset, pat_df, is_median, is_blind):
+def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, hertz, lead_mapping, f, ax, yrange, offset, pat_df, is_median, is_blind):
     """Fills subplots with either median or raw resting ECG waveforms"""
     # plot will be in seconds vs mV, boxes are
     sec_per_box = 0.04
@@ -1378,9 +1380,9 @@ def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, a
     median_interval = 1.2  # 600 samples at 500Hz
     # if available, extract patient metadata and ECG interpretation
     if pat_df is not None:
-        avl_yn = 'Y' if pat_df['aVL']>0.5 else 'N'
-        sl_yn  = 'Y' if pat_df['Sokolow_Lyon']>0.5 else 'N'
-        cor_yn = 'Y' if pat_df['Cornell']>0.5 else 'N'
+        avl_yn = 'Y' if np.argmax(pat_df['aVL'])>0.5 else 'N'
+        sl_yn  = 'Y' if np.argmax(pat_df['Sokolow_Lyon'])>0.5 else 'N'
+        cor_yn = 'Y' if np.argmax(pat_df['Cornell'])>0.5 else 'N'
         sex_fm = 'F' if ((pat_df['sex'] == 'F') or (pat_df['sex'] == 'female')) else 'M'
         text   = f"ID: {pat_df['patient_id']}, sex: {sex_fm}\n"
         if not is_blind:
@@ -1399,7 +1401,7 @@ def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, a
             if not is_median:
                 ax[i,j].set_xlim(j*time_interval,(j+1)*time_interval)
                 # extract portion of waveform that is included in the actual plots
-                yplot = yy[j*time_interval: (j+1)*time_interval]
+                yplot = yy[int(j*time_interval*hertz): int((j+1)*time_interval*hertz)]
             else:
                 yplot = yy
             ylim_min, ylim_max = _ecg_rest_ylims(yrange, yplot)
@@ -1459,57 +1461,86 @@ def _remove_duplicate_rows(df, out_folder):
     return arr
 
 
-def plot_ecg_rest(df, rows, out_folder, is_blind):
-    """Extracts and plots ECG resting waveforms"""
+def plot_ecg_rest(tensor_paths: List[str], rows: List[int], 
+                  out_folder: str, is_blind: bool) -> None:
+    """ Plots resting ECGs including annotations and LVH criteria
+    
+    :param tensor_paths: list of HDF5 file paths with ECG traces
+    :param rows: indices of the subset of tensor_paths to be plotted (used by multiprocessing)
+    :param out_folder: destination folder for the plots
+    :param is_blind: if True, the plot gets blinded (helpful for review and annotation)
+    """
+    map_fields_to_tmaps = {
+        'ramp': 'ecg_rest_ramplitude_raw', 
+        'samp': 'ecg_rest_samplitude_raw',
+        'aVL': 'ecg_rest_lvh_avl',
+        'Sokolow_Lyon': 'ecg_rest_lvh_sokolow_lyon',
+        'Cornell': 'ecg_rest_lvh_cornell'
+        }    
+    from ml4cvd.tensor_from_file import TMAPS
     raw_scale = 0.005 # Conversion from raw to mV
     default_yrange = ECG_REST_PLOT_DEFAULT_YRANGE # mV
     time_interval = 2.5 # time-interval per plot in seconds. ts_Reference data is in s, voltage measurement is 5 uv per lsb
+    hertz = 500 # number of samples per second
     for row in rows:
-        pat_df = df.iloc[row]
-        with h5py.File(pat_df['full_path'], 'r') as hd5:
-            traces = _ecg_rest_traces(hd5)
+        tensor_path = tensor_paths[row]
+        patient_dic = {}
+        patient_dic['patient_id'] = os.path.basename(tensor_path).replace(TENSOR_EXT, '')
+        with h5py.File(tensor_path, 'r') as hd5:
+            traces, text = _ecg_rest_traces_and_text(hd5)
+            for field in map_fields_to_tmaps:
+                tm = TMAPS[map_fields_to_tmaps[field]]
+                patient_dic[field] = np.zeros(tm.shape)
+                try:
+                    patient_dic[field][:] = tm.tensor_from_file(tm, hd5)
+                except ValueError as e:
+                    logging.warning(e)
+            is_female = 'Sex_Female_0_0' in hd5['categorical']
+            patient_dic['sex'] = 'F' if is_female else 'M'
+            patient_dic['ecg_text'] = text
         matplotlib.rcParams.update({'font.size': 20})
         fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24,18), tight_layout=True)
         yrange = _ecg_rest_yrange(traces, default_yrange, raw_scale, time_interval)
         _subplot_ecg_rest(
-            traces, raw_scale, time_interval, ECG_REST_PLOT_LEADS, fig, ax, yrange,
+            traces, raw_scale, time_interval, hertz, ECG_REST_PLOT_LEADS, fig, ax, yrange,
             offset=3, pat_df=None, is_median=False, is_blind=is_blind,
         )
         _subplot_ecg_rest(
-            traces, raw_scale, time_interval, ECG_REST_PLOT_MEDIAN_LEADS, fig, ax, yrange,
-            offset=0, pat_df=pat_df, is_median=True, is_blind=is_blind,
+            traces, raw_scale, time_interval, hertz, ECG_REST_PLOT_MEDIAN_LEADS, fig, ax, yrange,
+            offset=0, pat_df=patient_dic, is_median=True, is_blind=is_blind,
         )
-        fig.savefig(os.path.join(out_folder, pat_df['patient_id']+'.pdf'), bbox_inches = "tight")
+        fig.savefig(os.path.join(out_folder, patient_dic['patient_id']+'.svg'), bbox_inches = "tight")
 
 
 def plot_ecg_rest_mp(
-    ecg_csv_file_name: str,
-    row_min: int,
-    row_max: int,
-    output_folder_path: str,
-    ncpus: int = 1,
+    tensors: str,
+    min_sample_id: int,
+    max_sample_id: int,
+    output_folder: str,
+    num_workers: int = 1,
     is_blind: bool = False,
-    overwrite: bool = False,
 ) -> None:
     """
     Generates (in parallel) plots for 12-lead resting ECGs given a CSV file pointing to the tensor HDF5s
     :param ecg_csv: name of the CSV file listing the HD5s to plot
-    :param row_min: low end of range of entries to be plotted
-    :param row_max: high end of range of entries to be plotted
-    :param output_folder_path: directory where output PDFs will be written to
-    :param ncpus: number of parallel cores to be used
+    :param min_sample_id: smallest patient id to be plotted
+    :param max_sample_id: largest patient id to be plotted
+    :param output_folder: directory where output PDFs will be written to
+    :param num_workers: number of parallel cores to be used
     :param is_blind: whether ECG interpretation should be included in the plot
-    :param overwrite: if False, it avoids replotting PDFs that are already found in the output folder
     :return: None
     """
-    df = _ecg_rest_csv_to_df(ecg_csv_file_name)
-    if overwrite:
-        row_arr = np.arange(row_min, row_max+1, dtype=np.int64)
-    else:
-        row_arr = _remove_duplicate_rows(df.iloc[row_min:row_max+1], output_folder_path)
-    row_split = np.array_split(row_arr, ncpus)
-    pool = Pool(ncpus)
-    pool.starmap(plot_ecg_rest, zip([df]*ncpus, row_split, [output_folder_path]*ncpus, [is_blind]*ncpus))
+    tensor_paths = [os.path.join(tensors, tp) for tp in os.listdir(tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
+    can_filter = True
+    try:
+        tensor_sample_ids = np.array([os.path.basename(tensor_path).replace(TENSOR_EXT, '') for tensor_path in tensor_paths], dtype=np.int)
+        condition = (tensor_sample_ids > min_sample_id) & (tensor_sample_ids < max_sample_id)
+        tensor_paths = [tensor_path for i, tensor_path in enumerate(tensor_paths) if condition[i]]
+    except ValueError:
+        logging.warning('Cannot select subset of tensors based on sample ids. Discarding min_ and max_sample_id')        
+    row_split = np.array_split(np.arange(len(tensor_paths)), num_workers)
+    pool = Pool(num_workers)
+    pool.starmap(plot_ecg_rest, zip([tensor_paths]*num_workers, row_split, [output_folder]*num_workers, [is_blind]*num_workers))
     pool.close()
     pool.join()
 
