@@ -24,6 +24,7 @@ releases of the toolkit.
     * [Passing JVM options to gatk](#jvmoptions)
     * [Passing a configuration file to gatk](#configFileOptions)
     * [Running GATK4 with inputs on Google Cloud Storage](#gcs)
+    * [Running GATK4 Spark tools locally](#sparklocal)
     * [Running GATK4 Spark tools on a Spark cluster](#sparkcluster)
     * [Running GATK4 Spark tools on Google Cloud Dataproc](#dataproc)
     * [Using R to generate plots](#R)
@@ -232,6 +233,29 @@ You can download and run pre-built versions of GATK4 from the following places:
         export GOOGLE_APPLICATION_CREDENTIALS="$PATH_TO_THE_KEY_FILE"
         ```
         * Done! GATK will pick up the service account. You can also do this in a VM if you'd like to override the default credentials.
+
+#### <a name="sparklocal">Running GATK4 Spark tools locally:</a>
+
+* GATK4 Spark tools can be run in local mode (without a cluster). In this mode, Spark will run the tool
+  in multiple parallel execution threads using the cores in your CPU. You can control how many threads
+  Spark will use via the `--spark-master` argument.
+  
+* Examples:
+
+  Run `PrintReadsSpark` with 4 threads on your local machine:
+  ``` 
+    ./gatk PrintReadsSpark -I src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -O output.bam \
+        -- \
+        --spark-runner LOCAL --spark-master 'local[4]'
+  ```
+  Run `PrintReadsSpark` with as many worker threads as there are logical cores on your local machine:
+  ``` 
+    ./gatk PrintReadsSpark -I src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -O output.bam \
+        -- \
+        --spark-runner LOCAL --spark-master 'local[*]'
+  ```   
+  
+* Note that the Spark-specific arguments are separated from the tool-specific arguments by a `--`.
 
 #### <a name="sparkcluster">Running GATK4 Spark tools on a Spark cluster:</a>
 
