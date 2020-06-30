@@ -65,8 +65,11 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     /**
      * Mapping from the paths provided to this data source and their SAM headers
      */
-    private final Map<GATKPath, SamReader> readers;
+    private final Map<GATKPath, SAMFileHeader> headers;
 
+    /**
+     * Hang onto all the iterators we've provided so we can close them when this source is closed
+     */
     private final List<CloseableIterator<SAMRecord>> iterators;
 
     /**
@@ -130,31 +133,39 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
                 : customSamReaderFactory;
 
         this.sources = sources;
-        this.readers = new HashMap<>(sources.size());
+        this.headers = new HashMap<>(sources.size());
         this.iterators = new ArrayList<>();
 
-        for (final GATKPath source : sources) {
-            try {
-                // Ensure each source can be obtained from htsget server
-                final HtsgetRequest req = new HtsgetRequest(source).withDataClass(HtsgetClass.header);
-                // Request only the headers and use them to construct SAMFileHeader for each source
-                final InputStream headerStream = req.getResponse().getDataStream();
-                this.readers.put(source, readerFactory.open(SamInputResource.of(headerStream)));
-            } catch (final UserException e) {
-                throw new UserException(source.toString(), e);
-            }
-        }
-
         this.executorService = Executors.newFixedThreadPool(8, new ThreadFactoryBuilder()
-            .setNameFormat("readerInitializer-thread-%d")
+            .setNameFormat("reads-htsget-data-source-thread-%d")
             .setDaemon(true)
             .build());
 
+        final List<Future<?>> futures = new ArrayList<>();
+        for (final GATKPath source : sources) {
+            futures.add(this.executorService.submit(() -> {
+                try {
+                    // Ensure each source can be obtained from htsget server
+                    final HtsgetRequest req = new HtsgetRequest(source).withDataClass(HtsgetClass.header);
+                    // Request only the headers and use them to construct SAMFileHeader for each source
+                    final InputStream headerStream = req.getResponse().getDataStream();
+                    this.headers.put(source, readerFactory.open(SamInputResource.of(headerStream)).getFileHeader());
+                } catch (final UserException e) {
+                    throw new UserException(source.toString(), e);
+                }
+            }));
+        }
+
+        try {
+            for (final Future<?> future : futures) future.get();
+        } catch (final ExecutionException | InterruptedException e) {
+            throw new UserException("Interrupted while initializing iterator", e);
+        }
+
         if (sources.size() > 1) {
-            final Set<SAMFileHeader> headers = this.readers.values().stream().map(SamReader::getFileHeader).collect(Collectors.toSet());
-            this.header = createHeaderMerger(headers).getMergedHeader();
+            this.header = createHeaderMerger(this.headers.values()).getMergedHeader();
         } else {
-            this.header = this.readers.values().iterator().next().getFileHeader();
+            this.header = this.headers.values().iterator().next();
         }
     }
 
@@ -228,13 +239,13 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     }
 
     private Iterator<GATKRead> prepareIteratorsForTraversal(final List<SimpleInterval> intervals, final boolean traverseUnmapped) {
-        final Map<SamReader, CloseableIterator<SAMRecord>> mapping;
-        if (intervals == null) {
-            mapping = this.getReaders(traverseUnmapped);
-        } else {
-            mapping = this.getReadersWithIntervals(intervals, traverseUnmapped);
-        }
+        final Map<SamReader, CloseableIterator<SAMRecord>> mapping = intervals == null
+            ? this.getReaders(traverseUnmapped)
+            : this.getReadersWithIntervals(intervals, traverseUnmapped);
 
+        if (mapping.isEmpty()) {
+            return Collections.emptyIterator();
+        }
         final CloseableIterator<SAMRecord> samRecordIterator;
         if (mapping.size() == 1) {
             samRecordIterator = mapping.values().iterator().next();
@@ -247,7 +258,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     }
 
     private Map<SamReader, CloseableIterator<SAMRecord>> getReaders(final boolean traverseUnmapped) {
-        final Map<SamReader, CloseableIterator<SAMRecord>> mapping = new ConcurrentHashMap<>();
+        final Map<SamReader, CloseableIterator<SAMRecord>> mapping = new ConcurrentHashMap<>(this.sources.size());
         final List<Future<?>> futures = new ArrayList<>(this.sources.size());
         this.sources.parallelStream()
             .forEach(source -> futures.add(this.executorService.submit(() -> {
@@ -265,15 +276,15 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     }
 
     private Map<SamReader, CloseableIterator<SAMRecord>> getReadersWithIntervals(final List<SimpleInterval> intervals, final boolean traverseUnmapped) {
-        final Map<SamReader, CloseableIterator<SAMRecord>> mapping = new ConcurrentHashMap<>();
+        final Map<SamReader, CloseableIterator<SAMRecord>> mapping = new ConcurrentHashMap<>(this.sources.size() * intervals.size());
         SimpleInterval prevInterval = null;
-        final List<Future<?>> futures = new ArrayList<>(this.sources.size());
+        final List<Future<?>> futures = new ArrayList<>(this.sources.size() * intervals.size());
         for (final SimpleInterval interval : intervals) {
             final SimpleInterval finalPrevInterval = prevInterval;
             this.sources.parallelStream()
                 .filter(source -> IntervalUtils.intervalIsOnDictionaryContig(
                     interval,
-                    this.readers.get(source).getFileHeader().getSequenceDictionary()))
+                    this.headers.get(source).getSequenceDictionary()))
                 .forEach(source -> futures.add(this.executorService.submit(() -> {
                     final HtsgetRequest req = new HtsgetRequest(source).withInterval(interval);
                     final SamReader reader = this.readerFactory.open(SamInputResource.of(req.getResponse().getDataStream()));
@@ -303,6 +314,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     @Override
     public void close() {
         this.iterators.forEach(CloseableIterator::close);
+        this.executorService.shutdownNow();
     }
 
     /**

@@ -229,8 +229,9 @@ public class HtsgetRequest {
         }
         if (this.interval != null) {
             builder.queryParam("referenceName", this.interval.getContig());
-            // do not insert start and end for unmapped reads
-            if (!this.interval.getContig().equals("*")) {
+            // Do not insert start and end for unmapped reads or if we are requesting the entire contig
+            if (!(this.interval.getContig().equals("*") ||
+                (this.interval.getStart() == 1 && this.interval.getEnd() == Integer.MAX_VALUE))) {
                 builder.queryParam("start", this.interval.getGA4GHStart());
                 builder.queryParam("end", this.interval.getGA4GHEnd());
             }
