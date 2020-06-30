@@ -141,7 +141,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
             .setDaemon(true)
             .build());
 
-        final List<Future<?>> futures = new ArrayList<>();
+        final List<Future<AbstractMap.SimpleImmutableEntry<GATKPath, SAMFileHeader>>> futures = new ArrayList<>(sources.size());
         for (final GATKPath source : sources) {
             futures.add(this.executorService.submit(() -> {
                 try {
@@ -149,7 +149,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
                     final HtsgetRequest req = new HtsgetRequest(source).withDataClass(HtsgetClass.header);
                     // Request only the headers and use them to construct SAMFileHeader for each source
                     final InputStream headerStream = req.getResponse().getDataStream();
-                    this.headers.put(source, readerFactory.open(SamInputResource.of(headerStream)).getFileHeader());
+                    return new AbstractMap.SimpleImmutableEntry<>(source, readerFactory.open(SamInputResource.of(headerStream)).getFileHeader());
                 } catch (final UserException e) {
                     throw new UserException(source.toString(), e);
                 }
@@ -157,7 +157,10 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
         }
 
         try {
-            for (final Future<?> future : futures) future.get();
+            for (final Future<AbstractMap.SimpleImmutableEntry<GATKPath, SAMFileHeader>> future : futures) {
+                final AbstractMap.SimpleImmutableEntry<GATKPath, SAMFileHeader> entry = future.get();
+                this.headers.put(entry.getKey(), entry.getValue());
+            }
         } catch (final ExecutionException | InterruptedException e) {
             throw new UserException("Interrupted while initializing iterator", e);
         }
