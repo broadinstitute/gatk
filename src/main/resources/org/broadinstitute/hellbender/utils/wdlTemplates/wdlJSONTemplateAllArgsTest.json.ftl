@@ -6,29 +6,29 @@
     "${name}.dockerImage": "broadinstitute/gatk:${version}",
     "${name}.gatk": "java -cp /home/travis/build/broadinstitute/gatk/build/libs/gatk.jar org.broadinstitute.hellbender.CommandLineArgumentValidatorMain",
 <#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.memoryRequirements != "">
- "${name}.memoryRequirements": "${runtimeProperties.memoryRequirements}",
+    "${name}.memoryRequirements": "${runtimeProperties.memoryRequirements}",
 <#else>
-  "${name}.memoryRequirements": "String",
+    "${name}.memoryRequirements": "String",
 </#if>
 <#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.diskRequirements != "">
-  "${name}.diskRequirements": "${runtimeProperties.diskRequirements}",
+    "${name}.diskRequirements": "${runtimeProperties.diskRequirements}",
 <#else>
-  "${name}.diskRequirements": "String",
+    "${name}.diskRequirements": "String",
 </#if>
 <#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.cpuRequirements != "">
-  "${name}.cpuRequirements": "${runtimeProperties.cpuRequirements}",
+    "${name}.cpuRequirements": "${runtimeProperties.cpuRequirements}",
 <#else>
-  "${name}.cpuRequirements": "String",
+    "${name}.cpuRequirements": "String",
 </#if>
 <#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.preemptibleRequirements != "">
-  "${name}.preemptibleRequirements": "${runtimeProperties.preemptibleRequirements}",
+    "${name}.preemptibleRequirements": "${runtimeProperties.preemptibleRequirements}",
 <#else>
-  "${name}.preemptibleRequirements": "String",
+    "${name}.preemptibleRequirements": "String",
 </#if>
 <#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.bootdisksizegbRequirements != "">
-  "${name}.bootdisksizegbRequirements": "${runtimeProperties.bootdisksizegbRequirements}",
+    "${name}.bootdisksizegbRequirements": "${runtimeProperties.bootdisksizegbRequirements}",
 <#else>
-  "${name}.bootdisksizegbRequirements": "String",
+    "${name}.bootdisksizegbRequirements": "String",
 </#if>
 
 <#assign remainingArgCount=arguments.required?size + arguments.optional?size + arguments.common?size/>

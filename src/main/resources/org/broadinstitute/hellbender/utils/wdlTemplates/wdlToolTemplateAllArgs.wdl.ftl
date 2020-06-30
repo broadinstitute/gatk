@@ -74,11 +74,11 @@ workflow ${name} {
         #Disk requirements for this workflow
         ${"diskRequirements"?right_pad(50)} = diskRequirements,
         #CPU requirements for this workflow
-        ${"cpuRequirements"?right_pad(50)} = diskRequirements,
+        ${"cpuRequirements"?right_pad(50)} = cpuRequirements,
         #Preemptible requirements for this workflow
-        ${"preemptibleRequirements"?right_pad(50)} = diskRequirements,
+        ${"preemptibleRequirements"?right_pad(50)} = preemptibleRequirements,
         #Boot disk size requirements for this workflow
-        ${"bootdisksizegbRequirements"?right_pad(50)} = diskRequirements,
+        ${"bootdisksizegbRequirements"?right_pad(50)} = bootdisksizegbRequirements,
 
         <@callTaskInputs heading="Positional Arguments" argsToUse=arguments.positional/>
         <@callTaskInputs heading="Required Arguments" argsToUse=arguments.required/>
