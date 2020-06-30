@@ -109,7 +109,8 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public int strPaddingForGenotyping = 75;
 
     /**
-     * the maximum extent into the full active region extension that we're willing to go in genotyping our events
+     * The maximum extent into the full active region extension that we're willing to go in genotyping our events
+     * NOTE: this is only applicable to the legacy assembly region trimming currently
      */
     @Hidden
     @Argument(fullName="max-extension", doc = "the maximum extent into the full active region extension that we're willing to go in genotyping (-1 to disable)", optional = true)

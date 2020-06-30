@@ -245,7 +245,7 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testReadsWithSoftclipsReadCorrdinatRefCoordinate( ) throws FileNotFoundException {
+    public void testReadsWithSoftclipsInReadCoordinateRefCoordinate( ){
         final SAMFileHeader header;
         try(final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference))) {
             header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());

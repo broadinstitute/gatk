@@ -234,19 +234,6 @@ public final class AssemblyRegion implements Locatable {
         return result;
     }
 
-    /**
-     * Returns true if read would overlap the extended extent of this region
-     * @param read the read we want to test
-     * @return true if read can be added to this region, false otherwise
-     */
-    public boolean readOverlapsRegion(final GATKRead read) {
-        if ( read.isEmpty() || read.getStart() > read.getEnd() ) {
-            return false;
-        }
-
-        final SimpleInterval readLoc = new SimpleInterval( read );
-        return readLoc.overlaps(paddedSpan);
-    }
 
     /**
      * Add read to this region

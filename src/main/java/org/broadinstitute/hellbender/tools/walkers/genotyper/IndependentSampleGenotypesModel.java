@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.PrintStream;
@@ -18,7 +17,7 @@ import java.util.List;
  * This class delegates genotyping to allele count- and ploidy-dependent {@link GenotypeLikelihoodCalculator}s
  * under the assumption that sample genotypes are independent conditional on their population frequencies.
  */
-public final class IndependentSampleGenotypesModel implements GenotypersModel {
+public final class IndependentSampleGenotypesModel implements GenotypingModel {
     private static final int DEFAULT_CACHE_PLOIDY_CAPACITY = 10;
     private static final int DEFAULT_CACHE_ALLELE_CAPACITY = 50;
 

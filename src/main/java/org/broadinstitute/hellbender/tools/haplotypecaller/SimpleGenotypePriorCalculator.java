@@ -44,8 +44,8 @@ public class SimpleGenotypePriorCalculator implements GenotypePriorCalculator {
     }
 
     public static SimpleGenotypePriorCalculator givenHetToHomRatio(final double snpHet, final double indelHet,
-                                                                   final double otherHet, final double het_hom_ratio) {
-        final double log10Ratio = Math.log10(het_hom_ratio);
+                                                                   final double otherHet, final double hetHomRatio) {
+        final double log10Ratio = Math.log10(hetHomRatio);
         return new SimpleGenotypePriorCalculator(snpHet, snpHet - log10Ratio,
                                                   indelHet, indelHet - log10Ratio,
                                                   otherHet, otherHet - log10Ratio);
@@ -53,11 +53,11 @@ public class SimpleGenotypePriorCalculator implements GenotypePriorCalculator {
 
     public static SimpleGenotypePriorCalculator givenDragstrParams(final DragstrParams dragstrParams, final int period,
                                                                    final int repeats, final double snpHeterozygosity,
-                                                                   final double het_hom_ratio) {
+                                                                   final double hetHomRatio) {
         final double snpHet = snpHeterozygosity;
         final double indelHet = -.1 * dragstrParams.api(period, repeats);
         final double otherHet = Math.max(snpHet, indelHet);
-        return givenHetToHomRatio(snpHet, indelHet, otherHet, het_hom_ratio);
+        return givenHetToHomRatio(snpHet, indelHet, otherHet, hetHomRatio);
     }
 
     public static SimpleGenotypePriorCalculator assumingHW(final double snpHet, final double indelHet) {

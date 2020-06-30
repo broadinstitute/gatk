@@ -29,7 +29,7 @@ import java.util.stream.Stream;
  * effect of penalizing heterozygous allele combinations since they do not have their likelihoods modified.
  *
  */
-public class DRAGENGenotypesModel implements GenotypersModel {
+public class DRAGENGenotypesModel implements GenotypingModel {
     private static final int DEFAULT_CACHE_PLOIDY_CAPACITY = 10;
     private static final int DEFAULT_CACHE_ALLELE_CAPACITY = 50;
     // Flat SNP het prior to use for genotyping
