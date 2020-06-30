@@ -1,0 +1,109 @@
+<?php
+
+    include '../../../../common/include/common.php';
+    include_once '../../../config.php';
+    $module = modules::GATK;
+    $name = docSN::toolDocs;
+
+    printHeader($module, $name, topSN::guide);
+
+    $selected_major_version = 4;
+    $dirs = lookupVersionDirs($selected_major_version);
+?>
+
+<link type='text/css' rel='stylesheet' href='gatkDoc.css'>
+
+<div class='row'>
+
+    <aside class="col-md-3">
+
+        <?php echo produceGuideNav($module, $name) . makeTwitterFeed(); ?>
+
+    </aside>
+
+    <div class='col-md-9'>
+
+<#include "common.html"/>
+
+<#macro emitGroup group>
+        <div class="accordion-group">
+            <div class="accordion-heading">
+                <a class="accordion-toggle" data-toggle="collapse" data-parent="#index" href="#${group.id}">
+                    <h4>${group.name}</h4>
+                </a>
+            </div>
+            <div class="accordion-body collapse" id="${group.id}">
+                <div class="accordion-inner">
+                    <p class="lead">${group.summary}</p>
+                    <table class="table table-striped table-bordered table-condensed cozy">
+                        <tr>
+                            <th>Name</th>
+                            <th>Summary</th>
+                        </tr>
+                        <#list data as datum>
+                            <#if datum.group == group.name>
+                                <tr>
+                                    <td><a href="${datum.filename}">${datum.name}</a></td>
+                                    <#if datum.experimental?? && datum.experimental == "true">
+                                        <td>**EXPERIMENTAL** ${datum.summary} </td>
+                                    <#elseif datum.beta?? && datum.beta == "true">
+                                        <td>**BETA** ${datum.summary}</td>
+                                    <#else>
+                                        <td>${datum.summary}</td>
+                                    </#if>
+                                </tr>
+                            </#if>
+                        </#list>
+                    </table>
+                </div>
+            </div>
+        </div>
+</#macro>
+
+        <div class="row">
+            <div class="col-md-6">
+                <h1 id="top"><i class='<?php print ico::toolDocsIcon; ?>'></i> GATK WDL Index</h1>
+            </div>
+            <div class="col-md-6">
+                <div class="btn-group pull-right" style='margin-top:14px;'>
+                    <a class="btn btn-warning dropdown-toggle" data-toggle="dropdown" href="#">
+                        Version ${version}
+                        <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <?php foreach($dirs as $dir) { ?>
+                            <li class="hide_me_html"><a tabindex='-1' href='../<?=$dir?>' ><?=$dir?></a></li>
+                        <?php } ?>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="hide_me_html">
+            <hr />
+            <em>Showing docs for version ${version} | The latest version is <?php print $latest_version; ?></em>
+            <hr />
+        </div>
+
+        <div class="accordion" id="index">
+            <#assign seq = ["engine", "tools", "other", "utilities"]>
+            <#list seq as supercat>
+                <br />
+                <#list groups?sort_by("name") as group>
+                    <#if group.supercat == supercat>
+                        <@emitGroup group=group/>
+                    </#if>
+                </#list>
+            </#list>
+        </div>
+
+<@footerInfo />
+<@footerClose />
+
+</div></div>
+
+<?php
+
+    printFooter($module);
+
+?>
