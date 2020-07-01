@@ -4,6 +4,7 @@
 import os
 import csv
 import math
+import copy
 import logging
 import operator
 import datetime
@@ -670,6 +671,14 @@ def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
            len(obj.shape) == 1
 
 
+def _continuous_explore_header(tm: TensorMap) -> str:
+    return tm.name
+
+
+def _categorical_explore_header(tm: TensorMap, channel: str) -> str:
+    return f'{tm.name} {channel}'
+
+
 class ExploreParallelWrapper():
     def __init__(self, tmaps, paths,  num_workers, output_folder, run_id):
         self.tmaps = tmaps
@@ -680,7 +689,6 @@ class ExploreParallelWrapper():
         self.run_id = run_id
         self.chunksize = self.total // num_workers
         self.counter = mp.Value('l', 1)
-
 
     def _hd5_to_disk(self, path, gen_name):
         with self.counter.get_lock():
@@ -756,7 +764,6 @@ class ExploreParallelWrapper():
         except OSError as e:
             logging.info(f"OSError {e}")
 
-
     def mp_worker(self, worker_idx):
         start = worker_idx * self.chunksize
         end = start + self.chunksize
@@ -764,7 +771,6 @@ class ExploreParallelWrapper():
             end = self.total
         for path, gen in self.paths[start:end]:
             self._hd5_to_disk(path, gen)
-
 
     def run(self):
         workers = []
@@ -812,15 +818,40 @@ def _tensors_to_df(args):
     return df
 
 
+def _tmap_error_detect(tmap: TensorMap) -> TensorMap:
+    """Modifies tm so it returns it's mean unless previous tensor from file fails"""
+    new_tm = copy.deepcopy(tmap)
+    new_tm.shape = (1,)
+    new_tm.interpretation = Interpretation.CONTINUOUS
+    new_tm.channel_map = None
+
+    def tff(_: TensorMap, hd5: h5py.File, dependents=None):
+        return tmap.tensor_from_file(tmap, hd5, dependents).mean()
+    new_tm.tensor_from_file = tff
+    return new_tm
+
+
+def _should_error_detect(tm: TensorMap) -> bool:
+    """Whether a tmap has to be modified to be used in explore"""
+    if tm.is_continuous():
+        return tm.shape not in {(1,), (None, 1)}
+    if tm.is_categorical():
+        if tm.shape[0] is None:
+            return tm.axes() > 2
+        else:
+            return tm.axes() > 1
+    return True
+
+
 def explore(args):
-    tmaps = args.tensor_maps_in
+    tmaps = [
+        _tmap_error_detect(tm) if _should_error_detect(tm) else tm for tm in args.tensor_maps_in
+    ]
+    args.tensor_maps_in = tmaps
     fpath_prefix = "summary_stats"
     tsv_style_is_genetics = 'genetics' in args.tsv_style
     out_ext = 'tsv' if tsv_style_is_genetics else 'csv'
     out_sep = '\t' if tsv_style_is_genetics else ','
-
-    if any([len(tm.shape) != 1 for tm in tmaps]) and any([(len(tm.shape) == 2) and (tm.shape[0] is not None) for tm in tmaps]):
-        raise ValueError("Explore only works for 1D tensor maps, but len(tm.shape) returned a value other than 1.")
 
     # Iterate through tensors, get tmaps, and save to dataframe
     df = _tensors_to_df(args)
@@ -834,7 +865,6 @@ def explore(args):
         fid = df['fpath'].str.split('/').str[-1].str.split('.').str[0]
         df.insert(0, 'FID', fid)
         df.insert(1, 'IID', fid)
-
     # Save dataframe to CSV
     fpath = os.path.join(args.output_folder, args.id, f"tensors_all_union.{out_ext}")
     df.to_csv(fpath, index=False, sep=out_sep)
@@ -984,13 +1014,14 @@ def explore(args):
                 name = tm.name
                 arr = list(df[name])
                 plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-                plt.hist(arr, 50, rwidth = .9)
+                plt.hist(arr, 50, rwidth=.9)
                 plt.xlabel(name)
                 plt.ylabel('Fraction')
                 plt.rcParams.update({'font.size': 13})
                 figure_path = os.path.join(args.output_folder, args.id, f"{name}_histogram{IMAGE_EXT}")
                 plt.savefig(figure_path)
                 logging.info(f"Saved {name} histogram plot at: {figure_path}")
+
 
 def cross_reference(args):
     """Cross reference a source cohort with a reference cohort."""

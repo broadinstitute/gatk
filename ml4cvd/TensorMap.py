@@ -322,7 +322,6 @@ class TensorMap(object):
                 tensor = augmentation(tensor)
         return tensor
 
-
     def infer_metrics(self):
         if self.metrics is None and self.is_categorical():
             self.metrics = ['categorical_accuracy']
@@ -410,7 +409,7 @@ def _default_continuous_tensor_from_file(tm, hd5, input_shape, input_channel_map
     if tm.hd5_key_guess() in hd5:
         missing = False
         data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
-        if tm.axes() > 1:
+        if tm.axes() > 1 or tm.shape[0] > 1:
             continuous_data = np.array(data)
         elif hasattr(data, "__shape__"):
             continuous_data[0] = data[0]
