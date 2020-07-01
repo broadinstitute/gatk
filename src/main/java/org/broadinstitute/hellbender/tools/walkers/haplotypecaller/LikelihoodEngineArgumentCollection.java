@@ -36,7 +36,7 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     public int gcpHMM = 10;
 
     @Advanced
-    @Argument(fullName="expected-error-rate-per-base", doc="Error rate used to set expectation for post HMM read disqualification based on mismatches", optional = true)
+    @Argument(fullName="expected-mismatch-rate-for-read-disqualification", doc="Error rate used to set expectation for post HMM read disqualification based on mismatches", optional = true)
     public double expectedErrorRatePerBase = PairHMMLikelihoodCalculationEngine.DEFAULT_EXPECTED_ERROR_RATE_PER_BASE;
 
     /**
@@ -75,30 +75,27 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Argument(fullName="phred-scaled-global-read-mismapping-rate", doc="The global assumed mismapping rate for reads", optional = true)
     public int phredScaledGlobalReadMismappingRate = 45;
 
-//    @Advanced
-//    @Argument(fullName ="mapping-quality-based-read-mismapping-rate", doc= "If true this will limit the phred scaled likelihood for a read based on its MQ score", optional = true)
-//    public boolean mapQBasedReadMismappingRateAdjustment = false;
-
     @Advanced
     @Argument(fullName = "disable-symmetric-hmm-normalizing", doc="Toggle to revive legacy behavior of asymmetrically normalizing the arguments to the reference haplotype", optional = true)
     public boolean disableSymmetricallyNormalizeAllelesToReference = false;
 
     @Advanced
     @Argument(fullName ="disable-cap-base-qualities-to-map-quality", doc= "If false this disables capping of base qualities in the HMM to the mapping quality of the read", optional = true)
-    public boolean capReadQualitiesToMapQ = false;
+    public boolean disableCapReadQualitiesToMapQ = false;
 
     /**
-     * TODO
+     * If enabled, rather than disqualifying all reads over a threshold of minimum hmm scores we will instead choose a less strict
+     * and less aggressive cap for disqualification based on the read length and base qualities.
      */
     @Argument(fullName="enable-dynamic-read-disqualification-for-genotyping", doc="Will enable less strict read disqualification low base quality reads")
     public boolean enableDynamicReadDisqualification = false;
 
     /**
-     * TODO
+     * Argument used to adjust the agressiveness of dynamic read disqualification
      */
     @Advanced
     @Hidden
-    @Argument(fullName="dynamicReadDisqualificationThreshold", doc="Constant used to scale the dynamic read disqualificaiton")
+    @Argument(fullName="dynamic-read-disqualification-threshold", doc="Constant used to scale the dynamic read disqualificaiton")
     public double readDisqualificationThresholdConstant = PairHMMLikelihoodCalculationEngine.DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR;
 
     @ArgumentCollection

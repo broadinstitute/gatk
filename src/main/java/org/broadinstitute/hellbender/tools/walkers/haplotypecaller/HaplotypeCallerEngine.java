@@ -345,7 +345,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     public static List<ReadFilter> makeStandardHCReadFilters(final int mappingQualityThreshold) {
         List<ReadFilter> filters = new ArrayList<>();
         filters.add(new MappingQualityReadFilter(mappingQualityThreshold));
-//        filters.add(new MappingQualityReadFilter());
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPED);
         filters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
@@ -533,7 +532,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     public List<VariantContext> callRegion(final AssemblyRegion region, final FeatureContext features, final ReferenceContext referenceContext) {
         if ( hcArgs.justDetermineActiveRegions ) {
-            // we're benchmarking ART and/or the active region determination code in the HC, justio leave without doing any work
+            // we're benchmarking ART and/or the active region determination code in the HC, just leave without doing any work
             return NO_CALLS;
         }
         if (genotyperDebugOutStream != null) {
@@ -591,7 +590,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
-                .filter(r -> AlignmentUtils.unclipedReadLength(r)  < AssemblyBasedCallerUtils.MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
+                .filter(r -> AlignmentUtils.unclippedReadLength(r)  < AssemblyBasedCallerUtils.MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
         regionForGenotyping.removeAll(readStubs);
 
         // filter out reads from genotyping which fail mapping quality based criteria
@@ -796,7 +795,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final Set<GATKRead> readsToRemove = new LinkedHashSet<>();
         for( final GATKRead rec : activeRegion.getReads() ) {
-            if( AlignmentUtils.unclipedReadLength(rec) < READ_LENGTH_FILTER_THRESHOLD || rec.getMappingQuality() < hcArgs.mappingQualityThreshold || ! ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE.test(rec) || (hcArgs.keepRG != null && !rec.getReadGroup().equals(hcArgs.keepRG)) ) {
+            if( AlignmentUtils.unclippedReadLength(rec) < READ_LENGTH_FILTER_THRESHOLD || rec.getMappingQuality() < hcArgs.mappingQualityThreshold || ! ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE.test(rec) || (hcArgs.keepRG != null && !rec.getReadGroup().equals(hcArgs.keepRG)) ) {
                 if (genotyperDebugOutStream != null) {
                     genotyperDebugOutStream.println("Filtered before assembly the read: " + rec.toString());
                 }

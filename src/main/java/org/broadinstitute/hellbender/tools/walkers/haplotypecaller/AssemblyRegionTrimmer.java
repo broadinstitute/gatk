@@ -267,6 +267,9 @@ public final class AssemblyRegionTrimmer {
 
     /**
      * Calculates the list of region to trim away.
+     *
+     * NOTE: This is part of the legacy assembly region trimming code
+     *
      * @param targetRegion region for which to generate the flanking regions.
      * @param variantSpan the span of the core region containing relevant variation and required padding.
      * @return never {@code null}; 0, 1 or 2 element list.

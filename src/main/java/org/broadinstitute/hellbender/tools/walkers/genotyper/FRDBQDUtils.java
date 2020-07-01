@@ -27,7 +27,7 @@ public class FRDBQDUtils {
             }
             length++;
         }
-        return 5.0 * length;
+        return DRAGENGenotypesModel.BQD_HOMOPOLYMER_PHRED_ADJUSTMENT_FACTOR * length;
     }
     public static double computeReverseHomopolymerAdjustment(final byte[] paddedReference, final int offsetForRefIntoEvent, final byte errorBase) {
         int length = 1;
@@ -38,7 +38,7 @@ public class FRDBQDUtils {
             }
             length++;
         }
-        return 5.0 * length;
+        return DRAGENGenotypesModel.BQD_HOMOPOLYMER_PHRED_ADJUSTMENT_FACTOR * length;
     }
 
 }

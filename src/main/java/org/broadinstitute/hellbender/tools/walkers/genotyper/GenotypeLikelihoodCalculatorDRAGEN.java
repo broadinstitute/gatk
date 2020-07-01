@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -27,16 +28,16 @@ import java.util.stream.Collectors;
  */
 public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihoodCalculator {
     // measure of the likelihood of an error base occurring if we have triggered a base quality dropout
-    static final double BQD_FIXED_DEFAULT_ALPHA = 0.5;
+    static final double BQD_FIXED_ERROR_RATE = 0.5;
 
-    // PhredScaled adjustment applied to the BQD score
+    // PhredScaled adjustment applied to the BQD score (this controls the weight of the base quality prior term in the BQD calculation)
     static final double PHRED_SCALED_ADJUSTMENT_FOR_BQ_SCORE = 2.5;
 
     // Cache for enforcing the strictness of using the filled array with the correct likelihoods object
-    private LikelihoodMatrix<?, ?> cachedLikelihoodsObject = null;
+    private LikelihoodMatrix<?, ?> cachedLikelihoods = null;
 
-    private final double cachedLog10Alpha;
-    private final double cachedLog10AlphaInverse;
+    private final double cachedLog10ErrorRate;
+    private final double cachedLog10NonErrorRate;
 
     // Debug output stream to be managed by the HaplotypeCallerEngine
     private PrintStream genotyperDebugStream;
@@ -50,8 +51,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         super(ploidy, alleleCount, alleleFirstGenotypeOffsetByPloidy, genotypeTableByPloidy);
         Utils.validateArg(ploidy > 0, () -> "ploidy must be at least 1 but was " + ploidy);
         // The number of possible components is limited by distinct allele count and ploidy.
-        cachedLog10Alpha = Math.log10(BQD_FIXED_DEFAULT_ALPHA);
-        cachedLog10AlphaInverse = Math.log10(1 - BQD_FIXED_DEFAULT_ALPHA);
+        cachedLog10ErrorRate = Math.log10(BQD_FIXED_ERROR_RATE);
+        cachedLog10NonErrorRate = Math.log10(1 - BQD_FIXED_ERROR_RATE);
     }
 
     /**
@@ -68,7 +69,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
      * - The model will not handle indel alleles
      * - The model currently does not support mixed-allele mode (modifying 0/1 GTs in addition to 0/0 GTs)
      *
-     * @param sampleLikelihoods allele liklihoods containing data for reads
+     * @param sampleLikelihoods allele likelihoods containing data for reads
      * @param strandForward list of reads in the forwards orientation overlapping the site
      * @param strandReverse list of reads in the reverse orientation overlapping the site
      * @param paddedReference reference bases (with padding) used for calculating homopolymer adjustemnt
@@ -82,9 +83,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                                                                final byte[] paddedReference,
                                                                final int offsetForRefIntoEvent,
                                                                final GenotypeLikelihoodCalculators calculators) {
-        //TODO put a very stringent check that we have not invalidated the cache because we will be relying on it to get home in the storm
         // First we invalidate the cache
-        Utils.validate(sampleLikelihoods == cachedLikelihoodsObject, "There was a mismatch between the sample stored by the genotyper and the one requesed for BQD, this will result in invalid genotyping");
+        Utils.validate(sampleLikelihoods == cachedLikelihoods, "There was a mismatch between the sample stored by the genotyper and the one requested for BQD, this will result in invalid genotype calling");
         final double[] outputArray = new double[genotypeCount];
         Arrays.fill(outputArray, Double.NEGATIVE_INFINITY);
 
@@ -140,7 +140,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
      * @param homopolymerAdjustment  Penalty to be applied to reads based on the homopolymer run (this should be precomputed for the ref site in quesiton)
      * @param readLikelihoodsForGT  The array corresponding to the log_10 genotype scores for the genotype in question
      * @param offsetForReadLikelihoodGivenAlleleIndex
-     * @return phred scale liklihood for a BQD error mode for reads in the given direction according to the offsets requested
+     * @return phred scale likelihood for a BQD error mode for reads in the given direction according to the offsets requested
      */
     private double computeBQDModelForStrandData(final List<DRAGENGenotypesModel.DragenReadContainer> positionSortedReads,
                                                 final double homopolymerAdjustment, final double[] readLikelihoodsForGT,
@@ -153,14 +153,14 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         }
 
         // Forwards strand tables (all in phred space for the sake of conveient debugging with provided scripts)
-        final double[] cumulative_p_R_for_E = new double[positionSortedReads.size() + 1];
-        final double[] cumulative_mean_base_quality_phred_adjusted = new double[positionSortedReads.size() + 1];
-        final double[] cumulative_P_GT = new double[positionSortedReads.size() + 1];
+        final double[] cumulativeProbReadForErrorAllele = new double[positionSortedReads.size() + 1];
+        final double[] cumulativeMeanBaseQualityPhredAdjusted = new double[positionSortedReads.size() + 1];
+        final double[] cumulativeProbGenotype = new double[positionSortedReads.size() + 1];
 
         double totalBaseQuality = 0;
-        int baseQualityDenominator = 0; // We track this seperately because not every read overlaps the SNP in quesiton due to padding.
+        int baseQualityDenominator = 0; // We track this separately because not every read overlaps the SNP in question due to padding.
         // Iterate over the reads and populate the cumulative arrays
-        for (int i = 1; i < cumulative_p_R_for_E.length; i++) {
+        for (int i = 1; i < cumulativeProbReadForErrorAllele.length; i++) {
             final DRAGENGenotypesModel.DragenReadContainer container = positionSortedReads.get(i - 1);
             final int readIndex = container.getIndexInLikelihoodsObject();
 
@@ -181,20 +181,20 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             // Populate the error probability array in phred space
             // Calculation: Alpha * P(r|E_allele) + (1 - Alpha) * P(r | G_homozygousGT))
             double phredContributionForRead = (homozygousGenotypeContribution==0 && errorAlleleContribution==0) ? 0 : -10 *
-                    MathUtils.approximateLog10SumLog10(errorAlleleContribution + cachedLog10Alpha,
-                                                       homozygousGenotypeContribution + cachedLog10AlphaInverse);
-            cumulative_p_R_for_E[i] = cumulative_p_R_for_E[i-1] + phredContributionForRead;
+                    MathUtils.approximateLog10SumLog10(errorAlleleContribution + cachedLog10ErrorRate,
+                                                       homozygousGenotypeContribution + cachedLog10NonErrorRate);
+            cumulativeProbReadForErrorAllele[i] = cumulativeProbReadForErrorAllele[i-1] + phredContributionForRead;
 
             // Populate the cumulative genotype contribution array with the score for this read
             // Calculation: (P(r | G_A1) + P(r | G_A2)) / 2
-            cumulative_P_GT[i] = cumulative_P_GT[i - 1] + -10 * homozygousGenotypeContribution;
+            cumulativeProbGenotype[i] = cumulativeProbGenotype[i - 1] + -10 * homozygousGenotypeContribution;
 
             // Populate the mean base quality array
             if (container.hasValidBaseQuality()) {
                 totalBaseQuality += container.getBaseQuality();
                 baseQualityDenominator++;
             }
-            cumulative_mean_base_quality_phred_adjusted[i] = Math.max(0,
+            cumulativeMeanBaseQualityPhredAdjusted[i] = Math.max(0,
                     ((totalBaseQuality / (baseQualityDenominator == 0 ? 1 : baseQualityDenominator)) * PHRED_SCALED_ADJUSTMENT_FOR_BQ_SCORE) - homopolymerAdjustment);
         }
 
@@ -203,12 +203,12 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         int nIndexUsed = 0;
         double lastProbE=0;
         double lastGQQual=0;
-        for (int n = 0; n < cumulative_mean_base_quality_phred_adjusted.length; n++) {
-            final double bqdScore = cumulative_mean_base_quality_phred_adjusted[n] + cumulative_p_R_for_E[n] + (cumulative_P_GT[cumulative_P_GT.length-1] - cumulative_P_GT[n]);
+        for (int n = 0; n < cumulativeMeanBaseQualityPhredAdjusted.length; n++) {
+            final double bqdScore = cumulativeMeanBaseQualityPhredAdjusted[n] + cumulativeProbReadForErrorAllele[n] + (cumulativeProbGenotype[cumulativeProbGenotype.length-1] - cumulativeProbGenotype[n]);
             if (genotyperDebugStream != null) {
                 genotyperDebugStream.println(String.format("n=%d: %.2f, cum_phred_bq=%.2f, cum_prob_r_Error=%.2f, prob_G_remaining=%.2f",
-                        n, bqdScore, cumulative_mean_base_quality_phred_adjusted[n], cumulative_p_R_for_E[n],
-                        (cumulative_P_GT[cumulative_P_GT.length - 1] - cumulative_P_GT[n])));
+                        n, bqdScore, cumulativeMeanBaseQualityPhredAdjusted[n], cumulativeProbReadForErrorAllele[n],
+                        (cumulativeProbGenotype[cumulativeProbGenotype.length - 1] - cumulativeProbGenotype[n])));
             }
             if (minScoreFound > bqdScore) {
                 minScoreFound = bqdScore;
@@ -219,8 +219,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         // Debug output for the genotyper to see into the calculation itself
         if (genotyperDebugStream != null) {
             genotyperDebugStream.println(String.format("theta=%d n%d=%2d, best_phred_score =%5.2f q_mean=%5.2f, alpha=%4.2f, Ph(E)=%4.2f;  ", forwards ? 1 : 0,
-                    (forwards ? 1 : 2), nIndexUsed, minScoreFound, cumulative_mean_base_quality_phred_adjusted[nIndexUsed],
-                    BQD_FIXED_DEFAULT_ALPHA, cumulative_p_R_for_E[nIndexUsed]));
+                    (forwards ? 1 : 2), nIndexUsed, minScoreFound, cumulativeMeanBaseQualityPhredAdjusted[nIndexUsed],
+                    BQD_FIXED_ERROR_RATE, cumulativeProbReadForErrorAllele[nIndexUsed]));
         }
 
         //TODO this will be where i put my debuglogging (if i had any)
@@ -242,7 +242,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
      * - The model currently does not support mixed-allele mode (modifying 0/1 GTs in addition to 0/0 GTs)
      * - The model will not treat symbolic alleles specially, always treating them as indels. This might or might not be the best way to handle them.
      *
-     * @param sampleLikelihoods the likelihoods object with allele liklihoods for the reads to be genotyped
+     * @param sampleLikelihoods the likelihoods object with allele likelihoods for the reads to be genotyped
      * @param ploidyModelLikelihoods standard genotyping model allele likelihoods (to be used for maxEffectiveDepthAdjustment)
      * @param readContainers reads (both forwards and reverse orientation as well as disqualified reads) overlapping the site in question
      * @param snipAprioriHet prior for heterozygus SNP allele
@@ -255,7 +255,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                                                                final List<DRAGENGenotypesModel.DragenReadContainer> readContainers,
                                                                final double snipAprioriHet, final double indelAprioriHet, final int maxEffectiveDepthForHetAdjustment,
                                                                final GenotypeLikelihoodCalculators calculators) {
-        Utils.validate(sampleLikelihoods == cachedLikelihoodsObject, "There was a mismatch between the sample stored by the genotyper and the one requested for BQD, this will result in invalid genotyping");
+        Utils.validate(sampleLikelihoods == cachedLikelihoods, "There was a mismatch between the sample stored by the genotyper and the one requested for BQD, this will result in invalid genotyping");
         final double[] outputArray = new double[genotypeCount];
         Arrays.fill(outputArray, Double.NEGATIVE_INFINITY);
 
@@ -368,11 +368,11 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         double lpfApplied = 0;
 
         for (final Double logProbFAllele : criticalThresholdsSorted) {
-            double f_ratio = 0.0;
-            double f_denom = 0.0;
+            double fAlleleProbRatio = 0.0;
+            double fAlleleProbDenom = 0.0;
             double localMaxLpspi = Double.NEGATIVE_INFINITY;
 
-            // iterate over the
+            // iterate over the reads to compute the foreign allele alpha to use for genotyping with FRD
             for (final DRAGENGenotypesModel.DragenReadContainer container : positionSortedReads) {
                 // Ignore reads that were disqualified by the HMM
                 if (container.wasFilteredByHMM()) {
@@ -389,16 +389,16 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                             readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex];
                     double lp_r_GT = readLikelihoodsForGT[readIndex] - MathUtils.log10(2);
 
-                    f_ratio += Math.pow(10, LPd_r_F - MathUtils.approximateLog10SumLog10(LPd_r_F, lp_r_GT));
-                    f_denom++;
+                    fAlleleProbRatio += Math.pow(10, LPd_r_F - MathUtils.approximateLog10SumLog10(LPd_r_F, lp_r_GT));
+                    fAlleleProbDenom++;
                 }
             }
 
             // Don't learn the beta but approximate it based on the read support for the alt
-            double beta = Math.min(f_ratio / f_denom, 0.5);
-            double log10beta = Math.log10(beta);
-            double log10betaDelta = Math.log10(1.0 - beta);
-            double LP_R_GF = 0.0;
+            double foreignAlleleLikelihood = Math.min(fAlleleProbRatio / fAlleleProbDenom, 0.5);
+            double log10ForeignAlleleLikelihood = Math.log10(foreignAlleleLikelihood);
+            double log10NotForeignAlleleLikelihood = Math.log10(1.0 - foreignAlleleLikelihood);
+            double cumulativeLog10LikelihoodOfForeignReadHypothesis = 0.0; // LP_R_GF
 
             // iterate over the containers again using the approximated beta constraint
             for (final DRAGENGenotypesModel.DragenReadContainer container : positionSortedReads) {
@@ -408,25 +408,25 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 }
                 final int readIndex = container.getIndexInLikelihoodsObject();
 
-                double lp_r_GT = readLikelihoodsForGT[readIndex] - MathUtils.log10(2);
+                double log10LikelihoodReadForGenotype = readLikelihoodsForGT[readIndex] - MathUtils.log10(2);
 
                 // COMPUTE THE MODEL FOR THE STRAND IN QUESTION
                 if (predicate.test(container)) {
-                    double LPd_r_F = container.getPhredPFValue() + 0.0000001 <= logProbFAllele ?
+                    double log10LikelihoodOfForeignAlleleGivenLPFCutoff = container.getPhredPFValue() + 0.0000001 <= logProbFAllele ?
                             Double.NEGATIVE_INFINITY :
                             readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex];
 
-                    LP_R_GF += MathUtils.approximateLog10SumLog10(log10beta + LPd_r_F, log10betaDelta + lp_r_GT);
+                    cumulativeLog10LikelihoodOfForeignReadHypothesis += MathUtils.approximateLog10SumLog10(log10ForeignAlleleLikelihood + log10LikelihoodOfForeignAlleleGivenLPFCutoff, log10NotForeignAlleleLikelihood + log10LikelihoodReadForGenotype);
                 } else {
-                    LP_R_GF += lp_r_GT;
+                    cumulativeLog10LikelihoodOfForeignReadHypothesis += log10LikelihoodReadForGenotype;
                 }
             }
             // Allele prior for error allele, plus posterior for foreign event, plus model posterior
-            double LPsi = logProbFAllele + LP_R_GF; // NOTE unlike DRAGEN we apply the prior to the combined likelihoods array after the fact so gtAllelePrior is not included at this stage
+            double LPsi = logProbFAllele + cumulativeLog10LikelihoodOfForeignReadHypothesis; // NOTE unlike DRAGEN we apply the prior to the combined likelihoods array after the fact so gtAllelePrior is not included at this stage
             localMaxLpspi = Math.max(localMaxLpspi, LPsi);
 
             if (genotyperDebugStream != null) {
-                genotyperDebugStream.println("beta: "+beta+" localMaxLpspi: " + localMaxLpspi + " for lpf: "+logProbFAllele+" with LP_R_GF: "+LP_R_GF+" index: "+counter++);
+                genotyperDebugStream.println("beta: "+foreignAlleleLikelihood+" localMaxLpspi: " + localMaxLpspi + " for lpf: "+logProbFAllele+" with LP_R_GF: "+cumulativeLog10LikelihoodOfForeignReadHypothesis+" index: "+counter++);
             }
             if (localMaxLpspi > maxLpspi) {
                 maxLpspi = Math.max(maxLpspi, localMaxLpspi);
@@ -440,9 +440,9 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
     }
 
 
-    // TODO: for reviewer... this code is meant to handle the performance regression brought about by FRD, essentially in DRAGEN for every
-    // TODO  combination of strandedness and mapping quality a computation is done, this is vaguly unnessisary, essentially this leads to
-    // TODO  a bias towards strandedness/allele combinations that have very few reads supporting them by viritue of the fact that a different
+    // TODO: for reviewer... this code is meant to handle the performance regression brought about by FRD. Essentially in DRAGEN for every
+    // TODO  combination of strandedness and mapping quality a computation is done, this is vaguely unnecessary. Because this leads to
+    // TODO  a bias towards strandedness/allele combinations that have very few reads supporting them by virtue of the fact that a different
     // TODO  strand/allele combination had at least one low mapping quality read. I have reverted the change right now and consequently this genotyping
     // TODO  is taking somewhere in the order of ~5-6% runtime on the profiler whereas otherwise it could correspond to much less at the expense
     // TODO  of not matching DRAGEN properly.
@@ -470,9 +470,9 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
      * @return never {@code null}.
      */
     public <EVIDENCE, A extends Allele> GenotypeLikelihoods genotypeLikelihoods(final LikelihoodMatrix<EVIDENCE, A> likelihoods) {
-        cachedLikelihoodsObject = null;
+        cachedLikelihoods = null;
         GenotypeLikelihoods output = super.genotypeLikelihoods(likelihoods);
-        cachedLikelihoodsObject = likelihoods;
+        cachedLikelihoods = likelihoods;
         return output;
     }
 
@@ -482,9 +482,9 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
      * @return never {@code null}.
      */
     public <EVIDENCE, A extends Allele> double[] rawGenotypeLikelihoods(final LikelihoodMatrix<EVIDENCE, A> likelihoods) {
-        cachedLikelihoodsObject = null;
+        cachedLikelihoods = null;
         double[] output = super.getReadRawReadLikelihoodsByGenotypeIndex(likelihoods);
-        cachedLikelihoodsObject = likelihoods;
+        cachedLikelihoods = likelihoods;
         return output;
     }
 

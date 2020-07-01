@@ -99,7 +99,6 @@ public final class AlignmentUtils {
         // compute the read -> ref alignment by mapping read -> hap -> ref from the
         // SW of read -> hap mapped through the given by hap -> ref
 
-        //TODO need to be very carful here, go over later between branch/master and be sure everything is done correctly
         // this is the sub-cigar of the haplotype-to-ref alignment, with cigar elements before the read start removed.  Elements after the read end are kept.
         final Cigar haplotypeToRef = trimCigarByBases(rightPaddedHaplotypeVsRefCigar, readToHaplotypeSWAlignment.getAlignmentOffset(), rightPaddedHaplotypeVsRefCigar.getReadLength() - 1).getCigar();
 
@@ -303,7 +302,7 @@ public final class AlignmentUtils {
     /**
      * Returns the number of bases in a read minus the number of softclipped bases.
      */
-    public static int unclipedReadLength(final GATKRead read) {
+    public static int unclippedReadLength(final GATKRead read) {
         int softClippedBases = 0;
         for (CigarElement element : read.getCigarElements()) {
             if (element.getOperator()== CigarOperator.SOFT_CLIP) {

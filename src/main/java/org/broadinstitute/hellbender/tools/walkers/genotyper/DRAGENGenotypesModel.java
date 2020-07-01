@@ -34,6 +34,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
     private static final int DEFAULT_CACHE_ALLELE_CAPACITY = 50;
     // Flat SNP het prior to use for genotyping
     public static final double FLAT_SNP_HET_PRIOR = 34.77;
+    public static final double BQD_HOMOPOLYMER_PHRED_ADJUSTMENT_FACTOR = 5.0;
 
     private final int cacheAlleleCountCapacity;
     private final int cachePloidyCapacity;
@@ -72,7 +73,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 
-        //Get the prior for the
+        //Get the prior to use for the alternate allele if it is an indel
         double api;
         if (dragstrs !=  null) {
             final int period = dragstrs.period(offsetForRefIntoEvent + 1 );
@@ -106,37 +107,31 @@ public class DRAGENGenotypesModel implements GenotypingModel {
             ///////////////////////////////////////////////////////////////////////////
 
             // Separating the reads by their strand and sorting them appropriately.
-            List<GATKRead> readsForSample = data.readLikelihoods().sampleEvidence(sampleIndex);
-            List<GATKRead> hmmFilteredReadsForSample = data.readLikelihoods().filteredSampleEvidence(sampleIndex);
+            final List<GATKRead> readsForSample = data.readLikelihoods().sampleEvidence(sampleIndex);
+            final List<GATKRead> hmmFilteredReadsForSample = data.readLikelihoods().filteredSampleEvidence(sampleIndex);
             // These objects are intended to store 3 things, the read, the inner (middle) int stores the offset into the read of the base in question, and the outer int stores the index of the read per sample
-            List<DragenReadContainer> strandForward = new ArrayList<>();
-            List<DragenReadContainer>  strandReverse = new ArrayList<>();
+            final List<DragenReadContainer> strandForward = new ArrayList<>();
+            final List<DragenReadContainer>  strandReverse = new ArrayList<>();
 
             ////TODO reads with indels preceding the variant in question might have their cycle counts mismatched, its unclear whether dragen handles this case based on debug outputs
             for (int j = 0; j < readsForSample.size(); j++) {
                 final GATKRead readForSample = readsForSample.get(j);
                 final int indexForSnp = ReadUtils.getReadIndexForReferenceCoordinate(readForSample, variantOffset).getLeft();
 
-                if (readForSample.isReverseStrand()) {
-                    strandReverse.add(new DragenReadContainer(readForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(readForSample), j));
-                } else {
-                    strandForward.add(new DragenReadContainer(readForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(readForSample), j));
-                }
+                (readForSample.isReverseStrand() ? strandReverse : strandForward)
+                        .add(new DragenReadContainer(readForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(readForSample), j));
             }
             for (int j = 0; j < hmmFilteredReadsForSample.size(); j++) {
                 final GATKRead filteredReadForSample = hmmFilteredReadsForSample.get(j);
                 final int indexForSnp = ReadUtils.getReadIndexForReferenceCoordinate(filteredReadForSample, variantOffset).getLeft();
 
-                if (filteredReadForSample.isReverseStrand()) {
-                    strandReverse.add(new DragenReadContainer(filteredReadForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(filteredReadForSample), -1));
-                } else {
-                    strandForward.add(new DragenReadContainer(filteredReadForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(filteredReadForSample), -1));
-                }
+                (filteredReadForSample.isReverseStrand() ? strandReverse : strandForward)
+                        .add(new DragenReadContainer(filteredReadForSample, indexForSnp, ReadUtils.getStrandedUnclippedStart(filteredReadForSample), -1));
             }
-            strandForward.sort(new ReadFeatherEndForwardComparitor());
-            strandReverse.sort(new ReadFeatherEndRevereseComparitor());
+            strandForward.sort(new ReadFeatherEndForwardComparator());
+            strandReverse.sort(new ReadFeatherEndReverseComparator());
 
-            // Compute default liklihoods as normal (before we go ahead and alter the liklihoods for the call)
+            // Compute default likelihoods as normal (before we go ahead and alter the likelihoods for the call)
             final int samplePloidy = ploidyModel.samplePloidy(sampleIndex);
 
             // get a new likelihoodsCalculator if this sample's ploidy differs from the previous sample's
@@ -147,13 +142,13 @@ public class DRAGENGenotypesModel implements GenotypingModel {
                 likelihoodsCalculator.addGenotyperDebugOutputStream(genotyperDebugStream);
             }
 
-            // this is the data array for the read liklihoods without any trouble
+            // this is the data array for the read likelihoods without any trouble
             final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(sampleIndex));
-            final double[] ployidyModelGenotypeLikelihoods = likelihoodsCalculator.rawGenotypeLikelihoods(sampleLikelihoods);
+            final double[] ploidyModelGenotypeLikelihoods = likelihoodsCalculator.rawGenotypeLikelihoods(sampleLikelihoods);
 
             if (genotyperDebugStream != null) {
                 genotyperDebugStream.println("\n Standard Genotyping Resutls:");
-                genotyperDebugStream.println(Arrays.toString(ployidyModelGenotypeLikelihoods));
+                genotyperDebugStream.println(Arrays.toString(ploidyModelGenotypeLikelihoods));
             }
 
             double[] BQDCallResults = null;
@@ -166,7 +161,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
                 }
             }
             if (computeFRD) {
-                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, ployidyModelGenotypeLikelihoods,
+                FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, ploidyModelGenotypeLikelihoods,
                         Stream.of(strandForward, strandReverse).flatMap(Collection::stream).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
                         FLAT_SNP_HET_PRIOR, api, maxEffectiveDepthAdjustment, calculators);
                 if (genotyperDebugStream != null) {
@@ -176,20 +171,20 @@ public class DRAGENGenotypesModel implements GenotypingModel {
             }
 
             //make synthesized likelihoods object (NOTE that we can do this since for invalid model GT fields we simply infinity out the result in the array)
-            for (int gt = 0; gt < ployidyModelGenotypeLikelihoods.length; gt++) {
+            for (int gt = 0; gt < ploidyModelGenotypeLikelihoods.length; gt++) {
                 if (computeBQD) {
-                    ployidyModelGenotypeLikelihoods[gt] = Math.max(ployidyModelGenotypeLikelihoods[gt], BQDCallResults[gt]);
+                    ploidyModelGenotypeLikelihoods[gt] = Math.max(ploidyModelGenotypeLikelihoods[gt], BQDCallResults[gt]);
                 }
                 if (computeFRD) {
-                    ployidyModelGenotypeLikelihoods[gt] = Math.max(ployidyModelGenotypeLikelihoods[gt], FRDCallResults[gt]);
+                    ploidyModelGenotypeLikelihoods[gt] = Math.max(ploidyModelGenotypeLikelihoods[gt], FRDCallResults[gt]);
                 }
             }
 
             // this is what the work actually is, after we have computed a few things
-            genotypeLikelihoods.add(GenotypeLikelihoods.fromLog10Likelihoods(ployidyModelGenotypeLikelihoods));
+            genotypeLikelihoods.add(GenotypeLikelihoods.fromLog10Likelihoods(ploidyModelGenotypeLikelihoods));
             if (genotyperDebugStream != null) {
                 genotyperDebugStream.println("merged matrix:");
-                genotyperDebugStream.println(Arrays.toString(ployidyModelGenotypeLikelihoods));
+                genotyperDebugStream.println(Arrays.toString(ploidyModelGenotypeLikelihoods));
             }
         }
         return new GenotypingLikelihoods<>(genotypingAlleles, ploidyModel, genotypeLikelihoods);
@@ -220,7 +215,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
      * well as information relevant to re-associate the read with its position in the AlleleLikelihoods object arrays.
      */
     static class DragenReadContainer {
-        final public GATKRead underlyingRead;
+        final GATKRead underlyingRead;
         final int offsetIntoReadForBaseQuality;
         final int unclippedEnd;
         final int indexInLikelihoodsObject;
@@ -265,7 +260,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
         }
 
         public double getPhredScaledMappingQuality() {
-            return DRAGENMappingQualityReadTransformer.mapValue(underlyingRead.getMappingQuality());
+            return DRAGENMappingQualityReadTransformer.mapMappingQualityToPhredLikelihoodScore(underlyingRead.getMappingQuality());
         }
 
         public double getPhredPFValue() {
@@ -278,7 +273,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
 
         @Override
         public String toString() {
-            return "Read: "+underlyingRead.toString()+" index: "+indexInLikelihoodsObject+" at unclipped end: "+unclippedEnd+" with base quality "+(hasValidBaseQuality() ? getBaseQuality() : -1);
+            return String.format("Read: %s index: %d at unclipped end: %d with base quality %d", underlyingRead.toString(), indexInLikelihoodsObject, unclippedEnd, (hasValidBaseQuality() ? getBaseQuality() : -1));
         }
 
         public boolean isReverseStrand() {
@@ -295,7 +290,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
     //       importantly this saves us having the thread the original alignment of these reads to this level, since by this point we have trimmed
     //       the reads twice, once to the active region with padding and again to the callable region within the active window and in both of these
     //       cases we have deleted bases with hardclips.
-    public class ReadFeatherEndForwardComparitor implements Comparator<DragenReadContainer>, Serializable {
+    public class ReadFeatherEndForwardComparator implements Comparator<DragenReadContainer>, Serializable {
         private static final long serialVersionUID = 1L;
         /**
          * Evaluate first the number of bases to the end of the read and follow that by the base quality
@@ -320,7 +315,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
     //       importantly this saves us having the thread the original alignment of these reads to this level, since by this point we have trimmed
     //       the reads twice, once to the active region with padding and again to the callable region within the active window and in both of these
     //       cases we have deleted bases with hardclips.
-    public class ReadFeatherEndRevereseComparitor implements Comparator<DragenReadContainer>, Serializable {
+    public class ReadFeatherEndReverseComparator implements Comparator<DragenReadContainer>, Serializable {
         private static final long serialVersionUID = 1L;
         /**
          * Evaluate first the number of bases to the end of the read and follow that by the base quality
