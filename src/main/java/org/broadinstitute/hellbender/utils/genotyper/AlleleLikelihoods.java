@@ -277,7 +277,8 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     }
 
     /**
-     * Returns returns the units of evidence that have been removed by PairHMM error score filtering.
+     * Returns the units of evidence that have been removed by PairHMM error score filtering (and intentially not evidence
+     * filtered by any other mechanism).
      *
      * @param sampleIndex the requested sample.
      * @return never {@code null} but perhaps a zero-length array if there is no filtered evidence for a sample. No element in
@@ -390,15 +391,10 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         final double worstLikelihoodCap = bestAllele.likelihood + maximumBestAltLikelihoodDifference;
 
         final int alleleCount = alleles.numberOfAlleles();
-        boolean hasWarned = false;
 
         // Guarantee to be the case by enclosing code.
         for (int a = 0; a < alleleCount; a++) {
             if (sampleValues[a][evidenceIndex] < worstLikelihoodCap) {
-                if (!hasWarned) {
-//                    System.out.println("For evidence "+evidenceBySampleIndex.get(sampleIndex).get(evidenceIndex)+" replace allele "+a+" hmm score of "+sampleValues[a][evidenceIndex]+" with "+worstLikelihoodCap);
-//                    hasWarned = true;
-                }
                 sampleValues[a][evidenceIndex] = worstLikelihoodCap;
             }
         }

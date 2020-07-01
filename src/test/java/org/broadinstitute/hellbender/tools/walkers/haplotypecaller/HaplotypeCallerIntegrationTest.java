@@ -218,7 +218,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 // BQD arguments
                 "--apply-bqd",  "--soft-clip-low-quality-ends",
                 // Dynamic read disqualification arguments"
-                "--enable-dynamic-read-disqualification-for-genotyping", "--expected-error-rate-per-base", "0.03",
+                "--enable-dynamic-read-disqualification-for-genotyping", "--expected-mismatch-rate-for-read-disqualification", "0.03",
                 // Genotyper arguments
                 "--genotype-assignment-method", "USE_POSTERIOR_PROBABILITIES",  "--standard-min-confidence-threshold-for-calling", "3", "--use-posteriors-to-calculate-qual",
                 // STRE arguments
@@ -433,7 +433,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 // BQD arguments
                 "--apply-bqd",  "--soft-clip-low-quality-ends",
                 // Dynamic read disqualification arguments"
-                "--enable-dynamic-read-disqualification-for-genotyping", "--expected-error-rate-per-base", "0.03",
+                "--enable-dynamic-read-disqualification-for-genotyping", "--expected-mismatch-rate-for-read-disqualification", "0.03",
                 // misc arguments
                 "--enable-legacy-graph-cycle-detection", "--padding-around-indels", "150",
                 "--" + AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "1",
@@ -446,37 +446,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-//    @Test
-//    public void testFRDOnThisFileInDebugger() {
-//        final File output = createTempFile("test", ".vcf");
-//
-//        final String[] args = {
-//                "-I", "gs://broad-dsde-methods-dragen/illumina-files/data/hg38/DNA_Nexus_hiseqX_plus0_0.bam",
-//                "-R", "/Users/emeryj/hellbender/references/Homo_sapiens_assembly38.fasta",
-//                "--apply-frd", "--transform-dragen-mapping-quality", "--mapping-quality-threshold", "1", "--apply-bqd",
-//                 "--enable-dynamic-read-disqualification-for-genotyping",
-//                "--dragstr-params-path", "/Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/vcfEvals/DNA_Nexus_hiseqX_plus0_0.dragstr-params.txt",
-//                "--genotype-assignment-method", "USE_POSTERIOR_PROBABILITIES",
-//                "--standard-min-confidence-threshold-for-calling", "3",
-//                "--disable-cap-base-qualities-to-map-quality",
-//                "--expected-error-rate-per-base", "0.03",
-//                "--enable-legacy-assembly-region-trimming",
-//                "--enable-legacy-graph-cycle-detection",
-//                "--soft-clip-low-quality-ends",
-//                "--use-posteriors-to-calculate-qual",
-//                "-L", "chr1:55055736-55056724",
-//                "--padding-around-indels", "150",
-//                "--allele-informative-reads-overlap-margin", "1",
-//                "--disable-symmetric-hmm-normalizing",
-//                "--minimum-mapping-quality", "1",
-//                "--disable-spanning-event-genotyping",
-//                "-O", output.getAbsolutePath()
-//        };
-//        runCommandLine(args);
-//
-//        System.out.println("foo");
-//    }
-//
     @Test
     public void testBQDOnThisFileInDebugger() {
         final File output = createTempFile("test", ".vcf");

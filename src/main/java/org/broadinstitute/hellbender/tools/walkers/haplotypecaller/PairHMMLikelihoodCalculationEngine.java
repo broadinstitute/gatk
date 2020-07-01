@@ -36,6 +36,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
     @VisibleForTesting
     static final double INITIAL_QSCORE = 40.0;
+    public static final String HMM_BASE_QUALITIES_TAG = "HMMQuals";
 
     private final byte constantGCP;
 
@@ -137,7 +138,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final double readDisqualificationScale,
                                               final double expectedErrorRatePerBase,
                                               final boolean symmetricallyNormalizeAllelesToReference,
-                                              final boolean capReadQualitiesToMapQ) {
+                                              final boolean disableCapReadQualitiesToMapQ) {
         Utils.nonNull(hmmType, "hmmType is null");
         Utils.nonNull(pcrErrorModel, "pcrErrorModel is null");
         if (constantGCP < 0){
@@ -155,7 +156,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         this.readDisqualificationScale = readDisqualificationScale;
         this.symmetricallyNormalizeAllelesToReference = symmetricallyNormalizeAllelesToReference;
         this.expectedErrorRatePerBase = expectedErrorRatePerBase;
-        this.disableCapReadQualitiesToMapQ = capReadQualitiesToMapQ;
+        this.disableCapReadQualitiesToMapQ = disableCapReadQualitiesToMapQ;
 
         initializePCRErrorModel();
 
@@ -221,11 +222,12 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     static double calculateDynamicThreshold(final GATKRead read, final double dynamicRadQualConstant) {
         double sumMean = 0;
         double sumVariance = 0;
-        byte[] baseQualities = read.getTransientAttribute("HMMQuals") != null ?
-                (byte[]) read.getTransientAttribute("HMMQuals") : read.getBaseQualities();
+        byte[] baseQualities = read.getTransientAttribute(HMM_BASE_QUALITIES_TAG) != null ?
+                (byte[]) read.getTransientAttribute(HMM_BASE_QUALITIES_TAG) : read.getBaseQualities();
 
         for( int i = 0; i < baseQualities.length; i++) {
             int bq = baseQualities[i];
+            // bound the base qualities for lookup between 1 and 40
             int boundedBq = bq < 1 ? 1 : bq > 40 ? 40 : bq;
             sumMean +=      dynamicReadQualThreshLookupTable[ (boundedBq - 1) * 3 + 1];
             sumVariance +=  dynamicReadQualThreshLookupTable[ (boundedBq - 1) * 3 + 2];
@@ -261,7 +263,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     private ToDoubleFunction<GATKRead> log10MinTrueLikelihood(final double maximumErrorPerBase, final boolean capLikelihoods) {
         return read -> {
             // TODO this might be replaced by an explicit calculation
-            final int qualifiedReadLength = read.getTransientAttribute("HMMQuals") != null ? ((byte[])read.getTransientAttribute("HMMQuals")).length : read.getLength();
+            final int qualifiedReadLength = read.getTransientAttribute(HMM_BASE_QUALITIES_TAG) != null ? ((byte[])read.getTransientAttribute(HMM_BASE_QUALITIES_TAG)).length : read.getLength();
             final double maxErrorsForRead = capLikelihoods ? Math.min(2.0, Math.ceil(qualifiedReadLength * maximumErrorPerBase)) : Math.ceil(qualifiedReadLength * maximumErrorPerBase);
             final double log10QualPerBase = -4.0;
             return maxErrorsForRead * log10QualPerBase;
@@ -362,7 +364,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             capMinimumReadQualities(unclipped, readQuals, readInsQuals, readDelQuals, baseQualityScoreThreshold, disableCapReadQualitiesToMapQ);
 
             // Store the actual qualities
-            read.setTransientAttribute("HMMQuals", readQuals);
+            read.setTransientAttribute(HMM_BASE_QUALITIES_TAG, readQuals);
             // Create a new copy of the read and sets its base qualities to the modified versions.
             result.add(createQualityModifiedRead(unclipped, readBases, readQuals, readInsQuals, readDelQuals));
         }

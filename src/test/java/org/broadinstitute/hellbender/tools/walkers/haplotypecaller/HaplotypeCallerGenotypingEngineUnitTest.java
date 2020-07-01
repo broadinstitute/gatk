@@ -66,32 +66,6 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         }
     }
 
-//    @Test
-//    public void testDRAGENGATKBQDModelCode() {
-//        // Arguments to argumentitify later:
-//        String location1 = "1:102130523";
-//
-//        try ( final ReadsDataSource dataSource = new ReadsDataSource(new File(DRAGEN_GATK_BQDFRD_TEST_BAM_SRA).toPath()) ) {
-//            LocusIteratorByState locusIterator =
-//                new LocusIteratorByState(dataSource.query(new SimpleInterval(location1)), DownsamplingMethod.NONE, false,
-//                    ReadUtils.getSamplesFromHeader(dataSource.getHeader()), dataSource.getHeader(), true);
-//            locusIterator.next().getBasePileup()
-//            dataSource.query(new SimpleInterval(location1));
-//
-//            for ( GATKRead read : outputReads ) {
-//                ++totalReads;
-//
-//                if ( read.isDuplicate() ) {
-//                    ++duplicateReads;
-//                }
-//            }
-//        }
-//
-//        new AlignmentContext()
-//        alignmentContext.getBasePileup()
-//        final Locatable loc = new SimpleInterval("20",refOffset,refOffset);
-//        final ReadPileup pileup = new ReadPileup(loc, Collections.singletonList(read),readOffset);
-//    }
 
     @DataProvider(name = "BasicGenotypingTestProvider")
     public Object[][] makeBasicGenotypingTests() {

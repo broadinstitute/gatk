@@ -5,7 +5,9 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * Read transformer intended to replicate DRAGEN behavior for handling mapping qualities.
+ * Read transformer intended to replicate DRAGEN behavior for handling mapping qualities. This is necessary because the DRAGEN
+ * mapper emits mapping qualities between 0-250 which it emits in the XQ tag for reads. This transformer handles unpacking XQ
+ * tagged mapping qualities into the read as well mapping those values to a bounded phreds
  *
  * The current behavior maps it naively into the MQ field with no defense against repeat mapping.
  * TODO handle that, make GT deal directly with new annotation
@@ -21,8 +23,12 @@ public final class DRAGENMappingQualityReadTransformer implements ReadTransforme
 
     public DRAGENMappingQualityReadTransformer( ) { }
 
+    /**
+     * @param val mapping quality value (ranged 0-250)
+     * @return a score (as is performed by DRAGEN) corresponding to the phred likelihood of mipmapping event given that mapping quality.
+     */
     @VisibleForTesting
-    public static double mapValue(final int val) {
+    public static double mapMappingQualityToPhredLikelihoodScore(final int val) {
         for (int i = 1; i < mQTableX.length; i++) {
             if (val <= mQTableX[i]) {
                 final double xfactor = 1.0*(val - mQTableX[i-1]) / (mQTableX[i] - mQTableX[i-1]) ;
@@ -37,16 +43,9 @@ public final class DRAGENMappingQualityReadTransformer implements ReadTransforme
     // Or we just won't worry about it
     @Override
     public GATKRead apply( final GATKRead read ) {
-
-        // TODO these two ssteps are unnecessary. They can both happen but this time I would like to apply both in every case so nothing falls through the cracks.
         if (read.hasAttribute(EXTENDED_MAPPING_QUALITY_READ_TAG)) {
             int extendedMQ = read.getAttributeAsInteger(EXTENDED_MAPPING_QUALITY_READ_TAG);
-//            int mappedMQ = mapValue(extendedMQ);
             read.setMappingQuality(extendedMQ);
-//        } else {
-//            int oldMQ = read.getPhredScaledMappingQuality();
-//            int mappedMQ = mapValue(oldMQ);
-//            read.setMappingQuality(mappedMQ);
         }
         return read;
     }

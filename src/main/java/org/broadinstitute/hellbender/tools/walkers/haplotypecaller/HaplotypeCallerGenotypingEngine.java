@@ -102,7 +102,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @param givenAlleles                Alleles to genotype
      * @param emitReferenceConfidence whether we should add a &lt;NON_REF&gt; alternative allele to the result variation contexts.
      * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
-     *                       two substitutions occuring in the same alignment block (ie the same M/X/EQ CIGAR element)
+     *                       two substitutions occurring in the same alignment block (ie the same M/X/EQ CIGAR element)
      *                       are merged until a substitution is separated from the previous one by a greater distance.
      *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are partitioned into a MNP
      *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.
@@ -187,8 +187,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             final SimpleInterval variantCallingRelevantOverlap = new SimpleInterval(mergedVC).expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
 //            final SimpleInterval variantCallingRelevantOverlap = new SimpleInterval(mergedVC.getContig(), mergedVC.getStart(), mergedVC.getStart()).expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
 
-            // We want to retian evidence that overlaps within its softclipping edges.
-            //TODO this will need to be paramertramtrized in the future.
+            // We want to retain evidence that overlaps within its softclipping edges.
+            //TODO this will need to be parameterized in the future.
             if (hcArgs.applyBQD || hcArgs.applyFRD) {
                 if (hcArgs.retainBasedOnOriginalAlignment) {
                 readAlleleLikelihoods.retainEvidence(r -> {GATKRead original = (GATKRead)(r.getTransientAttribute("originalAlignment"));
@@ -256,7 +256,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     }
 
     /**
-     * Confirms wether there is the need to analyze the region's reference sequence for the presence of STRs.
+     * Confirms whether there is the need to analyze the region's reference sequence for the presence of STRs.
      * <p>
      *     This is only the case when DRAGstr is activate, we are going to use their priors and there is some indel
      *     amongst the haplotypes.
@@ -460,8 +460,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         final ReferenceContext referenceContext = new ReferenceContext(refData, locus, refLocInterval);
 
         final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods, a -> true);
-
-
 
         // NOTE: We choose to reverseTrimAlleles() here as opposed to when we actually do the trimming because otherwise we would have to resolve
         //       the mismatching readAlleleLikelihoods object which is keyed to the old, possibly incorrectly trimmed alleles.

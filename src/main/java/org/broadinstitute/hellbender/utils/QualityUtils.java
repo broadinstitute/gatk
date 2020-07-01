@@ -140,7 +140,7 @@ public final class QualityUtils {
         return Math.pow(10.0, qual / -10.0);
     }
 
-    /**
+    /**v
      * Convert a phred-scaled quality score to its probability of being wrong (Q30 => 0.001)
      *
      * This is the Phred-style conversion, *not* the Illumina-style conversion.
