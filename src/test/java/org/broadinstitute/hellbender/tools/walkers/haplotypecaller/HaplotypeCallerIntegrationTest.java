@@ -447,16 +447,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test
-    public void testBQDOnThisFileInDebugger() {
-        final File output = createTempFile("test", ".vcf");
-
-        final String args = "-R /Users/emeryj/hellbender/references/Homo_sapiens_assembly38.fasta     -I gs://broad-dsde-methods-dragen/reprocessed_data/CHMI_CHMI3_WGS1/CHMI_CHMI3_WGS1.bam    -L chr1:166908755-166910761    -O CHMI_CHMI3_WGS1.1323145.vcf    -contamination 0    --apply-frd  --transform-dragen-mapping-quality  --mapping-quality-threshold 1 --disable-cap-base-qualities-to-map-quality --minimum-mapping-quality 1     --apply-bqd  --soft-clip-low-quality-ends     --enable-dynamic-read-disqualification-for-genotyping --expected-error-rate-per-base 0.03     --dragstr-params-path /Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/debugIssue/CHMI_CHMI3_WGS1.gatk-dragstr-table.txt     --genotype-assignment-method USE_POSTERIOR_PROBABILITIES  --enable-legacy-assembly-region-trimming --enable-legacy-graph-cycle-detection  --padding-around-indels 150     --standard-min-confidence-threshold-for-calling 3  --use-posteriors-to-calculate-qual  --allele-informative-reads-overlap-margin 0  --enable-legacy-assembly-region-trimming --use-original-alignments-for-genotyping-overlap --debug-genotyper-output debugout.txt";
-        runCommandLine(args.split("\\s+"));
-
-        System.out.println("foo");
-    }
-
 
     @Test(dataProvider="HaplotypeCallerTestInputs", enabled=false) //disabled after reference confidence change in #5172
     public void testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults(final String inputFileName, final String referenceFileName) throws Exception {
