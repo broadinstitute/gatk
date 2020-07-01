@@ -36,7 +36,7 @@ def _get_ecg_dates(tm, hd5):
     dates = list(hd5[tm.path_prefix])
     if tm.time_series_lookup is not None:
         start, end = tm.time_series_lookup[mrn]
-        dates = [date for date in dates if start <= date <= end]
+        dates = [date for date in dates if start < date < end]
     if tm.time_series_order == TimeSeriesOrder.NEWEST:
         dates.sort()
     elif tm.time_series_order == TimeSeriesOrder.OLDEST:
@@ -1145,6 +1145,8 @@ def build_partners_time_series_tensor_maps(
         time_tmap.shape = time_tmap.shape[1:]
         time_tmap.time_series_limit = time_series_limit
         time_tmap.time_series_order = time_series_order
+        time_tmap.metrics = None
+        time_tmap.infer_metrics()
 
         name2tensormap[needed_name] = time_tmap
     return name2tensormap

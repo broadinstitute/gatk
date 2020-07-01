@@ -210,24 +210,7 @@ class TensorMap(object):
             self.shape = self.input_shape[:-1] + (len(self.discretization_bounds)+1,)
             self.channel_map = {f'channel_{k}': k for k in range(len(self.discretization_bounds) + 1)}
 
-        if self.metrics is None and self.is_categorical():
-            self.metrics = ['categorical_accuracy']
-            if self.axes() == 1:
-                self.metrics += per_class_precision(self.channel_map)
-                self.metrics += per_class_recall(self.channel_map)
-            elif self.axes() == 2:
-                self.metrics += per_class_precision_3d(self.channel_map)
-                self.metrics += per_class_recall_3d(self.channel_map)
-            elif self.axes() == 3:
-                self.metrics += per_class_precision_4d(self.channel_map)
-                self.metrics += per_class_recall_4d(self.channel_map)
-            elif self.axes() == 4:
-                self.metrics += per_class_precision_5d(self.channel_map)
-                self.metrics += per_class_recall_5d(self.channel_map)
-        elif self.metrics is None and self.is_continuous() and self.shape[-1] == 1:
-            self.metrics = [pearson]
-        elif self.metrics is None:
-            self.metrics = []
+        self.infer_metrics()
 
         if self.tensor_from_file is None:
             self.tensor_from_file = _default_tensor_from_file
@@ -338,6 +321,27 @@ class TensorMap(object):
             for augmentation in self.augmentations:
                 tensor = augmentation(tensor)
         return tensor
+
+
+    def infer_metrics(self):
+        if self.metrics is None and self.is_categorical():
+            self.metrics = ['categorical_accuracy']
+            if self.axes() == 1:
+                self.metrics += per_class_precision(self.channel_map)
+                self.metrics += per_class_recall(self.channel_map)
+            elif self.axes() == 2:
+                self.metrics += per_class_precision_3d(self.channel_map)
+                self.metrics += per_class_recall_3d(self.channel_map)
+            elif self.axes() == 3:
+                self.metrics += per_class_precision_4d(self.channel_map)
+                self.metrics += per_class_recall_4d(self.channel_map)
+            elif self.axes() == 4:
+                self.metrics += per_class_precision_5d(self.channel_map)
+                self.metrics += per_class_recall_5d(self.channel_map)
+        elif self.metrics is None and self.is_continuous() and self.shape[-1] == 1:
+            self.metrics = [pearson]
+        elif self.metrics is None:
+            self.metrics = []
 
 
 def make_range_validator(minimum: float, maximum: float):
