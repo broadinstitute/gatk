@@ -660,6 +660,42 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         };
     }
 
+    @Test
+    public void testThing() {
+        Utils.resetRandomGenerator();
+
+        //NOTE: AlleleSpecific support in the VCF mode is implemented but bogus for now.
+        // This test should not be treated as a strict check of correctness.
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+//        final File expected = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk4.alleleSpecific.vcf");
+
+//        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-R",
+                "gs://broad-dsp-spec-ops/scratch/andrea/mtb/Mycobacterium_tuberculosis_H37Rv.fasta",
+                "-I",
+                "gs://broad-dsp-spec-ops-cromwell-execution/MicrobialGenomePipeline/3625b1d1-38a1-40de-a810-23b347d51b14/call-AlignToRef/MicrobialAlignmentPipeline/87d3ba55-4497-474c-9232-44144c7c3ef4/call-AlignAndMarkDuplicates/D1CLVACXX.1.Solexa-125092.aligned.realigned.bam",
+                "-O", output.getAbsolutePath(),
+                "-L", "/Users/emeryj/hellbender/UserLiason/debugM2Graph/Mycobacterium_tuberculosis_H37Rv.intervals",
+                "--annotation","StrandBiasBySample",
+                "--num-matching-bases-in-dangling-end-to-recover",
+                "1",
+                "--max-reads-per-alignment-start",
+                "75",
+                "--max-mnp-distance",
+                "0"};
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+//        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+//            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+//        }
+
+    }
+
+
     @Test(dataProvider = "vcfsForFiltering")
     public void testFilterMitochondria(File unfiltered, final double minAlleleFraction, final List<String> intervals, List<Set<String>> expectedFilters, List<List<String>> expectedASFilters)  {
         final File filteredVcf = createTempFile("filtered", ".vcf");
