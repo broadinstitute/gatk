@@ -208,18 +208,6 @@ public final class AssemblyBasedCallerUtils {
                 Optional.empty();
     }
 
-    // create the assembly using just high quality reads (eg Q20 or higher).  We may want to use lower
-    // quality reads in the PairHMM downstream, so we can't use a ReadFilter
-    public static AssemblyRegion assemblyRegionWithWellMappedReads(final AssemblyRegion originalAssemblyRegion,
-                                                                   final int minMappingQuality,
-                                                                   final SAMFileHeader readsHeader) {
-        final AssemblyRegion result = new AssemblyRegion(originalAssemblyRegion.getSpan(), originalAssemblyRegion.getPaddedSpan(), originalAssemblyRegion.isActive(), readsHeader);
-        originalAssemblyRegion.getReads().stream()
-                .filter(rec -> rec.getMappingQuality() >= minMappingQuality)
-                .forEach(result::add);
-        return result;
-    }
-
     // Contract: the List<Allele> alleles of the resulting VariantContext is the ref allele followed by alt alleles in the
     // same order as in the input vcs
     public static VariantContext makeMergedVariantContext(final List<VariantContext> vcs) {
