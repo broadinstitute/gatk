@@ -84,6 +84,12 @@ public class ArrayExtractCohort extends GATKTool {
     private String cohortTable = null;
 
     @Argument(
+            fullName = "use-compressed-data",
+            doc = "If true, use bit-packed fields for data",
+            optional = true)
+    private boolean useCompressedData = false;
+
+    @Argument(
             fullName = "print-debug-information",
             doc = "If true, print extra debugging output",
             optional = true)
@@ -171,7 +177,7 @@ public class ArrayExtractCohort extends GATKTool {
                 probeIdMap,
                 cohortTable,
                 localSortMaxRecordsInRam,
-                false,
+                useCompressedData,
                 printDebugInformation,
                 progressMeter);
         vcfWriter.writeHeader(header);
