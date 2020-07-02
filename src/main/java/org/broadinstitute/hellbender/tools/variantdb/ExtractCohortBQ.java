@@ -110,8 +110,8 @@ public class ExtractCohortBQ {
     final static Comparator<GenericRecord> COMPRESSED_PROBE_ID_COMPARATOR = new Comparator<GenericRecord>() {
         @Override
         public int compare( GenericRecord o1, GenericRecord o2 ) {
-            final long firstProbeId = RawArrayData.decode((Long) o1.get(SchemaUtils.RAW_ARRAY_DATA_FIELD_NAME)).probeId;
-            final long secondProbeId = RawArrayData.decode((Long) o2.get(SchemaUtils.RAW_ARRAY_DATA_FIELD_NAME)).probeId;
+            final long firstProbeId = new BasicArrayData((Long) o1.get(SchemaUtils.BASIC_ARRAY_DATA_FIELD_NAME)).probeId;
+            final long secondProbeId = new BasicArrayData((Long) o2.get(SchemaUtils.BASIC_ARRAY_DATA_FIELD_NAME)).probeId;
 
             return Long.compare(firstProbeId, secondProbeId);
         }
