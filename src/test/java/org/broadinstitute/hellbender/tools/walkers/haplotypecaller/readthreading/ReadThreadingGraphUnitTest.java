@@ -340,6 +340,53 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testForkedDanglingEndsWithSuffixCode() {
+
+        final int kmerSize = 15;
+
+        // construct the haplotypes
+        final String commonPrefix = "AAAAAAAAAACCCCCCCCCCGGGGGGGGGGTTTTTTTTTT";
+        final String refEnd = "GCTAGCTAATCGTTAAGCTTTAAC";
+        final String altEnd1 = "GCTAGCTAA"+ "GGCG";// two mismatches compared to the reference
+        final String altEnd2 = "GCTAGCTAA"+ "GCCGATGGCT";
+        final String ref = commonPrefix + refEnd;
+        final String alt1 = commonPrefix + altEnd1;
+        final String alt2 = commonPrefix + altEnd2;
+
+        // create the graph and populate it
+        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize);
+        rtgraph.addSequence("ref", ref.getBytes(), true);
+        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
+        final GATKRead read2 = ArtificialReadUtils.createArtificialRead(alt2.getBytes(), Utils.dupBytes((byte) 30, alt2.length()), alt2.length() + "M");
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        rtgraph.setMinMatchingBasesToDangingEndRecovery(1);
+        rtgraph.addRead(read2, header);
+        rtgraph.addRead(read1, header);
+        rtgraph.buildGraphIfNecessary();
+
+        Assert.assertEquals(rtgraph.getSinks().size(), 3);
+
+        // Testing a degenerate case where the wrong "reference" path is selected and assuring that when
+        for (final MultiDeBruijnVertex altSink : rtgraph.getSinks()) {
+            if (rtgraph.isReferenceNode(altSink) || !altSink.getSequenceString().equals("GCTAAGCCGATGGCT")) {
+                continue;
+            }
+
+            // confirm that the SW alignment agrees with our expectations
+            final ReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink,
+                    0, 2, false, SmithWatermanJavaAligner.getInstance());
+            Assert.assertNotNull(result);
+            Assert.assertTrue(ReadThreadingGraph.cigarIsOkayToMerge(result.cigar, false, true));
+
+            Assert.assertEquals(Math.min(AbstractReadThreadingGraph.longestSuffixMatch(result.referencePathString, result.danglingPathString, result.cigar.getReferenceLength() - 1), result.cigar.getCigarElement(0).getLength()), 0);
+
+            // confirm that the tail merging works as expected
+            final int mergeResult = rtgraph.mergeDanglingTail(result);
+            Assert.assertTrue(mergeResult == 0);
+        }
+    }
+
+    @Test
     public void testForkedDanglingEnds() {
 
         final int kmerSize = 15;

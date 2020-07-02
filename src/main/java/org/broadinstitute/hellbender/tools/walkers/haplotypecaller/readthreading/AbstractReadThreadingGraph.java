@@ -588,7 +588,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
         final int lastRefIndex = danglingTailMergeResult.cigar.getReferenceLength() - 1;
         final int matchingSuffix = Math.min(longestSuffixMatch(danglingTailMergeResult.referencePathString, danglingTailMergeResult.danglingPathString, lastRefIndex), lastElement.getLength());
-        if (matchingSuffix == 0 && matchingSuffix >= minMatchingBasesToDangingEndRecovery ) {
+        if (minMatchingBasesToDangingEndRecovery >= 0 ? matchingSuffix < minMatchingBasesToDangingEndRecovery : matchingSuffix == 0 ) {
             return 0;
         }
 
