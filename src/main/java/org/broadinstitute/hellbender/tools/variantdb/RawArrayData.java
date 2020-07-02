@@ -1,76 +1,109 @@
 package org.broadinstitute.hellbender.tools.variantdb;
 
+import java.math.*;
 import static org.broadinstitute.hellbender.tools.variantdb.BinaryUtils.*;
 
 public class RawArrayData {
-    public static enum ArrayGenotype {
-        // Order is critical here, the ordinal is the int encoding
-        AA,AB, BB, NO_CALL
-    }
-
     // TODO: turn these all into getters/setters with precision checks (e.g. baf)
-    int probeId;
-    ArrayGenotype genotype;
-    Float normx;
-    Float normy;
-    Float baf;
-    Float lrr;
+    public Float normx;
+    public Float normy;
+    public Float baf;
+    public Float lrr;
 
-    static ArrayGenotype decodeGenotype(int i) {
-        return ArrayGenotype.values()[i];
+    public RawArrayData(Float normx, Float normy, Float baf, Float lrr) {
+        this.normx = normx;
+        this.normy = normy;
+        this.baf = baf;
+        this.lrr = lrr;
     }
 
-    static int encodeGenotype(ArrayGenotype g) {
-        return g.ordinal();
+    public static final int NORMX_OFFSET = 0;
+    public static final int NORMY_OFFSET = 16;
+    public static final int LRR_OFFSET = 32;
+    public static final int BAF_OFFSET = 48;
+
+    private static final int MIN_16_BIT_VALUE = 0;
+    private static final int MAX_16_BIT_VALUE = (int) Math.pow(2, 16) - 2; // reserve for null
+    private static final int NULL_ENCODING =  MAX_16_BIT_VALUE + 1;
+
+    private static final int MIN_10_BIT_VALUE = 0;
+    private static final int MAX_10_BIT_VALUE = (int) Math.pow(2, 10) - 2; // reserve for null
+    private static final int NULL_10_BIT_ENCODING =  MAX_10_BIT_VALUE + 1;
+
+    // store a float with 3-decimal digits in 16 bits by
+    // multiplying by 1000 and capping values, reserving 
+    // xFFFF FFFF to represent null
+    public static int encode(Float f) {
+        return encode(f,0);
+    }
+    public static int encode(Float f, float offset) {
+
+        // TODO: fix to be 10-bit null encoding also...
+        if (f == null) return NULL_ENCODING;
+
+        return
+            Math.min(
+                Math.max(
+                    Math.round((f+offset) * 1000.0f),
+                    MIN_16_BIT_VALUE
+                ),
+                MAX_16_BIT_VALUE
+            );
     }
 
-    public static final int LRR_OFFSET = 0;
-    public static final float LRR_MIN = -28;
-    public static final float LRR_MAX = 7;
+    public static int encode10bits(Float f, float offset) {
 
-    public static final int BAF_OFFSET = 8;
-    public static final float BAF_MIN = 0;
-    public static final float BAF_MAX = 1;    
+        if (f == null) return NULL_10_BIT_ENCODING;
 
-    public static final int NORMX_OFFSET = 16;
-    public static final float NORMX_MIN = 0;
-    public static final float NORMX_MAX = 8;    
+        return
+            Math.min(
+                Math.max(
+                    Math.round((f+offset) * 1000.0f),
+                    MIN_10_BIT_VALUE
+                ),
+                MAX_10_BIT_VALUE
+            );
+    }
 
-    public static final int NORMY_OFFSET = 24;
-    public static final float NORMY_MIN = 0;
-    public static final float NORMY_MAX = 8;    
+    public static Float decode(long i) {
+        return decode(i, 0);
+    }
 
-    public static final int GT_OFFSET = 32;
-    public static final int PROBE_ID_OFFSET = 42;
+    public static Float decode(long i, float offset) {
+        if (i == NULL_ENCODING) return null;
+        return (
+            (float) i) / 1000.0f - offset;
+    }
 
-    // GTC Data Ranges: https://github.com/Illumina/BeadArrayFiles/blob/develop/docs/GTC_File_Format_v5.pdf
-    public static RawArrayData decode(long bits) {
+    public static Float decode10bits(long i) {
+        if (i == NULL_10_BIT_ENCODING) return null;
+        return (
+            (float) i) / 1000.0f;
+    }
 
-        RawArrayData data = new RawArrayData();
-        data.lrr = decodeFrom8Bits((int) extractBits(bits, LRR_OFFSET, 8), LRR_MIN, LRR_MAX);
-        data.baf = decodeFrom8Bits((int) extractBits(bits, BAF_OFFSET, 8), BAF_MIN, BAF_MAX);
-        data.normx = decodeFrom8Bits((int) extractBits(bits, NORMX_OFFSET, 8), NORMX_MIN, NORMX_MAX);
-        data.normy = decodeFrom8Bits((int) extractBits(bits, NORMY_OFFSET, 8), NORMY_MIN, NORMY_MAX);
-        data.genotype = decodeGenotype((int) extractBits(bits, GT_OFFSET, 2));
-        data.probeId = (int) extractBits(bits, PROBE_ID_OFFSET, 22);
-
-        return data;
+    public RawArrayData(long bits) {
+        try {
+            this.normx = decode(extractBits(bits, NORMX_OFFSET, 16));
+            this.normy = decode(extractBits(bits, NORMY_OFFSET, 16));
+            this.lrr = decode(extractBits(bits, LRR_OFFSET, 16), 32.0f);
+            this.baf = decode10bits(extractBits(bits, BAF_OFFSET, 10));
+        } catch (NullPointerException npe) {
+            npe.printStackTrace();
+            throw npe;
+        }
     }
 
     public long encode() {
-        long lrrBits = encodeTo8Bits(this.lrr, LRR_MIN, LRR_MAX);
-        long bafBits = encodeTo8Bits(this.baf, BAF_MIN, BAF_MAX);
-        long normxBits = encodeTo8Bits(this.normx, NORMX_MIN, NORMX_MAX);
-        long normyBits = encodeTo8Bits(this.normy, NORMX_MIN, NORMX_MAX);
-        long gtBits = (long) encodeGenotype(this.genotype);
+        long normxBits = encode(this.normx);
+        long normyBits = encode(this.normy);
+        long lrrBits = encode(this.lrr, 32.0f);
+        long bafBits = encode10bits(this.baf, 0.0f);
 
         return (
-            (lrrBits << LRR_OFFSET) | 
-            (bafBits << BAF_OFFSET) |
-            (normxBits << NORMX_OFFSET) |
+            (normxBits << NORMX_OFFSET) | 
             (normyBits << NORMY_OFFSET) |
-            (gtBits << GT_OFFSET) |
-            ((long) this.probeId << PROBE_ID_OFFSET )
+            (lrrBits   << LRR_OFFSET) |
+            (bafBits   << BAF_OFFSET) 
         );
     }
 }

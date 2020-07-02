@@ -11,7 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.tools.variantdb.RawArrayData.ArrayGenotype;
+import org.broadinstitute.hellbender.tools.variantdb.BasicArrayData.ArrayGenotype;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -122,8 +122,8 @@ public class ArrayExtractCohortEngine {
         for ( final GenericRecord sortedRow : sortingCollection ) {
             long probeId;
             if (useCompressedData) {
-                final long rawData = (Long) sortedRow.get(SchemaUtils.RAW_ARRAY_DATA_FIELD_NAME);
-                RawArrayData data = RawArrayData.decode(rawData);
+                final long bits = (Long) sortedRow.get(SchemaUtils.BASIC_ARRAY_DATA_FIELD_NAME);
+                BasicArrayData data = new BasicArrayData(bits);
                 probeId = data.probeId;
             } else {
                 probeId = (Long) sortedRow.get("probe_id");
@@ -162,7 +162,17 @@ public class ArrayExtractCohortEngine {
         int numRecordsAtPosition = 0;
 
         for ( final GenericRecord sampleRecord : sampleRecordsAtPosition ) {
-            final long sampleId = (Long) sampleRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME);
+            final long sampleId;
+            if (useCompressedData) {
+                final long bits = (Long) sampleRecord.get(SchemaUtils.BASIC_ARRAY_DATA_FIELD_NAME);
+                BasicArrayData data = new BasicArrayData(bits);
+                sampleId = data.sampleId;
+            } else {
+                sampleId = (Long) sampleRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME);
+
+                // TODO: hack to test roundtrip
+
+            }
 
             // TODO: handle missing values
             String sampleName = sampleIdMap.get((int) sampleId);            
@@ -275,19 +285,22 @@ public class ArrayExtractCohortEngine {
         List<Allele> genotypeAlleles = new ArrayList<Allele>();
 
         if (this.useCompressedData) {
-            final RawArrayData data = RawArrayData.decode((Long) sampleRecord.get(SchemaUtils.RAW_ARRAY_DATA_FIELD_NAME));
-            normx = data.normx;
-            normy = data.normy;
-            lrr = data.lrr;
-            baf = data.baf;
+            final BasicArrayData basicData = new BasicArrayData((Long) sampleRecord.get(SchemaUtils.BASIC_ARRAY_DATA_FIELD_NAME));
+            Object rd = sampleRecord.get(SchemaUtils.RAW_ARRAY_DATA_FIELD_NAME);
 
-            if (data.genotype == ArrayGenotype.AA) {
+            final RawArrayData rawData = new RawArrayData((Long) rd);
+            normx = rawData.normx;
+            normy = rawData.normy;
+            lrr = rawData.lrr;
+            baf = rawData.baf;
+
+            if (basicData.genotype == ArrayGenotype.AA) {
                 genotypeAlleles.add(alleleA);
                 genotypeAlleles.add(alleleA);
-            } else if (data.genotype == ArrayGenotype.AB) {
+            } else if (basicData.genotype == ArrayGenotype.AB) {
                 genotypeAlleles.add(alleleA);
                 genotypeAlleles.add(alleleB);
-            } else if (data.genotype == ArrayGenotype.BB) {
+            } else if (basicData.genotype == ArrayGenotype.BB) {
                 genotypeAlleles.add(alleleB);
                 genotypeAlleles.add(alleleB);
             } else {
@@ -326,16 +339,11 @@ public class ArrayExtractCohortEngine {
                 lrr = getNullableFloatFromDouble(sampleRecord.get("LRR"));
 
                 // Hack to pack and unpack data
-                RawArrayData d = new RawArrayData();
-                d.probeId = (int) probeInfo.probeId;
-                d.genotype = agt;
-                d.baf = baf;
-                d.lrr = lrr;
-                d.normx = normx;
-                d.normy = normy;
+                BasicArrayData b = new BasicArrayData(0, (int) probeInfo.probeId, agt);
+                RawArrayData d = new RawArrayData(normx, normy, lrr, baf);
 
                 long bits = d.encode();
-                RawArrayData d2 = RawArrayData.decode(bits);
+                RawArrayData d2 = new RawArrayData(bits);
                 normx = d2.normx;
                 normy = d2.normy;
                 baf = d2.baf;
