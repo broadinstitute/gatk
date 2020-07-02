@@ -5,6 +5,7 @@ import com.google.common.collect.Multimap;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -44,8 +45,6 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
     }
 
     private Collection<Path<V,E>> likelyErrorChains(final List<Path<V, E>> chains, final BaseGraph<V,E> graph, final double errorRate) {
-        /////// NEW
-
         // pre-compute the left and right log odds of each chain
         final Map<Path<V,E>, Pair<Double, Double>> chainLogOdds = chains.stream()
                 .collect(Collectors.toMap(c -> c, c-> chainLogOdds(c, graph, errorRate)));
@@ -85,8 +84,8 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
                 .filter(v -> vertexToSeedableChains.get(v).size() > 2)
                 .forEach(verticesToProcess::add);
 
-        final Set<V> processedVertices = new HashSet<>();
-        final Set<Path<V,E>> goodChains = new HashSet<>();
+        final Set<V> processedVertices = new LinkedHashSet<>();
+        final Set<Path<V,E>> goodChains = new LinkedHashSet<>();
 
         // starting from the high-confidence seed vertices, grow the "good" subgraph along chains with above-threshold log odds,
         // discovering good chains as we go.
@@ -110,16 +109,48 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
 
         final Set<Path<V,E>> errorChains = chains.stream().filter(c -> !goodChains.contains(c)).collect(Collectors.toSet());
 
-        // add non-error chains to error chains if maximum number of variants has been exceeded
-        chains.stream()
-                .filter(c -> !errorChains.contains(c))
-                .filter(c -> isChainPossibleVariant(c, graph))
-                .sorted(Comparator.comparingDouble(c -> Math.min(chainLogOdds.get(c).getLeft(), chainLogOdds.get(c).getLeft())).reversed())
-                .skip(maxUnprunedVariants)
-                .forEach(errorChains::add);
+        // A vertex with N > 0 outgoing good chains corresponds to N - 1 variants
+        int numberOfVariantsInGraph = vertexToGoodOutgoingChains.keySet().stream()
+                .mapToInt(v -> Math.max(vertexToGoodOutgoingChains.get(v).size() - 1, 0)).sum();
+
+        if (numberOfVariantsInGraph > maxUnprunedVariants) {
+            // the vertex-to-good-incoming/outgoing chain maps contain all chains with log odds passing the threshold, even if
+            // the seeding and extending process revealed them to be errors.  We need to cull such chains for the following steps
+            for (final Path<V,E> chain : errorChains) {
+                vertexToGoodOutgoingChains.remove(chain.getFirstVertex(), chain);
+                vertexToGoodIncomingChains.remove(chain.getLastVertex(), chain);
+            }
+
+            // recalculate now that we have more accurate vertex-to-good-chains maps
+            numberOfVariantsInGraph = vertexToGoodOutgoingChains.keySet().stream()
+                    .mapToInt(v -> Math.max(vertexToGoodOutgoingChains.get(v).size() - 1, 0)).sum();
+
+            // start with the worst good variants
+            final PriorityQueue<Path<V,E>> excessGoodChainsToPrune = new PriorityQueue<>(
+                    Comparator.comparingDouble((Path<V,E> c) -> Math.min(chainLogOdds.get(c).getLeft(), chainLogOdds.get(c).getLeft()))
+                            .thenComparing((Path<V,E> c) -> c.getFirstVertex().getSequence(), BaseUtils.BASES_COMPARATOR));
+
+            excessGoodChainsToPrune.addAll(goodChains);
+
+            while (numberOfVariantsInGraph > maxUnprunedVariants) {
+                final Path<V,E> worstGoodChain = excessGoodChainsToPrune.poll();
+                errorChains.add(worstGoodChain);
+                //if removing this chain pops a bubble, we have pruned a variant
+                if (vertexToGoodOutgoingChains.get(worstGoodChain.getFirstVertex()).size() > 1) {
+                    numberOfVariantsInGraph--;
+                }
+                // remove the chain
+                vertexToGoodOutgoingChains.remove(worstGoodChain.getFirstVertex(), worstGoodChain);
+                vertexToGoodIncomingChains.remove(worstGoodChain.getLastVertex(), worstGoodChain);
+
+                int numberOfVariantsInGraphRecalculated = vertexToGoodOutgoingChains.keySet().stream()
+                        .mapToInt(v -> Math.max(vertexToGoodOutgoingChains.get(v).size() - 1, 0)).sum();
+
+                int g = 0;
+            }
+        }
 
         return errorChains;
-
     }
 
     // find the chain containing the edge of greatest weight, taking care to break ties deterministically
@@ -127,7 +158,8 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
         return chains.stream()
                 .max(Comparator.comparingInt((Path<V, E> chain) -> chain.getEdges().stream().mapToInt(BaseEdge::getMultiplicity).max().orElse(0))
                         .thenComparingInt(Path::length)
-                        .thenComparingInt(Path::hashCode)).get();
+                        .thenComparing((Path<V,E> c) -> c.getFirstVertex().getSequence(), BaseUtils.BASES_COMPARATOR))
+                .get();
     }
 
     // left and right chain log odds
@@ -145,14 +177,5 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
 
         return ImmutablePair.of(leftLogOdds, rightLogOdds);
     }
-    
-    private boolean isChainPossibleVariant(final Path<V,E> chain, final BaseGraph<V,E> graph) {
-        final int leftTotalMultiplicity = MathUtils.sumIntFunction(graph.outgoingEdgesOf(chain.getFirstVertex()), E::getMultiplicity);
-        final int rightTotalMultiplicity = MathUtils.sumIntFunction(graph.incomingEdgesOf(chain.getLastVertex()), E::getMultiplicity);
 
-        final int leftMultiplicity = chain.getEdges().get(0).getMultiplicity();
-        final int rightMultiplicity = chain.getLastEdge().getMultiplicity();
-
-        return leftMultiplicity <= leftTotalMultiplicity / 2 || rightMultiplicity <= rightTotalMultiplicity / 2;
-    }
 }

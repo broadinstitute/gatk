@@ -18,7 +18,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     private static final long serialVersionUID = 1L;
 
     public static final double DEFAULT_PRUNING_LOG_ODDS_THRESHOLD = MathUtils.log10ToLog(1.0);
-    public static final double DEFAULT_PRUNING_SEEDING_LOG_ODDS_THRESHOLD = MathUtils.log10ToLog(2.0);
+    public static final double DEFAULT_PRUNING_SEEDING_LOG_ODDS_THRESHOLD = MathUtils.log10ToLog(4.0);
 
     public static final String ERROR_CORRECT_READS_LONG_NAME = "error-correct-reads";
     public static final String PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME = "error-correction-log-odds";

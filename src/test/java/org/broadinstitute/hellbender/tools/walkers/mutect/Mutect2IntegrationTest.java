@@ -507,7 +507,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "chrM:750-750 A*, [G]");
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
 
-        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1664);
+        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1709);
     }
 
     @DataProvider(name = "vcfsForFiltering")
@@ -664,10 +664,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<String> expectedKeys = Arrays.asList(
                 "chrM:152-152 T*, [<NON_REF>, C]",
                 "chrM:263-263 A*, [<NON_REF>, G]",
-                "chrM:297-297 A*, [<NON_REF>, AC, C]",  //alt alleles get sorted when converted to keys
-                //"chrM:301-301 A*, [<NON_REF>, AC, ACC]",
-                //"chrM:302-302 A*, [<NON_REF>, AC, ACC, C]",  //one of these commented out variants has an allele that only appears in debug mode
-                "chrM:310-310 T*, [<NON_REF>, C, TC]",
+                //"chrM:297-297 A*, [<NON_REF>, AC, C]",
+                //"chrM:301-301 A*, [<NON_REF>, AC, ACC, ACCC]",
+                "chrM:302-302 A*, [<NON_REF>, AC, ACC, ACCC, C]",  //one of these commented out variants has an allele that only appears in debug mode
+                "chrM:310-310 T*, [<NON_REF>, TC]",
                 "chrM:750-750 A*, [<NON_REF>, G]");
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
         //First entry should be a homRef block
