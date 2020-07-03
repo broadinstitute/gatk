@@ -7,6 +7,10 @@ import htsjdk.variant.vcf.VCFConstants;
 
 import java.util.Set;
 
+import org.broadinstitute.hellbender.tools.variantdb.BasicArrayData;
+import org.broadinstitute.hellbender.tools.variantdb.RawArrayData;
+
+
 /**
  * Expected headers for the Variant Table (VET)
  *     sample, // req
@@ -16,24 +20,62 @@ import java.util.Set;
  *     NORMY, // intensity
  *     BAF // b allele fraction --> AD proxy
  *     LRR // Log R ratio --> intensity value instead of DP
+ * 
  *
  */
 
 public enum RawArrayFieldEnum {
-    // This where the validation step (required vs not) lives  -- fail if there is missing data for a required field
-    // and just leave it empty if not required
-
     sample_id, // Required-- sample Id for sample
 
 
+    // This where the validation step (required vs not) lives  -- fail if there is missing data for a required field
+    // and just leave it empty if not required
+    basic_array_data {
+        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
+            String gt = GT_encoded.getColumnValue(variant, probeInfo, sampleId);
+            BasicArrayData.ArrayGenotype agt;
+            if (".".equals(gt)) {
+                agt = BasicArrayData.ArrayGenotype.NO_CALL;
+            } else {
+                agt = BasicArrayData.ArrayGenotype.valueOf(gt);
+            }
+            BasicArrayData d = new BasicArrayData(Integer.parseInt(sampleId), (int) probeInfo.probeId, agt);
+            return String.valueOf(d.encode());
+        }
+    },
+
+    raw_array_data {
+        private Float convert(String s) {
+            if (s == null || "".equals(s) || "null".equals(s) ) {
+                return null;
+            } else {
+                return Float.parseFloat(s);                
+            }
+        }
+
+        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
+            String normx = NORMX.getColumnValue(variant, probeInfo, sampleId);
+            String normy = NORMY.getColumnValue(variant, probeInfo, sampleId);
+            String baf = BAF.getColumnValue(variant, probeInfo, sampleId);
+            String lrr = LRR.getColumnValue(variant, probeInfo, sampleId);
+
+            RawArrayData d = new RawArrayData(convert(normx),
+                                              convert(normy),
+                                              convert(baf),
+                                              convert(lrr)
+                                              );
+            return String.valueOf(d.encode());
+        }
+    },
+
     probe_id { // Required
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
+        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
             return String.valueOf(probeInfo.probeId);
         }
     },
 
     GT_encoded {
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
+        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
             Genotype g = variant.getGenotype(0);
             RawArrayTsvCreator.GT_encoding gt = RawArrayTsvCreator.GT_encoding.MISSING;
             if (g.isHomRef() || g.isHomVar()) {
@@ -53,27 +95,27 @@ public enum RawArrayFieldEnum {
     },
 
     NORMX {
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
+        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
             return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("NORMX"));
         }
     },
     NORMY {
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
+        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
             return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("NORMY"));
         }
     },
     BAF {
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
+        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
             return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("BAF"));
         }
     },
     LRR {
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
+        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
             return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("LRR"));
         }
     };
 
-    public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo) {
+    public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
         throw new IllegalArgumentException("Not implemented");
     }
 }

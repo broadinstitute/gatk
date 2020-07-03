@@ -69,7 +69,7 @@ public final class RawArrayTsvCreator {
         } else {
             for (final RawArrayFieldEnum fieldEnum : RawArrayFieldEnum.values()) {
                 if (!fieldEnum.equals(RawArrayFieldEnum.sample_id)) {
-                    row.add(fieldEnum.getColumnValue(variant, probeInfo));
+                    row.add(fieldEnum.getColumnValue(variant, probeInfo, sampleId));
                 }
             }
         }
