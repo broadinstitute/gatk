@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.variantdb.ChromosomeEnum;
+import org.broadinstitute.hellbender.tools.variantdb.ExtractCohortBQ;
 import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestConstants;
 import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestUtils;
 import org.broadinstitute.hellbender.tools.variantdb.ingest.MetadataTsvCreator;
@@ -55,9 +56,14 @@ public final class CreateArrayIngestFiles extends VariantWalker {
     @Argument(fullName = "probe-info",
             shortName = "PI",
             doc = "Fully qualified table name for the probe info table",
-            optional = false)
+            optional = true)
     public String probeFQTablename;
 
+    @Argument(
+        fullName = "probe-info-csv",
+        doc = "Filepath to CSV export of probe-info table",
+        optional = true)
+    private String probeCsvExportFile = null;
 
     @Argument(
             fullName = "ref-version",
@@ -88,15 +94,22 @@ public final class CreateArrayIngestFiles extends VariantWalker {
         metadataTsvCreator = new ArrayMetadataTsvCreator();
         metadataTsvCreator.createRow(sampleName, sampleId, tableNumberPrefix);
 
-        TableReference probeInfoTable = new TableReference(probeFQTablename, ProbeInfoSchema.PROBE_INFO_FIELDS);
-        String q = "SELECT " + StringUtils.join(ProbeInfoSchema.PROBE_INFO_FOR_INGEST_FIELDS,",") + " FROM " + probeInfoTable.getFQTableName();
-        TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), probeInfoTable.tableProject, probeInfoTable.tableDataset, q);
+        Map<String, ProbeInfo> probeNameMap;
+        if (probeCsvExportFile == null) {
+            probeNameMap = ExtractCohortBQ.getProbeNameMap(probeFQTablename, false);
+        } else {
+            probeNameMap = ProbeInfo.getProbeNameMap(probeCsvExportFile);
+        }
 
-        Map<String, ProbeInfo> probeData = ProbeInfo.createProbeDataForIngest(new QueryAPIRowReader(tr));
+        // TableReference probeInfoTable = new TableReference(probeFQTablename, ProbeInfoSchema.PROBE_INFO_FIELDS);
+        // String q = "SELECT " + StringUtils.join(ProbeInfoSchema.PROBE_INFO_FOR_INGEST_FIELDS,",") + " FROM " + probeInfoTable.getFQTableName();
+        // TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), probeInfoTable.tableProject, probeInfoTable.tableDataset, q);
+
+        // Map<String, ProbeInfo> probeData = ProbeInfo.createProbeDataForIngest(new QueryAPIRowReader(tr));
         // Set reference version
         ChromosomeEnum.setRefVersion(refVersion);
 
-        tsvCreator = new RawArrayTsvCreator(sampleName, sampleId, tableNumberPrefix, probeData);
+        tsvCreator = new RawArrayTsvCreator(sampleName, sampleId, tableNumberPrefix, probeNameMap);
     }
 
 
