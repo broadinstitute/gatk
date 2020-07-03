@@ -5,6 +5,7 @@ import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.variantdb.ingest.arrays.ProbeInfo;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollectionCodec;
@@ -63,7 +64,7 @@ public class ExtractCohortBQ {
 
         // Get the query string:
         final String sampleListQueryString = 
-            "SELECT probeId, Name, Chr, Position, Ref, AlleleA, AlleleB" + 
+            "SELECT ProbeId, Name, GenomeBuild, Chr, Position, Ref, AlleleA, AlleleB, build37Flag" + 
             " FROM `" + fqProbeTableName + "`";
         
 
@@ -74,17 +75,26 @@ public class ExtractCohortBQ {
         for (final FieldValueList row : result.iterateAll()) {
             ProbeInfo p = new ProbeInfo(row.get(0).getLongValue(),
                                         getOptionalString(row.get(1)), // name
-                                        row.get(2).getStringValue(), // contig
-                                        row.get(3).getLongValue(),   // position
-                                        getOptionalString(row.get(4)), // ref
-                                        getOptionalString(row.get(5)), // alleleA
-                                        getOptionalString(row.get(6)));// alleleB
-
+                                        getOptionalString(row.get(2)), // refBuild
+                                        row.get(3).getStringValue(), // contig
+                                        row.get(4).getLongValue(),   // position
+                                        getOptionalString(row.get(5)), // ref
+                                        getOptionalString(row.get(6)), // alleleA
+                                        getOptionalString(row.get(7)),// alleleB
+                                        getOptionalString(row.get(8))); // build37Flag
             results.put(p.probeId, p);
             
         }
         System.out.println("Done probe retrieval...");
 
+        return results;
+    }
+
+    public static Map<String, ProbeInfo> getProbeNameMap(String fqProbeTableName, boolean printDebugInformation) {
+        Map<String, ProbeInfo> results = new HashMap<>();
+        for (final ProbeInfo pi : getProbeIdMap(fqProbeTableName, printDebugInformation).values()) {
+            results.put(pi.name, pi);
+        }
         return results;
     }
 

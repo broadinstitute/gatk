@@ -10,6 +10,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
+import org.broadinstitute.hellbender.tools.variantdb.ingest.arrays.ProbeInfo;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
@@ -73,7 +74,7 @@ public class ArrayExtractCohort extends GATKTool {
         fullName = "probe-info-csv",
         doc = "Filepath to CSV export of probe-info table",
         optional = true
-)
+    )
     private String probeCsvExportFile = null;
 
     @Argument(
@@ -132,35 +133,10 @@ public class ArrayExtractCohort extends GATKTool {
         VCFHeader header = CommonCode.generateRawArrayVcfHeader(new HashSet<>(sampleNames), reference.getSequenceDictionary());
 
         Map<Long, ProbeInfo> probeIdMap;
-
         if (probeCsvExportFile == null) {
             probeIdMap = ExtractCohortBQ.getProbeIdMap(probeTableName, printDebugInformation);
         } else {
-            probeIdMap = new HashMap<>();
-            String line = "";
-            try (BufferedReader br = new BufferedReader(new FileReader(probeCsvExportFile))) {
-                /// skip the header
-                br.readLine();
-
-                while ((line = br.readLine()) != null) {
-
-                    // use comma as separator
-                    String[] fields = line.split(",");
-                    //ProbeId,Name,GenomeBuild,Chr,Position,Ref,AlleleA,AlleleB,build37Flag
-                    //6,ilmnseq_rs9651229_F2BT,37,1,567667,,,,PROBE_SEQUENCE_MISMATCH
-                    ProbeInfo p = new ProbeInfo(Long.parseLong(fields[0]),
-                                                fields[1], // name
-                                                fields[3], // contig
-                                                Long.parseLong(fields[4]),   // position
-                                                fields[5], // ref
-                                                fields[6], // alleleA
-                                                fields[7]);// alleleB
-
-                    probeIdMap.put(p.probeId, p);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            probeIdMap = ProbeInfo.getProbeIdMap(probeCsvExportFile);
         }
 
 
