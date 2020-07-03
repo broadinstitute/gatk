@@ -294,8 +294,17 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         }
     }
 
+    /**
+     * If a variant context is for a deletion that spans the specified location, then
+     */
     @VisibleForTesting
     static List<VariantContext> replaceSpanDels(final List<VariantContext> eventsAtThisLoc, final Allele refAllele, final int loc) {
+//        final List<VariantContext> result = new ArrayList<>();
+//        for (final VariantContext vc : eventsAtThisLoc){
+//            result.add(replaceWithSpanDelVC(vc, refAllele, loc));
+//        }
+//
+//        return result;
         return eventsAtThisLoc.stream().map(vc -> replaceWithSpanDelVC(vc, refAllele, loc)).collect(Collectors.toList());
     }
 
