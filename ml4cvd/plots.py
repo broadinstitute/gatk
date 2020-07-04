@@ -15,7 +15,7 @@ from datetime import datetime
 from multiprocessing import Pool
 from itertools import islice, product
 from collections import Counter, OrderedDict, defaultdict
-from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
+from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional, Union, Callable
 
 import numpy as np
 import pandas as pd
@@ -24,7 +24,6 @@ from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
-from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import NullFormatter
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator
@@ -256,8 +255,10 @@ def plot_rocs(predictions: Dict[str, np.ndarray], truth: np.ndarray, labels: Dic
     logging.info(f"Saved ROC curve at: {figure_path}")
 
 
-def plot_prediction_calibrations(predictions: Dict[str, np.ndarray], truth: np.ndarray, labels: Dict[str, int],
-                                 title: str, prefix: str = './figures/', n_bins: int = 10):
+def plot_prediction_calibrations(
+    predictions: Dict[str, np.ndarray], truth: np.ndarray, labels: Dict[str, int],
+    title: str, prefix: str = './figures/', n_bins: int = 10,
+):
     """Plot calibration performance and compute Brier Score.
 
     Typically this function is used to compare several models predictions across multiple labels.
@@ -303,8 +304,10 @@ def plot_prediction_calibrations(predictions: Dict[str, np.ndarray], truth: np.n
     plt.clf()
 
 
-def plot_prediction_calibration(prediction: np.ndarray, truth: np.ndarray, labels: Dict[str, int],
-                                title: str, prefix: str = './figures/', n_bins: int = 10):
+def plot_prediction_calibration(
+    prediction: np.ndarray, truth: np.ndarray, labels: Dict[str, int],
+    title: str, prefix: str = './figures/', n_bins: int = 10,
+):
     """Plot calibration performance and compute Brier Score.
 
     :param prediction: Array of probabilistic predictions with shape (num_samples, num_classes)
@@ -509,8 +512,10 @@ def subplot_comparison_scatters(
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def plot_survivorship(events: np.ndarray, days_follow_up: np.ndarray, predictions: np.ndarray,
-                      title: str, prefix: str = './figures/', days_window: int = 1825):
+def plot_survivorship(
+    events: np.ndarray, days_follow_up: np.ndarray, predictions: np.ndarray,
+    title: str, prefix: str = './figures/', days_window: int = 1825,
+):
     """Plot Kaplan-Meier survivorship curves and stratify by median model prediction.
     All input arrays have the same shape: (num_samples,)
 
@@ -569,8 +574,10 @@ def plot_survivorship(events: np.ndarray, days_follow_up: np.ndarray, prediction
     return {}
 
 
-def plot_survival(prediction: np.ndarray, truth: np.ndarray, title: str, days_window: int,
-                  prefix: str = './figures/') -> Dict[str, float]:
+def plot_survival(
+    prediction: np.ndarray, truth: np.ndarray, title: str, days_window: int,
+    prefix: str = './figures/',
+) -> Dict[str, float]:
     """Plot Kaplan-Meier survivorship and predicted proportion surviving, calculate and return C-Index
 
     :param prediction: Array with model predictions of an event at each time step, with shape (num_samples, intervals*2).
@@ -603,7 +610,8 @@ def plot_survival(prediction: np.ndarray, truth: np.ndarray, title: str, days_wi
     plt.ylabel('Proportion Surviving')
     plt.title(
         f'{title}\nEnrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]:.0f}, {100 * (cumulative_censored[-1] / truth.shape[0]):2.1f}%, '
-        f'Events: {cumulative_sick[-1]:.0f}, {100 * (cumulative_sick[-1] / truth.shape[0]):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
+        f'Events: {cumulative_sick[-1]:.0f}, {100 * (cumulative_sick[-1] / truth.shape[0]):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.',
+    )
     plt.legend(loc="upper right")
 
     figure_path = os.path.join(prefix, 'proportional_hazards_' + title + IMAGE_EXT)
@@ -922,8 +930,8 @@ def plot_ecg(data, label, prefix='./figures/'):
     logging.info(f"Saved ECG plot at: {figure_path}")
 
 
-def _partners_top_panel(data, ax0):
-    # top information panel
+def _plot_partners_text(data: Dict[str, Union[np.ndarray, str, Dict]], fig: plt.Figure, w: float, h: float) -> None:
+    # top text
     dt = datetime.strptime(data['datetime'], PARTNERS_DATETIME_FORMAT)
     dob = data['dob']
     if dob != '':
@@ -932,319 +940,282 @@ def _partners_top_panel(data, ax0):
     age = -1
     if not np.isnan(data['age']):
         age = int(data['age'])
-
-    ax0.axis('off')
-    ax0.set_xlim(0, 1)
-    ax0.set_ylim(0, 1)
-
-    ax0.text(0.0, 0.9, f"{data['lastname']}, {data['firstname']}", weight='bold')
-    ax0.text(0.23, 0.9, f"ID:{data['patientid']}", weight='bold')
-    ax0.text(0.385, 0.9, f"{dt:%d-%b-%Y %H:%M:%S}".upper(), weight='bold')
-    ax0.text(0.55, 0.9, f"{data['sitename']}", weight='bold')
-
-    ax0.text(0.0, 0.75, f"{dob} ({age} yr)", weight='bold')  # TODO age units
     sex = {value: key for key, value in data['sex'].items()}
-    ax0.text(0.0, 0.67, f"{sex[1]}".title(), weight='bold')
-    ax0.text(0.0, 0.51, f"Room: ", weight='bold')  # TODO room?
-    ax0.text(0.0, 0.43, f"Loc: {data['location']}", weight='bold')
 
-    ax0.text(0.15, 0.75, f"Vent. rate", weight='bold')
-    ax0.text(0.15, 0.67, f"PR interval", weight='bold')
-    ax0.text(0.15, 0.59, f"QRS duration", weight='bold')
-    ax0.text(0.15, 0.51, f"QT/QTc", weight='bold')
-    ax0.text(0.15, 0.43, f"P-R-T axes", weight='bold')
+    fig.text(0.17 / w, 8.04 / h, f"{data['lastname']}, {data['firstname']}", weight='bold')
+    fig.text(3.05 / w, 8.04 / h, f"ID:{data['patientid']}", weight='bold')
+    fig.text(4.56 / w, 8.04 / h, f"{dt:%d-%b-%Y %H:%M:%S}".upper(), weight='bold')
+    fig.text(6.05 / w, 8.04 / h, f"{data['sitename']}", weight='bold')
 
-    ax0.text(0.315, 0.75, f"{int(data['rate_md'])}", weight='bold', ha='right')
-    ax0.text(0.315, 0.67, f"{int(data['pr_md'])}", weight='bold', ha='right')
-    ax0.text(0.315, 0.59, f"{int(data['qrs_md'])}", weight='bold', ha='right')
-    ax0.text(0.315, 0.51, f"{int(data['qt_md'])}/{int(data['qtc_md'])}", weight='bold', ha='right')
-    ax0.text(0.315, 0.43, f"{int(data['paxis_md'])}   {int(data['raxis_md'])}", weight='bold', ha='right')
+    fig.text(0.17 / w, 7.77 / h, f"{dob} ({age} yr)", weight='bold')  # TODO age units
+    fig.text(0.17 / w, 7.63 / h, f"{sex[1]}".title(), weight='bold')
+    fig.text(0.17 / w, 7.35 / h, f"Room: ", weight='bold')  # TODO room?
+    fig.text(0.17 / w, 7.21 / h, f"Loc: {data['location']}", weight='bold')
 
-    ax0.text(0.35, 0.75, f"BPM", weight='bold', ha='right')
-    ax0.text(0.35, 0.67, f"ms", weight='bold', ha='right')
-    ax0.text(0.35, 0.59, f"ms", weight='bold', ha='right')
-    ax0.text(0.35, 0.51, f"ms", weight='bold', ha='right')
-    ax0.text(0.35, 0.43, f"{int(data['taxis_md'])}", weight='bold', ha='right')
+    fig.text(2.15 / w, 7.77 / h, f"Vent. rate", weight='bold')
+    fig.text(2.15 / w, 7.63 / h, f"PR interval", weight='bold')
+    fig.text(2.15 / w, 7.49 / h, f"QRS duration", weight='bold')
+    fig.text(2.15 / w, 7.35 / h, f"QT/QTc", weight='bold')
+    fig.text(2.15 / w, 7.21 / h, f"P-R-T axes", weight='bold')
 
-    ax0.text(0.4, 0.43, f"{data['read_md_raw']}", wrap=True, weight='bold')
+    fig.text(3.91 / w, 7.77 / h, f"{int(data['rate_md'])}", weight='bold', ha='right')
+    fig.text(3.91 / w, 7.63 / h, f"{int(data['pr_md'])}", weight='bold', ha='right')
+    fig.text(3.91 / w, 7.49 / h, f"{int(data['qrs_md'])}", weight='bold', ha='right')
+    fig.text(3.91 / w, 7.35 / h, f"{int(data['qt_md'])}/{int(data['qtc_md'])}", weight='bold', ha='right')
+    fig.text(3.91 / w, 7.21 / h, f"{int(data['paxis_md'])}   {int(data['raxis_md'])}", weight='bold', ha='right')
+
+    fig.text(4.30 / w, 7.77 / h, f"BPM", weight='bold', ha='right')
+    fig.text(4.30 / w, 7.63 / h, f"ms", weight='bold', ha='right')
+    fig.text(4.30 / w, 7.49 / h, f"ms", weight='bold', ha='right')
+    fig.text(4.30 / w, 7.35 / h, f"ms", weight='bold', ha='right')
+    fig.text(4.30 / w, 7.21 / h, f"{int(data['taxis_md'])}", weight='bold', ha='right')
+
+    fig.text(4.75 / w, 7.21 / h, f"{data['read_md']}", wrap=True, weight='bold')
 
     # TODO tensorize these values from XML
-    ax0.text(0.1, 0.23, f"Technician: {''}", weight='bold')
-    ax0.text(0.1, 0.15, f"Test ind: {''}", weight='bold')
-    ax0.text(0.4, 0, f"Referred by: {''}", weight='bold')
-    ax0.text(0.7, 0, f"Electronically Signed By: {''}", weight='bold')
+    fig.text(1.28 / w, 6.65 / h, f"Technician: {''}", weight='bold')
+    fig.text(1.28 / w, 6.51 / h, f"Test ind: {''}", weight='bold')
+    fig.text(4.75 / w, 6.25 / h, f"Referred by: {''}", weight='bold')
+    fig.text(7.63 / w, 6.25 / h, f"Electronically Signed By: {''}", weight='bold')
 
 
-def _partners_full(data, args):
-    # Set up plot
-    fig = plt.figure(
-        figsize=(13, 10),
-    )
-    gs = GridSpec(
-        ncols=1, nrows=3, figure=fig,
-        height_ratios=[8, 20, 1],
-    )
-    ax0 = fig.add_subplot(gs[0])
-    ax1 = fig.add_subplot(gs[1])
-    ax2 = fig.add_subplot(gs[2])
-    fig.set_size_inches(11, 8.5)
-    plt.rcParams["font.family"] = "Times New Roman"
+def _plot_partners_full(voltage: Dict[str, np.ndarray], ax: plt.Axes) -> None:
+    full_voltage = np.full((12, 2500), np.nan)
+    for i, lead in enumerate(voltage):
+        full_voltage[i] = voltage[lead]
 
-    _partners_top_panel(data, ax0)
+    # convert voltage to millivolts
+    full_voltage /= 1000
 
-    # middle signal panel
-    ecg_signal = data['voltage']
-    all_leads = np.full((12, 2500), np.nan)
-    for i, lead in enumerate(ecg_signal):
-        all_leads[i] = ecg_signal[lead]
+    # calculate space between leads
+    min_y, max_y = ax.get_ylim()
+    y_offset = (max_y - min_y) / len(voltage)
 
-    voltage_scale = 0.4
-    all_leads *= voltage_scale
-    x_lo, x_hi = -50, len(all_leads[0]) + 50
-    y_lo, y_hi = -0.05, 2.55  # match x range to make grid square
-    ax1.set_xlim(x_lo, x_hi)
-    ax1.set_ylim(y_lo, y_hi)
-    offset = (y_hi - y_lo) / len(all_leads)
-    fs = 250  # TODO sampling frequency
-    mm_s = 25
-    mm_mv = 10
-
-    x_tick = 1. / mm_s * fs
-    y_tick = 1. / mm_mv * voltage_scale / 2
-    x_major_ticks = np.arange(x_lo, x_hi, x_tick * 5)
-    x_minor_ticks = np.arange(x_lo, x_hi, x_tick)
-    y_major_ticks = np.arange(y_lo, y_hi, y_tick * 5)
-    y_minor_ticks = np.arange(y_lo, y_hi, y_tick)
-
-    ax1.set_xticks(x_major_ticks)
-    ax1.set_xticks(x_minor_ticks, minor=True)
-    ax1.set_yticks(y_major_ticks)
-    ax1.set_yticks(y_minor_ticks, minor=True)
-
-    ax1.tick_params(which="both", left=False, bottom=False, labelleft=False, labelbottom=False)
-    ax1.grid(b=True, color="r", which="major", lw=0.5)
-    ax1.grid(b=True, color="r", which="minor", lw=0.2)
-
-    # Add text labels to ECG signal
     text_xoffset = 5
     text_yoffset = -0.01
 
-    for i, lead in enumerate(ecg_signal):
-        this_offset = (len(all_leads) - i - 0.75) * offset
-        ax1.plot(all_leads[i] + this_offset, color='black', linewidth=0.375)
-        ax1.text(
+    # plot signal and add labels
+    for i, lead in enumerate(voltage):
+        this_offset = (len(voltage) - i - 0.5) * y_offset
+        ax.plot(full_voltage[i] + this_offset, color='black', linewidth=0.375)
+        ax.text(
             0 + text_xoffset, this_offset + text_yoffset, lead,
-            ha='left', va='top', weight='bold', fontsize=10,
+            ha='left', va='top', weight='bold',
         )
 
-    # lower left information panel
-    ax2.axis('off')
-    ax2.set_xlim(0, 1)
-    ax2.set_ylim(0, 1)
-    ax2.text(0, 0.5, f"{mm_s}mm/s    {mm_mv}mm/mV    {fs}Hz", ha='left', va='center')  # TODO actually pull this data
 
-    plt.tight_layout()
-    plt.subplots_adjust(
-        left=0.02,
-        right=0.98,
-        top=0.98,
-        bottom=0.02,
-        hspace=0.01,
-    )
-
-    title = re.sub(r'[:/. ]', '', f'full_{data["patientid"]}_{data["datetime"]}')
-    plt.savefig(os.path.join(args.output_folder, args.id, f'{title}{PDF_EXT}'))
-    plt.savefig(os.path.join(args.output_folder, args.id, f'{title}{IMAGE_EXT}'))
-    plt.close(fig)
-
-
-def _partners_clinical(data, args):
-
-    # Set up plot
-    fig = plt.figure(
-        figsize=(13, 10),
-    )
-    gs = GridSpec(
-        ncols=1, nrows=3, figure=fig,
-        height_ratios=[8, 20, 1],
-    )
-    ax0 = fig.add_subplot(gs[0])
-    ax1 = fig.add_subplot(gs[1])
-    ax2 = fig.add_subplot(gs[2])
-    fig.set_size_inches(11, 8.5)
-    plt.rcParams["font.family"] = "Times New Roman"
-
-    _partners_top_panel(data, ax0)
-
-    # middle signal panel
-    ecg_signal = data['voltage']
-
-    all_leads = np.full((6, 2500), np.nan)
+def _plot_partners_clinical(voltage: Dict[str, np.ndarray], ax: plt.Axes) -> None:
+    # get voltage in clinical chunks
+    clinical_voltage = np.full((6, 2500), np.nan)
     halfgap = 5
 
-    all_leads[0][0:625 - halfgap] = ecg_signal['I'][0:625 - halfgap]
-    all_leads[0][625 + halfgap:1250 - halfgap] = ecg_signal['aVR'][625 + halfgap:1250 - halfgap]
-    all_leads[0][1250 + halfgap:1875 - halfgap] = ecg_signal['V1'][1250 + halfgap:1875 - halfgap]
-    all_leads[0][1875 + halfgap:2500] = ecg_signal['V4'][1875 + halfgap:2500]
+    clinical_voltage[0][0:625 - halfgap] = voltage['I'][0:625 - halfgap]
+    clinical_voltage[0][625 + halfgap:1250 - halfgap] = voltage['aVR'][625 + halfgap:1250 - halfgap]
+    clinical_voltage[0][1250 + halfgap:1875 - halfgap] = voltage['V1'][1250 + halfgap:1875 - halfgap]
+    clinical_voltage[0][1875 + halfgap:2500] = voltage['V4'][1875 + halfgap:2500]
 
-    all_leads[1][0:625 - halfgap] = ecg_signal['II'][0:625 - halfgap]
-    all_leads[1][625 + halfgap:1250 - halfgap] = ecg_signal['aVL'][625 + halfgap:1250 - halfgap]
-    all_leads[1][1250 + halfgap:1875 - halfgap] = ecg_signal['V2'][1250 + halfgap:1875 - halfgap]
-    all_leads[1][1875 + halfgap:2500] = ecg_signal['V5'][1875 + halfgap:2500]
+    clinical_voltage[1][0:625 - halfgap] = voltage['II'][0:625 - halfgap]
+    clinical_voltage[1][625 + halfgap:1250 - halfgap] = voltage['aVL'][625 + halfgap:1250 - halfgap]
+    clinical_voltage[1][1250 + halfgap:1875 - halfgap] = voltage['V2'][1250 + halfgap:1875 - halfgap]
+    clinical_voltage[1][1875 + halfgap:2500] = voltage['V5'][1875 + halfgap:2500]
 
-    all_leads[2][0:625 - halfgap] = ecg_signal['III'][0:625 - halfgap]
-    all_leads[2][625 + halfgap:1250 - halfgap] = ecg_signal['aVF'][625 + halfgap:1250 - halfgap]
-    all_leads[2][1250 + halfgap:1875 - halfgap] = ecg_signal['V3'][1250 + halfgap:1875 - halfgap]
-    all_leads[2][1875 + halfgap:2500] = ecg_signal['V6'][1875 + halfgap:2500]
+    clinical_voltage[2][0:625 - halfgap] = voltage['III'][0:625 - halfgap]
+    clinical_voltage[2][625 + halfgap:1250 - halfgap] = voltage['aVF'][625 + halfgap:1250 - halfgap]
+    clinical_voltage[2][1250 + halfgap:1875 - halfgap] = voltage['V3'][1250 + halfgap:1875 - halfgap]
+    clinical_voltage[2][1875 + halfgap:2500] = voltage['V6'][1875 + halfgap:2500]
 
-    all_leads[3] = ecg_signal['V1']
-    all_leads[4] = ecg_signal['II']
-    all_leads[5] = ecg_signal['V5']
+    clinical_voltage[3] = voltage['V1']
+    clinical_voltage[4] = voltage['II']
+    clinical_voltage[5] = voltage['V5']
 
-    voltage_scale = 0.4
-    all_leads *= voltage_scale
-    # max_range = max([np.nanpercentile(row, 99) - np.nanpercentile(row, 1) for row in all_leads]) * 2
-    x_lo, x_hi = -50, len(all_leads[0]) + 50
-    y_lo, y_hi = -0.05, 2.55 # match x range to make grid square
-    ax1.set_xlim(x_lo, x_hi)
-    ax1.set_ylim(y_lo, y_hi)
-    offset = (y_hi - y_lo) / len(all_leads)
-    fs = 250 # TODO sampling frequency
-    mm_s = 25
-    mm_mv = 10
+    voltage = clinical_voltage
 
-    x_tick = 1. / mm_s * fs
-    y_tick = 1. / mm_mv * voltage_scale / 2
-    x_major_ticks = np.arange(x_lo, x_hi, x_tick * 5)
-    x_minor_ticks = np.arange(x_lo, x_hi, x_tick)
-    y_major_ticks = np.arange(y_lo, y_hi, y_tick * 5)
-    y_minor_ticks = np.arange(y_lo, y_hi, y_tick)
+    # convert voltage to millivolts
+    voltage /= 1000
 
-    ax1.set_xticks(x_major_ticks)
-    ax1.set_xticks(x_minor_ticks, minor=True)
-    ax1.set_yticks(y_major_ticks)
-    ax1.set_yticks(y_minor_ticks, minor=True)
+    # calculate space between leads
+    min_y, max_y = ax.get_ylim()
+    y_offset = (max_y - min_y) / len(voltage)
 
-    ax1.tick_params(which="both", left=False, bottom=False, labelleft=False, labelbottom=False)
-    ax1.grid(b=True, color="r", which="major", lw=0.5)
-    ax1.grid(b=True, color="r", which="minor", lw=0.2)
-
-    # Add text labels to ECG signal
     text_xoffset = 5
     text_yoffset = -0.1
 
-    for i in range(len(all_leads)):
-        this_offset = (len(all_leads) - i - 0.5) * offset
-        ax1.plot(all_leads[i] + this_offset, color='black', linewidth = 0.375)
+    # plot signal and add labels
+    for i in range(len(voltage)):
+        this_offset = (len(voltage) - i - 0.5) * y_offset
+        ax.plot(voltage[i] + this_offset, color='black', linewidth=0.375)
         if i == 0:
-            ax1.text(
+            ax.text(
                 0 + text_xoffset, this_offset + text_yoffset, 'I',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
-            ax1.text(
+            ax.text(
                 625 + text_xoffset, this_offset + text_yoffset, 'aVR',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
-            ax1.text(
+            ax.text(
                 1250 + text_xoffset, this_offset + text_yoffset, 'V1',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
-            ax1.text(
+            ax.text(
                 1875 + text_xoffset, this_offset + text_yoffset, 'V4',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
         elif i == 1:
-            ax1.text(
+            ax.text(
                 0 + text_xoffset, this_offset + text_yoffset, 'II',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
-            ax1.text(
+            ax.text(
                 625 + text_xoffset, this_offset + text_yoffset, 'aVL',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
-            ax1.text(
+            ax.text(
                 1250 + text_xoffset, this_offset + text_yoffset, 'V2',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
-            ax1.text(
+            ax.text(
                 1875 + text_xoffset, this_offset + text_yoffset, 'V5',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
         elif i == 2:
-            ax1.text(
+            ax.text(
                 0 + text_xoffset, this_offset + text_yoffset, 'III',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
-            ax1.text(
+            ax.text(
                 625 + text_xoffset, this_offset + text_yoffset, 'aVF',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
-            ax1.text(
+            ax.text(
                 1250 + text_xoffset, this_offset + text_yoffset, 'V3',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
-            ax1.text(
+            ax.text(
                 1875 + text_xoffset, this_offset + text_yoffset, 'V6',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
         elif i == 3:
-            ax1.text(
+            ax.text(
                 0 + text_xoffset, this_offset + text_yoffset, 'V1',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
         elif i == 4:
-            ax1.text(
+            ax.text(
                 0 + text_xoffset, this_offset + text_yoffset, 'II',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
         elif i == 5:
-            ax1.text(
+            ax.text(
                 0 + text_xoffset, this_offset + text_yoffset, 'V5',
-                ha='left', va='top', weight='bold', fontsize=10,
+                ha='left', va='top', weight='bold',
             )
 
-    # lower left information panel
-    ax2.axis('off')
-    ax2.set_xlim(0, 1)
-    ax2.set_ylim(0, 1)
-    ax2.text(0, 0.5, f"{mm_s}mm/s    {mm_mv}mm/mV    {fs}Hz", ha='left', va='center') # TODO actually pull this data
 
-    plt.tight_layout()
-    plt.subplots_adjust(
-        left=0.02,
-        right=0.98,
-        top=0.98,
-        bottom=0.02,
-        hspace=0.01,
+def _plot_partners_figure(
+        data: Dict[str, Union[np.ndarray, str, Dict]],
+        plot_signal_function: Callable[[Dict[str, np.ndarray], plt.Axes], None],
+        plot_mode: str,
+        output_folder: str,
+        run_id: str,
+) -> None:
+    plt.rcParams["font.family"] = "Times New Roman"
+    plt.rcParams["font.size"] = 9.5
+
+    w, h = 11, 8.5
+    fig = plt.figure(
+        figsize=(w, h),
+        dpi=100,
     )
 
-    title = re.sub(r'[:/. ]', '', f'clinical_{data["patientid"]}_{data["datetime"]}')
-    plt.savefig(os.path.join(args.output_folder, args.id, f'{title}{PDF_EXT}'))
-    plt.savefig(os.path.join(args.output_folder, args.id, f'{title}{IMAGE_EXT}'))
+    # patient info and ecg text
+    _plot_partners_text(data, fig, w, h)
+
+    # define plot area in inches
+    left = 0.17
+    bottom = h - 7.85
+    width = w - 2 * left
+    height = h - bottom - 2.3
+
+    # ecg plot area
+    ax = fig.add_axes([left/w, bottom/h, width/w, height/h])
+
+    # voltage is in microvolts
+    # the entire plot area is 5.55 inches tall, 10.66 inches wide (141 mm, 271 mm)
+    # the resolution on the y-axis is 10 mm/mV
+    # the resolution on the x-axis is 25 mm/s
+    inch2mm = lambda inches: inches * 25.4
+
+    # 1. set y-limit to max 14.1 mV
+    y_res = 10 # mm/mV
+    max_y = inch2mm(height) / y_res
+    min_y = 0
+    ax.set_ylim(min_y, max_y)
+
+    # 2. set x-limit to max 10.8 s, center 10 s leads
+    sampling_frequency = 250 # Hz
+    x_res = 25 # mm/s
+    max_x = inch2mm(width) / x_res
+    x_buffer = (max_x - 10) / 2
+    max_x -= x_buffer
+    min_x = -x_buffer
+    max_x *= sampling_frequency
+    min_x *= sampling_frequency
+    ax.set_xlim(min_x, max_x)
+
+    # 3. set ticks for every 0.1 mV or every 1/25 s
+    y_tick = 1 / y_res
+    x_tick = 1 / x_res * sampling_frequency
+    x_major_ticks = np.arange(min_x, max_x, x_tick * 5)
+    x_minor_ticks = np.arange(min_x, max_x, x_tick)
+    y_major_ticks = np.arange(min_y, max_y, y_tick * 5)
+    y_minor_ticks = np.arange(min_y, max_y, y_tick)
+
+    ax.set_xticks(x_major_ticks)
+    ax.set_xticks(x_minor_ticks, minor=True)
+    ax.set_yticks(y_major_ticks)
+    ax.set_yticks(y_minor_ticks, minor=True)
+
+    ax.tick_params(which="both", left=False, bottom=False, labelleft=False, labelbottom=False)
+    ax.grid(b=True, color="r", which="major", lw=0.5)
+    ax.grid(b=True, color="r", which="minor", lw=0.2)
+
+    # signal plot
+    voltage = data['2500_raw']
+    plot_signal_function(voltage, ax)
+
+    # bottom text
+    fig.text(0.17 / w, 0.46 / h, f"{x_res}mm/s    {y_res}mm/mV    {sampling_frequency}Hz", ha='left', va='center', weight='bold')
+
+    # save both pdf and png
+    title = re.sub(r'[:/. ]', '', f'{plot_mode}_{data["patientid"]}_{data["datetime"]}')
+    plt.savefig(os.path.join(output_folder, run_id, f'{title}{PDF_EXT}'))
+    plt.savefig(os.path.join(output_folder, run_id, f'{title}{IMAGE_EXT}'))
     plt.close(fig)
 
 
 def plot_partners_ecgs(args):
     plot_tensors = [
-        'partners_ecg_patientid',   'partners_ecg_firstname', 'partners_ecg_lastname',
-        'partners_ecg_sex',         'partners_ecg_dob',       'partners_ecg_age',
-        'partners_ecg_datetime',    'partners_ecg_sitename',  'partners_ecg_location',
-        'partners_ecg_read_md_raw', 'partners_ecg_taxis_md',  'partners_ecg_rate_md',
-        'partners_ecg_pr_md',       'partners_ecg_qrs_md',    'partners_ecg_qt_md',
-        'partners_ecg_paxis_md',    'partners_ecg_raxis_md',  'partners_ecg_qtc_md',
+        'partners_ecg_patientid', 'partners_ecg_firstname', 'partners_ecg_lastname',
+        'partners_ecg_sex',       'partners_ecg_dob',       'partners_ecg_age',
+        'partners_ecg_datetime',  'partners_ecg_sitename',  'partners_ecg_location',
+        'partners_ecg_read_md',   'partners_ecg_taxis_md',  'partners_ecg_rate_md',
+        'partners_ecg_pr_md',     'partners_ecg_qrs_md',    'partners_ecg_qt_md',
+        'partners_ecg_paxis_md',  'partners_ecg_raxis_md',  'partners_ecg_qtc_md',
     ]
-    voltage_tensor = 'partners_ecg_voltage'
+    voltage_tensor = 'partners_ecg_2500_raw'
     from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS
     tensor_maps_in = [TMAPS[it] for it in plot_tensors + [voltage_tensor]]
     tensor_paths = [os.path.join(args.tensors, tp) for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
 
     if 'clinical' == args.plot_mode:
-        plot = _partners_clinical
+        plot_signal_function = _plot_partners_clinical
     elif 'full' == args.plot_mode:
-        plot = _partners_full
+        plot_signal_function = _plot_partners_full
     else:
         raise ValueError(f'Unsupported plot mode: {args.plot_mode}')
 
+    # TODO use TensorGenerator here
     # Get tensors for all hd5
     for tp in tensor_paths:
         try:
@@ -1276,7 +1247,13 @@ def plot_partners_ecgs(args):
 
                 # plot each ecg
                 for i in tdict:
-                    plot(tdict[i], args)
+                    _plot_partners_figure(
+                        data=tdict[i],
+                        plot_signal_function=plot_signal_function,
+                        plot_mode=args.plot_mode,
+                        output_folder=args.output_folder,
+                        run_id=args.id,
+                    )
         except:
             logging.exception(f"Broken tensor at: {tp}")
 
@@ -1996,7 +1973,7 @@ def _plot_3d_tensor_slices_as_rgb(tensor, figure_path, cols=3, rows=10):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     plt.clf()
-    
+
 
 def _hash_string_to_color(string):
     """Hash a string to color (using hashlib and not the built-in hash for consistency between runs)"""
