@@ -197,7 +197,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 } else {
 //                    readAlleleLikelihoods.retainEvidence(r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
 
-                    readAlleleLikelihoods.retainEvidence(r -> r.getUnclippedStart() <= r.getUnclippedEnd() && new SimpleInterval(r.getContig(), r.getSoftStart(), r.getEnd()).overlaps(variantCallingRelevantOverlap));
+                    readAlleleLikelihoods.retainEvidence(r -> r.getUnclippedStart() <= r.getUnclippedEnd() && new SimpleInterval(r.getContig(), r.getSoftStart(), r.getSoftEnd()).overlaps(variantCallingRelevantOverlap));
                 }
             } else {
                 readAlleleLikelihoods.retainEvidence(r -> r.overlaps(variantCallingRelevantOverlap));
