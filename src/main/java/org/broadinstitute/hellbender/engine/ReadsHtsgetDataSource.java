@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 /**
  * Manages traversals and queries over sources of reads which are accessible via {@link GATKPath}s pointing to a file
  * behind an htsget server
- * (for now, SAM/BAM/CRAM files only).
+ * (for now, BAM/CRAM files only).
  *
  * Two basic operations are available:
  *
@@ -37,6 +37,8 @@ import java.util.stream.Collectors;
  */
 public final class ReadsHtsgetDataSource implements ReadsDataSource {
     private static final Logger logger = LogManager.getLogger(ReadsHtsgetDataSource.class);
+
+    private static final int numThreads = 8;
 
     /**
      * The sources provided to this data source
@@ -127,48 +129,68 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
         Utils.nonNull(sources);
         Utils.nonEmpty(sources, "ReadsHtsgetDataSource cannot be created from empty source list");
 
+        final String nonHtsgetSources = sources.stream()
+            .filter(source -> !source.getScheme().equals(GATKPath.HTSGET_SCHEME))
+            .map(GATKPath::toString)
+            .collect(Collectors.joining(", "));
+
+        if (!nonHtsgetSources.isEmpty()) {
+            throw new UserException("This source can only be instantiated from htsget paths: " + nonHtsgetSources);
+        }
+
         this.readerFactory =
             customSamReaderFactory == null
                 ? SamReaderFactory.makeDefault().validationStringency(ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY)
                 : customSamReaderFactory;
 
         this.sources = sources;
-        this.headers = new HashMap<>(sources.size());
+        this.headers = new LinkedHashMap<>(sources.size());
         this.iterators = new ArrayList<>();
 
-        this.executorService = Executors.newFixedThreadPool(8, new ThreadFactoryBuilder()
-            .setNameFormat("reads-htsget-data-source-thread-%d")
+        this.executorService = Executors.newFixedThreadPool(ReadsHtsgetDataSource.numThreads, new ThreadFactoryBuilder()
+            .setNameFormat("htsget-reader-thread-%d")
             .setDaemon(true)
             .build());
 
-        final List<Future<AbstractMap.SimpleImmutableEntry<GATKPath, SAMFileHeader>>> futures = new ArrayList<>(sources.size());
+        final List<Future<Map.Entry<GATKPath, SAMFileHeader>>> futures = new ArrayList<>(sources.size());
+
+        logger.info("Downloading headers from htsget.");
+
         for (final GATKPath source : sources) {
             futures.add(this.executorService.submit(() -> {
                 try {
                     // Ensure each source can be obtained from htsget server
                     final HtsgetRequest req = new HtsgetRequest(source).withDataClass(HtsgetClass.header);
                     // Request only the headers and use them to construct SAMFileHeader for each source
-                    final InputStream headerStream = req.getResponse().getDataStream();
-                    return new AbstractMap.SimpleImmutableEntry<>(source, readerFactory.open(SamInputResource.of(headerStream)).getFileHeader());
+                    try (final InputStream headerStream = req.getResponse().getDataStream()) {
+                        final SAMFileHeader header = readerFactory.open(SamInputResource.of(headerStream)).getFileHeader();
+                        return new AbstractMap.SimpleImmutableEntry<>(source, header);
+                    }
                 } catch (final UserException e) {
-                    throw new UserException(source.toString(), e);
+                    throw new UserException("Failed to load header from htsget source " + source.toString(), e);
                 }
             }));
         }
 
         try {
-            for (final Future<AbstractMap.SimpleImmutableEntry<GATKPath, SAMFileHeader>> future : futures) {
-                final AbstractMap.SimpleImmutableEntry<GATKPath, SAMFileHeader> entry = future.get();
+            for (final Future<Map.Entry<GATKPath, SAMFileHeader>> future : futures) {
+                final Map.Entry<GATKPath, SAMFileHeader> entry = future.get();
                 this.headers.put(entry.getKey(), entry.getValue());
             }
         } catch (final ExecutionException | InterruptedException e) {
             throw new UserException("Interrupted while initializing iterator", e);
         }
 
+        logger.info("Finished loading headers from htsget.");
+
         if (sources.size() > 1) {
             this.header = createHeaderMerger(this.headers.values()).getMergedHeader();
         } else {
             this.header = this.headers.values().iterator().next();
+        }
+
+        if (this.header.getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
+            logger.warn("Files not in coordinate sorted order");
         }
     }
 
@@ -234,7 +256,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
 
     /**
      * @return An iterator over just the unmapped reads with no assigned position. This operation is not affected
-     *         by prior calls to {@link #setTraversalBounds}. The underlying file must be indexed.
+     *         by prior calls to {@link #setTraversalBounds}.
      */
     @Override
     public Iterator<GATKRead> queryUnmapped() {
@@ -242,6 +264,10 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     }
 
     private Iterator<GATKRead> prepareIteratorsForTraversal(final List<SimpleInterval> intervals, final boolean traverseUnmapped) {
+        if (this.executorService.isShutdown()) {
+            throw new UserException("This data source has already been shut down.");
+        }
+
         final Map<SamReader, CloseableIterator<SAMRecord>> mapping = intervals == null
             ? this.getReaders(traverseUnmapped)
             : this.getReadersWithIntervals(intervals, traverseUnmapped);
@@ -253,35 +279,41 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
         if (mapping.size() == 1) {
             samRecordIterator = mapping.values().iterator().next();
         } else {
-            final Set<SAMFileHeader> headers = mapping.keySet().stream().map(SamReader::getFileHeader).collect(Collectors.toSet());
-            samRecordIterator = new MergingSamRecordIterator(this.createHeaderMerger(headers), mapping, true);
+            final Set<SAMFileHeader> headers = mapping.keySet().stream()
+                .map(SamReader::getFileHeader)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+            samRecordIterator = new MergingSamRecordIterator(createHeaderMerger(headers), mapping, true);
         }
         this.iterators.add(samRecordIterator);
         return new SAMRecordToReadIterator(samRecordIterator);
     }
 
-    private Map<SamReader, CloseableIterator<SAMRecord>> getReaders(final boolean traverseUnmapped) {
-        final Map<SamReader, CloseableIterator<SAMRecord>> mapping = new ConcurrentHashMap<>(this.sources.size());
-        final List<Future<?>> futures = new ArrayList<>(this.sources.size());
-        this.sources.parallelStream()
-            .forEach(source -> futures.add(this.executorService.submit(() -> {
-                final HtsgetRequest req = new HtsgetRequest(source);
-                if (traverseUnmapped) req.setInterval(HtsgetRequest.UNMAPPED_UNPLACED_INTERVAL);
-                final SamReader reader = this.readerFactory.open(SamInputResource.of(req.getResponse().getDataStream()));
-                mapping.put(reader, this.wrapIteratorWithClose(reader.iterator(), reader));
-            })));
+    private Map<SamReader, CloseableIterator<SAMRecord>> getReaders(final boolean onlyUnplacedUnmapped) {
+        final Map<SamReader, CloseableIterator<SAMRecord>> mapping = new LinkedHashMap<>(this.sources.size());
+        final List<Future<Map.Entry<SamReader, CloseableIterator<SAMRecord>>>> futures = new ArrayList<>(this.sources.size());
+        this.sources.forEach(source -> futures.add(this.executorService.submit(() -> {
+            final HtsgetRequest req = new HtsgetRequest(source);
+            if (onlyUnplacedUnmapped) {
+                req.setInterval(HtsgetRequest.UNMAPPED_UNPLACED_INTERVAL);
+            }
+            final SamReader reader = this.readerFactory.open(SamInputResource.of(req.getResponse().getDataStream()));
+            return new AbstractMap.SimpleImmutableEntry<>(reader, wrapIteratorWithClose(reader.iterator(), reader));
+        })));
         try {
-            for (final Future<?> future : futures) future.get();
+            for (final Future<Map.Entry<SamReader, CloseableIterator<SAMRecord>>> future : futures) {
+                final Map.Entry<SamReader, CloseableIterator<SAMRecord>> entry = future.get();
+                mapping.put(entry.getKey(), entry.getValue());
+            }
         } catch (final ExecutionException | InterruptedException e) {
             throw new UserException("Interrupted while initializing iterator", e);
         }
         return mapping;
     }
 
-    private Map<SamReader, CloseableIterator<SAMRecord>> getReadersWithIntervals(final List<SimpleInterval> intervals, final boolean traverseUnmapped) {
-        final Map<SamReader, CloseableIterator<SAMRecord>> mapping = new ConcurrentHashMap<>(this.sources.size() * intervals.size());
+    private Map<SamReader, CloseableIterator<SAMRecord>> getReadersWithIntervals(final List<SimpleInterval> intervals, final boolean includeUnplacedUnmapped) {
+        final Map<SamReader, CloseableIterator<SAMRecord>> mapping = new LinkedHashMap<>(this.sources.size() * intervals.size());
         SimpleInterval prevInterval = null;
-        final List<Future<?>> futures = new ArrayList<>(this.sources.size() * intervals.size());
+        final List<Future<Map.Entry<SamReader, CloseableIterator<SAMRecord>>>> futures = new ArrayList<>(this.sources.size() * intervals.size());
         for (final SimpleInterval interval : intervals) {
             final SimpleInterval finalPrevInterval = prevInterval;
             this.sources.parallelStream()
@@ -291,16 +323,19 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
                 .forEach(source -> futures.add(this.executorService.submit(() -> {
                     final HtsgetRequest req = new HtsgetRequest(source).withInterval(interval);
                     final SamReader reader = this.readerFactory.open(SamInputResource.of(req.getResponse().getDataStream()));
-                    mapping.put(reader, this.getIterWithInterval(reader, interval, finalPrevInterval));
+                    return new AbstractMap.SimpleEntry<>(reader, getIterWithInterval(reader, interval, finalPrevInterval));
                 })));
             prevInterval = interval;
         }
         try {
-            for (final Future<?> future : futures) future.get();
+            for (final Future<Map.Entry<SamReader, CloseableIterator<SAMRecord>>> future : futures) {
+                final Map.Entry<SamReader, CloseableIterator<SAMRecord>> entry = future.get();
+                mapping.put(entry.getKey(), entry.getValue());
+            }
         } catch (final ExecutionException | InterruptedException e) {
             throw new UserException("Interrupted while initializing iterator", e);
         }
-        if (traverseUnmapped) {
+        if (includeUnplacedUnmapped) {
             mapping.putAll(this.getReaders(true));
         }
         return mapping;
@@ -308,7 +343,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
 
     @Override
     public boolean supportsSerialIteration() {
-        return false;
+        return true;
     }
 
     /**
@@ -331,7 +366,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
         return this.header;
     }
 
-    private CloseableIterator<SAMRecord> getIterWithInterval(final SamReader samReader, final SimpleInterval currInterval, final SimpleInterval prevInterval) {
+    private static CloseableIterator<SAMRecord> getIterWithInterval(final SamReader samReader, final SimpleInterval currInterval, final SimpleInterval prevInterval) {
         /*
         To remove reads duplicated across two subsequent intervals, we take any read which is in
         the current interval but NOT in the previous interval, unless the current interval is the first,
@@ -348,7 +383,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
                 throw new UnsupportedOperationException();
             }
         });
-        return this.wrapIteratorWithClose(filteredSamRecords, samReader);
+        return wrapIteratorWithClose(filteredSamRecords, samReader);
     }
 
     /**
@@ -357,7 +392,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
      * @param samReader the SamReader to close once the iterator has been used up
      * @return a wrapped CloseableIterator
      */
-    private CloseableIterator<SAMRecord> wrapIteratorWithClose(final CloseableIterator<SAMRecord> iterator, final SamReader samReader) {
+    private static CloseableIterator<SAMRecord> wrapIteratorWithClose(final CloseableIterator<SAMRecord> iterator, final SamReader samReader) {
         return new DelegatingIterator<SAMRecord>(iterator) {
             @Override
             public void close() {
@@ -371,7 +406,8 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
         };
     }
 
-    private SamFileHeaderMerger createHeaderMerger(final Collection<SAMFileHeader> headers) {
+    // TODO: Push this and following method down into htsjdk
+    private static SamFileHeaderMerger createHeaderMerger(final Collection<SAMFileHeader> headers) {
         return new SamFileHeaderMerger(identifySortOrder(headers), headers, true);
     }
 

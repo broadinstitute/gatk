@@ -3,8 +3,6 @@ package org.broadinstitute.hellbender.tools.htsgetreader;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonRootName;

@@ -37,6 +37,8 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 public class HtsgetRequest {
     public static final SimpleInterval UNMAPPED_UNPLACED_INTERVAL = new SimpleInterval("*");
 
+    private static final ObjectMapper mapper = getObjectMapper();
+
     final private URI endpoint;
     final private String id;
 
@@ -218,7 +220,7 @@ public class HtsgetRequest {
     public URI toURI() {
         this.validateRequest();
         final UriBuilder builder = UriBuilder.fromUri(this.endpoint)
-            .scheme("https")
+            .scheme("http")
             .path(this.id);
 
         if (this.format != null) {
@@ -250,7 +252,7 @@ public class HtsgetRequest {
         return builder.build();
     }
 
-    private ObjectMapper getObjectMapper() {
+    private static ObjectMapper getObjectMapper() {
         final ObjectMapper mapper = new ObjectMapper();
         mapper.enable(DeserializationFeature.UNWRAP_ROOT_VALUE);
         mapper.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
@@ -273,8 +275,6 @@ public class HtsgetRequest {
                 ? StandardCharsets.UTF_8
                 : Charsets.toCharset(encodingHeader.getValue());
             final String jsonBody = EntityUtils.toString(entity, encoding);
-
-            final ObjectMapper mapper = this.getObjectMapper();
 
             if (resp.getStatusLine() == null) {
                 throw new UserException("htsget server response did not contain status line");

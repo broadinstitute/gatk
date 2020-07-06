@@ -8,9 +8,14 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.io.IOUtils;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -52,7 +57,7 @@ public class HtsgetReader extends CommandLineProgram {
     public static final String FIELDS_LONG_NAME = "field";
     public static final String TAGS_LONG_NAME = "tag";
     public static final String NOTAGS_LONG_NAME = "notag";
-    public static final String PARALLEL_DOWNLOAD_LONG_NAME = "parallel";
+    public static final String NUM_THREADS_LONG_NAME = "reader-threads";
     public static final String CHECK_MD5_LONG_NAME = "check-md5";
 
     @Argument(doc = "Output file.",
@@ -105,17 +110,21 @@ public class HtsgetReader extends CommandLineProgram {
             shortName = NOTAGS_LONG_NAME,
             optional = true)
     private List<String> notags;
-    
+
     @Advanced
-    @Argument(doc = "Whether to try to download blocks in parallel",
-        fullName = PARALLEL_DOWNLOAD_LONG_NAME,
-        shortName = PARALLEL_DOWNLOAD_LONG_NAME,
-        optional = true)
-    private final boolean parallelDownload = false;
+    @Argument(fullName = NUM_THREADS_LONG_NAME,
+        shortName = NUM_THREADS_LONG_NAME,
+        doc = "How many simultaneous threads to use when reading data from an htsget response;" +
+            "higher values may improve performance when network latency is an issue.",
+        optional = true,
+        minValue = 1)
+    private int readerThreads = 1;
 
     @Argument(fullName = CHECK_MD5_LONG_NAME, shortName = CHECK_MD5_LONG_NAME, doc = "Boolean determining whether to calculate the md5 digest of the assembled file "
             + "and validate it against the provided md5 hash, if it exists.", optional = true)
     private boolean checkMd5 = false;
+
+    private ExecutorService executorService;
 
     private void checkMd5(final String expectedMd5) {
         try {
@@ -125,6 +134,23 @@ public class HtsgetReader extends CommandLineProgram {
             }
         } catch (final IOException e) {
             throw new UserException("Could not calculate md5 checksum from downloaded file", e);
+        }
+    }
+
+    @Override
+    protected void onStartup() {
+        if (this.readerThreads > 1) {
+            this.executorService = Executors.newFixedThreadPool(this.readerThreads, new ThreadFactoryBuilder()
+                .setNameFormat("htsget-reader-thread-%d")
+                .setDaemon(true)
+                .build());
+        }
+    }
+
+    @Override
+    protected void onShutdown() {
+        if (this.executorService != null) {
+            this.executorService.shutdownNow();
         }
     }
 
@@ -146,22 +172,26 @@ public class HtsgetReader extends CommandLineProgram {
         }
 
         try (final OutputStream outputstream = new FileOutputStream(this.outputFile)) {
-            if (this.parallelDownload) {
-                resp.getBlocks().parallelStream().map(block -> {
-                        final Path tempFile = org.broadinstitute.hellbender.utils.io.IOUtils.createTempPath("htsget-temp", "");
-                        try (final OutputStream ostream = Files.newOutputStream(tempFile)) {
-                            org.apache.commons.io.IOUtils.copy(block.getData(), ostream);
-                            return Files.newInputStream(tempFile);
-                        } catch (final IOException e) {
-                            throw new UserException("Error while downloading htsget block", e);
-                        }
-                    }).forEachOrdered(inputStream -> {
-                        try {
-                            IOUtils.copy(inputStream, outputstream);
-                        } catch (final IOException e) {
-                            throw new UserException("IOException while writing output file", e);
-                        }
-                    });
+            if (this.readerThreads > 1) {
+                final List<Future<InputStream>> futures = new ArrayList<>();
+                resp.getBlocks().forEach(block -> futures.add(this.executorService.submit(() -> {
+                    final Path tempFile = org.broadinstitute.hellbender.utils.io.IOUtils.createTempPath("htsget-temp", "");
+                    try (final OutputStream ostream = Files.newOutputStream(tempFile)) {
+                        org.apache.commons.io.IOUtils.copy(block.getData(), ostream);
+                        return Files.newInputStream(tempFile);
+                    } catch (final IOException e) {
+                        throw new UserException("Error while downloading htsget block", e);
+                    }
+                })));
+                try {
+                    for (final Future<InputStream> future : futures) {
+                        IOUtils.copy(future.get(), outputstream);
+                    }
+                } catch (final IOException e) {
+                    throw new UserException("IOException while writing output file", e);
+                } catch (final InterruptedException | ExecutionException e) {
+                    throw new UserException("Interrupted while writing output file", e);
+                }
             } else {
                 try {
                     IOUtils.copy(resp.getDataStream(), outputstream);
@@ -173,7 +203,9 @@ public class HtsgetReader extends CommandLineProgram {
             throw new UserException("IOException during htsget download", e);
         }
 
-        if (this.checkMd5) this.checkMd5(resp.getMd5());
+        if (this.checkMd5) {
+            this.checkMd5(resp.getMd5());
+        }
 
         return null;
     }

@@ -459,7 +459,11 @@ public abstract class GATKTool extends CommandLineProgram {
             final Map<String, List<GATKPath>> pathsByScheme = readArguments.getReadPathSpecifiers().stream()
                 .collect(Collectors.groupingBy(path -> path.getURI().getScheme()));
 
-            if (pathsByScheme.get(GATKPath.HTSGET_SCHEME) != null) {
+            final List<GATKPath> htsgetPaths = pathsByScheme.get(GATKPath.HTSGET_SCHEME);
+            if (htsgetPaths != null) {
+                if (htsgetPaths.size() != readArguments.getReadPathSpecifiers().size()) {
+                    throw new UserException.UnimplementedFeature("A combination of htsget sources and other sources is currently not supported.");
+                }
                 reads = new ReadsHtsgetDataSource(pathsByScheme.get(GATKPath.HTSGET_SCHEME), factory);
             } else {
                 reads = new ReadsPathDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
