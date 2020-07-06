@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.tools;
 
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -37,7 +38,7 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
                 ImmutableMap.of(
                     HtsgetReader.ID_LONG_NAME, FILE_ID,
                     StandardArgumentDefinitions.INTERVALS_LONG_NAME, "chr1",
-                    HtsgetReader.PARALLEL_DOWNLOAD_LONG_NAME, true),
+                    HtsgetReader.NUM_THREADS_LONG_NAME, "4"),
                 "A1-B000168-3_57_F-1-1_R2.mus.Aligned.out.sorted.bam.refname"
             },
             { // header only
@@ -69,7 +70,7 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
 
     // Test successful combinations of query parameters
     // TODO: re-enable and add tags/notags tests once reference server is stable
-    @Test(dataProvider = "successfulParameters", enabled = false)
+    @Test(dataProvider = "successfulParameters", enabled = true)
     public void testSuccessfulParameters(final Map<String, String> params, final String expectedFileName) throws IOException {
         final File expected = new File(getToolTestDataDir(), expectedFileName);
         final File output = createTempFile("output", ".bam");
@@ -80,7 +81,7 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
         params.forEach(args::add);
         
         runCommandLine(args);
-        IntegrationTestSpec.assertEqualTextFiles(output, expected, null);
+        SamAssertionUtils.assertEqualBamFiles(output, expected, false, ValidationStringency.LENIENT);
     }
 
     @Test(enabled = false)
@@ -91,7 +92,7 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
             .add(HtsgetReader.URL_LONG_NAME, ENDPOINT)
             .add(HtsgetReader.ID_LONG_NAME, LARGE_FILE_ID)
-            .add(HtsgetReader.PARALLEL_DOWNLOAD_LONG_NAME, true)
+            .add(HtsgetReader.NUM_THREADS_LONG_NAME, 4)
             .addOutput(output);
 
         runCommandLine(args);
