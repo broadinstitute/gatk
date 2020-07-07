@@ -11,8 +11,8 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 public final class RequiredReferenceInputArgumentCollection extends ReferenceInputArgumentCollection {
     private static final long serialVersionUID = 1L;
 
-    @WorkflowResource(input=true, output=false, companionResources = {"referenceDictionary", "referenceIndex"})
     @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file", optional = false)
+    @WorkflowResource(input=true, output=false, companionResources = {"referenceDictionary", "referenceIndex"})
     private GATKPath referenceInputPathSpecifier;
 
     @Override

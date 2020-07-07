@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.RuntimeProperties;
+import org.broadinstitute.barclay.argparser.WorkflowResource;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
@@ -26,10 +28,11 @@ import java.util.List;
         usageExample = "hellbender RevertQualityScores -I input.bam -O output.bam",
         programGroup = ReadDataManipulationProgramGroup.class
 )
-
+@RuntimeProperties
 public class RevertBaseQualityScores extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
+    @WorkflowResource(input=false, output=true, companionResources={StandardArgumentDefinitions.OUTPUT_LONG_NAME + "Index"})
     public GATKPath OUTPUT;
 
     private SAMFileGATKReadWriter outputWriter;

@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.RuntimeProperties;
+import org.broadinstitute.barclay.argparser.WorkflowResource;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
@@ -59,6 +61,7 @@ import java.util.List;
         usageExample = "gatk UnmarkDuplicates -I marked_duplicates.bam -O unmarked_duplicates.bam",
         programGroup = ReadDataManipulationProgramGroup.class)
 @DocumentedFeature
+@RuntimeProperties
 public class UnmarkDuplicates extends ReadWalker {
 
     static final String USAGE_SUMMARY = "Clears the 0x400 duplicate SAM flag";
@@ -66,6 +69,7 @@ public class UnmarkDuplicates extends ReadWalker {
             "Clears the 0x400 SAM flag bit on all reads.";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
+    @WorkflowResource(input=false, output=true, companionResources={StandardArgumentDefinitions.OUTPUT_LONG_NAME + "Index"})
     public GATKPath OUTPUT;
 
     private SAMFileGATKReadWriter outputWriter;

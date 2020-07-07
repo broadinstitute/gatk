@@ -88,10 +88,10 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 @RuntimeProperties(memory = "1GB")
 public final class PrintReads extends ReadWalker {
 
-    @WorkflowResource(input=false, output=true, companionResources={StandardArgumentDefinitions.OUTPUT_LONG_NAME + "Index"})
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="Write output to this file")
+    @WorkflowResource(input=false, output=true, companionResources={StandardArgumentDefinitions.OUTPUT_LONG_NAME + "Index"})
     public GATKPath output;
     private SAMFileGATKReadWriter outputWriter;
 

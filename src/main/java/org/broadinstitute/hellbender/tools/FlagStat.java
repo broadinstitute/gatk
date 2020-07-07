@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.RuntimeProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -39,6 +40,7 @@ import java.text.NumberFormat;
 	oneLineSummary = "Accumulate flag statistics given a BAM file",
     programGroup = DiagnosticsAndQCProgramGroup.class
 )
+@RuntimeProperties
 public final class FlagStat extends ReadWalker {
 
     private final FlagStatus sum = new FlagStatus();

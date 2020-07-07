@@ -5,6 +5,8 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.RuntimeProperties;
+import org.broadinstitute.barclay.argparser.WorkflowResource;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -69,6 +71,7 @@ import java.io.File;
         programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
+@RuntimeProperties
 public final class ApplyBQSR extends ReadWalker{
     static final String USAGE_ONE_LINE_SUMMARY = "Apply base quality score recalibration";
     static final String USAGE_SUMMARY = "Apply a linear base quality recalibration model trained with the BaseRecalibrator tool.";
@@ -76,6 +79,7 @@ public final class ApplyBQSR extends ReadWalker{
     private static final Logger logger = LogManager.getLogger(ApplyBQSR.class);
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
+    @WorkflowResource(output=true, input=false, companionResources = {StandardArgumentDefinitions.OUTPUT_LONG_NAME + "Index"})
     public GATKPath OUTPUT;
 
     /**
@@ -84,6 +88,7 @@ public final class ApplyBQSR extends ReadWalker{
      * created on the same input data.
      */
     @Argument(fullName=StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME, shortName=StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME, doc="Input recalibration table for BQSR")
+    @WorkflowResource(output=false, input=true)
     public File BQSR_RECAL_FILE;
 
     /**

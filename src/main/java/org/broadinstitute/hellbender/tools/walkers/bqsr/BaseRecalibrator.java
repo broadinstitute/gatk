@@ -6,6 +6,8 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.RuntimeProperties;
+import org.broadinstitute.barclay.argparser.WorkflowResource;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
@@ -80,6 +82,7 @@ import java.util.List;
         programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
+@RuntimeProperties
 public final class BaseRecalibrator extends ReadWalker {
     public static final String USAGE_ONE_LINE_SUMMARY = "Generates recalibration table for Base Quality Score Recalibration (BQSR)";
     public static final String USAGE_SUMMARY = "First pass of the Base Quality Score Recalibration (BQSR)" +
@@ -104,6 +107,7 @@ public final class BaseRecalibrator extends ReadWalker {
      * reflected those sites skipped by the -XL argument.
      */
     @Argument(fullName = KNOWN_SITES_ARG_FULL_NAME, doc = "One or more databases of known polymorphic sites used to exclude regions around known polymorphisms from analysis.", optional = false)
+    @WorkflowResource(output=false, input=true)
     private List<FeatureInput<Feature>> knownSites;
 
     /**
@@ -113,6 +117,7 @@ public final class BaseRecalibrator extends ReadWalker {
      * and the raw empirical quality score calculated by phred-scaling the mismatch rate.   Use '/dev/stdout' to print to standard out.
      */
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, doc = "The output recalibration table file to create", optional = false)
+    @WorkflowResource(output=true, input=false)
     private File recalTableFile = null;
 
     private BaseRecalibrationEngine recalibrationEngine;

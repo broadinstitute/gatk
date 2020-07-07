@@ -8,6 +8,8 @@ import org.apache.commons.lang.ArrayUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.argparser.RuntimeProperties;
+import org.broadinstitute.barclay.argparser.WorkflowResource;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -51,12 +53,14 @@ import java.util.List;
         oneLineSummary = "Replace bases in reads with reference bases.",
         programGroup = OtherProgramGroup.class
 )
+@RuntimeProperties
 public final class ReadAnonymizer extends ReadWalker {
 
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="Output bam file.")
+    @WorkflowResource(input=false, output=true, companionResources={StandardArgumentDefinitions.OUTPUT_LONG_NAME + "Index"})
     public GATKPath output;
 
     @Argument(

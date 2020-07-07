@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.RuntimeProperties;
+import org.broadinstitute.barclay.argparser.WorkflowResource;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
@@ -49,9 +51,11 @@ import org.broadinstitute.hellbender.utils.read.*;
         oneLineSummary = "Left-aligns indels from reads in a SAM/BAM/CRAM file",
         programGroup = ReadDataManipulationProgramGroup.class
 )
+@RuntimeProperties
 public final class LeftAlignIndels extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,doc="Output BAM")
+    @WorkflowResource(input=false, output=true, companionResources={StandardArgumentDefinitions.OUTPUT_LONG_NAME + "Index"})
     private GATKPath output;
 
     private SAMFileGATKReadWriter outputWriter = null;
