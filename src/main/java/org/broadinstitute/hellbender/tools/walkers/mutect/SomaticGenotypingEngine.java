@@ -108,7 +108,7 @@ public class SomaticGenotypingEngine {
             }
 
             // converting haplotype likelihoods to allele likelihoods
-            final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes);
+            final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, true);
             final AlleleLikelihoods<Fragment, Allele> logLikelihoods = logFragmentLikelihoods.marginalize(alleleMapper);
             final SimpleInterval variantCallingRelevantFragmentOverlap = new SimpleInterval(mergedVC).expandWithinContig(MTAC.informativeReadOverlapMargin, header.getSequenceDictionary());
             logLikelihoods.retainEvidence(variantCallingRelevantFragmentOverlap::overlaps);
