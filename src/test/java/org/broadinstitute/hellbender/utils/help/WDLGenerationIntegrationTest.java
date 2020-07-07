@@ -47,6 +47,7 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
                 "-d", wdlTestTarget.getAbsolutePath(), // directory must exist
                 "-output-file-extension", "wdl",
                 "-build-timestamp", "2016/11/11 11:11:11",
+                "-build-dir", ".",
                 "-absolute-version", "1.1-111",
                 "-verbose"
         };

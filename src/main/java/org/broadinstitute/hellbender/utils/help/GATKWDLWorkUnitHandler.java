@@ -256,6 +256,9 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             final CommandLineProgramProperties clpProperties = currentWorkUnit.getCommandLineProperties();
             currentWorkUnit.setProperty("picardsummary", clpProperties.summary());
         }
+
+        // add the buildDir as a property so it can be accessed by the test inputs JSON file
+        currentWorkUnit.setProperty("buildDir", ((GATKWDLDoclet)getDoclet()).getBuildDir());
     }
 
 }
