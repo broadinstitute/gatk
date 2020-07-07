@@ -54,11 +54,7 @@
             <#else>
     <#noparse>  "</#noparse>${name}.${arg.name?substring(2)}<#noparse>"</#noparse>: <#rt/>
             </#if>
-            <#if arg.testValue == "[]" || arg.testValue == "\"\"" || arg.testValue == "null">
-null<#if !arg?is_last || remainingCount != 0>,</#if>
-            <#else>
 ${arg.testValue}<#if !arg?is_last || remainingCount != 0>,</#if>
-            </#if>
             <#if arg?is_last && remainingCount != 0>
 
             </#if>

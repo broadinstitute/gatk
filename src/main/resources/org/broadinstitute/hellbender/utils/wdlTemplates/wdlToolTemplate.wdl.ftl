@@ -221,11 +221,13 @@ task ${name} {
     File ${name}results = ${name}.${name}_results
     <#else>
         <#list outputs as outputName, outputType>
+            <#if requiredOutputs?seq_contains(outputName)>
     ${outputType} ${name}${outputName?substring(2)} = ${name}.${name}_${outputName?substring(2)}
-            <#if companionResources?? && companionResources[outputName]??>
-                <#list companionResources[outputName] as companion>
+                <#if companionResources?? && companionResources[outputName]??>
+                    <#list companionResources[outputName] as companion>
     ${companion.type} ${name}${companion.name?substring(2)} = ${name}.${name}_${companion.name?substring(2)}
-                </#list>
+                    </#list>
+                </#if>
             </#if>
         </#list>
     </#if>
@@ -237,11 +239,13 @@ task ${name} {
     File ${name}_results = stdout()
     <#else>
         <#list outputs as outputName, outputType>
+            <#if requiredOutputs?seq_contains(outputName)>
     ${outputType} ${name}_${outputName?substring(2)} = <#noparse>"${</#noparse>${outputName?substring(2)}<#noparse>}"</#noparse>
             <#if companionResources?? && companionResources[outputName]??>
                 <#list companionResources[outputName] as companion>
     ${companion.type} ${name}_${companion.name?substring(2)} = <#noparse>"${</#noparse>${companion.name?substring(2)}<#noparse>}"</#noparse>
-                </#list>
+                    </#list>
+                </#if>
             </#if>
         </#list>
     </#if>

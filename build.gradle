@@ -788,10 +788,16 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
 
     // the wdl doclet will populate the test JSON input files with the name of a dummy
     // file in this location, in order to satisfy cromwell's attempts to localize inputs and outputs
-    options.addStringOption("build-dir", System.getenv("TRAVIS_BUILD_DIR") ?: ".")
+    options.addStringOption("build-dir", System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath())
 }
 
 task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
+    // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
+    // WOMTOOL_JAR set to the jar locations
+    if (System.getenv('CROMWELL_JAR') == null || System.getenv('WOMTOOL_JAR') == null) {
+        logger.warn("Running this task requires the CROMWELL_JAR and WOMTOOL_JAR environment variables to be set")
+    }
+
     def execWDLValidation = { validateWDL ->
         println "Executing: $validateWDL"
         try {
@@ -827,7 +833,7 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
             final runWDLCommand = "java -jar $cromwellLocation run --inputs $testInputJSON $wdlFile"
             // the test JSON input file is populated by the WDL gen process with this dummy file name
             // to satisfy cromwell's attempt to de/localize input files
-            def buildDir = System.getenv("TRAVIS_BUILD_DIR") ?: "."
+            def buildDir = System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath()
             final createDummyTestInputFile = "touch $buildDir/dummyWDLTestFile"
             execWDLValidation(createDummyTestInputFile)
             execWDLValidation(runWDLCommand)
