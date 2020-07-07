@@ -172,7 +172,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             
             int mergedAllelesListSizeBeforePossibleTrimming = mergedVC.getAlleles().size();
 
-            final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes);
+            final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, !hcArgs.disableSpanningEventGenotyping);
 
             if( hcArgs.assemblerArgs.debugAssembly && logger != null ) {
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());
@@ -210,6 +210,10 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 genotyperDebugOutStream.println("\n=============================================================================");
                 genotyperDebugOutStream.println("Event at: " + mergedVC + " with " + readAlleleLikelihoods.evidenceCount() + " reads and "+readAlleleLikelihoods.filteredSampleEvidence(0).size()+" disqualified");
                 genotyperDebugOutStream.println("=============================================================================");
+                genotyperDebugOutStream.println("haplotype alleles key:");
+                for (Map.Entry<Allele, List<Haplotype>> allele : alleleMapper.entrySet()) {
+                    genotyperDebugOutStream.println("Allele: "+allele.getKey()+" Haps: "+allele.getValue().stream().map(readLikelihoods::indexOfAllele).map(i -> Integer.toString(i)).collect(Collectors.joining(", ")));
+                }
 //                genotyperDebugOutStream.println("Reads:");
 //                List<GATKRead> readsCombined = new ArrayList<>(readAlleleLikelihoods.sampleEvidence(0));
 //                readsCombined.addAll(readAlleleLikelihoods.filteredSampleEvidence(0));

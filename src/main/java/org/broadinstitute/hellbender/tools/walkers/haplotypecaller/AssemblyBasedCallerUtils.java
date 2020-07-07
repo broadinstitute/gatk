@@ -553,9 +553,10 @@ public final class AssemblyBasedCallerUtils {
      * @param mergedVC The merged variant context for the locus, which includes all active alternate alleles merged to a single reference allele
      * @param loc The active locus being genotyped
      * @param haplotypes Haplotypes for the current active region
+     * @param emitSpanningDels If true will map spanning events to a * allele instead of reference // TODO add a test for this behavior
      * @return
      */
-    public static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC, final int loc, final List<Haplotype> haplotypes) {
+    public static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC, final int loc, final List<Haplotype> haplotypes, final boolean emitSpanningDels) {
 
         final Map<Allele, List<Haplotype>> result = new LinkedHashMap<>();
 
@@ -605,12 +606,17 @@ public final class AssemblyBasedCallerUtils {
                     }
 
                 } else {
-                    // the event starts prior to the current location, so it's a spanning deletion
-                    if (! result.containsKey(Allele.SPAN_DEL)) {
-                        result.put(Allele.SPAN_DEL, new ArrayList<>());
+                    if (emitSpanningDels) {
+                        // the event starts prior to the current location, so it's a spanning deletion
+                        if (!result.containsKey(Allele.SPAN_DEL)) {
+                            result.put(Allele.SPAN_DEL, new ArrayList<>());
+                        }
+                        result.get(Allele.SPAN_DEL).add(h);
+                        // there might be a del+ins at the site in question and this would miss one of them unless its a continue
+                        continue; //Why is there a break here? Shouldn't this be a continue? Why should the first spanning event overlap?A
+                    } else {
+                        result.get(ref).add(h);
                     }
-                    result.get(Allele.SPAN_DEL).add(h);
-                    break;
                 }
             }
 
