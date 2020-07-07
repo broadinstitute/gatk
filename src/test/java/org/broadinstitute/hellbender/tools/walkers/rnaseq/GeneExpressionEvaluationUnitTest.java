@@ -36,44 +36,62 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
         read1.setAttribute(SAMTag.MQ.toString(), 20);
         read1.setFragmentLength(300);
         read1.setAttribute(SAMTag.MC.toString(), "100M");
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE));
 
         //not properly paired
         read1.setIsProperlyPaired(false);
-        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0));
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE));
         read1.setIsProperlyPaired(true);
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE));
 
         //chimeric
         read1.setMatePosition(header.getSequenceDictionary().getSequence(0).getSequenceName(), 300);
-        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0));
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE));
         read1.setMatePosition(read1.getContig(), 300);
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE));
 
-        //same strand
+        //strand orientations
+        //reads are +-
+        //both on transcription strand or neither on transcription strand, bad
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD));
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE));
+        //one on transcription strand, other not, good
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD));
+
+        //reads are ++
         read1.setMateIsReverseStrand(false);
+        //both on transcription strand or neither on transcription strand, good
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE));
+        //one on transcription strand, other not, bad
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE));
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD));
 
+        //reads are -+
+        read1.setIsReverseStrand(true);
+        //both on transcription strand or neither on transcription strand, bad
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD));
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE));
+        //one on transcription strand, other not, good
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD));
+
+        //reads are --
         read1.setMateIsReverseStrand(true);
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
+        //both on transcription strand or neither on transcription strand, good
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE));
+        //one on transcription strand, other not, bad
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE));
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD));
 
         //mate mapping quality too low
+        read1.setIsReverseStrand(false);
         read1.setAttribute(SAMTag.MQ.toString(), -1);
-        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0));
+        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE));
         read1.setAttribute(SAMTag.MQ.toString(), 20);
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
-
-        //outward facing
-        read1.setMatePosition(read1.getContig(), 50);
-        Assert.assertFalse(GeneExpressionEvaluation.inGoodPair(read1, 0));
-        read1.setMatePosition(read1.getContig(), 250);
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
-
-        //swap strands and still pass
-        read1.setIsReverseStrand(true);
-        read1.setMateIsReverseStrand(false);
-        read1.setPosition(read1.getContig(), 250);
-        read1.setMatePosition(read1.getContig(), 200);
-        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0));
+        Assert.assertTrue(GeneExpressionEvaluation.inGoodPair(read1, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE));
     }
 
     @DataProvider(name = "testGetAlignmentIntervalsDataProvider")
@@ -92,19 +110,19 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
                 new Interval(contig, 400, 449),
                 new Interval(contig, 475, 574)
         );
-        examples.add(new Object[]{splicedRead, true, header, expectedIntervalsSplicedRead});
+        examples.add(new Object[]{splicedRead, true, expectedIntervalsSplicedRead});
 
         final GATKRead splicedReadReverseStrand = ArtificialReadUtils.createArtificialRead(header, "splicedRead", 0, 400, 150);
         splicedReadReverseStrand.setCigar("50M25N100M");
         splicedReadReverseStrand.setIsReverseStrand(true);
         pairRead(splicedReadReverseStrand, contig, 100, "10M35N64M2I27M22N35M5D12M");
-        examples.add(new Object[]{splicedReadReverseStrand, true, header, expectedIntervalsSplicedRead});
+        examples.add(new Object[]{splicedReadReverseStrand, true, expectedIntervalsSplicedRead});
 
         final GATKRead splicedReadImproperlyPaired = ArtificialReadUtils.createArtificialRead(header, "splicedRead", 0, 100, 150);
         splicedReadImproperlyPaired.setCigar("10M35N64M2I27M22N35M5D12M");
         pairRead(splicedReadImproperlyPaired, contig, 400, "50M25N100M");
         splicedReadImproperlyPaired.setIsProperlyPaired(false);
-        examples.add(new Object[]{splicedReadImproperlyPaired, true, header, Arrays.asList(new Interval(contig, 100, 109),
+        examples.add(new Object[]{splicedReadImproperlyPaired, true, Arrays.asList(new Interval(contig, 100, 109),
                                                                            new Interval(contig, 145, 235),
                                                                            new Interval(contig, 258, 292),
                                                                            new Interval(contig, 298, 309)
@@ -117,7 +135,7 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
         splicedReadImproperlyPairedReverseStrand.setIsReverseStrand(true);
         pairRead(splicedReadImproperlyPairedReverseStrand, contig, 100, "10M35N64M2I27M22N35M5D12M");
         splicedReadImproperlyPairedReverseStrand.setIsProperlyPaired(false);
-        examples.add(new Object[]{splicedReadImproperlyPairedReverseStrand, true, header, Arrays.asList(new Interval(contig, 400, 449), new Interval(contig, 475, 574))}
+        examples.add(new Object[]{splicedReadImproperlyPairedReverseStrand, true, Arrays.asList(new Interval(contig, 400, 449), new Interval(contig, 475, 574))}
         );
 
         final GATKRead splicedReadOverlappingMate = ArtificialReadUtils.createArtificialRead(header, "splicedRead", 0, 100, 150);
@@ -130,20 +148,20 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
 
         splicedReadOverlappingMate.setCigar("10M35N64M2I27M22N35M5D12M");
         pairRead(splicedReadOverlappingMate, contig, 300, "50M25N100M");
-        examples.add(new Object[]{splicedReadOverlappingMate, true, header, expectedIntervalsSplicedReadOverlappingMate});
+        examples.add(new Object[]{splicedReadOverlappingMate, true, expectedIntervalsSplicedReadOverlappingMate});
 
         final GATKRead splicedReadOverlappingMateReverseStrand = ArtificialReadUtils.createArtificialRead(header, "splicedRead", 0, 300, 150);
         splicedReadOverlappingMateReverseStrand.setCigar("50M25N100M");
         splicedReadOverlappingMateReverseStrand.setIsReverseStrand(true);
         pairRead(splicedReadOverlappingMateReverseStrand, contig, 100, "10M35N64M2I27M22N35M5D12M");
-        examples.add(new Object[]{splicedReadOverlappingMateReverseStrand, true, header, expectedIntervalsSplicedReadOverlappingMate});
+        examples.add(new Object[]{splicedReadOverlappingMateReverseStrand, true, expectedIntervalsSplicedReadOverlappingMate});
 
         final GATKRead unsplicedRead = ArtificialReadUtils.createArtificialRead(header, "unsplicedRead", 0, 100, 150);
         final List<Interval> expectedIntervalsUnsplicedRead = Collections.singletonList(new Interval(contig, 100, 449));
         unsplicedRead.setCigar("150M");
         pairRead(unsplicedRead, contig, 300, "150M");
         unsplicedRead.setFragmentLength(350);
-        examples.add(new Object[]{unsplicedRead, false, header, expectedIntervalsUnsplicedRead}
+        examples.add(new Object[]{unsplicedRead, false, expectedIntervalsUnsplicedRead}
         );
 
         final GATKRead unsplicedReadReverseStrand = ArtificialReadUtils.createArtificialRead(header, "unsplicedRead", 0, 300, 150);
@@ -151,7 +169,7 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
         unsplicedReadReverseStrand.setIsReverseStrand(true);
         pairRead(unsplicedReadReverseStrand, contig, 100, "150M");
         unsplicedReadReverseStrand.setFragmentLength(-350);
-        examples.add(new Object[]{unsplicedReadReverseStrand, false, header, expectedIntervalsUnsplicedRead}
+        examples.add(new Object[]{unsplicedReadReverseStrand, false, expectedIntervalsUnsplicedRead}
         );
 
         final GATKRead unsplicedReadImproperlyPaired = ArtificialReadUtils.createArtificialRead(header, "unsplicedRead", 0, 100, 150);
@@ -159,7 +177,7 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
         pairRead(unsplicedReadImproperlyPaired, contig, 300, "150M");
         unsplicedReadImproperlyPaired.setIsProperlyPaired(false);
         unsplicedReadImproperlyPaired.setFragmentLength(350);
-        examples.add(new Object[]{unsplicedReadImproperlyPaired, false, header, Collections.singletonList(new Interval(contig, 100, 249))});
+        examples.add(new Object[]{unsplicedReadImproperlyPaired, false, Collections.singletonList(new Interval(contig, 100, 249))});
 
         final GATKRead unsplicedReadImproperlyPairedReverseStrand = ArtificialReadUtils.createArtificialRead(header, "unsplicedRead", 0, 300, 150);
         unsplicedReadImproperlyPairedReverseStrand.setCigar("150M");
@@ -167,7 +185,7 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
         pairRead(unsplicedReadImproperlyPairedReverseStrand, contig, 100, "150M");
         unsplicedReadImproperlyPairedReverseStrand.setIsProperlyPaired(false);
         unsplicedReadImproperlyPairedReverseStrand.setFragmentLength(-350);
-        examples.add(new Object[]{unsplicedReadImproperlyPairedReverseStrand, false, header, Collections.singletonList(new Interval(contig, 300, 449))});
+        examples.add(new Object[]{unsplicedReadImproperlyPairedReverseStrand, false, Collections.singletonList(new Interval(contig, 300, 449))});
 
 
         return examples.toArray(new Object[0][]);
@@ -182,28 +200,80 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "testGetAlignmentIntervalsDataProvider")
-    public void testGetAlignmentIntervals(final GATKRead read, final boolean spliced, final SAMFileHeader header, final List<Interval> expectedAlignmentIntervals) {
-        Assert.assertEquals(GeneExpressionEvaluation.getAlignmentIntervals(read, spliced, 0), expectedAlignmentIntervals);
+    public void testGetAlignmentIntervals(final GATKRead read, final boolean spliced, final List<Interval> expectedAlignmentIntervals) {
+        Assert.assertEquals(GeneExpressionEvaluation.getAlignmentIntervals(read, !spliced, 0, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE), expectedAlignmentIntervals);
     }
 
-    @DataProvider(name = "testGetFragmentStrandDataProvider")
-    public Object[][] testGetFragmentStrandDataProvider() {
+    @DataProvider(name = "testSenseAntisenseDataProvider")
+    public Object[][] testSenseAntisenseDataProvider() {
+        final Gff3BaseData forwardFeature = new Gff3BaseData("1", ".", "gene", 1, 100, -1d, Strand.POSITIVE, 0, Collections.emptyMap());
+        final Gff3BaseData reverseFeature = new Gff3BaseData("1", ".", "gene", 1, 100, -1d, Strand.NEGATIVE, 0, Collections.emptyMap());
+        final Gff3BaseData unstrandedFeature = new Gff3BaseData("1", ".", "gene", 1, 100, -1d, Strand.NONE, 0, Collections.emptyMap());
+
         final List<Object[]> examples = new ArrayList<>();
         final GATKRead read1Forward = getReadForStrandTest(false, true);
-        examples.add(new Object[]{read1Forward, GeneExpressionEvaluation.TrancriptionRead.R1, Strand.POSITIVE});
-        examples.add(new Object[]{read1Forward, GeneExpressionEvaluation.TrancriptionRead.R2, Strand.NEGATIVE});
+        examples.add(new Object[]{read1Forward, forwardFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD, true});
+        examples.add(new Object[]{read1Forward, forwardFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE, true});
+        examples.add(new Object[]{read1Forward, forwardFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD, false});
+        examples.add(new Object[]{read1Forward, forwardFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE, false});
+
+        examples.add(new Object[]{read1Forward, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD, true});
+        examples.add(new Object[]{read1Forward, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE, true});
+        examples.add(new Object[]{read1Forward, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD, false});
+        examples.add(new Object[]{read1Forward, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE, false});
+
+        examples.add(new Object[]{read1Forward, reverseFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD, false});
+        examples.add(new Object[]{read1Forward, reverseFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE, false});
+        examples.add(new Object[]{read1Forward, reverseFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD, true});
+        examples.add(new Object[]{read1Forward, reverseFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE, true});
 
         final GATKRead read1Reverse = getReadForStrandTest(true, true);
-        examples.add(new Object[]{read1Reverse, GeneExpressionEvaluation.TrancriptionRead.R1, Strand.NEGATIVE});
-        examples.add(new Object[]{read1Reverse, GeneExpressionEvaluation.TrancriptionRead.R2, Strand.POSITIVE});
+        examples.add(new Object[]{read1Reverse, forwardFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD, false});
+        examples.add(new Object[]{read1Reverse, forwardFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE, false});
+        examples.add(new Object[]{read1Reverse, forwardFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD, true});
+        examples.add(new Object[]{read1Reverse, forwardFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE, true});
+
+        examples.add(new Object[]{read1Reverse, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD, false});
+        examples.add(new Object[]{read1Reverse, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE, false});
+        examples.add(new Object[]{read1Reverse, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD, true});
+        examples.add(new Object[]{read1Reverse, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE, true});
+
+        examples.add(new Object[]{read1Reverse, reverseFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD, true});
+        examples.add(new Object[]{read1Reverse, reverseFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE, true});
+        examples.add(new Object[]{read1Reverse, reverseFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD, false});
+        examples.add(new Object[]{read1Reverse, reverseFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE, false});
 
         final GATKRead read2Forward = getReadForStrandTest(false, false);
-        examples.add(new Object[]{read2Forward, GeneExpressionEvaluation.TrancriptionRead.R1, Strand.NEGATIVE});
-        examples.add(new Object[]{read2Forward, GeneExpressionEvaluation.TrancriptionRead.R2, Strand.POSITIVE});
+        examples.add(new Object[]{read2Forward, forwardFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD, true});
+        examples.add(new Object[]{read2Forward, forwardFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE, false});
+        examples.add(new Object[]{read2Forward, forwardFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD, true});
+        examples.add(new Object[]{read2Forward, forwardFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE, false});
+
+        examples.add(new Object[]{read2Forward, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD, true});
+        examples.add(new Object[]{read2Forward, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE, false});
+        examples.add(new Object[]{read2Forward, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD, true});
+        examples.add(new Object[]{read2Forward, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE, false});
+
+        examples.add(new Object[]{read2Forward, reverseFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD, false});
+        examples.add(new Object[]{read2Forward, reverseFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE, true});
+        examples.add(new Object[]{read2Forward, reverseFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD, false});
+        examples.add(new Object[]{read2Forward, reverseFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE, true});
 
         final GATKRead read2Reverse = getReadForStrandTest(true, false);
-        examples.add(new Object[]{read2Reverse, GeneExpressionEvaluation.TrancriptionRead.R1, Strand.POSITIVE});
-        examples.add(new Object[]{read2Reverse, GeneExpressionEvaluation.TrancriptionRead.R2, Strand.NEGATIVE});
+        examples.add(new Object[]{read2Reverse, forwardFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD, false});
+        examples.add(new Object[]{read2Reverse, forwardFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE, true});
+        examples.add(new Object[]{read2Reverse, forwardFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD, false});
+        examples.add(new Object[]{read2Reverse, forwardFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE, true});
+
+        examples.add(new Object[]{read2Reverse, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD, false});
+        examples.add(new Object[]{read2Reverse, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE, true});
+        examples.add(new Object[]{read2Reverse, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD, false});
+        examples.add(new Object[]{read2Reverse, unstrandedFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE, true});
+
+        examples.add(new Object[]{read2Reverse, reverseFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_FORWARD, true});
+        examples.add(new Object[]{read2Reverse, reverseFeature, GeneExpressionEvaluation.ReadStrands.FORWARD_REVERSE, false});
+        examples.add(new Object[]{read2Reverse, reverseFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_FORWARD, true});
+        examples.add(new Object[]{read2Reverse, reverseFeature, GeneExpressionEvaluation.ReadStrands.REVERSE_REVERSE, false});
         return examples.toArray(new Object[0][]);
     }
 
@@ -219,10 +289,10 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
         return read;
     }
 
-    @Test(dataProvider = "testGetFragmentStrandDataProvider")
-    public void testGetFragmentStrand(final GATKRead read, final GeneExpressionEvaluation.TrancriptionRead trancriptionRead, final Strand expectedStrand) {
-        final Strand actualStrand = GeneExpressionEvaluation.getFragmentStrand(read, trancriptionRead);
-        Assert.assertEquals(actualStrand, expectedStrand);
+    @Test(dataProvider = "testSenseAntisenseDataProvider")
+    public void testSenseAntisense(final GATKRead read, final Gff3BaseData feature, final GeneExpressionEvaluation.ReadStrands readStrands, final boolean expectedSense) {
+        final boolean actualSense = readStrands.isSense(read, feature);
+        Assert.assertEquals(actualSense, expectedSense);
     }
 
 

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
-import htsjdk.tribble.annotation.Strand;
 import htsjdk.tribble.gff.Gff3BaseData;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 
@@ -11,7 +10,10 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramTest {
@@ -71,40 +73,51 @@ public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramT
     }
 
     @Test
-    public void testSwapTranscriptionRead() throws IOException {
+    public void testCompareReadStrands() throws IOException {
         final File output1 = createTempFile("testSwapTranscriptionRead1", ".tsv");
         final File output2 = createTempFile("testSwapTranscriptionRead2", ".tsv");
 
-        final String[] args1 = {
-                "-I", NA12878_20_RNAseq_bam,
-                "-G", b37_20_gff3,
-                "--grouping-type", "gene",
-                "--grouping-type", "pseudogene",
-                "--overlap-type", "exon",
-                "--transcription-read", "R1",
-                "-O", output1.getAbsolutePath()
-        };
+        for (final GeneExpressionEvaluation.ReadStrands readStrands1 : GeneExpressionEvaluation.ReadStrands.values()) {
+            for (final GeneExpressionEvaluation.ReadStrands readStrands2 : GeneExpressionEvaluation.ReadStrands.values()) {
+                if (readStrands1.r1TranscriptionStrand == readStrands2.r1TranscriptionStrand || readStrands1.r2TranscriptionStrand == readStrands2.r2TranscriptionStrand) {
+                    //compare only full swaps for both read strands
+                    continue;
+                }
+                final List<String> args1 = new ArrayList<>(
+                        Arrays.asList(
+                            "-I", NA12878_20_RNAseq_bam,
+                            "-G", b37_20_gff3,
+                            "--grouping-type", "gene",
+                            "--grouping-type", "pseudogene",
+                            "--overlap-type", "exon",
+                            "--read-strands", readStrands1.name(),
+                            "-O", output1.getAbsolutePath()
+                    )
+                );
 
-        final String[] args2 = {
-                "-I", NA12878_20_RNAseq_bam,
-                "-G", b37_20_gff3,
-                "--grouping-type", "gene",
-                "--grouping-type", "pseudogene",
-                "--overlap-type", "exon",
-                "--transcription-read", "R2",
-                "-O", output2.getAbsolutePath()
-        };
-
-        runCommandLine(args1);
-        runCommandLine(args2);
-        assertResultsEquivalent(output1.toPath(), output2.toPath(), 0, true);
+                final List<String> args2 = new ArrayList<>(
+                        Arrays.asList(
+                            "-I", NA12878_20_RNAseq_bam,
+                            "-G", b37_20_gff3,
+                            "--grouping-type", "gene",
+                            "--grouping-type", "pseudogene",
+                            "--overlap-type", "exon",
+                            "--read-strands", readStrands2.name(),
+                            "-O", output2.getAbsolutePath()
+                    )
+                );
+                runCommandLine(args1);
+                runCommandLine(args2);
+                assertResultsEquivalent(output1.toPath(), output2.toPath(), 0, true);
+            }
+        }
     }
 
     private void assertResultsEquivalent(final Path file1, final Path file2, final double lenience) throws IOException {
         assertResultsEquivalent(file1, file2, lenience, false);
     }
 
-    private void assertResultsEquivalent(final Path file1, final Path file2, final double lenience, final boolean swapTranscriptionStrand) throws IOException {
+    private void assertResultsEquivalent(final Path file1, final Path file2, final double lenience, final boolean swapSenseAntiSense) throws IOException {
         final Map<Gff3BaseData, GeneExpressionEvaluation.Coverage> coverageMap1 = readCoverage(file1);
         final Map<Gff3BaseData, GeneExpressionEvaluation.Coverage> coverageMap2 = readCoverage(file2);
 
@@ -116,14 +129,8 @@ public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramT
 
             final GeneExpressionEvaluation.Coverage coverage2 = coverageMap2.get(feature);
 
-            if (feature.getStrand() != Strand.NONE) {
-                assertEquivalentWithLenience(coverage1.getSenseCount(), swapTranscriptionStrand? coverage2.getAntisenseCount() : coverage2.getSenseCount(), lenience);
-                assertEquivalentWithLenience(coverage2.getSenseCount(), swapTranscriptionStrand? coverage1.getAntisenseCount() : coverage1.getSenseCount(), lenience);
-            } else {
-                assertEquivalentWithLenience(coverage1.getSenseCount(), coverage2.getSenseCount(), lenience);
-                Assert.assertEquals(coverage1.getAntisenseCount(), 0);
-                Assert.assertEquals(coverage2.getAntisenseCount(), 0);
-            }
+            assertEquivalentWithLenience(coverage1.getSenseCount(), swapSenseAntiSense? coverage2.getAntisenseCount() : coverage2.getSenseCount(), lenience);
+            assertEquivalentWithLenience(coverage2.getSenseCount(), swapSenseAntiSense? coverage1.getAntisenseCount() : coverage1.getSenseCount(), lenience);
         }
     }
 

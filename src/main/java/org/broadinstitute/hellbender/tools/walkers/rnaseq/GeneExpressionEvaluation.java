@@ -16,7 +16,9 @@ import htsjdk.tribble.gff.Gff3BaseData;
 import htsjdk.tribble.gff.Gff3Feature;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
@@ -49,7 +51,7 @@ import java.util.stream.Collectors;
 /**
  * Evaluate gene expression from RNA-seq reads aligned to genome.
  *
- * <p>This tool evaluates gene expression from RNA-seq reads aligned to genome.  Features to evaluate expression over are defined in an input annotation file in gff3 fomat
+ * <p>This tool counts fragments to evaluate gene expression from RNA-seq reads aligned to the genome.  Features to evaluate expression over are defined in an input annotation file in gff3 fomat
  * (https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md).  Output is a tsv listing sense and antisense expression for all stranded grouping features,
  * and expression (labeled as sense) for all unstranded grouping features.
  * </p>
@@ -75,19 +77,19 @@ import java.util.stream.Collectors;
  *         -O output.tsv
  *     </p>
  * </p>
- * 
- *<p>Reads are assumed to be paired-end.  Reads which are in a "good pair" are counted once together as a single fragment.  Reads which are not in a "good pair" are each counted separately.
+ *
+ *<p>Reads are assumed to be paired-end.  Reads which are in a "good pair" are counted once together as a single fragment.  Reads which are not in a "good pair" are each counted separately.  Fragment
+ * size is not explicitly considered in the "good pair" decision, instead we rely on the aligner to take that into consideration intelligently when deciding whether to set the properly paired flag.
  * A "good pair" is defined as:
  *  <li>Both reads are mapped</li>
  *  <li>Properly paired flag is set</li>
  *  <li>Both reads are on same contig</li>
- *  <li>Reads are on opposite strands</li>
  *  <li>Mapping quality of both reads is at least minimum-mapping-quality</li>
- *  <li>Reads are inward-facing</li>
+ *
  *</p>
  *
- * <p>Reads can be either from spliced are unspliced RNA.  If from spliced RNA, alignment blocks of reads are taken as their coverage.  
- * If from unspliced RNA, the entire region from the start of the earliest read to the end of the latest read is taken as the fragment
+ * <p>Reads can be either from spliced or unspliced RNA.  If from spliced RNA, alignment blocks of reads are taken as their coverage.
+ * If from unspliced RNA, the entire region from the most 5' base of either read to most 3' base of either read is taken as the fragment
  * coverage.  Splice status is set through the command line.  By default, splice status is taken to be "spliced." </p>
  * <p>
  *     <h3>For spliced RNA</h3>
@@ -96,7 +98,6 @@ import java.util.stream.Collectors;
  *         -I input.bam
  *         -G geneAnnotations.gff3
  *         -O output.tsv
- *         --spliced true
  *     </p>
  * </p>
  * <p>
@@ -106,7 +107,7 @@ import java.util.stream.Collectors;
  *         -I input.bam
  *         -G geneAnnotations.gff3
  *         -O output.tsv
- *         --spliced true
+ *         --unspliced
  *     </p>
  * </p>
  * 
@@ -124,21 +125,31 @@ import java.util.stream.Collectors;
  *     </p>
  * </p>
  * 
- * <p>The transcription read is by default read1, however this can be changed to read2.  The transcription read determines whether a fragment is sense or antisense.  
- * If the transcription read is on the same strand as the feature, the fragment is sense, if on the opposite strand, the fragment is antisense.
+ * <p>The read orientation can be set using the read-strand argument.  By default, it is assumed that read1 will be on the forward strand,
+ *  and read2 on the reverse strand.
  * </p>
  * <p>
- *     <h3>Set transcription read to read2</h3>
+ *     <h3>Set read strands to read1 reverse, read2 forward</h3>
  *     <p>
  *         gatk GeneExpressionEvaluation
  *         -I input.bam
  *         -G geneAnnotations.gff3
  *         -O output.tsv
- *         --transcription-read R2
+ *         --read-strands REVERSE-FORWARD
+ *     </p>
+ *
+ *     <h3>Set read1 and read2 to both be forward strand</h3>
+ *     <p>
+ *         gatk GeneExpressionEvaluation
+ *         -I input.bam
+ *         -G geneAnnotations.gff3
+ *         -O output.tsv
+ *         --read-strands FORWARD-FORWARD
+ *     </p>
  *         
  * </p>
  *
- * <p>Multi-overlapping fragments (fragment alignments which overlap multiple grouping features) can be handled in two ways.  Equals weight can be given to each grouping feature,
+ * <p>Multi-overlapping fragments (fragment alignments which overlap multiple grouping features) can be handled in two ways.  Equal weight can be given to each grouping feature,
  * in which case each is given weight 1/N, for N overlapping grouping features.
  * </p>
  * <p>
@@ -195,14 +206,16 @@ import java.util.stream.Collectors;
  * <p>The number of mapping for a particular fragment is extracted via the NH tag.</p>
  * <p>Currently this tool only works on a single sample BAM.  If a readgroup header line indicates multiple samples in the same BAM, the tool will throw an exception.</p>
  */
+
 @CommandLineProgramProperties(
         summary = "This tool evaluates gene expression from RNA-seq reads aligned to genome.  Features to evaluate expression over are defined in an input annotation file in gff3 fomat " +
-                "(https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md).  Output is a tsv listing sense and antisense expression for all stranded grouping features, " +
-                "and expression (labeled as sense) for all unstranded grouping features.",
+                "(https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md).  Output is a tsv listing sense and antisense expression for all grouping features. " +
+                "For unstranded features, fragments transcribed on the forward strand are counted as sense, and fragments transcribed on the reverse strand are counted as antisense.",
         oneLineSummary = "Evaluate gene expression from RNA-seq reads aligned to genome.",
         programGroup = CoverageAnalysisProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public final class GeneExpressionEvaluation extends ReadWalker {
 
     @Argument(
@@ -224,8 +237,8 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     @Argument(doc="Whether to label features by ID or Name", fullName = "feature-label-key")
     private FeatureLabelType featureLabelKey = FeatureLabelType.NAME;
 
-    @Argument(doc = "Which read corresponds to the transcription strand", fullName = "transcription-read")
-    private TrancriptionRead trancriptionRead = TrancriptionRead.R1;
+    @Argument(doc = "Which strands (forward or reverse) each read is expected to be on", fullName = "read-strands")
+    private ReadStrands readStrands = ReadStrands.FORWARD_REVERSE;
 
     @Argument(doc = "How to distribute weight of alignments which overlap multiple features", fullName = "multi-overlap-method")
     private MultiOverlapMethod multiOverlapMethod = MultiOverlapMethod.PROPORTIONAL;
@@ -233,8 +246,8 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     @Argument(doc = "How to distribute weight of reads with multiple alignments", fullName = "multi-map-method")
     private MultiMapMethod multiMapMethod = MultiMapMethod.IGNORE;
 
-    @Argument(doc = "Whether the rna is spliced.  If spliced, alignments must be from a splice aware aligner (such as star).  If unspliced, alignments must be from a non-splicing aligner (such as bwa). ")
-    private boolean spliced = true;
+    @Argument(doc = "Whether the rna is unspliced.  If spliced, alignments must be from a splice aware aligner (such as star).  If unspliced, alignments must be from a non-splicing aligner (such as bwa).")
+    private boolean unspliced = false;
 
     final private Map<Gff3BaseData, Coverage> featureCounts = new LinkedHashMap<>();
 
@@ -451,35 +464,38 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     }
 
 
-    static boolean inGoodPair(final GATKRead read, int minimumMappingQuality) {
+    static boolean inGoodPair(final GATKRead read, int minimumMappingQuality, final ReadStrands readStrands) {
 
-        boolean ret = !read.mateIsUnmapped() && read.isProperlyPaired() && read.getContig().equals(read.getMateContig()) &&
-                read.isReverseStrand() != read.mateIsReverseStrand();
+        boolean ret = !read.mateIsUnmapped() && read.isProperlyPaired() && read.getContig().equals(read.getMateContig());
+        if (ret) {
+            final boolean readsOnSameStrand = read.isReverseStrand() == read.mateIsReverseStrand();
+            ret = readStrands.expectReadsOnSameStrand == readsOnSameStrand;
+        }
 
         if (ret) {
             if (!read.hasAttribute(SAMTag.MQ.toString())) {
                 throw new GATKException("Mate quality must be included.  Consider running FixMateInformation.");
             }
-            ret = ret && read.getAttributeAsInteger(SAMTag.MQ.toString()) >= minimumMappingQuality;
+            ret = read.getAttributeAsInteger(SAMTag.MQ.toString()) >= minimumMappingQuality;
         }
 
-        if (ret) {
-            if (read.isReverseStrand()) {
-                ret = ret && read.getEnd() >= read.getMateStart();
-            } else {
-                if (!read.hasAttribute(SAMTag.MC.toString())) {
-                    throw new GATKException("Mate cigar must be present.  Consider running FixMateInformation.");
-                }
-                final Cigar mateCigar = TextCigarCodec.decode(read.getAttributeAsString(SAMTag.MC.toString()));
-                ret = ret && read.getStart() <= read.getMateStart() + mateCigar.getReferenceLength();
-            }
-        }
         return ret;
     }
 
-    static List<Interval> getAlignmentIntervals(final GATKRead read, final boolean spliced, final int minimumMappingQuality) {
+    /**
+     * Get the alignment intervals associated with the particular read.  If the read is part of a "good pair" then the alignment intervals will be calculated based on the read and its
+     * mate, otherwise based on only the read.  For spliced data, the alignment intervals are based on the alignment blocks of the read (and its mate if a "good pair").  For unspliced data,
+     * only a single interval is returned, which is the interval from the 5' most base covered by the read or its mate, and the 3' most base covered by the read or its mate (or by the read only
+     * if not a "good pair").  Note that for good pairs this method is only called for one of the reads in the pair so as to not double count.
+     *
+     * @param read                  the read
+     * @param unspliced             whether data is unspliced
+     * @param minimumMappingQuality the minimum mapping quality required of both the read and its mate in order to be considered a "good pair"
+     * @return alignment intervals to search for overlapping genes
+     */
+    static List<Interval> getAlignmentIntervals(final GATKRead read, final boolean unspliced, final int minimumMappingQuality, final ReadStrands readStrands) {
 
-        if (spliced) {
+        if (!unspliced) {
             final List<Interval> alignmentIntervals = new ArrayList<>();
 
             final List<AlignmentBlock> readAlignmentBlocks = SAMUtils.getAlignmentBlocks(read.getCigar(), read.getStart(), "read cigar");
@@ -488,8 +504,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
                 alignmentIntervals.add(new Interval(read.getContig(), block.getReferenceStart(), block.getReferenceStart()+block.getLength() - 1));
             }
 
-            boolean overlapsMate = false;
-            if (inGoodPair(read, minimumMappingQuality)) {
+            if (inGoodPair(read, minimumMappingQuality, readStrands)) {
                 final String mateCigarString = read.getAttributeAsString(SAMTag.MC.toString());
                 if(mateCigarString == null) {
                     throw new GATKException("Mate cigar must be present if using spliced reads");
@@ -498,10 +513,6 @@ public final class GeneExpressionEvaluation extends ReadWalker {
                 for( final AlignmentBlock block : mateAlignmentBlocks) {
                     final Interval alignmentBlockInterval = new Interval(read.getMateContig(), block.getReferenceStart(), block.getReferenceStart()+block.getLength() - 1);
                     alignmentIntervals.add(alignmentBlockInterval);
-
-                    if (!overlapsMate && read.overlaps(alignmentBlockInterval)) {
-                        overlapsMate = true;
-                    }
                 }
             }
             return getMergedIntervals(alignmentIntervals);
@@ -511,7 +522,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
                 return Collections.emptyList();
             }
 
-            final boolean inGoodPair = inGoodPair(read, minimumMappingQuality);
+            final boolean inGoodPair = inGoodPair(read, minimumMappingQuality, readStrands);
 
             final int start = inGoodPair? Math.min(read.getStart(), read.getMateStart()) : read.getStart();
             final int end = inGoodPair? start + Math.abs(read.getFragmentLength()) - 1 : read.getEnd();
@@ -523,17 +534,15 @@ public final class GeneExpressionEvaluation extends ReadWalker {
 
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
-        if ((!read.isReverseStrand() || !inGoodPair(read, mappingQualityFilter.minMappingQualityScore))) {
-            final List<Interval> alignmentIntervals = getAlignmentIntervals(read, spliced, mappingQualityFilter.minMappingQualityScore);
+        if ((read.isFirstOfPair() || !inGoodPair(read, mappingQualityFilter.minMappingQualityScore, readStrands))) {
+            final List<Interval> alignmentIntervals = getAlignmentIntervals(read, unspliced, mappingQualityFilter.minMappingQualityScore, readStrands);
 
-            final Map<Gff3BaseData, Float> initalWeights = multiOverlapMethod.getWeights(alignmentIntervals, featureOverlapDetector);
-            final Map<Gff3BaseData, Float> finalWeights = multiMapMethod.getWeights(read.getAttributeAsInteger(SAMTag.NH.toString()), initalWeights);
-
-            final Strand fragmentStrand = getFragmentStrand(read, trancriptionRead);
+            final Map<Gff3BaseData, Float> initialWeights = multiOverlapMethod.getWeights(alignmentIntervals, featureOverlapDetector);
+            final Map<Gff3BaseData, Float> finalWeights = multiMapMethod.getWeights(read.getAttributeAsInteger(SAMTag.NH.toString()), initialWeights);
 
             for (final Map.Entry<Gff3BaseData, Float> weight : finalWeights.entrySet()) {
                 final Gff3BaseData feature = weight.getKey();
-                final boolean isSense = (feature.getStrand() == Strand.NONE) || feature.getStrand() == fragmentStrand;
+                final boolean isSense = readStrands.isSense(read, feature);
                 if (isSense) {
                     featureCounts.get(feature).addSenseCount(weight.getValue());
                 } else {
@@ -644,14 +653,29 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         }
     }
 
-    static Strand getFragmentStrand(final GATKRead read, final TrancriptionRead trancriptionRead) {
-        return (read.isFirstOfPair() == (trancriptionRead==TrancriptionRead.R1))? (read.isReverseStrand() ? Strand.NEGATIVE : Strand.POSITIVE) :
-                                                                                    (read.isReverseStrand() ? Strand.POSITIVE : Strand.NEGATIVE);
-    }
+    enum ReadStrands {
+        FORWARD_FORWARD(true, true),
+        FORWARD_REVERSE(true, false),
+        REVERSE_FORWARD(false, true),
+        REVERSE_REVERSE(false, false);
 
-    enum TrancriptionRead {
-        R1,
-        R2
+        ReadStrands(final boolean r1TranscriptionStrand, final boolean r2TranscriptionStrand) {
+            this.r1TranscriptionStrand = r1TranscriptionStrand;
+            this.r2TranscriptionStrand = r2TranscriptionStrand;
+            this.expectReadsOnSameStrand = r1TranscriptionStrand == r2TranscriptionStrand;
+        }
+        final boolean r1TranscriptionStrand;
+        final boolean r2TranscriptionStrand;
+        final boolean expectReadsOnSameStrand;
+
+        boolean isSense(final GATKRead read, final Gff3BaseData feature) {
+
+            final Strand senseStrand = feature.getStrand() == Strand.NONE ? Strand.POSITIVE : feature.getStrand(); // call forward strand sense for unstranded features
+            final boolean isTranscriptionStrand = read.isFirstOfPair() ? r1TranscriptionStrand : r2TranscriptionStrand;
+            final boolean trancriptionStrandIsReverseStrand = isTranscriptionStrand == read.isReverseStrand();
+            final Strand transcriptionStrand = trancriptionStrandIsReverseStrand? Strand.NEGATIVE : Strand.POSITIVE;
+            return transcriptionStrand == senseStrand;
+        }
     }
 
     private static List<Interval> getMergedIntervals(final List<Interval> intervals) {
