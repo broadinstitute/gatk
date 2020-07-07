@@ -4,7 +4,7 @@
 <#--- Store positional args in a WDL arg called "positionalArgs"--->
 <#assign positionalArgs="positionalArgs"/>
     "${name}.dockerImage": "broadinstitute/gatk:${version}",
-    "${name}.gatk": "java -cp /home/travis/build/broadinstitute/gatk/build/libs/gatk.jar org.broadinstitute.hellbender.CommandLineArgumentValidatorMain",
+    "${name}.gatk": "java -cp ${buildDir}/build/libs/gatk.jar org.broadinstitute.hellbender.CommandLineArgumentValidatorMain",
 <#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.memoryRequirements != "">
     "${name}.memoryRequirements": "${runtimeProperties.memoryRequirements}",
 <#else>
