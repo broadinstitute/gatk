@@ -223,12 +223,12 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         return null;
     }
 
-    /**
-     * Parse arguments and initialize any values annotated with {@link Argument}
-     * @return true if program should be executed, false if an information only argument like {@link SpecialArgumentsCollection#HELP_FULLNAME} was specified
-     * @throws CommandLineException if command line validation fails
-     */
-    protected final boolean parseArgs(final String[] argv) {
+        /**
+         * Parse arguments and initialize any values annotated with {@link Argument}
+         * @return true if program should be executed, false if an information only argument like {@link SpecialArgumentsCollection#HELP_FULLNAME} was specified
+         * @throws CommandLineException if command line validation fails
+         */
+        protected boolean parseArgs(final String[] argv) {
 
         final boolean ret = getCommandLineParser().parseArguments(System.err, argv);
         commandLine = getCommandLineParser().getCommandLine();
