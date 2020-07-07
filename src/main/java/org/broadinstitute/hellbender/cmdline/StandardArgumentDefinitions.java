@@ -9,8 +9,12 @@ public final class StandardArgumentDefinitions {
     private StandardArgumentDefinitions(){}
 
     public static final String INPUT_LONG_NAME = "input";
+    public static final String INPUT_INDEX_COMPANION = INPUT_LONG_NAME + "Index";
     public static final String OUTPUT_LONG_NAME = "output";
+    public static final String OUTPUT_INDEX_COMPANION = OUTPUT_LONG_NAME + "Index";
     public static final String REFERENCE_LONG_NAME = "reference";
+    public static final String REFERENCE_INDEX_COMPANION = REFERENCE_LONG_NAME + "Index";
+    public static final String REFERENCE_DICTIONARY_COMPANION = REFERENCE_LONG_NAME + "Dictionary";
     public static final String VARIANT_LONG_NAME = "variant";
     public static final String FEATURE_LONG_NAME = "feature";
     public static final String INTERVALS_LONG_NAME = "intervals";

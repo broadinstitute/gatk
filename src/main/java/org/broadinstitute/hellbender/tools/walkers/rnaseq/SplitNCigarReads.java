@@ -5,7 +5,10 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.MultiplePassReadWalker;
@@ -61,12 +64,13 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
  *      -O output.bam
  *  </pre>
  */
-@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Splits reads that contain Ns in their cigar string (e.g. spanning splicing events).",
         oneLineSummary = "Split Reads with N in Cigar",
         programGroup = ReadDataManipulationProgramGroup.class
 )
+@DocumentedFeature
+@WorkflowProperties
 public final class SplitNCigarReads extends MultiplePassReadWalker {
 
     // A list of tags that break upon splitting on N. These will be removed from reads in the output.
@@ -76,6 +80,7 @@ public final class SplitNCigarReads extends MultiplePassReadWalker {
     static final String MATE_CIGAR_TAG = "MC";
 
     @Argument(fullName = OUTPUT_LONG_NAME, shortName = OUTPUT_SHORT_NAME, doc="Write output to this BAM filename")
+    @WorkflowOutput(optionalCompanions={StandardArgumentDefinitions.OUTPUT_INDEX_COMPANION})
     GATKPath OUTPUT;
 
     /**
