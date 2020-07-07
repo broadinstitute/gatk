@@ -324,6 +324,7 @@ dependencies {
     compile('org.disq-bio:disq:' + disqVersion)
     compile('org.apache.hadoop:hadoop-client:' + hadoopVersion) // should be a 'provided' dependency
     compile('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
+    compile('net.fnothaft:jsr203-s3a:0.0.1')
 
     compile('de.javakaffee:kryo-serializers:0.41') {
         exclude module: 'kryo' // use Spark's version

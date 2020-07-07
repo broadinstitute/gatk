@@ -26,6 +26,7 @@ public class GATKPath extends PathSpecifier implements TaggedArgument, Serializa
     private static final long serialVersionUID = 1L;
 
     public static final String HDFS_SCHEME = "hdfs";
+    public static final String S3A_SCHEME = "s3a";
 
     private String tagName;
     private Map<String, String> tagAttributes;
@@ -70,7 +71,7 @@ public class GATKPath extends PathSpecifier implements TaggedArgument, Serializa
 
         try {
             InputStream inputStream;
-            if (getURI().getScheme().equals(HDFS_SCHEME)) {
+            if (isHadoopURL()) {
                 org.apache.hadoop.fs.Path file = new org.apache.hadoop.fs.Path(getURIString());
                 org.apache.hadoop.fs.FileSystem fs = file.getFileSystem(new org.apache.hadoop.conf.Configuration());
                 inputStream = fs.open(file);
@@ -98,7 +99,7 @@ public class GATKPath extends PathSpecifier implements TaggedArgument, Serializa
 
         try {
             OutputStream outputStream;
-            if (getURI().getScheme().equals(HDFS_SCHEME)) {
+            if (isHadoopURL()) {
                 org.apache.hadoop.fs.Path fsPath = new org.apache.hadoop.fs.Path(getURIString());
                 org.apache.hadoop.fs.FileSystem fs = fsPath.getFileSystem(new org.apache.hadoop.conf.Configuration());
                 return fs.create(fsPath);
@@ -116,7 +117,7 @@ public class GATKPath extends PathSpecifier implements TaggedArgument, Serializa
      * Returns true if this is a HDFS (Hadoop filesystem) URL.
      */
     public boolean isHadoopURL() {
-        return getScheme().equals(HDFS_SCHEME);
+        return getScheme().equals(HDFS_SCHEME) || getScheme().equals(S3A_SCHEME);
     }
 
     @Override
