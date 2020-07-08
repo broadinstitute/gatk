@@ -319,7 +319,26 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
      * Returns any events in the map that overlap loc, including spanning deletions and events that start at loc.
      */
     public List<VariantContext> getOverlappingEvents(final int loc) {
-        return headMap(loc, true).values().stream().filter(v -> v.getEnd() >= loc).collect(Collectors.toList());
+        final List<VariantContext> overlappingEvents = headMap(loc, true).values().stream().filter(v -> v.getEnd() >= loc).collect(Collectors.toList());
+        final List<VariantContext> deletionEvents = overlappingEvents.stream().filter(v -> v.isSimpleDeletion()).collect(Collectors.toList());
+        final boolean containsDeletion = deletionEvents.size() > 0;
+        final boolean containsInsertion = overlappingEvents.stream().anyMatch(v -> v.isSimpleInsertion());
+        if (containsDeletion && containsInsertion){
+            // We are at the end of a deletion and the start of an insertion.
+            // Only the insertion should be represented in this case.
+            overlappingEvents.remove(deletionEvents.get(0));
+        }
+
+        if (deletionEvents.size() > 1){
+            logger.info("Detected more than one deletion events in a single haplotype at a locus. Haplotype location: " + haplotype.getLocation());
+
+        }
+
+        if (overlappingEvents.size() > 1){
+            logger.info("Detected more than one overlapping events in a single haplotype at a locus. Haplotype location: " + haplotype.getLocation());
+        }
+
+        return overlappingEvents;
     }
 
 }
