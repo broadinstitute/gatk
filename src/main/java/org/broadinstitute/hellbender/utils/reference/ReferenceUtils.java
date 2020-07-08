@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.util.BufferedLineReader;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -65,18 +66,7 @@ public final class ReferenceUtils {
      * @return the SAMSequenceDictionary from fastaDictionaryFile
      */
     public static SAMSequenceDictionary loadFastaDictionary( final File fastaDictionaryFile ) {
-        try ( final FileInputStream fastaDictionaryStream = new FileInputStream(fastaDictionaryFile) ) {
-            return loadFastaDictionary(fastaDictionaryStream);
-        }
-        catch ( IOException e ) {
-            throw new UserException.CouldNotReadInputFile("Error loading fasta dictionary file " + fastaDictionaryFile, e);
-        }
-        catch ( UserException.MalformedFile e ) {
-            throw new UserException.MalformedFile(
-                    "Could not read sequence dictionary from given fasta file " +
-                            fastaDictionaryFile
-            );
-        }
+        return loadFastaDictionary(new GATKPath(fastaDictionaryFile.getAbsolutePath()));
     }
 
     /**
