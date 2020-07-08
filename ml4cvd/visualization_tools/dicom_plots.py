@@ -1,19 +1,4 @@
-"""Methods for integration of dicom plots within notebooks.
-
-TODO:
-* incorporate gs://ml4cvd/projects/fake_mris/. Per Sam "These HD5s have
-  information from the DICOMs and have applied processing to them already.  So
-  keys like `systole_frame_b9` or `diastole_frame_b2` have the same array data
-  that is in dcm.pixel_array for short axis slices. For long axis the 2D slices
-  have been merged into 3D tensors so the keys `cine_segmented_lax_2ch`
-  `cine_segmented_lax_3ch` and `cine_segmented_lax_4ch` map to arrays of
-  dimension (256, 256, 50) where each of the 50 z slices correspond to a
-  dcm.pixel_array."
-* Refactor this to reduce duplicate code from elsewhere in this repository
-such as
-  https://github.com/broadinstitute/ml/blob/master/notebooks/mri/mri_cardiac_long_axis_sketch.ipynb
-  https://github.com/broadinstitute/ml/blob/master/notebooks/mri/mri_cardiac_short_axis_sketch.ipynb
-"""
+"""Methods for integration of dicom plots within notebooks."""
 
 import collections
 import os
@@ -177,7 +162,7 @@ def plot_cardiac_long_axis(b_series, sides=7, fig_width=18, title_prefix=''):
       top=0.96,    # the top of the subplots of the figure
       wspace=0.1,  # the amount of width reserved for space between subplots,
                    # expressed as a fraction of the average axis width
-      hspace=0.1,   # the amount of height reserved for space between subplots,
+      hspace=0.1,  # the amount of height reserved for space between subplots,
                    # expressed as a fraction of the average axis height
   )
 
@@ -234,7 +219,7 @@ def plot_cardiac_short_axis(
       top=0.96,    # the top of the subplots of the figure
       wspace=0.1,  # the amount of width reserved for space between subplots,
                    # expressed as a fraction of the average axis width
-      hspace=0.1,   # the amount of height reserved for space between subplots,
+      hspace=0.1,  # the amount of height reserved for space between subplots,
                    # expressed as a fraction of the average axis height
   )
 
@@ -391,14 +376,16 @@ def choose_cardiac_mri(sample_id, folder=None):
   except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
     return HTML(f'''
     <div class="alert alert-block alert-danger">
-    <b>Warning:</b> Cardiac MRI not available for sample {sample_id}:
+    <b>Warning:</b> Cardiac MRI not available for sample {sample_id} in {folder}:
     <hr><p><pre>{e.message}</pre></p>
+    Use the <kbd>folder</kbd> parameter to read DICOMs from a different local directory or Cloud Storage bucket.
     </div>''')
 
   if not sample_mris:
     return HTML(f'''
     <div class="alert alert-block alert-danger">
-    <b>Warning:</b> Cardiac MRI not available for sample {sample_id}
+    <b>Warning:</b> Cardiac MRI DICOM not available for sample {sample_id} in {folder}.<br>
+    Use the <kbd>folder</kbd> parameter to read DICOMs from a different local directory or Cloud Storage bucket.
     </div>''')
 
   mri_chooser = widgets.Dropdown(

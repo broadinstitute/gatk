@@ -4,12 +4,11 @@ import tempfile
 
 from biosppy.signals.tools import filter_signal
 import h5py
-from ml4cvd.defines import ECG_REST_LEADS
 from ml4cvd.defines import ECG_BIKE_LEADS
+from ml4cvd.defines import ECG_REST_LEADS
 from ml4cvd.runtime_data_defines import get_exercise_ecg_hd5_folder
 from ml4cvd.runtime_data_defines import get_resting_ecg_hd5_folder
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.TensorMap import TensorMap
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -17,7 +16,9 @@ import tensorflow as tf
 
 RAW_SCALE = 0.005  # Convert to mV.
 SAMPLING_RATE = 500.0
-RESTING_ECG_SIGNAL_TMAP = TMAPS['ecg_rest']
+DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME = 'ecg_rest'
+
+# TODO(deflaux): parameterize exercise ECG by TMAP name if there is similar ECG data from other studies.
 EXERCISE_ECG_SIGNAL_TMAP = TMAPS['ecg-bike-raw-full']
 EXERCISE_ECG_TREND_TMAPS = [
     TMAPS['ecg-bike-raw-trend-hr'],
@@ -34,20 +35,22 @@ EXERCISE_ECG_TREND_TMAPS = [
 EXERCISE_PHASES = {0.0: 'Pretest', 1.0: 'Exercise', 2.0: 'Recovery'}
 
 
-def examine_available_keys(hd5):
+def _examine_available_keys(hd5):
   print(f'hd5 ECG keys {[k for k in hd5.keys() if "ecg" in k]}')
-  for key in [k for k in hd5.keys() if "ecg" in k]:
+  for key in [k for k in hd5.keys() if 'ecg' in k]:
     print(f'hd5 {key} keys {[k for k in hd5[key].keys()]}')
 
-def reshape_resting_ecg_to_tidy(sample_id, folder=None):
-  """Wrangle raw resting ECG data to tidy.
+
+def reshape_resting_ecg_to_tidy(sample_id, folder=None, tmap_name=DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME):
+  """Wrangle resting ECG data to tidy.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
     folder: The local or Cloud Storage folder under which the files reside.
+    tmap_name: The name of the TMAP to use for ecg input.
 
   Returns:
-    A pandas dataframe in tidy format or a notebook-friendly error.
+    A pandas dataframe in tidy format or print a notebook-friendly error and return an empty dataframe.
   """
   if folder is None:
     folder = get_resting_ecg_hd5_folder(sample_id)
@@ -60,15 +63,17 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
     try:
       tf.io.gfile.copy(src=os.path.join(folder, sample_hd5), dst=local_path)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-      print(f'Warning: Resting ECG raw signal not available for sample {sample_id}\n\n{e.message}')
+      print(f'''Warning: Resting ECG not available for sample {sample_id} in folder {folder}.
+      Use the folder parameter to read HD5s from a different directory or bucket.\n\n{e.message}''')
       return pd.DataFrame(data)
 
     with h5py.File(local_path, mode='r') as hd5:
       try:
-        signals = RESTING_ECG_SIGNAL_TMAP.tensor_from_file(RESTING_ECG_SIGNAL_TMAP, hd5)
+        signals = TMAPS[tmap_name].tensor_from_file(TMAPS[tmap_name], hd5)
       except (KeyError, ValueError) as e:
-        print(f'Warning: Resting ECG raw signal not available for sample {sample_id}\n\n{e}')
-        examine_available_keys(hd5)
+        print(f'''Warning: Resting ECG TMAP {tmap_name} not available for sample {sample_id}.
+        Use the tmap_name parameter to choose a different TMAP.\n\n{e}''')
+        _examine_available_keys(hd5)
         return pd.DataFrame(data)
       for (lead, channel) in ECG_REST_LEADS.items():
         signal = signals[:, channel]
@@ -132,14 +137,14 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
 
 
 def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
-  """Wrangle raw exercise ECG signal data to tidy format.
+  """Wrangle exercise ECG signal data to tidy format.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
     folder: The local or Cloud Storage folder under which the files reside.
 
   Returns:
-    A tuple of pandas dataframesor a notebook-friendly error.
+    A tuple of pandas dataframes or print a notebook-friendly error and return empty dataframes.
     * first tuple element is trend data in wide format
     * second tuple element is signal data in tidy format
   """
@@ -152,7 +157,8 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
     try:
       tf.io.gfile.copy(src=os.path.join(folder, sample_hd5), dst=local_path)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-      print(f'Error: Exercise ECG raw signal not available for sample {sample_id}\n\n{e.message}')
+      print(f'''Warning: Exercise ECG not available for sample {sample_id} in folder {folder}.
+      Use the folder parameter to read HD5s from a different directory or bucket.\n\n{e.message}''')
       return (pd.DataFrame({}), pd.DataFrame({}))
 
     with h5py.File(local_path, mode='r') as hd5:
@@ -163,13 +169,13 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
           trend_data[tmap.name.replace('trend_', '')] = tensor
         except (KeyError, ValueError) as e:
           print(f'Warning: Exercise ECG trend not available for sample {sample_id}\n\n{e}')
-          examine_available_keys(hd5)
+          _examine_available_keys(hd5)
           return (pd.DataFrame({}), pd.DataFrame({}))
       try:
         full = EXERCISE_ECG_SIGNAL_TMAP.tensor_from_file(EXERCISE_ECG_SIGNAL_TMAP, hd5)
       except (KeyError, ValueError) as e:
-        print(f'Warning: Exercise ECG raw signal not available for sample {sample_id}\n\n{e}')
-        examine_available_keys(hd5)
+        print(f'Warning: Exercise ECG not available for sample {sample_id}\n\n{e}')
+        _examine_available_keys(hd5)
         return (pd.DataFrame({}), pd.DataFrame({}))
 
   signal_data = {}
@@ -177,9 +183,9 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
     signal_data['raw_mV_' + lead] = full[:, channel] * RAW_SCALE
   signal_data['time'] = np.arange(len(full)) / SAMPLING_RATE
 
-  # Convert exercise ecg trend tensor dictionarys to a dataframe and
-  # clean data as needed
-  trend_df = pd.DataFrame(trend_data)
+  # Convert exercise ecg trend tensor dictionarys to a dataframe. Include only trends with the same length
+  # as the 'time' trend. (note: this appears to only be a problem with the fake data.)
+  trend_df = pd.DataFrame({k: v for k, v in trend_data.items() if v.shape[0] == trend_data['time'].shape[0]})
   # Clean data - convert to categorical string.
   trend_df['phasename'] = trend_df.phasename.map(EXERCISE_PHASES).astype('category')
 
@@ -203,14 +209,14 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
 
 
 def reshape_exercise_ecg_and_trend_to_tidy(sample_id, folder=None):
-  """Wrangle raw exercise ECG signal and trend data to tidy format.
+  """Wrangle exercise ECG signal and trend data to tidy format.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
     folder: The local or Cloud Storage folder under which the files reside.
 
   Returns:
-    A tuple of pandas dataframesor a notebook-friendly error.
+    A tuple of pandas dataframes or print a notebook-friendly error and return empty dataframes.
     * first tuple element is trend data in tidy format
     * second tuple element is signal data in tidy format
   """

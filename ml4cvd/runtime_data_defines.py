@@ -7,28 +7,29 @@ TODO(everyone):
 """
 
 import collections
+from enum import Enum, auto
 import os
-from enum import Enum
 
 
 class Runtime(Enum):
-  TERRA = 1
-  ML4CVD_VM = 2
-  DEFAULT = 3  # Such as an AI Platform Notebooks VM.
+  TERRA = auto()
+  ML4CVD_VM = auto()
+  DEFAULT = auto()  # Such as an AI Platform Notebooks VM.
   # TODO(sam): PARTNERS = 4
 
 
 class Dataset(Enum):
-  FAKE = 1
-  UKB = 2
+  FAKE = auto()
+  UKB = auto()
 
 
 class DataType(Enum):
-  RESTING_ECG_HD5 = 1
-  RESTING_ECG_SVG = 2
-  EXERCISE_ECG_HD5 = 3
-  BRAIN_MRI = 4
-  CARDIAC_MRI = 5
+  RESTING_ECG_HD5 = auto()
+  RESTING_ECG_SVG = auto()
+  EXERCISE_ECG_HD5 = auto()
+  BRAIN_MRI_DICOM = auto()
+  CARDIAC_MRI_DICOM = auto()
+  MRI_HD5 = auto()
 
 # Three-level dictionary of data locations.
 FOLDERS = collections.defaultdict(lambda: collections.defaultdict(dict))
@@ -39,20 +40,22 @@ FOLDERS = collections.defaultdict(lambda: collections.defaultdict(dict))
 # fake data so that it could be make publicly available.
 FOLDERS[Runtime.TERRA] = {
     Dataset.UKB: {
-        DataType.EXERCISE_ECG_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors',
-        DataType.RESTING_ECG_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors',
+        DataType.EXERCISE_ECG_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors/',
+        DataType.RESTING_ECG_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors/',
         DataType.RESTING_ECG_SVG: 'gs://ml4cvd/ecg_views_11_04_2019_svg/',
-        DataType.BRAIN_MRI: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI: 'gs://ml4cvd/data/mris/cardiac/',
+        DataType.MRI_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors/',
+        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
+        DataType.CARDIAC_MRI_DICOM: 'gs://ml4cvd/data/mris/cardiac/',
     },
     Dataset.FAKE: {
         # If fake data is not available, put in the path to the real data.
         # Dependent code must gracefully handle 'not found' conditions.
-        DataType.EXERCISE_ECG_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors',
-        DataType.RESTING_ECG_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors',
+        DataType.EXERCISE_ECG_HD5: 'gs://ml4cvd/projects/fake_hd5s/',
+        DataType.RESTING_ECG_HD5: 'gs://ml4cvd/projects/fake_hd5s/',
         DataType.RESTING_ECG_SVG: 'gs://ml4cvd/ecg_views_fake/',
-        DataType.BRAIN_MRI: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI: 'gs://ml4cvd/projects/fake_mris/',
+        DataType.MRI_HD5: 'gs://ml4cvd/projects/fake_hd5s/',
+        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
+        DataType.CARDIAC_MRI_DICOM: 'gs://ml4cvd/data/mris/cardiac/',
     },
 }
 
@@ -61,20 +64,22 @@ FOLDERS[Runtime.TERRA] = {
 # the preferred source in this runtime environment.]
 FOLDERS[Runtime.ML4CVD_VM] = {
     Dataset.UKB: {
-        DataType.EXERCISE_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors',
-        DataType.RESTING_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors',
+        DataType.EXERCISE_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors/',
+        DataType.RESTING_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors/',
         DataType.RESTING_ECG_SVG: '/mnt/ml4cvd/ecg_views_11_04_2019_svg/',
-        DataType.BRAIN_MRI: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI: '/mnt/ml4cvd/data/mris/cardiac/',
+        DataType.MRI_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors/',
+        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
+        DataType.CARDIAC_MRI_DICOM: '/mnt/ml4cvd/data/mris/cardiac/',
     },
     Dataset.FAKE: {
         # If fake data is not available, put in the path to the real data.
         # Dependent code must gracefully handle 'not found' conditions.
-        DataType.EXERCISE_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors',
-        DataType.RESTING_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors',
+        DataType.EXERCISE_ECG_HD5: '/mnt/ml4cvd/projects/fake_hd5s/',
+        DataType.RESTING_ECG_HD5: '/mnt/ml4cvd/projects/fake_hd5s/',
         DataType.RESTING_ECG_SVG: '/mnt/ml4cvd/ecg_views_fake/',
-        DataType.BRAIN_MRI: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI: '/mnt/ml4cvd/projects/fake_mris/',
+        DataType.MRI_HD5: '/mnt/ml4cvd/projects/fake_hd5s/',
+        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
+        DataType.CARDIAC_MRI_DICOM: '/ml4cvd/data/mris/cardiac/',
     },
 }
 
@@ -121,21 +126,27 @@ def get_exercise_ecg_hd5_folder(sample_id):
 def get_brain_mri_folder(sample_id):
   return FOLDERS[determine_runtime()][
       determine_dataset(sample_id)
-  ][DataType.BRAIN_MRI]
+  ][DataType.BRAIN_MRI_DICOM]
 
 
 def get_cardiac_mri_folder(sample_id):
   return FOLDERS[determine_runtime()][
       determine_dataset(sample_id)
-  ][DataType.CARDIAC_MRI]
+  ][DataType.CARDIAC_MRI_DICOM]
+
+
+def get_mri_hd5_folder(sample_id):
+  return FOLDERS[determine_runtime()][
+      determine_dataset(sample_id)
+  ][DataType.MRI_HD5]
 
 
 def get_mri_folders(sample_id):
   return [
       FOLDERS[determine_runtime()][
           determine_dataset(sample_id)
-      ][DataType.BRAIN_MRI],
+      ][DataType.BRAIN_MRI_DICOM],
       FOLDERS[determine_runtime()][
           determine_dataset(sample_id)
-      ][DataType.CARDIAC_MRI],
+      ][DataType.CARDIAC_MRI_DICOM],
   ]

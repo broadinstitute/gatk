@@ -5,8 +5,8 @@ import os
 from facets_overview.generic_feature_statistics_generator import GenericFeatureStatisticsGenerator
 
 FACETS_DEPENDENCIES = {
-  'facets_html': 'https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html',
-  'webcomponents_js': 'https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/1.3.3/webcomponents-lite.js',
+    'facets_html': 'https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html',
+    'webcomponents_js': 'https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/1.3.3/webcomponents-lite.js',
 }
 
 if 'GOOGLE_PROJECT' in os.environ:  # This is Terra.
@@ -23,6 +23,7 @@ if 'GOOGLE_PROJECT' in os.environ:  # This is Terra.
         os.system('wget --no-clobber ' + url)
     # Update dictionary to replace absolute url with relative url.
     FACETS_DEPENDENCIES[dep] = os.path.basename(url)
+
 
 class FacetsOverview(object):
   """Methods for Facets Overview notebook integration."""
@@ -49,9 +50,9 @@ class FacetsOverview(object):
           document.querySelector("#overview_elem").protoInput = "{protostr}";
         </script>'''
     html = html_template.format(
-      facets_html=FACETS_DEPENDENCIES['facets_html'],
-      webcomponents_js=FACETS_DEPENDENCIES['webcomponents_js'],
-      protostr=protostr,
+        facets_html=FACETS_DEPENDENCIES['facets_html'],
+        webcomponents_js=FACETS_DEPENDENCIES['webcomponents_js'],
+        protostr=protostr,
     )
     return html
 

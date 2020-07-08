@@ -22,6 +22,8 @@ numcodecs
 beautifulsoup4
 lxml
 xmltodict
+pandas_gbq
+pyarrow
 altair
 facets-overview
 plotnine

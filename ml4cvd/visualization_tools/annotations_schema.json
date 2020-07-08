@@ -1,0 +1,37 @@
+[
+    {
+        "name": "sample_id",
+        "type": "STRING",
+        "mode": "REQUIRED"
+    },
+    {
+        "mode": "REQUIRED",
+        "name": "annotator",
+        "type": "STRING"
+    },
+    {
+        "mode": "REQUIRED",
+        "name": "annotation_timestamp",
+        "type": "TIMESTAMP"
+    },
+    {
+        "mode": "REQUIRED",
+        "name": "key",
+        "type": "STRING"
+    },
+    {
+        "mode": "NULLABLE",
+        "name": "value_numeric",
+        "type": "NUMERIC"
+    },
+    {
+        "mode": "NULLABLE",
+        "name": "value_string",
+        "type": "STRING"
+    },
+    {
+        "mode": "NULLABLE",
+        "name": "comment",
+        "type": "STRING"
+    }
+]
