@@ -156,6 +156,10 @@ def evaluate_predictions(
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
+        if tm.sentinel is not None:
+            y_predictions = y_predictions[y_truth != tm.sentinel]
+            y_truth = y_truth[y_truth != tm.sentinel]
+        _plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
         if prediction_flat.shape[0] == truth_flat.shape[0]:
             performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
     elif tm.is_continuous():
@@ -1983,6 +1987,33 @@ def _hash_string_to_color(string):
 def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
     t = axes.text(x, y, text)
     t.set_bbox({'facecolor': background, 'alpha': alpha, 'edgecolor': background})
+
+
+def _plot_reconstruction(
+        tm: TensorMap, y_true: np.ndarray, y_pred: np.ndarray,
+        folder: str, paths: List[str]
+):
+    num_samples = 3
+    logging.info(f'Plotting {num_samples} reconstructions of {tm}.')
+    if None in tm.shape:  # can't handle dynamic shapes
+        return
+    for i in range(num_samples):
+        title = f'{tm.name}_{os.path.basename(paths[i]).replace(TENSOR_EXT, "")}_reconstruction'
+        y = y_true[i].reshape(tm.shape)
+        yp = y_pred[i].reshape(tm.shape)
+        if tm.axes() == 2:
+            fig = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE * num_samples))
+            for j in range(tm.shape[1]):
+                plt.subplot(tm.shape[1], 1, j + 1)
+                plt.plot(y[:, j], c='k', linestyle='--', label='original')
+                plt.plot(yp[:, j], c='b', label='reconstruction')
+                if j == 0:
+                    plt.title(title)
+                    plt.legend()
+            plt.tight_layout()
+        # TODO: implement 3d, 4d
+        plt.savefig(os.path.join(folder, title + IMAGE_EXT))
+        plt.clf()
 
 
 if __name__ == '__main__':
