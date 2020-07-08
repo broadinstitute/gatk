@@ -24,6 +24,7 @@ from collections import defaultdict
 from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.models import parent_sort, BottleneckType, check_no_bottleneck
+from ml4cvd.models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps, build_partners_time_series_tensor_maps
@@ -136,17 +137,19 @@ def parse_args():
     parser.add_argument('--t', default=48, type=int, help='Number of time slices')
     parser.add_argument('--mlp_concat', default=False, action='store_true', help='Concatenate input with every multiplayer perceptron layer.')  # TODO: should be the same style as u_connect
     parser.add_argument('--dense_layers', nargs='*', default=[16, 64], type=int, help='List of number of hidden units in neural nets dense layers.')
-    parser.add_argument('--dropout', default=0.0, type=float, help='Dropout rate of dense layers must be in [0.0, 1.0].')
+    parser.add_argument('--dense_regularize_rate', default=0.0, type=float, help='Rate parameter for dense_regularize.')
+    parser.add_argument('--dense_regularize', default=None, choices=list(DENSE_REGULARIZATION_CLASSES), help='Type of regularization layer for dense layers.')
+    parser.add_argument('--dense_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for dense layers.')
     parser.add_argument('--activation', default='relu',  help='Activation function for hidden units in neural nets dense layers.')
     parser.add_argument('--conv_layers', nargs='*', default=[32], type=int, help='List of number of kernels in convolutional layers.')
     parser.add_argument('--conv_x', default=[3], nargs='*', type=int, help='X dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
     parser.add_argument('--conv_y', default=[3], nargs='*', type=int, help='Y dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
     parser.add_argument('--conv_z', default=[2], nargs='*', type=int, help='Z dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
     parser.add_argument('--conv_dilate', default=False, action='store_true', help='Dilate the convolutional layers.')
-    parser.add_argument('--conv_dropout', default=0.0, type=float, help='Dropout rate of convolutional kernels must be in [0.0, 1.0].')
     parser.add_argument('--conv_type', default='conv', choices=['conv', 'separable', 'depth'], help='Type of convolutional layer')
-    parser.add_argument('--conv_normalize', default=None, choices=['', 'batch_norm'], help='Type of normalization layer for convolutions')
-    parser.add_argument('--conv_regularize', default=None, choices=['dropout', 'spatial_dropout'], help='Type of regularization layer for convolutions.')
+    parser.add_argument('--conv_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for convolutions')
+    parser.add_argument('--conv_regularize', default=None, choices=list(CONV_REGULARIZATION_CLASSES), help='Type of regularization layer for convolutions.')
+    parser.add_argument('--conv_regularize_rate', default=0.0, type=float, help='Rate parameter for conv_regularize.')
     parser.add_argument('--max_pools', nargs='*', default=[], type=int, help='List of maxpooling layers.')
     parser.add_argument('--pool_type', default='max', choices=['max', 'average'], help='Type of pooling layers.')
     parser.add_argument('--pool_x', default=2, type=int, help='Pooling size in the x-axis, if 1 no pooling will be performed.')

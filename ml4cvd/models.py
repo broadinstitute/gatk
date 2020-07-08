@@ -47,6 +47,34 @@ class BottleneckType(Enum):
     NoBottleNeck = auto()  # only works when everything is u_connected
 
 
+ACTIVATION_CLASSES = {
+    'leaky': LeakyReLU(),
+    'prelu': PReLU(),
+    'elu': ELU(),
+    'thresh_relu': ThresholdedReLU,
+}
+ACTIVATION_FUNCTIONS = {
+    'swish': tf.nn.swish,
+    'gelu': tfa.activations.gelu,
+    'lisht': tfa.activations.lisht,
+    'mish': tfa.activations.mish,
+}
+NORMALIZATION_CLASSES = {
+    'batch_norm': BatchNormalization,
+    'layer_norm': LayerNormalization,
+    'instance_norm': tfa.layers.InstanceNormalization,
+    'poincare_norm': tfa.layers.PoincareNormalize,
+}
+CONV_REGULARIZATION_CLASSES = {
+    # class name -> (dimension -> class)
+    'spatial_dropout': {2: SpatialDropout1D, 3: SpatialDropout2D, 4: SpatialDropout3D},
+    'dropout': defaultdict(lambda _: Dropout),
+}
+DENSE_REGULARIZATION_CLASSES = {
+    'dropout': Dropout,  # TODO: add l1, l2
+}
+
+
 def make_shallow_model(
     tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
     learning_rate: float, model_file: str = None, model_layers: str = None,
@@ -474,9 +502,11 @@ class VariationalDiagNormal(Layer):
     def __init__(
             self,
             latent_size: int,
+            kl_divergence_weight: float = 1.,
             **kwargs
     ):
         self.latent_size = latent_size
+        self.kl_divergence_weight = kl_divergence_weight
         super(VariationalDiagNormal, self).__init__(**kwargs)
         self.prior = tfd.MultivariateNormalDiag(loc=tf.zeros([latent_size]), scale_identity_multiplier=1.0)
 
@@ -484,12 +514,12 @@ class VariationalDiagNormal(Layer):
         """mu and sigma must be shape (None, latent_size)"""
         approx_posterior = tfd.MultivariateNormalDiag(loc=mu, scale_diag=tf.math.exp(log_sigma))
         kl = tf.reduce_mean(tfd.kl_divergence(approx_posterior, self.prior))
-        self.add_loss(kl)
+        self.add_loss(kl * self.kl_divergence_weight)
         self.add_metric(kl, 'mean', name='KL_divergence')
         return approx_posterior.sample()
 
     def get_config(self):
-        return {'latent_size': self.latent_size}
+        return {'latent_size': self.latent_size, 'kl_divergence_weight': self.kl_divergence_weight}
 
 
 class VariationalBottleNeck:
@@ -515,7 +545,7 @@ class VariationalBottleNeck:
             for tm, shape in pre_decoder_shapes.items() if shape is not None
         }
         self.latent_size = latent_size
-        self.sampler: Callable = VariationalDiagNormal(latent_size)
+        self.sampler: Layer = VariationalDiagNormal(latent_size, regularization_rate)
         self.no_restructures = [tm for tm, shape in pre_decoder_shapes.items() if shape is None]
 
     def __call__(self, encoder_outputs: Dict[TensorMap, Tensor]) -> Dict[TensorMap, Tensor]:
@@ -785,17 +815,19 @@ def make_multimodal_multitask_model(
         bottleneck_type: BottleneckType,
         optimizer: str,
         dense_layers: List[int] = None,
-        dropout: float = None,  # TODO: should be dense_regularization rate for flexibility
+        dense_normalize: str = None,
+        dense_regularize: str = None,
+        dense_regularize_rate: float = None,
         conv_layers: List[int] = None,
         dense_blocks: List[int] = None,
         block_size: int = None,
         conv_type: str = None,
         conv_normalize: str = None,
         conv_regularize: str = None,
+        conv_regularize_rate: float = None,
         conv_x: List[int] = None,
         conv_y: List[int] = None,
         conv_z: List[int] = None,
-        conv_dropout: float = None,
         conv_dilate: bool = None,
         u_connect: DefaultDict[TensorMap, Set[TensorMap]] = None,
         pool_x: int = None,
@@ -821,17 +853,19 @@ def make_multimodal_multitask_model(
     :param learning_rate: learning rate for optimizer
     :param bottleneck_type: How to merge the representations coming from the different input modalities
     :param dense_layers: List of number of filters in each dense layer.
-    :param dropout: Dropout rate in dense layers
+    :param dense_normalize: How to normalize dense layers (e.g. batchnorm)
+    :param dense_regularize: How to regularize dense leayers (e.g. dropout)
+    :param: dense_regularize_rate: Rate of dense_regularize
     :param conv_layers: List of number of filters in each convolutional layer
     :param dense_blocks: List of number of filters in densenet modules for densenet convolutional models
     :param block_size: Number of layers within each Densenet module for densenet convolutional models
     :param conv_type: Type of convolution to use, e.g. separable
     :param conv_normalize: Type of normalization layer for convolutions, e.g. batch norm
-    :param conv_regularize: Type of regularization for convolutions, e.g. dropout
+    :param conv_regularize: Type of regularization for convolutions (e.g. dropout)
+    :param conv_regularize_rate: Rate of conv_regularize
     :param conv_x: Size of X dimension for 2D and 3D convolutional kernels
     :param conv_y: Size of Y dimension for 2D and 3D convolutional kernels
     :param conv_z: Size of Z dimension for 3D convolutional kernels
-    :param conv_dropout: Dropout rate in convolutional layers
     :param conv_dilate: whether to use dilation in conv layers
     :param u_connect: dictionary of input TensorMap -> output TensorMaps to u connect to
     :param pool_x: Pooling in the X dimension for Convolutional models.
@@ -860,11 +894,6 @@ def make_multimodal_multitask_model(
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
-
-    dense_normalize = conv_normalize  # TODO: should come from own argument
-    dense_regularize = 'dropout' if dropout else None
-    dense_regularize_rate = dropout
-    conv_regularize_rate = conv_dropout
 
     # list of filter dimensions should match the number of convolutional layers = len(dense_blocks) + [ + len(conv_layers) if convolving input tensors]
     num_dense = len(dense_blocks)
@@ -950,12 +979,12 @@ def make_multimodal_multitask_model(
         if tm.axes() > 1:
             decoders[tm] = ConvDecoder(
                 tensor_map_out=tm,
-                filters_per_dense_block=dense_blocks,
+                filters_per_dense_block=dense_blocks[::-1],
                 conv_layer_type=conv_type,
                 conv_x=conv_x,
                 conv_y=conv_y,
                 conv_z=conv_z,
-                block_size=1,
+                block_size=block_size,
                 activation=activation,
                 normalization=conv_normalize,
                 regularization=conv_regularize,
@@ -1168,26 +1197,6 @@ def _upsampler(dimension, pool_x, pool_y, pool_z):
         return UpSampling1D(size=pool_x)
 
 
-ACTIVATION_CLASSES = {
-    'leaky': LeakyReLU(),
-    'prelu': PReLU(),
-    'elu': ELU(),
-    'thresh_relu': ThresholdedReLU,
-}
-ACTIVATION_FUNCTIONS = {
-    'swish': tf.nn.swish,
-    'gelu': tfa.activations.gelu,
-    'lisht': tfa.activations.lisht,
-    'mish': tfa.activations.mish,
-}
-NORMALIZATION_CLASSES = {
-    'batch_norm': BatchNormalization,
-    'layer_norm': LayerNormalization,
-    'instance_norm': tfa.layers.InstanceNormalization,
-    'poincare_norm': tfa.layers.PoincareNormalize,
-}
-
-
 def _activation_layer(activation: str) -> Activation:
     return (
         ACTIVATION_CLASSES.get(activation, None)
@@ -1202,16 +1211,11 @@ def _normalization_layer(norm: str) -> Layer:
 
 
 def _regularization_layer(dimension: int, regularization_type: str, rate: float):
-    if dimension == 4 and regularization_type == 'spatial_dropout':
-        return SpatialDropout3D(rate)
-    elif dimension == 3 and regularization_type == 'spatial_dropout':
-        return SpatialDropout2D(rate)
-    elif dimension == 2 and regularization_type == 'spatial_dropout':
-        return SpatialDropout1D(rate)
-    elif regularization_type == 'dropout':
-        return Dropout(rate)
-    else:
+    if not regularization_type:
         return lambda x: x
+    if regularization_type in DENSE_REGULARIZATION_CLASSES:
+        return DENSE_REGULARIZATION_CLASSES[regularization_type](rate)
+    return CONV_REGULARIZATION_CLASSES[regularization_type][dimension](rate)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

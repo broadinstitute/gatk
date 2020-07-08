@@ -31,7 +31,12 @@ DEFAULT_PARAMS = {
     'pool_x': 1,
     'pool_y': 1,
     'pool_z': 1,
-    'dropout': 0,
+    'conv_regularize': 'spatial_dropout',
+    'conv_regularize_rate': .1,
+    'conv_normalize': 'batch_norm',
+    'dense_regularize': 'dropout',
+    'dense_regularize_rate': .1,
+    'dense_normalize': 'batch_norm',
     'bottleneck_type': BottleneckType.FlattenRestructure,
 }
 
@@ -358,6 +363,8 @@ class TestModelPerformance:
             num_workers=cpu_count(),
             cache_size=1e9 / cpu_count(),
             balance_csvs=[],
+            training_steps=64,
+            validation_steps=18,
             test_modulo=0,
         )
         try:
