@@ -613,9 +613,10 @@ public final class AssemblyBasedCallerUtils {
                         }
                         result.get(Allele.SPAN_DEL).add(h);
                         // there might be a del+ins at the site in question and this would miss one of them unless its a continue
-                        continue; //Why is there a break here? Shouldn't this be a continue? Why should the first spanning event overlap?A
+                        break; //Why is there a break here? Shouldn't this be a continue? Why should the first spanning event overlap?A
                     } else {
                         result.get(ref).add(h);
+                        break;
                     }
                 }
             }
