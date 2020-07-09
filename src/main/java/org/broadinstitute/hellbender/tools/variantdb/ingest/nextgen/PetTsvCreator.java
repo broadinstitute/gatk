@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -27,27 +28,18 @@ public final class PetTsvCreator {
     private final SAMSequenceDictionary seqDictionary;
     private final GQStateEnum gqStateToIgnore;
     private GenomeLocSortedSet coverageLocSortedSet;
+    private static String PET_FILETYPE_PREFIX = "pet_";
 
-    public PetTsvCreator(String sampleName, String sampleId, Path sampleDirectoryPath, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore) {
+    public PetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore) {
         this.sampleId = sampleId;
         this.seqDictionary = seqDictionary;
         this.gqStateToIgnore = gqStateToIgnore;
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
-        // If the pet directory inside it doesn't exist yet -- create it
-        final String petDirectoryName = "pet";
-        final Path petDirectoryPath = sampleDirectoryPath.resolve(petDirectoryName);
-        final File petDirectory = new File(petDirectoryPath.toString());
-        if (!petDirectory.exists()) {
-            petDirectory.mkdir();
-        }
        try {
-            // Create a pet file to go into the pet dir for _this_ sample
-            final String petOutputName = sampleName + petDirectoryName + IngestConstants.FILETYPE;
-            final Path petOutputPath = petDirectoryPath.resolve(petOutputName);
-            // write header to it
+            final String petOutputName = PET_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + IngestConstants.FILETYPE;
             List<String> petHeader = PetTsvCreator.getHeaders();
-            petWriter = new SimpleXSVWriter(petOutputPath, IngestConstants.SEPARATOR);
+            petWriter = new SimpleXSVWriter(Paths.get(petOutputName), IngestConstants.SEPARATOR);
             petWriter.setHeaderLine(petHeader);
         } catch (final IOException e) {
             throw new UserException("Could not create pet outputs", e);
@@ -59,7 +51,7 @@ public final class PetTsvCreator {
      * Expected headers for the Position Table (PET)
      */
     public enum PetFieldEnum {
-        position,
+        location,
         sample,
         state,
     }

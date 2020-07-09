@@ -40,7 +40,7 @@ public enum GenomeFieldEnum {
     // This where the validation step (required vs not) lives  -- fail if there is missing data for a required field
     // and just leave it empty if not required
 
-    position, // Required-- start position for sample
+    location, // Required-- start position for sample
     sample, // Required-- sample Id for sample
 
 
