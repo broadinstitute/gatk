@@ -10,7 +10,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
@@ -34,8 +33,8 @@ import java.io.File;
         programGroup = ShortVariantDiscoveryProgramGroup.class,
         omitFromCommandLine = true
 )
-public final class VariantIngester extends VariantWalker {
-    static final Logger logger = LogManager.getLogger(VariantIngester.class);
+public final class CreateVariantIngestFiles extends VariantWalker {
+    static final Logger logger = LogManager.getLogger(CreateVariantIngestFiles.class);
 
     private PetTsvCreator petTsvCreator;
     private VetTsvCreator vetTsvCreator;
@@ -50,11 +49,11 @@ public final class VariantIngester extends VariantWalker {
     // Each pet and vet directory will hold all of the pet and vet tsvs for each sample
     // A metadata directory will be created, with a metadata tsv for each sample
 
-    @Argument(fullName = "output-path",
-            shortName = "VPO",
-            doc = "Path to the directory where the variants TSVs and positions expanded TSVs should be written")
-    public GATKPathSpecifier parentOutputDirectory = null;
-    public Path parentDirectory = null;
+//    @Argument(fullName = "output-path",
+//            shortName = "VPO",
+//            doc = "Path to the directory where the variants TSVs and positions expanded TSVs should be written")
+//    public GATKPathSpecifier parentOutputDirectory = null;
+//    public Path parentDirectory = null;
 
     @Argument(fullName = "ref-block-gq-to-ignore",
             shortName = "IG",
@@ -98,12 +97,13 @@ public final class VariantIngester extends VariantWalker {
         sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
 
         // Mod the sample directories
-        int sampleDirectoryNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
+        int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
+        String tableNumberPrefix = String.format("%03d_", sampleTableNumber);
 
-        parentDirectory = parentOutputDirectory.toPath(); // TODO do we need this? More efficient way to do this?
-        final Path sampleDirectoryPath = IngestUtils.createSampleDirectory(parentDirectory, sampleDirectoryNumber);
-        metadataTsvCreator = new MetadataTsvCreator(sampleDirectoryPath);
-        metadataTsvCreator.createRow(sampleName, sampleId, userIntervals, gqStateToIgnore);
+//        parentDirectory = parentOutputDirectory.toPath(); // TODO do we need this? More efficient way to do this?
+//        final Path sampleDirectoryPath = IngestUtils.createSampleDirectory(parentDirectory, sampleDirectoryNumber);
+        metadataTsvCreator = new MetadataTsvCreator();
+        metadataTsvCreator.createRow(sampleName, sampleId, tableNumberPrefix, userIntervals, gqStateToIgnore);
 
         // To set up the missing positions
         SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
@@ -112,13 +112,13 @@ public final class VariantIngester extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        petTsvCreator = new PetTsvCreator(sampleName, sampleId, sampleDirectoryPath, seqDictionary, gqStateToIgnore);
+        petTsvCreator = new PetTsvCreator(sampleName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore);
         switch (mode) {
             case EXOMES:
-                vetTsvCreator = new ExomeVetTsvCreator(sampleName, sampleId, sampleDirectoryPath);
+                vetTsvCreator = new ExomeVetTsvCreator(sampleName, sampleId, tableNumberPrefix);
                 break;
             case GENOMES:
-                vetTsvCreator = new GenomeVetTsvCreator(sampleName, sampleId, sampleDirectoryPath);
+                vetTsvCreator = new GenomeVetTsvCreator(sampleName, sampleId, tableNumberPrefix);
                 break;
             case ARRAYS:
                 throw new UserException.BadInput("To ingest Array data, use ArrayIngester tool.");
