@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 public abstract class VetTsvCreator {
@@ -22,26 +23,17 @@ public abstract class VetTsvCreator {
 
     private SimpleXSVWriter vetWriter = null;
     private final String sampleId;
+    private static String VET_FILETYPE_PREFIX = "vet_";
 
 
-    public VetTsvCreator(String sampleName, String sampleId, Path sampleDirectoryPath) {
+    public VetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix) {
         this.sampleId = sampleId;
         // If the vet directory inside it doesn't exist yet -- create it
-        final String vetDirectoryName = "vet";
-        final Path vetDirectoryPath = sampleDirectoryPath.resolve(vetDirectoryName);
-        final File vetDirectory = new File(vetDirectoryPath.toString());
-        if (!vetDirectory.exists()) {
-            vetDirectory.mkdir();
-        }
-
         // if the pet & vet tsvs don't exist yet -- create them
         try {
-            // Create a vet file to go into the pet dir for _this_ sample
-            final String vetOutputName = sampleName + vetDirectoryName + IngestConstants.FILETYPE;
-            final Path vetOutputPath = vetDirectoryPath.resolve(vetOutputName);
-            // write header to it
+            final String vetOutputName = VET_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + IngestConstants.FILETYPE;
             List<String> vetHeader = ExomeVetTsvCreator.getHeaders();
-            vetWriter = new SimpleXSVWriter(vetOutputPath, IngestConstants.SEPARATOR);
+            vetWriter = new SimpleXSVWriter(Paths.get(vetOutputName), IngestConstants.SEPARATOR);
             vetWriter.setHeaderLine(vetHeader);
         } catch (final IOException e) {
             throw new UserException("Could not create vet outputs", e);
