@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
 
 /**
  * Expected headers for the Variant Table (VET)
- *     position, // req
+ *     location, // req
  *     sample, // req
  *     reference_bases, // req
  *     alternate_bases_alt, // req
@@ -39,7 +40,7 @@ public enum ExomeFieldEnum {
     // This where the validation step (required vs not) lives  -- fail if there is missing data for a required field
     // and just leave it empty if not required
 
-    position, // Required-- start position for sample
+    location, // Required-- encoded chromosome and position
     sample, // Required-- sample Id for sample
 
     ref { // Required

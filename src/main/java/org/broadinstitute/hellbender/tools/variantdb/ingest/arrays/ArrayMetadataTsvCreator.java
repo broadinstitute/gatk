@@ -41,7 +41,6 @@ public class ArrayMetadataTsvCreator {
             List<String> sampleListHeader = ArrayMetadataTsvCreator.getHeaders();
             sampleMetadataWriter = new SimpleXSVWriter(Paths.get(sampleMetadataName), IngestConstants.SEPARATOR);
             sampleMetadataWriter.setHeaderLine(sampleListHeader);
-            String intervalListMd5 = "NA";
 
             final List<String> TSVLineToCreateSampleMetadata = createSampleListRow(
                     sampleName,
