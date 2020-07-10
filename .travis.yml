@@ -4,6 +4,8 @@ group: travis_lts
 git:
   depth: 9999999
   lfs_skip_smudge: true
+services:
+  - docker
 jdk:
   - openjdk8
 env:
@@ -101,6 +103,8 @@ before_install:
 # http://docs.travis-ci.com/user/database-setup/#MySQL
 - sudo /etc/init.d/mysql stop
 - sudo /etc/init.d/postgresql stop
+- sudo bash scripts/htsgetScripts/launchDocker.sh
+
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't bother building";

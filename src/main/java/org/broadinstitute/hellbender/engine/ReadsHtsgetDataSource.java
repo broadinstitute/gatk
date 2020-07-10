@@ -29,9 +29,9 @@ import java.util.stream.Collectors;
  * Manages traversals and queries over sources of reads which are accessible via {@link GATKPath}s pointing to a file
  * behind an htsget server
  * (for now, BAM/CRAM files only).
- *
+ * <p>
  * Two basic operations are available:
- *
+ * <p>
  * -Iteration over all reads, optionally restricted to reads that overlap a set of intervals
  * -Targeted queries by one interval at a time
  */
@@ -48,7 +48,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     /**
      * Only reads that overlap these intervals (and unmapped reads, if {@link #traverseUnmapped} is set) will be returned
      * during a full iteration. Null if iteration is unbounded.
-     *
+     * <p>
      * Individual queries are unaffected by these intervals -- only traversals initiated via {@link #iterator} are affected.
      */
     private List<SimpleInterval> intervals;
@@ -56,10 +56,10 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     /**
      * If true, restrict traversals to unmapped reads (and reads overlapping any {@link #intervals}, if set).
      * False if iteration is unbounded or bounded only by our {@link #intervals}.
-     *
+     * <p>
      * Note that this setting covers only unmapped reads that have no position -- unmapped reads that are assigned the
      * position of their mates will be returned by queries overlapping that position.
-     *
+     * <p>
      * Individual queries are unaffected by this setting  -- only traversals initiated via {@link #iterator} are affected.
      */
     private boolean traverseUnmapped;
@@ -110,7 +110,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     /**
      * Initialize this data source with a single SAM/BAM file and a custom SamReaderFactory
      *
-     * @param source path to SAM/BAM file, not null.
+     * @param source                 path to SAM/BAM file, not null.
      * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
      *                               stringency SILENT is used.
      */
@@ -121,7 +121,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     /**
      * Initialize this data source with multiple SAM/BAM files and a custom SamReaderFactory
      *
-     * @param sources path to SAM/BAM file, not null.
+     * @param sources                path to SAM/BAM file, not null.
      * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
      *                               stringency SILENT is used.
      */
@@ -197,23 +197,23 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
     /**
      * Restricts a traversal of this data source via {@link #iterator} to only return reads that overlap the given intervals,
      * and to unmapped reads if specified.
-     *
+     * <p>
      * Calls to {@link #query} are not affected by this method.
      *
-     * @param intervals Our next full traversal will return reads overlapping these intervals
+     * @param intervals        Our next full traversal will return reads overlapping these intervals
      * @param traverseUnmapped Our next full traversal will return unmapped reads (this affects only unmapped reads that
      *                         have no position -- unmapped reads that have the position of their mapped mates will be
      *                         included if the interval overlapping that position is included).
      */
     @Override
     public void setTraversalBounds(final List<SimpleInterval> intervals, final boolean traverseUnmapped) {
-        this.intervals = intervals != null && ! intervals.isEmpty() ? intervals : null;
+        this.intervals = intervals != null && !intervals.isEmpty() ? intervals : null;
         this.traverseUnmapped = traverseUnmapped;
     }
 
     /**
      * @return True if traversals initiated via {@link #iterator} will be restricted to reads that overlap intervals
-     *         as configured via {@link #setTraversalBounds}, otherwise false
+     * as configured via {@link #setTraversalBounds}, otherwise false
      */
     @Override
     public boolean traversalIsBounded() {
@@ -222,6 +222,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
 
     /**
      * This data source can be queried even without index files
+     *
      * @return always true
      */
     @Override
@@ -234,7 +235,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
      * iteration is limited to reads that overlap that set of intervals.
      *
      * @return An iterator over the reads in this data source, limited to reads that overlap the intervals supplied
-     *         via {@link #setTraversalBounds} (if intervals were provided)
+     * via {@link #setTraversalBounds} (if intervals were provided)
      */
     @Override
     @Nonnull
@@ -256,7 +257,7 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
 
     /**
      * @return An iterator over just the unmapped reads with no assigned position. This operation is not affected
-     *         by prior calls to {@link #setTraversalBounds}.
+     * by prior calls to {@link #setTraversalBounds}.
      */
     @Override
     public Iterator<GATKRead> queryUnmapped() {
@@ -388,7 +389,8 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
 
     /**
      * Wrap an iterator to allow us to free the backing SamReader without holding onto an explicit reference to it
-     * @param iterator the iterator to wrap
+     *
+     * @param iterator  the iterator to wrap
      * @param samReader the SamReader to close once the iterator has been used up
      * @return a wrapped CloseableIterator
      */

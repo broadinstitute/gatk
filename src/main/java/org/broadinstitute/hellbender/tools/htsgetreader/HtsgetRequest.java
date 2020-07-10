@@ -39,8 +39,8 @@ public class HtsgetRequest {
 
     private static final ObjectMapper mapper = getObjectMapper();
 
-    final private URI endpoint;
-    final private String id;
+    private final URI endpoint;
+    private final String id;
 
     // Query parameters
     private HtsgetFormat format;
@@ -59,16 +59,11 @@ public class HtsgetRequest {
     }
 
     public HtsgetRequest(final GATKPath source) {
-        try {
-            final URI sourceURI = source.getURI();
-            this.endpoint = new URI("//" + sourceURI.getHost());
-            this.id = sourceURI.getPath();
-            this.fields = EnumSet.noneOf(HtsgetRequestField.class);
-            this.tags = new HashSet<>();
-            this.notags = new HashSet<>();
-        } catch (final URISyntaxException e) {
-            throw new UserException(source.toString(), e);
-        }
+        this.endpoint = source.getURI();
+        this.id = "";
+        this.fields = EnumSet.noneOf(HtsgetRequestField.class);
+        this.tags = new HashSet<>();
+        this.notags = new HashSet<>();
     }
 
     public URI getEndpoint() {
@@ -221,6 +216,7 @@ public class HtsgetRequest {
         this.validateRequest();
         final UriBuilder builder = UriBuilder.fromUri(this.endpoint)
             .scheme("http")
+            .port(this.endpoint.getPort())
             .path(this.id);
 
         if (this.format != null) {
