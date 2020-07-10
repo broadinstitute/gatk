@@ -6,9 +6,9 @@ import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.read.SamComparison;
 import org.testng.Assert;
 import picard.sam.SortSam;
+import picard.sam.util.SamComparison;
 
 import java.io.File;
 import java.io.IOException;

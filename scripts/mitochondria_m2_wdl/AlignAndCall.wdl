@@ -12,7 +12,7 @@ workflow AlignAndCall {
   input {
     File unmapped_bam
     Float? autosomal_coverage
-    String sample_name
+    String base_name
 
     File mt_dict
     File mt_fasta
@@ -158,7 +158,7 @@ workflow AlignAndCall {
       raw_vcf = LiftoverAndCombineVcfs.merged_vcf,
       raw_vcf_index = LiftoverAndCombineVcfs.merged_vcf_index,
       raw_vcf_stats = MergeStats.stats,
-      sample_name = sample_name,
+      base_name = base_name,
       ref_fasta = mt_fasta,
       ref_fai = mt_fasta_index,
       ref_dict = mt_dict,
@@ -202,7 +202,7 @@ workflow AlignAndCall {
       contamination_major = GetContamination.major_level,
       contamination_minor = GetContamination.minor_level,
       verifyBamID = verifyBamID,
-      sample_name = sample_name,
+      base_name = base_name,
       ref_fasta = mt_fasta,
       ref_fai = mt_fasta_index,
       ref_dict = mt_dict,
@@ -245,6 +245,7 @@ workflow AlignAndCall {
       gatk_override = gatk_override,
       gatk_docker_override = gatk_docker_override,
       compress = compress_output_vcf,
+      base_name = base_name,
       preemptible_tries = preemptible_tries
   }
 
@@ -498,7 +499,7 @@ task M2 {
         --max-mnp-distance 0
   >>>
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
       memory: machine_mem + " MB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -522,7 +523,7 @@ task Filter {
     File raw_vcf_stats
     Boolean compress
     Float? vaf_cutoff
-    String sample_name
+    String base_name
 
     String? m2_extra_filtering_args
     Int max_alt_allele_count
@@ -546,7 +547,7 @@ task Filter {
     Int? preemptible_tries
   }
 
-  String output_vcf = sub(sample_name, "(0x20 | 0x9 | 0xD | 0xA)+", "_") + if compress then ".vcf.gz" else ".vcf"
+  String output_vcf = base_name + if compress then ".vcf.gz" else ".vcf"
   String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
   Float ref_size = size(ref_fasta, "GB") + size(ref_fai, "GB")
   Int disk_size = ceil(size(raw_vcf, "GB") + ref_size) + 20
@@ -587,7 +588,7 @@ task Filter {
 
   >>>
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
       memory: "4 MB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -620,7 +621,7 @@ task MergeStats {
     File stats = "raw.combined.stats"
   }
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -659,7 +660,7 @@ task SplitMultiAllelicsAndRemoveNonPassSites {
     File vcf_for_haplochecker = "splitAndPassOnly.vcf"
   }
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -702,7 +703,7 @@ task FilterNuMTs {
     File numt_filtered_vcf_idx = "~{output_vcf_index}"
   }
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -715,6 +716,7 @@ task FilterLowHetSites {
     File ref_fai
     File ref_dict
     File filtered_vcf
+    String base_name
     Int? max_low_het_sites
     Int? preemptible_tries
     File? gatk_override
@@ -722,8 +724,7 @@ task FilterLowHetSites {
     Boolean compress
   }
 
-  String basename = basename(filtered_vcf, ".vcf")
-  String output_vcf = basename + ".final" + if compress then ".vcf.gz" else ".vcf"
+  String output_vcf = base_name + ".final" + if compress then ".vcf.gz" else ".vcf"
   String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
   Int max_sites = select_first([max_low_het_sites, 3])
   
@@ -742,7 +743,7 @@ task FilterLowHetSites {
     File final_filtered_vcf_idx = "~{output_vcf_index}"
   }
   runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.1.0"])
+      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])

@@ -95,6 +95,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String INTERVAL_PICARD_STYLE_EXPECTED = toolsTestDir + "GenomicsDBImport/interval_expected.interval_list";
     private static final String MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS_PICARD_STYLE_EXPECTED = 
             toolsTestDir + "GenomicsDBImport/multiple_non_adjacent_intervals_combine_gvcfs_expected.interval_list";
+    private static final String TEST_INT64_SUPPORT_GENOMICSDB_BUNDLE = GENOMICSDB_TEST_DIR + "/int64_test.tar.gz";
     //Consider a gVCF with a REF block chr20:50-150. Importing this data into GenomicsDB using multiple intervals
     //-L chr20:1-100 and -L chr20:101-200 will cause the REF block to be imported into both the arrays
     //Now, when reading data from the workspace (assume full scan) - the data is split into 2 REF block intervals chr20:50-100
@@ -1024,6 +1025,74 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         final IntervalList generatedInterval = IntervalList.fromFile(new File(outputIntervalList));
         final IntervalList expectedInterval = IntervalList.fromFile(new File(expectedOutput));
         Assert.assertTrue(generatedInterval.sorted().equals(expectedInterval.sorted()));
+    }
+
+    void basicWriteAndQueryWithOptions(String workspace, Map<String, Object> options) throws IOException {
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
+        INTERVAL.forEach(args::addInterval);
+        LOCAL_GVCFS.forEach(vcf -> args.add("V", vcf));
+        for ( String key : options.keySet()) {
+            if (key.equals(GenomicsDBImport.SHARED_POSIXFS_OPTIMIZATIONS)) {
+                Assert.assertTrue(options.get(key) instanceof Boolean);
+                args.add(GenomicsDBImport.SHARED_POSIXFS_OPTIMIZATIONS, (Boolean)options.get(key));
+            }
+            if (key.equals(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME)) {
+                Assert.assertTrue(options.get(key) instanceof Boolean);
+                args.add(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, (Boolean)options.get(key));
+            }
+        }
+        runCommandLine(args);
+        checkJSONFilesAreWritten(workspace);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
+    }
+
+    @Test
+    public void testWithMiscOptions() throws IOException {
+        final String workspace = createTempDir("genomicsdb-misc-options").getAbsolutePath() + "/workspace";
+        IOUtils.deleteOnExit(IOUtils.getPath(workspace));
+        Map<String, Object> options = new HashMap<String, Object>();
+
+        // Test with shared posixfs optimizations set
+        options.put(GenomicsDBImport.SHARED_POSIXFS_OPTIMIZATIONS, true);
+        basicWriteAndQueryWithOptions(workspace, options);
+
+        // Test with shared posixfs optimizations and overwrite workspace set
+        options.put(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, true);
+        basicWriteAndQueryWithOptions(workspace, options);
+    }
+
+    @Test(expectedExceptions = GenomicsDBImport.UnableToCreateGenomicsDBWorkspace.class)
+    public void testWithMiscOptionsNoOverwrite() throws IOException {
+        final String workspace = createTempDir("genomicsdb-misc-options-nooverwrite").getAbsolutePath() + "/workspace";
+        IOUtils.deleteOnExit(IOUtils.getPath(workspace));
+        Map<String, Object> options = new HashMap<String, Object>();
+        basicWriteAndQueryWithOptions(workspace, options);
+
+        // Test with overwrite workspace set to false - should throw an exception - GenomicsDBImport.UnableToCreateGenomicsDBWorkspace
+        options.replace(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, false);
+        basicWriteAndQueryWithOptions(workspace, options);
+    }
+
+    @Test
+    public void testQueryWithComputationsExceeding32BitsDefault() throws IOException {
+        final String folder = createTempDir("computations_exceed_32bits").getAbsolutePath();
+        IOUtils.extractTarGz(Paths.get(TEST_INT64_SUPPORT_GENOMICSDB_BUNDLE), Paths.get(folder));
+        IOUtils.deleteOnExit(IOUtils.getPath(folder));
+        final String workspace = folder + "/bigint_genomicsdb_ws";
+        checkGenomicsDBAgainstExpected(workspace, new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("1"))), folder+"/expected_combined_bigint.vcf",
+                folder+"/reference/chr1_10MB.fasta.gz", true, ATTRIBUTES_TO_IGNORE, false, false, true);
+    }
+
+    // The following test should fail with a Throwable because of limitations in BCF2Codec - see https://github.com/broadinstitute/gatk/issues/6548
+    @Test(expectedExceptions = Throwable.class)
+    public void testQueryWithComputationsExceeding32BitsBCFCodec() throws IOException {
+        final String folder = createTempDir("computations_exceed_32bits_bcf2codec").getAbsolutePath() + "/testQueryWithComputationsExceed32Bits";
+        IOUtils.extractTarGz(Paths.get(TEST_INT64_SUPPORT_GENOMICSDB_BUNDLE), Paths.get(folder));
+        IOUtils.deleteOnExit(IOUtils.getPath(folder));
+        final String workspace = folder + "/bigint_genomicsdb_ws";
+        checkGenomicsDBAgainstExpected(workspace, new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("1"))), folder+"/expected_combined_bigint.vcf",
+                folder+"/reference/chr1_10MB.fasta.gz", true, ATTRIBUTES_TO_IGNORE, false, false, false);
     }
 
     @Test(groups = {"bucket"})

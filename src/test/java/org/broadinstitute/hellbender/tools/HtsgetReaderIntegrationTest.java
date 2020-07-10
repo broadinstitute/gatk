@@ -59,12 +59,13 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
                     StandardArgumentDefinitions.INTERVALS_LONG_NAME, "chr1:24000000-25000000"),
                 "A1-B000168-3_57_F-1-1_R2.mus.Aligned.out.sorted.bam.startend"
             },
-            { // filter by field
-                ImmutableMap.of(
-                    HtsgetReader.ID_LONG_NAME, FILE_ID,
-                    HtsgetReader.FIELDS_LONG_NAME, "QNAME"),
-                "A1-B000168-3_57_F-1-1_R2.mus.Aligned.out.sorted.bam.field"
-            }
+//            TODO enable when server update goes in
+//            { // filter by field
+//                ImmutableMap.of(
+//                    HtsgetReader.ID_LONG_NAME, FILE_ID,
+//                    HtsgetReader.FIELDS_LONG_NAME, "QNAME"),
+//                "A1-B000168-3_57_F-1-1_R2.mus.Aligned.out.sorted.bam.field"
+//            }
         };
     }
 
@@ -84,6 +85,7 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
         SamAssertionUtils.assertEqualBamFiles(output, expected, false, ValidationStringency.LENIENT);
     }
 
+    //This test is disabled because it takes a long time.  It's included in order to run it manually.
     @Test(enabled = false)
     public void testLargeFileParallelDownload() throws IOException {
         final String expectedMd5 = new String(Files.readAllBytes(new File(getToolTestDataDir(), LARGE_FILE_MD5_FILE).toPath()));
