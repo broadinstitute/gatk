@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.variantdb.ingest.arrays;
 
-import com.google.cloud.bigquery.TableResult;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
-import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -14,13 +12,8 @@ import org.broadinstitute.hellbender.tools.variantdb.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.variantdb.ExtractCohortBQ;
 import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestConstants;
 import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestUtils;
-import org.broadinstitute.hellbender.tools.variantdb.ingest.MetadataTsvCreator;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
-import org.broadinstitute.hellbender.utils.bigquery.QueryAPIRowReader;
-import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.Map;
 
 /**
@@ -53,17 +46,18 @@ public final class CreateArrayIngestFiles extends VariantWalker {
             optional = true)
     public Long sampleIdParam;
 
-    @Argument(fullName = "probe-info",
-            shortName = "PI",
+    @Argument(fullName = "probe-info-table",
+            shortName = "PIT",
             doc = "Fully qualified table name for the probe info table",
             optional = true)
     public String probeFQTablename;
 
     @Argument(
-        fullName = "probe-info-csv",
+        fullName = "probe-info-file",
+        shortName = "PIF",
         doc = "Filepath to CSV export of probe-info table",
         optional = true)
-    private String probeCsvExportFile = null;
+    private String probeCsvFile = null;
 
     @Argument(
             fullName = "ref-version",
@@ -95,10 +89,10 @@ public final class CreateArrayIngestFiles extends VariantWalker {
         metadataTsvCreator.createRow(sampleName, sampleId, tableNumberPrefix);
 
         Map<String, ProbeInfo> probeNameMap;
-        if (probeCsvExportFile == null) {
+        if (probeCsvFile == null) {
             probeNameMap = ExtractCohortBQ.getProbeNameMap(probeFQTablename, false);
         } else {
-            probeNameMap = ProbeInfo.getProbeNameMap(probeCsvExportFile);
+            probeNameMap = ProbeInfo.getProbeNameMap(probeCsvFile);
         }
 
         // TableReference probeInfoTable = new TableReference(probeFQTablename, ProbeInfoSchema.PROBE_INFO_FIELDS);
