@@ -437,23 +437,26 @@ task ScatterIntervals {
 
 task PostprocessGermlineCNVCalls {
     input {
-        File gcnv_calls_sample_tar
-        Array[File] gcnv_model_tars
-        File gcnv_shard_configs_tar
-        String entity_id
-        File contig_ploidy_calls_tar
-        Array[String]? allosomal_contigs
-        Int ref_copy_number_autosomal_contigs
-        Int sample_index
-        File? gatk4_jar_override
+      String entity_id
+      Array[File] gcnv_calls_tars
+      Array[File] gcnv_model_tars
+      Array[File] calling_configs
+      Array[File] denoising_configs
+      Array[File] gcnvkernel_version
+      Array[File] sharded_interval_lists
+      File contig_ploidy_calls_tar
+      Array[String]? allosomal_contigs
+      Int ref_copy_number_autosomal_contigs
+      Int sample_index
+      File? gatk4_jar_override
 
-        # Runtime parameters
-        String gatk_docker
-        Int? mem_gb
-        Int? disk_space_gb
-        Boolean use_ssd = false
-        Int? cpu
-        Int? preemptible_attempts
+      # Runtime parameters
+      String gatk_docker
+      Int? mem_gb
+      Int? disk_space_gb
+      Boolean use_ssd = false
+      Int? cpu
+      Int? preemptible_attempts
     }
 
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
@@ -466,15 +469,28 @@ task PostprocessGermlineCNVCalls {
     Array[String] allosomal_contigs_args = if defined(allosomal_contigs) then prefix("--allosomal-contig ", select_first([allosomal_contigs])) else []
 
     command <<<
-        set -euo pipefail
+        set -eu
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
 
+        sharded_interval_lists_array=(~{sep=" " sharded_interval_lists})
+
         # untar calls to CALLS_0, CALLS_1, etc directories and build the command line
-        tar xzf ~{gcnv_calls_sample_tar}
-        tar xzf ~{gcnv_shard_configs_tar}
+        # also copy over shard config and interval files
+        gcnv_calls_tar_array=(~{sep=" " gcnv_calls_tars})
+        calling_configs_array=(~{sep=" " calling_configs})
+        denoising_configs_array=(~{sep=" " denoising_configs})
+        gcnvkernel_version_array=(~{sep=" " gcnvkernel_version})
+        sharded_interval_lists_array=(~{sep=" " sharded_interval_lists})
         calls_args=""
-        for calls_dir in CALLS_*; do
-            calls_args="$calls_args --calls-shard-path $calls_dir"
+        for index in ${!gcnv_calls_tar_array[@]}; do
+            gcnv_calls_tar=${gcnv_calls_tar_array[$index]}
+            mkdir -p CALLS_$index/SAMPLE_~{sample_index}
+            tar xzf $gcnv_calls_tar -C CALLS_$index/SAMPLE_~{sample_index}
+            cp ${calling_configs_array[$index]} CALLS_$index/
+            cp ${denoising_configs_array[$index]} CALLS_$index/
+            cp ${gcnvkernel_version_array[$index]} CALLS_$index/
+            cp ${sharded_interval_lists_array[$index]} CALLS_$index/
+            calls_args="$calls_args --calls-shard-path CALLS_$index"
         done
 
         # untar models to MODEL_0, MODEL_1, etc directories and build the command line
@@ -512,7 +528,6 @@ task PostprocessGermlineCNVCalls {
         disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
-        maxRetries: 1
     }
 
     output {
@@ -610,55 +625,6 @@ task CollectModelQualityMetrics {
     output {
         File qc_status_file = "qcStatus.txt"
         String qc_status_string = read_string("qcStatus.txt")
-    }
-}
-
-task TransposeCallerOutputs {
-    input {
-      Array[File] gcnv_calls_tars
-
-      # Runtime parameters
-      String docker
-      Int? mem_gb
-      Int? disk_space_gb
-      Boolean use_ssd = false
-      Int? cpu
-      Int? preemptible_attempts
-    }
-
-    command <<<
-        set -euo pipefail
-
-        gcnv_calls_tar_array=(~{sep=" " gcnv_calls_tars})
-        for index in ${!gcnv_calls_tar_array[@]}; do
-            mkdir CALLS_$index
-            tar xzf ${gcnv_calls_tar_array[$index]} -C CALLS_$index
-        done
-
-        CURRENT_SAMPLE=0
-        NUM_SAMPLES=$(ls -d CALLS_0/SAMPLE_* | wc -l)
-        NUM_DIGITS=${#NUM_SAMPLES}
-        while [ $CURRENT_SAMPLE -lt $NUM_SAMPLES ]; do
-            CURRENT_SAMPLE_WITH_LEADING_ZEROS=$(printf "%0${NUM_DIGITS}d" $CURRENT_SAMPLE)
-            tar c CALLS_*/SAMPLE_$CURRENT_SAMPLE | gzip -1 > gcnv-calls-sample-$CURRENT_SAMPLE_WITH_LEADING_ZEROS.tar.gz
-            let CURRENT_SAMPLE=CURRENT_SAMPLE+1
-        done
-
-        rm -r CALLS_*/SAMPLE_*
-        tar c CALLS_* | gzip -1 > gcnv-shard-configs.tar.gz
-    >>>
-
-    runtime {
-        docker: docker
-        memory: select_first([mem_gb, 2]) + " GiB"
-        disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
-        cpu: select_first([cpu, 1])
-        preemptible: select_first([preemptible_attempts, 5])
-    }
-
-    output {
-        Array[File] gcnv_calls_sample_tars = glob("gcnv-calls-sample-*.tar.gz")
-        File gcnv_shard_configs_tar = "gcnv-shard-configs.tar.gz"
     }
 }
 
