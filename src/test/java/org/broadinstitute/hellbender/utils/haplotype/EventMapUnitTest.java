@@ -124,15 +124,12 @@ public final class EventMapUnitTest extends GATKBaseTest {
         final Haplotype hap = new Haplotype(haplotypeBases.getBytes(), false, hapStartWrtRef, TextCigarCodec.decode(cigar));
         final EventMap eventMap = new EventMap(hap, refBases.getBytes(), refLoc, NAME, 1);
 
-        // final List<VariantContext> overlappingEvents = eventMap.getOverlappingEvents(queryLoc);
-        final List<VariantContext> overlappingEvents = eventMap.getOverlappingEventsLegacy(queryLoc);
+        final List<VariantContext> overlappingEvents = eventMap.getOverlappingEvents(queryLoc);
 
-        final boolean noEventsExpected = expectedAlt == null && expectedRef == null;
-        Assert.assertEquals(overlappingEvents.size(), noEventsExpected ? 0 : 1);
+        final boolean eventsExpected = expectedAlt != null || expectedRef != null;
+        Assert.assertEquals(overlappingEvents.size(), eventsExpected ? 1 : 0);
 
-        if (noEventsExpected) {
-            return;
-        } else {
+        if (eventsExpected) {
             Assert.assertEquals(overlappingEvents.get(0).getReference(), expectedRef);
             Assert.assertEquals(overlappingEvents.get(0).getAlternateAllele(0), expectedAlt);
         }
