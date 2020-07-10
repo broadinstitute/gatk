@@ -135,9 +135,6 @@ public final class EventMapUnitTest extends GATKBaseTest {
         }
     }
 
-
-
-
     @DataProvider(name = "MakeBlockData")
     public Object[][] makeMakeBlockData() {
         List<Object[]> tests = new ArrayList<>();
