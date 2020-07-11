@@ -47,13 +47,14 @@ public final class DiscordantPairEvidence implements Feature {
         return endContig;
     }
 
+    // Note this returns the end position on the start chromosome
     @Override
     public int getEnd() {
-        if (startContig.equals(endContig)) {
-            return end;
-        } else {
-            return start + 1;
-        }
+        return start + 1;
+    }
+
+    public int getEndPosition() {
+        return end;
     }
 
     public boolean getEndStrand() {

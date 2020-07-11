@@ -6,12 +6,13 @@ import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.tools.sv.DiscordantPairEvidence;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class DiscordantPairEvidenceCodec extends AsciiFeatureCodec<DiscordantPairEvidence> {
 
-    public static final String FORMAT_SUFFIX = ".txt.gz";
-    public static final char COL_DELIMITER = '\t';
+    public static final String FORMAT_SUFFIX = ".PE.txt.gz";
+    public static final String COL_DELIMITER = "\t";
     private static final Splitter splitter = Splitter.on(COL_DELIMITER);
 
     public DiscordantPairEvidenceCodec() {
@@ -28,7 +29,7 @@ public class DiscordantPairEvidenceCodec extends AsciiFeatureCodec<DiscordantPai
         final int start = Integer.parseUnsignedInt(tokens.get(1)) + 1; // Adjust for 0-based indexing
         final boolean startStrand = tokens.get(2).equals(SVCallRecordCodec.STRAND_PLUS);
         final String endContig = tokens.get(3);
-        final int end = Integer.parseUnsignedInt(tokens.get(4)) + 1;
+        final int end = Integer.parseUnsignedInt(tokens.get(4)) + 1; // Adjust for 0-based indexing
         final boolean endStrand = tokens.get(5).equals(SVCallRecordCodec.STRAND_PLUS);
         final String sample = tokens.get(6);
         return new DiscordantPairEvidence(sample, startContig, start, startStrand, endContig, end, endStrand);
@@ -46,4 +47,17 @@ public class DiscordantPairEvidenceCodec extends AsciiFeatureCodec<DiscordantPai
 
     @Override
     public Object readActualHeader(final LineIterator reader) { return null; }
+
+    public static String encode(final DiscordantPairEvidence evidence) {
+        final List<String> data = Arrays.asList(
+                evidence.getContig(),
+                Integer.toString(evidence.getStart() - 1),
+                evidence.getStartStrand() ? SVCallRecordCodec.STRAND_PLUS : SVCallRecordCodec.STRAND_MINUS,
+                evidence.getEndContig(),
+                Integer.toString(evidence.getEndPosition() - 1),
+                evidence.getEndStrand() ? SVCallRecordCodec.STRAND_PLUS : SVCallRecordCodec.STRAND_MINUS,
+                evidence.getSample()
+        );
+        return String.join(COL_DELIMITER, data);
+    }
 }
