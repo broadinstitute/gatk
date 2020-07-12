@@ -11,12 +11,12 @@ import java.util.Collection;
 
 public class DragstrUtils {
 
-    public static DragstrReadSTRAnalizer repeatPeriodAndCounts(final int maxSequenceLength, final int maxPeriod) {
-        return new DragstrReadSTRAnalizer(maxSequenceLength, maxPeriod);
+    public static DragstrReadSTRAnalyzer repeatPeriodAndCounts(final int maxSequenceLength, final int maxPeriod) {
+        return new DragstrReadSTRAnalyzer(maxSequenceLength, maxPeriod);
     }
 
-    public static DragstrReadSTRAnalizer repeatPeriodAndCounts(final byte[] sequence, final int maxPeriod, final boolean considerUpstream) {
-        final DragstrReadSTRAnalizer result = new DragstrReadSTRAnalizer(sequence.length, maxPeriod);
+    public static DragstrReadSTRAnalyzer repeatPeriodAndCounts(final byte[] sequence, final int maxPeriod, final boolean considerUpstream) {
+        final DragstrReadSTRAnalyzer result = new DragstrReadSTRAnalyzer(sequence.length, maxPeriod);
         result.load(sequence);
         return result;
     }

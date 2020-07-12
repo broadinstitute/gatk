@@ -18,7 +18,7 @@ public class DragstrUtilsTest {
     @Test(dataProvider = "testSequenceAndMaxPeriodData")
     public void testRepeatPeriodAndCount(final String sequenceStr, final int maxPeriod, final boolean includeUpstream) {
         final byte[] sequence = sequenceStr.getBytes();
-        final DragstrReadSTRAnalizer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod);
+        final DragstrReadSTRAnalyzer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod);
         rpc.load(sequence);
         final Random rdn = new Random(Arrays.hashCode(sequence) * 31 + maxPeriod);
         final int[] positions = new int[sequence.length];
@@ -53,7 +53,7 @@ public class DragstrUtilsTest {
     }
 
     private void testRepeatBestPeriodAndCount(final byte[] sequence, final int maxPeriod, final int start, final int end, final Random rdn) {
-        final DragstrReadSTRAnalizer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod);
+        final DragstrReadSTRAnalyzer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod);
         if (start == 0 && end == sequence.length && rdn.nextDouble() <= 0.5) { // sometimes use the margin free method when applies to test it.
             rpc.load(sequence);
         } else {

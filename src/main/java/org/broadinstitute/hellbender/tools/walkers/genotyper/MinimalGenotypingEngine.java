@@ -8,9 +8,7 @@ import org.broadinstitute.hellbender.tools.haplotypecaller.SimpleGenotypePriorCa
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrReadSTRAnalizer;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.Collections;
