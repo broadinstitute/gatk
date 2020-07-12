@@ -233,6 +233,7 @@ public abstract class PairHMM implements Closeable{
         for(final GATKRead read : processedReads){
             final PairHMMInputScoreImputation inputScoreImputation = inputScoreImputator.impute(read);
             final byte[] readBases = read.getBases();
+
             final byte[] readQuals = read.getBaseQualities();
             final byte[] readInsQuals = inputScoreImputation.insOpenPenalties();
             final byte[] readDelQuals = inputScoreImputation.delOpenPenalties();
