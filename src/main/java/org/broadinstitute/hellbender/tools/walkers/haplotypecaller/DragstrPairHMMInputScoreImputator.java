@@ -14,11 +14,33 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  */
 public class DragstrPairHMMInputScoreImputator implements PairHMMInputScoreImputator {
 
+    /**
+     * As per the matlab scripts provided the GOP and GCP assigned to the last position of the read are 45 and 10
+     * respectively.
+     */
     private static final int GOP_AT_THE_END_OF_READ = 45;
     private static final int GCP_AT_THE_END_OF_READ = 10;
 
+    /**
+     * Cap for GOP values within the read.
+     * <p>
+     *   Therefore in practice GOP larger than this number are capped to its value.
+     * </p>
+     */
+    private static final double MAX_GOP_IN_READ = 40.0;
+
+    /**
+     * Holds a reference to the Dragstr Model parameters.
+     */
     private final DragstrParams params;
 
+    /**
+     * Constructs an inputator given the location of the Dragstr Parameter file.
+     * @param path the location of the parameter file.
+     * @throws org.broadinstitute.hellbender.exceptions.UserException.CouldNotReadInputFile if there was a problem
+     * accessing the parameter file.
+     * @return never {@code null}.
+     */
     public static DragstrPairHMMInputScoreImputator newInstance(final String path) {
         return new DragstrPairHMMInputScoreImputator(new DragstrParams(path));
     }
@@ -34,20 +56,22 @@ public class DragstrPairHMMInputScoreImputator implements PairHMMInputScoreImput
     @Override
     public PairHMMInputScoreImputation impute(final GATKRead read) {
         final byte[] bases = read.getBases();
-        final DragstrReadSTRAnalyzer analyzer = DragstrUtils.repeatPeriodAndCounts(read.getLength(),
-                params.maximumPeriod());
-        analyzer.load(bases);
         final int length = bases.length;
         final byte[] gop = new byte[length];
         final byte[] gcp = new byte[length];
+
+        final DragstrReadSTRAnalyzer analyzer =  new DragstrReadSTRAnalyzer(bases, params.maximumPeriod());
+
         for (int i = 0; i < length - 1; i++) {
-            final int period = analyzer.mostRepeatedPeriod(i + 1);
-            final int repeats = analyzer.numberOfMostRepeats(i + 1);
-            gop[i] = (byte) params.gop(period, repeats);
-            gcp[i] = (byte) params.gcp(period, repeats);
+            final int period = analyzer.mostRepeatedPeriod(i);
+            final int repeats = analyzer.numberOfMostRepeats(i);
+            gop[i] = (byte) Math.round(Math.min(MAX_GOP_IN_READ, params.gop(period, repeats)));
+            gcp[i] = (byte) Math.round(params.gcp(period, repeats));
         }
+
         gop[length - 1] = GOP_AT_THE_END_OF_READ;
         gcp[length - 1] = GCP_AT_THE_END_OF_READ;
+
         return new PairHMMInputScoreImputation() {
             @Override
             public byte[] delOpenPenalties() {
