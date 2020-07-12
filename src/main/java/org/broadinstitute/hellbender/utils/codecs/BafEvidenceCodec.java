@@ -2,11 +2,9 @@ package org.broadinstitute.hellbender.utils.codecs;
 
 import com.google.common.base.Splitter;
 import htsjdk.tribble.AsciiFeatureCodec;
-import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.tools.sv.BafEvidence;
 
-import java.util.Arrays;
 import java.util.List;
 
 public class BafEvidenceCodec extends AsciiFeatureCodec<BafEvidence> {
@@ -33,25 +31,10 @@ public class BafEvidenceCodec extends AsciiFeatureCodec<BafEvidence> {
     }
 
     @Override
-    public TabixFormat getTabixFormat() {
-        return TabixFormat.BED;
-    }
-
-    @Override
     public boolean canDecode(final String path) {
         return path.endsWith(FORMAT_SUFFIX);
     }
 
     @Override
     public Object readActualHeader(final LineIterator reader) { return null; }
-
-    public static String encode(final BafEvidence evidence) {
-        final List<String> data = Arrays.asList(
-                evidence.getContig(),
-                Integer.toString(evidence.getStart() - 1),
-                Double.toString(evidence.getValue()),
-                evidence.getSample()
-        );
-        return String.join(COL_DELIMITER, data);
-    }
 }

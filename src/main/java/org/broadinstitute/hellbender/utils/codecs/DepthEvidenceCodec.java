@@ -2,12 +2,10 @@ package org.broadinstitute.hellbender.utils.codecs;
 
 import com.google.common.base.Splitter;
 import htsjdk.tribble.AsciiFeatureCodec;
-import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.sv.DepthEvidence;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence> {
@@ -38,11 +36,6 @@ public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence> {
     }
 
     @Override
-    public TabixFormat getTabixFormat() {
-        return TabixFormat.BED;
-    }
-
-    @Override
     public boolean canDecode(final String path) {
         return path.endsWith(FORMAT_SUFFIX);
     }
@@ -53,18 +46,5 @@ public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence> {
             throw new UserException.BadInput("Depth evidence file did not have a header line");
         }
         return reader.next();
-    }
-
-    public static String encode(final DepthEvidence evidence) {
-        final int[] counts = evidence.getCounts();
-        final int numCounts = counts.length;
-        final List<String> data = new ArrayList<>(3 + numCounts);
-        data.add(evidence.getContig());
-        data.add(Integer.toString(evidence.getStart() - 1));
-        data.add(Integer.toString(evidence.getEnd()));
-        for (int i = 0; i < numCounts; i++) {
-            data.add(Integer.toString(counts[i]));
-        }
-        return String.join(COL_DELIMITER, data);
     }
 }

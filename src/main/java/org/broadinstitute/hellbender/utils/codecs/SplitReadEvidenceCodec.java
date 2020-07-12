@@ -2,11 +2,9 @@ package org.broadinstitute.hellbender.utils.codecs;
 
 import com.google.common.base.Splitter;
 import htsjdk.tribble.AsciiFeatureCodec;
-import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
 
-import java.util.Arrays;
 import java.util.List;
 
 public class SplitReadEvidenceCodec extends AsciiFeatureCodec<SplitReadEvidence> {
@@ -38,12 +36,6 @@ public class SplitReadEvidenceCodec extends AsciiFeatureCodec<SplitReadEvidence>
         return new SplitReadEvidence(sample, contig, position, count, strand);
     }
 
-
-    @Override
-    public TabixFormat getTabixFormat() {
-        return TabixFormat.BED;
-    }
-
     @Override
     public boolean canDecode(final String path) {
         return path.endsWith(FORMAT_SUFFIX);
@@ -51,15 +43,4 @@ public class SplitReadEvidenceCodec extends AsciiFeatureCodec<SplitReadEvidence>
 
     @Override
     public Object readActualHeader(final LineIterator reader) { return null; }
-
-    public static String encode(final SplitReadEvidence evidence) {
-        final List<String> data = Arrays.asList(
-                evidence.getContig(),
-                Integer.toString(evidence.getStart() - 1),
-                evidence.getStrand() ? DIRECTION_RIGHT : DIRECTION_LEFT,
-                Integer.toString(evidence.getCount()),
-                evidence.getSample()
-        );
-        return String.join(COL_DELIMITER, data);
-    }
 }

@@ -1,9 +1,13 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 
-import htsjdk.tribble.Feature;
+import org.broadinstitute.hellbender.utils.codecs.DiscordantPairEvidenceCodec;
+import org.broadinstitute.hellbender.utils.codecs.SVCallRecordCodec;
 
-public final class DiscordantPairEvidence implements Feature {
+import java.util.Arrays;
+import java.util.List;
+
+public final class DiscordantPairEvidence extends SVEvidence {
 
     final String sample;
     final String startContig;
@@ -59,5 +63,18 @@ public final class DiscordantPairEvidence implements Feature {
 
     public boolean getEndStrand() {
         return endStrand;
+    }
+
+    public String encode() {
+        final List<String> data = Arrays.asList(
+                startContig,
+                Integer.toString(start - 1),
+                startStrand ? SVCallRecordCodec.STRAND_PLUS : SVCallRecordCodec.STRAND_MINUS,
+                endContig,
+                Integer.toString(end - 1),
+                endStrand ? SVCallRecordCodec.STRAND_PLUS : SVCallRecordCodec.STRAND_MINUS,
+                sample
+        );
+        return String.join(DiscordantPairEvidenceCodec.COL_DELIMITER, data);
     }
 }
