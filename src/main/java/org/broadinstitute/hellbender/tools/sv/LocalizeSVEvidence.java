@@ -152,7 +152,8 @@ public final class LocalizeSVEvidence extends IntervalWalker {
             doHeader(bafSource);
         } else {
             throw new UserException.CouldNotReadInputFile("Input file suffix must be one of: " +
-                ", ".join(
+                String.join(
+                        " ",
                         SplitReadEvidenceCodec.FORMAT_SUFFIX,
                         DiscordantPairEvidenceCodec.FORMAT_SUFFIX,
                         DepthEvidenceCodec.FORMAT_SUFFIX,
