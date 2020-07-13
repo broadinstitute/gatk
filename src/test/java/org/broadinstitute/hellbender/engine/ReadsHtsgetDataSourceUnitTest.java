@@ -18,13 +18,12 @@ import java.util.*;
 public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
     private static final String READS_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
 
-    private static final String ENDPOINT = "htsget://localhost:3000/reads/";
+    private static final String ENDPOINT = "htsget://127.0.0.1:3000/reads/";
     private static final String LOCAL_PREFIX = "gatktest.";
 
     private final GATKPath FIRST_TEST_BAM = new GATKPath(ENDPOINT + LOCAL_PREFIX + "reads_data_source_test1.bam");
     private final GATKPath SECOND_TEST_BAM = new GATKPath(ENDPOINT + LOCAL_PREFIX + "reads_data_source_test2.bam");
     private final GATKPath THIRD_TEST_BAM = new GATKPath(ENDPOINT + LOCAL_PREFIX + "reads_data_source_test3.bam");
-    private final GATKPath FIRST_TEST_SAM = new GATKPath(ENDPOINT + LOCAL_PREFIX + "invalid_coord_sort_order.sam");
 
     private final GATKPath FIRST_TEST_UNMAPPED_BAM = new GATKPath(ENDPOINT + LOCAL_PREFIX + "reads_data_source_test1_with_unmapped.bam");
     private final GATKPath CEU_SNIPPET = new GATKPath(ENDPOINT + LOCAL_PREFIX + "CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam");
@@ -50,26 +49,6 @@ public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
         source.close();
         source.iterator();
     }
-
-//    @Test
-//    public void testDefaultSamReaderValidationStringency() {
-//        // Default validation stringency = SILENT results in no validation errors on invalid coordinate sort
-//        final ReadsDataSource readsSource = new ReadsHtsgetDataSource(FIRST_TEST_SAM);
-//        //noinspection StatementWithEmptyBody
-//        for (@SuppressWarnings("unused") final GATKRead read : readsSource) {
-//        }
-//    }
-//
-//    @Test(expectedExceptions = SAMFormatException.class)
-//    public void testCustomSamReaderFactory() {
-//        // Custom SamReaderFactory with validation stringency = STRICT fails on invalid coordinate sort
-//        final ReadsDataSource readsSource = new ReadsHtsgetDataSource(
-//            FIRST_TEST_SAM,
-//            SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT));
-//        //noinspection StatementWithEmptyBody
-//        for (@SuppressWarnings("unused") final GATKRead read : readsSource) {
-//        }
-//    }
 
     @DataProvider(name = "SingleFileCompleteTraversalData")
     public Object[][] getSingleFileCompleteTraversalData() {
@@ -139,6 +118,14 @@ public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
             {FIRST_TEST_BAM,
                 Arrays.asList(new SimpleInterval("1", 2000, 3000), new SimpleInterval("1", 4000, 5000), new SimpleInterval("2", 1000, 2000)),
                 Collections.<String>emptyList()
+            },
+            {FIRST_TEST_BAM,
+                Arrays.asList(new SimpleInterval("1", 200, 205), new SimpleInterval("1", 207, 210)),
+                Arrays.asList("a", "b", "c")
+            },
+            {FIRST_TEST_BAM,
+                Arrays.asList(new SimpleInterval("2", 500, 502), new SimpleInterval("2", 552, 700)),
+                Arrays.asList("f", "g", "h")
             }
         };
     }
