@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -63,7 +64,7 @@ public final class LocalizeSVEvidence extends IntervalWalker {
 
     public static final String EVIDENCE_FILE_NAME = "evidence-file";
     public static final String INCLUDE_HEADER_STRING = "include-header";
-    public static final String QUERY_LOOKAHEAD_NAME = "query-lookahead";
+    public static final String MAX_QUERY_SIZE_NAME = "max-query";
 
     @Argument(
             doc = "Input file URI with extension '.SR.txt.gz', '.PE.txt.gz', '.BAF.txt.gz', or '.bincov.bed.gz'",
@@ -86,15 +87,16 @@ public final class LocalizeSVEvidence extends IntervalWalker {
 
     @Advanced
     @Argument(
-            doc = "Remote query lookahead, in bases.",
-            fullName = QUERY_LOOKAHEAD_NAME
+            doc = "Maximum query size, in bases. Lowering this can reduce memory usage but also increase run time.",
+            fullName = MAX_QUERY_SIZE_NAME
     )
-    private int queryLookahead = 0;
-
-    private FeatureDataSource<SVEvidence> source;
+    private int maxQuerySize = 10000;
 
     private File outputFile;
     private PrintStream printStream;
+    private FeatureDataSource<SVEvidence> source;
+
+    private static final int QUERY_LOOKAHEAD = 0;
 
     @Override
     public void onTraversalStart() {
@@ -112,7 +114,7 @@ public final class LocalizeSVEvidence extends IntervalWalker {
         source = new FeatureDataSource<>(
                 inputFilePath,
                 "inputFile",
-                queryLookahead,
+                QUERY_LOOKAHEAD,
                 SVEvidence.class,
                 cloudPrefetchBuffer,
                 cloudIndexPrefetchBuffer);
@@ -139,7 +141,24 @@ public final class LocalizeSVEvidence extends IntervalWalker {
                       final ReadsContext readsContext,
                       final ReferenceContext referenceContext,
                       final FeatureContext featureContext) {
-        write(source.queryAndPrefetch(interval));
+        final List<SimpleInterval> intervals = partitionInterval(interval);
+        for (final SimpleInterval i : intervals) {
+            write(source.queryAndPrefetch(i));
+        }
+    }
+
+    // Partitions interval into one or more intervals with given max length
+    private List<SimpleInterval> partitionInterval(final SimpleInterval interval) {
+        final int numIntervals = (int) Math.ceil(interval.getLengthOnReference() / (double) maxQuerySize);
+        final List<SimpleInterval> intervals = new ArrayList<>(numIntervals);
+        final String contig = interval.getContig();
+        int start = interval.getStart();
+        while (start < interval.getEnd()) {
+            int end = Math.min(start + maxQuerySize, interval.getEnd());
+            intervals.add(new SimpleInterval(contig, start, end));
+            start = end;
+        }
+        return intervals;
     }
 
     private void write(final List<SVEvidence> data) {
