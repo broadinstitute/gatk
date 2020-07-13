@@ -17,7 +17,7 @@ public class HtsgetRequestUnitTest extends GATKBaseTest {
     @Test
     public void testOnlyId() throws URISyntaxException {
         final HtsgetRequest req = new HtsgetRequest(new URI(endpoint), "1");
-        Assert.assertEquals(req.toURI().toString(), "https://example.com/1");
+        Assert.assertEquals(req.toURI().toString(), "http://example.com/1");
     }
 
     @Test
@@ -26,7 +26,7 @@ public class HtsgetRequestUnitTest extends GATKBaseTest {
             .withFormat(HtsgetFormat.BAM)
             .withDataClass(HtsgetClass.body)
             .withInterval(new SimpleInterval("chr1:1-16"));
-        Assert.assertEquals(req.toURI().toString(), "https://example.com/1?format=BAM&class=body&referenceName=chr1&start=0&end=16");
+        Assert.assertEquals(req.toURI().toString(), "http://example.com/1?format=BAM&class=body&referenceName=chr1&start=0&end=16");
     }
 
     @Test

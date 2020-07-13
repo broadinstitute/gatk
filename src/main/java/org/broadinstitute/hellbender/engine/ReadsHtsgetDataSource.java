@@ -7,6 +7,7 @@ import htsjdk.samtools.filter.FilteringSamIterator;
 import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.DelegatingIterator;
+import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -376,12 +377,20 @@ public final class ReadsHtsgetDataSource implements ReadsDataSource {
         final CloseableIterator<SAMRecord> filteredSamRecords = new FilteringSamIterator(samReader.iterator(), new SamRecordFilter() {
             @Override
             public boolean filterOut(final SAMRecord record) {
-                return !currInterval.overlaps(record) || (prevInterval != null && prevInterval.overlaps(record));
+                return record.getReadUnmappedFlag()
+                    ? !mateOverlaps(record, currInterval) || (prevInterval != null && mateOverlaps(record, prevInterval))
+                    : !currInterval.overlaps(record) || (prevInterval != null && prevInterval.overlaps(record));
             }
 
             @Override
             public boolean filterOut(final SAMRecord first, final SAMRecord second) {
                 throw new UnsupportedOperationException();
+            }
+
+            private boolean mateOverlaps(final SAMRecord rec, final Locatable other) {
+                return rec.getMateReferenceName().equals(other.getContig())
+                    && rec.getMateAlignmentStart() >= other.getStart()
+                    && rec.getMateAlignmentStart() <= other.getEnd();
             }
         });
         return wrapIteratorWithClose(filteredSamRecords, samReader);

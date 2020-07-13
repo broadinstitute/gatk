@@ -9,3 +9,5 @@ docker container run -d --name htsget-server -p 3000:3000 --env HTSGET_PORT=3000
 echo "Running docker containers"
 
 docker container ls -a
+
+curl http://localhost:3000

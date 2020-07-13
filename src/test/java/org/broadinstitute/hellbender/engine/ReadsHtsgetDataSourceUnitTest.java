@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
@@ -15,6 +16,8 @@ import java.io.File;
 import java.util.*;
 
 public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
+    private static final String READS_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
+
     private static final String ENDPOINT = "htsget://localhost:3000/reads/";
     private static final String LOCAL_PREFIX = "gatktest.";
 
@@ -48,25 +51,25 @@ public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
         source.iterator();
     }
 
-    @Test
-    public void testDefaultSamReaderValidationStringency() {
-        // Default validation stringency = SILENT results in no validation errors on invalid coordinate sort
-        final ReadsDataSource readsSource = new ReadsHtsgetDataSource(FIRST_TEST_SAM);
-        //noinspection StatementWithEmptyBody
-        for ( @SuppressWarnings("unused") final GATKRead read : readsSource ) {
-        }
-    }
-
-    @Test(expectedExceptions = SAMFormatException.class)
-    public void testCustomSamReaderFactory() {
-        // Custom SamReaderFactory with validation stringency = STRICT fails on invalid coordinate sort
-        final ReadsDataSource readsSource = new ReadsHtsgetDataSource(
-            FIRST_TEST_SAM,
-            SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT));
-        //noinspection StatementWithEmptyBody
-        for ( @SuppressWarnings("unused") final GATKRead read : readsSource ) {
-        }
-    }
+//    @Test
+//    public void testDefaultSamReaderValidationStringency() {
+//        // Default validation stringency = SILENT results in no validation errors on invalid coordinate sort
+//        final ReadsDataSource readsSource = new ReadsHtsgetDataSource(FIRST_TEST_SAM);
+//        //noinspection StatementWithEmptyBody
+//        for (@SuppressWarnings("unused") final GATKRead read : readsSource) {
+//        }
+//    }
+//
+//    @Test(expectedExceptions = SAMFormatException.class)
+//    public void testCustomSamReaderFactory() {
+//        // Custom SamReaderFactory with validation stringency = STRICT fails on invalid coordinate sort
+//        final ReadsDataSource readsSource = new ReadsHtsgetDataSource(
+//            FIRST_TEST_SAM,
+//            SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT));
+//        //noinspection StatementWithEmptyBody
+//        for (@SuppressWarnings("unused") final GATKRead read : readsSource) {
+//        }
+//    }
 
     @DataProvider(name = "SingleFileCompleteTraversalData")
     public Object[][] getSingleFileCompleteTraversalData() {
@@ -101,11 +104,11 @@ public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
         readsSource.forEach(reads::add);
 
         // Make sure we got the right number of reads
-        Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in complete traversal of " + samFile.toPath());
+        Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in complete traversal of " + samFile);
 
         // Make sure we got the reads we expected in the right order
         for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
-            Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in complete traversal of " + samFile.toPath() + " not equal to expected read");
+            Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in complete traversal of " + samFile + " not equal to expected read");
         }
     }
 
@@ -149,11 +152,11 @@ public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
             readsSource.forEach(reads::add);
 
             // Make sure we got the right number of reads
-            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFile.toPath());
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFile);
 
             // Make sure we got the reads we expected in the right order
             for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
-                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFile.toPath() + " not equal to expected read");
+                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFile + " not equal to expected read");
             }
         }
     }
@@ -211,11 +214,11 @@ public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
         queryIterator.forEachRemaining(reads::add);
 
         // Make sure we got the right number of reads
-        Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in query by interval of " + samFile.toPath());
+        Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in query by interval of " + samFile);
 
         // Make sure we got the reads we expected in the right order
         for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
-            Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in query by interval of " + samFile.toPath() + " not equal to expected read");
+            Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in query by interval of " + samFile + " not equal to expected read");
         }
     }
 
@@ -401,12 +404,14 @@ public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
             final List<GATKRead> reads = new ArrayList<>();
             readsSource.forEach(reads::add);
 
+            reads.forEach(System.out::println);
+
             // Make sure we got the right number of reads
-            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFile.toPath());
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFile);
 
             // Make sure we got the reads we expected in the right order
             for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
-                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFile.toPath() + " not equal to expected read");
+                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFile + " not equal to expected read");
             }
         }
     }
@@ -427,11 +432,11 @@ public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
             queryIterator.forEachRemaining(reads::add);
 
             // Make sure we got the right number of reads
-            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in queryUnmapped on " + samFile.toPath());
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in queryUnmapped on " + samFile);
 
             // Make sure we got the reads we expected in the right order
             for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
-                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in queryUnmapped on " + samFile.toPath() + " not equal to expected read");
+                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in queryUnmapped on " + samFile + " not equal to expected read");
             }
         }
     }
@@ -474,8 +479,8 @@ public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
         final File testFile1 = getFileWithAddedContig(FIRST_TEST_BAM, "EXTRA_CONTIG_1", "test1", ".bam");
         final File testFile2 = getFileWithAddedContig(SECOND_TEST_BAM, "EXTRA_CONTIG_2", "test2", ".bam");
 
-        final GATKPath testPath1 = new GATKPath(ENDPOINT + testFile1);
-        final GATKPath testPath2 = new GATKPath(ENDPOINT + testFile2);
+        final GATKPath testPath1 = new GATKPath(ENDPOINT + LOCAL_PREFIX + testFile1.getName());
+        final GATKPath testPath2 = new GATKPath(ENDPOINT + LOCAL_PREFIX + testFile2.getName());
 
         try (final ReadsDataSource readsSource = new ReadsHtsgetDataSource(Arrays.asList(testPath1, testPath2))) {
             final SAMFileHeader samHeader = readsSource.getHeader();
@@ -506,7 +511,7 @@ public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
         final String extraContig,
         final String outputName,
         final String extension) {
-        final File outputFile = GATKBaseTest.createTempFile(outputName, extension);
+        final File outputFile = IOUtils.createTempFileInDirectory(outputName, extension, new File(READS_DATA_SOURCE_TEST_DIRECTORY));
         try (final ReadsDataSource readsSource = new ReadsHtsgetDataSource(inputPath)) {
             final SAMFileHeader header = readsSource.getHeader();
             final SAMSequenceRecord fakeSequenceRec = new SAMSequenceRecord(extraContig, 100);
