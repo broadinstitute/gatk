@@ -250,13 +250,13 @@ public class AnalyzeCRAM extends CommandLineProgram {
                 // accrue to tag data
                 externalTagDataSizes.merge(
                         contentID,
-                        new Long(slice.getSliceBlocks().getExternalBlock(contentID).getCompressedContentSize()),
+                        Long.valueOf(slice.getSliceBlocks().getExternalBlock(contentID).getCompressedContentSize()),
                         (oldValue, increment) -> oldValue + increment);
             } else {
                 // accrue to fixed DataSeries ID
                 externalDataSeriesDataSizes.merge(
                         ds,
-                        new Long(sliceBlocks.getExternalBlock(contentID).getCompressedContentSize()),
+                        Long.valueOf(sliceBlocks.getExternalBlock(contentID).getCompressedContentSize()),
                         (oldValue, increment) -> oldValue + increment);
             }
         }
