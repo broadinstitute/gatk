@@ -89,9 +89,9 @@ public final class ReadAnonymizer extends ReadWalker {
         return Collections.list(
             ReadFilterLibrary.VALID_ALIGNMENT_START,
             ReadFilterLibrary.VALID_ALIGNMENT_END,
-            ReadFilterLibrary.READLENGTH_EQUALS_CIGARLENGTH,
+            ReadFilterLibrary.READ_LENGTH_EQUALS_CIGAR_LENGTH,
             ReadFilterLibrary.SEQ_IS_STORED,
-            ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS,
+            ReadFilterLibrary.MATCHING_BASES_AND_QUALS,
             ReadFilterLibrary.MAPPED,
             new AlignmentAgreesWithHeaderReadFilter()
         );

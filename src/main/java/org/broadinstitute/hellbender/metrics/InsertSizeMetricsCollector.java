@@ -61,7 +61,7 @@ public final class InsertSizeMetricsCollector
         readFilters.add(new WellformedReadFilter());
         readFilters.add(ReadFilterLibrary.MAPPED);
         readFilters.add(ReadFilterLibrary.PAIRED);
-        readFilters.add(ReadFilterLibrary.NONZERO_FRAGMENT_LENGTH_READ_FILTER);
+        readFilters.add(ReadFilterLibrary.NON_ZERO_FRAGMENT_LENGTH);
         readFilters.add(ReadFilterLibrary.FIRST_OF_PAIR);
         readFilters.add(ReadFilterLibrary.PROPERLY_PAIRED);
         readFilters.add(ReadFilterLibrary.NOT_DUPLICATE);

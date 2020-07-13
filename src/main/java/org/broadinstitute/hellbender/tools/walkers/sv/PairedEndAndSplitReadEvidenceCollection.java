@@ -126,7 +126,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> readFilters = new ArrayList<>(super.getDefaultReadFilters());
-        readFilters.add(ReadFilterLibrary.MATE_UNMAPPED_AND_UNMAPPED_READ_FILTER);
+        readFilters.add(ReadFilterLibrary.MATE_UNMAPPED_AND_UNMAPPED);
         readFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
         readFilters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
         readFilters.add(ReadFilterLibrary.NOT_SUPPLEMENTARY_ALIGNMENT);

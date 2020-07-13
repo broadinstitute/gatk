@@ -124,7 +124,7 @@ public final class ReadFilterLibraryUnitTest {
         Assert.assertTrue(VALID_ALIGNMENT_START.test(read), "VALID_ALIGNMENT_START " + read.toString());
         Assert.assertTrue(VALID_ALIGNMENT_END.test(read), "VALID_ALIGNMENT_END " + read.toString());
         Assert.assertTrue(HAS_READ_GROUP.test(read), "HAS_READ_GROUP " + read.toString());
-        Assert.assertTrue(HAS_MATCHING_BASES_AND_QUALS.test(read), "HAS_MATCHING_BASES_AND_QUALS " + read.toString());
+        Assert.assertTrue(MATCHING_BASES_AND_QUALS.test(read), "MATCHING_BASES_AND_QUALS " + read.toString());
         Assert.assertTrue(SEQ_IS_STORED.test(read), "SEQ_IS_STORED " + read.toString());
         Assert.assertTrue(CIGAR_CONTAINS_NO_N_OPERATOR.test(read), "CIGAR_CONTAINS_NO_N_OPERATOR " + read.toString());
 
@@ -228,7 +228,7 @@ public final class ReadFilterLibraryUnitTest {
         final SAMFileHeader header = createHeaderWithReadGroups();
         final GATKRead read = simpleGoodRead(header);
         read.setBaseQualities(new byte[]{1,2,3});
-        Assert.assertFalse(HAS_MATCHING_BASES_AND_QUALS.test(read), read.toString());
+        Assert.assertFalse(MATCHING_BASES_AND_QUALS.test(read), read.toString());
     }
 
     @Test
@@ -325,7 +325,7 @@ public final class ReadFilterLibraryUnitTest {
     @Test
     public void testReadCigarLengthMismatch() {
         GATKRead read = ReadClipperTestUtils.makeReadFromCigar("4M", 1);
-        Assert.assertFalse(READLENGTH_EQUALS_CIGARLENGTH.test(read), read.getCigar().toString());
+        Assert.assertFalse(READ_LENGTH_EQUALS_CIGAR_LENGTH.test(read), read.getCigar().toString());
     }
 
     @Test
@@ -840,9 +840,9 @@ public final class ReadFilterLibraryUnitTest {
         final GATKRead read = simpleGoodRead(header);
 
         read.setFragmentLength(0);
-        Assert.assertFalse(NONZERO_FRAGMENT_LENGTH_READ_FILTER.test(read), "NONZERO_FRAGMENT_LENGTH_READ_FILTER " + read.toString());
+        Assert.assertFalse(NON_ZERO_FRAGMENT_LENGTH.test(read), "NON_ZERO_FRAGMENT_LENGTH_READ_FILTER " + read.toString());
         read.setFragmentLength(9);
-        Assert.assertTrue(NONZERO_FRAGMENT_LENGTH_READ_FILTER.test(read), "NONZERO_FRAGMENT_LENGTH_READ_FILTER " + read.toString());
+        Assert.assertTrue(NON_ZERO_FRAGMENT_LENGTH.test(read), "NON_ZERO_FRAGMENT_LENGTH_READ_FILTER " + read.toString());
     }
 
     @Test
@@ -928,27 +928,27 @@ public final class ReadFilterLibraryUnitTest {
         final GATKRead read = simpleGoodRead(createHeaderWithReadGroups());
         read.setAttribute(AddOriginalAlignmentTags.OA_TAG_NAME, "*,0,*,*,0,0;");
 
-        Assert.assertTrue(ReadFilterLibrary.NON_CHIMERIC_ORIGINAL_ALIGNMENT_READ_FILTER.test(read));
+        Assert.assertTrue(ReadFilterLibrary.NON_CHIMERIC_ORIGINAL_ALIGNMENT.test(read));
 
         read.setAttribute(AddOriginalAlignmentTags.MATE_CONTIG_TAG_NAME, "chrM");
 
-        Assert.assertFalse(ReadFilterLibrary.NON_CHIMERIC_ORIGINAL_ALIGNMENT_READ_FILTER.test(read));
+        Assert.assertFalse(ReadFilterLibrary.NON_CHIMERIC_ORIGINAL_ALIGNMENT.test(read));
     }
 
     @Test
     public void testMateUnmappedAndUnmappedReadFilter() {
         final GATKRead read = simpleGoodRead(createHeaderWithReadGroups());
         //keep regular read
-        Assert.assertTrue(MATE_UNMAPPED_AND_UNMAPPED_READ_FILTER.test(read));
+        Assert.assertTrue(MATE_UNMAPPED_AND_UNMAPPED.test(read));
 
         //filter when mate is unmapped
         read.setIsPaired(true);
         read.setMateIsUnmapped();
-        Assert.assertFalse(MATE_UNMAPPED_AND_UNMAPPED_READ_FILTER.test(read));
+        Assert.assertFalse(MATE_UNMAPPED_AND_UNMAPPED.test(read));
 
         //filter when unmapped
         read.setIsUnmapped();
-        Assert.assertFalse(MATE_UNMAPPED_AND_UNMAPPED_READ_FILTER.test(read));
+        Assert.assertFalse(MATE_UNMAPPED_AND_UNMAPPED.test(read));
     }
 
 }

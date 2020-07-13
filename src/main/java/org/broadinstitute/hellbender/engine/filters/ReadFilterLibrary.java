@@ -24,7 +24,7 @@ public final class ReadFilterLibrary {
     /** Filter out reads containing skipped region from the reference (CIGAR strings with 'N' operator). */
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads with CIGAR containing N operator")
     //Note: do not call getCigar to avoid creation of new Cigar objects
-    public static class CigarContainsNoNOperator extends ReadFilter {
+    public static class CigarContainsNoNOperatorReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){
             return ! CigarUtils.containsNOperator(read.getCigarElements());}}
@@ -300,19 +300,19 @@ public final class ReadFilterLibrary {
      * Static, stateless read filter instances
      */
     public static final AllowAllReadsReadFilter ALLOW_ALL_READS = new AllowAllReadsReadFilter();
-    public static final CigarContainsNoNOperator CIGAR_CONTAINS_NO_N_OPERATOR = new CigarContainsNoNOperator();
+    public static final CigarContainsNoNOperatorReadFilter CIGAR_CONTAINS_NO_N_OPERATOR = new CigarContainsNoNOperatorReadFilter();
     public static final FirstOfPairReadFilter FIRST_OF_PAIR = new FirstOfPairReadFilter();
     public static final GoodCigarReadFilter GOOD_CIGAR = new GoodCigarReadFilter();
     public static final HasReadGroupReadFilter HAS_READ_GROUP = new HasReadGroupReadFilter();
     public static final MappedReadFilter MAPPED = new MappedReadFilter();
     public static final MappingQualityAvailableReadFilter MAPPING_QUALITY_AVAILABLE = new MappingQualityAvailableReadFilter();
-    public static final MappingQualityNotZeroReadFilter MAPPING_QUALITY_NOT_ZERO   = new MappingQualityNotZeroReadFilter();
-    public static final MatchingBasesAndQualsReadFilter HAS_MATCHING_BASES_AND_QUALS = new MatchingBasesAndQualsReadFilter();
+    public static final MappingQualityNotZeroReadFilter MAPPING_QUALITY_NOT_ZERO = new MappingQualityNotZeroReadFilter();
+    public static final MatchingBasesAndQualsReadFilter MATCHING_BASES_AND_QUALS = new MatchingBasesAndQualsReadFilter();
     public static final MateOnSameContigOrNoMappedMateReadFilter MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE = new MateOnSameContigOrNoMappedMateReadFilter();
     public static final MateDifferentStrandReadFilter MATE_DIFFERENT_STRAND = new MateDifferentStrandReadFilter();
     public static final MateDistantReadFilter MATE_DISTANT = new MateDistantReadFilter();
     public static final NonZeroReferenceLengthAlignmentReadFilter NON_ZERO_REFERENCE_LENGTH_ALIGNMENT = new NonZeroReferenceLengthAlignmentReadFilter();
-    public static final NonZeroFragmentLengthReadFilter NONZERO_FRAGMENT_LENGTH_READ_FILTER = new NonZeroFragmentLengthReadFilter();
+    public static final NonZeroFragmentLengthReadFilter NON_ZERO_FRAGMENT_LENGTH = new NonZeroFragmentLengthReadFilter();
     public static final NotDuplicateReadFilter NOT_DUPLICATE = new NotDuplicateReadFilter();
     public static final NotProperlyPairedReadFilter NOT_PROPERLY_PAIRED = new NotProperlyPairedReadFilter();
     public static final NotSecondaryAlignmentReadFilter NOT_SECONDARY_ALIGNMENT = new NotSecondaryAlignmentReadFilter();
@@ -321,11 +321,11 @@ public final class ReadFilterLibrary {
     public static final ProperlyPairedReadFilter PROPERLY_PAIRED = new ProperlyPairedReadFilter();
     public static final PassesVendorQualityCheckReadFilter PASSES_VENDOR_QUALITY_CHECK = new PassesVendorQualityCheckReadFilter();
     public static final PrimaryLineReadFilter PRIMARY_LINE = new PrimaryLineReadFilter();
-    public static final ReadLengthEqualsCigarLengthReadFilter READLENGTH_EQUALS_CIGARLENGTH = new ReadLengthEqualsCigarLengthReadFilter();
+    public static final ReadLengthEqualsCigarLengthReadFilter READ_LENGTH_EQUALS_CIGAR_LENGTH = new ReadLengthEqualsCigarLengthReadFilter();
     public static final SecondOfPairReadFilter SECOND_OF_PAIR = new SecondOfPairReadFilter();
     public static final SeqIsStoredReadFilter SEQ_IS_STORED = new SeqIsStoredReadFilter();
     public static final ValidAlignmentStartReadFilter VALID_ALIGNMENT_START = new ValidAlignmentStartReadFilter();
     public static final ValidAlignmentEndReadFilter VALID_ALIGNMENT_END = new ValidAlignmentEndReadFilter();
-    public static final NonChimericOriginalAlignmentReadFilter NON_CHIMERIC_ORIGINAL_ALIGNMENT_READ_FILTER = new NonChimericOriginalAlignmentReadFilter();
-    public static final MateUnmappedAndUnmappedReadFilter MATE_UNMAPPED_AND_UNMAPPED_READ_FILTER = new MateUnmappedAndUnmappedReadFilter();
+    public static final NonChimericOriginalAlignmentReadFilter NON_CHIMERIC_ORIGINAL_ALIGNMENT = new NonChimericOriginalAlignmentReadFilter();
+    public static final MateUnmappedAndUnmappedReadFilter MATE_UNMAPPED_AND_UNMAPPED = new MateUnmappedAndUnmappedReadFilter();
 }

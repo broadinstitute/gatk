@@ -26,7 +26,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  * @see ReadFilterLibrary.MatchingBasesAndQualsReadFilter
  * @see ReadFilterLibrary.ReadLengthEqualsCigarLengthReadFilter
  * @see ReadFilterLibrary.SeqIsStoredReadFilter
- * @see ReadFilterLibrary.CigarContainsNoNOperator
+ * @see ReadFilterLibrary.CigarContainsNoNOperatorReadFilter
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads that are well-formed",
         extraDocs = {
@@ -37,7 +37,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
                 ReadFilterLibrary.MatchingBasesAndQualsReadFilter.class,
                 ReadFilterLibrary.ReadLengthEqualsCigarLengthReadFilter.class,
                 ReadFilterLibrary.SeqIsStoredReadFilter.class,
-                ReadFilterLibrary.CigarContainsNoNOperator.class
+                ReadFilterLibrary.CigarContainsNoNOperatorReadFilter.class
         }
 )
 public final class WellformedReadFilter extends ReadFilter {
@@ -66,8 +66,8 @@ public final class WellformedReadFilter extends ReadFilter {
                 .and(ReadFilterLibrary.VALID_ALIGNMENT_END)
                 .and(alignmentAgreesWithHeader)
                 .and(ReadFilterLibrary.HAS_READ_GROUP)
-                .and(ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS)
-                .and(ReadFilterLibrary.READLENGTH_EQUALS_CIGARLENGTH)
+                .and(ReadFilterLibrary.MATCHING_BASES_AND_QUALS)
+                .and(ReadFilterLibrary.READ_LENGTH_EQUALS_CIGAR_LENGTH)
                 .and(ReadFilterLibrary.SEQ_IS_STORED)
                 .and(ReadFilterLibrary.CIGAR_CONTAINS_NO_N_OPERATOR);
     }

@@ -152,7 +152,7 @@ public class ASEReadCounter extends LocusWalker {
         defaultFilters.add(ReadFilterLibrary.VALID_ALIGNMENT_START);
         defaultFilters.add(ReadFilterLibrary.VALID_ALIGNMENT_END);
         defaultFilters.add(ReadFilterLibrary.HAS_READ_GROUP);
-        defaultFilters.add(ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS);
+        defaultFilters.add(ReadFilterLibrary.MATCHING_BASES_AND_QUALS);
         defaultFilters.add(ReadFilterLibrary.SEQ_IS_STORED);
         defaultFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
         defaultFilters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);

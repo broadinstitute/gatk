@@ -156,7 +156,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT,
                 ReadFilterLibrary.NOT_DUPLICATE,
                 ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK,
-                ReadFilterLibrary.NON_CHIMERIC_ORIGINAL_ALIGNMENT_READ_FILTER,
+                ReadFilterLibrary.NON_CHIMERIC_ORIGINAL_ALIGNMENT,
                 ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT,
                 new ReadLengthReadFilter(MIN_READ_LENGTH, Integer.MAX_VALUE),
                 ReadFilterLibrary.GOOD_CIGAR,
