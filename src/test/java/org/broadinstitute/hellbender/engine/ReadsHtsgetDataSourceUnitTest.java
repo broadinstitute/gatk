@@ -18,7 +18,7 @@ import java.util.*;
 public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
     private static final String READS_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
 
-    private static final String ENDPOINT = "htsget://0.0.0.0:3000/reads/";
+    private static final String ENDPOINT = "htsget://127.0.0.1:3000/reads/";
     private static final String LOCAL_PREFIX = "gatktest.";
 
     private final GATKPath FIRST_TEST_BAM = new GATKPath(ENDPOINT + LOCAL_PREFIX + "reads_data_source_test1.bam");
