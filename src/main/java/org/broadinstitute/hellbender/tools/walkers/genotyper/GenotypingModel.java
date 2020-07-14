@@ -14,6 +14,4 @@ public interface GenotypingModel {
     @SuppressWarnings({"unchecked", "rawtypes"})
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(AlleleList<A> genotypingAlleles, GenotypingData<A> data, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceSTRs dragstrs);
 
-    // Add the debug output stream managed by the engine, this should be called as part of initialization
-    void addDebugOutStream(final PrintStream debugStream);
 }

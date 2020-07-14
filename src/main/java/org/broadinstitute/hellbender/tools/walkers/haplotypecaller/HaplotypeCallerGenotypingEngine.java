@@ -52,9 +52,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
     private final HaplotypeCallerArgumentCollection hcArgs;
 
-    // Debug stream managed by the HaplotypeCallerEngine
-    private PrintStream genotyperDebugOutStream = null;
-
     /**
      * {@inheritDoc}
      * @param configuration {@inheritDoc}
@@ -206,25 +203,14 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             if (configuration.isSampleContaminationPresent()) {
                 readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
             }
-            if (genotyperDebugOutStream != null) {
-                genotyperDebugOutStream.println("\n=============================================================================");
-                genotyperDebugOutStream.println("Event at: " + mergedVC + " with " + readAlleleLikelihoods.evidenceCount() + " reads and "+readAlleleLikelihoods.filteredSampleEvidence(0).size()+" disqualified");
-                genotyperDebugOutStream.println("=============================================================================");
-                genotyperDebugOutStream.println("haplotype alleles key:");
+            if (HaplotypeCallerGenotypingDebugger.exists()) {
+                HaplotypeCallerGenotypingDebugger.println("\n=============================================================================");
+                HaplotypeCallerGenotypingDebugger.println("Event at: " + mergedVC + " with " + readAlleleLikelihoods.evidenceCount() + " reads and "+readAlleleLikelihoods.filteredSampleEvidence(0).size()+" disqualified");
+                HaplotypeCallerGenotypingDebugger.println("=============================================================================");
+                HaplotypeCallerGenotypingDebugger.println("haplotype alleles key:");
                 for (Map.Entry<Allele, List<Haplotype>> allele : alleleMapper.entrySet()) {
-                    genotyperDebugOutStream.println("Allele: "+allele.getKey()+" Haps: "+allele.getValue().stream().map(readLikelihoods::indexOfAllele).map(i -> Integer.toString(i)).collect(Collectors.joining(", ")));
+                    HaplotypeCallerGenotypingDebugger.println("Allele: "+allele.getKey()+" Haps: "+allele.getValue().stream().map(readLikelihoods::indexOfAllele).map(i -> Integer.toString(i)).collect(Collectors.joining(", ")));
                 }
-//                genotyperDebugOutStream.println("Reads:");
-//                List<GATKRead> readsCombined = new ArrayList<>(readAlleleLikelihoods.sampleEvidence(0));
-//                readsCombined.addAll(readAlleleLikelihoods.filteredSampleEvidence(0));
-//                int counter = 0;
-//                for (GATKRead read : readAlleleLikelihoods.sampleEvidence(0)) {
-//                    GATKRead original = (GATKRead)(read.getTransientAttribute("originalAlignment"));
-//                    genotyperDebugOutStream.println("Original Read: "+original+" "+(original==null?"":original.getCigar())+ "    Realigned: "+read+" "+read.getCigar());
-//                    if (original != null && (!original.getCigar().equals(read.getCigar()) || original.getStart() != read.getStart())) {
-//                        genotyperDebugOutStream.println("(realigned)");
-//                    }
-//                }
             }
 
             if (emitReferenceConfidence) {
@@ -382,12 +368,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             allelesToRetain.add(alleleMaxPriorityQ.poll().getAllele());
         }
         return alleleMapper.keySet().stream().filter(allelesToRetain::contains).collect(Collectors.toList());
-    }
-
-    // Add the debug output stream managed by the engine, this should be called as part of initialization
-    void addDebugOutStream(final PrintStream genotyperDebugOutStream) {
-        this.genotyperDebugOutStream = genotyperDebugOutStream;
-        this.genotypingModel.addDebugOutStream(genotyperDebugOutStream);
     }
 
     /**

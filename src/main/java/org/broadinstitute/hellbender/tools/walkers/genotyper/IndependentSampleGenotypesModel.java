@@ -67,12 +67,6 @@ public final class IndependentSampleGenotypesModel implements GenotypingModel {
         return new GenotypingLikelihoods<>(genotypingAlleles, ploidyModel, genotypeLikelihoods);
     }
 
-    // Currently only the DRAGEN-GATK genotyper supports the debug output stream
-    @Override
-    public void addDebugOutStream(PrintStream debugStream) {
-        return;
-    }
-
     private GenotypeLikelihoodCalculator getLikelihoodsCalculator(final int samplePloidy, final int alleleCount) {
         if (samplePloidy >= cachePloidyCapacity || alleleCount >= cacheAlleleCountCapacity) {
             return calculators.getInstance(samplePloidy, alleleCount);

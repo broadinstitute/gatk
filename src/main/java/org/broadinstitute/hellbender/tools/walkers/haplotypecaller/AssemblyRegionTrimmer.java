@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
  */
 public final class AssemblyRegionTrimmer {
 
-    private PrintStream genotyperDebugOutputStream = null;
     private AssemblyRegionArgumentCollection assemblyRegionArgs;
 
     private SAMSequenceDictionary sequenceDictionary;
@@ -50,10 +49,9 @@ public final class AssemblyRegionTrimmer {
      * @throws IllegalArgumentException if the input location parser is {@code null}.
      * @throws CommandLineException.BadArgumentValue if any of the user argument values is invalid.
      */
-    public AssemblyRegionTrimmer(final AssemblyRegionArgumentCollection assemblyRegionArgs, final SAMSequenceDictionary sequenceDictionary, final PrintStream genotyperDebugOutputStream) {
+    public AssemblyRegionTrimmer(final AssemblyRegionArgumentCollection assemblyRegionArgs, final SAMSequenceDictionary sequenceDictionary) {
         this.assemblyRegionArgs = Utils.nonNull(assemblyRegionArgs);
         this.sequenceDictionary = sequenceDictionary;
-        this.genotyperDebugOutputStream = genotyperDebugOutputStream;
         assemblyRegionArgs.validate();
     }
 
@@ -195,8 +193,8 @@ public final class AssemblyRegionTrimmer {
 
         final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region.getPaddedSpan());
 
-        if (genotyperDebugOutputStream != null) {
-            genotyperDebugOutputStream.println("Padded and trimmed the region to this span: "+ paddedVariantSpan);
+        if (HaplotypeCallerGenotypingDebugger.exists()) {
+            HaplotypeCallerGenotypingDebugger.println("Padded and trimmed the region to this span: "+ paddedVariantSpan);
         }
         return new Result(region, variantSpan, paddedVariantSpan);
     }
@@ -251,14 +249,14 @@ public final class AssemblyRegionTrimmer {
         final Pair<SimpleInterval, SimpleInterval> nonVariantRegions = nonVariantTargetRegions(originalRegion, callableSpan);
 
         // TODO add equivalent debug garbage to the real assembly region trimming code
-        if (genotyperDebugOutputStream != null) {
-            genotyperDebugOutputStream.println("events       : " + withinActiveRegion);
-            genotyperDebugOutputStream.println("region       : " + originalRegion);
-            genotyperDebugOutputStream.println("callableSpan : " + callableSpan);
-            genotyperDebugOutputStream.println("padding      : " + padding);
-            genotyperDebugOutputStream.println("idealSpan    : " + idealSpan);
-            genotyperDebugOutputStream.println("maximumSpan  : " + maximumSpan);
-            genotyperDebugOutputStream.println("finalSpan    : " + finalSpan);
+        if (HaplotypeCallerGenotypingDebugger.exists()) {
+            HaplotypeCallerGenotypingDebugger.println("events       : " + withinActiveRegion);
+            HaplotypeCallerGenotypingDebugger.println("region       : " + originalRegion);
+            HaplotypeCallerGenotypingDebugger.println("callableSpan : " + callableSpan);
+            HaplotypeCallerGenotypingDebugger.println("padding      : " + padding);
+            HaplotypeCallerGenotypingDebugger.println("idealSpan    : " + idealSpan);
+            HaplotypeCallerGenotypingDebugger.println("maximumSpan  : " + maximumSpan);
+            HaplotypeCallerGenotypingDebugger.println("finalSpan    : " + finalSpan);
         }
 
 

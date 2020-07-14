@@ -35,9 +35,4 @@ public interface ReadLikelihoodCalculationEngine extends AutoCloseable {
      */
     @Override
     public void close();
-
-    /**
-     * This method allows for adding debug printing hooks into the calculator
-     */
-    public void addDebugOutStream(final PrintStream stream);
 }
