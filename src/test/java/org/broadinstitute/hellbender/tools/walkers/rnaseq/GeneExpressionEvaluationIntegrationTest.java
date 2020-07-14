@@ -40,27 +40,42 @@ public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramT
     @DataProvider(name = "consistentWithPastDataProvider")
     public Object[][] consistentWithPastDataProvider() {
         return new Object[][] {
-                {GeneExpressionEvaluation.MultiOverlapMethod.PROPORTIONAL, GeneExpressionEvaluation.MultiMapMethod.IGNORE, new File(TEST_FILES_DIR, "expected.overlap.proportional.map.ignore.tsv")},
-                {GeneExpressionEvaluation.MultiOverlapMethod.EQUAL, GeneExpressionEvaluation.MultiMapMethod.IGNORE, new File(TEST_FILES_DIR, "expected.overlap.equal.map.ignore.tsv")},
-                {GeneExpressionEvaluation.MultiOverlapMethod.PROPORTIONAL, GeneExpressionEvaluation.MultiMapMethod.EQUAL, new File(TEST_FILES_DIR, "expected.overlap.proportional.map.equal.tsv")},
-                {GeneExpressionEvaluation.MultiOverlapMethod.EQUAL, GeneExpressionEvaluation.MultiMapMethod.EQUAL, new File(TEST_FILES_DIR, "expected.overlap.equal.map.equal.tsv")}
+                {NA12878_20_RNAseq_bam, b37_20_gff3, GeneExpressionEvaluation.MultiOverlapMethod.PROPORTIONAL, GeneExpressionEvaluation.MultiMapMethod.IGNORE,
+                        new File(TEST_FILES_DIR, "expected.overlap.proportional.map.ignore.tsv"), "exon", false},
+                {NA12878_20_RNAseq_bam, b37_20_gff3, GeneExpressionEvaluation.MultiOverlapMethod.EQUAL, GeneExpressionEvaluation.MultiMapMethod.IGNORE,
+                        new File(TEST_FILES_DIR, "expected.overlap.equal.map.ignore.tsv"), "exon", false},
+                {NA12878_20_RNAseq_bam, b37_20_gff3, GeneExpressionEvaluation.MultiOverlapMethod.PROPORTIONAL, GeneExpressionEvaluation.MultiMapMethod.EQUAL,
+                        new File(TEST_FILES_DIR, "expected.overlap.proportional.map.equal.tsv"), "exon", false},
+                {NA12878_20_RNAseq_bam, b37_20_gff3, GeneExpressionEvaluation.MultiOverlapMethod.EQUAL, GeneExpressionEvaluation.MultiMapMethod.EQUAL,
+                        new File(TEST_FILES_DIR, "expected.overlap.equal.map.equal.tsv"), "exon", false},
+
+                {E_COLI_RNAseq_bam, E_COLI_gff3, GeneExpressionEvaluation.MultiOverlapMethod.PROPORTIONAL, GeneExpressionEvaluation.MultiMapMethod.IGNORE,
+                        new File(TEST_FILES_DIR, "e_coli_expected.overlap.proportional.map.ignore.tsv"), "CDS", true},
+                {E_COLI_RNAseq_bam, E_COLI_gff3, GeneExpressionEvaluation.MultiOverlapMethod.EQUAL, GeneExpressionEvaluation.MultiMapMethod.IGNORE,
+                        new File(TEST_FILES_DIR, "e_coli_expected.overlap.equal.map.ignore.tsv"), "CDS", true},
+                {E_COLI_RNAseq_bam, E_COLI_gff3, GeneExpressionEvaluation.MultiOverlapMethod.PROPORTIONAL, GeneExpressionEvaluation.MultiMapMethod.EQUAL,
+                        new File(TEST_FILES_DIR, "e_coli_expected.overlap.proportional.map.equal.tsv"), "CDS", true},
+                {E_COLI_RNAseq_bam, E_COLI_gff3, GeneExpressionEvaluation.MultiOverlapMethod.EQUAL, GeneExpressionEvaluation.MultiMapMethod.EQUAL,
+                        new File(TEST_FILES_DIR, "e_coli_expected.overlap.equal.map.equal.tsv"), "CDS", true}
         };
     }
 
     @Test(dataProvider = "consistentWithPastDataProvider")
-    public void testConsistentWithPast(final GeneExpressionEvaluation.MultiOverlapMethod multiOverlapMethod, final GeneExpressionEvaluation.MultiMapMethod multiMapMethod, final File expected) throws IOException {
+    public void testConsistentWithPast(final String bamPath, final String gff3Path, final GeneExpressionEvaluation.MultiOverlapMethod multiOverlapMethod, final GeneExpressionEvaluation.MultiMapMethod multiMapMethod, final File expected,
+                                       final String overlapType, final Boolean unspliced) throws IOException {
         final File output = createTempFile("testConsistentWithPast", ".tsv");
 
         final String outputPath = UPDATE_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
 
         final String[] args = {
-                "-I", NA12878_20_RNAseq_bam,
-                "-G", b37_20_gff3,
+                "-I", bamPath,
+                "-G", gff3Path,
                 "--grouping-type", "gene",
                 "--grouping-type", "pseudogene",
-                "--overlap-type", "exon",
+                "--overlap-type", overlapType,
                 "--multi-overlap-method", multiOverlapMethod.toString(),
                 "--multi-map-method", multiMapMethod.toString(),
+                "--unspliced", unspliced.toString(),
                 "-O", outputPath
         };
 
@@ -72,8 +87,16 @@ public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramT
         }
     }
 
-    @Test
-    public void testCompareReadStrands() throws IOException {
+    @DataProvider(name = "testCompareReadStrandsDataProvider")
+    public Object[][] testCompareReadStrandsDataProvider() {
+        return new Object[][] {
+                {NA12878_20_RNAseq_bam, b37_20_gff3, "exon", false},
+                {E_COLI_RNAseq_bam, E_COLI_gff3, "CDS", true}
+        };
+    }
+
+    @Test(dataProvider = "testCompareReadStrandsDataProvider")
+    public void testCompareReadStrands(final String bamPath, final String gff3Path, final String overlapType, final Boolean unspliced) throws IOException {
         final File output1 = createTempFile("testSwapTranscriptionRead1", ".tsv");
         final File output2 = createTempFile("testSwapTranscriptionRead2", ".tsv");
 
@@ -85,24 +108,26 @@ public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramT
                 }
                 final List<String> args1 = new ArrayList<>(
                         Arrays.asList(
-                            "-I", NA12878_20_RNAseq_bam,
-                            "-G", b37_20_gff3,
+                            "-I", bamPath,
+                            "-G", gff3Path,
                             "--grouping-type", "gene",
                             "--grouping-type", "pseudogene",
-                            "--overlap-type", "exon",
+                            "--overlap-type", overlapType,
                             "--read-strands", readStrands1.name(),
+                            "--unspliced", unspliced.toString(),
                             "-O", output1.getAbsolutePath()
                     )
                 );
 
                 final List<String> args2 = new ArrayList<>(
                         Arrays.asList(
-                            "-I", NA12878_20_RNAseq_bam,
-                            "-G", b37_20_gff3,
+                            "-I", bamPath,
+                            "-G", gff3Path,
                             "--grouping-type", "gene",
                             "--grouping-type", "pseudogene",
-                            "--overlap-type", "exon",
+                            "--overlap-type", overlapType,
                             "--read-strands", readStrands2.name(),
+                            "--unspliced", unspliced.toString(),
                             "-O", output2.getAbsolutePath()
                     )
                 );
@@ -134,7 +159,7 @@ public class GeneExpressionEvaluationIntegrationTest extends CommandLineProgramT
         }
     }
 
-    private void assertEquivalentWithLenience(final float res1, final float res2, final double lenience) {
+    private void assertEquivalentWithLenience(final double res1, final double res2, final double lenience) {
         Assert.assertTrue(res1 >= 0);
         Assert.assertTrue(res2 >= 0);
         if (res1 + res2 > 0) {

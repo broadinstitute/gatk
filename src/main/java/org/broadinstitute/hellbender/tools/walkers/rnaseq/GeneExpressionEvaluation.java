@@ -286,12 +286,12 @@ public final class GeneExpressionEvaluation extends ReadWalker {
 
         EQUAL {
             @Override
-            Map<Gff3BaseData, Float> getWeights(final List<Interval> alignmentIntervals, final OverlapDetector<Pair<Gff3BaseData, Interval>> featureOverlapDetector) {
+            Map<Gff3BaseData, Double> getWeights(final List<Interval> alignmentIntervals, final OverlapDetector<Pair<Gff3BaseData, Interval>> featureOverlapDetector) {
                 final Set<Gff3BaseData> overlappingFeatures = alignmentIntervals.stream().flatMap(i -> featureOverlapDetector.getOverlaps(i).stream().map(Pair::getLeft)).collect(Collectors.toSet());
                 final int nOverlappingFeatures = overlappingFeatures.size();
-                final Map<Gff3BaseData, Float> weights = new LinkedHashMap<>();
+                final Map<Gff3BaseData, Double> weights = new LinkedHashMap<>();
                 for (final Gff3BaseData feature : overlappingFeatures) {
-                    weights.put(feature, (float)1.0/nOverlappingFeatures);
+                    weights.put(feature, 1.0d/nOverlappingFeatures);
                 }
                 return weights;
             }
@@ -299,13 +299,13 @@ public final class GeneExpressionEvaluation extends ReadWalker {
 
         PROPORTIONAL {
             @Override
-            Map<Gff3BaseData, Float> getWeights(final List<Interval> alignmentIntervals, final OverlapDetector<Pair<Gff3BaseData, Interval>> featureOverlapDetector) {
+            Map<Gff3BaseData, Double> getWeights(final List<Interval> alignmentIntervals, final OverlapDetector<Pair<Gff3BaseData, Interval>> featureOverlapDetector) {
                 final List<Interval> mergedAlignmentIntervals = getMergedIntervals(alignmentIntervals);
 
                 final int basesOnReference = mergedAlignmentIntervals.stream().map(Interval::getLengthOnReference).reduce(0, Integer::sum);
                 int totalCoveredBases = 0;
-                float summedUnNormalizedWeights = 0;
-                final Map<Gff3BaseData, Float> weights = new LinkedHashMap<>();
+                double summedUnNormalizedWeights = 0;
+                final Map<Gff3BaseData, Double> weights = new LinkedHashMap<>();
                 for (final Interval alignmentInterval : mergedAlignmentIntervals) {
                     final Set<Pair<Gff3BaseData,Interval>> overlaps = featureOverlapDetector.getOverlaps(alignmentInterval);
                     final Map<Gff3BaseData, List<Interval>> overlappingIntervalsByFeature = new LinkedHashMap<>();
@@ -320,15 +320,15 @@ public final class GeneExpressionEvaluation extends ReadWalker {
                     totalCoveredBases += allOverlappingIntervalsMerged.stream().map(alignmentInterval::getIntersectionLength).reduce(0,Integer::sum);
                     for (Map.Entry<Gff3BaseData, List<Interval>> overlap : overlappingIntervalsByFeature.entrySet()) {
                         final List<Interval> mergedOverlapIntervals = getMergedIntervals(overlap.getValue());
-                        final float weight = (float)mergedOverlapIntervals.stream().map(alignmentInterval::getIntersectionLength).reduce(0,Integer::sum)/basesOnReference;
+                        final double weight = (double)mergedOverlapIntervals.stream().map(alignmentInterval::getIntersectionLength).reduce(0,Integer::sum)/basesOnReference;
                         weights.compute(overlap.getKey(), (k,v) -> v == null? weight : v + weight);
                         summedUnNormalizedWeights += weight;
                     }
                 }
 
-                summedUnNormalizedWeights += 1.0 - (float)totalCoveredBases/basesOnReference;
+                summedUnNormalizedWeights += 1.0 - (double)totalCoveredBases/basesOnReference;
 
-                final float normalizationFactor = (float)1.0/summedUnNormalizedWeights;
+                final double normalizationFactor = 1.0d/summedUnNormalizedWeights;
 
                 for (final Gff3BaseData feature : weights.keySet()) {
                     weights.compute(feature, (k,v) -> v*normalizationFactor);
@@ -338,13 +338,13 @@ public final class GeneExpressionEvaluation extends ReadWalker {
             }
         };
 
-        abstract Map<Gff3BaseData, Float> getWeights(final List<Interval> alignmentIntervals, final OverlapDetector<Pair<Gff3BaseData, Interval>> featureOverlapDetector);
+        abstract Map<Gff3BaseData, Double> getWeights(final List<Interval> alignmentIntervals, final OverlapDetector<Pair<Gff3BaseData, Interval>> featureOverlapDetector);
     }
 
     enum MultiMapMethod {
         IGNORE {
             @Override
-            protected Map<Gff3BaseData, Float> getWeightsForMethod(final int nHits, final Map<Gff3BaseData, Float> previousWeights) {
+            protected Map<Gff3BaseData, Double> getWeightsForMethod(final int nHits, final Map<Gff3BaseData, Double> previousWeights) {
                 if (nHits == 1) {
                     return previousWeights;
                 } else {
@@ -354,20 +354,20 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         },
         EQUAL {
             @Override
-            protected Map<Gff3BaseData, Float> getWeightsForMethod(final int nHits, final Map<Gff3BaseData, Float> previousWeights) {
+            protected Map<Gff3BaseData, Double> getWeightsForMethod(final int nHits, final Map<Gff3BaseData, Double> previousWeights) {
                 if (nHits == 1) {
                     return previousWeights;
                 } else {
-                    final Map<Gff3BaseData, Float> newWeights = new HashMap<>(previousWeights.size());
-                    for (final Map.Entry<Gff3BaseData, Float> entry : previousWeights.entrySet()) {
-                        newWeights.put(entry.getKey(), entry.getValue()/(float)nHits);
+                    final Map<Gff3BaseData, Double> newWeights = new HashMap<>(previousWeights.size());
+                    for (final Map.Entry<Gff3BaseData, Double> entry : previousWeights.entrySet()) {
+                        newWeights.put(entry.getKey(), entry.getValue()/(double)nHits);
                     }
                     return newWeights;
                 }
             }
         };
 
-        Map<Gff3BaseData, Float> getWeights(final int nHits, final Map<Gff3BaseData, Float> previousWeights) {
+        Map<Gff3BaseData, Double> getWeights(final int nHits, final Map<Gff3BaseData, Double> previousWeights) {
             if (nHits < 1) {
                 throw new GATKException("nHits = " + nHits + ", cannot be less than 1");
             }
@@ -375,7 +375,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
             return getWeightsForMethod(nHits, previousWeights);
         }
 
-        abstract protected Map<Gff3BaseData, Float> getWeightsForMethod(final int nHits, final Map<Gff3BaseData, Float> previousWeights);
+        abstract protected Map<Gff3BaseData, Double> getWeightsForMethod(final int nHits, final Map<Gff3BaseData, Double> previousWeights);
 
     }
 
@@ -537,10 +537,10 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         if ((read.isFirstOfPair() || !inGoodPair(read, mappingQualityFilter.minMappingQualityScore, readStrands))) {
             final List<Interval> alignmentIntervals = getAlignmentIntervals(read, unspliced, mappingQualityFilter.minMappingQualityScore, readStrands);
 
-            final Map<Gff3BaseData, Float> initialWeights = multiOverlapMethod.getWeights(alignmentIntervals, featureOverlapDetector);
-            final Map<Gff3BaseData, Float> finalWeights = multiMapMethod.getWeights(read.getAttributeAsInteger(SAMTag.NH.toString()), initialWeights);
+            final Map<Gff3BaseData, Double> initialWeights = multiOverlapMethod.getWeights(alignmentIntervals, featureOverlapDetector);
+            final Map<Gff3BaseData, Double> finalWeights = multiMapMethod.getWeights(read.hasAttribute(SAMTag.NH.toString()) ? read.getAttributeAsInteger(SAMTag.NH.toString()) : 1, initialWeights);
 
-            for (final Map.Entry<Gff3BaseData, Float> weight : finalWeights.entrySet()) {
+            for (final Map.Entry<Gff3BaseData, Double> weight : finalWeights.entrySet()) {
                 final Gff3BaseData feature = weight.getKey();
                 final boolean isSense = readStrands.isSense(read, feature);
                 if (isSense) {
@@ -611,42 +611,42 @@ public final class GeneExpressionEvaluation extends ReadWalker {
         protected GeneExpressionEvaluation.SingleStrandFeatureCoverage createRecord(final DataLine dataLine) {
             return new GeneExpressionEvaluation.SingleStrandFeatureCoverage(new Gff3BaseData(dataLine.get("contig"),".", ".",
                     dataLine.getInt("start"), dataLine.getInt("stop"), -1d, Strand.decode(dataLine.get("strand")), -1,
-                    Collections.singletonMap("ID", Collections.singletonList(dataLine.get("gene_label")))), (float)dataLine.getDouble(6), dataLine.get("sense_antisense").equals("sense"));
+                    Collections.singletonMap("ID", Collections.singletonList(dataLine.get("gene_label")))), dataLine.getDouble(6), dataLine.get("sense_antisense").equals("sense"));
         }
     }
 
     public static class Coverage {
-        private float sense_count;
-        private float antisense_count;
+        private double sense_count;
+        private double antisense_count;
 
-        public Coverage(final float sense_count, final float antisense_count) {
+        public Coverage(final double sense_count, final double antisense_count) {
             this.sense_count = sense_count;
             this.antisense_count = antisense_count;
         }
 
-        public void addSenseCount(float count) {
+        public void addSenseCount(double count) {
             sense_count += count;
         }
 
-        public void addAntiSenseCount(float count) {
+        public void addAntiSenseCount(double count) {
             antisense_count += count;
         }
 
-        public float getSenseCount() {
+        public double getSenseCount() {
             return sense_count;
         }
 
-        public float getAntisenseCount() {
+        public double getAntisenseCount() {
             return antisense_count;
         }
     }
 
     public static class SingleStrandFeatureCoverage {
         public final Gff3BaseData baseData;
-        public final float count;
+        public final double count;
         public final boolean sense;
 
-        SingleStrandFeatureCoverage(final Gff3BaseData baseData, final float count, final boolean sense) {
+        SingleStrandFeatureCoverage(final Gff3BaseData baseData, final double count, final boolean sense) {
             this.baseData = baseData;
             this.count = count;
             this.sense = sense;

@@ -361,11 +361,11 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
         */
         final List<Interval> overlapGene1Alignments = Arrays.asList(new Interval("theContig", 325, 375), new Interval("theContig", 440, 460));
         //for EQUAL method, gene1 has weight 1
-        final Map<Gff3BaseData, Float> overlapGene1EqualWeights = Collections.singletonMap(gene1, (float)1);
+        final Map<Gff3BaseData, Double> overlapGene1EqualWeights = Collections.singletonMap(gene1, (double)1);
         examples.add(new Object[]{GeneExpressionEvaluation.MultiOverlapMethod.EQUAL, overlapGene1Alignments, featureOverlapDetector, overlapGene1EqualWeights});
 
         //for PROPORTIONAL method, alignments are 72 bases, with 37 overlapping gene1.  So gene1 has weight 37/72
-        final Map<Gff3BaseData, Float> overlapGene1ProportionalWeights = Collections.singletonMap(gene1, (float)37/(float)72);
+        final Map<Gff3BaseData, Double> overlapGene1ProportionalWeights = Collections.singletonMap(gene1, (double)37/(double)72);
         examples.add(new Object[]{GeneExpressionEvaluation.MultiOverlapMethod.PROPORTIONAL, overlapGene1Alignments, featureOverlapDetector, overlapGene1ProportionalWeights});
 
         /*
@@ -382,8 +382,8 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
         */
         final List<Interval> overlapGene1AndGene3Alignments = Arrays.asList(new Interval("theContig", 125, 200), new Interval("theContig", 400, 410));
         //for EQUAL method, gene1 and gene 3 both have weight 1/2
-        final Map<Gff3BaseData, Float> overlapGene1Gene3EqualWeights = new HashMap<>();
-        Arrays.asList(gene1,gene3).forEach(g -> overlapGene1Gene3EqualWeights.put(g, (float)1/(float)2));
+        final Map<Gff3BaseData, Double> overlapGene1Gene3EqualWeights = new HashMap<>();
+        Arrays.asList(gene1,gene3).forEach(g -> overlapGene1Gene3EqualWeights.put(g, (double)1/(double)2));
 
 
         examples.add(new Object[]{GeneExpressionEvaluation.MultiOverlapMethod.EQUAL, overlapGene1AndGene3Alignments, featureOverlapDetector, overlapGene1Gene3EqualWeights});
@@ -395,9 +395,9 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
         gene1 weight = 62/(62+87)
         gene3 weight = 87/(62+87)
          */
-        final Map<Gff3BaseData, Float> overlapGene1Gene3ProportionalWeights = new HashMap<>();
-        overlapGene1Gene3ProportionalWeights.put(gene1, (float)62/(float)(62 + 87));
-        overlapGene1Gene3ProportionalWeights.put(gene3, (float)87/(float)(62 + 87));
+        final Map<Gff3BaseData, Double> overlapGene1Gene3ProportionalWeights = new HashMap<>();
+        overlapGene1Gene3ProportionalWeights.put(gene1, (double)62/(double)(62 + 87));
+        overlapGene1Gene3ProportionalWeights.put(gene3, (double)87/(double)(62 + 87));
         examples.add(new Object[]{GeneExpressionEvaluation.MultiOverlapMethod.PROPORTIONAL, overlapGene1AndGene3Alignments, featureOverlapDetector, overlapGene1Gene3ProportionalWeights});
 
         /*
@@ -415,8 +415,8 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
 
         final List<Interval> overlapAll3Alignments = Arrays.asList(new Interval("theContig", 175, 250), new Interval("theContig", 400, 525));
         //for EQUAL method, all three genes have wight 1/3
-        final Map<Gff3BaseData, Float> overlapAll3EqualWeights = new HashMap<>();
-        Arrays.asList(gene1, gene2, gene3).forEach(g -> overlapAll3EqualWeights.put(g, (float)1/(float)3));
+        final Map<Gff3BaseData, Double> overlapAll3EqualWeights = new HashMap<>();
+        Arrays.asList(gene1, gene2, gene3).forEach(g -> overlapAll3EqualWeights.put(g, (double)1/(double)3));
         examples.add(new Object[]{GeneExpressionEvaluation.MultiOverlapMethod.EQUAL, overlapAll3Alignments, featureOverlapDetector, overlapAll3EqualWeights});
         /* for PROPORTIONAL METHOD
         gene1 alignment bases: 76 + 51 = 127
@@ -427,10 +427,10 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
         gene2 weight = 52/(127 + 52 + 37 + 49)
         gene3 weight = 37/(127 + 52 + 37 + 49)
          */
-        final Map<Gff3BaseData, Float> overlapAll3ProportionalWeights = new HashMap<>();
-        overlapAll3ProportionalWeights.put(gene1, (float)127/(float)(127 + 52 + 37 + 49));
-        overlapAll3ProportionalWeights.put(gene2, (float)52/(float)(127 + 52 + 37 + 49));
-        overlapAll3ProportionalWeights.put(gene3, (float)37/(float)(127 + 52 + 37 + 49));
+        final Map<Gff3BaseData, Double> overlapAll3ProportionalWeights = new HashMap<>();
+        overlapAll3ProportionalWeights.put(gene1, (double)127/(double)(127 + 52 + 37 + 49));
+        overlapAll3ProportionalWeights.put(gene2, (double)52/(double)(127 + 52 + 37 + 49));
+        overlapAll3ProportionalWeights.put(gene3, (double)37/(double)(127 + 52 + 37 + 49));
         examples.add(new Object[]{GeneExpressionEvaluation.MultiOverlapMethod.PROPORTIONAL, overlapAll3Alignments, featureOverlapDetector, overlapAll3ProportionalWeights});
 
 
@@ -439,8 +439,8 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "testMultiOverlapMethodDataProvider")
     public void testMultiOverlapMethod(final GeneExpressionEvaluation.MultiOverlapMethod multiOverlapMethod, final List<Interval> alignmentIntervals, final OverlapDetector<Pair<Gff3BaseData, Interval>> featureOverlapDetector,
-                                       final Map<Gff3BaseData, Float> expectedWeights) {
-        final Map<Gff3BaseData, Float> actualWeights = multiOverlapMethod.getWeights(alignmentIntervals, featureOverlapDetector);
+                                       final Map<Gff3BaseData, Double> expectedWeights) {
+        final Map<Gff3BaseData, Double> actualWeights = multiOverlapMethod.getWeights(alignmentIntervals, featureOverlapDetector);
         assertWeightMapsEquivalent(actualWeights, expectedWeights);
     }
 
@@ -450,10 +450,10 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
         final Gff3BaseData gene2 = new Gff3BaseData("theContig", ".", "gene", 225, 600, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", Collections.singletonList("gene2")));
         final Gff3BaseData gene3 = new Gff3BaseData("theContig", ".", "gene", 100, 410, -1d, Strand.POSITIVE, 0, Collections.singletonMap("ID", Collections.singletonList("gene3")));
 
-        final Map<Gff3BaseData, Float> previousWeights = new HashMap<>();
-        previousWeights.put(gene1, (float)47/(float)3);
-        previousWeights.put(gene2, (float)93/(float)7);
-        previousWeights.put(gene3, (float)7653/(float)2);
+        final Map<Gff3BaseData, Double> previousWeights = new HashMap<>();
+        previousWeights.put(gene1, (double)47/(double)3);
+        previousWeights.put(gene2, (double)93/(double)7);
+        previousWeights.put(gene3, (double)7653/(double)2);
 
         final List<Object[]> examples = new ArrayList<>();
 
@@ -464,33 +464,33 @@ public class GeneExpressionEvaluationUnitTest extends GATKBaseTest {
 
         examples.add(new Object[]{GeneExpressionEvaluation.MultiMapMethod.EQUAL, 1, previousWeights, previousWeights});
 
-        final Map<Gff3BaseData, Float> expectedWeightsEqualNhits3 = new HashMap<>();
-        expectedWeightsEqualNhits3.put(gene1, (float)47/(float)(3*3));
-        expectedWeightsEqualNhits3.put(gene2, (float)93/(float)(7*3));
-        expectedWeightsEqualNhits3.put(gene3, (float)7653/(float)(2*3));
+        final Map<Gff3BaseData, Double> expectedWeightsEqualNhits3 = new HashMap<>();
+        expectedWeightsEqualNhits3.put(gene1, (double)47/(double)(3*3));
+        expectedWeightsEqualNhits3.put(gene2, (double)93/(double)(7*3));
+        expectedWeightsEqualNhits3.put(gene3, (double)7653/(double)(2*3));
         examples.add(new Object[]{GeneExpressionEvaluation.MultiMapMethod.EQUAL, 3, previousWeights, expectedWeightsEqualNhits3});
 
-        final Map<Gff3BaseData, Float> expectedWeightsEqualNhits7 = new HashMap<>();
-        expectedWeightsEqualNhits7.put(gene1, (float)47/(float)(3*7));
-        expectedWeightsEqualNhits7.put(gene2, (float)93/(float)(7*7));
-        expectedWeightsEqualNhits7.put(gene3, (float)7653/(float)(2*7));
+        final Map<Gff3BaseData, Double> expectedWeightsEqualNhits7 = new HashMap<>();
+        expectedWeightsEqualNhits7.put(gene1, (double)47/(double)(3*7));
+        expectedWeightsEqualNhits7.put(gene2, (double)93/(double)(7*7));
+        expectedWeightsEqualNhits7.put(gene3, (double)7653/(double)(2*7));
         examples.add(new Object[]{GeneExpressionEvaluation.MultiMapMethod.EQUAL, 7, previousWeights, expectedWeightsEqualNhits7});
 
         return examples.toArray(new Object[0][]);
     }
 
     @Test(dataProvider = "testMultiMapMethodDataProvider")
-    public void testMultiMapMethod(final GeneExpressionEvaluation.MultiMapMethod multiMapMethod, final int nHits, final Map<Gff3BaseData, Float> previousWeights, final Map<Gff3BaseData, Float> expectedWeights) {
-        final Map<Gff3BaseData, Float> actualWeights = multiMapMethod.getWeights(nHits, previousWeights);
+    public void testMultiMapMethod(final GeneExpressionEvaluation.MultiMapMethod multiMapMethod, final int nHits, final Map<Gff3BaseData, Double> previousWeights, final Map<Gff3BaseData, Double> expectedWeights) {
+        final Map<Gff3BaseData, Double> actualWeights = multiMapMethod.getWeights(nHits, previousWeights);
         assertWeightMapsEquivalent(actualWeights, expectedWeights);
     }
 
-    private <T> void assertWeightMapsEquivalent(final Map<T, Float> actualMap, final Map<T, Float> expectedMap) {
+    private <T> void assertWeightMapsEquivalent(final Map<T, Double> actualMap, final Map<T, Double> expectedMap) {
         Assert.assertEquals(actualMap.keySet(), expectedMap.keySet());
-        for (final Map.Entry<T, Float> entry : actualMap.entrySet()) {
+        for (final Map.Entry<T, Double> entry : actualMap.entrySet()) {
             final T key = entry.getKey();
-            final Float actualValue = entry.getValue();
-            final Float expectedValue = expectedMap.get(key);
+            final double actualValue = entry.getValue();
+            final double expectedValue = expectedMap.get(key);
 
             //should never have non-zero weights
             Assert.assertTrue(actualValue >= 0);
