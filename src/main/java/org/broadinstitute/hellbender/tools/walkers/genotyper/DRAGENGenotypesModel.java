@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingDebugger;
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
@@ -46,9 +47,6 @@ public class DRAGENGenotypesModel implements GenotypingModel {
     private final int maxEffectiveDepthAdjustment;
     private final DragstrParams dragstrParams;
 
-    //Debug stream to be managed by the HaplotypeCallerEngine
-    private PrintStream genotyperDebugStream = null;
-
     public DRAGENGenotypesModel(final boolean useBQDModel, final boolean useFRDModel, final int allelePadding, final int maxEffectiveDepthAdjustment, final DragstrParams dragstrParams) { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY, useBQDModel, useFRDModel, allelePadding, maxEffectiveDepthAdjustment,  dragstrParams); }
 
     /*
@@ -79,12 +77,12 @@ public class DRAGENGenotypesModel implements GenotypingModel {
             final int period = dragstrs.period(offsetForRefIntoEvent + 1 );
             final int repeats = dragstrs.repeatLength(offsetForRefIntoEvent + 1);
             api = dragstrParams.api(period, repeats);
-            if (genotyperDebugStream != null) {
-                genotyperDebugStream.println("API found: " + api + " with period used: " + period + "  and repeats: " + repeats);
+            if (HaplotypeCallerGenotypingDebugger.exists()) {
+                HaplotypeCallerGenotypingDebugger.println("API found: " + api + " with period used: " + period + "  and repeats: " + repeats);
             }
         } else {
-            if (genotyperDebugStream != null) {
-                genotyperDebugStream.println("No API from DRAGStrs found, falling back on snp het prior for indels");
+            if (HaplotypeCallerGenotypingDebugger.exists()) {
+                HaplotypeCallerGenotypingDebugger.println("No API from DRAGStrs found, falling back on snp het prior for indels");
             }
             api = FLAT_SNP_HET_PRIOR;
         }
@@ -138,35 +136,32 @@ public class DRAGENGenotypesModel implements GenotypingModel {
             if (samplePloidy != likelihoodsCalculator.ploidy()) {
                 likelihoodsCalculator = getLikelihoodsCalculator(samplePloidy, alleleCount);
             }
-            if (genotyperDebugStream != null) {
-                likelihoodsCalculator.addGenotyperDebugOutputStream(genotyperDebugStream);
-            }
 
             // this is the data array for the read likelihoods without any trouble
             final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(sampleIndex));
             final double[] ploidyModelGenotypeLikelihoods = likelihoodsCalculator.rawGenotypeLikelihoods(sampleLikelihoods);
 
-            if (genotyperDebugStream != null) {
-                genotyperDebugStream.println("\n Standard Genotyping Resutls:");
-                genotyperDebugStream.println(Arrays.toString(ploidyModelGenotypeLikelihoods));
+            if (HaplotypeCallerGenotypingDebugger.exists()) {
+                HaplotypeCallerGenotypingDebugger.println("\n Standard Genotyping Resutls:");
+                HaplotypeCallerGenotypingDebugger.println(Arrays.toString(ploidyModelGenotypeLikelihoods));
             }
 
             double[] BQDCallResults = null;
             double[] FRDCallResults = null;
             if (computeBQD) {
                 BQDCallResults = likelihoodsCalculator.calculateBQDLikelihoods(sampleLikelihoods, strandForward, strandReverse, paddedReference, offsetForRefIntoEvent, calculators);
-                if (genotyperDebugStream != null) {
-                    genotyperDebugStream.println("BQD results:");
-                    genotyperDebugStream.println(Arrays.toString(BQDCallResults));
+                if (HaplotypeCallerGenotypingDebugger.exists()) {
+                    HaplotypeCallerGenotypingDebugger.println("BQD results:");
+                    HaplotypeCallerGenotypingDebugger.println(Arrays.toString(BQDCallResults));
                 }
             }
             if (computeFRD) {
                 FRDCallResults = likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, ploidyModelGenotypeLikelihoods,
                         Stream.of(strandForward, strandReverse).flatMap(Collection::stream).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
                         FLAT_SNP_HET_PRIOR, api, maxEffectiveDepthAdjustment, calculators);
-                if (genotyperDebugStream != null) {
-                    genotyperDebugStream.println("FRD results:");
-                    genotyperDebugStream.println(Arrays.toString(FRDCallResults));
+                if (HaplotypeCallerGenotypingDebugger.exists()) {
+                    HaplotypeCallerGenotypingDebugger.println("FRD results:");
+                    HaplotypeCallerGenotypingDebugger.println(Arrays.toString(FRDCallResults));
                 }
             }
 
@@ -182,18 +177,12 @@ public class DRAGENGenotypesModel implements GenotypingModel {
 
             // this is what the work actually is, after we have computed a few things
             genotypeLikelihoods.add(GenotypeLikelihoods.fromLog10Likelihoods(ploidyModelGenotypeLikelihoods));
-            if (genotyperDebugStream != null) {
-                genotyperDebugStream.println("merged matrix:");
-                genotyperDebugStream.println(Arrays.toString(ploidyModelGenotypeLikelihoods));
+            if (HaplotypeCallerGenotypingDebugger.exists()) {
+                HaplotypeCallerGenotypingDebugger.println("merged matrix:");
+                HaplotypeCallerGenotypingDebugger.println(Arrays.toString(ploidyModelGenotypeLikelihoods));
             }
         }
         return new GenotypingLikelihoods<>(genotypingAlleles, ploidyModel, genotypeLikelihoods);
-    }
-
-    // Adding the debug stream managed by the haplotype caller engine
-    @Override
-    public void addDebugOutStream(final PrintStream debugStream) {
-        this.genotyperDebugStream = debugStream;
     }
 
     private GenotypeLikelihoodCalculatorDRAGEN getLikelihoodsCalculator(final int samplePloidy, final int alleleCount) {
@@ -300,8 +289,6 @@ public class DRAGENGenotypesModel implements GenotypingModel {
             //NOTE: here we want the reads to wind up in ascending order by unclipped position because the unclipped position should be on the left
 
             int diffVal =  read2.getForwardsFeatherEnd() - read1.getForwardsFeatherEnd();
-//
-//            int diffVal = read1.getUnclippedPosition() - read2.getUnclippedPosition();
             if (diffVal == 0) {
                 diffVal = (read1.hasValidBaseQuality() ? read1.getBaseQuality() : 0)
                         - (read2.hasValidBaseQuality() ? read2.getBaseQuality() : 0);
@@ -324,7 +311,6 @@ public class DRAGENGenotypesModel implements GenotypingModel {
         public int compare(final DragenReadContainer read1, final DragenReadContainer read2) {
             //NOTE: here we want the reads to wind up in decending order by unclipped position because the unclipped position should be on the left
             int diffVal = read2.getReverseFeatherEnd() - read1.getReverseFeatherEnd();
-//            int diffVal = read2.getUnclippedPosition() - read1.getUnclippedPosition();
             if (diffVal==0) {
                 diffVal = (read1.hasValidBaseQuality() ? read1.getBaseQuality() : 0)
                         - (read2.hasValidBaseQuality() ? read2.getBaseQuality() : 0);
