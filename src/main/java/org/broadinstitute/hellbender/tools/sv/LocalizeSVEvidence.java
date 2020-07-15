@@ -131,6 +131,7 @@ public final class LocalizeSVEvidence extends IntervalWalker {
                       final ReadsContext readsContext,
                       final ReferenceContext referenceContext,
                       final FeatureContext featureContext) {
+        logger.debug("Retrieving interval: " + interval.toString());
         write(source.queryAndPrefetch(interval));
     }
 
