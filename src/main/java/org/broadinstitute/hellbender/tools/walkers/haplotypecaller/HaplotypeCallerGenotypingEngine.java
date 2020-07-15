@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.haplotypecaller.SimpleGenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
@@ -19,6 +20,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -36,7 +38,7 @@ import java.util.stream.Collectors;
 public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCallerArgumentCollection> {
 
     private static final Logger logger = LogManager.getLogger(HaplotypeCallerGenotypingEngine.class);
-
+    private static final OneShotLogger DRAGENConaminationWarning = new OneShotLogger(logger);
 
     private final GenotypingModel genotypingModel;
 
@@ -189,18 +191,23 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             if (hcArgs.applyBQD || hcArgs.applyFRD) {
                 if (hcArgs.retainBasedOnOriginalAlignment) {
                 readAlleleLikelihoods.retainEvidence(r -> {GATKRead original = (GATKRead)(r.getTransientAttribute("originalAlignment"));
-//                        original = original == null ? r : original;//Reads that were disqualified don't have original alignments (since they weren't ever realigned).
                         return original.getSoftStart() <= original.getSoftEnd() && new SimpleInterval(original.getContig(), original.getSoftStart(), original.getSoftEnd()).overlaps(variantCallingRelevantOverlap);});
                 } else {
-//                    readAlleleLikelihoods.retainEvidence(r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
-
                     readAlleleLikelihoods.retainEvidence(r -> r.getSoftStart() <= r.getSoftEnd() && new SimpleInterval(r.getContig(), r.getSoftStart(), r.getSoftEnd()).overlaps(variantCallingRelevantOverlap));
                 }
             } else {
                 readAlleleLikelihoods.retainEvidence(r -> r.overlaps(variantCallingRelevantOverlap));
             }
             readAlleleLikelihoods.setVariantCallingSubsetUsed(variantCallingRelevantOverlap);
+
             if (configuration.isSampleContaminationPresent()) {
+                // This warrants future evaluation as to the best way to handle disqualified reads
+                if (hcArgs.applyBQD || hcArgs.applyFRD) {
+                    DRAGENConaminationWarning.warn("\\n=============================================================================" +
+                            "Sample contamination specified with FRD/BQD enabled. Contamination calling with either BQD or FRD genotyping models enabled is currently unsupported and may produce unexpected results. Use at your own risk." +
+                            "\n=============================================================================");
+                }
+
                 readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
             }
             if (HaplotypeCallerGenotypingDebugger.exists()) {
