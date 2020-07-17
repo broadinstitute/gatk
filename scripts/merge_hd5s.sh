@@ -128,7 +128,7 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
     echo -e "\nLaunching job for sample IDs starting with $MIN_SAMPLE_ID and ending with $MAX_SAMPLE_ID via:"
 
         cat <<LAUNCH_CMDLINE_MESSAGE
-                $HOME/ml/scripts/tf.sh -c $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
+                $HOME/ml/scripts/tf.sh -r -c $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
 		--destination $DESTINATION \
 		--sources $SOURCES \
 		--min_sample_id $MIN_SAMPLE_ID \
@@ -136,7 +136,7 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
 		$INTERSECT $INPLACE &
 LAUNCH_CMDLINE_MESSAGE
 
-    $HOME/ml/scripts/tf.sh -c $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
+    $HOME/ml/scripts/tf.sh -r -c $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
 		--destination $DESTINATION \
 		--sources $SOURCES \
 		--min_sample_id $MIN_SAMPLE_ID \

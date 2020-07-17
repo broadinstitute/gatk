@@ -1366,46 +1366,62 @@ TMAPS['mri_patient_position_cine_segmented_sax_inlinevf'] = TensorMap(
 )
 
 
-def _mri_tensor_4d(hd5, name):
+def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, dest_shape=None):
     """
     Returns MRI image tensors from HD5 as 4-D numpy arrays. Useful for raw SAX and LAX images and segmentations.
     """
-    if isinstance(hd5[name], h5py.Group):
-        nslices = len(hd5[name]) // MRI_FRAMES
-        for img in hd5[name]:
-            img_shape = hd5[name][img].shape
+    hd5_path = f'{path_prefix}/{name}/instance_{instance}'
+    if concatenate:
+        hd5_path = f'{path_prefix}/{name}/'    
+    if isinstance(hd5[hd5_path], h5py.Group):
+        for img in hd5[hd5_path]:
+            img_shape = hd5[f'{hd5_path}/{img}/instance_{instance}'].shape
             break
-        shape = (img_shape[0], img_shape[1], nslices, MRI_FRAMES)
+        if dest_shape is None:
+            dest_shape = (max(img_shape), max(img_shape))
+        nslices = len(hd5[hd5_path]) // MRI_FRAMES        
+        shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
         arr = np.zeros(shape)
         t = 0
         s = 0
-        for k in sorted(hd5[name], key=int):
-            arr[:, :, s, t] = np.array(hd5[name][k]).T
+        for img in sorted(hd5[hd5_path], key=int):
+            img_shape = hd5[f'{hd5_path}/{img}/instance_{instance}'].shape
+            arr[:img_shape[1], :img_shape[0], s, t] = np.array(hd5[f'{hd5_path}/{img}/instance_{instance}']).T
             t += 1
             if t == MRI_FRAMES:
                 s += 1
                 t = 0
-    elif isinstance(hd5[name], h5py.Dataset):
+    elif isinstance(hd5[hd5_path], h5py.Dataset):
+        img_shape = hd5[hd5_path].shape
+        if dest_shape is None:
+            dest_shape = (max(img_shape), max(img_shape))
         nslices = 1
-        shape = (hd5[name].shape[0], hd5[name].shape[1], nslices, MRI_FRAMES)
+        shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
         arr = np.zeros(shape)
         for t in range(MRI_FRAMES):
-            arr[:, :, 0, t] = np.array(hd5[name][:, :, t]).T
+            if concatenate:
+                hd5_path = f'{path_prefix}/{name}{t+1}/instance_{instance}'
+                arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :]).T
+            else:
+                try:
+                    arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :, t]).T
+                except ValueError:
+                    logging.warning(f'Series {name} has less than {MRI_FRAMES} frames')
     else:
         raise ValueError(f'{name} is neither a HD5 Group nor a HD5 dataset')
     return arr
 
 
-def _mri_hd5_to_structured_grids(hd5, name, save_path=None, order='F'):
+def _mri_hd5_to_structured_grids(hd5, name, view_name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, save_path=None, order='F'):
     """
     Returns MRI tensors as list of VTK structured grids aligned to the reference system of the patient
     """
-    arr = _mri_tensor_4d(hd5, name)
-    width = hd5['_'.join([MRI_PIXEL_WIDTH, name])]
-    height = hd5['_'.join([MRI_PIXEL_HEIGHT, name])]
-    positions = _mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_POSITION, name]))
-    orientations = _mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_ORIENTATION, name]))
-    thickness = hd5['_'.join([MRI_SLICE_THICKNESS, name])]
+    arr = _mri_tensor_4d(hd5, name, path_prefix, instance, concatenate)
+    width = hd5['_'.join([MRI_PIXEL_WIDTH, view_name])]
+    height = hd5['_'.join([MRI_PIXEL_HEIGHT, view_name])]
+    positions = _mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_POSITION, view_name]))
+    orientations = _mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_ORIENTATION, view_name]))
+    thickness = hd5['_'.join([MRI_SLICE_THICKNESS, view_name])]
     _, dataset_indices, dataset_counts = np.unique(orientations, axis=1, return_index=True, return_counts=True)
     grids = []
     for d_idx, d_cnt in zip(dataset_indices, dataset_counts):
@@ -1477,6 +1493,37 @@ def _map_points_to_cells(pts, dataset, tol=1e-3):
         if locator.FindClosestPointWithinRadius(pt, tol, closest_pt, generic_cell, cell_id, sub_id, dist2, inside):
             map_to_cells[pt_id] = cell_id.get()
     return map_to_cells
+
+
+def _mri_project_grids(source_grids, destination_grids, source_name):
+    for i, source_grid in enumerate(source_grids):
+        for j, destination_grid in enumerate(destination_grids):
+            dims = destination_grid.GetDimensions()
+            pts = vtk.util.numpy_support.vtk_to_numpy(destination_grid.GetPoints().GetData())
+            npts_per_slice = dims[0] * dims[1]
+            ncells_per_slice = (dims[0]-1) * (dims[1]-1)
+            n_orientation = (pts[npts_per_slice] - pts[0])
+            n_orientation /= np.linalg.norm(n_orientation)
+            cell_centers = vtk.vtkCellCenters()
+            cell_centers.SetInputData(destination_grid)
+            cell_centers.Update()
+            cell_pts = vtk.util.numpy_support.vtk_to_numpy(cell_centers.GetOutput().GetPoints().GetData())
+            # Loop through dataset slices
+            for s in range(dims[2]-1):
+                slice_center = np.mean(pts[s*npts_per_slice:(s+2)*npts_per_slice], axis=0)
+                slice_cell_pts = cell_pts[s*ncells_per_slice:(s+1)*ncells_per_slice]
+                slice_source = _cut_through_plane(source_grid, slice_center, n_orientation)
+                map_to_source = _map_points_to_cells(slice_cell_pts, slice_source)
+                # Loop through time
+                for t in range(MRI_FRAMES):
+                    source_arr_name = f'{source_name}_{t}'
+                    destination_arr_name = f'{source_name}_projected_{t}'
+                    source_arr = vtk.util.numpy_support.vtk_to_numpy(slice_source.GetCellData().GetArray(source_arr_name))
+                    destination_arr = np.ascontiguousarray(source_arr[map_to_source])
+                    destination_arr_vtk = vtk.util.numpy_support.numpy_to_vtk(destination_arr)
+                    destination_arr_vtk.SetName(destination_arr_name)
+                    destination_grid.GetCellData().AddArray(destination_arr_vtk)
+    return destination_grids
 
 
 def _make_mri_projected_segmentation_from_file(to_segment_name, segmented_name, save_path=None):

@@ -54,6 +54,7 @@ MRI_CARDIAC_SERIES = [
     'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
     'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_b12',
     'cine_segmented_sax_b13', 'cine_segmented_sax_inlinevf', 'cine_segmented_lax_inlinevf', 'cine_segmented_ao_dist',
+    'cine_segmented_lvot', 'flow_250_tp_aov_bh_epat@c_p', 'flow_250_tp_aov_bh_epat@c', 'flow_250_tp_aov_bh_epat@c_mag'
 ]
 MRI_CARDIAC_SERIES_SEGMENTED = [series+'_segmented' for series in MRI_CARDIAC_SERIES]
 MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
@@ -62,7 +63,7 @@ MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
-DICOM_MRI_FIELDS = ['20209', '20208', '20210', '20204', '20203', '20254', '20216', '20220', '20218', '20227', '20225', '20217']
+DICOM_MRI_FIELDS = ['20209', '20208', '20210', '20212', '20213', '20204', '20203', '20254', '20216', '20220', '20218', '20227', '20225', '20217']
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -462,7 +463,7 @@ def _write_tensors_from_dicoms(
             mri_group = 'ukb_mri'
 
         if v == MRI_TO_SEGMENT:
-            _tensorize_short_axis_segmented_cardiac_mri(views[v], v, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, mri_date, mri_group, stats)
+            _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], v, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
         else:
@@ -478,7 +479,7 @@ def _write_tensors_from_dicoms(
             create_tensor_in_hd5(hd5, mri_group, v, mri_data, stats, mri_date)
 
 
-def _tensorize_short_axis_segmented_cardiac_mri(
+def _tensorize_short_and_long_axis_segmented_cardiac_mri(
     slices: List[pydicom.Dataset], series: str, zoom_x: int, zoom_y: int,
     zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
     hd5: h5py.File, mri_date: datetime.datetime, mri_group: str,
@@ -495,12 +496,14 @@ def _tensorize_short_axis_segmented_cardiac_mri(
         full_slice = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
 
         if _has_overlay(slicer):
+            if _is_mitral_valve_segmentation(slicer):
+                series = series.replace('sax', 'lax')
+            else:
+                series = series.replace('lax', 'sax')
             series_segmented = f'{series}_segmented'
             series_zoom = f'{series}_zoom'
             series_zoom_segmented = f'{series}_zoom_segmented'
-            if _is_mitral_valve_segmentation(slicer):
-                stats['Skipped likely mitral valve segmentation'] += 1
-                continue
+            
             try:
                 overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
             except KeyError:
