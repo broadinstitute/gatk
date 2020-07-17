@@ -598,8 +598,7 @@ task M2 {
             -O "~{output_vcf}" \
             ~{true='--bam-output bamout.bam' false='' make_bamout} \
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
-            ~{m2_extra_args} \
-            ~{getpileupsummaries_extra_args}
+            ~{m2_extra_args}
 
         m2_exit_code=$?
 
@@ -613,11 +612,12 @@ task M2 {
 
         if [[ ! -z "~{variants_for_contamination}" ]]; then
             gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
-                -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table
+                -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table ~{getpileupsummaries_extra_args}
+
 
             if [[ ! -z "~{normal_bam}" ]]; then
                 gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{normal_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
-                    -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table
+                    -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table ~{getpileupsummaries_extra_args}
             fi
         fi
 
