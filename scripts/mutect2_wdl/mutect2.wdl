@@ -102,6 +102,7 @@ workflow Mutect2 {
       Boolean? run_orientation_bias_mixture_model_filter
       String? m2_extra_args
       String? m2_extra_filtering_args
+      String? getpileupsummaries_extra_args
       String? split_intervals_extra_args
       Boolean? make_bamout
       Boolean? compress_vcfs
@@ -260,6 +261,7 @@ workflow Mutect2 {
                 preemptible = preemptible,
                 max_retries = max_retries,
                 m2_extra_args = m2_extra_args,
+                getpileupsummaries_extra_args = getpileupsummaries_extra_args,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_idx = variants_for_contamination_idx,
                 make_bamout = make_bamout_or_default,
@@ -518,6 +520,7 @@ task M2 {
       File? gnomad
       File? gnomad_idx
       String? m2_extra_args
+      String? getpileupsummaries_extra_args
       Boolean? make_bamout
       Boolean? run_ob_filter
       Boolean compress
@@ -595,7 +598,8 @@ task M2 {
             -O "~{output_vcf}" \
             ~{true='--bam-output bamout.bam' false='' make_bamout} \
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
-            ~{m2_extra_args}
+            ~{m2_extra_args} \
+            ~{getpileupsummaries_extra_args}
 
         m2_exit_code=$?
 
