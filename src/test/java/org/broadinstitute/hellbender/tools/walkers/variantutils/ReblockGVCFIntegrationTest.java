@@ -185,4 +185,19 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
             }
         }
     }
+
+    @Test
+    public void testReReblocking() {
+        final File input = new File(getToolTestDataDir() + "alreadyReblocked.chr22snippet.vcf");
+        final File output = createTempFile("rereblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", input)
+                .addOutput(output);
+        runCommandLine(args);
+
+        Pair<VCFHeader, List<VariantContext>> inputVCs = VariantContextTestUtils.readEntireVCFIntoMemory(input.getAbsolutePath());
+        Pair<VCFHeader, List<VariantContext>> outputVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+
+        Assert.assertTrue(inputVCs.getRight().size() > outputVCs.getRight().size());
+    }
 }

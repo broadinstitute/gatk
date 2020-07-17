@@ -156,7 +156,7 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
      */
     GVCFBlock createNewBlock(final VariantContext vc, final Genotype g) {
         // figure out the GQ limits to use based on the GQ of g
-        final int gq = Math.min(g.getGQ(), MAX_GENOTYPE_QUAL);
+        final int gq = g.hasGQ() ? Math.min(g.getGQ(), MAX_GENOTYPE_QUAL) : 0;
         final Range<Integer> partition = gqPartitions.get(gq);
 
         if( partition == null) {
