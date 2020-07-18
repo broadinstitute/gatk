@@ -1112,6 +1112,7 @@ def train_model_from_generators(
     generate_valid.kill_workers()
 
     logging.info('Model weights saved at: %s' % model_file)
+    model = load_model(model_file, custom_objects=_get_custom_objects(generate_train.output_maps))
     if plot:
         plot_metric_history(history, training_steps, run_id, os.path.dirname(model_file))
     if return_history:
