@@ -67,6 +67,18 @@ final public class DataSourceUtils {
     @VisibleForTesting
     static final int MIN_DAY_RELEASED         = 24;
 
+    // Track out maximum version number here:
+    @VisibleForTesting
+    static final int MAX_MAJOR_VERSION_NUMBER = 1;
+    @VisibleForTesting
+    static final int MAX_MINOR_VERSION_NUMBER = 7;
+    @VisibleForTesting
+    static final int MAX_YEAR_RELEASED        = 2020;
+    @VisibleForTesting
+    static final int MAX_MONTH_RELEASED       = 5;
+    @VisibleForTesting
+    static final int MAX_DAY_RELEASED         = 21;
+
     //==================================================================================================================
     // Public Static Members:
 
@@ -725,26 +737,43 @@ final public class DataSourceUtils {
     @VisibleForTesting
     static boolean validateVersionInformation(final int major, final int minor, final int year, final int month, final int day) {
 
-        // Compare from largest to smallest differences:
-
+        // Compare from largest to smallest differences for Min version:
         if ( major < MIN_MAJOR_VERSION_NUMBER ) {
             return false;
         }
-
         if ( minor <  MIN_MINOR_VERSION_NUMBER ) {
             return false;
         }
-
         if ( year < MIN_YEAR_RELEASED ) {
             return false;
         }
-
         else if ( year == MIN_YEAR_RELEASED ) {
             if ( month < MIN_MONTH_RELEASED ) {
                 return false;
             }
             else if ( month == MIN_MONTH_RELEASED ) {
                 if ( day < MIN_DAY_RELEASED ) {
+                    return false;
+                }
+            }
+        }
+
+        // Compare from largest to smallest differences for Max version:
+        if ( major > MAX_MAJOR_VERSION_NUMBER ) {
+            return false;
+        }
+        if ( minor >  MAX_MINOR_VERSION_NUMBER ) {
+            return false;
+        }
+        if ( year > MAX_YEAR_RELEASED ) {
+            return false;
+        }
+        else if ( year == MAX_YEAR_RELEASED ) {
+            if ( month > MAX_MONTH_RELEASED ) {
+                return false;
+            }
+            else if ( month == MAX_MONTH_RELEASED ) {
+                if ( day > MAX_DAY_RELEASED ) {
                     return false;
                 }
             }
