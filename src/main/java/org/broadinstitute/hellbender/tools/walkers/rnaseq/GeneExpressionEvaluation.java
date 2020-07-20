@@ -246,7 +246,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
     @Argument(doc = "How to distribute weight of reads with multiple alignments", fullName = "multi-map-method")
     private MultiMapMethod multiMapMethod = MultiMapMethod.IGNORE;
 
-    @Argument(doc = "Whether the rna is unspliced.  If spliced, alignments must be from a splice aware aligner (such as star).  If unspliced, alignments must be from a non-splicing aligner (such as bwa).")
+    @Argument(doc = "Whether the rna is unspliced.  If spliced, alignments must be from an aligner run in a splice-aware mode.  If unspliced, alignments must be from an aligner run in a non-splicing mode.")
     private boolean unspliced = false;
 
     final private Map<Gff3BaseData, Coverage> featureCounts = new LinkedHashMap<>();
