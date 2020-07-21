@@ -439,7 +439,7 @@ public final class GeneExpressionEvaluation extends ReadWalker {
                 throw new UserException.CouldNotCreateOutputFile(file, " is not writable");
             }
         } else {
-            if (!Files.isWritable(file.getParentFile().toPath())) {
+            if (!Files.isWritable(file.getAbsoluteFile().getParentFile().toPath())) {
                 throw new UserException.CouldNotCreateOutputFile(file, " is not writable");
             }
         }
