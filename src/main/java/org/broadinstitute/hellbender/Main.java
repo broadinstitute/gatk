@@ -43,10 +43,6 @@ public class Main {
          * to think about number formatting issues.
          */
         Utils.forceJVMLocaleToUSEnglish();
-
-        // Turn off the Picard legacy parser and opt in to Barclay syntax for Picard tools. This should be replaced
-        // with a config setting once PR https://github.com/broadinstitute/gatk/pull/3447 is merged.
-        System.setProperty("picard.useLegacyParser", "false");
     }
 
     /**
