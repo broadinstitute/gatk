@@ -161,7 +161,7 @@ public final class GATKVariantContextUtils {
         if (ref1.equals(ref2)) {
             return altList.contains(alt1);
         } else {
-            commonRef = determineReferenceAllele(ref1, ref2);
+                commonRef = determineReferenceAllele(ref1, ref2);
         }
         final Map<Allele, Allele> alleleMap;
         if (ref1.equals(commonRef)) {
@@ -190,8 +190,8 @@ public final class GATKVariantContextUtils {
                 final Allele myRef = vc.getReference();
                 try {
                     ref = determineReferenceAllele(ref, myRef);
-                } catch (TribbleException e) {
-                    throw new TribbleException(String.format("The provided variant file(s) have inconsistent references " +
+                } catch (IllegalStateException e) {
+                    throw new IllegalStateException(String.format("The provided variant file(s) have inconsistent references " +
                             "for the same position(s) at %s:%d, %s vs. %s", vc.getContig(), vc.getStart(), ref, myRef));
                 }
             }
@@ -206,7 +206,7 @@ public final class GATKVariantContextUtils {
             return ref1;
         }
         else if ( ref1.length() == ref2.length() && ! ref1.equals(ref2) ) {
-            throw new TribbleException(String.format("The provided reference alleles do not appear to represent the same position, %s vs. %s", ref1, ref2));
+            throw new IllegalStateException(String.format("The provided reference alleles do not appear to represent the same position, %s vs. %s", ref1, ref2));
         } else {  //the lengths are the same and they're equal, so we could return ref1 or ref2
             return ref1;
         }

@@ -4,6 +4,7 @@ import java.util.*;
 import java.io.File;
 import java.util.stream.Collectors;
 
+import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
@@ -184,14 +185,19 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
         for (FeatureInput<VariantContext> featureSource : resources) {
             for (VariantContext v : featureContext.getValues(featureSource)) {
                 for (final Allele a : variant.getAlternateAlleles()) {
-                    if ((variant.getStart() == v.getStart()) && GATKVariantContextUtils.isAlleleInList(variant.getReference(), a, v.getReference(), v.getAlternateAlleles())) {
-                        if (variant.isSNP()) {
-                            resourceSNPScores.add(Double.parseDouble((String) variant.getAttribute(infoKey)));
-                            return;
-                        } else {
-                            resourceIndelScores.add(Double.parseDouble((String)variant.getAttribute(infoKey)));
-                            return;
+                    try {
+                        if ((variant.getStart() == v.getStart()) && GATKVariantContextUtils.isAlleleInList(variant.getReference(), a, v.getReference(), v.getAlternateAlleles())) {
+                            if (variant.isSNP()) {
+                                resourceSNPScores.add(Double.parseDouble((String) variant.getAttribute(infoKey)));
+                                return;
+                            } else {
+                                resourceIndelScores.add(Double.parseDouble((String) variant.getAttribute(infoKey)));
+                                return;
+                            }
                         }
+                    } catch (IllegalStateException e) {
+                        throw new UserException.BadInput(String.format("The provided variant file(s) have inconsistent references " +
+                                "for the same position(s) at %s:%d, %s in input vs. %s in resource", v.getContig(), v.getStart(), variant.getReference(), v.getReference()));
                     }
                 }
             }
