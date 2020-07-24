@@ -20,6 +20,21 @@ CATEGORICAL_TMAPS = [
     )
     for n in range(1, 6)
 ]
+LANGUAGE_TMAP_1HOT_WINDOW = [
+    TensorMap(
+        f'language_1hot_window', shape=(32, 26),
+        interpretation=Interpretation.LANGUAGE,
+        channel_map={f'c_{i}': i for i in range(26)},
+    )
+]
+LANGUAGE_TMAP_1HOT_SOFTMAX = [
+    TensorMap(
+        f'language_1hot_out', shape=(26,),
+        interpretation=Interpretation.LANGUAGE,
+        channel_map={f'c_{i}': i for i in range(26)},
+    )
+]
+
 TMAPS_UP_TO_4D = CONTINUOUS_TMAPS[:-1] + CATEGORICAL_TMAPS[:-1]
 TMAPS_5D = CONTINUOUS_TMAPS[-1:] + CATEGORICAL_TMAPS[-1:]
 MULTIMODAL_UP_TO_4D = [list(x) for x in product(CONTINUOUS_TMAPS[:-1], CATEGORICAL_TMAPS[:-1])]

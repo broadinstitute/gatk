@@ -27,6 +27,7 @@ from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, A
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
+from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
 import tensorflow_probability as tfp
 
 from ml4cvd.metrics import get_metric_dict
@@ -103,8 +104,8 @@ def make_shallow_model(
     my_metrics = {}
     loss_weights = []
     input_tensors = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
-
     it = concatenate(input_tensors) if len(input_tensors) > 1 else input_tensors[0]
+
     for ot in tensor_maps_out:
         losses.append(ot.loss)
         loss_weights.append(ot.loss_weight)
@@ -367,10 +368,13 @@ class ResidualBlock:
         block_size = len(filters_per_conv)
         assert len(conv_x) == len(conv_y) == len(conv_z) == block_size
         conv_layer, kernels = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
-        self.conv_layers = [
-            conv_layer(filters=num_filters, kernel_size=kernel, padding='same', dilation_rate=2**i if dilate else 1)
-            for i, (num_filters, kernel) in enumerate(zip(filters_per_conv, kernels))
-        ]
+        self.conv_layers = []
+        for i, (num_filters, kernel) in enumerate(zip(filters_per_conv, kernels)):
+            if isinstance(conv_layer, DepthwiseConv2D):
+                self.conv_layers.append(conv_layer(kernel_size=kernel, padding='same', dilation_rate=2 ** i if dilate else 1))
+            else:
+                self.conv_layers.append(conv_layer(filters=num_filters, kernel_size=kernel, padding='same', dilation_rate=2**i if dilate else 1))
+
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
@@ -407,7 +411,10 @@ class DenseConvolutionalBlock:
             regularization_rate: float,
     ):
         conv_layer, kernels = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
-        self.conv_layers = [conv_layer(filters=filters, kernel_size=kernel, padding='same') for kernel in kernels]
+        if isinstance(conv_layer, DepthwiseConv2D):
+            self.conv_layers = [conv_layer(kernel_size=kernel, padding='same') for kernel in kernels]
+        else:
+            self.conv_layers = [conv_layer(filters=filters, kernel_size=kernel, padding='same') for kernel in kernels]
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
@@ -456,6 +463,17 @@ class FullyConnectedBlock:
         return x
 
 
+class LSTMEncoder:
+    def __init__(
+            self,
+            tensor_map_in,
+    ):
+        self.lstm = LSTM(tensor_map_in.annotation_units)
+
+    def __call__(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, List[Tensor]]]:
+        return self.lstm(x), []
+
+
 def adaptive_normalize_from_tensor(tensor: Tensor, target: Tensor) -> Tensor:
     """Uses Dense layers to convert `tensor` to a mean and standard deviation to normalize `target`"""
     return adaptive_normalization(mu=Dense(target.shape[-1])(tensor), sigma=Dense(target.shape[-1])(tensor), target=target)
@@ -472,7 +490,12 @@ def adaptive_normalization(mu: Tensor, sigma: Tensor, target: Tensor) -> Tensor:
 
 
 def global_average_pool(x: Tensor) -> Tensor:
-    return K.mean(x, axis=tuple(range(1, len(x.shape) - 1)))
+    if len(x.shape) == 3:
+        return GlobalAveragePooling1D()(x)
+    elif len(x.shape) == 4:
+        return GlobalAveragePooling2D()(x)
+    elif len(x.shape) == 5:
+        return GlobalAveragePooling3D()(x)
 
 
 def check_no_bottleneck(u_connect: DefaultDict[TensorMap, Set[TensorMap]], tensor_maps_out: List[TensorMap]) -> bool:
@@ -720,6 +743,17 @@ class DenseDecoder:
         return self.dense(x)
 
 
+class LanguageDecoder:
+    def __init__(
+            self,
+            tensor_map_out: TensorMap,
+    ):
+        self.dense = Dense(tensor_map_out.shape[-1], activation=tensor_map_out.activation, name=tensor_map_out.output_name())
+
+    def __call__(self, x: Tensor, _, decoder_outputs: Dict[TensorMap, Tensor]) -> Tensor:
+        return self.dense(x)
+
+
 class ConvDecoder:
     def __init__(
             self,
@@ -836,7 +870,7 @@ def make_multimodal_multitask_model(
         pool_type: str = None,
         training_steps: int = None,
         learning_rate_schedule: str = None,
-        **kwargs
+        **kwargs,
 ) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
 
@@ -905,7 +939,9 @@ def make_multimodal_multitask_model(
 
     encoders: Dict[TensorMap: Layer] = {}
     for tm in tensor_maps_in:
-        if tm.axes() > 1:
+        if tm.is_language():
+            encoders[tm] = LSTMEncoder(tm)
+        elif tm.axes() > 1:
             encoders[tm] = ConvEncoder(
                 filters_per_dense_block=dense_blocks,
                 dimension=tm.axes(),
@@ -937,7 +973,7 @@ def make_multimodal_multitask_model(
 
     pre_decoder_shapes: Dict[TensorMap, Optional[Tuple[int, ...]]] = {}
     for tm in tensor_maps_out:
-        if any([tm in out for out in u_connect.values()]) or tm.axes() == 1:
+        if any([tm in out for out in u_connect.values()]) or tm.axes() == 1 or tm.is_language():
             pre_decoder_shapes[tm] = None
         else:
             pre_decoder_shapes[tm] = _calc_start_shape(
@@ -968,15 +1004,18 @@ def make_multimodal_multitask_model(
         )
     elif bottleneck_type == BottleneckType.NoBottleNeck:
         if not check_no_bottleneck(u_connect, tensor_maps_out):
-            raise ValueError(f'To use {BottleneckType.NoBottleNeck}, all output TensorMaps must be u-connected to.')
-        bottleneck = UConnectBottleNeck(u_connect)
+            bottleneck = None
+        else:
+            bottleneck = UConnectBottleNeck(u_connect)
     else:
         raise NotImplementedError(f'Unknown BottleneckType {bottleneck_type}.')
 
     conv_x, conv_y, conv_z = conv_x[num_res:], conv_y[num_res:], conv_z[num_res:]
     decoders: Dict[TensorMap, Layer] = {}
     for tm in tensor_maps_out:
-        if tm.axes() > 1:
+        if tm.is_language():
+            decoders[tm] = LanguageDecoder(tensor_map_out=tm)
+        elif tm.axes() > 1:
             decoders[tm] = ConvDecoder(
                 tensor_map_out=tm,
                 filters_per_dense_block=dense_blocks[::-1],
@@ -1254,9 +1293,10 @@ def _inspect_model(
     train_speed = (t1 - t0) / n
     logging.info(f'Spent:{(t1 - t0):0.2f} seconds training, Samples trained on:{n} Per sample training speed:{train_speed:0.3f} seconds.')
     t0 = time.time()
-    _ = model.predict(generate_valid, steps=training_steps, verbose=1)
+    inference_steps = max(1, training_steps//8)
+    _ = model.predict(generate_valid, steps=inference_steps, verbose=1)
     t1 = time.time()
-    inference_speed = (t1 - t0) / n
+    inference_speed = (t1 - t0) / (batch_size * inference_steps)
     logging.info(f'Spent:{(t1 - t0):0.2f} seconds predicting, Samples inferred:{n} Per sample inference speed:{inference_speed:0.4f} seconds.')
     return model
 
@@ -1341,6 +1381,7 @@ def _gradients_from_output(model, output_layer, output_index):
     x = model.get_layer(output_layer).output[:, output_index]
     grads = K.gradients(x, input_tensor)[0]
     grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-6)  # normalization trick: we normalize the gradient
+    grads /= 80
     iterate = K.function([input_tensor], [x, grads])
     return iterate
 
@@ -1361,6 +1402,7 @@ def _get_tensor_maps_for_characters(
             language_layer, Interpretation.LANGUAGE, shape=(burn_in, len(PARTNERS_CHAR_2_IDX)), path_prefix=language_prefix,
             dependent_map=tm_char, cacheable=False,
         )
+        logging.info(f'From language layer: {language_layer} created tensor maps for Partners language data.')
     else:
         tm_char = TensorMap(
             f'{language_layer}{LANGUAGE_MODEL_SUFFIX}', Interpretation.LANGUAGE, shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX,
@@ -1370,6 +1412,7 @@ def _get_tensor_maps_for_characters(
             language_layer, Interpretation.LANGUAGE, shape=(burn_in, len(ECG_CHAR_2_IDX)), path_prefix=language_prefix,
             dependent_map=tm_char, cacheable=False,
         )
+        logging.info(f'From language layer: {language_layer} created tensor maps for UKB ECG language data.')
 
     return [tm_embed, tm_burn_in], [tm_char]
 

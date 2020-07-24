@@ -108,6 +108,58 @@ def _build_tensor_from_file(file_name: str, target_column: str, normalization: b
     return tensor_from_file
 
 
+def _preprocess_sentence(sentence, remove_special_chars):
+    sentence = sentence.strip()
+    if remove_special_chars:
+        #replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
+        sentence = re.sub(r"[^a-zA-Z?.!,]+", " ", sentence)
+        sentence = sentence.strip()
+    return sentence
+
+
+def token_dictionary_and_text_from_file(text_file: str, remove_special_chars: bool = True) -> Tuple[str, Dict[str, int]]:
+    text = ""
+    characters = set()
+    with open(text_file) as file:
+        for line in file.readlines():
+            cur_line = _preprocess_sentence(line, remove_special_chars)
+            [characters.add(char) for char in cur_line]
+            text = f'{text}{cur_line}'
+    logging.info(f'Total characters: {len(characters)}')
+    char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
+    index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
+    logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
+    return text, char2index
+
+
+def random_text_window_tensor(text: str, window_size: int, one_hot: bool = True):
+    def text_from_file(tm, _, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        random_index = np.random.randint(window_size, len(text)-window_size)
+        for i, c in enumerate(text[random_index:random_index+window_size]):
+            if one_hot:
+                tensor[i, tm.channel_map[c]] = 1.0
+            else:
+                tensor[i] = tm.channel_map[c]
+        if tm.dependent_map is not None:
+            for i, dm in enumerate(tm.dependent_map):
+                start_next_window = random_index+1+i
+                dependents[dm] = np.zeros(dm.shape, dtype=np.float32)
+                if dm.axes() == 1 and one_hot:
+                    dependents[dm][dm.channel_map[text[start_next_window]]] = 1.0
+                elif dm.axes() == 2 or (not one_hot and dm.axes() == 1):
+                    for j, c in enumerate(text[start_next_window:start_next_window+dm.shape[0]]):
+                        if one_hot:
+                            dependents[dm][j, dm.channel_map[c]] = 1.0
+                        else:
+                            dependents[dm][j] = dm.channel_map[c]
+                else:
+                    raise ValueError(f'No method to process dependent map:{dm.name} of shape {dm.shape}.')
+                logging.debug(f'\nInput text: {text[random_index:random_index+window_size]}\n Dependent: {text[start_next_window:start_next_window+dm.shape[0]]}')
+        return tensor
+    return text_from_file
+
+
 def _survival_tensor(start_date_key: str, day_window: int, incidence_only: bool = False):
     def _survival_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         assess_date = str2date(str(hd5[start_date_key][0]))
@@ -1372,14 +1424,14 @@ def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concate
     """
     hd5_path = f'{path_prefix}/{name}/instance_{instance}'
     if concatenate:
-        hd5_path = f'{path_prefix}/{name}/'    
+        hd5_path = f'{path_prefix}/{name}/'
     if isinstance(hd5[hd5_path], h5py.Group):
         for img in hd5[hd5_path]:
             img_shape = hd5[f'{hd5_path}/{img}/instance_{instance}'].shape
             break
         if dest_shape is None:
             dest_shape = (max(img_shape), max(img_shape))
-        nslices = len(hd5[hd5_path]) // MRI_FRAMES        
+        nslices = len(hd5[hd5_path]) // MRI_FRAMES
         shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
         arr = np.zeros(shape)
         t = 0

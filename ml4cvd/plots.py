@@ -1442,22 +1442,24 @@ def _remove_duplicate_rows(df, out_folder):
     return arr
 
 
-def plot_ecg_rest(tensor_paths: List[str], rows: List[int], 
-                  out_folder: str, is_blind: bool) -> None:
+def plot_ecg_rest(
+    tensor_paths: List[str], rows: List[int],
+    out_folder: str, is_blind: bool,
+) -> None:
     """ Plots resting ECGs including annotations and LVH criteria
-    
+
     :param tensor_paths: list of HDF5 file paths with ECG traces
     :param rows: indices of the subset of tensor_paths to be plotted (used by multiprocessing)
     :param out_folder: destination folder for the plots
     :param is_blind: if True, the plot gets blinded (helpful for review and annotation)
     """
     map_fields_to_tmaps = {
-        'ramp': 'ecg_rest_ramplitude_raw', 
+        'ramp': 'ecg_rest_ramplitude_raw',
         'samp': 'ecg_rest_samplitude_raw',
         'aVL': 'ecg_rest_lvh_avl',
         'Sokolow_Lyon': 'ecg_rest_lvh_sokolow_lyon',
-        'Cornell': 'ecg_rest_lvh_cornell'
-        }    
+        'Cornell': 'ecg_rest_lvh_cornell',
+        }
     from ml4cvd.tensor_from_file import TMAPS
     raw_scale = 0.005 # Conversion from raw to mV
     default_yrange = ECG_REST_PLOT_DEFAULT_YRANGE # mV
@@ -1518,7 +1520,7 @@ def plot_ecg_rest_mp(
         condition = (tensor_sample_ids > min_sample_id) & (tensor_sample_ids < max_sample_id)
         tensor_paths = [tensor_path for i, tensor_path in enumerate(tensor_paths) if condition[i]]
     except ValueError:
-        logging.warning('Cannot select subset of tensors based on sample ids. Discarding min_ and max_sample_id')        
+        logging.warning('Cannot select subset of tensors based on sample ids. Discarding min_ and max_sample_id')
     row_split = np.array_split(np.arange(len(tensor_paths)), num_workers)
     pool = Pool(num_workers)
     pool.starmap(plot_ecg_rest, zip([tensor_paths]*num_workers, row_split, [output_folder]*num_workers, [is_blind]*num_workers))
@@ -1991,7 +1993,7 @@ def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
 
 def _plot_reconstruction(
         tm: TensorMap, y_true: np.ndarray, y_pred: np.ndarray,
-        folder: str, paths: List[str]
+        folder: str, paths: List[str],
 ):
     num_samples = 3
     logging.info(f'Plotting {num_samples} reconstructions of {tm}.')
