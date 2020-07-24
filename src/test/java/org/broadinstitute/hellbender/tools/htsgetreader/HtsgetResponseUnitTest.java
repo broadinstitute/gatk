@@ -14,7 +14,7 @@ import org.testng.annotations.Test;
 
 public class HtsgetResponseUnitTest extends GATKBaseTest {
     @Test
-    public void testDeserialization() throws JsonParseException, JsonMappingException, IOException {
+    public void testDeserialization() throws IOException {
         final ObjectMapper mapper = new ObjectMapper();
         mapper.enable(DeserializationFeature.UNWRAP_ROOT_VALUE);
         final String respJson = "{\n   \"htsget\" : {\n      \"format\" : \"BAM\",\n      \"urls\" : [\n         {\n            \"url\" : \"data:application/vnd.ga4gh.bam;base64,QkFNAQ==\",\n            \"class\" : \"header\"\n         },\n         {\n            \"url\" : \"https://htsget.blocksrv.example/sample1234/header\",\n            \"class\" : \"header\"\n         },\n         {\n            \"url\" : \"https://htsget.blocksrv.example/sample1234/run1.bam\",\n            \"headers\" : {\n               \"Authorization\" : \"Bearer xxxx\",\n               \"Range\" : \"bytes=65536-1003750\"\n             },\n            \"class\" : \"body\"\n         },\n         {\n            \"url\" : \"https://htsget.blocksrv.example/sample1234/run1.bam\",\n            \"headers\" : {\n               \"Authorization\" : \"Bearer xxxx\",\n               \"Range\" : \"bytes=2744831-9375732\"\n            },\n            \"class\" : \"body\"\n         }\n      ]\n   }\n}";

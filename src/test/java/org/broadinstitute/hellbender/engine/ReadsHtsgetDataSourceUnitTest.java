@@ -521,5 +521,3 @@ public class ReadsHtsgetDataSourceUnitTest extends GATKBaseTest {
         return outputFile;
     }
 }
-
-// dataproctestutils
