@@ -102,6 +102,7 @@ workflow Mutect2 {
       Boolean? run_orientation_bias_mixture_model_filter
       String? m2_extra_args
       String? m2_extra_filtering_args
+      String? getpileupsummaries_extra_args
       String? split_intervals_extra_args
       Boolean? make_bamout
       Boolean? compress_vcfs
@@ -260,6 +261,7 @@ workflow Mutect2 {
                 preemptible = preemptible,
                 max_retries = max_retries,
                 m2_extra_args = m2_extra_args,
+                getpileupsummaries_extra_args = getpileupsummaries_extra_args,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_idx = variants_for_contamination_idx,
                 make_bamout = make_bamout_or_default,
@@ -518,6 +520,7 @@ task M2 {
       File? gnomad
       File? gnomad_idx
       String? m2_extra_args
+      String? getpileupsummaries_extra_args
       Boolean? make_bamout
       Boolean? run_ob_filter
       Boolean compress
@@ -609,11 +612,12 @@ task M2 {
 
         if [[ ! -z "~{variants_for_contamination}" ]]; then
             gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
-                -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table
+                -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table ~{getpileupsummaries_extra_args}
+
 
             if [[ ! -z "~{normal_bam}" ]]; then
                 gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{normal_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
-                    -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table
+                    -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table ~{getpileupsummaries_extra_args}
             fi
         fi
 
