@@ -6,6 +6,7 @@ import htsjdk.samtools.util.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
@@ -41,6 +42,7 @@ import java.util.stream.IntStream;
         oneLineSummary = "Get the maximum likelihood estimates of artifact prior probabilities in the orientation bias mixture model filter",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
+@DocumentedFeature
 public class LearnReadOrientationModel extends CommandLineProgram {
     public static final double DEFAULT_CONVERGENCE_THRESHOLD = 1e-4;
     public static final int DEFAULT_MAX_ITERATIONS = 20;
