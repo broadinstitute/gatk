@@ -191,13 +191,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             //TODO this will need to be parameterized in the future.
             if (hcArgs.applyBQD || hcArgs.applyFRD) {
                 if (hcArgs.retainBasedOnOriginalAlignment) {
-                readAlleleLikelihoods.retainEvidence(r -> {GATKRead original = (GATKRead)(r.getTransientAttribute("originalAlignment"));
-//                        original = original == null ? r : original;//Reads that were disqualified don't have original alignments (since they weren't ever realigned).
-                        return original.getSoftStart() <= original.getSoftEnd() && new SimpleInterval(original.getContig(), original.getSoftStart(), original.getSoftEnd()).overlaps(variantCallingRelevantOverlap);});
+                    readAlleleLikelihoods.retainEvidence(r -> softUnclippedReadOverlapsInterval((GATKRead) r.getTransientAttribute("originalAlignment"), variantCallingRelevantOverlap));
                 } else {
-//                    readAlleleLikelihoods.retainEvidence(r -> ReadClipper.revertSoftClippedBases(r).overlaps(variantCallingRelevantOverlap));
-
-                    readAlleleLikelihoods.retainEvidence(r -> r.getSoftStart() <= r.getSoftEnd() && new SimpleInterval(r.getContig(), r.getSoftStart(), r.getSoftEnd()).overlaps(variantCallingRelevantOverlap));
+                    readAlleleLikelihoods.retainEvidence(r -> softUnclippedReadOverlapsInterval(r, variantCallingRelevantOverlap));
                 }
             } else {
                 readAlleleLikelihoods.retainEvidence(r -> r.overlaps(variantCallingRelevantOverlap));
@@ -257,6 +253,14 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
         final List<VariantContext> phasedCalls = doPhysicalPhasing ? AssemblyBasedCallerUtils.phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
+    }
+
+    private boolean softUnclippedReadOverlapsInterval(final GATKRead read, final SimpleInterval target) {
+        return read.getContig().equalsIgnoreCase(target.getContig())
+                && read.getSoftStart() <= target.getEnd()
+                && read.getSoftEnd() >= target.getStart()
+                && read.getSoftStart() <= read.getSoftEnd(); // is this possible, ever?
+
     }
 
     /**

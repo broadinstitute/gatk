@@ -4,12 +4,10 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.VariationalAlleleFrequencyCalculator;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -28,11 +26,7 @@ public class DragstrParams {
     }
 
     private static BufferedReader openBufferedReader(String path) {
-        try {
-            return Files.newBufferedReader(Paths.get(path));
-        } catch (final IOException ex) {
-            throw new UserException.CouldNotReadInputFile(path, ex);
-        }
+        return new BufferedReader(new InputStreamReader(BucketUtils.openFile(path)));
     }
 
     private BufferedWriter openBufferedWriter(final String path) {
