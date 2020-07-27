@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,6 +29,8 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -151,6 +154,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 startPosKeySet.last() + 2 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod())
                 : null;
 
+        final BiPredicate<GATKRead, Locatable> readQualifiesForGenotypingPredicate = composeReadQualifiesForGenotypingPredicate(hcArgs);
+
         for( final int loc : startPosKeySet ) {
             if( loc < activeRegionWindow.getStart() || loc > activeRegionWindow.getEnd() ) {
                 continue;
@@ -186,16 +191,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
             // We want to retain evidence that overlaps within its softclipping edges.
             //TODO this will need to be parameterized in the future.
-            if (hcArgs.applyBQD || hcArgs.applyFRD) {
-                if (hcArgs.retainBasedOnOriginalAlignment) {
-                readAlleleLikelihoods.retainEvidence(r -> {GATKRead original = (GATKRead)(r.getTransientAttribute("originalAlignment"));
-                        return original.getSoftStart() <= original.getSoftEnd() && new SimpleInterval(original.getContig(), original.getSoftStart(), original.getSoftEnd()).overlaps(variantCallingRelevantOverlap);});
-                } else {
-                    readAlleleLikelihoods.retainEvidence(r -> r.getSoftStart() <= r.getSoftEnd() && new SimpleInterval(r.getContig(), r.getSoftStart(), r.getSoftEnd()).overlaps(variantCallingRelevantOverlap));
-                }
-            } else {
-                readAlleleLikelihoods.retainEvidence(r -> r.overlaps(variantCallingRelevantOverlap));
-            }
+            readAlleleLikelihoods.retainEvidence(read -> readQualifiesForGenotypingPredicate.test(read, variantCallingRelevantOverlap));
+
             readAlleleLikelihoods.setVariantCallingSubsetUsed(variantCallingRelevantOverlap);
 
             if (configuration.isSampleContaminationPresent()) {
@@ -248,6 +245,43 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
         final List<VariantContext> phasedCalls = doPhysicalPhasing ? AssemblyBasedCallerUtils.phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
+    }
+
+    /**
+     * Composes the appropriate test to determine if a read is to be retained for evidence/likelihood calculation for variants
+     * located in a target region.
+     * @param hcArgs configuration that may affect the criteria use to retain or filter-out reads.
+     * @return never {@code null}.
+     */
+    private BiPredicate<GATKRead, Locatable> composeReadQualifiesForGenotypingPredicate(final HaplotypeCallerArgumentCollection hcArgs) {
+        if (hcArgs.applyBQD || hcArgs.applyFRD) {
+            if (hcArgs.retainBasedOnOriginalAlignment) {
+                return (read, target) -> softUnclippedReadOverlapsInterval(originalAlignmentIfAvailable(read), target);
+            } else {
+                return (read, target) -> softUnclippedReadOverlapsInterval(read, target);
+            }
+        } else {
+            return (read, target) -> read.overlaps(target);
+        }
+    }
+
+    private GATKRead originalAlignmentIfAvailable(final GATKRead current) {
+        final GATKRead original = (GATKRead) current.getTransientAttribute("originalAlignment");
+        return original != null ? original : current;
+    }
+
+    /**
+     * Checks whether a read's extended mapping region (unclipping soft-clips) overlaps a given target interval
+     * even if it is only by one base. Adjacency is not good enough.
+     * @param read the read to test.
+     * @param target the interval to test.
+     * @return {@code true} iff there is an overlap.
+     */
+    private boolean softUnclippedReadOverlapsInterval(final GATKRead read, final Locatable target) {
+        return read.getContig().equalsIgnoreCase(target.getContig())
+                && read.getSoftStart() <= target.getEnd()
+                && read.getSoftEnd() >= target.getStart()
+                && read.getSoftStart() <= read.getSoftEnd(); // is this possible, ever? this test was performed before extracting this method so we keep it just in case.
     }
 
     /**
