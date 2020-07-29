@@ -102,12 +102,6 @@ workflow CNVGermlineCaseScatteredWorkflow {
       Float? gcnv_caller_external_admixing_rate
       Boolean? gcnv_disable_annealing
 
-      ##############################################
-      #### arguments for TransposeCallerOutputs ####
-      ##############################################
-      Int? mem_gb_for_transpose_caller_outputs
-      Int? disk_space_gb_for_transpose_caller_outputs
-
       ###################################################
       #### arguments for PostprocessGermlineCNVCalls ####
       ###################################################

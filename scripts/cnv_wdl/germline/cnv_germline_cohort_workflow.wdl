@@ -149,12 +149,6 @@ workflow CNVGermlineCohortWorkflow {
       Float? gcnv_caller_external_admixing_rate
       Boolean? gcnv_disable_annealing
 
-      ##############################################
-      #### arguments for TransposeCallerOutputs ####
-      ##############################################
-      Int? mem_gb_for_transpose_caller_outputs
-      Int? disk_space_gb_for_transpose_caller_outputs
-
       ###################################################
       #### arguments for PostprocessGermlineCNVCalls ####
       ###################################################
@@ -324,7 +318,6 @@ workflow CNVGermlineCohortWorkflow {
                 preemptible_attempts = preemptible_attempts
         }
     }
-
 
     Array[Array[File]] call_tars_sample_by_shard = transpose(GermlineCNVCallerCohortMode.gcnv_call_tars)
 
