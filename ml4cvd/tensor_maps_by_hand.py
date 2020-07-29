@@ -653,10 +653,15 @@ TMAPS['genetic_pca_all5'] = TensorMap(
     },
 )
 
-TMAPS['genetic_caucasian'] = TensorMap('Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map={'no_caucasian': 0, 'caucasian': 1})
+TMAPS['genetic_caucasian'] = TensorMap(
+    'Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL,
+    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    channel_map={'no_caucasian': 0, 'Genetic-ethnic-grouping_Caucasian_0_0': 1},
+)
 TMAPS['genetic_caucasian_weighted'] = TensorMap(
-    'Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL, path_prefix='categorical',
-    channel_map={'no_caucasian': 0, 'caucasian': 1}, loss=weighted_crossentropy([10.0, 1.0], 'caucasian_loss'),
+    'Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+    path_prefix='categorical', channel_map={'no_caucasian': 0, 'Genetic-ethnic-grouping_Caucasian_0_0': 1},
+    loss=weighted_crossentropy([10.0, 1.0], 'caucasian_loss'),
 )
 
 TMAPS['mothers_age'] = TensorMap(

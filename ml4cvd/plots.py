@@ -30,9 +30,10 @@ from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 
 from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
-from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score
+from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.calibration import calibration_curve
 from sksurv.metrics import concordance_index_censored
+
 import seaborn as sns
 from biosppy.signals import ecg
 from scipy.ndimage.filters import gaussian_filter
@@ -75,8 +76,8 @@ ECG_REST_PLOT_AMP_LEADS = [
 
 
 def evaluate_predictions(
-    tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
-    max_melt: int = 30000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
+    tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, protected: Dict[TensorMap, np.ndarray], title: str, folder: str, test_paths: List[str] = None,
+    max_melt: int = 150000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
     scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
 ) -> Dict[str, float]:
     """ Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
@@ -89,6 +90,7 @@ def evaluate_predictions(
     :param folder: The folder to save the plots at
     :param test_paths: The tensor paths that were predicted
     :param max_melt: For multi-dimensional prediction the maximum number of prediction to allow in the flattened array
+    :param protected: TensorMaps and tensors sensitive to bias
     :param rocs: (output) List of Tuples which are inputs for ROC curve plotting to allow subplotting downstream
     :param scatters: (output) List of Tuples which are inputs for scatter plots to allow subplotting downstream
     :return: Dictionary of performance metrics with string keys for labels and float values
@@ -99,14 +101,14 @@ def evaluate_predictions(
         logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
         plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder)
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(subplot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 2:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
         idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(subplot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -115,7 +117,7 @@ def evaluate_predictions(
         idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(subplot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -124,7 +126,7 @@ def evaluate_predictions(
         idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(subplot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -145,12 +147,12 @@ def evaluate_predictions(
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
         logging.info(f"{[f'{label}: {value:.3f}' for label, value in zip(concordance_return_values, c_index)]}")
         new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
+        performance_metrics.update(subplot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, protected, new_title, folder))
         calibration_title = f'{title}_at_{tm.days_window}_days'
         plot_prediction_calibration(y_predictions, y_truth[:, 0, np.newaxis], {tm.name: 0}, calibration_title, folder)
         plot_survivorship(y_truth[:, 0], y_truth[:, 1], y_predictions[:, 0], tm.name, folder, tm.days_window)
     elif tm.is_language():
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(subplot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.axes() > 1 or tm.is_mesh():
@@ -161,12 +163,12 @@ def evaluate_predictions(
             y_truth = y_truth[y_truth != tm.sentinel]
         _plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
         if prediction_flat.shape[0] == truth_flat.shape[0]:
-            performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
+            performance_metrics.update(subplot_pearson_per_class(prediction_flat, truth_flat, tm.channel_map, protected, title, prefix=folder))
     elif tm.is_continuous():
         if tm.sentinel is not None:
             y_predictions = y_predictions[y_truth != tm.sentinel, np.newaxis]
             y_truth = y_truth[y_truth != tm.sentinel, np.newaxis]
-        performance_metrics.update(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), title, prefix=folder, paths=test_paths))
+        performance_metrics.update(subplot_pearson_per_class(tm.rescale(y_predictions), tm.rescale(y_truth), tm.channel_map, protected, title, folder))
         scatters.append((tm.rescale(y_predictions), tm.rescale(y_truth), title, test_paths))
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
@@ -430,40 +432,61 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
     logging.info("Saved scatter plot at: {}".format(figure_path))
 
 
-def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[List[str]]]], prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
-    row = 0
-    col = 0
-    total_plots = len(scatters)
+def subplot_pearson_per_class(
+    prediction: np.ndarray, truth: np.ndarray, labels: Dict[str, int],
+    protected: Dict[TensorMap, np.ndarray], title: str, prefix: str = './figures/',
+) -> Dict[str, float]:
+    lw = 2
+    alpha = 0.5
+    labels_to_areas = {}
+    total_plots = len(protected) + 1
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
-    for prediction, truth, title, paths in scatters:
-        axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)])
-        axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)])
-        axes[row, col].scatter(prediction, truth, marker='.', alpha=alpha)
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
+    _protected_subplots(prediction, truth, protected, axes, metric=coefficient_of_determination, metric_name='$R^2$')
+
+    color = _hash_string_to_color(title)
+    axes[-1, -1].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
+    axes[-1, -1].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
+    pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]
+    big_r_squared = coefficient_of_determination(truth, prediction)
+    label_text = f'Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} n={truth.shape[0]:.0f}'
+    axes[-1, -1].scatter(prediction, truth, color=color, lw=lw, label=label_text, marker='.', alpha=alpha)
+    axes[-1, -1].legend(loc='lower right')
+    axes[-1, -1].set_title(f'Pearson {title}')
+
+    figure_path = os.path.join(prefix, 'per_class_pearson_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path, bbox_inches='tight')
+    plt.clf()
+    logging.info(f"Saved Pearson correlations at: {figure_path} with {len(protected)} protected TensorMaps.")
+    return labels_to_areas
+
+
+def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[List[str]]]], prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
+    fig, axes = _figure_and_subplot_axes_from_total(len(scatters))
+    for scatter_data, ax in zip(scatters, axes.ravel()):
+        prediction, truth, title, paths = scatter_data
+        ax.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)])
+        ax.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)])
+        ax.scatter(prediction, truth, marker='.', alpha=alpha)
         margin = float((np.max(truth) - np.min(truth)) / 100)
         if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
             diff = np.abs(prediction - truth)
             arg_sorted = diff[:, 0].argsort()
             # The path of the best prediction, ie the inlier
-            _text_on_plot(axes[row, col], prediction[arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+            _text_on_plot(ax, prediction[arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
             # Plot the paths of the worst predictions ie the outliers
             for idx in arg_sorted[-top_k:]:
-                _text_on_plot(axes[row, col], prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
-        axes[row, col].set_xlabel('Predictions')
-        axes[row, col].set_ylabel('Actual')
-        axes[row, col].set_title(title + '\n')
+                _text_on_plot(ax, prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+        ax.set_xlabel('Predictions')
+        ax.set_ylabel('Actual')
+        ax.set_title(title + '\n')
         pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-        r2 = pearson*pearson
+        r2 = pearson * pearson
         big_r2 = coefficient_of_determination(truth.flatten(), prediction.flatten())
-        axes[row, col].text(0, 1, f"Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}", verticalalignment='bottom', transform=axes[row, col].transAxes)
-
-        row += 1
-        if row == rows:
-            row = 0
-            col += 1
-            if col >= cols:
-                break
+        ax.text(0, 1, f"Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}", verticalalignment='bottom', transform=ax.transAxes)
 
     figure_path = prefix + 'scatters_together' + IMAGE_EXT
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -473,41 +496,30 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
 
 
 def subplot_comparison_scatters(
-    scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]], prefix: str = './figures/', top_k: int = 3,
-    alpha: float = 0.5,
+    scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]],
+    prefix: str = './figures/', top_k: int = 3, alpha: float = 0.5,
 ):
-    row = 0
-    col = 0
-    total_plots = len(scatters)
-    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
-    rows = max(2, int(math.ceil(total_plots / cols)))
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
-    for predictions, truth, title, paths in scatters:
+    fig, axes = _figure_and_subplot_axes_from_total(len(scatters))
+    for scatter_data, ax in zip(scatters, axes.ravel()):
+        predictions, truth, title, paths = scatter_data
         for k in predictions:
-            c = _hash_string_to_color(title+k)
+            c = _hash_string_to_color(title + k)
             pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
             r2 = pearson * pearson
             big_r2 = coefficient_of_determination(truth.flatten(), predictions[k].flatten())
-            axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
-            axes[row, col].scatter(predictions[k], truth, color=c, label=f'{k} r:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}', marker='.', alpha=alpha)
-            axes[row, col].legend(loc="upper left")
+            ax.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
+            ax.scatter(predictions[k], truth, color=c, label=f'{k} r:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}', marker='.', alpha=alpha)
+            ax.legend(loc="upper left")
             if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
                 margin = float((np.max(truth) - np.min(truth)) / 100)
                 diff = np.abs(predictions[k] - truth)
                 arg_sorted = diff[:, 0].argsort()
-                _text_on_plot(axes[row, col], predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+                _text_on_plot(ax, predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
                 for idx in arg_sorted[-top_k:]:
-                    _text_on_plot(axes[row, col], predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
-        axes[row, col].set_xlabel('Predictions')
-        axes[row, col].set_ylabel('Actual')
-        axes[row, col].set_title(title + '\n')
-
-        row += 1
-        if row == rows:
-            row = 0
-            col += 1
-            if col >= cols:
-                break
+                    _text_on_plot(ax, predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+        ax.set_xlabel('Predictions')
+        ax.set_ylabel('Actual')
+        ax.set_title(title + '\n')
 
     figure_path = os.path.join(prefix, 'scatters_compared_together' + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -534,6 +546,7 @@ def plot_survivorship(
     days_sorted_index = np.argsort(days_follow_up)
     days_sorted = days_follow_up[days_sorted_index]
     alive_per_step = len(events)
+
     sick_per_step = 0
     censored = 0
     survivorship = [1.0]
@@ -550,6 +563,7 @@ def plot_survivorship(
     plt.plot([0]+days_sorted[:cur_day+1], real_survivorship[:cur_day+1], marker='.', label='Survivorship')
     groups = ['High risk', 'Low risk']
     predicted_alive = {g: len(events) // 2 for g in groups}
+
     predicted_sick = {g: 0 for g in groups}
     predicted_days = defaultdict(list)
     predicted_survival = defaultdict(list)
@@ -564,8 +578,15 @@ def plot_survivorship(
         predicted_days[group].append(days_follow_up[day_index])
 
     for group in groups:
-        plt.plot([0]+predicted_days[group], [1]+predicted_survival[group], color='r' if 'High' in group else 'g', marker='o', label=f'{group} group had {predicted_sick[group]} events')
-    plt.title(f'{title}\nEnrolled: {len(events)}, Censored: {censored:.0f}, {100 * (censored / len(events)):2.1f}%, Events: {sick_per_step:.0f}, {100 * (sick_per_step / len(events)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
+        plt.plot(
+            [0]+predicted_days[group], [1]+predicted_survival[group], color='r' if 'High' in group else 'g', marker='o',
+            label=f'{group} group had {predicted_sick[group]} events',
+        )
+
+    plt.title(
+        f'{title}\nEnrolled: {len(events)}, Censored: {censored:.0f}, {100 * (censored / len(events)):2.1f}%, Events: {sick_per_step:.0f}, '
+        f'{100 * (sick_per_step / len(events)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.',
+    )
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
     plt.legend(loc="lower left")
@@ -1459,7 +1480,7 @@ def plot_ecg_rest(
         'aVL': 'ecg_rest_lvh_avl',
         'Sokolow_Lyon': 'ecg_rest_lvh_sokolow_lyon',
         'Cornell': 'ecg_rest_lvh_cornell',
-        }
+    }
     from ml4cvd.tensor_from_file import TMAPS
     raw_scale = 0.005 # Conversion from raw to mV
     default_yrange = ECG_REST_PLOT_DEFAULT_YRANGE # mV
@@ -1551,11 +1572,80 @@ def plot_counter(counts, title, prefix='./figures/'):
     logging.info(f"Saved counter plot at: {figure_path}")
 
 
-def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
+def _bootstrap_performance(
+        truth: np.ndarray, prediction: np.ndarray, metric: Callable[[np.ndarray, np.ndarray], float],
+        n_samples: int = 1000,
+) -> List[float]:
+    performance = []
+    for _ in range(n_samples):
+        idx = np.random.randint(0, truth.shape[0], size=truth.shape[0])
+        performance.append(metric(truth[idx], prediction[idx]))
+    return performance
+
+
+def _performance_by_index(
+        separated_metric_inputs: List[Tuple[np.ndarray, np.ndarray]],
+        metric: Callable[[np.ndarray, np.ndarray], float],
+) -> List[List[float]]:
+    """
+    Input dictionary {name: (truth, predicted)} and performance metric
+    output DataFrame {performance: performances, name: names}
+    """
+    return [_bootstrap_performance(truth, pred, metric) for truth, pred in separated_metric_inputs]
+
+
+def _protected_subplots(
+        prediction: np.ndarray, truth: np.ndarray, protected: Dict[TensorMap, np.ndarray], axes: np.ndarray,
+        metric: Callable[[np.ndarray, np.ndarray], float], metric_name: str,
+        continuous_quantiles: Tuple[float, ...] = (1 / 3, 2 / 3),
+):
+    group_col = 'Group'
+    for p, ax in zip(protected, axes.ravel()):
+        ax.set_title(f'Performance by protected {p.name}')
+        if p.is_categorical():
+            group_names = list(p.channel_map.keys())
+            protected_indexes = [protected[p][:, class_label] == 1 for class_label in p.channel_map.values()]
+        elif p.is_continuous():
+            thresholds = (
+                    [np.min(protected[p])]
+                    + np.quantile(protected[p], continuous_quantiles).tolist()
+                    + [np.max(protected[p])]
+            )
+            group_names = [
+                f'{p.rescale(thresholds[i]):.1f} < x < {p.rescale(thresholds[i + 1]):.1f}'
+                for i in range(len(thresholds) - 1)
+            ]
+            protected_indexes = [
+                (protected[p] > thresholds[i]) & (protected[p] <= thresholds[i + 1])
+                for i in range(len(thresholds) - 1)
+            ]
+        else:
+            raise NotImplementedError(f'Cannot plot {p} with interpretation {p.interpretation}')
+        logging.info(f'Beginning bootstrap performance evaluation of protected {p}')
+        performances = _performance_by_index(
+            [(truth[protected_idx], prediction[protected_idx]) for protected_idx in protected_indexes],
+            metric,
+        )
+        group_names = [f'{group_name}\nn = {idx.sum()}' for group_name, idx in zip(group_names, protected_indexes)]
+        performance_dict = {group_col: [], metric_name: []}
+        for performance, group_name in zip(performances, group_names):
+            performance_dict[group_col] += [group_name] * len(performance)
+            performance_dict[metric_name] += performance
+        sns.boxplot(x=group_col, y=metric_name, data=pd.DataFrame(performance_dict), ax=ax)
+
+
+def subplot_roc_per_class(
+        prediction: np.ndarray, truth: np.ndarray, labels: Dict[str, int],
+        protected: Dict[TensorMap, np.ndarray], title: str, prefix: str = './figures/',
+) -> Dict[str, float]:
     lw = 2
     labels_to_areas = {}
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    total_plots = len(protected) + 1
+    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    rows = max(2, int(math.ceil(total_plots / cols)))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
+    _protected_subplots(prediction, truth, protected, axes, metric=roc_auc_score, metric_name='ROC AUC')
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
     for key in labels:
@@ -1564,23 +1654,17 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
             continue
         color = _hash_string_to_color(key)
         label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
-        plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+        axes[-1, -1].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
         logging.info(f'ROC Label {label_text} Truth shape {truth.shape}, true sums {true_sums}')
 
-    plt.xlim([0.0, 1.0])
-    plt.ylim([-0.02, 1.03])
-    plt.ylabel(RECALL_LABEL)
-    plt.xlabel(FALLOUT_LABEL)
-    plt.legend(loc="lower right", bbox_to_anchor=(0.98, 0))
-    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
-    plt.title(f'ROC {title} n={truth.shape[0]:.0f}\n')
-
+    axes[-1, -1].set_title(f'ROC {title} n={truth.shape[0]:.0f}\n')
+    axes[-1, -1].legend(loc='lower right')
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path, bbox_inches='tight')
     plt.clf()
-    logging.info("Saved ROC curve at: {}".format(figure_path))
+    logging.info(f"Saved ROC curve at: {figure_path} with {len(protected)} protected TensorMaps.")
     return labels_to_areas
 
 
@@ -1615,16 +1699,18 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     logging.info("Saved ROC curve at: {}".format(figure_path))
 
 
+def _figure_and_subplot_axes_from_total(total_plots: int):
+    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    rows = max(2, int(math.ceil(total_plots / cols)))
+    return plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
+
+
 def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], prefix: str='./figures/'):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 2
-    row = 0
-    col = 0
-    total_plots = len(rocs)
-    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
-    rows = max(2, int(math.ceil(total_plots / cols)))
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
-    for predicted, truth, labels in rocs:
+    fig, axes = _figure_and_subplot_axes_from_total(len(rocs))
+    for roc_data, ax in zip(rocs, axes.ravel()):
+        predicted, truth, labels = roc_data
         true_sums = np.sum(truth, axis=0)
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
         for key in labels:
@@ -1632,22 +1718,15 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
                 continue
             color = _hash_string_to_color(key)
             label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
-            axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+            ax.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
             logging.info(f'ROC Label {label_text}')
-        axes[row, col].set_xlim([0.0, 1.0])
-        axes[row, col].set_ylim([-0.02, 1.03])
-        axes[row, col].set_ylabel(RECALL_LABEL)
-        axes[row, col].set_xlabel(FALLOUT_LABEL)
-        axes[row, col].legend(loc='lower right')
-        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
-        axes[row, col].set_title(f'ROC n={np.sum(true_sums):.0f}')
-
-        row += 1
-        if row == rows:
-            row = 0
-            col += 1
-            if col >= cols:
-                break
+        ax.set_xlim([0.0, 1.0])
+        ax.set_ylim([-0.02, 1.03])
+        ax.set_ylabel(RECALL_LABEL)
+        ax.set_xlabel(FALLOUT_LABEL)
+        ax.legend(loc='lower right')
+        ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
+        ax.set_title(f'ROC n={np.sum(true_sums):.0f}')
 
     figure_path = prefix + 'rocs_together' + IMAGE_EXT
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -1658,13 +1737,9 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
 def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, Dict[str, int]]], prefix: str='./figures/'):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 3
-    row = 0
-    col = 0
-    total_plots = len(rocs)
-    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
-    rows = max(2, int(math.ceil(total_plots / cols)))
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
-    for predictions, truth, labels in rocs:
+    fig, axes = _figure_and_subplot_axes_from_total(len(rocs))
+    for roc_data, ax in zip(rocs, axes.ravel()):
+        predictions, truth, labels = roc_data
         true_sums = np.sum(truth, axis=0)
         for p in predictions:
             fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
@@ -1673,23 +1748,16 @@ def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, 
                     continue
                 color = _hash_string_to_color(p + key)
                 label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
-                axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+                ax.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
                 logging.info(f"ROC Label {label_text}")
 
-        axes[row, col].set_xlim([0.0, 1.0])
-        axes[row, col].set_ylim([-0.02, 1.03])
-        axes[row, col].set_ylabel(RECALL_LABEL)
-        axes[row, col].set_xlabel(FALLOUT_LABEL)
-        axes[row, col].legend(loc="lower right")
-        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
-        axes[row, col].set_title(f'ROC n={np.sum(true_sums):.0f}\n')
-
-        row += 1
-        if row == rows:
-            row = 0
-            col += 1
-            if col >= cols:
-                break
+        ax.set_xlim([0.0, 1.0])
+        ax.set_ylim([-0.02, 1.03])
+        ax.set_ylabel(RECALL_LABEL)
+        ax.set_xlabel(FALLOUT_LABEL)
+        ax.legend(loc="lower right")
+        ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
+        ax.set_title(f'ROC n={np.sum(true_sums):.0f}\n')
 
     figure_path = os.path.join(prefix, 'rocs_compared_together' + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -1775,21 +1843,14 @@ def get_fpr_tpr_roc_pred(y_pred, test_truth, labels):
 
 
 def plot_waves(predicted_waves, true_waves, title, plot_path, rows=6, cols=6):
-    row = 0
-    col = 0
     f, axes = plt.subplots(rows, cols, sharex=True, figsize=(36, 36))
-    for i in range(true_waves.shape[0]):
-        axes[row, col].plot(true_waves[i, :, 0], color='blue', label='Actual Wave')
+    for i, ax in zip(range(true_waves.shape[0]), axes.ravel()):
+        ax.plot(true_waves[i, :, 0], color='blue', label='Actual Wave')
         if predicted_waves is not None:
-            axes[row, col].plot(predicted_waves[i, :, 0], color='green', label='Predicted')
-        axes[row, col].set_xlabel('time')
-        row += 1
-        if row == rows:
-            row = 0
-            col += 1
-            if col >= cols:
-                break
+            ax.plot(predicted_waves[i, :, 0], color='green', label='Predicted')
+        ax.set_xlabel('time')
     plt.legend(loc="lower left")
+
     figure_path = os.path.join(plot_path, title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))

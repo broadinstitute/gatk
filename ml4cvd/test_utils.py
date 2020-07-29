@@ -25,14 +25,14 @@ LANGUAGE_TMAP_1HOT_WINDOW = [
         f'language_1hot_window', shape=(32, 26),
         interpretation=Interpretation.LANGUAGE,
         channel_map={f'c_{i}': i for i in range(26)},
-    )
+    ),
 ]
 LANGUAGE_TMAP_1HOT_SOFTMAX = [
     TensorMap(
         f'language_1hot_out', shape=(26,),
         interpretation=Interpretation.LANGUAGE,
         channel_map={f'c_{i}': i for i in range(26)},
-    )
+    ),
 ]
 
 TMAPS_UP_TO_4D = CONTINUOUS_TMAPS[:-1] + CATEGORICAL_TMAPS[:-1]

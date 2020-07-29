@@ -50,11 +50,13 @@ def parse_args():
     )
 
     # Tensor Map arguments
-    parser.add_argument('--input_tensors', default=[], nargs='+')
-    parser.add_argument('--output_tensors', default=[], nargs='+')
-    parser.add_argument('--sample_weight', default=None,  help='TensorMap key for sample weight in training.')
+    parser.add_argument('--input_tensors', default=[], nargs='*')
+    parser.add_argument('--output_tensors', default=[], nargs='*')
+    parser.add_argument('--protected_tensors', default=[], nargs='*')
+    parser.add_argument('--sample_weight', default=None, help='TensorMap key for sample weight in training.')
     parser.add_argument('--tensor_maps_in', default=[], help='Do not set this directly. Use input_tensors')
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
+    parser.add_argument('--tensor_maps_protected', default=[], help='Do not set this directly. Use protected_tensors')
 
     # Input and Output files and directories
     parser.add_argument(
@@ -414,6 +416,7 @@ def _process_args(args):
         )
     args.tensor_maps_out.extend([_get_tmap(ot, needed_tensor_maps) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
+    args.tensor_maps_protected = [_get_tmap(it, needed_tensor_maps) for it in args.protected_tensors]
 
     args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
     if args.bottleneck_type == BottleneckType.NoBottleNeck:
