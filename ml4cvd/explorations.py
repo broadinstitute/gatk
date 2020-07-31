@@ -861,6 +861,8 @@ def _should_error_detect(tm: TensorMap) -> bool:
             return tm.axes() > 2
         else:
             return tm.axes() > 1
+    if tm.is_language():
+        return False
     return True
 
 

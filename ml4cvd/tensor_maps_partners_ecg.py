@@ -11,7 +11,7 @@ from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
 
@@ -325,7 +325,7 @@ def make_partners_ecg_tensor(key: str, fill: float = 0, channel_prefix: str = ''
         for i, ecg_date in enumerate(ecg_dates):
             path = _make_hd5_path(tm, ecg_date, key)
             try:
-                data = decompress_data(data_compressed=hd5[path][()], dtype='str')
+                data = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                 if tm.interpretation == Interpretation.CATEGORICAL:
                     matched = False
                     data = f'{channel_prefix}{data}'
@@ -931,6 +931,29 @@ TMAPS[task] = TensorMap(
     shape=(None, 1),
     time_series_limit=0,
     validator=make_range_validator(-180, 180),
+)
+
+
+task = "partners_ecg_measuredamplitudepeak_r"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="measuredamplitudepeak_IE_R", fill=np.nan),
+    shape=(None, 12),
+    time_series_limit=0,
+)
+
+
+task = "partners_ecg_acquisitiondevice"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="acquisitiondevice", fill=999),
+    shape=(None, 1),
+    time_series_limit=0,
 )
 
 
@@ -1597,3 +1620,177 @@ def build_cardiac_surgery_tensor_maps(
         name2tensormap[needed_name] = sts_tmap
 
     return name2tensormap
+
+
+# Measurement matrix TMAPS -- indices from MUSE XML dev manual, page 49 and following
+measurement_matrix_leads = {
+    'I': 0, 'II': 1, 'V1': 2, 'V2': 3, 'V3': 4, 'V4':5, 'V5': 6, 'V6': 7, 'III': 8, 'aVR': 9, 'aVL': 10, 'aVF': 11
+}
+measurement_matrix_global_measures = {
+    'pon': 1,       # P-wave onset in median beat (in samples)
+    'poff': 2,      # P-wave offset in median beat
+    'qon': 3,       # Q-Onset in median beat
+    'qoff': 4,      # Q-Offset in median beat
+    'ton': 5,       # T-Onset in median beat
+    'toff': 6,      # T-Offset in median beat
+    'nqrs': 7,      # Number of QRS Complexes
+    'qrsdur': 8,    # QRS Duration
+    'qt': 9,        # QT Interval
+    'qtc': 10,      # QT Corrected
+    'print': 11,    # PR Interval
+    'vrate': 12,    # Ventricular Rate
+    'avgrr': 13,    # Average R-R Interval
+}
+measurement_matrix_lead_measures = {
+    'pona': 1,      # P Wave amplitude at P-onset
+    'pamp': 2,      # P wave amplitude
+    'pdur': 3,      # P wave duration
+    'bmpar': 4,     # P wave area
+    'bmpi': 5,      # P wave intrinsicoid (time from P onset to peak of P)
+    'ppamp': 6,     # P Prime amplitude
+    'ppdur': 7,     # P Prime duration
+    'bmppar': 8,    # P Prime area
+    'bmppi': 9,     # P Prime intrinsicoid (time from P onset to peak of P')
+    'qamp': 10,     # Q wave amplitude
+    'qdur': 11,     # Q wave duration
+    'bmqar': 12,    # Q wave area
+    'bmqi': 13,     # Q intrinsicoid (time from Q onset to peak of Q)
+    'ramp': 14,     # R amplitude
+    'rdur': 15,     # R duration
+    'bmrar': 16,    # R wave area
+    'bmri': 17,     # R intrinsicoid (time from R onset to peak of R)
+    'samp': 18,     # S amplitude
+    'sdur': 19,     # S duration
+    'bmsar': 20,    # S wave area
+    'bmsi': 21,     # S intrinsicoid (time from Q onset to peak of S)
+    'rpamp': 22,    # R Prime amplitude
+    'rpdur': 23,    # R Prime duration
+    'bmrpar': 24,   # R Prime wave area
+    'bmrpi': 25,    # R Prime intrinsicoid (time from Q onset to peak of R Prime)
+    'spamp': 26,    # S Prime Amplitude
+    'spdur': 27,    # S Prime Duration
+    'bmspar': 28,   # S Prime wave area
+    'bmspi': 29,    # S intriniscoid (time from Q onset to peak of S prime)
+    'stj': 30,      # STJ point, End of QRS Point Amplitude
+    'stm': 31,      # STM point, Middle of the ST Segment Amplitude
+    'ste': 32,      # STE point, End of ST Segment Amplitude
+    'mxsta': 33,    # Maximum of STJ, STM, STE Amplitudes
+    'mnsta': 34,    # Minimum of STJ and STM Amplitudes
+    'spta': 35,     # Special T-Wave amplitude
+    'qrsa': 36,     # Total QRS area
+    'qrsdef': 37,   # QRS Deflection
+    'maxra': 38,    # Maximum R Amplitude (R or R Prime)
+    'maxsa': 39,    # Maximum S Amplitude (S or S Prime)
+    'tamp': 40,     # T amplitude
+    'tdur': 41,     # T duration
+    'bmtar': 42,    # T wave area
+    'bmti': 43,     # T intriniscoid (time from STE to peak of T)
+    'tpamp': 44,    # T Prime amplitude
+    'tpdur': 45,    # T Prime duration
+    'bmtpar': 46,   # T Prime area
+    'bmtpi': 47,    # T Prime intriniscoid (time from STE to peak of T)
+    'tend': 48,     # T Amplitude at T offset
+    'parea': 49,    # P wave area, includes P and P Prime
+    'qrsar': 50,    # QRS area
+    'tarea': 51,    # T wave area, include T and T Prime
+    'qrsint': 52    # QRS intriniscoid (see following)
+}
+
+
+def _get_measurement_matrix_entry(matrix: np.ndarray, key: str, lead: str = None):
+    # First 18 words of measurement matrix are for global measurements, then each lead has 53*2 words
+    lead_start = 18
+    lead_words = 53 * 2
+    if lead is None:
+        idx = measurement_matrix_global_measures[key]
+    else:
+        idx = lead_start + measurement_matrix_leads[lead] * lead_words + (measurement_matrix_lead_measures[key]-1)*2+1
+    return matrix[idx]
+
+
+def make_measurement_matrix_from_file(key: str, lead: str = None):
+    def measurement_matrix_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):        
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+        tensor = np.zeros(shape, dtype=float)
+        for i, ecg_date in enumerate(ecg_dates):
+            path = _make_hd5_path(tm, ecg_date, 'measurementmatrix')
+            matrix = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+            tensor[i] = _get_measurement_matrix_entry(matrix, key, lead)
+        return tensor
+    return measurement_matrix_from_file
+
+
+for measurement in measurement_matrix_global_measures:
+    TMAPS[f'partners_ecg_measurementmatrix_{measurement}'] = TensorMap(
+        f'partners_ecg_measurementmatrix_{measurement}',
+        interpretation=Interpretation.CONTINUOUS,
+        shape=(None, 1),
+        path_prefix=PARTNERS_PREFIX,
+        loss='logcosh',
+        time_series_limit=0,
+        tensor_from_file=make_measurement_matrix_from_file(measurement)
+    )
+
+
+for lead in measurement_matrix_leads:
+    for measurement in measurement_matrix_lead_measures:
+        TMAPS[f'partners_ecg_measurementmatrix_{lead}_{measurement}'] = TensorMap(
+              f'partners_ecg_measurementmatrix_{lead}_{measurement}',
+              interpretation=Interpretation.CONTINUOUS,
+              shape=(None, 1),
+              path_prefix=PARTNERS_PREFIX,
+              loss='logcosh',
+              time_series_limit=0,
+              tensor_from_file=make_measurement_matrix_from_file(measurement, lead=lead)
+        )
+
+
+def ecg_lvh_from_file(tm, hd5, dependents={}):
+    # Lead order seems constant and standard throughout, but we could eventually tensorize it from XML
+    avl_min = 1100.0
+    sl_min = 3500.0
+    cornell_female_min = 2000.0
+    cornell_male_min = 2800.0
+    sleads = ['V1', 'V3']
+    rleads = ['aVL', 'V5', 'V6']
+    ecg_dates = _get_ecg_dates(tm, hd5)
+    dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+    tensor = np.zeros(shape, dtype=float)
+
+    for i, ecg_date in enumerate(ecg_dates):
+        path = _make_hd5_path(tm, ecg_date, 'measurementmatrix')
+        matrix = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+        criteria_sleads = {lead: _get_measurement_matrix_entry(matrix, 'samp', lead) for lead in sleads}
+        criteria_rleads = {lead: _get_measurement_matrix_entry(matrix, 'ramp', lead) for lead in rleads}
+        sex_path = _make_hd5_path(tm, ecg_date, 'gender')
+        is_female = 'female' in decompress_data(data_compressed=hd5[sex_path][()], dtype=hd5[sex_path].attrs['dtype'])
+        if 'avl_lvh' in tm.name:
+            is_lvh = criteria_rleads['aVL'] > avl_min
+        elif 'sokolow_lyon_lvh' in tm.name:
+            is_lvh = criteria_sleads['V1'] + np.maximum(criteria_rleads['V5'], criteria_rleads['V6']) > sl_min
+        elif 'cornell_lvh' in tm.name:
+            is_lvh = criteria_rleads['aVL'] + criteria_sleads['V3']
+            if is_female:
+                is_lvh = is_lvh > cornell_female_min
+            else:
+                is_lvh = is_lvh > cornell_male_min
+        else:
+            raise ValueError(f'{tm.name} criterion for LVH is not accounted for')
+        # Following convention from categorical TMAPS, positive has cmap index 1
+        index = 1 if is_lvh else 0
+        slices = (i, index) if dynamic else (index,)
+        tensor[slices] = 1.0
+    return tensor
+
+
+for criterion in ['avl_lvh', 'sokolow_lyon_lvh', 'cornell_lvh']:
+    TMAPS[f'partners_ecg_{criterion}'] = TensorMap(
+        f'partners_ecg_{criterion}',
+        interpretation=Interpretation.CATEGORICAL,
+        path_prefix=PARTNERS_PREFIX,
+        tensor_from_file=ecg_lvh_from_file,
+        channel_map={f'no_{criterion}': 0, criterion: 1},
+        shape=(None, 2),
+        time_series_limit=0,
+    )
