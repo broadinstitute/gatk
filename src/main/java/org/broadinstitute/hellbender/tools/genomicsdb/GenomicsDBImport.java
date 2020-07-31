@@ -59,6 +59,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.Arrays;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -201,6 +202,8 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL = "max-num-intervals-to-import-in-parallel";
     public static final String MERGE_CONTIGS_INTO_NUM_PARTITIONS = "merge-contigs-into-num-partitions";
     public static final int INTERVAL_LIST_SIZE_WARNING_THRESHOLD = 100;
+    public static final int ARRAY_COLUMN_BOUNDS_START = 0;
+    public static final int ARRAY_COLUMN_BOUNDS_END = 1;
 
     public static final String SHARED_POSIXFS_OPTIMIZATIONS = GenomicsDBArgumentCollection.SHARED_POSIXFS_OPTIMIZATIONS;
 
@@ -462,8 +465,8 @@ public final class GenomicsDBImport extends GATKTool {
         }
     }
 
-    private void assertIntervalsCoverEntireContigs(GenomicsDBImporter importer,
-                                                   List<SimpleInterval> intervals) {
+    private static void assertIntervalsCoverEntireContigs(GenomicsDBImporter importer,
+                                                          List<SimpleInterval> intervals) {
         GenomicsDBVidMapProto.VidMappingPB vidMapPB = importer.getProtobufVidMapping();
         if (vidMapPB == null) {
             throw new UserException("Could not get protobuf vid mappping object from GenomicsDBImporter");
@@ -478,7 +481,7 @@ public final class GenomicsDBImport extends GATKTool {
                         interval.getContig(), interval.getStart(), interval.getEnd());
                 String vidInterval = String.format("Contig:%s, Start:%d, End:%d",
                         vidContig.getName(), 1, vidContig.getLength());
-                throw new UserException(MERGE_CONTIGS_INTO_NUM_PARTITIONS+" requires that entire contigs " +
+                throw new UserException("--" + MERGE_CONTIGS_INTO_NUM_PARTITIONS + " requires that entire contigs " +
                         "be specified for input intervals. Input interval contained: " + inputInterval +
                         " while reference contig was: "+ vidInterval);
             }
@@ -645,9 +648,8 @@ public final class GenomicsDBImport extends GATKTool {
      */
     private void writeIntervalListToFile() {
         final IntervalList outputList = new IntervalList(getBestAvailableSequenceDictionary());
-        intervals.forEach(i -> outputList.add(new Interval(i.getContig(), i.getStart(), i.getEnd())));
-        final Path intervalListOutputPath = IOUtils.getPath(intervalListOutputPathString);
-        outputList.write(intervalListOutputPath.toFile());
+        intervals.forEach(i -> outputList.add(new Interval(i)));
+        outputList.write(IOUtils.getPath(intervalListOutputPathString));
     }
 
     /**
@@ -661,12 +663,11 @@ public final class GenomicsDBImport extends GATKTool {
         callsetMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
         vcfHeaderFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
         if (getIntervalsFromExistingWorkspace) {
-            // intervals may be null if merge-contigs-into-num-partitions was used to create workspace
-            // if so, we need to wait for vid to be generated before writing out interval list
-            return;
+            // intervals may be null if merge-contigs-into-num-partitions was used to create the workspace
+            // if so, we need to wait for vid to be generated before writing out the interval list
+            logger.info("Interval file list will be written out to " + intervalListOutputPathString);
         }
-
-        if (doIncrementalImport) {
+        else if (doIncrementalImport) {
             logger.info("Callset Map JSON file will be re-written to " + callsetMapJSONFile);
             logger.info("Incrementally importing to workspace - " + workspaceDir);
         } else {
@@ -722,27 +723,28 @@ public final class GenomicsDBImport extends GATKTool {
         return partitionBuilder.build();
     }
 
-    private List<GenomicsDBImportConfiguration.Partition> generatePartitionListFromWorkspace(final String workspace) {
+    private List<GenomicsDBImportConfiguration.Partition> generatePartitionListFromWorkspace() {
         String[] partitions = GenomicsDBUtils.listGenomicsDBArrays(workspace);
         List<GenomicsDBImportConfiguration.Partition> configPartitions = new ArrayList<>();
-        for (int i=0; i<partitions.length; i++) {
-            long[] bounds = GenomicsDBUtils.getArrayColumnBounds(workspace, partitions[i]);
+        for (String partition : partitions) {
+            long[] bounds = GenomicsDBUtils.getArrayColumnBounds(workspace, partition);
             Coordinates.GenomicsDBColumn.Builder beginBuilder = Coordinates.GenomicsDBColumn.newBuilder();
             Coordinates.GenomicsDBColumn.Builder endBuilder = Coordinates.GenomicsDBColumn.newBuilder();
-            beginBuilder.setTiledbColumn(bounds[0]);
-            endBuilder.setTiledbColumn(bounds[1]);
+            beginBuilder.setTiledbColumn(bounds[ARRAY_COLUMN_BOUNDS_START]);
+            endBuilder.setTiledbColumn(bounds[ARRAY_COLUMN_BOUNDS_END]);
             configPartitions.add(createPartitionWithBeginAndEnd(beginBuilder.build(), endBuilder.build()));
         }
         return configPartitions;
     }
 
-    private List<GenomicsDBImportConfiguration.Partition> generatePartitionListFromIntervals(List<SimpleInterval> chromosomeIntervals) {
-        return chromosomeIntervals.stream().map(interval -> {
+    private List<GenomicsDBImportConfiguration.Partition> generatePartitionListFromIntervals() {
+        return intervals.stream().map(interval -> {
             Coordinates.ContigPosition.Builder contigPositionBuilder = Coordinates.ContigPosition.newBuilder();
+            contigPositionBuilder.setContig(interval.getContig());
             Coordinates.GenomicsDBColumn.Builder beginBuilder = Coordinates.GenomicsDBColumn.newBuilder();
             Coordinates.GenomicsDBColumn.Builder endBuilder = Coordinates.GenomicsDBColumn.newBuilder();
             //begin
-            contigPositionBuilder.setContig(interval.getContig()).setPosition(interval.getStart());
+            contigPositionBuilder.setPosition(interval.getStart());
             beginBuilder.setContigPosition(contigPositionBuilder.build());
             //end
             contigPositionBuilder.setPosition(interval.getEnd());
@@ -751,50 +753,47 @@ public final class GenomicsDBImport extends GATKTool {
         }).collect(Collectors.toList());
     }
 
-    private void generateIntervalListFromVidMap() {
+    private List<SimpleInterval> generateIntervalListFromVidMap() {
         try {
             GenomicsDBVidMapProto.VidMappingPB vidMapPB = 
                 org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.getProtobufVidMappingFromJsonFile(vidMapJSONFile);
     
-            String[] partitions = GenomicsDBUtils.listGenomicsDBArrays(workspace);
-            intervals = new ArrayList<>();
-            for (int i=0; i<partitions.length; i++) {
-                long[] bounds = GenomicsDBUtils.getArrayColumnBounds(workspace, partitions[i]);
+            List<String> partitions = Arrays.asList(GenomicsDBUtils.listGenomicsDBArrays(workspace));
+            return partitions.stream().map(partition -> {
+                long[] bounds = GenomicsDBUtils.getArrayColumnBounds(workspace, partition);
                 // merge-contigs-into-num-partitions ensures entire contigs are within a given partition
                 // so we just check here that contig starts within the given bounds
-                intervals.addAll(vidMapPB.getContigsList().stream()
-                        .filter(x -> x.getTiledbColumnOffset() >= bounds[0] &&  
-                        x.getTiledbColumnOffset() <= bounds[1])
+                return vidMapPB.getContigsList().stream()
+                        .filter(x -> x.getTiledbColumnOffset() >= bounds[ARRAY_COLUMN_BOUNDS_START] &&  
+                        x.getTiledbColumnOffset() <= bounds[ARRAY_COLUMN_BOUNDS_END])
                         .map(x -> new SimpleInterval(x.getName(), 1, Math.toIntExact(x.getLength())))
-                        .collect(Collectors.toList()));
-            }
+                        .collect(Collectors.toList());
+            }).flatMap(List::stream).collect(Collectors.toList());
         } catch (final IOException e) {
             throw new UserException("Could not get vid map protobuf from file:" + vidMapJSONFile + 
-                    ". Is the workspace corrupted?");
+                    ". Is the workspace corrupted?", e);
         }
     }
 
-    private void generateIntervalListFromWorkspace() {
-        String[] partitions = GenomicsDBUtils.listGenomicsDBArrays(workspace);
-        intervals = new ArrayList<>();
-        for (int i=0; i<partitions.length; i++) {
-            String[] partitionInfo = partitions[i].split(Constants.CHROMOSOME_FOLDER_DELIMITER_SYMBOL_REGEX);
+    private List<SimpleInterval> generateIntervalListFromWorkspace() {
+        List<String> partitions = Arrays.asList(GenomicsDBUtils.listGenomicsDBArrays(workspace));
+        return partitions.stream().map(partition -> {
+            String[] partitionInfo = partition.split(Constants.CHROMOSOME_FOLDER_DELIMITER_SYMBOL_REGEX);
             if (partitionInfo.length != 3) {
                 // if  merge-contigs-into-num-partitions was used we may need to use
                 // some metadata instead of array names for partition bounds
-                intervals = null;
-                return;
+                return null;
             }
             final String contig = partitionInfo[0];
             final int start = Integer.parseInt(partitionInfo[1]);
             final int end = Integer.parseInt(partitionInfo[2]);
-            intervals.add(new SimpleInterval(contig, start, end));
-        }
+            return new SimpleInterval(contig, start, end);
+        }).filter(o -> o != null).collect(Collectors.toList());
     }
 
     private ImportConfig createImportConfig(final int batchSize) {
-        final List<GenomicsDBImportConfiguration.Partition> partitions = intervals == null ? 
-                generatePartitionListFromWorkspace(workspace) : generatePartitionListFromIntervals(intervals);
+        final List<GenomicsDBImportConfiguration.Partition> partitions = (intervals == null || intervals.isEmpty()) ? 
+                generatePartitionListFromWorkspace() : generatePartitionListFromIntervals();
         GenomicsDBImportConfiguration.ImportConfiguration.Builder importConfigurationBuilder =
                 GenomicsDBImportConfiguration.ImportConfiguration.newBuilder();
         importConfigurationBuilder.addAllColumnPartitions(partitions);
@@ -822,8 +821,8 @@ public final class GenomicsDBImport extends GATKTool {
         // if we're just trying to get interval list, might need to generate intervals from vid
         // which only gets created with GenomicsDBImporter
         if (getIntervalsFromExistingWorkspace) {
-            if (intervals == null) {
-                generateIntervalListFromVidMap();
+            if (intervals == null || intervals.isEmpty()) {
+                intervals = generateIntervalListFromVidMap();
             }
             writeIntervalListToFile();
             return;
@@ -1039,7 +1038,7 @@ public final class GenomicsDBImport extends GATKTool {
             if (getIntervalsFromExistingWorkspace || doIncrementalImport) {
                 logger.warn(INCREMENTAL_WORKSPACE_ARG_LONG_NAME+" was set, so ignoring specified intervals." +
                     "The tool will use the intervals specified by the initial import");
-                generateIntervalListFromWorkspace();
+                intervals = generateIntervalListFromWorkspace();
                 return;
             }
             final SAMSequenceDictionary intervalDictionary = getBestAvailableSequenceDictionary();
@@ -1063,7 +1062,7 @@ public final class GenomicsDBImport extends GATKTool {
             intervals = mergeInputIntervals ? IntervalUtils.getSpanningIntervals(simpleIntervalList, getBestAvailableSequenceDictionary()) : simpleIntervalList;
         } else if (getIntervalsFromExistingWorkspace || doIncrementalImport) {
             // in incremental import case, we don't care if intervals were specified
-            generateIntervalListFromWorkspace();
+            intervals = generateIntervalListFromWorkspace();
         } else {
             throw new UserException("No intervals specified");
         }
