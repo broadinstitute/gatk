@@ -46,6 +46,7 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
         // load and parse every generated JSON file to make sure they're valid JSON
         final File[] jsonFiles = wdlTestTargetDir.listFiles((File dir, String name) -> name.endsWith(".json"));
         for (final File f : jsonFiles) {
+            System.out.println(f);
             assertValidJSONFile(f);
         }
     }

@@ -123,16 +123,13 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             final NamedArgumentDefinition argDef,
             final String fieldCommentText) {
         final String argCategory = super.processNamedArgument(argBindings, argDef, fieldCommentText);
-        final String argType = (String) argBindings.get("type");
         argBindings.put("testValue",
                 testValueAsJSON(
                         argDef.getLongName(),
                         argDef,
-                        argType,
+                        (String) argBindings.get("type"),
                         (String) argBindings.get("defaultValue"))
         );
-
-        argBindings.put("defaultValue", defaultValueAsJSON(argType, (String) argBindings.get("defaultValue")));
 
         return argCategory;
     }
@@ -145,47 +142,14 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
         final List<Map<String, Object>> positionalArgsList = args.get("positional");
         if (positionalArgsList != null && !positionalArgsList.isEmpty()) {
             final Map<String, Object> positionalArgs = args.get("positional").get(0);
-            final String argType = (String) positionalArgs.get("type");
-            positionalArgs.put("defaultValue", defaultValueAsJSON(argType, (String) positionalArgs.get("defaultValue")));
             positionalArgs.put("testValue",
                     testValueAsJSON(
                             WDLWorkUnitHandler.POSITIONAL_ARGS,
                             clp.getPositionalArgumentDefinition(),
-                            argType,
+                            (String) positionalArgs.get("type"),
                             (String) positionalArgs.get("defaultValue"))
             );
         }
-    }
-
-    /**
-     * Return the default value suitably formatted as a JSON value. This primarily involves quoting strings and enum
-     * values, including arrays thereof.
-     *
-     * @param wdlType
-     * @param defaultWDLValue
-     * @return
-     */
-    protected String defaultValueAsJSON(
-            final String wdlType,
-            final String defaultWDLValue) {
-
-        // for other (non-File) types, use the default value and arg def to synthesize a value
-        if (defaultWDLValue.equals("null") || defaultWDLValue.equals("\"\"") || defaultWDLValue.equals("[]")) {
-            return defaultWDLValue;
-        } else if (defaultWDLValue.startsWith("[") && wdlType.equals("Array[String]")) {
-            // the array is already populated with a value (since we didn't execute the "[]" branch above),
-            // so quote the individual values
-            return quoteWDLArrayValues(defaultWDLValue);
-        } else if (wdlType.equals("String")) {
-            return "\"" + defaultWDLValue + "\"";
-        } else if (wdlType.equals("Float")) {
-            if (defaultWDLValue.equals("Infinity") || defaultWDLValue.equals("Nan")) {
-                // JSON does not recognize "Infinity" or "Nan" as valid float values (!), so we
-                // need to treat them as String values
-                return "\"" + defaultWDLValue + "\"";
-            }
-        }
-        return defaultWDLValue;
     }
 
     /**
@@ -247,32 +211,14 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             } else {
                 return "null";
             }
-        } else if (defaultWDLValue.startsWith("[")) {
-            // the array is already populated with a value (since we didn't execute the "[]" branch above), so
-            // use that value as is since its probably better than anything we'll synthesize
-            return quoteWDLArrayValues(defaultWDLValue);
         } else if (wdlType.equals("Float")) {
             if (defaultWDLValue.equals("Infinity") || defaultWDLValue.equals("Nan")) {
                 // JSON does not recognize "Infinity" or "Nan" as valid float values (!), so we
                 // need to treat them as String values
                 return "\"" + defaultWDLValue + "\"";
             }
-        } else if (wdlType.equals("String")) {
-            return "\"" + defaultWDLValue + "\"";
         }
         return defaultWDLValue;
-    }
-
-    /**
-     * Parse the wdlArrayString and replace the elements with quoted elements
-     * @param wdlArray
-     * @return a wdlArrayString with each element quoted
-     */
-    protected String quoteWDLArrayValues(final String wdlArray) {
-        final String wdlValues = wdlArray.substring(1, wdlArray.length() - 1);
-        final String[] wdlValueArray = wdlValues.split(",");
-        return String.format("[%s]",
-                Arrays.stream(wdlValueArray).map(s -> String.format("\"%s\"", s.trim())).collect(Collectors.joining(",")));
     }
 
     /**
