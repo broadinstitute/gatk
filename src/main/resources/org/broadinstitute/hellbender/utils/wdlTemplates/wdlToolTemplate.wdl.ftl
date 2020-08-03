@@ -217,26 +217,22 @@ task ${name} {
 
 <#macro defineWorkflowOutputs heading outputs>
     # ${heading?right_pad(50)}
-    <#if outputs?size == 0>
+    <#if requiredOutputs?size == 0>
     File ${name}results = ${name}.${name}_results
     <#else>
-        <#list outputs as outputName, outputType>
-            <#if requiredOutputs[outputName]??>
+        <#list requiredOutputs as outputName, outputType>
     ${outputType} ${name}${outputName?substring(2)} = ${name}.${name}_${outputName?substring(2)}
-            </#if>
         </#list>
     </#if>
 </#macro>
 
 <#macro defineTaskOutputs heading outputs>
     # ${heading?right_pad(50)}
-    <#if outputs?size == 0>
+    <#if requiredOutputs?size == 0>
     File ${name}_results = stdout()
     <#else>
-        <#list outputs as outputName, outputType>
-            <#if requiredOutputs[outputName]??>
+        <#list requiredOutputs as outputName, outputType>
     ${outputType} ${name}_${outputName?substring(2)} = <#noparse>"${</#noparse>${outputName?substring(2)}<#noparse>}"</#noparse>
-            </#if>
         </#list>
     </#if>
 </#macro>
