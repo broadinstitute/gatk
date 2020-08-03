@@ -196,18 +196,22 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
         }
 
         // for other (non-File) types, use the default value and arg def to synthesize a value
-        if (defaultWDLValue.equals("null") || defaultWDLValue.equals("\"\"")) {
+        if (defaultWDLValue.equals("null") || defaultWDLValue.equals("\"\"") || defaultWDLValue.equals("[]")) {
             if (isRequired) {
-                // we use two values to accommodate tools that take positional args, such as CompareSams that
-                // require more than one arg
-                return "\"" + getDefaultValueForType(argDef) + "\"";
+                if (wdlType.startsWith("Array")) {
+                    // we use two values to accommodate tools that take positional args, such as CompareSams that
+                    // require more than one arg
+                    return String.format("[\"%s\", \"%s\"]", getDefaultValueForType(argDef), getDefaultValueForType(argDef));
+                } else {
+                    return "\"" + getDefaultValueForType(argDef) + "\"";
+                }
             } else {
                 return "null";
             }
-        } else if (defaultWDLValue.equals("[]")) {
-            // for required arrays, we need to provide SOME value in the array, and for
+        } else if (defaultWDLValue.startsWith("[")) {
+            // for required arrays, we need to provide SOME value in the array
             if (isRequired) {
-                return String.format("[\"%s\", \"%s\"]", getDefaultValueForType(argDef), getDefaultValueForType(argDef));
+                return defaultWDLValue;
             } else {
                 return "null";
             }
