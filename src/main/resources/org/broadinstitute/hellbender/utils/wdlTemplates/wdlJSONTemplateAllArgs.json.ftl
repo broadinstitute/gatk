@@ -48,15 +48,15 @@
             <#assign argValue = arg.defaultValue/>
       </#if>
       <#if heading?starts_with("Positional")>
-          <#if companionResources?? && companionResources[positionalArgs]??>
-              <#list companionResources[positionalArgs] as companion>
+          <#if requiredCompanions?? && requiredCompanions[positionalArgs]??>
+              <#list requiredCompanions[positionalArgs] as companion>
 <#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: ${argValue},
               </#list>
           </#if>
 <#noparse>  "</#noparse>${name}.${positionalArgs}<#noparse>"</#noparse>: <#rt/>
       <#else>
-          <#if companionResources?? && companionResources[arg.name]??>
-              <#list companionResources[arg.name] as companion>
+          <#if requiredCompanions?? && requiredCompanions[arg.name]??>
+              <#list requiredCompanions[arg.name] as companion>
 <#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: ${argValue},
               </#list>
           </#if>
