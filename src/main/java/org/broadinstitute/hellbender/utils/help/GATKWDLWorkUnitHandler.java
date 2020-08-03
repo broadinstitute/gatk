@@ -87,32 +87,6 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
         return workUnit.getClazz().getSimpleName() + "Inputs.json";
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    protected void addCommandLineArgumentBindings(final DocWorkUnit currentWorkUnit, final CommandLineArgumentParser clp) {
-        super.addCommandLineArgumentBindings(currentWorkUnit, clp);
-
-        // add a property so the template can tell which outputs are optional so they can be left out of
-        // the outputs section for the default WDL (which contains only required args)
-        final String REQUIRED_OUTPUTS = "requiredOutputs";
-        final Set<String> requiredOutputs = (Set<String>) currentWorkUnit.getRootMap().getOrDefault(REQUIRED_OUTPUTS, new HashSet<>());
-
-        final Map<String, List<Map<String, Object>>> argMap =
-                (Map<String, List<Map<String, Object>>>) currentWorkUnit.getRootMap().get("arguments");
-        final List<Map<String, Object>> requiredArgs = argMap.get("required");
-
-        final String LONG_OPTION_PREFIX = "--";
-        requiredArgs.stream().forEach(
-                m -> {
-                    // TODO: we really only need OUTPUTs added here (this adds INPUTs as well)
-                    final String actualArgName = (String) m.get("name");
-                    final String nameWithoutPrefix = actualArgName.substring(2);
-                    final String transformedName = LONG_OPTION_PREFIX + WDLTransforms.transformJavaNameToWDLName(nameWithoutPrefix);
-                    requiredOutputs.add(transformedName);
-                });
-        currentWorkUnit.getRootMap().put(REQUIRED_OUTPUTS, requiredOutputs);
-    }
-
     /**
      * Add the named argument {@code argDef}to the property map if applicable.
      * @param currentWorkUnit current work unit
