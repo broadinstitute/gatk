@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.utils.help;
 
+import com.sun.javadoc.ClassDoc;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import org.apache.commons.io.FilenameUtils;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.RuntimeProperties;
 import org.broadinstitute.barclay.help.*;
 
 import java.io.*;
@@ -76,6 +79,21 @@ public class GATKWDLDoclet extends WDLDoclet {
     @Override
     public String getIndexTemplateName() {
         return GATK_FREEMARKER_INDEX_TEMPLATE_NAME;
+    }
+
+    @Override
+    public boolean includeInDocs(final DocumentedFeature documentedFeature, final ClassDoc classDoc, final Class<?> clazz) {
+        boolean hasRuntimeProperties = clazz.getAnnotation(RuntimeProperties.class) != null;
+        boolean isCommandLineProgram = clazz.getAnnotation(CommandLineProgramProperties.class) != null;
+        if (hasRuntimeProperties) {
+            if (!isCommandLineProgram) {
+                throw new DocException(String.format(
+                        "RuntimeProperties can only be applied to classes that are annotated with CommandLineProgramProperties (%s)",
+                        clazz));
+            }
+            return true;
+        }
+        return isCommandLineProgram;
     }
 
     /**

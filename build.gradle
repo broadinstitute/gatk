@@ -824,8 +824,45 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
         }
 
         // now execute the *AllArgs test wdls using cromwell
+        // exclude tools that are hard to synthesize test values for, such as tools with multiple
+        // mutually exclusive argument sets
+        final Set<String> excludeFromCromwellTest = new HashSet<>(Arrays.asList(
+                // GATK
+                "FuncotatorDataSourceDownloaderAllArgsTest.wdl",    // mutex args
+                "BwaAndMarkDuplicatesPipelineSparkAllArgsTest.wdl", // mutex args
+                "DepthOfCoverageAllArgsTest.wdl",                   // mutex args
+                "GenomicsDBImportAllArgsTest.wdl",                  // mutex args
+                "MarkDuplicatesSparkAllArgsTest.wdl",               // mutex args
+                "ParallelCopyGCSDirectoryIntoHDFSSparkAllArgsTest.wdl", // --input-file-glob *
+                "ReadsPipelineSparkAllArgsTest.wdl",                // mutex args
+                "RevertSamSparkAllArgsTest.wdl",                    // mutex args
+                "ValidateVariantsAllArgsTest.wdl",                  // mutex args
+
+                // Picard
+                "BamToBfqAllArgsTest.wdl",                          // mutex args
+                "CheckFingerprintAllArgsTest.wdl",                  // mutex args
+                "CrosscheckFingerPrintAllArgsTest.swdl",            // mutex args
+                "CrosscheckReadGroupFingerPrintsAllArgsTest.wdl",   // mutex args
+                "EstimateLibraryComplexityAllArgsTest.wdl",         // shell chars need quoting: reg exp value contains "<" and ">" ?
+                "ExtractIlluminaBarcodesAllArgsTest.wdl",           // mutex args
+                "IlluminaBasecallsToSamAllArgsTest.wdl",            // mutex args
+                "IlluminaBasecallsToFastqAllArgsTest.wdl",          // mutex args
+                "MarkDuplicatesAllArgsTest.wdl",                    // shell chars need quoting: reg exp value contains "<" and ">" ?
+                "MarkDuplicatesWithMateCigarAllArgsTest.wdl",       // shell chars need quoting: reg exp value contains "<" and ">" ?
+                "MergeBamAlignmentAllArgsTest.wdl",                // mutex args
+                "PositionBasedDownsampleSamAllArgsTest.wdl",        // shell chars need quoting: reg exp value contains "<" and ">" ?
+                "RevertSamAllArgsTest.wdl",                         // mutex args
+                "SamToFastqAllArgsTest.wdl",                        // mutex args
+                "SimpleMarkDuplicatesWithMateCigarAllArgsTest.wdl", // shell chars need quoting: reg exp value contains "<" and ">" ?
+                "SplitSamByNumberOfReadsAllArgsTest.wdl",           // mutex args
+                "UmiAwareMarkDuplicatesWithMateCigarAllArgsTest.wdl",// shell chars need quoting: reg exp value contains "<" and ">" ?
+        ));
         wdlFiles = fileTree(dir: wdlGenFolder).filter {
             f -> f.getAbsolutePath().endsWith("AllArgsTest.wdl")
+        }.filter {
+                // exclude tools that are hard to synthesize test values for
+            f -> final String fileName = f.getName()
+                  return !excludeFromCromwellTest.contains(fileName)
         }
         wdlFiles.any() { wdlFile ->
             final cromwellLocation = System.getenv('CROMWELL_JAR')
