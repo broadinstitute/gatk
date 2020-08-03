@@ -42,17 +42,22 @@
 <#macro taskinput heading argsToUse remainingCount>
   <#if argsToUse?size != 0>
     <#list argsToUse as arg>
+      <#if heading?starts_with("Required") || heading?starts_with("Positional")>
+            <#assign argValue = "\"" + arg.wdlinputtype + "\""/>
+      <#else>
+            <#assign argValue = arg.defaultValue/>
+      </#if>
       <#if heading?starts_with("Positional")>
           <#if companionResources?? && companionResources[positionalArgs]??>
               <#list companionResources[positionalArgs] as companion>
-<#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: "${arg.wdlinputtype}",
+<#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: ${argValue},
               </#list>
           </#if>
 <#noparse>  "</#noparse>${name}.${positionalArgs}<#noparse>"</#noparse>: <#rt/>
       <#else>
           <#if companionResources?? && companionResources[arg.name]??>
               <#list companionResources[arg.name] as companion>
-<#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: "${arg.wdlinputtype}",
+<#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: ${argValue},
               </#list>
           </#if>
 <#noparse>  "</#noparse>${name}.${arg.name?substring(2)}<#noparse>"</#noparse>: <#rt/>

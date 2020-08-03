@@ -53,19 +53,11 @@
           </#if>
 <#noparse>  "</#noparse>${name}.${arg.name?substring(2)}<#noparse>"</#noparse>: <#rt/>
       </#if>
-      <#if heading?starts_with("Required") || heading?starts_with("Positional")>
 <#noparse>  "</#noparse>${arg.wdlinputtype}<#noparse>"</#noparse><#if !arg?is_last || remainingCount != 0>,
-      </#if>
-      <#else>
-        <#if arg.defaultValue == "\"\"" || arg.defaultValue == "null">
-null<#if !arg?is_last || remainingCount != 0>,</#if>
-        <#else>
-${arg.defaultValue}<#if !arg?is_last || remainingCount != 0>,</#if>
-        </#if>
-      </#if>
+    </#if>
       <#if arg?is_last && remainingCount != 0>
 
       </#if>
     </#list>
-</#if>
+  </#if>
 </#macro>
