@@ -146,7 +146,7 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             final String argType = (String) positionalArgs.get("type");
             positionalArgs.put("testValue",
                     getInputValueForTest(
-                            "Positional Argument", //TODO: expose this in Barclay
+                            WDLWorkUnitHandler.POSITIONAL_ARGS,
                             clp.getPositionalArgumentDefinition(),
                             argType,
                             (String) positionalArgs.get("defaultValue"))

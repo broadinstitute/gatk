@@ -1,0 +1,26 @@
+{
+  "TestWDLTool.dockerImage": "broadinstitute/gatk:1.1-111",
+  "TestWDLTool.gatk": "gatk",
+  "TestWDLTool.memoryRequirements": "8G",
+  "TestWDLTool.diskRequirements": "local-disk 40 HDD",
+  "TestWDLTool.cpuRequirements": "1",
+  "TestWDLTool.preemptibleRequirements": "3",
+  "TestWDLTool.bootdisksizegbRequirements": "15",
+
+  "TestWDLTool.posDictionary": "Array[File]",
+  "TestWDLTool.posIndex": "Array[File]",
+  "TestWDLTool.positionalArgs":   "Array[File]",
+
+  "TestWDLTool.requiredListFileInputDictionary": "Array[File]",
+  "TestWDLTool.requiredListFileInputIndex": "Array[File]",
+  "TestWDLTool.requiredListFileInput":   "Array[File]",
+  "TestWDLTool.requiredListFileOutputDictionary": "Array[String]",
+  "TestWDLTool.requiredListFileOutputIndex": "Array[String]",
+  "TestWDLTool.requiredListFileOutput":   "Array[String]",
+  "TestWDLTool.requiredScalarFileInputDictionary": "File",
+  "TestWDLTool.requiredScalarFileInputIndex": "File",
+  "TestWDLTool.requiredScalarFileInput":   "File",
+  "TestWDLTool.requiredScalarFileOutputDictionary": "String",
+  "TestWDLTool.requiredScalarFileOutputIndex": "String",
+  "TestWDLTool.requiredScalarFileOutput":   "String"
+}
