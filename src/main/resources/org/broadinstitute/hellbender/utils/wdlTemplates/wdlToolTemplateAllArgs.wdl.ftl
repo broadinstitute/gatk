@@ -145,14 +145,14 @@ task ${name} {
 #    ${positionalArgs?right_pad(50)} ${arg.summary?right_pad(60)[0..*80]}
                 <#if companionResources?? && companionResources[positionalArgs]??>
                     <#list companionResources[positionalArgs] as companion>
-#    ${companion.name?substring(2)?right_pad(50)} ${arg.summary?right_pad(60)[0..*80]}
+#    ${companion.name?substring(2)?right_pad(50)} ${companion.summary?right_pad(60)[0..*80]}
                     </#list>
                 </#if>
             <#else>
 #    ${arg.name?substring(2)?right_pad(50)} ${arg.summary?right_pad(60)[0..*80]}
                 <#if companionResources?? && companionResources[arg.name]??>
                     <#list companionResources[arg.name] as companion>
-#    ${companion.name?substring(2)?right_pad(50)} ${arg.summary?right_pad(60)[0..*80]}
+#    ${companion.name?substring(2)?right_pad(50)} ${companion.summary?right_pad(60)[0..*80]}
                     </#list>
                 </#if>
             </#if>
