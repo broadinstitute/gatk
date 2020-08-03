@@ -149,7 +149,7 @@ class CoverageUtils {
 
         for (PileupElement e : countPileup) {
             SAMReadGroupRecord readGroup = ReadUtils.getSAMReadGroupRecord(e.getRead(), header);
-            Utils.nonNull(readGroup, String.format("Read %s was missing read group information", e.getRead()));
+            Utils.nonNull(readGroup, () -> String.format("Read %s was missing read group information", e.getRead()));
 
             // uniqueReadGroupID is unique across the library, read group ID, and the sample
             String uniqueReadGroupId = readGroup.getSample() + "_" + readGroup.getReadGroupId() + "_" + readGroup.getLibrary() + "_" + readGroup.getPlatformUnit();
