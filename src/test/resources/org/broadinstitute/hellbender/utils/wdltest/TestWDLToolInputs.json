@@ -9,18 +9,18 @@
 
   "TestWDLTool.posDictionary": "Array[File]",
   "TestWDLTool.posIndex": "Array[File]",
-  "TestWDLTool.positionalArgs":   "Array[File]",
+  "TestWDLTool.positionalArgs": "Array[File]",
 
   "TestWDLTool.requiredListFileInputDictionary": "Array[File]",
   "TestWDLTool.requiredListFileInputIndex": "Array[File]",
-  "TestWDLTool.requiredListFileInput":   "Array[File]",
+  "TestWDLTool.requiredListFileInput": "Array[File]",
   "TestWDLTool.requiredListFileOutputDictionary": "Array[String]",
   "TestWDLTool.requiredListFileOutputIndex": "Array[String]",
-  "TestWDLTool.requiredListFileOutput":   "Array[String]",
+  "TestWDLTool.requiredListFileOutput": "Array[String]",
   "TestWDLTool.requiredScalarFileInputDictionary": "File",
   "TestWDLTool.requiredScalarFileInputIndex": "File",
-  "TestWDLTool.requiredScalarFileInput":   "File",
+  "TestWDLTool.requiredScalarFileInput": "File",
   "TestWDLTool.requiredScalarFileOutputDictionary": "String",
   "TestWDLTool.requiredScalarFileOutputIndex": "String",
-  "TestWDLTool.requiredScalarFileOutput":   "String"
+  "TestWDLTool.requiredScalarFileOutput": "String"
 }

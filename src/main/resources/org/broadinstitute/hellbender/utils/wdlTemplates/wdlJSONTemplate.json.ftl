@@ -49,7 +49,7 @@
 <#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: "${arg.wdlinputtype}",
               </#list>
           </#if>
-<#noparse>  "</#noparse>${name}.${positionalArgs}<#noparse>"</#noparse>: <#rt/>
+<#noparse>  "</#noparse>${name}.${positionalArgs}<#noparse>"</#noparse>:<#rt/>
       <#else>
           <#if requiredCompanions?? && requiredCompanions[arg.name]??>
               <#list requiredCompanions[arg.name] as companion>
@@ -61,9 +61,9 @@
 <#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: "${arg.wdlinputtype}",
               </#list>
           </#if>
-<#noparse>  "</#noparse>${name}.${arg.name?substring(2)}<#noparse>"</#noparse>: <#rt/>
+<#noparse>  "</#noparse>${name}.${arg.name?substring(2)}<#noparse>"</#noparse>:<#rt/>
       </#if>
-<#noparse>  "</#noparse>${arg.wdlinputtype}<#noparse>"</#noparse><#if !arg?is_last || remainingCount != 0>,
+<#noparse> "</#noparse>${arg.wdlinputtype}<#noparse>"</#noparse><#if !arg?is_last || remainingCount != 0>,
     </#if>
       <#if arg?is_last && remainingCount != 0>
 

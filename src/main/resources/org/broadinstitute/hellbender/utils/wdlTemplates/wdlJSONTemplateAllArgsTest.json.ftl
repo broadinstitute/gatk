@@ -3,32 +3,32 @@
 
 <#--- Store positional args in a WDL arg called "positionalArgs"--->
 <#assign positionalArgs="positionalArgs"/>
-    "${name}.dockerImage": "broadinstitute/gatk:${version}",
-    "${name}.gatk": "java -cp ${buildDir}/build/libs/gatk.jar org.broadinstitute.hellbender.CommandLineArgumentValidatorMain",
+  "${name}.dockerImage": "broadinstitute/gatk:${version}",
+  "${name}.gatk": "java -cp ${buildDir}/build/libs/gatk.jar org.broadinstitute.hellbender.CommandLineArgumentValidatorMain",
 <#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.memoryRequirements != "">
-    "${name}.memoryRequirements": "${workflowProperties.memoryRequirements}",
+  "${name}.memoryRequirements": "${workflowProperties.memoryRequirements}",
 <#else>
-    "${name}.memoryRequirements": "String",
+  "${name}.memoryRequirements": "String",
 </#if>
 <#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.diskRequirements != "">
-    "${name}.diskRequirements": "${workflowProperties.diskRequirements}",
+  "${name}.diskRequirements": "${workflowProperties.diskRequirements}",
 <#else>
-    "${name}.diskRequirements": "String",
+  "${name}.diskRequirements": "String",
 </#if>
 <#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.cpuRequirements != "">
-    "${name}.cpuRequirements": "${workflowProperties.cpuRequirements}",
+  "${name}.cpuRequirements": "${workflowProperties.cpuRequirements}",
 <#else>
-    "${name}.cpuRequirements": "String",
+  "${name}.cpuRequirements": "String",
 </#if>
 <#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.preemptibleRequirements != "">
-    "${name}.preemptibleRequirements": "${workflowProperties.preemptibleRequirements}",
+  "${name}.preemptibleRequirements": "${workflowProperties.preemptibleRequirements}",
 <#else>
-    "${name}.preemptibleRequirements": "String",
+  "${name}.preemptibleRequirements": "String",
 </#if>
 <#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.bootdisksizegbRequirements != "">
-    "${name}.bootdisksizegbRequirements": "${workflowProperties.bootdisksizegbRequirements}",
+  "${name}.bootdisksizegbRequirements": "${workflowProperties.bootdisksizegbRequirements}",
 <#else>
-    "${name}.bootdisksizegbRequirements": "String",
+  "${name}.bootdisksizegbRequirements": "String",
 </#if>
 
 <#assign remainingArgCount=arguments.required?size + arguments.optional?size + arguments.common?size/>

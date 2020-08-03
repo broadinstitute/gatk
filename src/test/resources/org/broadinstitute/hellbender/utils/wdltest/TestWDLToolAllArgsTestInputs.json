@@ -1,11 +1,11 @@
 {
-    "TestWDLTool.dockerImage": "broadinstitute/gatk:1.1-111",
-    "TestWDLTool.gatk": "java -cp ./build/libs/gatk.jar org.broadinstitute.hellbender.CommandLineArgumentValidatorMain",
-    "TestWDLTool.memoryRequirements": "8G",
-    "TestWDLTool.diskRequirements": "local-disk 40 HDD",
-    "TestWDLTool.cpuRequirements": "2",
-    "TestWDLTool.preemptibleRequirements": "3",
-    "TestWDLTool.bootdisksizegbRequirements": "15",
+  "TestWDLTool.dockerImage": "broadinstitute/gatk:1.1-111",
+  "TestWDLTool.gatk": "java -cp ./build/libs/gatk.jar org.broadinstitute.hellbender.CommandLineArgumentValidatorMain",
+  "TestWDLTool.memoryRequirements": "8G",
+  "TestWDLTool.diskRequirements": "local-disk 40 HDD",
+  "TestWDLTool.cpuRequirements": "2",
+  "TestWDLTool.preemptibleRequirements": "3",
+  "TestWDLTool.bootdisksizegbRequirements": "15",
 
   "TestWDLTool.posDictionary": ["./dummyWDLTestFile", "./dummyWDLTestFile"],
   "TestWDLTool.posIndex": ["./dummyWDLTestFile", "./dummyWDLTestFile"],

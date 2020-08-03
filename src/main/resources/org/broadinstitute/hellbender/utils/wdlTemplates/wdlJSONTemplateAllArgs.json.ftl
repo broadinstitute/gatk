@@ -70,10 +70,10 @@
 <#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: ${argValue},
               </#list>
           </#if>
-<#noparse>  "</#noparse>${name}.${arg.name?substring(2)}<#noparse>"</#noparse>: <#rt/>
+<#noparse>  "</#noparse>${name}.${arg.name?substring(2)}<#noparse>"</#noparse>:<#rt/>
       </#if>
       <#if heading?starts_with("Required") || heading?starts_with("Positional")>
-<#noparse>  "</#noparse>${arg.wdlinputtype}<#noparse>"</#noparse><#if !arg?is_last || remainingCount != 0>,
+<#noparse>"</#noparse>${arg.wdlinputtype}<#noparse>"</#noparse><#if !arg?is_last || remainingCount != 0>,
       </#if>
       <#else>
         <#if arg.defaultValue == "\"\"" || arg.defaultValue == "null">

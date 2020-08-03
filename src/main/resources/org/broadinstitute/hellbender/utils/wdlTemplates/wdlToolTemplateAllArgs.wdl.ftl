@@ -3,11 +3,11 @@ version 1.0
 <#--- Store positional args in a WDL arg called "positionalArgs"--->
 <#assign positionalArgs="positionalArgs"/>
 <#if beta?? && beta == true>
-# Run ${name} (**BETA**) (WDL auto generated from: GATK Version ${version})
+# Run ${name} (**BETA**) (WDL auto generated from GATK Version ${version})
 <#elseif experimental?? && experimental == true>
-# Run ${name} **EXPERIMENTAL** ${name} (WDL auto generated from: GATK Version ${version})
+# Run ${name} **EXPERIMENTAL** ${name} (WDL auto generated from GATK Version ${version})
 <#else>
-# Run ${name} (WDL auto generated from: GATK Version ${version})
+# Run ${name} (WDL auto generated from GATK Version ${version})
 </#if>
 #
 # ${summary}
@@ -162,7 +162,7 @@ task ${name} {
                 </#if>
                 <#if optionalCompanions?? && optionalCompanions[arg.name]??>
                     <#list optionalCompanions[arg.name] as companion>
-#    ${companion.name?substring(2)?right_pad(50)} ${companion.summary?right_pad(60)[0..*80]}
+#    ${companion.name?substring(2)?right_pad(50)} Optional ${companion.summary?right_pad(60)[0..*80]}
                     </#list>
                 </#if>
             </#if>
