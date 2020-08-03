@@ -73,28 +73,28 @@ public class TestWDLTool {
             shortName = "optionalScalarFileInput",
             doc = "optionalScalarFileInput doc",
             optional = true)
-    @WorkflowResource(input=true, output=false, companionResources={"optionalScalarFileInputDictionary", "requiredScalarFileInputIndex"})
+    @WorkflowResource(input=true, output=false, companionResources={"optionalScalarFileInputDictionary", "optionalScalarFileInputIndex"})
     public File optionalScalarFileInput;
 
     @Argument(fullName = "optionalListFileInput",
             shortName = "optionalListFileInput",
             doc = "optionalListFileInput doc",
             optional = true)
-    @WorkflowResource(input=true, output=false, companionResources={"optionalListFileInputDictionary", "requiredListFileInputIndex"})
+    @WorkflowResource(input=true, output=false, companionResources={"optionalListFileInputDictionary", "optionalListFileInputIndex"})
     public List<File> optionalListFileInput;
 
     @Argument(fullName = "optionaldScalarFileOutput",
             shortName = "optionalScalarFileOutput",
             doc = "optionalScalarFileOutput doc",
             optional = true)
-    @WorkflowResource(input=false, output=true, companionResources={"optionalScalarFileOutputDictionary", "requiredScalarFileOutputIndex"})
+    @WorkflowResource(input=false, output=true, companionResources={"optionalScalarFileOutputDictionary", "optionalScalarFileOutputIndex"})
     public File optionalScalarFileOutput;
 
     @Argument(fullName = "optionaldListFileOutput",
             shortName = "optionalListFileOutput",
             doc = "optionalListFileOutput doc",
             optional = true)
-    @WorkflowResource(input=false, output=true, companionResources={"optionalListFileOutputDictionary", "requiredListFileOutputIndex"})
+    @WorkflowResource(input=false, output=true, companionResources={"optionalListFileOutputDictionary", "optionalListFileOutputIndex"})
     public List<File> optionalListFileOutput;
 
     // non-File types

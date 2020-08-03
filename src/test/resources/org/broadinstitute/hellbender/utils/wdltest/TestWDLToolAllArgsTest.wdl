@@ -35,14 +35,14 @@ version 1.0
 #  Optional Tool Arguments
 #    optionaldListFileOutput                            optionalListFileOutput doc                                  
 #    optionalListFileOutputDictionary                   Companion resource for: optionalListFileOutput doc          
-#    requiredListFileOutputIndex                        Companion resource for: optionalListFileOutput doc          
+#    optionalListFileOutputIndex                        Companion resource for: optionalListFileOutput doc          
 #    optionaldScalarFileOutput                          optionalScalarFileOutput doc                                
 #    optionalScalarFileOutputDictionary                 Companion resource for: optionalScalarFileOutput doc        
-#    requiredScalarFileOutputIndex                      Companion resource for: optionalScalarFileOutput doc        
+#    optionalScalarFileOutputIndex                      Companion resource for: optionalScalarFileOutput doc        
 #    optionalListDoubleInput                            optionalListDoubleInput doc                                 
 #    optionalListFileInput                              optionalListFileInput doc                                   
 #    optionalListFileInputDictionary                    Companion resource for: optionalListFileInput doc           
-#    requiredListFileInputIndex                         Companion resource for: optionalListFileInput doc           
+#    optionalListFileInputIndex                         Companion resource for: optionalListFileInput doc           
 #    optionalListFloatInput                             optionalListFloatInput doc                                  
 #    optionalListIntegerInput                           optionalListIntegerInput doc                                
 #    optionalListLongInput                              optionalListLongInput doc                                   
@@ -51,7 +51,7 @@ version 1.0
 #    optionalScalarDoublePrimitiveInput                 optionalScalarDoublePrimitiveInput doc                      
 #    optionalScalarFileInput                            optionalScalarFileInput doc                                 
 #    optionalScalarFileInputDictionary                  Companion resource for: optionalScalarFileInput doc         
-#    requiredScalarFileInputIndex                       Companion resource for: optionalScalarFileInput doc         
+#    optionalScalarFileInputIndex                       Companion resource for: optionalScalarFileInput doc         
 #    optionalScalarFloatInput                           optionalScalarFloatInput doc                                
 #    optionalScalarFloatPrimitiveInput                  optionalScalarFloatPrimitiveInput doc                       
 #    optionalScalarIntegerInput                         optionalScalarIntegerInput doc                              
@@ -101,14 +101,14 @@ workflow TestWDLTool {
     # Optional Tool Arguments
     Array[String]? optionaldListFileOutput
     Array[String]? optionalListFileOutputDictionary
-    Array[String]? requiredListFileOutputIndex
+    Array[String]? optionalListFileOutputIndex
     String? optionaldScalarFileOutput
     String? optionalScalarFileOutputDictionary
-    String? requiredScalarFileOutputIndex
+    String? optionalScalarFileOutputIndex
     Array[Float]? optionalListDoubleInput
     Array[File]? optionalListFileInput
     Array[File]? optionalListFileInputDictionary
-    Array[File]? requiredListFileInputIndex
+    Array[File]? optionalListFileInputIndex
     Array[Float]? optionalListFloatInput
     Array[Int]? optionalListIntegerInput
     Array[Int]? optionalListLongInput
@@ -117,7 +117,7 @@ workflow TestWDLTool {
     Float? optionalScalarDoublePrimitiveInput
     File? optionalScalarFileInput
     File? optionalScalarFileInputDictionary
-    File? requiredScalarFileInputIndex
+    File? optionalScalarFileInputIndex
     Float? optionalScalarFloatInput
     Float? optionalScalarFloatPrimitiveInput
     Int? optionalScalarIntegerInput
@@ -170,14 +170,14 @@ workflow TestWDLTool {
         # Optional Tool Arguments
         optionaldListFileOutput                            = optionaldListFileOutput,
         optionalListFileOutputDictionary                   = optionalListFileOutputDictionary,
-        requiredListFileOutputIndex                        = requiredListFileOutputIndex,
+        optionalListFileOutputIndex                        = optionalListFileOutputIndex,
         optionaldScalarFileOutput                          = optionaldScalarFileOutput,
         optionalScalarFileOutputDictionary                 = optionalScalarFileOutputDictionary,
-        requiredScalarFileOutputIndex                      = requiredScalarFileOutputIndex,
+        optionalScalarFileOutputIndex                      = optionalScalarFileOutputIndex,
         optionalListDoubleInput                            = optionalListDoubleInput,
         optionalListFileInput                              = optionalListFileInput,
         optionalListFileInputDictionary                    = optionalListFileInputDictionary,
-        requiredListFileInputIndex                         = requiredListFileInputIndex,
+        optionalListFileInputIndex                         = optionalListFileInputIndex,
         optionalListFloatInput                             = optionalListFloatInput,
         optionalListIntegerInput                           = optionalListIntegerInput,
         optionalListLongInput                              = optionalListLongInput,
@@ -186,7 +186,7 @@ workflow TestWDLTool {
         optionalScalarDoublePrimitiveInput                 = optionalScalarDoublePrimitiveInput,
         optionalScalarFileInput                            = optionalScalarFileInput,
         optionalScalarFileInputDictionary                  = optionalScalarFileInputDictionary,
-        requiredScalarFileInputIndex                       = requiredScalarFileInputIndex,
+        optionalScalarFileInputIndex                       = optionalScalarFileInputIndex,
         optionalScalarFloatInput                           = optionalScalarFloatInput,
         optionalScalarFloatPrimitiveInput                  = optionalScalarFloatPrimitiveInput,
         optionalScalarIntegerInput                         = optionalScalarIntegerInput,
@@ -224,14 +224,14 @@ task TestWDLTool {
     String requiredScalarFileOutputIndex
     Array[String]? optionaldListFileOutput
     Array[String]? optionalListFileOutputDictionary
-    Array[String]? requiredListFileOutputIndex
+    Array[String]? optionalListFileOutputIndex
     String? optionaldScalarFileOutput
     String? optionalScalarFileOutputDictionary
-    String? requiredScalarFileOutputIndex
+    String? optionalScalarFileOutputIndex
     Array[Float]? optionalListDoubleInput
     Array[File]? optionalListFileInput
     Array[File]? optionalListFileInputDictionary
-    Array[File]? requiredListFileInputIndex
+    Array[File]? optionalListFileInputIndex
     Array[Float]? optionalListFloatInput
     Array[Int]? optionalListIntegerInput
     Array[Int]? optionalListLongInput
@@ -240,7 +240,7 @@ task TestWDLTool {
     Float? optionalScalarDoublePrimitiveInput
     File? optionalScalarFileInput
     File? optionalScalarFileInputDictionary
-    File? requiredScalarFileInputIndex
+    File? optionalScalarFileInputIndex
     Float? optionalScalarFloatInput
     Float? optionalScalarFloatPrimitiveInput
     Int? optionalScalarIntegerInput

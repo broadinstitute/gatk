@@ -7,7 +7,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.HelpDoclet;
-import org.broadinstitute.barclay.help.WDLTransforms;
 import org.broadinstitute.barclay.help.WDLWorkUnitHandler;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
@@ -126,12 +125,15 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
         final String argCategory = super.processNamedArgument(argBindings, argDef, fieldCommentText);
         final String argType = (String) argBindings.get("type");
         argBindings.put("testValue",
-                getInputValueForTest(
+                testValueAsJSON(
                         argDef.getLongName(),
                         argDef,
                         argType,
                         (String) argBindings.get("defaultValue"))
         );
+
+        argBindings.put("defaultValue", defaultValueAsJSON(argType, (String) argBindings.get("defaultValue")));
+
         return argCategory;
     }
 
@@ -144,14 +146,46 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
         if (positionalArgsList != null && !positionalArgsList.isEmpty()) {
             final Map<String, Object> positionalArgs = args.get("positional").get(0);
             final String argType = (String) positionalArgs.get("type");
+            positionalArgs.put("defaultValue", defaultValueAsJSON(argType, (String) positionalArgs.get("defaultValue")));
             positionalArgs.put("testValue",
-                    getInputValueForTest(
+                    testValueAsJSON(
                             WDLWorkUnitHandler.POSITIONAL_ARGS,
                             clp.getPositionalArgumentDefinition(),
                             argType,
                             (String) positionalArgs.get("defaultValue"))
             );
         }
+    }
+
+    /**
+     * Return the default value suitably formatted as a JSON value. This primarily involves quoting strings and enum
+     * values, including arrays thereof.
+     *
+     * @param wdlType
+     * @param defaultWDLValue
+     * @return
+     */
+    protected String defaultValueAsJSON(
+            final String wdlType,
+            final String defaultWDLValue) {
+
+        // for other (non-File) types, use the default value and arg def to synthesize a value
+        if (defaultWDLValue.equals("null") || defaultWDLValue.equals("\"\"") || defaultWDLValue.equals("[]")) {
+            return defaultWDLValue;
+        } else if (defaultWDLValue.startsWith("[") && wdlType.equals("Array[String]")) {
+            // the array is already populated with a value (since we didn't execute the "[]" branch above),
+            // so quote the individual values
+            return quoteWDLArrayValues(defaultWDLValue);
+        } else if (wdlType.equals("String")) {
+            return "\"" + defaultWDLValue + "\"";
+        } else if (wdlType.equals("Float")) {
+            if (defaultWDLValue.equals("Infinity") || defaultWDLValue.equals("Nan")) {
+                // JSON does not recognize "Infinity" or "Nan" as valid float values (!), so we
+                // need to treat them as String values
+                return "\"" + defaultWDLValue + "\"";
+            }
+        }
+        return defaultWDLValue;
     }
 
     /**
@@ -167,7 +201,7 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
      * @return a test input value that is either the default value, or the name of an actual test file
      * that will exist at test execution time
      */
-    protected String getInputValueForTest(
+    protected String testValueAsJSON(
             final String longName,
             final ArgumentDefinition argDef,
             final String wdlType,
@@ -217,8 +251,16 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             // the array is already populated with a value (since we didn't execute the "[]" branch above), so
             // use that value as is since its probably better than anything we'll synthesize
             return quoteWDLArrayValues(defaultWDLValue);
+        } else if (wdlType.equals("Float")) {
+            if (defaultWDLValue.equals("Infinity") || defaultWDLValue.equals("Nan")) {
+                // JSON does not recognize "Infinity" or "Nan" as valid float values (!), so we
+                // need to treat them as String values
+                return "\"" + defaultWDLValue + "\"";
+            }
+        } else if (wdlType.equals("String")) {
+            return "\"" + defaultWDLValue + "\"";
         }
-        return "\"" + getDefaultValueForType(argDef) + "\"";
+        return defaultWDLValue;
     }
 
     /**
