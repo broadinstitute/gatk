@@ -262,7 +262,7 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
      * Given a Java class representing the underlying field  type of an argument, and a human readable doc type,
      * convert the docType to a WDL type.
      *
-     * @param workflowOutput the WorkflowResource associated with the instance of argumentClass, if any
+     * @param workflowOutput the WorkflowOutput associated with the instance of argumentClass, if any
      * @param argumentClass the Class for the underlying field of the argument being converted
      * @param docType a string representing the human readable type assigned by the Barclay doc system
      * @param sourceContext a String describing the context for this argument, used for error reporting
@@ -287,7 +287,7 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             final Pair<String, String> typeConversionPair = transformToWDLType(argumentClass);
             convertedWDLType = docType.replaceFirst("FeatureInput\\[[a-zA-Z0-9?]+\\]", typeConversionPair.getValue());
 
-            // finally, if this type is for an arg that is a WorkflowResource that is a workflow output, and its type
+            // finally, if this type is for an arg that is a WorkflowOutput that is a workflow output, and its type
             // is file, we need to use a different type (String) as the input type for this arg to prevent the workflow
             // manager from attempting to localize the (non-existent) output file when localizing inputs
             return transformWorkflowResourceOutputTypeToInputType(workflowOutput, convertedWDLType);

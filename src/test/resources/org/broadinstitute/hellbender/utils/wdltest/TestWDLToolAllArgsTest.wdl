@@ -34,15 +34,15 @@ version 1.0
 #
 #  Optional Tool Arguments
 #    optionaldListFileOutput                            optionalListFileOutput doc                                  
-#    optionalListFileOutputDictionary                   Companion resource for optionaldListFileOutput              
-#    optionalListFileOutputIndex                        Companion resource for optionaldListFileOutput              
+#    optionalListFileOutputDictionary                   Optional Companion resource for optionaldListFileOutput              
+#    optionalListFileOutputIndex                        Optional Companion resource for optionaldListFileOutput              
 #    optionaldScalarFileOutput                          optionalScalarFileOutput doc                                
-#    optionalScalarFileOutputDictionary                 Companion resource for optionaldScalarFileOutput            
-#    optionalScalarFileOutputIndex                      Companion resource for optionaldScalarFileOutput            
+#    optionalScalarFileOutputDictionary                 Optional Companion resource for optionaldScalarFileOutput            
+#    optionalScalarFileOutputIndex                      Optional Companion resource for optionaldScalarFileOutput            
 #    optionalListDoubleInput                            optionalListDoubleInput doc                                 
 #    optionalListFileInput                              optionalListFileInput doc                                   
-#    optionalListFileInputDictionary                    Companion resource for optionalListFileInput                
-#    optionalListFileInputIndex                         Companion resource for optionalListFileInput                
+#    optionalListFileInputDictionary                    Optional Companion resource for optionalListFileInput                
+#    optionalListFileInputIndex                         Optional Companion resource for optionalListFileInput                
 #    optionalListFloatInput                             optionalListFloatInput doc                                  
 #    optionalListIntegerInput                           optionalListIntegerInput doc                                
 #    optionalListLongInput                              optionalListLongInput doc                                   
@@ -50,8 +50,8 @@ version 1.0
 #    optionalScalarDoubleInput                          optionalScalarDoubleInput doc                               
 #    optionalScalarDoublePrimitiveInput                 optionalScalarDoublePrimitiveInput doc                      
 #    optionalScalarFileInput                            optionalScalarFileInput doc                                 
-#    optionalScalarFileInputDictionary                  Companion resource for optionalScalarFileInput              
-#    optionalScalarFileInputIndex                       Companion resource for optionalScalarFileInput              
+#    optionalScalarFileInputDictionary                  Optional Companion resource for optionalScalarFileInput              
+#    optionalScalarFileInputIndex                       Optional Companion resource for optionalScalarFileInput              
 #    optionalScalarFloatInput                           optionalScalarFloatInput doc                                
 #    optionalScalarFloatPrimitiveInput                  optionalScalarFloatPrimitiveInput doc                       
 #    optionalScalarIntegerInput                         optionalScalarIntegerInput doc                              

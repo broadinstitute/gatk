@@ -148,10 +148,20 @@ task ${name} {
 #    ${companion.name?substring(2)?right_pad(50)} ${companion.summary?right_pad(60)[0..*80]}
                     </#list>
                 </#if>
+                <#if optionalCompanions?? && optionalCompanions[positionalArgs]??>
+                    <#list optionalCompanions[positionalArgs] as companion>
+#    ${companion.name?substring(2)?right_pad(50)} Optional ${companion.summary?right_pad(60)[0..*80]}
+                    </#list>
+                </#if>
             <#else>
 #    ${arg.name?substring(2)?right_pad(50)} ${arg.summary?right_pad(60)[0..*80]}
                 <#if requiredCompanions?? && requiredCompanions[arg.name]??>
                     <#list requiredCompanions[arg.name] as companion>
+#    ${companion.name?substring(2)?right_pad(50)} ${companion.summary?right_pad(60)[0..*80]}
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+                    <#list optionalCompanions[arg.name] as companion>
 #    ${companion.name?substring(2)?right_pad(50)} ${companion.summary?right_pad(60)[0..*80]}
                     </#list>
                 </#if>
@@ -172,11 +182,21 @@ task ${name} {
     ${arg.wdlinputtype} ${companion.name?substring(2)}
                     </#list>
                 </#if>
+                <#if optionalCompanions?? && optionalCompanions[positionalArgs]??>
+                    <#list optionalCompanions[positionalArgs] as companion>
+    ${arg.wdlinputtype}? ${companion.name?substring(2)}
+                    </#list>
+                </#if>
             <#else>
     ${arg.wdlinputtype}<#if !heading?starts_with("Required")>?</#if> ${arg.name?substring(2)}
                 <#if requiredCompanions?? && requiredCompanions[arg.name]??>
                     <#list requiredCompanions[arg.name] as companion>
-    ${arg.wdlinputtype}<#if !heading?starts_with("Required")>?</#if> ${companion.name?substring(2)}
+    ${arg.wdlinputtype} ${companion.name?substring(2)}
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+                    <#list optionalCompanions[arg.name] as companion>
+    ${arg.wdlinputtype}? ${companion.name?substring(2)}
                     </#list>
                 </#if>
             </#if>
@@ -196,10 +216,20 @@ task ${name} {
         ${companion.name?substring(2)?right_pad(50)} = ${companion.name?substring(2)},
                     </#list>
                 </#if>
+                <#if optionalCompanions?? && optionalCompanions[positionalArgs]??>
+                    <#list optionalCompanions[positionalArgs] as companion>
+        ${companion.name?substring(2)?right_pad(50)} = ${companion.name?substring(2)},
+                    </#list>
+                </#if>
             <#else>
         ${arg.name?substring(2)?right_pad(50)} = ${arg.name?substring(2)},
                 <#if requiredCompanions?? && requiredCompanions[arg.name]??>
                     <#list requiredCompanions[arg.name] as companion>
+        ${companion.name?substring(2)?right_pad(50)} = ${companion.name?substring(2)},
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+                    <#list optionalCompanions[arg.name] as companion>
         ${companion.name?substring(2)?right_pad(50)} = ${companion.name?substring(2)},
                     </#list>
                 </#if>
@@ -218,11 +248,21 @@ task ${name} {
     ${arg.wdlinputtype} Positional_${companion.name?substring(2)}
                     </#list>
                 </#if>
+                <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+                    <#list optionalCompanions[positionalArgs] as companion>
+    ${arg.wdlinputtype}? Positional_${companion.name?substring(2)}
+                    </#list>
+                </#if>
             <#else>
     ${arg.wdlinputtype}<#if !heading?starts_with("Required")>?</#if> ${arg.name?substring(2)}
                 <#if requiredCompanions?? && requiredCompanions[arg.name]??>
                     <#list requiredCompanions[arg.name] as companion>
-    ${arg.wdlinputtype}<#if !heading?starts_with("Required")>?</#if> ${companion.name?substring(2)}
+    ${arg.wdlinputtype} ${companion.name?substring(2)}
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+                    <#list optionalCompanions[arg.name] as companion>
+    ${arg.wdlinputtype}? ${companion.name?substring(2)}
                     </#list>
                 </#if>
             </#if>

@@ -44,10 +44,20 @@
 <#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: "${arg.wdlinputtype}",
               </#list>
           </#if>
+          <#if optionalCompanions?? && optionalCompanions[positionalArgs]??>
+              <#list optionalCompanions[positionalArgs] as companion>
+<#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: "${arg.wdlinputtype}",
+              </#list>
+          </#if>
 <#noparse>  "</#noparse>${name}.${positionalArgs}<#noparse>"</#noparse>: <#rt/>
       <#else>
           <#if requiredCompanions?? && requiredCompanions[arg.name]??>
               <#list requiredCompanions[arg.name] as companion>
+<#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: "${arg.wdlinputtype}",
+              </#list>
+          </#if>
+          <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+              <#list optionalCompanions[arg.name] as companion>
 <#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: "${arg.wdlinputtype}",
               </#list>
           </#if>
