@@ -15,34 +15,34 @@ version 1.0
 #
 #  Positional Tool Arguments
 #    positionalArgs                                     Positional args doc                                         
-#    posDictionary                                      Companion resource for: Positional args doc                 
-#    posIndex                                           Companion resource for: Positional args doc                 
+#    posDictionary                                      Companion resource for positionalArgs                       
+#    posIndex                                           Companion resource for positionalArgs                       
 #
 #  Required Tool Arguments
 #    requiredListFileInput                              requiredListFileInput doc                                   
-#    requiredListFileInputDictionary                    Companion resource for: requiredListFileInput doc           
-#    requiredListFileInputIndex                         Companion resource for: requiredListFileInput doc           
+#    requiredListFileInputDictionary                    Companion resource for requiredListFileInput                
+#    requiredListFileInputIndex                         Companion resource for requiredListFileInput                
 #    requiredListFileOutput                             requiredListFileOutput doc                                  
-#    requiredListFileOutputDictionary                   Companion resource for: requiredListFileOutput doc          
-#    requiredListFileOutputIndex                        Companion resource for: requiredListFileOutput doc          
+#    requiredListFileOutputDictionary                   Companion resource for requiredListFileOutput               
+#    requiredListFileOutputIndex                        Companion resource for requiredListFileOutput               
 #    requiredScalarFileInput                            requiredScalarFileInput doc                                 
-#    requiredScalarFileInputDictionary                  Companion resource for: requiredScalarFileInput doc         
-#    requiredScalarFileInputIndex                       Companion resource for: requiredScalarFileInput doc         
+#    requiredScalarFileInputDictionary                  Companion resource for requiredScalarFileInput              
+#    requiredScalarFileInputIndex                       Companion resource for requiredScalarFileInput              
 #    requiredScalarFileOutput                           requiredScalarFileOutput doc                                
-#    requiredScalarFileOutputDictionary                 Companion resource for: requiredScalarFileOutput doc        
-#    requiredScalarFileOutputIndex                      Companion resource for: requiredScalarFileOutput doc        
+#    requiredScalarFileOutputDictionary                 Companion resource for requiredScalarFileOutput             
+#    requiredScalarFileOutputIndex                      Companion resource for requiredScalarFileOutput             
 #
 #  Optional Tool Arguments
 #    optionaldListFileOutput                            optionalListFileOutput doc                                  
-#    optionalListFileOutputDictionary                   Companion resource for: optionalListFileOutput doc          
-#    optionalListFileOutputIndex                        Companion resource for: optionalListFileOutput doc          
+#    optionalListFileOutputDictionary                   Companion resource for optionaldListFileOutput              
+#    optionalListFileOutputIndex                        Companion resource for optionaldListFileOutput              
 #    optionaldScalarFileOutput                          optionalScalarFileOutput doc                                
-#    optionalScalarFileOutputDictionary                 Companion resource for: optionalScalarFileOutput doc        
-#    optionalScalarFileOutputIndex                      Companion resource for: optionalScalarFileOutput doc        
+#    optionalScalarFileOutputDictionary                 Companion resource for optionaldScalarFileOutput            
+#    optionalScalarFileOutputIndex                      Companion resource for optionaldScalarFileOutput            
 #    optionalListDoubleInput                            optionalListDoubleInput doc                                 
 #    optionalListFileInput                              optionalListFileInput doc                                   
-#    optionalListFileInputDictionary                    Companion resource for: optionalListFileInput doc           
-#    optionalListFileInputIndex                         Companion resource for: optionalListFileInput doc           
+#    optionalListFileInputDictionary                    Companion resource for optionalListFileInput                
+#    optionalListFileInputIndex                         Companion resource for optionalListFileInput                
 #    optionalListFloatInput                             optionalListFloatInput doc                                  
 #    optionalListIntegerInput                           optionalListIntegerInput doc                                
 #    optionalListLongInput                              optionalListLongInput doc                                   
@@ -50,8 +50,8 @@ version 1.0
 #    optionalScalarDoubleInput                          optionalScalarDoubleInput doc                               
 #    optionalScalarDoublePrimitiveInput                 optionalScalarDoublePrimitiveInput doc                      
 #    optionalScalarFileInput                            optionalScalarFileInput doc                                 
-#    optionalScalarFileInputDictionary                  Companion resource for: optionalScalarFileInput doc         
-#    optionalScalarFileInputIndex                       Companion resource for: optionalScalarFileInput doc         
+#    optionalScalarFileInputDictionary                  Companion resource for optionalScalarFileInput              
+#    optionalScalarFileInputIndex                       Companion resource for optionalScalarFileInput              
 #    optionalScalarFloatInput                           optionalScalarFloatInput doc                                
 #    optionalScalarFloatPrimitiveInput                  optionalScalarFloatPrimitiveInput doc                       
 #    optionalScalarIntegerInput                         optionalScalarIntegerInput doc                              

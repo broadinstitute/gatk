@@ -15,22 +15,22 @@ version 1.0
 #
 #  Positional Tool Arguments
 #    positionalArgs                                     Positional args doc                                         
-#    posDictionary                                      Companion resource for: Positional args doc                 
-#    posIndex                                           Companion resource for: Positional args doc                 
+#    posDictionary                                      Companion resource for positionalArgs                       
+#    posIndex                                           Companion resource for positionalArgs                       
 #
 #  Required Tool Arguments
 #    requiredListFileInput                              requiredListFileInput doc                                   
-#    requiredListFileInputDictionary                    Companion resource for: requiredListFileInput doc           
-#    requiredListFileInputIndex                         Companion resource for: requiredListFileInput doc           
+#    requiredListFileInputDictionary                    Companion resource for requiredListFileInput                
+#    requiredListFileInputIndex                         Companion resource for requiredListFileInput                
 #    requiredListFileOutput                             requiredListFileOutput doc                                  
-#    requiredListFileOutputDictionary                   Companion resource for: requiredListFileOutput doc          
-#    requiredListFileOutputIndex                        Companion resource for: requiredListFileOutput doc          
+#    requiredListFileOutputDictionary                   Companion resource for requiredListFileOutput               
+#    requiredListFileOutputIndex                        Companion resource for requiredListFileOutput               
 #    requiredScalarFileInput                            requiredScalarFileInput doc                                 
-#    requiredScalarFileInputDictionary                  Companion resource for: requiredScalarFileInput doc         
-#    requiredScalarFileInputIndex                       Companion resource for: requiredScalarFileInput doc         
+#    requiredScalarFileInputDictionary                  Companion resource for requiredScalarFileInput              
+#    requiredScalarFileInputIndex                       Companion resource for requiredScalarFileInput              
 #    requiredScalarFileOutput                           requiredScalarFileOutput doc                                
-#    requiredScalarFileOutputDictionary                 Companion resource for: requiredScalarFileOutput doc        
-#    requiredScalarFileOutputIndex                      Companion resource for: requiredScalarFileOutput doc        
+#    requiredScalarFileOutputDictionary                 Companion resource for requiredScalarFileOutput             
+#    requiredScalarFileOutputIndex                      Companion resource for requiredScalarFileOutput             
 #
 
 workflow TestWDLTool {
