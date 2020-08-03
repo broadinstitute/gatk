@@ -205,12 +205,12 @@ workflow TestWDLTool {
     Array[File] TestWDLToolrequiredListFileOutput = TestWDLTool.TestWDLTool_requiredListFileOutput
     Array[File] TestWDLToolrequiredListFileOutputDictionary = TestWDLTool.TestWDLTool_requiredListFileOutputDictionary
     Array[File] TestWDLToolrequiredListFileOutputIndex = TestWDLTool.TestWDLTool_requiredListFileOutputIndex
-    File TestWDLTooloptionaldScalarFileOutput = TestWDLTool.TestWDLTool_optionaldScalarFileOutput
-    File TestWDLTooloptionalScalarFileOutputDictionary = TestWDLTool.TestWDLTool_optionalScalarFileOutputDictionary
-    File TestWDLTooloptionalScalarFileOutputIndex = TestWDLTool.TestWDLTool_optionalScalarFileOutputIndex
-    Array[File] TestWDLTooloptionaldListFileOutput = TestWDLTool.TestWDLTool_optionaldListFileOutput
-    Array[File] TestWDLTooloptionalListFileOutputDictionary = TestWDLTool.TestWDLTool_optionalListFileOutputDictionary
-    Array[File] TestWDLTooloptionalListFileOutputIndex = TestWDLTool.TestWDLTool_optionalListFileOutputIndex
+    File? TestWDLTooloptionaldScalarFileOutput = TestWDLTool.TestWDLTool_optionaldScalarFileOutput
+    File? TestWDLTooloptionalScalarFileOutputDictionary = TestWDLTool.TestWDLTool_optionalScalarFileOutputDictionary
+    File? TestWDLTooloptionalScalarFileOutputIndex = TestWDLTool.TestWDLTool_optionalScalarFileOutputIndex
+    Array[File]? TestWDLTooloptionaldListFileOutput = TestWDLTool.TestWDLTool_optionaldListFileOutput
+    Array[File]? TestWDLTooloptionalListFileOutputDictionary = TestWDLTool.TestWDLTool_optionalListFileOutputDictionary
+    Array[File]? TestWDLTooloptionalListFileOutputIndex = TestWDLTool.TestWDLTool_optionalListFileOutputIndex
   }
 }
 
@@ -311,12 +311,12 @@ task TestWDLTool {
     Array[File] TestWDLTool_requiredListFileOutput = "${requiredListFileOutput}"
     Array[File] TestWDLTool_requiredListFileOutputDictionary = "${requiredListFileOutputDictionary}"
     Array[File] TestWDLTool_requiredListFileOutputIndex = "${requiredListFileOutputIndex}"
-    File TestWDLTool_optionaldScalarFileOutput = "${optionaldScalarFileOutput}"
-    File TestWDLTool_optionalScalarFileOutputDictionary = "${optionalScalarFileOutputDictionary}"
-    File TestWDLTool_optionalScalarFileOutputIndex = "${optionalScalarFileOutputIndex}"
-    Array[File] TestWDLTool_optionaldListFileOutput = "${optionaldListFileOutput}"
-    Array[File] TestWDLTool_optionalListFileOutputDictionary = "${optionalListFileOutputDictionary}"
-    Array[File] TestWDLTool_optionalListFileOutputIndex = "${optionalListFileOutputIndex}"
+    File? TestWDLTool_optionaldScalarFileOutput = "${optionaldScalarFileOutput}"
+    File? TestWDLTool_optionalScalarFileOutputDictionary = "${optionalScalarFileOutputDictionary}"
+    File? TestWDLTool_optionalScalarFileOutputIndex = "${optionalScalarFileOutputIndex}"
+    Array[File]? TestWDLTool_optionaldListFileOutput = "${optionaldListFileOutput}"
+    Array[File]? TestWDLTool_optionalListFileOutputDictionary = "${optionalListFileOutputDictionary}"
+    Array[File]? TestWDLTool_optionalListFileOutputIndex = "${optionalListFileOutputIndex}"
   }
  }
 

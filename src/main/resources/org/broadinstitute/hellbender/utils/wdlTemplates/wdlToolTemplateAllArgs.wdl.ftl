@@ -276,7 +276,11 @@ task ${name} {
     File ${name}results = ${name}.${name}_results
     <#else>
         <#list outputs as outputName, outputType>
+            <#if requiredOutputs[outputName]??>
     ${outputType} ${name}${outputName?substring(2)} = ${name}.${name}_${outputName?substring(2)}
+            <#else>
+    ${outputType}? ${name}${outputName?substring(2)} = ${name}.${name}_${outputName?substring(2)}
+            </#if>
         </#list>
     </#if>
 </#macro>
@@ -287,7 +291,11 @@ task ${name} {
     File ${name}_results = stdout()
     <#else>
         <#list outputs as outputName, outputType>
+            <#if requiredOutputs[outputName]??>
     ${outputType} ${name}_${outputName?substring(2)} = <#noparse>"${</#noparse>${outputName?substring(2)}<#noparse>}"</#noparse>
+            <#else>
+    ${outputType}? ${name}_${outputName?substring(2)} = <#noparse>"${</#noparse>${outputName?substring(2)}<#noparse>}"</#noparse>
+            </#if>
         </#list>
     </#if>
 </#macro>
