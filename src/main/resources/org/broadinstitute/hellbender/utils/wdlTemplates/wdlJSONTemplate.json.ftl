@@ -3,28 +3,28 @@
 <#assign positionalArgs="positionalArgs"/>
   "${name}.dockerImage": "broadinstitute/gatk:${version}",
   "${name}.gatk": "gatk",
-<#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.memoryRequirements != "">
-  "${name}.memoryRequirements": "${runtimeProperties.memoryRequirements}",
+<#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.memoryRequirements != "">
+  "${name}.memoryRequirements": "${workflowProperties.memoryRequirements}",
 <#else>
   "${name}.memoryRequirements": "String",
 </#if>
-<#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.diskRequirements != "">
-  "${name}.diskRequirements": "${runtimeProperties.diskRequirements}",
+<#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.diskRequirements != "">
+  "${name}.diskRequirements": "${workflowProperties.diskRequirements}",
 <#else>
   "${name}.diskRequirements": "String",
 </#if>
-<#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.cpuRequirements != "">
-  "${name}.cpuRequirements": "${runtimeProperties.cpuRequirements}",
+<#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.cpuRequirements != "">
+  "${name}.cpuRequirements": "${workflowProperties.cpuRequirements}",
 <#else>
   "${name}.cpuRequirements": "String",
 </#if>
-<#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.preemptibleRequirements != "">
-  "${name}.preemptibleRequirements": "${runtimeProperties.preemptibleRequirements}",
+<#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.preemptibleRequirements != "">
+  "${name}.preemptibleRequirements": "${workflowProperties.preemptibleRequirements}",
 <#else>
   "${name}.preemptibleRequirements": "String",
 </#if>
-<#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.bootdisksizegbRequirements != "">
-  "${name}.bootdisksizegbRequirements": "${runtimeProperties.bootdisksizegbRequirements}",
+<#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.bootdisksizegbRequirements != "">
+  "${name}.bootdisksizegbRequirements": "${workflowProperties.bootdisksizegbRequirements}",
 <#else>
   "${name}.bootdisksizegbRequirements": "String",
 </#if>

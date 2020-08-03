@@ -6,7 +6,7 @@ import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.RuntimeProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
 import org.broadinstitute.barclay.help.*;
 
 import java.io.*;
@@ -83,12 +83,12 @@ public class GATKWDLDoclet extends WDLDoclet {
 
     @Override
     public boolean includeInDocs(final DocumentedFeature documentedFeature, final ClassDoc classDoc, final Class<?> clazz) {
-        boolean hasRuntimeProperties = clazz.getAnnotation(RuntimeProperties.class) != null;
+        boolean hasWorkflowProperties = clazz.getAnnotation(WorkflowProperties.class) != null;
         boolean isCommandLineProgram = clazz.getAnnotation(CommandLineProgramProperties.class) != null;
-        if (hasRuntimeProperties) {
+        if (hasWorkflowProperties) {
             if (!isCommandLineProgram) {
                 throw new DocException(String.format(
-                        "RuntimeProperties can only be applied to classes that are annotated with CommandLineProgramProperties (%s)",
+                        "WorkflowProperties can only be applied to classes that are annotated with CommandLineProgramProperties (%s)",
                         clazz));
             }
             return true;

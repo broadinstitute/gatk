@@ -103,7 +103,7 @@ task ${name} {
 
   >>>
 
-  <#if runtimeProperties?? && runtimeProperties?size != 0>
+  <#if workflowProperties?? && workflowProperties?size != 0>
   runtime {
       docker: dockerImage
       memory: memoryRequirements

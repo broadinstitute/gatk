@@ -3,7 +3,7 @@
     "TestWDLTool.gatk": "java -cp ./build/libs/gatk.jar org.broadinstitute.hellbender.CommandLineArgumentValidatorMain",
     "TestWDLTool.memoryRequirements": "8G",
     "TestWDLTool.diskRequirements": "local-disk 40 HDD",
-    "TestWDLTool.cpuRequirements": "1",
+    "TestWDLTool.cpuRequirements": "2",
     "TestWDLTool.preemptibleRequirements": "3",
     "TestWDLTool.bootdisksizegbRequirements": "15",
 
