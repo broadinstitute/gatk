@@ -7,6 +7,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.HelpDoclet;
+import org.broadinstitute.barclay.help.TemplateProperties;
 import org.broadinstitute.barclay.help.WDLWorkUnitHandler;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
@@ -15,7 +16,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import picard.illumina.parser.ReadStructure;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 // Note: WDL Gen doesn't handle arguments that accept tagged argument values
 
@@ -33,6 +33,8 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
 
     // This must be kept in sync with the value used in build.gradle, where the file is created
     private final static String dummyWDLTestFileName = "dummyWDLTestFile";
+
+    private static String WDL_TEST_VALUE_PROPERTY = "testValue";
 
     // Map of Java argument types that the WDL generator knows how to convert to a WDL type, along with the
     // corresponding string substitution that needs to be run on the (Barclay-generated) string that describes
@@ -108,10 +110,10 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             final List<Map<String, Object>> argMapList = args.get("all");
             argMapList.stream().forEach(
                     m -> {
-                        final String actualArgName = (String) m.get("actualArgName");
+                        final String actualArgName = (String) m.get(TemplateProperties.WDL_ARGUMENT_ACTUAL_NAME);
                         if (actualArgName != null && actualArgName.equals("--" + argDef.getLongName())) {
-                            final String newSummary = ((String) m.get("summary")).replace('\n', ' ');
-                            m.put("summary", newSummary);
+                            final String newSummary = ((String) m.get(TemplateProperties.ARGUMENT_SUMMARY)).replace('\n', ' ');
+                            m.put(TemplateProperties.ARGUMENT_SUMMARY, newSummary);
                         }
                     });
         }
@@ -123,12 +125,12 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             final NamedArgumentDefinition argDef,
             final String fieldCommentText) {
         final String argCategory = super.processNamedArgument(argBindings, argDef, fieldCommentText);
-        argBindings.put("testValue",
+        argBindings.put(WDL_TEST_VALUE_PROPERTY,
                 testValueAsJSON(
                         argDef.getLongName(),
                         argDef,
-                        (String) argBindings.get("type"),
-                        (String) argBindings.get("defaultValue"))
+                        (String) argBindings.get(TemplateProperties.ARGUMENT_TYPE),
+                        (String) argBindings.get(TemplateProperties.ARGUMENT_DEFAULT_VALUE))
         );
 
         return argCategory;
@@ -139,15 +141,15 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             final CommandLineArgumentParser clp,
             final Map<String, List<Map<String, Object>>> args) {
         super.processPositionalArguments(clp, args);
-        final List<Map<String, Object>> positionalArgsList = args.get("positional");
+        final List<Map<String, Object>> positionalArgsList = args.get(TemplateProperties.ARGUMENTS_POSITIONAL);
         if (positionalArgsList != null && !positionalArgsList.isEmpty()) {
-            final Map<String, Object> positionalArgs = args.get("positional").get(0);
-            positionalArgs.put("testValue",
+            final Map<String, Object> positionalArgs = args.get(TemplateProperties.ARGUMENTS_POSITIONAL).get(0);
+            positionalArgs.put(WDL_TEST_VALUE_PROPERTY,
                     testValueAsJSON(
                             WDLWorkUnitHandler.POSITIONAL_ARGS,
                             clp.getPositionalArgumentDefinition(),
-                            (String) positionalArgs.get("type"),
-                            (String) positionalArgs.get("defaultValue"))
+                            (String) positionalArgs.get(TemplateProperties.ARGUMENT_TYPE),
+                            (String) positionalArgs.get(TemplateProperties.ARGUMENT_DEFAULT_VALUE))
             );
         }
     }
