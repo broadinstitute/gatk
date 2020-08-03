@@ -46,12 +46,12 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
         // load and parse every generated JSON file to make sure they're valid JSON
         final File[] jsonFiles = wdlTestTargetDir.listFiles((File dir, String name) -> name.endsWith(".json"));
         for (final File f : jsonFiles) {
-            //TODO: remove this debugging output
-            System.out.println(f);
             assertValidJSONFile(f);
         }
     }
 
+    // This test uses a test tool with all combinations of input/output, list/scalar, across all types, including
+    // companions, to ensure that the various templates use the template maps correctly.
     @Test
     public void wdlGenTemplateTest() throws IOException, ParseException {
         final File expectedResultsDir = new File("src/test/resources/org/broadinstitute/hellbender/utils/wdltest/");
