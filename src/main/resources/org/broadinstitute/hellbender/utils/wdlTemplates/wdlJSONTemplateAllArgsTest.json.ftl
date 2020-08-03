@@ -2,7 +2,7 @@
 <#--- This template is used only by tests, to generate test input data--->
 
 <#--- Store positional args in a WDL arg called "positionalArgs"--->
-<#assign positionalArgs="positionalArgs"/>
+<#assign positionalArgs="--positionalArgs"/>
   "${name}.dockerImage": "broadinstitute/gatk:${version}",
   "${name}.gatk": "java -cp ${buildDir}/build/libs/gatk.jar org.broadinstitute.hellbender.CommandLineArgumentValidatorMain",
 <#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.memoryRequirements != "">
@@ -55,7 +55,7 @@
 <#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: ${arg.testValue},
               </#list>
           </#if>
-<#noparse>  "</#noparse>${name}.${positionalArgs}<#noparse>"</#noparse>: <#rt/>
+<#noparse>  "</#noparse>${name}.${positionalArgs?substring(2)}<#noparse>"</#noparse>: <#rt/>
       <#else>
           <#if requiredCompanions?? && requiredCompanions[arg.name]??>
               <#list requiredCompanions[arg.name] as companion>

@@ -288,5 +288,13 @@ task TestWDLTool {
       bootDiskSizeGb: bootdisksizegbRequirements
   }
 
- }
+    parameter_meta {
+        requiredScalarFileInput: { localization_optional: true }
+        requiredScalarFileInputDictionary: { localization_optional: true }
+        requiredScalarFileInputIndex: { localization_optional: true }
+        requiredListFileInput: { localization_optional: true }
+        requiredListFileInputDictionary: { localization_optional: true }
+        requiredListFileInputIndex: { localization_optional: true }
+    }
+}
 

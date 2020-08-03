@@ -1,7 +1,7 @@
 version 1.0
 
 <#--- Store positional args in a WDL arg called "positionalArgs"--->
-<#assign positionalArgs="positionalArgs"/>
+<#assign positionalArgs="--positionalArgs"/>
 <#if beta?? && beta == true>
 # Run ${name} (**BETA**) (WDL auto generated from GATK Version ${version})
 <#elseif experimental?? && experimental == true>
@@ -117,7 +117,15 @@ task ${name} {
   output {
     <@defineTaskOutputs heading="Task Outputs" outputs=runtimeOutputs/>
   }
- }
+  <#if localizationOptional?size != 0>
+
+    parameter_meta {
+    <#list localizationOptional as optLoc>
+        ${optLoc?substring(2)}: { localization_optional: true }
+    </#list>
+    }
+  </#if>
+}
 
 <#--------------------------------------->
 <#-- Macros -->
@@ -127,7 +135,7 @@ task ${name} {
 #  ${heading}
         <#list argsToUse as arg>
             <#if heading?starts_with("Positional")>
-#    ${positionalArgs?right_pad(50)} ${arg.summary?right_pad(60)[0..*80]}
+#    ${positionalArgs?substring(2)?right_pad(50)} ${arg.summary?right_pad(60)[0..*80]}
                 <#if requiredCompanions?? && requiredCompanions[positionalArgs]??>
                     <#list requiredCompanions[positionalArgs] as companion>
 #    ${companion.name?substring(2)?right_pad(50)} ${companion.summary?right_pad(60)[0..*80]}
@@ -161,7 +169,7 @@ task ${name} {
     # ${heading}
         <#list argsToUse as arg>
             <#if heading?starts_with("Positional")>
-    ${arg.wdlinputtype} ${positionalArgs}
+    ${arg.wdlinputtype} ${positionalArgs?substring(2)}
                 <#if requiredCompanions?? && requiredCompanions[positionalArgs]??>
                     <#list requiredCompanions[positionalArgs] as companion>
     ${arg.wdlinputtype} ${companion.name?substring(2)}
@@ -195,7 +203,7 @@ task ${name} {
         # ${heading}
         <#list argsToUse as arg>
             <#if heading?starts_with("Positional")>
-        ${positionalArgs?right_pad(50)} = ${positionalArgs},
+        ${positionalArgs?substring(2)?right_pad(50)} = ${positionalArgs?substring(2)},
                 <#if requiredCompanions?? && requiredCompanions[positionalArgs]??>
                     <#list requiredCompanions[positionalArgs] as companion>
         ${companion.name?substring(2)?right_pad(50)} = ${companion.name?substring(2)},
@@ -227,7 +235,7 @@ task ${name} {
     <#if argsToUse?size != 0>
         <#list argsToUse as arg>
             <#if heading?starts_with("Positional")>
-    ${arg.wdlinputtype} ${positionalArgs}
+    ${arg.wdlinputtype} ${positionalArgs?substring(2)}
                 <#if requiredCompanions?? && requiredCompanions[arg.name]??>
                     <#list requiredCompanions[positionalArgs] as companion>
     ${arg.wdlinputtype} Positional_${companion.name?substring(2)}
@@ -281,7 +289,7 @@ task ${name} {
     <#if argsToUse?size != 0>
         <#list argsToUse as arg>
             <#if heading?starts_with("Positional")>
-    <#noparse>~{sep=' ' </#noparse>${positionalArgs}<#noparse>}</#noparse> \
+    <#noparse>~{sep=' ' </#noparse>${positionalArgs?substring(2)}<#noparse>}</#noparse> \
             <#elseif heading?starts_with("Required")>
     ${arg.actualArgName} <#noparse>~{sep=' </#noparse>${arg.actualArgName} <#noparse>' </#noparse>${arg.name?substring(2)}<#noparse>}</#noparse> \
             <#else>

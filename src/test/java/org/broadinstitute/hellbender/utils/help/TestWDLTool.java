@@ -44,14 +44,14 @@ public class TestWDLTool {
             shortName = "requiredScalarFileInput",
             doc = "requiredScalarFileInput doc",
             optional = false)
-    @WorkflowInput(requiredCompanions={"requiredScalarFileInputDictionary", "requiredScalarFileInputIndex"})
+    @WorkflowInput(requiredCompanions={"requiredScalarFileInputDictionary", "requiredScalarFileInputIndex"}, localizationOptional = true)
     public File requiredScalarFileInput;
 
     @Argument(fullName = "requiredListFileInput",
             shortName = "requiredListFileInput",
             doc = "requiredListFileInput doc",
             optional = false)
-    @WorkflowInput(requiredCompanions={"requiredListFileInputDictionary", "requiredListFileInputIndex"})
+    @WorkflowInput(requiredCompanions={"requiredListFileInputDictionary", "requiredListFileInputIndex"}, localizationOptional = true)
     public List<File> requiredListFileInput;
 
     @Argument(fullName = "requiredScalarFileOutput",
