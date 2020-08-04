@@ -47,6 +47,7 @@ workflow AlignAndCall {
     Boolean compress_output_vcf
     Float? verifyBamID
     Int? max_low_het_sites
+    Int? max_reads_per_alignment_start
 
     # Read length used for optimization only. If this is too small CollectWgsMetrics might fail, but the results are not
     # affected by this number. Default is 151.
@@ -113,6 +114,7 @@ workflow AlignAndCall {
       gatk_docker_override = gatk_docker_override,
       # Everything is called except the control region.
       m2_extra_args = select_first([m2_extra_args, ""]) + " -L chrM:576-16024 ",
+      max_reads_per_alignment_start = max_reads_per_alignment_start,
       mem = M2_mem,
       preemptible_tries = preemptible_tries
   }
@@ -129,6 +131,7 @@ workflow AlignAndCall {
       gatk_docker_override = gatk_docker_override,
       # Everything is called except the control region.
       m2_extra_args = select_first([m2_extra_args, ""]) + " -L chrM:8025-9144 ",
+      max_reads_per_alignment_start = max_reads_per_alignment_start,
       mem = M2_mem,
       preemptible_tries = preemptible_tries
   }
@@ -452,6 +455,7 @@ task M2 {
     File ref_dict
     File input_bam
     File input_bai
+    Int? max_reads_per_alignment_start
     String? m2_extra_args
     Boolean? make_bamout
     Boolean compress
@@ -462,6 +466,7 @@ task M2 {
     Int? preemptible_tries
   }
 
+  Int max_reads_per_alignment_start_arg = select_first([max_reads_per_alignment_start, 75])
   String output_vcf = "raw" + if compress then ".vcf.gz" else ".vcf"
   String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
   Float ref_size = size(ref_fasta, "GB") + size(ref_fai, "GB")
@@ -495,7 +500,7 @@ task M2 {
         ~{m2_extra_args} \
         --annotation StrandBiasBySample \
         --mitochondria-mode \
-        --max-reads-per-alignment-start 75 \
+        --max-reads-per-alignment-start ~{max_reads_per_alignment_start_arg} \
         --max-mnp-distance 0
   >>>
   runtime {
