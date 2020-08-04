@@ -103,15 +103,15 @@ public class DepthOfCoverageStats {
             return;
         }
         final HashMap<String,Integer> depthBySample = new HashMap<String,Integer>();
-        for ( String s : countsBySample.keySet() ) {
+        for ( Map.Entry<String, int[]> entry : countsBySample.entrySet() ) {
             int total = 0;
-            int[] counts = countsBySample.get(s);
+            int[] counts = entry.getValue();
             for ( byte base : BaseUtils.BASES_EXTENDED ) {
                 if ( includeDeletions || base != BaseUtils.Base.D.base ) { // note basesAreEqual assigns TRUE to (N,D) as both have simple index -1
                     total += counts[BaseUtils.extendedBaseToBaseIndex(base)];
                 }
             }
-            depthBySample.put(s,total);
+            depthBySample.put(entry.getKey(),total);
         }
         
         this.updateDepths(depthBySample);
