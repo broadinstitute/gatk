@@ -78,7 +78,7 @@ public final class ReadThreadingAssembler {
                                   final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = new ArrayList<>(kmerSizes);
-        kmerSizes.sort(Integer::compareTo);
+        this.kmerSizes.sort(Integer::compareTo);
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
