@@ -47,7 +47,6 @@ workflow AlignAndCall {
     Boolean compress_output_vcf
     Float? verifyBamID
     Int? max_low_het_sites
-    Int? max_reads_per_alignment_start
 
     # Read length used for optimization only. If this is too small CollectWgsMetrics might fail, but the results are not
     # affected by this number. Default is 151.
@@ -114,7 +113,6 @@ workflow AlignAndCall {
       gatk_docker_override = gatk_docker_override,
       # Everything is called except the control region.
       m2_extra_args = select_first([m2_extra_args, ""]) + " -L chrM:576-16024 ",
-      max_reads_per_alignment_start = max_reads_per_alignment_start,
       mem = M2_mem,
       preemptible_tries = preemptible_tries
   }
@@ -131,7 +129,6 @@ workflow AlignAndCall {
       gatk_docker_override = gatk_docker_override,
       # Everything is called except the control region.
       m2_extra_args = select_first([m2_extra_args, ""]) + " -L chrM:8025-9144 ",
-      max_reads_per_alignment_start = max_reads_per_alignment_start,
       mem = M2_mem,
       preemptible_tries = preemptible_tries
   }

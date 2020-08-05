@@ -8,6 +8,7 @@ workflow MitochondriaPipeline {
 
   meta {
     description: "Takes in an hg38 bam or cram and outputs VCF of SNP/Indel calls on the mitochondria."
+    allowNestedInputs: true
   }
 
   input {
@@ -62,7 +63,6 @@ workflow MitochondriaPipeline {
     Float? verifyBamID
     Boolean compress_output_vcf = false
     Int? max_low_het_sites
-    Int? max_reads_per_alignment_start
 
     #Optional runtime arguments
     Int? preemptible_tries
@@ -75,7 +75,6 @@ workflow MitochondriaPipeline {
     vaf_filter_threshold: "Hard threshold for filtering low VAF sites"
     f_score_beta: "F-Score beta balances the filtering strategy between recall and precision. The relative weight of recall to precision."
     contig_name: "Name of mitochondria contig in reference that wgs_aligned_input_bam_or_cram is aligned to"
-    max_reads_per_alignment_start: "Argument for Mutect2"
   }
 
   call SubsetBamToChrM {
@@ -128,7 +127,6 @@ workflow MitochondriaPipeline {
       gatk_override = gatk_override,
       gatk_docker_override = gatk_docker_override,
       m2_extra_args = m2_extra_args,
-      max_reads_per_alignment_start = max_reads_per_alignment_start,
       m2_filter_extra_args = m2_filter_extra_args,
       vaf_filter_threshold = vaf_filter_threshold,
       f_score_beta = f_score_beta,
