@@ -1,9 +1,9 @@
-package org.broadinstitute.hellbender.tools.variantdb.ingest.arrays;
+package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestConstants;
-import org.broadinstitute.hellbender.tools.variantdb.ingest.nextgen.PetTsvCreator;
+import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
+import org.broadinstitute.hellbender.tools.variantdb.nextgen.PetTsvCreator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;

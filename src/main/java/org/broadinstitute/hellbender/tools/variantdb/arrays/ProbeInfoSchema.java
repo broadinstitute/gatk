@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.variantdb.ingest.arrays;
+package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
 import java.sql.Ref;
 import java.util.Arrays;
