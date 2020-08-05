@@ -529,23 +529,8 @@ public final class AssemblyResultSet {
         final TreeSet<VariantContext> vcs = new TreeSet<>(
                 Comparator.comparingInt(VariantContext::getStart)
                         // Decide arbitrarily so as not to accidentally throw away overlapping variants
-                .thenComparing(new Comparator<VariantContext>() {
-                    @Override
-                    public int compare(VariantContext v1, VariantContext v2) {
-                        List<Allele> v1Alleles = v1.getAlleles();
-                        List<Allele> v2Alleles = v2.getAlleles();
-                        Utils.validate(v1Alleles.size() == 2, () -> "Error Haplotype event map Variant Context has too many alleles: "+v1);
-                        Utils.validate(v2Alleles.size() == 2, () -> "Error Haplotype event map Variant Context has too many alleles: "+v2);
-
-                        int diff = v1.getReference().length() - v2.getReference().length();
-                        if (diff == 0) {
-                            Allele v1allele = v1.getAlternateAllele(0);
-                            Allele v2allele = v2.getAlternateAllele(0);
-                            return v1allele.compareTo(v2allele);
-                        }
-                        return diff;
-                    }
-                }));
+                .thenComparingInt(vc -> vc.getReference().length())
+                .thenComparing(vc -> vc.getAlternateAllele(0)));
 
         for( final Haplotype h : haplotypes ) {
             vcs.addAll(h.getEventMap().getVariantContexts());
