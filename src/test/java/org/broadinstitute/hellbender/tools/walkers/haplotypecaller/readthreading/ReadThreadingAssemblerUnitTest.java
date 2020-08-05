@@ -49,6 +49,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
     }
 
     @Test
+    // Test of fix for https://github.com/broadinstitute/gatk/issues/6513
     public void testReadThreadingAssemblerDoesntModifyInputKmerList() {
         List<Integer> kmersOutOfOrder = Arrays.asList(65, 25, 45, 35, 85);
         List<Integer> kmersOutOfOrderCopy = new ArrayList<>(kmersOutOfOrder);
