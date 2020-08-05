@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.variantdb.ingest.arrays;
+package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -9,9 +9,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.variantdb.ChromosomeEnum;
-import org.broadinstitute.hellbender.tools.variantdb.ExtractCohortBQ;
-import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestConstants;
-import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestUtils;
+import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
+import org.broadinstitute.hellbender.tools.variantdb.IngestUtils;
 
 import java.io.File;
 import java.util.Map;
@@ -60,6 +59,12 @@ public final class CreateArrayIngestFiles extends VariantWalker {
     private String probeCsvFile = null;
 
     @Argument(
+            fullName = "use-compressed-data",
+            doc = "If true, use bit-packed fields for data",
+            optional = true)
+    private boolean useCompressedData = false;
+
+    @Argument(
             fullName = "ref-version",
             doc = "Remove this option!!!! only for ease of testing. Valid options are 37 or 38",
             optional = true)
@@ -103,7 +108,7 @@ public final class CreateArrayIngestFiles extends VariantWalker {
         // Set reference version
         ChromosomeEnum.setRefVersion(refVersion);
 
-        tsvCreator = new RawArrayTsvCreator(sampleName, sampleId, tableNumberPrefix, probeNameMap);
+        tsvCreator = new RawArrayTsvCreator(sampleName, sampleId, tableNumberPrefix, probeNameMap, useCompressedData);
     }
 
 

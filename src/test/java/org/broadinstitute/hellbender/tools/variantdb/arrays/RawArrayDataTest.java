@@ -1,6 +1,5 @@
-package org.broadinstitute.hellbender.tools.variantdb;
+package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
-//import org.testng.annotations.Test;
 import org.testng.annotations.Test;
 import static org.testng.Assert.*;
 
@@ -8,7 +7,7 @@ public final class RawArrayDataTest {
 
     @Test
     public void testEncodeDecode() {
-        RawArrayData original = new RawArrayData(1.059f, 2.849f, 0.988f, -0.035f); 
+        RawArrayData original = new RawArrayData(1.059f, 2.849f, 0.988f, -0.035f);
         long bits = original.encode();
         
         RawArrayData r = new RawArrayData(bits);

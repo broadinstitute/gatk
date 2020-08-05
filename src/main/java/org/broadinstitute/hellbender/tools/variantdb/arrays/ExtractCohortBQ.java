@@ -1,11 +1,11 @@
-package org.broadinstitute.hellbender.tools.variantdb;
+package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
 import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.variantdb.ingest.arrays.ProbeInfo;
+import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollectionCodec;
@@ -32,7 +32,7 @@ public class ExtractCohortBQ {
 
         // Get the query string:
         final String sampleListQueryString = 
-            "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME + 
+            "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME +
             " FROM `" + fqSampleTableName + "`";
         
 
@@ -117,7 +117,7 @@ public class ExtractCohortBQ {
         return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, comparator, localSortMaxRecordsInRam);
     }
 
-    final static Comparator<GenericRecord> COMPRESSED_PROBE_ID_COMPARATOR = new Comparator<GenericRecord>() {
+    public final static Comparator<GenericRecord> COMPRESSED_PROBE_ID_COMPARATOR = new Comparator<GenericRecord>() {
         @Override
         public int compare( GenericRecord o1, GenericRecord o2 ) {
             final long firstProbeId = new BasicArrayData((Long) o1.get(SchemaUtils.BASIC_ARRAY_DATA_FIELD_NAME)).probeId;
@@ -127,7 +127,7 @@ public class ExtractCohortBQ {
         }
     };
 
-    final static Comparator<GenericRecord> UNCOMPRESSED_PROBE_ID_COMPARATOR = new Comparator<GenericRecord>() {
+    public final static Comparator<GenericRecord> UNCOMPRESSED_PROBE_ID_COMPARATOR = new Comparator<GenericRecord>() {
         @Override
         public int compare( GenericRecord o1, GenericRecord o2 ) {
             final long firstProbeId = (Long) o1.get("probe_id");

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.variantdb.ingest.nextgen;
+package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
-import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestConstants;
+import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
 import java.io.File;

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.variantdb.ingest.nextgen;
+package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
@@ -15,13 +15,11 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.*;
-import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestConstants;
-import org.broadinstitute.hellbender.tools.variantdb.ingest.IngestUtils;
-import org.broadinstitute.hellbender.tools.variantdb.ingest.MetadataTsvCreator;
+import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
+import org.broadinstitute.hellbender.tools.variantdb.IngestUtils;
 import org.broadinstitute.hellbender.utils.*;
 
 import java.util.*;
-import java.nio.file.Path;
 import java.io.File;
 
 /**

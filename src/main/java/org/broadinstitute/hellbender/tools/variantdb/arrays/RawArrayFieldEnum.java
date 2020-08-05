@@ -1,18 +1,12 @@
-package org.broadinstitute.hellbender.tools.variantdb.ingest.arrays;
+package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFConstants;
-
-import java.util.Set;
-
-import org.broadinstitute.hellbender.tools.variantdb.BasicArrayData;
-import org.broadinstitute.hellbender.tools.variantdb.RawArrayData;
 
 
 /**
- * Expected headers for the Variant Table (VET)
+ * Expected headers for the  uncompressed array table
  *     sample, // req
  *     probe_id, // req
  *     GT_encoded,
@@ -21,12 +15,17 @@ import org.broadinstitute.hellbender.tools.variantdb.RawArrayData;
  *     BAF // b allele fraction --> AD proxy
  *     LRR // Log R ratio --> intensity value instead of DP
  * 
- *
+ * Headers for the compressed array table
+ *     basic_array_data
+ *     raw_array_data
  */
 
 public enum RawArrayFieldEnum {
-    sample_id, // Required-- sample Id for sample
-
+    sample_id {
+        public String getColumnValue(VariantContext variant, ProbeInfo probeInfo, String sampleId) {
+            return sampleId;
+        }
+    },
 
     // This where the validation step (required vs not) lives  -- fail if there is missing data for a required field
     // and just leave it empty if not required
@@ -117,5 +116,12 @@ public enum RawArrayFieldEnum {
 
     public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
         throw new IllegalArgumentException("Not implemented");
+    }
+
+    public static RawArrayFieldEnum[] getUncompressedRawArrayFieldEnums() {
+        return new RawArrayFieldEnum[] { sample_id, probe_id, GT_encoded, NORMX, NORMY, BAF, LRR };
+    }
+    public static RawArrayFieldEnum[] getCompressedRawArrayFieldEnums() {
+        return new RawArrayFieldEnum[] { basic_array_data, raw_array_data };
     }
 }

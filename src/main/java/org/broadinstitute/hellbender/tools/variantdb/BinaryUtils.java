@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.variantdb;
 public class BinaryUtils {
     // Function to extract k bits from p position (0-based) 
     // and returns the extracted value as integer 
-    static long extractBits(long number, int p, int k) { 
+    public static long extractBits(long number, int p, int k) {
         // make a bit-mask of the desired number of bits
         long mask = ((1L << k) - 1L);
        
@@ -12,7 +12,7 @@ public class BinaryUtils {
     } 
 
     // 0xFF (255) is reserved as NULL
-    static long encodeTo8Bits(Float e, float minValue, float maxValue) {
+    public static long encodeTo8Bits(Float e, float minValue, float maxValue) {
         if (e == null) {
             return 255;
         }
@@ -32,7 +32,7 @@ public class BinaryUtils {
 
 
     // 0xFF (255) is reserved as NULL
-    static Float decodeFrom8Bits(int i, float minValue, float maxValue) {
+    public static Float decodeFrom8Bits(int i, float minValue, float maxValue) {
         if (i == 255) {
             return null;
         }

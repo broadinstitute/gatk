@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.variantdb;
+package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
 import java.math.*;
 import static org.broadinstitute.hellbender.tools.variantdb.BinaryUtils.*;
