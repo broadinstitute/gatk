@@ -1,10 +1,10 @@
-package org.broadinstitute.hellbender.tools.variantdb;
+package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
 import org.testng.annotations.Test;
 import static org.testng.Assert.*;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.variantdb.BasicArrayData.ArrayGenotype;
+import org.broadinstitute.hellbender.tools.variantdb.arrays.BasicArrayData.ArrayGenotype;
 
 public final class BasicArrayDataTest {
 

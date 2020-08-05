@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.variantdb;
+package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -11,8 +11,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.tools.variantdb.BasicArrayData.ArrayGenotype;
-import org.broadinstitute.hellbender.tools.variantdb.ingest.arrays.ProbeInfo;
+import org.broadinstitute.hellbender.tools.variantdb.arrays.BasicArrayData.ArrayGenotype;
+import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
+import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -21,7 +22,7 @@ import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
 
 import java.text.DecimalFormat;
 import java.util.*;
-import static org.broadinstitute.hellbender.tools.variantdb.ExtractCohortBQ.*;
+import static org.broadinstitute.hellbender.tools.variantdb.arrays.ExtractCohortBQ.*;
 
 
 public class ArrayExtractCohortEngine {
@@ -77,7 +78,7 @@ public class ArrayExtractCohortEngine {
 
         this.probeIdMap = probeIdMap;
 
-        this.cohortTableRef = new TableReference(cohortTableName, useCompressedData?SchemaUtils.RAW_ARRAY_COHORT_FIELDS_COMPRESSED:SchemaUtils.RAW_ARRAY_COHORT_FIELDS_UNCOMPRESSED);
+        this.cohortTableRef = new TableReference(cohortTableName, useCompressedData? SchemaUtils.RAW_ARRAY_COHORT_FIELDS_COMPRESSED:SchemaUtils.RAW_ARRAY_COHORT_FIELDS_UNCOMPRESSED);
 
         this.useCompressedData = useCompressedData;
         this.printDebugInformation = printDebugInformation;
