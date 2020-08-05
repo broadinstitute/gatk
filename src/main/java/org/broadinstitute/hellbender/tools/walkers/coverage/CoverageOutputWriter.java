@@ -62,8 +62,8 @@ public class CoverageOutputWriter implements Closeable {
     private DEPTH_OF_COVERAGE_OUTPUT_FORMAT outputFormat;
     private boolean omitDepthOutput;
     private List<Integer> coverageThresholds;
-    private final static DecimalFormat DOUBLE_FORMAT_2PLACES = new DecimalFormat("0.00");
-    private final static DecimalFormat DOUBLE_FORMAT_1PLACE = new DecimalFormat("0.0");
+    private final DecimalFormat DOUBLE_FORMAT_2PLACES = new DecimalFormat("0.00");
+    private final DecimalFormat DOUBLE_FORMAT_1PLACE = new DecimalFormat("0.0");
 
     public enum DEPTH_OF_COVERAGE_OUTPUT_FORMAT {
         TABLE,
