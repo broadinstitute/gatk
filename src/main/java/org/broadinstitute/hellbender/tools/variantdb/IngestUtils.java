@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.variantdb.ingest;
+package org.broadinstitute.hellbender.tools.variantdb;
 
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;

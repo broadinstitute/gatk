@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.variantdb.ingest.arrays;
+package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
 import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
