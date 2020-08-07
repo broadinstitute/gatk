@@ -42,7 +42,7 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
     /**
      * this option has no effect unless intervals are specified.
      * <p>
-     * This exists to mimic GATK3 interval traversal patterns
+     * This isEnabled to mimic GATK3 interval traversal patterns
      */
     @Advanced
     @Argument(fullName = IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL,

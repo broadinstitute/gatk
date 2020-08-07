@@ -85,7 +85,7 @@ public class ReadThreadingGraph extends AbstractReadThreadingGraph {
         return nonUniqueKmers.size() * 4 > kmerToVertexMap.size();
     }
 
-    // only add the new kmer to the map if it exists and isn't in our non-unique kmer list
+    // only add the new kmer to the map if it isEnabled and isn't in our non-unique kmer list
     @Override
     protected void trackKmer(final Kmer kmer, final MultiDeBruijnVertex newVertex) {
         if ( ! nonUniqueKmers.contains(kmer) && ! kmerToVertexMap.containsKey(kmer) ) {

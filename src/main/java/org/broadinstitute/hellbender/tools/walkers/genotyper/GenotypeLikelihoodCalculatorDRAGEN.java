@@ -4,12 +4,10 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingDebugger;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -92,13 +90,13 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         final int readCount = sampleLikelihoods.evidenceCount();
         final int alleleDataSize = readCount * (ploidy + 1);
 
-        for(int gtAlleleIndex = 0; gtAlleleIndex < sampleLikelihoods.numberOfAlleles(); gtAlleleIndex++) {
+        for (int gtAlleleIndex = 0; gtAlleleIndex < sampleLikelihoods.numberOfAlleles(); gtAlleleIndex++) {
             //This is crufty, it just so happens that the index of the homozygous genotype corresponds to the maximum genotype count per field.
             //This should be pulled off as a calculator in some genotyping class.
             final int indexForGT = calculators.genotypeCount(ploidy, gtAlleleIndex + 1) - 1;
-            double[] readLikelihoodsForGT = readLikelihoodsByGenotypeIndex[indexForGT];
+            final double[] readLikelihoodsForGT = readLikelihoodsByGenotypeIndex[indexForGT];
 
-            for(int errorAlleleIndex = 0; errorAlleleIndex < sampleLikelihoods.numberOfAlleles(); errorAlleleIndex++) {
+            for (int errorAlleleIndex = 0, offsetForReadLikelihoodGivenAlleleIndex = readCount; errorAlleleIndex < sampleLikelihoods.numberOfAlleles(); errorAlleleIndex++, offsetForReadLikelihoodGivenAlleleIndex += alleleDataSize) {
                 // We only want to make calls on SNPs for now
                 if (sampleLikelihoods.getAllele(gtAlleleIndex) == sampleLikelihoods.getAllele(errorAlleleIndex) ||
                         sampleLikelihoods.getAllele(gtAlleleIndex).length() != refAllele.length() ||
@@ -106,19 +104,16 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                     continue;
                 }
                 // TODO super validate this
-                byte baseOfErrorAllele = sampleLikelihoods.getAllele(errorAlleleIndex).getBases()[0];
+                final byte baseOfErrorAllele = sampleLikelihoods.getAllele(errorAlleleIndex).getBases()[0];
 
-                double forwardHomopolymerAdjustment = FRDBQDUtils.computeForwardHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent, baseOfErrorAllele);
-                double reverseHomopolymerAdjustment = FRDBQDUtils.computeReverseHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent, baseOfErrorAllele);
-
-                // This selects the index for the reads page in the table corresponding to the likelihoods of the read given allele frequency of 1
-                final int offsetForReadLikelihoodGivenAlleleIndex = alleleDataSize * errorAlleleIndex + readCount;
+                final double forwardHomopolymerAdjustment = FRDBQDUtils.computeForwardHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent, baseOfErrorAllele);
+                final double reverseHomopolymerAdjustment = FRDBQDUtils.computeReverseHomopolymerAdjustment(paddedReference, offsetForRefIntoEvent, baseOfErrorAllele);
 
                 // BQD scores by strand
-                double minScoreFoundForwardsStrand = computeBQDModelForStrandData(strandForward, forwardHomopolymerAdjustment, readLikelihoodsForGT, offsetForReadLikelihoodGivenAlleleIndex, true, errorAlleleIndex);
-                double minScoreFoundReverseStrand = computeBQDModelForStrandData(strandReverse, reverseHomopolymerAdjustment, readLikelihoodsForGT, offsetForReadLikelihoodGivenAlleleIndex, false, errorAlleleIndex);
+                final double minScoreFoundForwardsStrand = computeBQDModelForStrandData(strandForward, forwardHomopolymerAdjustment, readLikelihoodsForGT, offsetForReadLikelihoodGivenAlleleIndex, true, errorAlleleIndex);
+                final double minScoreFoundReverseStrand = computeBQDModelForStrandData(strandReverse, reverseHomopolymerAdjustment, readLikelihoodsForGT, offsetForReadLikelihoodGivenAlleleIndex, false, errorAlleleIndex);
 
-                double modelScoreInLog10 = (minScoreFoundForwardsStrand + minScoreFoundReverseStrand)/-10.0;
+                final double modelScoreInLog10 = (minScoreFoundForwardsStrand + minScoreFoundReverseStrand) * -0.1;
                 //////
                 // NOTE we have not applied the prior here, this is because that gets applied downstream to each genotype in the array.
                 // since the prior is applied evenly to the defualt and error models this should not change this selection here.
@@ -143,17 +138,19 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
     private double computeBQDModelForStrandData(final List<DRAGENGenotypesModel.DragenReadContainer> positionSortedReads,
                                                 final double homopolymerAdjustment, final double[] readLikelihoodsForGT,
                                                 final int offsetForReadLikelihoodGivenAlleleIndex, final boolean forwards, final int errorAlleleIndex) {
+        // If no reads are found for a particular strand direction return no adjusted likelihoods score for those (non-existent) reads
         if (positionSortedReads.isEmpty()) {
-            return 0.0; // TODO check up on this
+            return 0.0;
         }
-        if (HaplotypeCallerGenotypingDebugger.exists()) {
+        if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             HaplotypeCallerGenotypingDebugger.println("errorAllele index: " + errorAlleleIndex + " theta: " + (forwards ? "1" : "2") + " homopolymerAdjustment: " + homopolymerAdjustment);
         }
 
         // Forwards strand tables (all in phred space for the sake of conveient debugging with provided scripts)
-        final double[] cumulativeProbReadForErrorAllele = new double[positionSortedReads.size() + 1];
-        final double[] cumulativeMeanBaseQualityPhredAdjusted = new double[positionSortedReads.size() + 1];
-        final double[] cumulativeProbGenotype = new double[positionSortedReads.size() + 1];
+        final int evidenceSize = positionSortedReads.size();
+        final double[] cumulativeProbReadForErrorAllele = new double[evidenceSize + 1];
+        final double[] cumulativeMeanBaseQualityPhredAdjusted = new double[evidenceSize + 1];
+        final double[] cumulativeProbGenotype = new double[evidenceSize + 1];
 
         double totalBaseQuality = 0;
         int baseQualityDenominator = 0; // We track this separately because not every read overlaps the SNP in question due to padding.
@@ -166,15 +163,13 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             final double homozygousGenotypeContribution;
             final double errorAlleleContribution;
             if (readIndex != -1) {
-                homozygousGenotypeContribution = readLikelihoodsForGT[readIndex] - MathUtils.log10(2);
+                homozygousGenotypeContribution = readLikelihoodsForGT[readIndex] - -MathUtils.LOG10_ONE_HALF;
                 errorAlleleContribution = readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex];
             } else {
                 // If read index == -1 then we are evaluating a read that was rejected by the HMM and therefore doesn't have genotype scores
                 homozygousGenotypeContribution = 0;
                 errorAlleleContribution = 0;
             }
-
-//            genotyperDebugStream.println("read index:"+readIndex+" read: "+container.underlyingRead+" "+container.underlyingRead.getCigar()+" pos: "+container.getUnclippedPosition()+"  snpOffset: "+container.offsetIntoReadForBaseQuality+"  forward feather end: "+container.getForwardsFeatherEnd()+" reverse: "+container.getReverseFeatherEnd()+" ihomGT:"+homozygousGenotypeContribution+"  errorAlleleContribution:"+errorAlleleContribution + " difference in log10: "+ (errorAlleleContribution - homozygousGenotypeContribution));
 
             // Populate the error probability array in phred space
             // Calculation: Alpha * P(r|E_allele) + (1 - Alpha) * P(r | G_homozygousGT))
@@ -199,11 +194,9 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         // Now we find the best partitioning N for the forwards evaluation of the data
         double minScoreFound = Double.POSITIVE_INFINITY;
         int nIndexUsed = 0;
-        double lastProbE=0;
-        double lastGQQual=0;
         for (int n = 0; n < cumulativeMeanBaseQualityPhredAdjusted.length; n++) {
             final double bqdScore = cumulativeMeanBaseQualityPhredAdjusted[n] + cumulativeProbReadForErrorAllele[n] + (cumulativeProbGenotype[cumulativeProbGenotype.length-1] - cumulativeProbGenotype[n]);
-            if (HaplotypeCallerGenotypingDebugger.exists()) {
+            if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println(String.format("n=%d: %.2f, cum_phred_bq=%.2f, cum_prob_r_Error=%.2f, prob_G_remaining=%.2f",
                         n, bqdScore, cumulativeMeanBaseQualityPhredAdjusted[n], cumulativeProbReadForErrorAllele[n],
                         (cumulativeProbGenotype[cumulativeProbGenotype.length - 1] - cumulativeProbGenotype[n])));
@@ -215,13 +208,12 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         }
 
         // Debug output for the genotyper to see into the calculation itself
-        if (HaplotypeCallerGenotypingDebugger.exists()) {
+        if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             HaplotypeCallerGenotypingDebugger.println(String.format("theta=%d n%d=%2d, best_phred_score =%5.2f q_mean=%5.2f, alpha=%4.2f, Ph(E)=%4.2f;  ", forwards ? 1 : 0,
                     (forwards ? 1 : 2), nIndexUsed, minScoreFound, cumulativeMeanBaseQualityPhredAdjusted[nIndexUsed],
                     BQD_FIXED_ERROR_RATE, cumulativeProbReadForErrorAllele[nIndexUsed]));
         }
 
-        //TODO this will be where i put my debuglogging (if i had any)
         return minScoreFound;
     }
 
@@ -263,24 +255,18 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         final int readCount = sampleLikelihoods.evidenceCount();
         final int alleleDataSize = readCount * (ploidy + 1);
 
-        for(int fAlleleIndex = 0; fAlleleIndex < sampleLikelihoods.numberOfAlleles(); fAlleleIndex++) {
+        for (int fAlleleIndex = 0, offsetForReadLikelihoodGivenAlleleIndex = readCount; fAlleleIndex < sampleLikelihoods.numberOfAlleles(); fAlleleIndex++, offsetForReadLikelihoodGivenAlleleIndex += alleleDataSize) {
             // ignore symbolic alleles
             final boolean isIndel = sampleLikelihoods.getAllele(fAlleleIndex).length() != refAllele.length();
-            final int offsetForReadLikelihoodGivenAlleleIndex = alleleDataSize * fAlleleIndex + readCount;
 
             // Here we generate a set of the critical log10(P(F)) values that we will iterate over
-            final Set<Double> criticalThresholdsForward = new HashSet<>();
-            final Set<Double> criticalThresholdsReverse = new HashSet<>();
-            final Set<Double> criticalThresholds = new HashSet<>();
-            computeCriticalValues(criticalThresholdsForward, criticalThresholdsReverse, criticalThresholds, readContainers, fAlleleIndex == 0 ? 0 : (isIndel? indelAprioriHet : snipAprioriHet)/-10); // simplified in line with DRAGEN, uses 1 alleledist for both snp and indels
-            final List<Double> criticalThresholdsSortedForward = criticalThresholdsForward.stream().sorted(Double::compareTo).collect(Collectors.toList());
-            final List<Double> criticalThresholdsSortedReverse = criticalThresholdsReverse.stream().sorted(Double::compareTo).collect(Collectors.toList());
-            final List<Double> criticalThresholdsSorted = criticalThresholds.stream().sorted(Double::compareTo).collect(Collectors.toList());
-            if (HaplotypeCallerGenotypingDebugger.exists()) {
-                HaplotypeCallerGenotypingDebugger.println("fIndex: " + fAlleleIndex + " criticalValues: \n" + criticalThresholds.stream().map(d -> Double.toString(d)).collect(Collectors.joining("\n")));
+            final FRDCriticalThresholds thresholds = computeCriticalValues(readContainers, fAlleleIndex == 0 ? 0 : (isIndel? indelAprioriHet : snipAprioriHet) * -0.1); // simplified in line with DRAGEN, uses 1 alleledist for both snp and indels
+
+            if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
+                HaplotypeCallerGenotypingDebugger.println("fIndex: " + fAlleleIndex + " criticalValues: \n" + thresholds.getCriticalThresholdsTotal().stream().map(d -> Double.toString(d)).collect(Collectors.joining("\n")));
             }
             // iterate over all of the homozygous genotypes for the given allele
-            for(int gtAlleleIndex = 0; gtAlleleIndex < sampleLikelihoods.numberOfAlleles(); gtAlleleIndex++) {
+            for (int gtAlleleIndex = 0; gtAlleleIndex < sampleLikelihoods.numberOfAlleles(); gtAlleleIndex++) {
                 // Skip over the allele corresponding to the "foreign" allele
                 if (gtAlleleIndex == fAlleleIndex) {
                     continue;
@@ -293,20 +279,20 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 //This is crufty, it just so happens that the index of the homozygous genotype corresponds to the maximum genotype count per field.
                 //This should be pulled off as a calculator in some genotyping class.
                 final int indexForGT = calculators.genotypeCount(ploidy, gtAlleleIndex + 1) - 1;
-                double[] readLikelihoodsForGT = readLikelihoodsByGenotypeIndex[indexForGT];
+                final double[] readLikelihoodsForGT = readLikelihoodsByGenotypeIndex[indexForGT];
 
                 // TODO restore the critical thresholds
-                if (HaplotypeCallerGenotypingDebugger.exists()) {
+                if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                     HaplotypeCallerGenotypingDebugger.println("indexForGT "+indexForGT+ " ooffsetForReadLikelihoodGivenAlleleIndex ="+offsetForReadLikelihoodGivenAlleleIndex);
                     HaplotypeCallerGenotypingDebugger.println("\nForwards Strands: ");
                 }
-                final double[] maxLog10FForwardsStrand = computeFRDModelForStrandData(readContainers, c -> !c.isReverseStrand() , offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted);
-                if (HaplotypeCallerGenotypingDebugger.exists()) {  HaplotypeCallerGenotypingDebugger.println("\nReverse Strands: ");}
-                final double[] maxLog10FReverseStrand = computeFRDModelForStrandData(readContainers, c -> c.isReverseStrand(), offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted);
-                if (HaplotypeCallerGenotypingDebugger.exists()) {  HaplotypeCallerGenotypingDebugger.println("\nBoth Strands: ");}
-                final double[] maxLog10FBothStrands = computeFRDModelForStrandData(readContainers, c -> true, offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, criticalThresholdsSorted);
+                final double[] maxLog10FForwardsStrand = computeFRDModelForStrandData(readContainers, c -> !c.isReverseStrand() , offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, thresholds.getCriticalThresholdsTotal());
+                if (HaplotypeCallerGenotypingDebugger.isEnabled()) {  HaplotypeCallerGenotypingDebugger.println("\nReverse Strands: ");}
+                final double[] maxLog10FReverseStrand = computeFRDModelForStrandData(readContainers, c -> c.isReverseStrand(), offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, thresholds.getCriticalThresholdsTotal());
+                if (HaplotypeCallerGenotypingDebugger.isEnabled()) {  HaplotypeCallerGenotypingDebugger.println("\nBoth Strands: ");}
+                final double[] maxLog10FBothStrands = computeFRDModelForStrandData(readContainers, c -> true, offsetForReadLikelihoodGivenAlleleIndex, readLikelihoodsForGT, thresholds.getCriticalThresholdsTotal());
 
-                if (HaplotypeCallerGenotypingDebugger.exists()) {
+                if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                     HaplotypeCallerGenotypingDebugger.println("gtAlleleIndex : "+gtAlleleIndex+ " fAlleleIndex: "+fAlleleIndex +" forwards: "+maxLog10FForwardsStrand+" reverse: "+maxLog10FReverseStrand+" both: "+maxLog10FBothStrands);
                 }
                 double[] localBestModel = maxLog10FForwardsStrand;
@@ -320,15 +306,15 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 // Handle max effective depth adjustment if specified
                 if (maxEffectiveDepthForHetAdjustment > 0) {
                     // Use the index corresponding the mixture of F and
-                    double localBestModelScore = localBestModel[0] - localBestModel[1];
-                    int closestGTAlleleIndex = allelesToIndex(gtAlleleIndex, fAlleleIndex);
-                    double log10LikelihoodsForPloyidyModel = ploidyModelLikelihoods[closestGTAlleleIndex] - MathUtils.log10(2);
-                    int depthForGenotyping = sampleLikelihoods.evidenceCount();
-                    double adjustedBestModel = log10LikelihoodsForPloyidyModel + ((localBestModelScore - log10LikelihoodsForPloyidyModel)
+                    final double localBestModelScore = localBestModel[0] - localBestModel[1];
+                    final int closestGTAlleleIndex = allelesToIndex(gtAlleleIndex, fAlleleIndex);
+                    final double log10LikelihoodsForPloyidyModel = ploidyModelLikelihoods[closestGTAlleleIndex] - -MathUtils.LOG10_ONE_HALF;
+                    final int depthForGenotyping = sampleLikelihoods.evidenceCount();
+                    final double adjustedBestModel = log10LikelihoodsForPloyidyModel + ((localBestModelScore - log10LikelihoodsForPloyidyModel)
                             * ((Math.min(depthForGenotyping, maxEffectiveDepthForHetAdjustment) * 1.0) / depthForGenotyping));
                     outputArray[indexForGT] = Math.max(outputArray[indexForGT], adjustedBestModel + localBestModel[1]);
 
-                    if (HaplotypeCallerGenotypingDebugger.exists()) {
+                    if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                         HaplotypeCallerGenotypingDebugger.println("best FRD likelihoods: "+localBestModelScore+" P(F) score used: "+localBestModel[1]+"  use MaxEffectiveDepth: "+maxEffectiveDepthForHetAdjustment);
                         HaplotypeCallerGenotypingDebugger.println("Using array index "+closestGTAlleleIndex+" for mixture gt with likelihood of "+log10LikelihoodsForPloyidyModel+" adjusted based on depth: "+depthForGenotyping);
                         HaplotypeCallerGenotypingDebugger.println("p_rG_adj : "+adjustedBestModel);
@@ -381,10 +367,10 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 // Keep track of the aggregate support for the foreign allele
                 if (predicate.test(container)) {
                     // Only include reads with mapping quality adjustment < the critical threshold being used (i.e. exclude reads with MQ > than the threshold)
-                    double LPd_r_F = container.getPhredPFValue() + 0.0000001 <= logProbFAllele ?
+                    final double LPd_r_F = container.getPhredPFValue() + 0.0000001 <= logProbFAllele ?
                             Double.NEGATIVE_INFINITY :
                             readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex];
-                    double lp_r_GT = readLikelihoodsForGT[readIndex] - MathUtils.log10(2);
+                    final double lp_r_GT = readLikelihoodsForGT[readIndex] - -MathUtils.LOG10_ONE_HALF;
 
                     fAlleleProbRatio += Math.pow(10, LPd_r_F - MathUtils.approximateLog10SumLog10(LPd_r_F, lp_r_GT));
                     fAlleleProbDenom++;
@@ -392,9 +378,9 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             }
 
             // Don't learn the beta but approximate it based on the read support for the alt
-            double foreignAlleleLikelihood = Math.min(fAlleleProbRatio / fAlleleProbDenom, 0.5);
-            double log10ForeignAlleleLikelihood = Math.log10(foreignAlleleLikelihood);
-            double log10NotForeignAlleleLikelihood = Math.log10(1.0 - foreignAlleleLikelihood);
+            final double foreignAlleleLikelihood = Math.min(fAlleleProbRatio / fAlleleProbDenom, 0.5);
+            final double log10ForeignAlleleLikelihood = Math.log10(foreignAlleleLikelihood);
+            final double log10NotForeignAlleleLikelihood = Math.log10(1.0 - foreignAlleleLikelihood);
             double cumulativeLog10LikelihoodOfForeignReadHypothesis = 0.0; // LP_R_GF
 
             // iterate over the containers again using the approximated beta constraint
@@ -405,11 +391,11 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 }
                 final int readIndex = container.getIndexInLikelihoodsObject();
 
-                double log10LikelihoodReadForGenotype = readLikelihoodsForGT[readIndex] - MathUtils.log10(2);
+                final double log10LikelihoodReadForGenotype = readLikelihoodsForGT[readIndex] - -MathUtils.LOG10_ONE_HALF;
 
                 // COMPUTE THE MODEL FOR THE STRAND IN QUESTION
                 if (predicate.test(container)) {
-                    double log10LikelihoodOfForeignAlleleGivenLPFCutoff = container.getPhredPFValue() + 0.0000001 <= logProbFAllele ?
+                    final double log10LikelihoodOfForeignAlleleGivenLPFCutoff = container.getPhredPFValue() + 0.0000001 <= logProbFAllele ?
                             Double.NEGATIVE_INFINITY :
                             readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex];
 
@@ -422,7 +408,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             double LPsi = logProbFAllele + cumulativeLog10LikelihoodOfForeignReadHypothesis; // NOTE unlike DRAGEN we apply the prior to the combined likelihoods array after the fact so gtAllelePrior is not included at this stage
             localMaxLpspi = Math.max(localMaxLpspi, LPsi);
 
-            if (HaplotypeCallerGenotypingDebugger.exists()) {
+            if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("beta: "+foreignAlleleLikelihood+" localMaxLpspi: " + localMaxLpspi + " for lpf: "+logProbFAllele+" with LP_R_GF: "+cumulativeLog10LikelihoodOfForeignReadHypothesis+" index: "+counter++);
             }
             if (localMaxLpspi > maxLpspi) {
@@ -431,7 +417,6 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             }
         }
 
-        //TODO javaize this
         // TODO soon should not need to use the LPF applied here...
         return new double[]{maxLpspi, lpfApplied};
     }
@@ -445,19 +430,25 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
     // TODO  of not matching DRAGEN properly.
     // helper method to populate the reads containers properly with their critical values and store them in the provided set
     // NOTE: this has the side effect of setting the DragenReadContainer setPhredPFValue() values for the reads for the given set of alleles
-    private void computeCriticalValues(final Set<Double> criticalThresholdsForwards, final Set<Double> criticalThresholdsReverse, final Set<Double> criticalThresholdsTotal, final List<DRAGENGenotypesModel.DragenReadContainer> container, final double log10MapqPriorAdjustment) {
+    private FRDCriticalThresholds computeCriticalValues(final List<DRAGENGenotypesModel.DragenReadContainer> container, final double log10MapqPriorAdjustment) {
+        final Set<Double> criticalThresholdsForwards = new HashSet<>();
+        final Set<Double> criticalThresholdsReverse = new HashSet<>();
+        final Set<Double> criticalThresholdsTotal = new HashSet<>();
+
         for (int i = 0; i < container.size(); i++) {
             final DRAGENGenotypesModel.DragenReadContainer readContainer = container.get(i);
-            final double log10CriticalValue = readContainer.getPhredScaledMappingQuality() / -10.0 + log10MapqPriorAdjustment;
+            final double log10CriticalValue = readContainer.getPhredScaledMappingQuality() * -0.1 + log10MapqPriorAdjustment;
             readContainer.setPhredPFValue(log10CriticalValue);
             // Split the critical thresholds up by their applicable strands in order to avoid repeated work
-            if (readContainer.isReverseStrand()) {
-                criticalThresholdsReverse.add(log10CriticalValue);
-            } else {
-                criticalThresholdsForwards.add(log10CriticalValue);
-            }
+//            if (readContainer.isReverseStrand()) {
+//                criticalThresholdsReverse.add(log10CriticalValue);
+//            } else {
+//                criticalThresholdsForwards.add(log10CriticalValue);
+//            }
             criticalThresholdsTotal.add(log10CriticalValue);
         }
+
+        return new FRDCriticalThresholds(criticalThresholdsForwards, criticalThresholdsReverse, criticalThresholdsTotal);
     }
 
 
@@ -483,5 +474,36 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         double[] output = super.getReadRawReadLikelihoodsByGenotypeIndex(likelihoods);
         cachedLikelihoods = likelihoods;
         return output;
+    }
+
+    /**
+     * Helper class for storing FRD sorted and de-duplicated critical thresholds generated from reads to be accessed by subsequent calls.
+     */
+    private class FRDCriticalThresholds {
+        private final List<Double> criticalThresholdsForwards;
+        private final List<Double> criticalThresholdsReverse;
+        private final List<Double> criticalThresholdsTotal;
+
+        private FRDCriticalThresholds(final Set<Double> criticalThresholdsForwards, final Set<Double> criticalThresholdsReverse, final Set<Double> criticalThresholdsTotal) {
+            this.criticalThresholdsForwards = criticalThresholdsForwards.stream().sorted(Double::compareTo).collect(Collectors.toList());
+            this.criticalThresholdsReverse = criticalThresholdsReverse.stream().sorted(Double::compareTo).collect(Collectors.toList());
+            this.criticalThresholdsTotal = criticalThresholdsTotal.stream().sorted(Double::compareTo).collect(Collectors.toList());
+        }
+
+        public List<Double> getCriticalThresholdsTotal() {
+            return criticalThresholdsTotal;
+        }
+
+
+        // TODO while these are currently not being used a potential optimization to FRD would involve feeding the FRD computations only thresholds
+        // TODO that are relevant/possible to be selected for a given strandedness. DRAGEN does not do this optimization and I have opted to not implement
+        // TODO it here since it is complicated by the fact that critical thresholds that are not present in reads for a given strand might end up being
+        // TODO selected if it is lower than a threshold where there is a change.
+        public List<Double> getCriticalThresholdsForwards() {
+            return criticalThresholdsForwards;
+        }
+        public List<Double> getCriticalThresholdsReverse() {
+            return criticalThresholdsReverse;
+        }
     }
 }

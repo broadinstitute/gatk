@@ -44,7 +44,7 @@ public class GatkToolIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test (expectedExceptions = java.lang.IllegalArgumentException.class)
-    // test asserting that if the reference dictionary exists but is not valid we get a more helpful exception than a null pointer exception
+    // test asserting that if the reference dictionary isEnabled but is not valid we get a more helpful exception than a null pointer exception
     public void testBrokenReferenceDictionaryErrorMessage() throws IOException {
         File out = createTempFile("GTStrippedOutput", "vcf");
 

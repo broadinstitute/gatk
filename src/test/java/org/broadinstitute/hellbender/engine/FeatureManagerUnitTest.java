@@ -61,7 +61,7 @@ public final class FeatureManagerUnitTest extends GATKBaseTest {
         // Eliminate file existence/readability as a factor in the test
         Assert.assertTrue(unsupportedFile.canRead(), "Cannot test detection of unsupported file formats on an unreadable file");
 
-        // Should throw, since the file exists and is readable, but is in an unsupported format
+        // Should throw, since the file isEnabled and is readable, but is in an unsupported format
         FeatureManager.getCodecForFile(unsupportedFile.toPath());
     }
 

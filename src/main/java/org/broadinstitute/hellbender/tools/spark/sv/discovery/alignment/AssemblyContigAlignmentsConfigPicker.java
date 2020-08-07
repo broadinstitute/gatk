@@ -216,7 +216,7 @@ public class AssemblyContigAlignmentsConfigPicker {
      *
      * Note that a special case needs attention:
      *     if {@link #getMayBeNullGoodMappingToNonCanonicalChromosome()} returns non-null result,
-     *     it is indicating an equally good--or better--non-chimeric mapping to a non-canonical chromosome exists,
+     *     it is indicating an equally good--or better--non-chimeric mapping to a non-canonical chromosome isEnabled,
      *     but to preserve the SV signal, we keep the chimeric alignments to canonical chromosomes and
      *     signal the situation to downstream units.
      */
@@ -330,7 +330,7 @@ public class AssemblyContigAlignmentsConfigPicker {
                 .filter(alignmentInterval -> canonicalChromosomes.contains(alignmentInterval.referenceSpan.getContig()))
                 .mapToInt(ai -> ai.alnScore).max().orElse(0); // possible that no mapping to canonical chromosomes
 
-        // annotate contig if a good mapping to non-canonical chromosome exists
+        // annotate contig if a good mapping to non-canonical chromosome isEnabled
         final AlignmentInterval goodMappingToNonCanonicalChromosome =
                 getBetterNonCanonicalMapping(canonicalChromosomes, goodMappings, newMaxCanonicalChrAlignerScore);
         if (goodMappingToNonCanonicalChromosome != null) { // take it out of consideration

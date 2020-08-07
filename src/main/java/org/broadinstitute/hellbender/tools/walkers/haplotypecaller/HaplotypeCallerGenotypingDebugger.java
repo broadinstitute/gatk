@@ -10,7 +10,7 @@ import java.nio.file.Files;
 /**
  * A short helper class that manages a singleton debug stream for HaplotypeCaller genotyping information that is useful for debugging.
  *
- * In order to use simply call initialize() providing a location for an output path, then call exists() to evaluate if the processing
+ * In order to use simply call initialize() providing a location for an output path, then call isEnabled() to evaluate if the processing
  * for printing debug statements should be performed, and call println() to output to the file in a synchronized fashion.
  */
 public class HaplotypeCallerGenotypingDebugger{
@@ -25,11 +25,11 @@ public class HaplotypeCallerGenotypingDebugger{
     }
 
     // Is the debugger enabled
-    public static boolean exists() {
+    public static boolean isEnabled() {
         return genotyperDebugOutStream != null;
     }
 
-    // Print the provided text to the debugger if it exists
+    // Print the provided text to the debugger if it isEnabled
     public static synchronized void println(final String debug) {
         if (genotyperDebugOutStream != null) {
             genotyperDebugOutStream.println(debug);

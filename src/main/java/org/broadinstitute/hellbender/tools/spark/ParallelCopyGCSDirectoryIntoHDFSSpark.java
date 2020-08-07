@@ -118,7 +118,7 @@ public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
         try(FileSystem fs = outputHdfsDirectoryPath.getFileSystem(new Configuration())) {
 
             if (fs.exists(outputHdfsDirectoryPath)) {
-                throw new UserException("Specified output directory " + outputHdfsDirectoryPath + " already exists. Please specify a new directory name.");
+                throw new UserException("Specified output directory " + outputHdfsDirectoryPath + " already isEnabled. Please specify a new directory name.");
             }
             fs.mkdirs(outputHdfsDirectoryPath);
 

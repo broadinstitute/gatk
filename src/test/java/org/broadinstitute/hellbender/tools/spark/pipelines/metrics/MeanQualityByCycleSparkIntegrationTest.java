@@ -62,7 +62,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
             Assert.assertEquals(output.getAllHistograms().size(), 1);
             Assert.assertEquals(output.getHistogram().size(), 202);
         }
-        Assert.assertTrue(pdf.exists(), "exists");
+        Assert.assertTrue(pdf.exists(), "isEnabled");
         Assert.assertTrue(pdf.length() > 0, "length");
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }

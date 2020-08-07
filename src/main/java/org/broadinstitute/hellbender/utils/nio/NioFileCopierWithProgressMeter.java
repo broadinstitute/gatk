@@ -112,7 +112,7 @@ public class NioFileCopierWithProgressMeter {
 
     /**
      * Create an {@link NioFileCopierWithProgressMeter}.
-     * By default the resulting {@link NioFileCopierWithProgressMeter} will not overwrite the destination if anything already exists there.
+     * By default the resulting {@link NioFileCopierWithProgressMeter} will not overwrite the destination if anything already isEnabled there.
      * @param source The {@link Path} to the source file for the copy.
      * @param dest The {@link Path} to the destination file for the copy.
      * @return An {@link NioFileCopierWithProgressMeter} initialized to copy the file located at {@code source} to the location specified by {@code dest}.
@@ -454,10 +454,10 @@ public class NioFileCopierWithProgressMeter {
         // Do a quick existence check for safety:
         if ( Files.exists(getDest()) ) {
             if ( !isOverwriteExisting() ) {
-                throw new UserException.CouldNotCreateOutputFile(getDest().toUri().toString(), "Download aborted!  Output data sources file already exists!");
+                throw new UserException.CouldNotCreateOutputFile(getDest().toUri().toString(), "Download aborted!  Output data sources file already isEnabled!");
             }
             else if ( verbosity.isAbove(Verbosity.SILENT) ) {
-                logger.warn("Destination already exists.  Overwriting file at location: " + getDest().toUri().toString());
+                logger.warn("Destination already isEnabled.  Overwriting file at location: " + getDest().toUri().toString());
             }
         }
 

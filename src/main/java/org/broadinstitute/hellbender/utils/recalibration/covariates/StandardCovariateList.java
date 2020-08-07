@@ -136,7 +136,7 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
 
     /**
      * Retrieves a covariate by the parsed name {@link Covariate#parseNameForReport()} or null
-     * if no covariate with that name exists in the list.
+     * if no covariate with that name isEnabled in the list.
      */
     public Covariate getCovariateByParsedName(final String covName) {
         return allCovariates.stream().filter(cov -> cov.parseNameForReport().equals(covName)).findFirst().orElse(null);

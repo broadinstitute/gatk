@@ -211,7 +211,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     private File pythonProfileResults;
 
     // Create the Python executor. This doesn't actually start the Python process, but verifies that
-    // the requestedPython executable exists and can be located.
+    // the requestedPython executable isEnabled and can be located.
     final StreamingPythonScriptExecutor<String> pythonExecutor = new StreamingPythonScriptExecutor<>(true);
 
     private List<String> batchList = new ArrayList<>(inferenceBatchSize);

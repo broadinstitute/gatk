@@ -204,7 +204,7 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
         int finalIndex = referencePath.lastIndexOf(vert);
 
         while (finalIndex == -1 &&  vert != null) {
-            // If the current verex is not a reference vertex but exists, add it to our list of extra bases to append to the reference
+            // If the current verex is not a reference vertex but isEnabled, add it to our list of extra bases to append to the reference
             extraSequence.add(vert);
 
             final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(vert);
@@ -456,7 +456,7 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
         // List we will use to keep track of sequences
         JunctionTreeThreadingHelper nodeHelper = new JunctionTreeThreadingHelper();
 
-        // Find the first kmer in the read that exists on the graph
+        // Find the first kmer in the read that isEnabled on the graph
         final int startPos = findStartForJunctionThreading(seqForKmers);
         if ( startPos == -1 ) {
             return;
@@ -560,7 +560,7 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
      */
     public class ThreadingTree {
         private final ThreadingNode rootNode;
-        private final MultiDeBruijnVertex treeVertex; // this reference exists purely for toString() reasons
+        private final MultiDeBruijnVertex treeVertex; // this reference isEnabled purely for toString() reasons
 
         private ThreadingTree(final MultiDeBruijnVertex treeVertex) {
             this.rootNode = new ThreadingNode(null);
@@ -617,7 +617,7 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
 
         /**
          * Adds an edge to the tree if this node has not been traversed before, or increments the corresponding node
-         * if the edge already exists. Then returns the corresponding next node
+         * if the edge already isEnabled. Then returns the corresponding next node
          *
          * @param edge edge to add to this current node
          * @return the node corresponding to the one that was added to this graph

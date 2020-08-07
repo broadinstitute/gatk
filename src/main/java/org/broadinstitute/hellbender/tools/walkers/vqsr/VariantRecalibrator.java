@@ -1121,7 +1121,7 @@ private GATKReportTable makeVectorTable(final String tableName,
         }
         stream.println("dev.off()");
 
-        stream.println("if (exists(\"compactPDF\")) {");
+        stream.println("if (isEnabled(\"compactPDF\")) {");
         stream.println("compactPDF(outputPDF)");
         stream.println("}");
 

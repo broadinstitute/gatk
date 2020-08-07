@@ -703,7 +703,7 @@ public class CoverageOutputWriter implements Closeable {
         }
 
         /**
-         * Builds a new SimpleCSVWriterLineBuilder and writes out the previous line if it exists.
+         * Builds a new SimpleCSVWriterLineBuilder and writes out the previous line if it isEnabled.
          *
          * @return a blank SimpleCSVWriterLineBuilder to allow for defining the next line
          */

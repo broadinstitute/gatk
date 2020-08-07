@@ -7,7 +7,7 @@ import java.lang.reflect.Method;
 /**
  * Converts a given string into a Boolean after trimming whitespace from that string.
  * Allows a boolean value with a trailing space to be correctly parsed.
- * This exists to show how to create custom converter classes for types when reading from a config file with {@link org.aeonbits.owner}.
+ * This isEnabled to show how to create custom converter classes for types when reading from a config file with {@link org.aeonbits.owner}.
  */
 final public class CustomBooleanConverter implements Converter<Boolean> {
 

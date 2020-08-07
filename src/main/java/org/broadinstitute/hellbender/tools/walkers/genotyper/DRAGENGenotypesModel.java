@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -86,11 +85,11 @@ public class DRAGENGenotypesModel implements GenotypingModel {
             final int period = dragstrs.period(offsetForRefIntoEvent + 1 );
             final int repeats = dragstrs.repeatLength(offsetForRefIntoEvent + 1);
             api = dragstrParams.api(period, repeats);
-            if (HaplotypeCallerGenotypingDebugger.exists()) {
+            if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("API found: " + api + " with period used: " + period + "  and repeats: " + repeats);
             }
         } else {
-            if (HaplotypeCallerGenotypingDebugger.exists()) {
+            if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("No API from DRAGStrs found, falling back on snp het prior for indels");
             }
             api = FLAT_SNP_HET_PRIOR;
@@ -149,7 +148,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
             final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(sampleIndex));
             final double[] ploidyModelGenotypeLikelihoods = likelihoodsCalculator.rawGenotypeLikelihoods(sampleLikelihoods);
 
-            if (HaplotypeCallerGenotypingDebugger.exists()) {
+            if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("\n Standard Genotyping Likelihoods Results:");
                 HaplotypeCallerGenotypingDebugger.println(Arrays.toString(ploidyModelGenotypeLikelihoods));
             }
@@ -168,7 +167,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
 
             // this is what the work actually is, after we have computed a few things
             genotypeLikelihoods.add(GenotypeLikelihoods.fromLog10Likelihoods(ploidyModelGenotypeLikelihoods));
-            if (HaplotypeCallerGenotypingDebugger.exists()) {
+            if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("merged matrix:");
                 HaplotypeCallerGenotypingDebugger.println(Arrays.toString(ploidyModelGenotypeLikelihoods));
             }
@@ -177,7 +176,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
     }
 
     private void applyLikelihoodsAdjusmentToBaseline(final double[] initialLikelihoods, final String name, final double[] adjustmentLikelihoods) {
-        if (HaplotypeCallerGenotypingDebugger.exists()) {
+        if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             HaplotypeCallerGenotypingDebugger.println(name + " adjusted likelihoods:");
             HaplotypeCallerGenotypingDebugger.println(Arrays.toString(adjustmentLikelihoods));
         }
@@ -273,8 +272,8 @@ public class DRAGENGenotypesModel implements GenotypingModel {
         }
     }
 
-    //MAJOR TODO THIS IS CURRENTLY BASED OFF OF THE REFERENCE UNCLIPPED START AND NOT THE BASES IN THE READ CONSEQUENTLY AT SITES WITH
-    //      TODO INDELS PRESENT WE ARE GOING TO BE LOOKING AT THE WRONG OFFSETS FOR THIS SORT... a minor issue but still...
+    //TODO THIS IS CURRENTLY BASED OFF OF THE REFERENCE UNCLIPPED START AND NOT THE BASES IN THE READ CONSEQUENTLY AT SITES WITH
+    //TODO INDELS PRESENT WE ARE GOING TO BE LOOKING AT THE WRONG OFFSETS FOR THIS SORT... a minor issue but still...
     //UPDATE:APPARENTLY DRAGEN ONLY USES THE ORIGINAL BASE ALIGNMENT OFFSETS HERE (NO HARDCLIPPED BASES OR INDEL SITE HANDLING)
 
     // Orders the reads based on the number of bases there are to the left of the fatherEndComparisonLocation as aligned according to the cigar

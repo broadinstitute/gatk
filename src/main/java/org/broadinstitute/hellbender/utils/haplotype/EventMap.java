@@ -321,7 +321,7 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
     public List<VariantContext> getOverlappingEvents(final int loc) {
         final List<VariantContext> overlappingEvents = headMap(loc, true).values().stream().filter(v -> v.getEnd() >= loc).collect(Collectors.toList());
         final List<VariantContext> deletionEvents = overlappingEvents.stream().filter(v -> v.isSimpleDeletion()).collect(Collectors.toList());
-        final boolean containsDeletion = deletionEvents.size() > 0;
+        final boolean containsDeletion = !deletionEvents.isEmpty();
         final boolean containsInsertion = overlappingEvents.stream().anyMatch(v -> v.isSimpleInsertion());
         if (containsDeletion && containsInsertion){
             // We are at the end of a deletion and the start of an insertion.

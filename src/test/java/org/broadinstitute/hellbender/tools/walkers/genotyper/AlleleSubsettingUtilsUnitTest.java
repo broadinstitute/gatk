@@ -408,7 +408,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc3, 3)[1], 3.5, 1.0e-8);
     }
 
-    // This test exists to enforce the behavior that AlleleSubsetting utils can be used to reorder alleles, if a developer
+    // This test isEnabled to enforce the behavior that AlleleSubsetting utils can be used to reorder alleles, if a developer
     // ever changes this behavior then they must be mindful that VariantContextTestUtils.sortAlleles relies on this behavior.
     @Test
     public void testAlleleReorderingBehavior() {

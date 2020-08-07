@@ -1341,7 +1341,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** Transcript contains at least 1 non-canonical splice junction that is associated with a known or novel genome sequence */
         SEQUENCE_ERROR("sequence_error"),
 
-        /** an upstream ATG exists when a downstream ATG is better supported. */
+        /** an upstream ATG isEnabled when a downstream ATG is better supported. */
         UPSTREAM_ATG("upstream_ATG"),
 
         /** a low confidence upstream ATG existing in other coding variant would lead to NMD in this trancript, that uses the high */
@@ -1518,7 +1518,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         NEW("new"),
 
         /**
-         * Gene or transcript exists in source and target genome, however source was not mapped.
+         * Gene or transcript isEnabled in source and target genome, however source was not mapped.
          */
         LOST("lost"),
 
@@ -1528,7 +1528,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         OVERLAP("overlap"),
 
         /**
-         * Gene or transcript exists in target, however source mapping is to a different location. This is often mappings to a gene family members or pseudogenes.
+         * Gene or transcript isEnabled in target, however source mapping is to a different location. This is often mappings to a gene family members or pseudogenes.
          */
         NONOVERLAP("nonOverlap");
 

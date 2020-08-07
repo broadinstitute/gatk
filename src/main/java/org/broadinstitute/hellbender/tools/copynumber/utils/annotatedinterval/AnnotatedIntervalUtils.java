@@ -73,8 +73,8 @@ public class AnnotatedIntervalUtils {
         final Set<Map.Entry<String, String>> allEntries = Sets.union(region1.getAnnotations().entrySet(),
                 region2.getAnnotations().entrySet());
 
-        // For each remaining entry, if the annotation name only exists in one region, then just pass it through.
-        //     if it exists in both entries, then merge it using the separator.
+        // For each remaining entry, if the annotation name only isEnabled in one region, then just pass it through.
+        //     if it isEnabled in both entries, then merge it using the separator.
         final BiFunction<String, String,String> conflictFunction = (s1, s2) -> renderConflict(s1, s2, separator);
         final SortedMap<String, String> annotations = new TreeMap<>();
         allEntries.forEach(e -> annotations.put(e.getKey(), mergeAnnotationValue(e.getKey(), region1, region2, conflictFunction)));

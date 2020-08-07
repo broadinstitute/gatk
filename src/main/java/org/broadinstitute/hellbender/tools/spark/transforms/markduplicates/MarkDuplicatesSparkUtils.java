@@ -450,7 +450,7 @@ public class MarkDuplicatesSparkUtils {
         final List<String> sortedListOfLibraryNames = new ArrayList<>(Sets.union(emptyMapByLibrary.keySet(), nonEmptyMetricsByLibrary.keySet()));
         sortedListOfLibraryNames.sort(Utils.COMPARE_STRINGS_NULLS_FIRST);
         for (final String library : sortedListOfLibraryNames) {
-            //if a non-empty exists, take it, otherwise take from the the empties. This is done to include libraries with zero data in them.
+            //if a non-empty isEnabled, take it, otherwise take from the the empties. This is done to include libraries with zero data in them.
             //But not all libraries are listed in the header (esp in testing data) so we union empty and non-empty
             final GATKDuplicationMetrics metricsToAdd = nonEmptyMetricsByLibrary.containsKey(library) ? nonEmptyMetricsByLibrary.get(library) : emptyMapByLibrary.get(library);
             metricsToAdd.calculateDerivedFields();

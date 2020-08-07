@@ -262,7 +262,7 @@ public final class PileupElement {
     }
 
     /**
-     * Get the length of an immediately following insertion or deletion event, or 0 if no such event exists
+     * Get the length of an immediately following insertion or deletion event, or 0 if no such event isEnabled
      *
      * Only returns a positive value when this pileup element is immediately before an indel.  Being
      * immediately before a deletion means that this pileup element isn't an deletion, and that the
@@ -280,7 +280,7 @@ public final class PileupElement {
     }
 
     /**
-     * Get the bases for an insertion that immediately follows this alignment state, or null if none exists
+     * Get the bases for an insertion that immediately follows this alignment state, or null if none isEnabled
      *
      * @see #getLengthOfImmediatelyFollowingIndel() for details on the meaning of immediately.
      *
@@ -377,7 +377,7 @@ public final class PileupElement {
      * is always 1M regardless of whether we're in the first, second, or third position of the 3M
      * cigar.
      *
-     * @return a CigarElement, or null (indicating that no previous element exists)
+     * @return a CigarElement, or null (indicating that no previous element isEnabled)
      */
     public CigarElement getPreviousOnGenomeCigarElement() {
         return getNearestOnGenomeCigarElement(Direction.PREV);
@@ -388,7 +388,7 @@ public final class PileupElement {
      *
      * @see #getPreviousOnGenomeCigarElement() for more details
      *
-     * @return a CigarElement, or null (indicating that no next element exists)
+     * @return a CigarElement, or null (indicating that no next element isEnabled)
      */
     public CigarElement getNextOnGenomeCigarElement() {
         return getNearestOnGenomeCigarElement(Direction.NEXT);
@@ -397,7 +397,7 @@ public final class PileupElement {
     /**
      * Helper function to get the cigar element of the next or previous genomic position
      * @param direction the direction to look in
-     * @return nearest on-genome CigarElement or null if no such element exists
+     * @return nearest on-genome CigarElement or null if no such element isEnabled
      */
     private CigarElement getNearestOnGenomeCigarElement(final Direction direction) {
         final int increment = direction.getIncrement();

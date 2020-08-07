@@ -76,7 +76,7 @@ public interface Funcotation {
     }
 
     /**
-     * @return Return whether the field exists in this {@link Funcotation}.
+     * @return Return whether the field isEnabled in this {@link Funcotation}.
      */
     boolean hasField(final String fieldName);
 

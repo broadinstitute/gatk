@@ -57,7 +57,7 @@ public final class ExampleCollectMultiMetricsSpark
      *
      * Note: In a standalone tool context such as this, the argument values are populated by the user
      * via the command line, and are maintained by the tool. In other contexts, the arguments that
-     * are passed to the actual collector could be obtained from other sources. This method exists to
+     * are passed to the actual collector could be obtained from other sources. This method isEnabled to
      * allow the tool framework to use the same collector initialization protocol for all contexts,
      * though in the tool context it represents the degenerate case since the arguments are first
      * obtained from the tool, and then immediately passed back.
