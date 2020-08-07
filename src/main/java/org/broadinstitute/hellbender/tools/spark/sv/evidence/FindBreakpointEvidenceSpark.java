@@ -469,7 +469,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                         partitionIdx2 = Arrays.binarySearch(partitionBoundaries, interval2.getStartLocation());
                         // Binary search returns the complement of the insert position when the exact key is not found.
                         // I.e., ~partitionIdx2 will point to the smallest entry larger than the sought key.
-                        // We want the partition before that one, if it exists.
+                        // We want the partition before that one, if it isEnabled.
                         if ( partitionIdx2 < 0 ) {
                             partitionIdx2 = ~partitionIdx2;
                             if ( partitionIdx2 > 0 ) partitionIdx2 -= 1;

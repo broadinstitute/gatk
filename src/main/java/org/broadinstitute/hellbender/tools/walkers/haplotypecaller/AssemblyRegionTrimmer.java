@@ -10,11 +10,9 @@ import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.TandemRepeat;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.io.PrintStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -193,7 +191,7 @@ public final class AssemblyRegionTrimmer {
 
         final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region.getPaddedSpan());
 
-        if (HaplotypeCallerGenotypingDebugger.exists()) {
+        if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             HaplotypeCallerGenotypingDebugger.println("Padded and trimmed the region to this span: "+ paddedVariantSpan);
         }
         return new Result(region, variantSpan, paddedVariantSpan);
@@ -249,7 +247,7 @@ public final class AssemblyRegionTrimmer {
         final Pair<SimpleInterval, SimpleInterval> nonVariantRegions = nonVariantTargetRegions(originalRegion, callableSpan);
 
         // TODO add equivalent debug garbage to the real assembly region trimming code
-        if (HaplotypeCallerGenotypingDebugger.exists()) {
+        if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             HaplotypeCallerGenotypingDebugger.println("events       : " + withinActiveRegion);
             HaplotypeCallerGenotypingDebugger.println("region       : " + originalRegion);
             HaplotypeCallerGenotypingDebugger.println("callableSpan : " + callableSpan);

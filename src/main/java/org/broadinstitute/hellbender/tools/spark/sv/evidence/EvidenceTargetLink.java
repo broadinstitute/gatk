@@ -14,7 +14,7 @@ import java.util.Set;
 /**
  * This class holds information about pairs of intervals on the reference that are connected by one or more
  * BreakpointEvidence objects that have distal targets. Source and target are the stranded intervals pointed at by
- * the breakpoint evidence, with strand defined as whether the putative breakpoint exists upstream of the interval
+ * the breakpoint evidence, with strand defined as whether the putative breakpoint isEnabled upstream of the interval
  * start or downstream of the interval end, for + and -. The class also tracks the number of split reads and read pairs
  * that contributed to the link, as well as the template names of the reads.
  */

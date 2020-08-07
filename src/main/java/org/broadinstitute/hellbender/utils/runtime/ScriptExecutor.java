@@ -34,7 +34,7 @@ public abstract class ScriptExecutor {
     }
 
     /**
-     * @return true if the executable exists and can be found on the path
+     * @return true if the executable isEnabled and can be found on the path
      */
     public boolean externalExecutableExists() {
         return externalScriptExecutablePath != null;

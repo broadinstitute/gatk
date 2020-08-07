@@ -32,7 +32,7 @@ public class SVFileUtilsUnitTest extends GATKBaseTest {
         final File tempDirNew = createTempDir("new");
         tempDirNew.deleteOnExit();
 
-        // test output BAM, index file exists, equal contents
+        // test output BAM, index file isEnabled, equal contents
         String outputPath = tempDirNew.getAbsolutePath() + "/out.bam";
         SVFileUtils.writeSAMFile(outputPath, expectedSamRecords.iterator(), expectedHeader, true);
         Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath + ".bai"))

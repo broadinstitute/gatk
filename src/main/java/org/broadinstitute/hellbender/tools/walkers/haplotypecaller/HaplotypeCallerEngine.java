@@ -521,7 +521,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             // we're benchmarking ART and/or the active region determination code in the HC, just leave without doing any work
             return NO_CALLS;
         }
-        if (HaplotypeCallerGenotypingDebugger.exists()) {
+        if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             HaplotypeCallerGenotypingDebugger.println("calling for region: " +region.getSpan());
         }
 
@@ -604,7 +604,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, false, VCpriors);
         }
 
-        if (HaplotypeCallerGenotypingDebugger.exists()) {
+        if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             HaplotypeCallerGenotypingDebugger.println("\n=================================================");
             HaplotypeCallerGenotypingDebugger.println("assemblyRegion: "+new SimpleInterval(region));
             HaplotypeCallerGenotypingDebugger.println("=================================================");
@@ -614,7 +614,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final List<Haplotype> haplotypes = assemblyResult.getHaplotypeList();
         final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, regionForGenotyping.getReads());
 
-        if (HaplotypeCallerGenotypingDebugger.exists()) {
+        if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             HaplotypeCallerGenotypingDebugger.println("\nUnclipped Haplotypes("+haplotypes.size()+"):");
             for (Haplotype haplotype : untrimmedAssemblyResult.getHaplotypeList()) {
                 HaplotypeCallerGenotypingDebugger.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] k="+haplotype.getKmerSize()+" len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
@@ -645,7 +645,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         //  haplotype containing C as reference (and vice versa).  Now this is fine if all possible haplotypes are included
         //  in the genotyping, but we lose information if we select down to a few haplotypes.  [EB]
 
-        if (HaplotypeCallerGenotypingDebugger.exists()) {
+        if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             for (int counter = 0; counter < readLikelihoods.sampleEvidence(0).size(); counter++) {
                 GATKRead read = readLikelihoods.sampleEvidence(0).get(counter);
                 HaplotypeCallerGenotypingDebugger.println("read " + counter + ": " + read.getName() + " cigar: " + read.getCigar() + " mapQ: " + read.getMappingQuality() + " loc: [" + read.getStart() + "-" + read.getEnd() + "] unclippedloc: [" + read.getUnclippedStart() + "-" + read.getUnclippedEnd() + "] length:" + read.getLength());
@@ -779,8 +779,11 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final Set<GATKRead> readsToRemove = new LinkedHashSet<>();
         for( final GATKRead rec : activeRegion.getReads() ) {
-            if( AlignmentUtils.unclippedReadLength(rec) < READ_LENGTH_FILTER_THRESHOLD || rec.getMappingQuality() < hcArgs.mappingQualityThreshold || ! ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE.test(rec) || (hcArgs.keepRG != null && !rec.getReadGroup().equals(hcArgs.keepRG)) ) {
-                if (HaplotypeCallerGenotypingDebugger.exists()) {
+            if( AlignmentUtils.unclippedReadLength(rec) < READ_LENGTH_FILTER_THRESHOLD ||
+                    rec.getMappingQuality() < hcArgs.mappingQualityThreshold ||
+                    ! ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE.test(rec) ||
+                    (hcArgs.keepRG != null && !rec.getReadGroup().equals(hcArgs.keepRG)) ) {
+                if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                     HaplotypeCallerGenotypingDebugger.println("Filtered before assembly the read: " + rec.toString());
                 }
                 readsToRemove.add(rec);

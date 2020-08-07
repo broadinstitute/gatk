@@ -16,9 +16,7 @@ import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import picard.util.ClippingUtility;
 
-import java.io.PrintStream;
 import java.util.*;
 import java.util.function.ToDoubleFunction;
 
@@ -74,7 +72,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
     private final PCRErrorModel pcrErrorModel;
     
-    private final byte  baseQualityScoreThreshold;
+    private final byte baseQualityScoreThreshold;
 
     /**
      * The expected rate of random sequencing errors for a read originating from its true haplotype.
@@ -201,7 +199,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             double dynamicThreshold = calculateDynamicThreshold(read, dynamicRadQualConstant);
             double log10MaxLikelihoodForTrueAllele = log10MinTrueLikelihood.applyAsDouble(read);
             if (dynamicThreshold < log10MaxLikelihoodForTrueAllele ) {
-                if (HaplotypeCallerGenotypingDebugger.exists()) {
+                if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                     HaplotypeCallerGenotypingDebugger.println("For read "+ read.getName() + " replacing old threshold ("+log10MaxLikelihoodForTrueAllele+") with new threshold: "+dynamicThreshold);
                 }
                 return dynamicThreshold;
@@ -322,7 +320,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
         for(int counter = 0; counter < processedReads.size(); counter++) {
             GATKRead read = processedReads.get(counter);
-            if (HaplotypeCallerGenotypingDebugger.exists()) {
+            if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"]");
                 HaplotypeCallerGenotypingDebugger.println(Arrays.toString(read.getBaseQualitiesNoCopy()));
             }

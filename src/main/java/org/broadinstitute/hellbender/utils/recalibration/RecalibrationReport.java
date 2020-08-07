@@ -284,7 +284,7 @@ public final class RecalibrationReport {
         final long nObservations = asLong(reportTable.get(row, RecalUtils.NUMBER_OBSERVATIONS_COLUMN_NAME));
         final double nErrors = asDouble(reportTable.get(row, RecalUtils.NUMBER_ERRORS_COLUMN_NAME));
 
-        // the estimatedQreported column only exists in the ReadGroup table
+        // the estimatedQreported column only isEnabled in the ReadGroup table
         final double estimatedQReported = hasEstimatedQReportedColumn ?
                 (Double) reportTable.get(row, RecalUtils.ESTIMATED_Q_REPORTED_COLUMN_NAME) : // we get it if we are in the read group table
                 decodeByte(reportTable.get(row, RecalUtils.QUALITY_SCORE_COLUMN_NAME)); // or we use the reported quality if we are in any other table

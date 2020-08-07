@@ -206,7 +206,7 @@ public class ParamUtils {
     }
 
     /**
-     *  Writes a list of strings to the given filename.  The file will be overwritten if it exists.
+     *  Writes a list of strings to the given filename.  The file will be overwritten if it isEnabled.
      *
      * @param stringIterator Strings that will be written (one to a line)
      * @param outputFile File to write
@@ -223,7 +223,7 @@ public class ParamUtils {
     }
 
     /**
-     *  Writes a double array to the given filename.  The file will be overwritten if it exists.
+     *  Writes a double array to the given filename.  The file will be overwritten if it isEnabled.
      *
      * @param data doubles that will be written (one to a line)
      * @param outputFile File to write

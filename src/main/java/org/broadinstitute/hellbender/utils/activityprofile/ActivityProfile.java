@@ -411,7 +411,7 @@ public class ActivityProfile {
      * @param isActiveRegion are we looking for a stretch of active states, or inactive ones?
      * @param maxRegionSize don't look for a boundary that would yield a region of size > maxRegionSize
      * @return the index of the first state in the state list with isActive value != isActiveRegion, or maxRegionSize
-     *         if no such element exists
+     *         if no such element isEnabled
      */
     private int findFirstActivityBoundary(final boolean isActiveRegion, final int maxRegionSize) {
         Utils.validateArg(maxRegionSize > 0, "maxRegionSize must be > 0");

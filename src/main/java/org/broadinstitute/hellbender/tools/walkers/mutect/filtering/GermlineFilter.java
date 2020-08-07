@@ -87,7 +87,7 @@ public class GermlineFilter extends Mutect2VariantFilter {
      *                                         being present as a somatic variant
      * @param populationAF      frequency of this allele in the population
      * @param logPriorSomatic log prior probability for this allele to be a somatic mutation
-     * @return                  probability that this allele exists in the normal sample
+     * @return                  probability that this allele isEnabled in the normal sample
      */
     public static double germlineProbability(final double normalLogOdds,
                                              final double logOddsOfGermlineHetVsSomatic,

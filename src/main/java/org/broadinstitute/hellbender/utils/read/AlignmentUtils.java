@@ -87,7 +87,7 @@ public final class AlignmentUtils {
         // readToRefCigarClean ever imply different starts, which could occur if if the former has a leading deletion.  However,
         // according to the logic of applyCigarToCigar, this can only happen if the read has a leading deletion wrt its best haplotype,
         // which our SW aligner won't do, or if the read starts on a haplotype base that is in a deletion wrt to reference, which is nonsensical
-        // since a base that exists is not a deletion.  Thus, there is nothing to worry about, in contrast to below where we do check
+        // since a base that isEnabled is not a deletion.  Thus, there is nothing to worry about, in contrast to below where we do check
         // whether left-alignment shifted the start position.
         final int readStartOnReferenceHaplotype = readStartOnReferenceHaplotype(rightPaddedHaplotypeVsRefCigar, readToHaplotypeSWAlignment.getAlignmentOffset());
 
@@ -111,7 +111,7 @@ public final class AlignmentUtils {
         // the SW Cigar does not contain the hard clips of the original read
         // Here we reconcile the aligned read (that has had any softclips removed) with its softclipped bases
         final Cigar originalCigar = originalRead.getCigar();
-        Cigar newCigar = appendClippedElementsFromCigarToCigar(leftAlignedReadToRefCigar, originalCigar);
+        final Cigar newCigar = appendClippedElementsFromCigarToCigar(leftAlignedReadToRefCigar, originalCigar);
         copiedRead.setCigar(newCigar);
 
         if ( leftAlignedReadToRefCigar.getReadLength() + softClippedBases != copiedRead.getLength() ) {

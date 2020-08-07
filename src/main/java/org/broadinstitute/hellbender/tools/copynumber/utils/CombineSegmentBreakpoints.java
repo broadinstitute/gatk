@@ -66,7 +66,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
     private List<String> segmentFileLabels = Lists.newArrayList("1", "2");
 
     @Argument(
-            doc = "List of columns in either segment file that should be reported in the output file.  If the column header exists in both, it will have the appropriate label appended as a suffix.",
+            doc = "List of columns in either segment file that should be reported in the output file.  If the column header isEnabled in both, it will have the appropriate label appended as a suffix.",
             fullName = COLUMNS_OF_INTEREST_LONG_NAME,
             minElements = 1
     )

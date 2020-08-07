@@ -245,7 +245,7 @@ public final class GenomicsDBImport extends GATKTool {
     private long vcfBufferSizePerSample = DEFAULT_VCF_BUFFER_SIZE_PER_SAMPLE;
 
     @Argument(fullName = OVERWRITE_WORKSPACE_LONG_NAME,
-              doc = "Will overwrite given workspace if it exists. " +
+              doc = "Will overwrite given workspace if it isEnabled. " +
                     "Otherwise a new workspace is created. " +
                     "Cannot be set to true if "+INCREMENTAL_WORKSPACE_ARG_LONG_NAME+" is also set. " +
                     "Defaults to false",
@@ -292,7 +292,7 @@ public final class GenomicsDBImport extends GATKTool {
 
     @Argument(fullName = MERGE_INPUT_INTERVALS_LONG_NAME,
             doc = "Boolean flag to import all data in between intervals.  Improves performance using large lists of " +
-                "intervals, as in exome sequencing, especially if GVCF data only exists for specified intervals.")
+                "intervals, as in exome sequencing, especially if GVCF data only isEnabled for specified intervals.")
     private boolean mergeInputIntervals = false;
 
     @Argument(fullName = INTERVAL_LIST_LONG_NAME,
@@ -884,7 +884,7 @@ public final class GenomicsDBImport extends GATKTool {
     /**
      * Input argument "overwriteExistingWorkspace" defaults to false.
      * The tool creates a new workspace if it doesn't exist, or checks that
-     * a workspace exists in the incremental import case. Deletes
+     * a workspace isEnabled in the incremental import case. Deletes
      * an existing workspace if argument is true
      *
      * @return  The workspace directory
@@ -892,20 +892,20 @@ public final class GenomicsDBImport extends GATKTool {
     private String overwriteCreateOrCheckWorkspace() {
         String workspaceDir = BucketUtils.makeFilePathAbsolute(workspace);
         // From JavaDoc for GenomicsDBUtils.createTileDBWorkspace
-        //   returnCode = 0 : OK. If overwriteExistingWorkspace is true and the workspace exists, it is deleted first.
+        //   returnCode = 0 : OK. If overwriteExistingWorkspace is true and the workspace isEnabled, it is deleted first.
         //   returnCode = -1 : path was not a directory
         //   returnCode = -2 : failed to create workspace
-        //   returnCode = 1 : if overwriteExistingWorkspace is false, return 1 if directory already exists
+        //   returnCode = 1 : if overwriteExistingWorkspace is false, return 1 if directory already isEnabled
         int returnCode = GenomicsDBUtils.createTileDBWorkspace(workspaceDir, overwriteExistingWorkspace);
         if (returnCode == -1) {
-            throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace + " already exists and is not a directory");
+            throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace + " already isEnabled and is not a directory");
         } else if (returnCode < 0) {
             throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace);
         } else if (!overwriteExistingWorkspace && returnCode == 1) {
             if (doIncrementalImport) {
                 return workspaceDir;
             } else {
-                throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace + " already exists");
+                throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace + " already isEnabled");
             }
         } else {
             if (doIncrementalImport) {
@@ -949,7 +949,7 @@ public final class GenomicsDBImport extends GATKTool {
                 logger.warn(String.format(
                         "A large number of intervals were specified. " +
                         "Using more than %d intervals in a single import is not recommended and can cause performance to suffer. " +
-                        "If GVCF data only exists within those intervals, performance can be improved by aggregating intervals with the " +
+                        "If GVCF data only isEnabled within those intervals, performance can be improved by aggregating intervals with the " +
                         MERGE_INPUT_INTERVALS_LONG_NAME + " argument.",
                         INTERVAL_LIST_SIZE_WARNING_THRESHOLD)
                 );

@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.haplotypecaller.SimpleGenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
@@ -28,7 +27,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-import java.io.PrintStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -210,7 +208,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
                 readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
             }
-            if (HaplotypeCallerGenotypingDebugger.exists()) {
+            if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("\n=============================================================================");
                 HaplotypeCallerGenotypingDebugger.println("Event at: " + mergedVC + " with " + readAlleleLikelihoods.evidenceCount() + " reads and "+readAlleleLikelihoods.filteredSampleEvidence(0).size()+" disqualified");
                 HaplotypeCallerGenotypingDebugger.println("=============================================================================");

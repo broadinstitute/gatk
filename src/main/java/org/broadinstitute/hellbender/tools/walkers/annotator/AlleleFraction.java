@@ -46,7 +46,7 @@ public final class AlleleFraction extends GenotypeAnnotation {
         Utils.nonNull(vc, "vc is null");
 
         final GenotypesContext genotypes = vc.getGenotypes();
-        if ( g == null || !g.isCalled() || g.hasExtendedAttribute(getKeyNames().get(0))) {  //don't overwrite AF based on Bayesian estimate if it already exists
+        if ( g == null || !g.isCalled() || g.hasExtendedAttribute(getKeyNames().get(0))) {  //don't overwrite AF based on Bayesian estimate if it already isEnabled
             return;
         }
        if ( g.hasAD() ) {

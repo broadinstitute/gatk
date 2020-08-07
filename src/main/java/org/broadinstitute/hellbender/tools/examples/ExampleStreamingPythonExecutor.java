@@ -54,7 +54,7 @@ public class ExampleStreamingPythonExecutor extends ReadWalker {
     private int batchSize = 1000;
 
     // Create the Python executor. This doesn't actually start the Python process, but verifies that
-    // the requested Python executable exists and can be located.
+    // the requested Python executable isEnabled and can be located.
     final StreamingPythonScriptExecutor<String> pythonExecutor = new StreamingPythonScriptExecutor<>(true);
 
     private List<String> batchList = new ArrayList<>(batchSize);

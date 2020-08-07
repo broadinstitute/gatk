@@ -74,7 +74,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
             Files.find(baseActualPath, Integer.MAX_VALUE,
                     (actualPath, fileAttributes) -> {
 
-                        // First check that the corresponding file exists in our expected unzipped archive:
+                        // First check that the corresponding file isEnabled in our expected unzipped archive:
                         final Path expectedPath = baseExpectedPath.resolve(baseActualPath.relativize(actualPath));
 
                         final Path actualFileName = actualPath.getFileName();
@@ -247,7 +247,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         final Path fifoFilePath = tmpDirPath.resolve(IOUtils.getPath("FIFOFILE"));
         IOUtils.createFifoFile( fifoFilePath);
 
-        // Verify the FIFO file exists and is a FIFO file:
+        // Verify the FIFO file isEnabled and is a FIFO file:
         Assert.assertTrue( Files.exists(fifoFilePath) );
         try {
             Assert.assertTrue( Files.readAttributes(fifoFilePath, BasicFileAttributes.class).isOther() );
@@ -259,7 +259,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         // Create the same FIFO file again and overwrite it:
         IOUtils.createFifoFile( fifoFilePath, true );
 
-        // Verify the FIFO file exists and is a FIFO file:
+        // Verify the FIFO file isEnabled and is a FIFO file:
         Assert.assertTrue( Files.exists(fifoFilePath) );
         try {
             Assert.assertTrue( Files.readAttributes(fifoFilePath, BasicFileAttributes.class).isOther() );
@@ -279,7 +279,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         final Path fifoFilePath = tmpDirPath.resolve(IOUtils.getPath("FIFOFILE"));
         IOUtils.createFifoFile( fifoFilePath );
 
-        // Verify the FIFO file exists and is a FIFO file:
+        // Verify the FIFO file isEnabled and is a FIFO file:
         Assert.assertTrue( Files.exists(fifoFilePath) );
         try {
             Assert.assertTrue( Files.readAttributes(fifoFilePath, BasicFileAttributes.class).isOther() );
@@ -426,7 +426,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testGetPathHandlesIntervals() {
         // Make sure we don't crash if passing intervals to getPath.
-        // Also, it shouldn't crash when we check whether the file exists.
+        // Also, it shouldn't crash when we check whether the file isEnabled.
         Assert.assertFalse(Files.exists(IOUtils.getPath("chr1:10-11")));
         Assert.assertFalse(Files.exists(IOUtils.getPath("chr1:10")));
         Assert.assertFalse(Files.exists(IOUtils.getPath("1:10-11")));

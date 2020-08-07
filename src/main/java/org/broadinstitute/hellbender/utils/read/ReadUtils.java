@@ -384,7 +384,7 @@ public final class ReadUtils {
     }
 
     /**
-     * Helper method for interrogating if a read and its mate (if it exists) are unmapped
+     * Helper method for interrogating if a read and its mate (if it isEnabled) are unmapped
      * @param read a read with mate information to interrogate
      * @return true if this read and its are unmapped
      */

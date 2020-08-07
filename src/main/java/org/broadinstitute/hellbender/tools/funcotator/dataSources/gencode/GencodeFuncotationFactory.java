@@ -1782,7 +1782,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param variant The {@link VariantContext} to check for position within {@code spliceSiteVariantWindowBases} bases of each {@link GencodeGtfExonFeature} in {@code transcript}.
      * @param altAllele The alternate {@link Allele} to check against the reference allele in the given {@code variant}.
      * @param transcript The {@link GencodeGtfTranscriptFeature} containing the given {@code variant}.
-     * @return The {@link GencodeGtfExonFeature} that is within {@code spliceSiteVariantWindowBases} bases of the given {@code variant}; {@code null} if no such {@link GencodeGtfExonFeature} exists in the given {@code transcript}.
+     * @return The {@link GencodeGtfExonFeature} that is within {@code spliceSiteVariantWindowBases} bases of the given {@code variant}; {@code null} if no such {@link GencodeGtfExonFeature} isEnabled in the given {@code transcript}.
      */
     private static GencodeGtfExonFeature getExonWithinSpliceSiteWindow( final VariantContext variant,
                                                                         final Allele altAllele,
@@ -2701,7 +2701,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * Get the Appris Rank from the given {@link GencodeGtfGeneFeature}.
      * Appris ranks are specified as annotations using {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.FeatureTag}s.
      * @param gtfFeature The {@link GencodeGtfTranscriptFeature} from which to get the Appris Rank.
-     * @return The highest Appris Rank found in the given {@code gtfFeature}; if no Appris Rank exists, {@code null}.
+     * @return The highest Appris Rank found in the given {@code gtfFeature}; if no Appris Rank isEnabled, {@code null}.
      */
     @VisibleForTesting
     static GencodeGtfFeature.FeatureTag getApprisRank( final GencodeGtfTranscriptFeature gtfFeature ) {

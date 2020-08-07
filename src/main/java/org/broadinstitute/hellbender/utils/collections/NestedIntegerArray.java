@@ -158,7 +158,7 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
                 throw new IllegalArgumentException("Key " + keys[i] + " is too large for dimension " + i + " (max is " + (dimensions[i]-1) + ")");
 
             // If we're at or beyond the last dimension that was pre-allocated, we need to
-            // check to see if the next branch exists, and if it doesn't, create it
+            // check to see if the next branch isEnabled, and if it doesn't, create it
             if ( i >= NUM_DIMENSIONS_TO_PREALLOCATE - 1 ) {
                 if ( myData[keys[i]] == null ) {
                     myData[keys[i]] = new Object[dimensions[i + 1]];

@@ -195,7 +195,7 @@ public final class SequenceDictionaryUtilsUnitTest extends GATKBaseTest {
                 { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHR_NONSTANDARD1),    Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                                SUPERSET, null, false, false},
                 { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHR10_HG19),    Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                                SUPERSET, null, false, false},
                 { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHR10_HG19),    Arrays.asList(CHR1_HG19, CHR2_HG19),                                            SUPERSET, null, false, false},
-                // Extended attributes should be ignored when determining whether a superset exists:
+                // Extended attributes should be ignored when determining whether a superset isEnabled:
                 { Arrays.asList(CHR1_HG19, CHR2_HG19),                                  Arrays.asList(CHR1_HG19_WITH_ATTRIBUTES),                                       SUPERSET, null, false, false},
                 { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHRM_HG19),           Arrays.asList(CHR1_HG19_WITH_ATTRIBUTES, CHR10_HG19),                           SUPERSET, null, false, false}
         };

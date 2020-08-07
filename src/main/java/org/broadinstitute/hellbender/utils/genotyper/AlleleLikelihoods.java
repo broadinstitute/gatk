@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.PrintStream;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
@@ -1223,7 +1222,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             // Retain the filtered evidence for later genotyping purposes
             final List<EVIDENCE> filtered = filteredEvidenceBySampleIndex.get(sampleIndex);
             Arrays.stream(indexesToRemove).forEach(idx -> {
-                if (HaplotypeCallerGenotypingDebugger.exists()) {
+                if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                     HaplotypeCallerGenotypingDebugger.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName()+ " with max likelihood " +maximumLikelihoodOverAllAlleles(sampleIndex, idx) +" and threshold "+log10MinTrueLikelihood.applyAsDouble(sampleEvidence.get(idx)));
                 }
                 filtered.add(sampleEvidence.get(idx));

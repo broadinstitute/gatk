@@ -37,7 +37,7 @@ public class SimpleGermlineTagger {
      *                              Cannot contain intervals that overlap.  Never {@code null}.
      * @param callAnnotation the annotation name (e.g. "CALL") used in both the tumor and normal segment files.  Never {@code null}.
      * @param dictionary sequence dictionary used to generate the segment files.  Used for sorting.  Never {@code null}.
-     * @param outputAnnotationName annotation to append to the tumor segments.  If you specify one that exists, it will overwrite.
+     * @param outputAnnotationName annotation to append to the tumor segments.  If you specify one that isEnabled, it will overwrite.
      *                             Cannot be {@code null} nor empty string.
      * @param paddingInBp The amount of slop to give (in bp) for matching segment endpoints.  Must be >= 0
      * @param reciprocalThreshold  The reciprocal threshold between the normal and tumor segment that must match in order
@@ -103,7 +103,7 @@ public class SimpleGermlineTagger {
                 final CalledCopyRatioSegment.Call normalCall = Arrays.stream(CalledCopyRatioSegment.Call.values())
                         .filter(c -> c.getOutputString().equals(normalSeg.getAnnotationValue(callAnnotation))).findFirst().orElse(null);
                 if (normalCall == null) {
-                    throw new UserException.BadInput("No call exists in normal segment.  Does normal input have a call field \"" + callAnnotation + "\"?");
+                    throw new UserException.BadInput("No call isEnabled in normal segment.  Does normal input have a call field \"" + callAnnotation + "\"?");
                 }
                 result.putAll(overlappingTumorSegments.stream()
                         .filter(s -> ((Math.abs(s.getStart() - normalSeg.getStart()) <= paddingInBp) || (Math.abs(normalSeg.getEnd() - s.getEnd()) <= paddingInBp)

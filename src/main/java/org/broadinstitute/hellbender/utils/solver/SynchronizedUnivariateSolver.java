@@ -127,7 +127,7 @@ public final class SynchronizedUnivariateSolver {
                final double absoluteAccuracy, final double relativeAccuracy,
                final double functionValueAccuracy, final int maxEval) {
         if (jobIndices.contains(index)) {
-            throw new IllegalArgumentException("A jobDescription with index " + index + " already exists; jobDescription indices must" +
+            throw new IllegalArgumentException("A jobDescription with index " + index + " already isEnabled; jobDescription indices must" +
                     " be unique");
         }
         if (x0 <= min || x0 >= max) {

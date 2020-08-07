@@ -224,7 +224,7 @@ final public class DataSourceUtils {
         }
     }
 
-    /** @return {@code true} if the given {@link Path} exists, is readable, and is a directory; {@code false} otherwise. */
+    /** @return {@code true} if the given {@link Path} isEnabled, is readable, and is a directory; {@code false} otherwise. */
     public static boolean isValidDirectory(final Path p) {
         Utils.nonNull(p);
         return Files.exists(p) && Files.isReadable(p) && Files.isDirectory(p);

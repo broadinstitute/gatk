@@ -131,7 +131,7 @@ public final class GCBiasCorrector {
         return gcCorrectionFactors[gcContentToBinIndex(gcContent)] * readCount;
     }
 
-    // return a median of coverages or dummy default value if no coverage exists at this GC bin
+    // return a median of coverages or dummy default value if no coverage isEnabled at this GC bin
     // this default is never used because empty bins get zero weight in {@code calculateCorrectionFactors}
     private static double medianOrDefault(final List<Double> list) {
         return list.size() > 0 ? new Median().evaluate(list.stream().mapToDouble(d -> d).toArray()) : DUMMY_VALUE_NEVER_USED;

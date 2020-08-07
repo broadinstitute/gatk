@@ -122,7 +122,7 @@ public final class GnarlyGenotyper extends VariantWalker {
     @Argument(fullName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
             shortName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
             doc = "Boolean flag to read in all data in between intervals.  Improves performance reading from GenomicsDB " +
-                    "using large lists of +intervals, as in exome sequencing, especially if GVCF data only exists for " +
+                    "using large lists of +intervals, as in exome sequencing, especially if GVCF data only isEnabled for " +
                     "specified intervals.")
     private boolean mergeInputIntervals = false;
 

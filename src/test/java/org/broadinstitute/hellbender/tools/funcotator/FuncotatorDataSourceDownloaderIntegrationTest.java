@@ -46,13 +46,13 @@ public class FuncotatorDataSourceDownloaderIntegrationTest extends CommandLinePr
         final Path remoteDataSourcePath = getDataSourceRemotePath(dsTypeArg);
         final Path expectedDownloadedDataSourcePath = currentPath.resolve(remoteDataSourcePath.getFileName().toString());
 
-        // Verify it exists and delete it:
+        // Verify it isEnabled and delete it:
         verifyDataSourcesExistThenDeleteThem(expectedDownloadedDataSourcePath, doExtract);
     }
 
     private void verifyDataSourcesExistThenDeleteThem(final Path expectedDownloadedDataSourcePath, final boolean doExtract) {
 
-        // Make sure our file exists:
+        // Make sure our file isEnabled:
         Assert.assertTrue( Files.exists(expectedDownloadedDataSourcePath) );
 
         // Clean up the downloaded files:

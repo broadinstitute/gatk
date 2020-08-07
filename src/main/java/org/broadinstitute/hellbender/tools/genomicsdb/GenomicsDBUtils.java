@@ -181,7 +181,7 @@ public class GenomicsDBUtils {
      * @param fieldNameToIndexInVidFieldsList name to index in list
      * @param fieldName                       INFO field name
      * @param newCombineOperation             combine op ("sum", "median")
-     * @return updated vid Protobuf object if field exists, else return original vidmap object
+     * @return updated vid Protobuf object if field isEnabled, else return original vidmap object
      */
     public static GenomicsDBVidMapProto.VidMappingPB updateINFOFieldCombineOperation(
             final GenomicsDBVidMapProto.VidMappingPB vidMapPB,
@@ -211,7 +211,7 @@ public class GenomicsDBUtils {
      * @param fieldNameToIndexInVidFieldsList name to index in list
      * @param fieldName INFO field name
      * @param newCombineOperation combine op ("histogram_sum", "element_wise_float_sum", "strand_bias_table")
-     * @return updated vid Protobuf object if field exists, else null
+     * @return updated vid Protobuf object if field isEnabled, else null
      */
     public static GenomicsDBVidMapProto.VidMappingPB updateAlleleSpecificINFOFieldCombineOperation(
             final GenomicsDBVidMapProto.VidMappingPB vidMapPB,

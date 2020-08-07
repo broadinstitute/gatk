@@ -564,7 +564,7 @@ public final class BucketUtils {
 
     /**
      * Convert a GCS bucket location into the equivalent public http url.  This doesn't do any validation checking
-     * to be sure that the location actually exists or is accessible.  It's just a string -> string conversion
+     * to be sure that the location actually isEnabled or is accessible.  It's just a string -> string conversion
      * @param path String representing the gs:// path to an object in a public bucket
      * @return  String representing the https:// path to the same object
      */
