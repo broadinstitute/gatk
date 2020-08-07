@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
