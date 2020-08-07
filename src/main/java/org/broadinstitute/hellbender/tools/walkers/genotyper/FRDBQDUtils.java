@@ -1,15 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
-import htsjdk.variant.variantcontext.Allele;
-import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
-
-import java.io.Serializable;
-import java.util.Comparator;
-
 public class FRDBQDUtils {
 
     /**

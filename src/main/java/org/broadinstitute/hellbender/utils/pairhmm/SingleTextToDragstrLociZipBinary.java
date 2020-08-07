@@ -103,8 +103,7 @@ public class SingleTextToDragstrLociZipBinary extends GATKTool {
         progressMeter.stop();
         logger.info("Finishing reference sampling. Proceeding to splitting each period case by repeat count");
         for (int i = 1; i <= maxPeriod; i++) {
-            progressMeter = new ProgressMeter(secondsBetweenProgressUpdates);
-            progressMeter.setRecordLabel("Splitting cases with period " + i + " by repeat count");
+            initializeProgressMeter("Splitting cases with period " + i + " by repeat count");
             progressMeter.start();
             splitPeriodLociByRepeat(i);
             progressMeter.stop();

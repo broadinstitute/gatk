@@ -71,7 +71,7 @@ public abstract class GATKTool extends CommandLineProgram {
     public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "seconds-between-progress-updates";
 
     @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
-    protected double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
+    private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
     @ArgumentCollection
     protected SequenceDictionaryValidationArgumentCollection seqValidationArguments = getSequenceDictionaryValidationArgumentCollection();
@@ -717,8 +717,15 @@ public abstract class GATKTool extends CommandLineProgram {
 
         checkToolRequirements();
 
+        initializeProgressMeter(getProgressMeterRecordLabel());
+    }
+
+    /**
+     * Helper method to initialize the progress meter without exposing engine level arguements.
+     */
+    protected final void initializeProgressMeter(final String progressMeterRecordLabel) {
         progressMeter = new ProgressMeter(secondsBetweenProgressUpdates);
-        progressMeter.setRecordLabel(getProgressMeterRecordLabel());
+        progressMeter.setRecordLabel(progressMeterRecordLabel);
     }
 
     /**

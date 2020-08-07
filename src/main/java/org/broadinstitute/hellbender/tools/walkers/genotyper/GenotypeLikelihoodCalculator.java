@@ -121,7 +121,8 @@ public class GenotypeLikelihoodCalculator {
      */
     private double[] readGenotypeLikelihoodComponents;
 
-    public GenotypeLikelihoodCalculator(final int ploidy, final int alleleCount, final int[][] alleleFirstGenotypeOffsetByPloidy, final GenotypeAlleleCounts[][] genotypeTableByPloidy) {
+    public GenotypeLikelihoodCalculator(final int ploidy, final int alleleCount, final int[][] alleleFirstGenotypeOffsetByPloidy,
+                                        final GenotypeAlleleCounts[][] genotypeTableByPloidy) {
         maximumDistinctAllelesInGenotype = Math.min(ploidy, alleleCount);
         this.alleleFirstGenotypeOffsetByPloidy = alleleFirstGenotypeOffsetByPloidy;
         genotypeAlleleCounts = genotypeTableByPloidy[ploidy];

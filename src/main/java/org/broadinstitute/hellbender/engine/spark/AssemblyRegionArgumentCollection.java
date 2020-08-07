@@ -113,7 +113,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      * NOTE: this is only applicable to the legacy assembly region trimming currently
      */
     @Hidden
-    @Argument(fullName="max-extension", doc = "the maximum extent into the full active region extension that we're willing to go in genotyping (-1 to disable)", optional = true)
+    @Argument(fullName="max-extension-into-assembly-region-padding-legacy", doc = "the maximum extent into the full active region extension that we're willing to go in genotyping (-1 to disable). NOTE this only applies for --enable-legacy-assembly-region-trimming mode", optional = true)
     public int maxExtensionIntoRegionPadding = 25;
 
     /**

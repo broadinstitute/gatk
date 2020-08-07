@@ -363,7 +363,7 @@ public final class GenotypeLikelihoodCalculators {
      *
      * @return the number of genotypes given ploidy and allele count (0 or greater).
      */
-    public synchronized int genotypeCount(final int ploidy, final int alleleCount) {
+    public int genotypeCount(final int ploidy, final int alleleCount) {
 
         final int result = calculateGenotypeCountUsingTables(ploidy, alleleCount);
         if (result == GENOTYPE_COUNT_OVERFLOW) {
