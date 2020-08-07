@@ -28,11 +28,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class ReadThreadingAssembler {
     private static final Logger logger = LogManager.getLogger(ReadThreadingAssembler.class);
 
-    private static final int DEFAULT_NUM_PATHS_PER_GRAPH = 128;
+    static final int DEFAULT_NUM_PATHS_PER_GRAPH = 128;
     private static final int KMER_SIZE_ITERATION_INCREASE = 10;
     private static final int MAX_KMER_ITERATIONS_TO_ATTEMPT = 6;
 
@@ -77,8 +78,7 @@ public final class ReadThreadingAssembler {
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
                                   final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
-        this.kmerSizes = new ArrayList<>(kmerSizes);
-        kmerSizes.sort(Integer::compareTo);
+        this.kmerSizes = kmerSizes.stream().sorted(Integer::compareTo).collect(Collectors.toList());
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;

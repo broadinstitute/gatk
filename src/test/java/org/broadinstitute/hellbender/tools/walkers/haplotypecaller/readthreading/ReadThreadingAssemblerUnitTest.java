@@ -48,6 +48,18 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         seq.close();
     }
 
+    @Test
+    // Test of fix for https://github.com/broadinstitute/gatk/issues/6513
+    public void testReadThreadingAssemblerDoesntModifyInputKmerList() {
+        List<Integer> kmersOutOfOrder = Arrays.asList(65, 25, 45, 35, 85);
+        List<Integer> kmersOutOfOrderCopy = new ArrayList<>(kmersOutOfOrder);
+        ReadThreadingAssembler assembler = new ReadThreadingAssembler(ReadThreadingAssembler.DEFAULT_NUM_PATHS_PER_GRAPH, kmersOutOfOrderCopy, 2);
+
+        Assert.assertEquals(kmersOutOfOrder, kmersOutOfOrderCopy);
+        Assert.assertEquals(assembler.getExpandedKmerList(), Arrays.asList(25, 35, 45, 65, 85)); // checking that the sort was preformed on the internal kmer list
+
+    }
+
     @DataProvider(name = "AssembleIntervalsData")
     public Object[][] makeAssembleIntervalsData() {
         List<Object[]> tests = new ArrayList<>();
