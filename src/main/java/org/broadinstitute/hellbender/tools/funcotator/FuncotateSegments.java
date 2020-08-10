@@ -96,7 +96,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
         renderer might further transform the name.*/
     @Argument(doc="(Advanced) Mapping between an alias and key values that are recognized by the backend.  Users should not typically have to specify this.",
             fullName = MAPPING_FULL_NAME)
-    private List<String> aliasToKeyMappingAsString = MAPPING_DEFAULT;
+    private List<String> aliasToKeyMappingAsString = new ArrayList<>(MAPPING_DEFAULT);
 
     private LinkedHashMap<String, String> aliasToKeyMapping;
 
