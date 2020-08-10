@@ -90,6 +90,20 @@ workflow ${name} {
   output {
     <@defineWorkflowOutputs heading="Workflow Outputs" outputs=runtimeOutputs/>
   }
+
+  parameter_meta {
+    dockerImage: { description: "Docker image for this task" }
+    appLocation: { description: "Location of app to run for this task" }
+    memoryRequirements: { description: "Runtime memory requirements for this task" }
+    diskRequirements: { description: "Runtime disk requirements for this task" }
+    cpuRequirements: { description: "Runtime CPU count for this task" }
+    preemptibleRequirements: { description: "Runtime preemptible count for this task" }
+    bootdisksizegbRequirements: { description: "Runtime boot disk size for this task" }
+    <@defineParamMeta heading="Positional Arguments" argsToUse=arguments.positional/>
+    <@defineParamMeta heading="Required Arguments" argsToUse=arguments.required/>
+    <@defineParamMeta heading="Optional Tool Arguments" argsToUse=arguments.optional/>
+    <@defineParamMeta heading="Optional Common Arguments" argsToUse=arguments.common/>
+  }
 }
 
 task ${name} {
@@ -132,14 +146,20 @@ task ${name} {
   output {
     <@defineTaskOutputs heading="Task Outputs" outputs=runtimeOutputs/>
   }
-  <#if localizationOptional?size != 0>
 
-    parameter_meta {
-    <#list localizationOptional as optLoc>
-        ${optLoc?substring(2)}: { localization_optional: true }
-    </#list>
-    }
-  </#if>
+  parameter_meta {
+    dockerImage: { description: "Docker image for this task" }
+    appLocation: { description: "Location of app to run for this task" }
+    memoryRequirements: { description: "Runtime memory requirements for this task" }
+    diskRequirements: { description: "Runtime disk requirements for this task" }
+    cpuRequirements: { description: "Runtime CPU count for this task" }
+    preemptibleRequirements: { description: "Runtime preemptible count for this task" }
+    bootdisksizegbRequirements: { description: "Runtime boot disk size for this task" }
+    <@defineParamMeta heading="Positional Arguments" argsToUse=arguments.positional/>
+    <@defineParamMeta heading="Required Arguments" argsToUse=arguments.required/>
+    <@defineParamMeta heading="Optional Tool Arguments" argsToUse=arguments.optional/>
+    <@defineParamMeta heading="Optional Common Arguments" argsToUse=arguments.common/>
+  }
 }
 
 <#--------------------------------------->
@@ -171,6 +191,83 @@ task ${name} {
                 <#if optionalCompanions?? && optionalCompanions[arg.name]??>
                     <#list optionalCompanions[arg.name] as companion>
 #    ${companion.name?substring(2)?right_pad(50)} Optional ${companion.summary?right_pad(60)[0..*80]}
+                    </#list>
+                </#if>
+            </#if>
+        </#list>
+    </#if>
+</#macro>
+
+
+<#macro defineParamMeta heading argsToUse>
+    <#if argsToUse?size != 0>
+
+    # ${heading}
+        <#list argsToUse as arg>
+            <#if heading?starts_with("Positional")>
+                <#if localizationOptional?seq_contains(positionalArgs)>
+    ${positionalArgs?substring(2)}<#noparse>: {
+      description: "</#noparse>${arg.summary[0..*80]}<#noparse>",</#noparse>
+      localization_optional : true <#noparse>
+    }</#noparse>
+                <#else>
+    ${positionalArgs?substring(2)}<#noparse>: { description: "</#noparse>${arg.summary[0..*80]}<#noparse>" }</#noparse>
+                </#if>
+                <#if requiredCompanions?? && requiredCompanions[positionalArgs]??>
+                    <#list requiredCompanions[positionalArgs] as companion>
+                        <#if localizationOptional?seq_contains(positionalArgs)>
+    ${companion.name?substring(2)}<#noparse>: {
+      description: "</#noparse>${companion.summary[0..*80]}<#noparse>",</#noparse>
+      localization_optional : true <#noparse>
+    }</#noparse>
+                        <#else>
+    ${companion.name?substring(2)}<#noparse>: { description: "</#noparse>${companion.summary[0..*80]}<#noparse>" }</#noparse>
+                        </#if>
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[positionalArgs]??>
+                    <#list optionalCompanions[positionalArgs] as companion>
+                        <#if localizationOptional?seq_contains(positionalArgs)>
+    ${companion.name?substring(2)}<#noparse>: {
+      description: "</#noparse>${arg.summary[0..*80]}<#noparse>",</#noparse>
+      localization_optional : true <#noparse>
+    }</#noparse>
+                        <#else>
+    ${companion.name?substring(2)}<#noparse>: { description: "</#noparse>${companion.summary(60)[0..*80]}<#noparse>" }</#noparse>
+                        </#if>
+                    </#list>
+                </#if>
+            <#else>
+                <#if localizationOptional?seq_contains(arg.name)>
+    ${arg.name?substring(2)}<#noparse>: {
+      description: "</#noparse>${arg.summary[0..*80]}<#noparse>",</#noparse>
+      localization_optional : true <#noparse>
+    }</#noparse>
+                <#else>
+    ${arg.name?substring(2)}<#noparse>: { description: "</#noparse>${arg.summary[0..*80]}<#noparse>" }</#noparse>
+                </#if>
+                <#if requiredCompanions?? && requiredCompanions[arg.name]??>
+                    <#list requiredCompanions[arg.name] as companion>
+                        <#if localizationOptional?seq_contains(companion.name)>
+    ${companion.name?substring(2)}<#noparse>: {
+      description: "</#noparse>${companion.summary[0..*80]}<#noparse>",</#noparse>
+      localization_optional : true <#noparse>
+    }</#noparse>
+                        <#else>
+    ${companion.name?substring(2)}<#noparse>: { description: "</#noparse>${companion.summary[0..*80]}<#noparse>" }</#noparse>
+                        </#if>
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+                    <#list optionalCompanions[arg.name] as companion>
+                        <#if localizationOptional?seq_contains(companion.name)>
+    ${companion.name?substring(2)}<#noparse>: {
+      description: "</#noparse>${companion.summary[0..*80]}<#noparse>",</#noparse>
+      localization_optional : true <#noparse>
+    }</#noparse>
+                        <#else>
+    ${companion.name?substring(2)}<#noparse>: { description: "</#noparse>${companion.summary[0..*80]}<#noparse>" }</#noparse>
+                        </#if>
                     </#list>
                 </#if>
             </#if>

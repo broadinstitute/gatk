@@ -197,6 +197,80 @@ workflow TestWDLTool {
 
   }
 
+  parameter_meta {
+    dockerImage: { description: "Docker image for this task" }
+    appLocation: { description: "Location of app to run for this task" }
+    memoryRequirements: { description: "Runtime memory requirements for this task" }
+    diskRequirements: { description: "Runtime disk requirements for this task" }
+    cpuRequirements: { description: "Runtime CPU count for this task" }
+    preemptibleRequirements: { description: "Runtime preemptible count for this task" }
+    bootdisksizegbRequirements: { description: "Runtime boot disk size for this task" }
+
+    # Positional Arguments
+    positionalArgs: { description: "Positional args doc" }
+    posDictionary: { description: "Companion resource for positionalArgs" }
+    posIndex: { description: "Companion resource for positionalArgs" }
+
+    # Required Arguments
+    requiredListFileInput: {
+      description: "requiredListFileInput doc",
+      localization_optional : true 
+    }
+    requiredListFileInputDictionary: {
+      description: "Companion resource for requiredListFileInput",
+      localization_optional : true 
+    }
+    requiredListFileInputIndex: {
+      description: "Companion resource for requiredListFileInput",
+      localization_optional : true 
+    }
+    requiredListFileOutput: { description: "requiredListFileOutput doc" }
+    requiredListFileOutputDictionary: { description: "Companion resource for requiredListFileOutput" }
+    requiredListFileOutputIndex: { description: "Companion resource for requiredListFileOutput" }
+    requiredScalarFileInput: {
+      description: "requiredScalarFileInput doc",
+      localization_optional : true 
+    }
+    requiredScalarFileInputDictionary: {
+      description: "Companion resource for requiredScalarFileInput",
+      localization_optional : true 
+    }
+    requiredScalarFileInputIndex: {
+      description: "Companion resource for requiredScalarFileInput",
+      localization_optional : true 
+    }
+    requiredScalarFileOutput: { description: "requiredScalarFileOutput doc" }
+    requiredScalarFileOutputDictionary: { description: "Companion resource for requiredScalarFileOutput" }
+    requiredScalarFileOutputIndex: { description: "Companion resource for requiredScalarFileOutput" }
+
+    # Optional Tool Arguments
+    optionaldListFileOutput: { description: "optionalListFileOutput doc" }
+    optionalListFileOutputDictionary: { description: "Companion resource for optionaldListFileOutput" }
+    optionalListFileOutputIndex: { description: "Companion resource for optionaldListFileOutput" }
+    optionaldScalarFileOutput: { description: "optionalScalarFileOutput doc" }
+    optionalScalarFileOutputDictionary: { description: "Companion resource for optionaldScalarFileOutput" }
+    optionalScalarFileOutputIndex: { description: "Companion resource for optionaldScalarFileOutput" }
+    optionalListDoubleInput: { description: "optionalListDoubleInput doc" }
+    optionalListFileInput: { description: "optionalListFileInput doc" }
+    optionalListFileInputDictionary: { description: "Companion resource for optionalListFileInput" }
+    optionalListFileInputIndex: { description: "Companion resource for optionalListFileInput" }
+    optionalListFloatInput: { description: "optionalListFloatInput doc" }
+    optionalListIntegerInput: { description: "optionalListIntegerInput doc" }
+    optionalListLongInput: { description: "optionalListLongInput doc" }
+    optionalListStringInput: { description: "optionalListStringInput doc" }
+    optionalScalarDoubleInput: { description: "optionalScalarDoubleInput doc" }
+    optionalScalarDoublePrimitiveInput: { description: "optionalScalarDoublePrimitiveInput doc" }
+    optionalScalarFileInput: { description: "optionalScalarFileInput doc" }
+    optionalScalarFileInputDictionary: { description: "Companion resource for optionalScalarFileInput" }
+    optionalScalarFileInputIndex: { description: "Companion resource for optionalScalarFileInput" }
+    optionalScalarFloatInput: { description: "optionalScalarFloatInput doc" }
+    optionalScalarFloatPrimitiveInput: { description: "optionalScalarFloatPrimitiveInput doc" }
+    optionalScalarIntegerInput: { description: "optionalScalarIntegerInput doc" }
+    optionalScalarIntegerPrimitiveInput: { description: "optionalScalarIntegerPrimitiveInput doc" }
+    optionalScalarLongInput: { description: "optionalScalarLongInput doc" }
+    optionalScalarLongPrimitiveInput: { description: "optionalScalarLongPrimitiveInput doc" }
+    optionalScalarStringInput: { description: "optionalScalarStringInput doc" }
+  }
 }
 
 task TestWDLTool {
@@ -288,13 +362,79 @@ task TestWDLTool {
       bootDiskSizeGb: bootdisksizegbRequirements
   }
 
-    parameter_meta {
-        requiredScalarFileInput: { localization_optional: true }
-        requiredScalarFileInputDictionary: { localization_optional: true }
-        requiredScalarFileInputIndex: { localization_optional: true }
-        requiredListFileInput: { localization_optional: true }
-        requiredListFileInputDictionary: { localization_optional: true }
-        requiredListFileInputIndex: { localization_optional: true }
+  parameter_meta {
+    dockerImage: { description: "Docker image for this task" }
+    appLocation: { description: "Location of app to run for this task" }
+    memoryRequirements: { description: "Runtime memory requirements for this task" }
+    diskRequirements: { description: "Runtime disk requirements for this task" }
+    cpuRequirements: { description: "Runtime CPU count for this task" }
+    preemptibleRequirements: { description: "Runtime preemptible count for this task" }
+    bootdisksizegbRequirements: { description: "Runtime boot disk size for this task" }
+
+    # Positional Arguments
+    positionalArgs: { description: "Positional args doc" }
+    posDictionary: { description: "Companion resource for positionalArgs" }
+    posIndex: { description: "Companion resource for positionalArgs" }
+
+    # Required Arguments
+    requiredListFileInput: {
+      description: "requiredListFileInput doc",
+      localization_optional : true 
     }
+    requiredListFileInputDictionary: {
+      description: "Companion resource for requiredListFileInput",
+      localization_optional : true 
+    }
+    requiredListFileInputIndex: {
+      description: "Companion resource for requiredListFileInput",
+      localization_optional : true 
+    }
+    requiredListFileOutput: { description: "requiredListFileOutput doc" }
+    requiredListFileOutputDictionary: { description: "Companion resource for requiredListFileOutput" }
+    requiredListFileOutputIndex: { description: "Companion resource for requiredListFileOutput" }
+    requiredScalarFileInput: {
+      description: "requiredScalarFileInput doc",
+      localization_optional : true 
+    }
+    requiredScalarFileInputDictionary: {
+      description: "Companion resource for requiredScalarFileInput",
+      localization_optional : true 
+    }
+    requiredScalarFileInputIndex: {
+      description: "Companion resource for requiredScalarFileInput",
+      localization_optional : true 
+    }
+    requiredScalarFileOutput: { description: "requiredScalarFileOutput doc" }
+    requiredScalarFileOutputDictionary: { description: "Companion resource for requiredScalarFileOutput" }
+    requiredScalarFileOutputIndex: { description: "Companion resource for requiredScalarFileOutput" }
+
+    # Optional Tool Arguments
+    optionaldListFileOutput: { description: "optionalListFileOutput doc" }
+    optionalListFileOutputDictionary: { description: "Companion resource for optionaldListFileOutput" }
+    optionalListFileOutputIndex: { description: "Companion resource for optionaldListFileOutput" }
+    optionaldScalarFileOutput: { description: "optionalScalarFileOutput doc" }
+    optionalScalarFileOutputDictionary: { description: "Companion resource for optionaldScalarFileOutput" }
+    optionalScalarFileOutputIndex: { description: "Companion resource for optionaldScalarFileOutput" }
+    optionalListDoubleInput: { description: "optionalListDoubleInput doc" }
+    optionalListFileInput: { description: "optionalListFileInput doc" }
+    optionalListFileInputDictionary: { description: "Companion resource for optionalListFileInput" }
+    optionalListFileInputIndex: { description: "Companion resource for optionalListFileInput" }
+    optionalListFloatInput: { description: "optionalListFloatInput doc" }
+    optionalListIntegerInput: { description: "optionalListIntegerInput doc" }
+    optionalListLongInput: { description: "optionalListLongInput doc" }
+    optionalListStringInput: { description: "optionalListStringInput doc" }
+    optionalScalarDoubleInput: { description: "optionalScalarDoubleInput doc" }
+    optionalScalarDoublePrimitiveInput: { description: "optionalScalarDoublePrimitiveInput doc" }
+    optionalScalarFileInput: { description: "optionalScalarFileInput doc" }
+    optionalScalarFileInputDictionary: { description: "Companion resource for optionalScalarFileInput" }
+    optionalScalarFileInputIndex: { description: "Companion resource for optionalScalarFileInput" }
+    optionalScalarFloatInput: { description: "optionalScalarFloatInput doc" }
+    optionalScalarFloatPrimitiveInput: { description: "optionalScalarFloatPrimitiveInput doc" }
+    optionalScalarIntegerInput: { description: "optionalScalarIntegerInput doc" }
+    optionalScalarIntegerPrimitiveInput: { description: "optionalScalarIntegerPrimitiveInput doc" }
+    optionalScalarLongInput: { description: "optionalScalarLongInput doc" }
+    optionalScalarLongPrimitiveInput: { description: "optionalScalarLongPrimitiveInput doc" }
+    optionalScalarStringInput: { description: "optionalScalarStringInput doc" }
+  }
 }
 

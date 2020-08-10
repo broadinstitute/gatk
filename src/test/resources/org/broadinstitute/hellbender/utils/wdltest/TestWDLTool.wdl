@@ -122,6 +122,53 @@ workflow TestWDLTool {
     Array[File] TestWDLToolrequiredListFileOutputDictionary = TestWDLTool.TestWDLTool_requiredListFileOutputDictionary
     Array[File] TestWDLToolrequiredListFileOutputIndex = TestWDLTool.TestWDLTool_requiredListFileOutputIndex
   }
+
+  parameter_meta {
+    dockerImage: { description: "Docker image for this task" }
+    appLocation: { description: "Location of app to run for this task" }
+    memoryRequirements: { description: "Runtime memory requirements for this task" }
+    diskRequirements: { description: "Runtime disk requirements for this task" }
+    cpuRequirements: { description: "Runtime CPU count for this task" }
+    preemptibleRequirements: { description: "Runtime preemptible count for this task" }
+    bootdisksizegbRequirements: { description: "Runtime boot disk size for this task" }
+
+    # Positional Arguments
+    positionalArgs: { description: "Positional args doc" }
+    posDictionary: { description: "Companion resource for positionalArgs" }
+    posIndex: { description: "Companion resource for positionalArgs" }
+
+    # Required Arguments
+    requiredListFileInput: {
+        description: "requiredListFileInput doc",
+        localization_optional : true 
+    }
+    requiredListFileInputDictionary: {
+      description: "Companion resource for requiredListFileInput",
+      localization_optional : true 
+    }
+    requiredListFileInputIndex: {
+      description: "Companion resource for requiredListFileInput",
+      localization_optional : true 
+    }
+    requiredListFileOutput: { description: "requiredListFileOutput doc" }
+    requiredListFileOutputDictionary: { description: "Companion resource for requiredListFileOutput" }
+    requiredListFileOutputIndex: { description: "Companion resource for requiredListFileOutput" }
+    requiredScalarFileInput: {
+        description: "requiredScalarFileInput doc",
+        localization_optional : true 
+    }
+    requiredScalarFileInputDictionary: {
+      description: "Companion resource for requiredScalarFileInput",
+      localization_optional : true 
+    }
+    requiredScalarFileInputIndex: {
+      description: "Companion resource for requiredScalarFileInput",
+      localization_optional : true 
+    }
+    requiredScalarFileOutput: { description: "requiredScalarFileOutput doc" }
+    requiredScalarFileOutputDictionary: { description: "Companion resource for requiredScalarFileOutput" }
+    requiredScalarFileOutputIndex: { description: "Companion resource for requiredScalarFileOutput" }
+  }
 }
 
 task TestWDLTool {
@@ -171,21 +218,59 @@ task TestWDLTool {
 
   output {
     # Task Outputs                                      
-    File TestWDLTool_requiredScalarFileOutput = "${requiredScalarFileOutput}"
-    File TestWDLTool_requiredScalarFileOutputDictionary = "${requiredScalarFileOutputDictionary}"
-    File TestWDLTool_requiredScalarFileOutputIndex = "${requiredScalarFileOutputIndex}"
-    Array[File] TestWDLTool_requiredListFileOutput = "${requiredListFileOutput}"
-    Array[File] TestWDLTool_requiredListFileOutputDictionary = "${requiredListFileOutputDictionary}"
-    Array[File] TestWDLTool_requiredListFileOutputIndex = "${requiredListFileOutputIndex}"
+    File TestWDLTool_requiredScalarFileOutput = requiredScalarFileOutput
+    File TestWDLTool_requiredScalarFileOutputDictionary = requiredScalarFileOutputDictionary
+    File TestWDLTool_requiredScalarFileOutputIndex = requiredScalarFileOutputIndex
+    Array[File] TestWDLTool_requiredListFileOutput = requiredListFileOutput
+    Array[File] TestWDLTool_requiredListFileOutputDictionary = requiredListFileOutputDictionary
+    Array[File] TestWDLTool_requiredListFileOutputIndex = requiredListFileOutputIndex
   }
 
-    parameter_meta {
-        requiredScalarFileInput: { localization_optional: true }
-        requiredScalarFileInputDictionary: { localization_optional: true }
-        requiredScalarFileInputIndex: { localization_optional: true }
-        requiredListFileInput: { localization_optional: true }
-        requiredListFileInputDictionary: { localization_optional: true }
-        requiredListFileInputIndex: { localization_optional: true }
+  parameter_meta {
+    dockerImage: { description: "Docker image for this task" }
+    appLocation: { description: "Location of app to run for this task" }
+    memoryRequirements: { description: "Runtime memory requirements for this task" }
+    diskRequirements: { description: "Runtime disk requirements for this task" }
+    cpuRequirements: { description: "Runtime CPU count for this task" }
+    preemptibleRequirements: { description: "Runtime preemptible count for this task" }
+    bootdisksizegbRequirements: { description: "Runtime boot disk size for this task" }
+
+    # Positional Arguments
+    positionalArgs: { description: "Positional args doc" }
+    posDictionary: { description: "Companion resource for positionalArgs" }
+    posIndex: { description: "Companion resource for positionalArgs" }
+
+    # Required Arguments
+    requiredListFileInput: {
+        description: "requiredListFileInput doc",
+        localization_optional : true 
     }
+    requiredListFileInputDictionary: {
+      description: "Companion resource for requiredListFileInput",
+      localization_optional : true 
+    }
+    requiredListFileInputIndex: {
+      description: "Companion resource for requiredListFileInput",
+      localization_optional : true 
+    }
+    requiredListFileOutput: { description: "requiredListFileOutput doc" }
+    requiredListFileOutputDictionary: { description: "Companion resource for requiredListFileOutput" }
+    requiredListFileOutputIndex: { description: "Companion resource for requiredListFileOutput" }
+    requiredScalarFileInput: {
+        description: "requiredScalarFileInput doc",
+        localization_optional : true 
+    }
+    requiredScalarFileInputDictionary: {
+      description: "Companion resource for requiredScalarFileInput",
+      localization_optional : true 
+    }
+    requiredScalarFileInputIndex: {
+      description: "Companion resource for requiredScalarFileInput",
+      localization_optional : true 
+    }
+    requiredScalarFileOutput: { description: "requiredScalarFileOutput doc" }
+    requiredScalarFileOutputDictionary: { description: "Companion resource for requiredScalarFileOutput" }
+    requiredScalarFileOutputIndex: { description: "Companion resource for requiredScalarFileOutput" }
+  }
 }
 
