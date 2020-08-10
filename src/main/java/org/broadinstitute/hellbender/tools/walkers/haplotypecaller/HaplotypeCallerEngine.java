@@ -634,10 +634,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult, samplesList, reads);
 
         // Realign reads to their best haplotype.
-        if (!hcArgs.retainBasedOnOriginalAlignment) {
-            final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner);
-            readLikelihoods.changeEvidence(readRealignments);
-        }
+        final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner);
+        readLikelihoods.changeEvidence(readRealignments);
 
         // Note: we used to subset down at this point to only the "best" haplotypes in all samples for genotyping, but there
         //  was a bad interaction between that selection and the marginalization that happens over each event when computing

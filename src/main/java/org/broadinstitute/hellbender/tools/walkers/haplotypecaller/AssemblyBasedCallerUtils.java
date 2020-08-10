@@ -113,23 +113,8 @@ public final class AssemblyBasedCallerUtils {
                 .filter(read ->  !read.isEmpty() && read.getCigar().getReadLength() > 0)
                 .map(read -> ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() ))
                 .filter(read -> read.getStart() <= read.getEnd() && read.getLength() > 0 && read.overlaps(region.getPaddedSpan()))
+                .sorted(new ReadCoordinateComparator(readsHeader)) // TODO: sort may be unnecessary here
                 .collect(Collectors.toList());
-
-        // This will probably have to change...
-        int i = 0;
-        for (GATKRead originalRead : region.getReads()) {
-            if (i < readsToUse.size()) {
-                GATKRead gatkRead = readsToUse.get(i);
-                if (gatkRead.getName().equals(originalRead.getName()) && gatkRead.getFlags() == originalRead.getFlags()) {
-                    gatkRead.setTransientAttribute(READ_ORIGINAL_ALIGNMENT_KEY, originalRead);
-                    i++;
-                }
-            } else {
-                break;
-            }
-        }
-
-        readsToUse.sort(new ReadCoordinateComparator(readsHeader));
 
         // handle overlapping read pairs from the same fragment
         if (correctOverlappingBaseQualities) {
