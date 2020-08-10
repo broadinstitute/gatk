@@ -235,16 +235,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test
-    public void testOfSite() {
-
-//        final File output = createTempFile("testVCFModeIsConcordantWithGATK3.8ResultsAlleleSpecificAnnotations", ".vcf");
-
-        final String argString = "-L chr2:9555838-9556787 -O CHMI_CHMI3_WGS1.6122952.vcf -I gs://broad-dsde-methods-dragen/reprocessed_data/CHMI_CHMI3_WGS1/CHMI_CHMI3_WGS1.bam -R /Users/emeryj/hellbender/references/Homo_sapiens_assembly38.fasta -contamination 0 --apply-frd --transform-dragen-mapping-quality --mapping-quality-threshold 1 --disable-cap-base-qualities-to-map-quality --minimum-mapping-quality 1 --apply-bqd --soft-clip-low-quality-ends --enable-dynamic-read-disqualification-for-genotyping --expected-mismatch-rate-for-read-disqualification 0.03 --dragstr-params-path /Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/debugIssue/CHMI_CHMI3_WGS1.gatk-dragstr-table.txt --genotype-assignment-method USE_POSTERIOR_PROBABILITIES --enable-legacy-graph-cycle-detection --enable-legacy-assembly-region-trimming --disable-spanning-event-genotyping --padding-around-indels 150 --standard-min-confidence-threshold-for-calling 3 --use-original-alignments-for-genotyping-overlap --use-posteriors-to-calculate-qual --allele-informative-reads-overlap-margin 1 --bam-output bamout.bam --debug-genotyper-output debugout.txt --disable-spanning-event-genotyping --disable-symmetric-hmm-normalizing";
-        runCommandLine(argString.split(" "));
-
-    }
-
 
     /*
      * Test that in VCF mode we're >= 99% concordant with GATK3.8 results
