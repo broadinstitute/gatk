@@ -300,9 +300,9 @@ task ${name} {
     <#else>
         <#list outputs as outputName, outputType>
             <#if requiredOutputs[outputName]??>
-    ${outputType} ${name}_${outputName?substring(2)} = <#noparse>"${</#noparse>${outputName?substring(2)}<#noparse>}"</#noparse>
+    ${outputType} ${name}_${outputName?substring(2)} = ${outputName?substring(2)}
             <#else>
-    ${outputType}? ${name}_${outputName?substring(2)} = <#noparse>"${</#noparse>${outputName?substring(2)}<#noparse>}"</#noparse>
+    ${outputType}? ${name}_${outputName?substring(2)} = ${outputName?substring(2)}
             </#if>
         </#list>
     </#if>

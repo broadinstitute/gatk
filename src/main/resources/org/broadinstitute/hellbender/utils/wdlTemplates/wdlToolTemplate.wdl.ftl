@@ -280,7 +280,7 @@ task ${name} {
     File ${name}_results = stdout()
     <#else>
         <#list requiredOutputs as outputName, outputType>
-    ${outputType} ${name}_${outputName?substring(2)} = <#noparse>"${</#noparse>${outputName?substring(2)}<#noparse>}"</#noparse>
+    ${outputType} ${name}_${outputName?substring(2)} = ${outputName?substring(2)}
         </#list>
     </#if>
 </#macro>
