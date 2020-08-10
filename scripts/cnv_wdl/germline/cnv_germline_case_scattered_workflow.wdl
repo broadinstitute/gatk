@@ -191,8 +191,6 @@ workflow CNVGermlineCaseScatteredWorkflow {
                 gcnv_caller_external_admixing_rate = gcnv_caller_external_admixing_rate,
                 gcnv_disable_annealing = gcnv_disable_annealing,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
-                mem_gb_for_transpose_caller_outputs = mem_gb_for_transpose_caller_outputs,
-                disk_space_gb_for_transpose_caller_outputs = disk_space_gb_for_transpose_caller_outputs,
                 allosomal_contigs = allosomal_contigs,
                 maximum_number_events_per_sample = maximum_number_events_per_sample
         }
