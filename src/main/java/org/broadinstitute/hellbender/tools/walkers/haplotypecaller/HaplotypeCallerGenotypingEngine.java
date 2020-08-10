@@ -260,7 +260,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             return (read, target) -> read.overlaps(target);
         }
     }
-    
+
     /**
      * Checks whether a read's extended mapping region (unclipping soft-clips) overlaps a given target interval
      * even if it is only by one base. Adjacency is not good enough.
