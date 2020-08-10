@@ -494,7 +494,12 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testNewGencodeLiftoverGtfFile() {
-        // First ensure that we can index the file:
+        // The latest gencode files for hg19 have slightly different header information and formatting
+        // than previous versions (first noticed for gencode v34).
+        // This is because they are lifting over the hg38 version to hg19.
+        // This test is designed to ensure that such a file can still be indexed with the
+        // gencode codec.
+
         // Required Args:
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
 

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.testutils;
 
 import htsjdk.samtools.ValidationStringency;
-import java.nio.file.Path;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,6 +13,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -192,20 +192,28 @@ public final class IntegrationTestSpec {
     }
 
     public static void assertEqualTextFiles(final File resultFile, final File expectedFile) throws IOException {
-        assertEqualTextFiles(resultFile, expectedFile, null);
+        assertEqualTextFiles(resultFile, expectedFile, null, true);
     }
 
     public static void assertEqualTextFiles(final File resultFile, final File expectedFile, final String commentPrefix) throws IOException {
-        assertEqualTextFiles(resultFile.toPath(), expectedFile.toPath(), commentPrefix);
+        assertEqualTextFiles(resultFile.toPath(), expectedFile.toPath(), commentPrefix, true);
     }
 
-    /**
-     * Compares two text files and ignores all lines that start with the comment prefix.
-     */
-    public static void assertEqualTextFiles(final Path resultFile, final Path expectedFile, final String commentPrefix) throws IOException {
+    public static void assertEqualTextFiles(final File resultFile, final File expectedFile, final String commentPrefix, final boolean doTrimWhitespace) throws IOException {
+        assertEqualTextFiles(resultFile.toPath(), expectedFile.toPath(), commentPrefix, doTrimWhitespace);
+    }
 
-        XReadLines actual = new XReadLines(resultFile, true, commentPrefix);
-        XReadLines expected = new XReadLines(expectedFile, true, commentPrefix);
+    public static void assertEqualTextFiles(final Path resultFile, final Path expectedFile, final String commentPrefix) throws IOException {
+        assertEqualTextFiles(resultFile, expectedFile, commentPrefix, true);
+    }
+
+        /**
+         * Compares two text files and ignores all lines that start with the comment prefix.
+         */
+    public static void assertEqualTextFiles(final Path resultFile, final Path expectedFile, final String commentPrefix, final boolean doTrimWhitespace) throws IOException {
+
+        XReadLines actual = new XReadLines(resultFile, doTrimWhitespace, commentPrefix);
+        XReadLines expected = new XReadLines(expectedFile, doTrimWhitespace, commentPrefix);
 
         // For ease of debugging, we look at the lines first and only then check their counts.
         // For performance, we stream the lines through instead of loading everything first.

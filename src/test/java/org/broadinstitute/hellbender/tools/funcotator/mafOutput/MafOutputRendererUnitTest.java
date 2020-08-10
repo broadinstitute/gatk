@@ -1163,8 +1163,9 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
             }
         }
 
+        // Make sure our files are as we expect them to be:
         try {
-            IntegrationTestSpec.assertEqualTextFiles(outFile, expectedFile, "#");
+            IntegrationTestSpec.assertEqualTextFiles(outFile, expectedFile, MafOutputRendererConstants.COMMENT_STRING, false);
         }
         catch (final IOException ex) {
             throw new GATKException("ERROR comparing text files: " + outFile.toURI().toString() + " and " + expectedFile.toURI().toString(), ex);

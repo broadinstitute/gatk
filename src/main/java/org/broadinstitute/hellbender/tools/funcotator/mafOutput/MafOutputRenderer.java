@@ -692,10 +692,14 @@ public class MafOutputRenderer extends OutputRenderer {
 
             // Write the column headers for our output set and our manual annotations:
             writer.write(outputFields.stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
-            writeLine(MafOutputRendererConstants.FIELD_DELIMITER + manualAnnotations.keySet()
-                    .stream()
-                    .collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
-
+            if (manualAnnotations.size() > 0) {
+                writeLine(MafOutputRendererConstants.FIELD_DELIMITER + manualAnnotations.keySet()
+                        .stream()
+                        .collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
+            }
+            else {
+                writer.write("\n");
+            }
             // Make sure we keep track of the fact that we've now written the header:
             hasWrittenHeader = true;
         } catch (IOException e){
