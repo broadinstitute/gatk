@@ -112,7 +112,9 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
                     m -> {
                         final String actualArgName = (String) m.get(TemplateProperties.WDL_ARGUMENT_ACTUAL_NAME);
                         if (actualArgName != null && actualArgName.equals("--" + argDef.getLongName())) {
-                            final String newSummary = ((String) m.get(TemplateProperties.ARGUMENT_SUMMARY)).replace('\n', ' ');
+                            // the summary string must be suitable to embed in a quoted string in the param_meta section,
+                            // so remove any quotes and newlines
+                            final String newSummary = ((String) m.get(TemplateProperties.ARGUMENT_SUMMARY)).replaceAll("[\"\'\n]", "");
                             m.put(TemplateProperties.ARGUMENT_SUMMARY, newSummary);
                         }
                     });
