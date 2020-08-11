@@ -724,65 +724,15 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "mappedGatkReadsData")
-    public void testHasBasesAligned(final GATKRead read) {
-        Assert.assertTrue(ReadUtils.hasBasesAlignedAgainstTheReference(read));
-    }
-
-    @Test(dataProvider = "mappedGatkReadsData")
     public void testGetFirstAlignedBaseOffset(final GATKRead read) {
         final int actual = ReadUtils.getFirstAlignedBaseOffset(read);
         final int expected = CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL) - CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL, CigarOperator.HARD_CLIP);
         Assert.assertEquals(actual, expected);
     }
 
-    @Test(dataProvider = "mappedGatkReadsData")
-    public void testGetAfterLastAlignedBaseOffset(final GATKRead read) {
-        final int actual = ReadUtils.getAfterLastAlignedBaseOffset(read);
-        final int expected = read.getLength() - (CigarUtils.countClippedBases(read.getCigar(), ClippingTail.RIGHT_TAIL) - CigarUtils.countClippedBases(read.getCigar(), ClippingTail.RIGHT_TAIL, CigarOperator.HARD_CLIP));
-        Assert.assertEquals(actual, expected);
-    }
-
-    @Test(dataProvider = "mappedGatkReadsData")
-    public void testGetFirstPositionAligned(final GATKRead read) {
-        final int actual = ReadUtils.getFirstAlignedReadPosition(read);
-        final int expected = (!read.isReverseStrand()
-                    ? CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL) + 1
-                    : CigarUtils.countClippedBases(read.getCigar(), ClippingTail.RIGHT_TAIL) + 1);
-        Assert.assertEquals(actual, expected);
-    }
-
-    @Test(dataProvider = "mappedGatkReadsData")
-    public void testGetLastPositionAligned(final GATKRead read) {
-        final int actual = ReadUtils.getLastAlignedReadPosition(read);
-        final int expected = (!read.isReverseStrand()
-                ? CigarUtils.countUnclippedReadBases(read.getCigar()) - CigarUtils.countClippedBases(read.getCigar(), ClippingTail.RIGHT_TAIL)
-                : CigarUtils.countUnclippedReadBases(read.getCigar()) - CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL));
-        Assert.assertEquals(actual, expected);
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData")
-    public void testHashBasesNotAligned(final GATKRead read) {
-        Assert.assertFalse(ReadUtils.hasBasesAlignedAgainstTheReference(read));
-    }
-
     @Test(dataProvider = "unmappedGatkReadData", expectedExceptions = IllegalArgumentException.class)
     public void testGetFirstAlignedBaseOffsetOnUnmapped(final GATKRead read) {
         ReadUtils.getFirstAlignedBaseOffset(read);
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData", expectedExceptions = IllegalArgumentException.class)
-    public void testGetAfterLastAlignedBaseOffsetOnUnmapped(final GATKRead read) {
-        ReadUtils.getAfterLastAlignedBaseOffset(read);
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData", expectedExceptions = IllegalArgumentException.class)
-    public void testGetFirtAlignedReadPositionOnUnmapped(final GATKRead read) {
-        ReadUtils.getFirstAlignedReadPosition(read);
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData", expectedExceptions = IllegalArgumentException.class)
-    public void testGetLastAlignedReadPositionOnUnmapped(final GATKRead read) {
-        ReadUtils.getLastAlignedReadPosition(read);
     }
 
     @DataProvider(name="unmappedGatkReadData")

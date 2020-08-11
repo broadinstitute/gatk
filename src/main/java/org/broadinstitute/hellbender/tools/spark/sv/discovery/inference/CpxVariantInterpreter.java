@@ -8,6 +8,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
+import org.broadinstitute.hellbender.engine.BasicReference;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputMetaData;
@@ -20,11 +21,10 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.*;
 
 /**
@@ -51,10 +51,11 @@ public final class CpxVariantInterpreter {
                         .mapToPair(tig -> getOneVariantFromOneContig(tig, referenceSequenceDictionaryBroadcast.getValue()))
                         .groupByKey(); // two contigs could give the same variant
 
-        return interpretationAndAssemblyEvidence.map(pair -> turnIntoVariantContext(pair, referenceBroadcast.getValue())).collect();
+        return interpretationAndAssemblyEvidence.map(pair ->
+                toVariantContext(pair._1, pair._2, referenceBroadcast.getValue())).collect();
     }
 
-    private static Tuple2<CpxVariantCanonicalRepresentation, CpxVariantInducingAssemblyContig> getOneVariantFromOneContig
+    public static Tuple2<CpxVariantCanonicalRepresentation, CpxVariantInducingAssemblyContig> getOneVariantFromOneContig
             (final AssemblyContigWithFineTunedAlignments contigWithFineTunedAlignments,
              final SAMSequenceDictionary refSequenceDictionary) {
 
@@ -269,16 +270,14 @@ public final class CpxVariantInterpreter {
 
     // =================================================================================================================
 
-    @VisibleForTesting
-    static VariantContext turnIntoVariantContext(final Tuple2<CpxVariantCanonicalRepresentation, Iterable<CpxVariantInducingAssemblyContig>> pair,
-                                                 final ReferenceMultiSparkSource reference)
-            throws IOException {
-
-        final CpxVariantCanonicalRepresentation cpxVariantCanonicalRepresentation = pair._1;
-        final byte[] refBases = getRefBases(reference, cpxVariantCanonicalRepresentation);
+    public static VariantContext toVariantContext( final CpxVariantCanonicalRepresentation cpxVariantCanonicalRepresentation,
+                                                   final Iterable<CpxVariantInducingAssemblyContig> evidenceContigs,
+                                                   final BasicReference reference ) {
+        final SimpleInterval refRegion = cpxVariantCanonicalRepresentation.getAffectedRefRegion();
+        final byte[] refBases =
+                reference.getBases(new SimpleInterval(refRegion.getContig(), refRegion.getStart(), refRegion.getStart()));
 
         final VariantContextBuilder rawVariantContextBuilder = cpxVariantCanonicalRepresentation.toVariantContext(refBases);
-        final Iterable<CpxVariantInducingAssemblyContig> evidenceContigs = pair._2;
 
         if (Utils.stream(evidenceContigs).anyMatch(evidenceContig -> evidenceContig.getPreprocessedTig().getAlignments().size()==0)) {
             throw new GATKException("Some contigs were unmapped, yet seem to be used for inference.\n" + cpxVariantCanonicalRepresentation.toString() +
@@ -330,16 +329,6 @@ public final class CpxVariantInterpreter {
 
         attributeMap.forEach(rawVariantContextBuilder::attribute);
         return rawVariantContextBuilder.make();
-    }
-
-    private static byte[] getRefBases( final ReferenceMultiSparkSource reference, final CpxVariantCanonicalRepresentation cpxVariantCanonicalRepresentation)
-            throws IOException {
-        final SimpleInterval affectedRefRegion = cpxVariantCanonicalRepresentation.getAffectedRefRegion();
-        SimpleInterval refBase = new SimpleInterval(affectedRefRegion.getContig(), affectedRefRegion.getStart(),
-                                                                                   affectedRefRegion.getStart());
-        return reference
-                .getReferenceBases(refBase)
-                .getBases();
     }
 
     // =================================================================================================================
