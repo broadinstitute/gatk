@@ -663,6 +663,7 @@ task ScatterPloidyCallsBySample {
         tar -czf sample_${padded_sample_index}.${sample_id}.contig_ploidy_calls.tar.gz -C calls/SAMPLE_${i} .
       done
     >>>
+    
     runtime {
         docker: docker
         memory: select_first([mem_gb, 2]) + " GiB"
