@@ -91,7 +91,7 @@ workflow ${name} {
 
   parameter_meta {
     dockerImage: { description: "Docker image for this task" }
-    appLocation: { description: "Location of app to run for this task" }
+    gatk: { description: "Location of gatk to run for this task" }
     memoryRequirements: { description: "Runtime memory requirements for this task" }
     diskRequirements: { description: "Runtime disk requirements for this task" }
     cpuRequirements: { description: "Runtime CPU count for this task" }
@@ -143,7 +143,7 @@ task ${name} {
 
   parameter_meta {
     dockerImage: { description: "Docker image for this task" }
-    appLocation: { description: "Location of app to run for this task" }
+    gatk: { description: "Location of gatk to run for this task" }
     memoryRequirements: { description: "Runtime memory requirements for this task" }
     diskRequirements: { description: "Runtime disk requirements for this task" }
     cpuRequirements: { description: "Runtime CPU count for this task" }
