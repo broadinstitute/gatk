@@ -63,7 +63,7 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
 
         final String[] bases = new String[] {
 //           A string of all IUPAC bases
-                "NBTRMLNACMGRSVTWYHKDBNABTRMLNBTRML",
+                "NBRMLNMRSVWYHKDBNBRMLNBRML",
 //           A string that starts with an ACGT base, then has a mix of ACGT and IUPAC bases
                 "ACTNBTRMLACMGRSVTWYHKDBNANBTRMLNBTRML",
 //           A string that starts with an IUPAC base, then has a mix of ACGT and IUPAC bases
