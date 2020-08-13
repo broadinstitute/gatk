@@ -88,7 +88,7 @@ public class CountFalsePositives extends VariantWalker {
         final List<SimpleInterval> intervals =  intervalArgumentCollection.getIntervals(getReferenceDictionary());
         final long targetTerritory = intervals.stream().mapToLong(i -> i.size()).sum();
 
-        try ( FalsePositiveTableWriter writer = new FalsePositiveTableWriter(IOUtils.fileToPath(outputFile)) ) {
+        try ( FalsePositiveTableWriter writer = new FalsePositiveTableWriter(IOUtils.toPath(outputFile)) ) {
             FalsePositiveRecord falsePositiveRecord = new FalsePositiveRecord(id, snpFalsePositiveCount, indelFalsePositiveCount, targetTerritory);
             writer.writeRecord(falsePositiveRecord);
         } catch (IOException e){

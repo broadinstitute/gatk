@@ -69,7 +69,7 @@ public class ConcordanceSummaryRecord {
 
     public static Writer getWriter(final File outputTable){
         try {
-            Writer writer = new Writer(IOUtils.fileToPath(outputTable));
+            Writer writer = new Writer(IOUtils.toPath(outputTable));
             return writer;
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", outputTable), e);

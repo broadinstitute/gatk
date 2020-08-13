@@ -113,7 +113,7 @@ public class TableUtilsUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testReaderInvalidFactory0() throws IOException {
-        TableUtils.reader(IOUtils.fileToPath(CORRECT_TEST_FILE), null);
+        TableUtils.reader(IOUtils.toPath(CORRECT_TEST_FILE), null);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -128,7 +128,7 @@ public class TableUtilsUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalStateException.class)
     public void testReaderInvalidFactoryStateNull0() throws IOException {
-        TableUtils.reader(IOUtils.fileToPath(CORRECT_TEST_FILE), (c, e) -> null );
+        TableUtils.reader(IOUtils.toPath(CORRECT_TEST_FILE), (c, e) -> null );
     }
 
     @Test(expectedExceptions = IllegalStateException.class)
@@ -151,7 +151,7 @@ public class TableUtilsUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testInvalidHeaderReader0() throws IOException {
-        TableUtils.<TestTuple>reader(IOUtils.fileToPath(INVALID_HEADER_FILE),
+        TableUtils.<TestTuple>reader(IOUtils.toPath(INVALID_HEADER_FILE),
                 (columns, formatExceptionFactory) -> {
                     if (!columns.matchesExactly("col1.str", "col2.int", "col3.dbl"))
                         throw formatExceptionFactory.apply("Bad header");
@@ -195,7 +195,7 @@ public class TableUtilsUnitTest extends GATKBaseTest {
     private Object[][] readers(final File inputFile) throws IOException {
         return new Object[][]{
                 {
-                     TableUtils.<TestTuple>reader(IOUtils.fileToPath(inputFile),
+                     TableUtils.<TestTuple>reader(IOUtils.toPath(inputFile),
                         (columns, formatExceptionFactory) -> {
                             if (!columns.matchesExactly("col1.str", "col2.int", "col3.dbl"))
                                 throw formatExceptionFactory.apply("Bad header");

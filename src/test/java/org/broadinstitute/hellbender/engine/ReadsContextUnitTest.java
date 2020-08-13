@@ -26,7 +26,7 @@ public final class ReadsContextUnitTest extends GATKBaseTest {
                 { new ReadsContext() },
                 { new ReadsContext(null, null, null) },
                 { new ReadsContext(null, new SimpleInterval("1", 1, 1), null ) },
-                { new ReadsContext(new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")), null) }
+                { new ReadsContext(new ReadsPathDataSource(new GATKPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")), null) }
         };
     }
 
@@ -45,12 +45,12 @@ public final class ReadsContextUnitTest extends GATKBaseTest {
         readNameFilter.readName = "d";
         return new Object[][]{
                 {new ReadsContext(
-                        new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
+                        new ReadsPathDataSource(new GATKPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
                         new SimpleInterval("1", 200, 210), // query over small interval, with no read filter
                         ReadFilterLibrary.ALLOW_ALL_READS), new String[] { "a", "b", "c" },
                 },
                 {new ReadsContext(
-                        new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
+                        new ReadsPathDataSource(new GATKPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
                         new SimpleInterval("1", 200, 1000), // query over larger interval with readNameFilter on "d"
                         readNameFilter), new String[] { "d" }
                 }
@@ -69,7 +69,7 @@ public final class ReadsContextUnitTest extends GATKBaseTest {
 
     @Test
     public void testIteratorOverDifferentInterval() {
-        final ReadsDataSource readsDataSource = new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam"));
+        final ReadsDataSource readsDataSource = new ReadsPathDataSource(new GATKPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam"));
         final SimpleInterval originalInterval = new SimpleInterval("1", 200, 210);
         final ReadsContext readsContext = new ReadsContext(readsDataSource, originalInterval, ReadFilterLibrary.ALLOW_ALL_READS);
         final SimpleInterval otherInterval = new SimpleInterval("1", 276, 300);

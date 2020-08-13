@@ -75,7 +75,7 @@ public class F1R2CountsCollector {
             // Intentionally not use try-with-resources so that the writer stays open outside of the try block
             final File altTableFile = new File(tmpDir, IOUtils.urlEncode(sample) + ALT_TABLE_EXTENSION);
             try {
-                altTableWriters.put(sample, new AltSiteRecord.AltSiteRecordTableWriter(IOUtils.fileToPath(altTableFile), sample));
+                altTableWriters.put(sample, new AltSiteRecord.AltSiteRecordTableWriter(IOUtils.toPath(altTableFile), sample));
             } catch (IOException e) {
                 throw new UserException(String.format("Encountered an IO exception creating a writer for %s", altTableFile), e);
             }

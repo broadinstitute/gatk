@@ -46,7 +46,7 @@ public class FilterAnalysisRecord {
 
     //----- The following four public static methods read and write contamination files
     public static void writeToFile(final Collection<FilterAnalysisRecord> records, final File outputTable) {
-        writeToPath(records, IOUtils.fileToPath(outputTable));
+        writeToPath(records, IOUtils.toPath(outputTable));
     }
 
     public static void writeToPath(final Collection<FilterAnalysisRecord> records, final Path outputTable) {
@@ -58,7 +58,7 @@ public class FilterAnalysisRecord {
     }
 
     public static List<FilterAnalysisRecord> readFromFile(final File tableFile) {
-        return readFromPath(IOUtils.fileToPath(tableFile));
+        return readFromPath(IOUtils.toPath(tableFile));
     }
 
     public static List<FilterAnalysisRecord> readFromPath(final Path tablePath) {

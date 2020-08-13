@@ -4,6 +4,7 @@ import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.Main;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
@@ -24,7 +25,15 @@ import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -188,6 +197,14 @@ public abstract class BaseTest {
      */
     public File getTestFile(String fileName) {
         return new File(getToolTestDataDir(), fileName);
+    }
+
+    /**
+     * @param fileName the name of a file
+     * @return a File resolved using getToolTestDataDir as the parent and fileName
+     */
+    public GATKPath getTestPath(String fileName) {
+        return new GATKPath(getToolTestDataDir() + fileName);
     }
 
     /**

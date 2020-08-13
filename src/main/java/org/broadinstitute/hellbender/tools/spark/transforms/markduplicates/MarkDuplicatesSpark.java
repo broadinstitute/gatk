@@ -310,8 +310,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         final SAMFileHeader mergedHeader = getHeaderForReads();
 
         // Check if we are using multiple inputs that the headers are all in the correct querygrouped ordering, if so set the aggregate header to reflect this
-        if (readArguments.getReadPathSpecifiers().size() > 1) {
-            final Optional<GATKPath> badlySorted = readArguments.getReadPathSpecifiers().stream()
+        if (readArguments.getReadPaths().size() > 1) {
+            final Optional<GATKPath> badlySorted = readArguments.getReadPaths().stream()
                     .filter(spec -> !treatAsReadGroupOrdered(getHeaderForReadsInput(spec), treatUnsortedAsOrdered))
                     .findFirst();
 

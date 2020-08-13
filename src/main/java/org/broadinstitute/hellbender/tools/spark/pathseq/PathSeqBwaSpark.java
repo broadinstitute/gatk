@@ -204,7 +204,7 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        if (!readArguments.getReadPathSpecifiers().isEmpty()) {
+        if (!readArguments.getReadPaths().isEmpty()) {
             throw new UserException.BadInput("Please use --paired-input or --unpaired-input instead of --input");
         }
         Utils.validateArg((outputPaired == null || new GATKPath(outputPaired).isBam()) &&

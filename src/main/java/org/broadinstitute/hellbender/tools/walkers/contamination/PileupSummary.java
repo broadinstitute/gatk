@@ -95,7 +95,7 @@ public class PileupSummary implements Locatable {
 
     //----- The following two public static methods read and write pileup summary files
     public static void writeToFile(final String sample, final List<PileupSummary> records, final File outputTable) {
-        try ( PileupSummaryTableWriter writer = new PileupSummaryTableWriter(IOUtils.fileToPath(outputTable)) ) {
+        try ( PileupSummaryTableWriter writer = new PileupSummaryTableWriter(IOUtils.toPath(outputTable)) ) {
             writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
             writer.writeAllRecords(records);
         } catch (IOException e){
@@ -135,7 +135,7 @@ public class PileupSummary implements Locatable {
     }
 
     public static ImmutablePair<String, List<PileupSummary>> readFromFile(final File tableFile) {
-        try( PileupSummaryTableReader reader = new PileupSummaryTableReader(IOUtils.fileToPath(tableFile)) ) {
+        try( PileupSummaryTableReader reader = new PileupSummaryTableReader(IOUtils.toPath(tableFile)) ) {
             final List<PileupSummary> pileupSummaries = reader.toList();
             return ImmutablePair.of(reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG), pileupSummaries);
         } catch (IOException e){

@@ -1407,4 +1407,20 @@ public final class Utils {
             }
         }
     }
+
+    /**
+     * Convinience method to convert a list of type T into a list of type R by applying a Function
+     * This is a shorthand for stream -> map -> collect
+     * Note that this is not performant and should be avoided in anywhere performance is important.
+     */
+    public static <T, R> List<R> map(final List<T> list, final Function<T, R> mapper) {
+        Utils.nonNull(list);
+        Utils.nonNull(mapper);
+        final List<R> result = new ArrayList<>();
+        for (final T t : list) {
+            final R r = mapper.apply(t);
+            result.add(r);
+        }
+        return result;
+    }
 }

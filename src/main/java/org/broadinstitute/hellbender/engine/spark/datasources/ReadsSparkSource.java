@@ -175,7 +175,7 @@ public final class ReadsSparkSource implements Serializable {
                     .validationStringency(validationStringency)
                     .referenceSequence(cramReferencePathSpec == null ? null : referencePathSpecifier.toPath());
             try (final ReadsDataSource readsDataSource =
-                         new ReadsPathDataSource(Collections.singletonList(filePathSpecifier.toPath()), factory)) {
+                         new ReadsPathDataSource(filePathSpecifier, factory)) {
                  return readsDataSource.getHeader();
             }
         }

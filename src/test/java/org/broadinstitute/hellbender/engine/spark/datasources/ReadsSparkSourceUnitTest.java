@@ -291,7 +291,7 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
             samReaderFactory = SamReaderFactory.makeDefault().validationStringency(validationStringency);
         }
 
-        ReadsDataSource bam2 = new ReadsPathDataSource(IOUtils.getPath(bam), samReaderFactory);
+        ReadsDataSource bam2 = new ReadsPathDataSource(new GATKPath(bam), samReaderFactory);
         List<GATKRead> records = Lists.newArrayList();
         for ( GATKRead read : bam2 ) {
             records.add(read);
