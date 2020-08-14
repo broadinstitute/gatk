@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.variantdb;
 
-<<<<<<< HEAD
 import com.google.cloud.bigquery.TableResult;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.StringUtils;
@@ -10,12 +9,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.QueryAPIRowReader;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
-=======
-import htsjdk.variant.vcf.VCFHeader;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.UserException;
->>>>>>> 298a745a1... change structure, add compressed option to ingest
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 
