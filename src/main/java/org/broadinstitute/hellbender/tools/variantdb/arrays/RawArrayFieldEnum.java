@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.variantdb.arrays;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeInfo;
 
 
 /**
