@@ -1,15 +1,15 @@
-package org.broadinstitute.hellbender.tools.variantdb.arrays;
+package org.broadinstitute.hellbender.tools.variantdb.arrays.tables;
 
 import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 
+import com.google.cloud.bigquery.TableResult;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.QueryAPIRowReader;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -67,7 +67,7 @@ public class ProbeInfo {
         return data;
     }
 
-    public static Map<Long, ProbeInfo> getProbeIdMap(final String probeCsvExportFile) {
+    public static Map<Long, ProbeInfo> getProbeIdMapFromExport(final String probeCsvExportFile) {
         final Map<Long, ProbeInfo> probeIdMap = new HashMap<>();
         String line = "";
 
@@ -103,9 +103,46 @@ public class ProbeInfo {
         }        
     }
 
+    public static Map<Long, ProbeInfo> getProbeIdMapFromBQ(String fqProbeTableName, boolean printDebugInformation) {
+
+        Map<Long, ProbeInfo> results = new HashMap<>();
+
+        // Get the query string:
+        final String sampleListQueryString =
+                "SELECT ProbeId, Name, GenomeBuild, Chr, Position, Ref, AlleleA, AlleleB, build37Flag" +
+                        " FROM `" + fqProbeTableName + "`";
+
+
+        // Execute the query:
+        final TableResult result = BigQueryUtils.executeQuery(sampleListQueryString);
+
+        System.out.println("Beginning probe retrieval...");
+        for (final FieldValueList row : result.iterateAll()) {
+            ProbeInfo p = new ProbeInfo(row.get(0).getLongValue(),
+                    getOptionalString(row.get(1)), // name
+                    getOptionalString(row.get(2)), // refBuild
+                    row.get(3).getStringValue(), // contig
+                    row.get(4).getLongValue(),   // position
+                    getOptionalString(row.get(5)), // ref
+                    getOptionalString(row.get(6)), // alleleA
+                    getOptionalString(row.get(7)),// alleleB
+                    getOptionalString(row.get(8))); // build37Flag
+            results.put(p.probeId, p);
+
+        }
+        System.out.println("Done probe retrieval...");
+
+        return results;
+    }
+
+    private static String getOptionalString(FieldValue v) {
+        return (v == null || v.isNull()) ? null : v.getStringValue();
+    }
+
+
     public static Map<String, ProbeInfo> getProbeNameMap(final String probeCsvExportFile) {
         Map<String, ProbeInfo> results = new HashMap<>();
-        for (final ProbeInfo pi : getProbeIdMap(probeCsvExportFile).values()) {
+        for (final ProbeInfo pi : getProbeIdMapFromExport(probeCsvExportFile).values()) {
             results.put(pi.name, pi);
         }
         return results;

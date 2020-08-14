@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.variantdb.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
 import org.broadinstitute.hellbender.tools.variantdb.IngestUtils;
+import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeInfo;
 
 import java.io.File;
 import java.util.Map;
@@ -100,11 +101,6 @@ public final class CreateArrayIngestFiles extends VariantWalker {
             probeNameMap = ProbeInfo.getProbeNameMap(probeCsvFile);
         }
 
-        // TableReference probeInfoTable = new TableReference(probeFQTablename, ProbeInfoSchema.PROBE_INFO_FIELDS);
-        // String q = "SELECT " + StringUtils.join(ProbeInfoSchema.PROBE_INFO_FOR_INGEST_FIELDS,",") + " FROM " + probeInfoTable.getFQTableName();
-        // TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), probeInfoTable.tableProject, probeInfoTable.tableDataset, q);
-
-        // Map<String, ProbeInfo> probeData = ProbeInfo.createProbeDataForIngest(new QueryAPIRowReader(tr));
         // Set reference version
         ChromosomeEnum.setRefVersion(refVersion);
 
