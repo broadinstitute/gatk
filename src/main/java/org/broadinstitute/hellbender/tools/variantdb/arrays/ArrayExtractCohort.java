@@ -11,11 +11,14 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
+import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeInfo;
+import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.nextgen.ExtractCohort;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
+import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.util.*;
@@ -124,16 +127,16 @@ public class ArrayExtractCohort extends GATKTool {
 
         vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
 
-        Map<Integer, String> sampleIdMap = ExtractCohortBQ.getSampleIdMap(sampleTableName, printDebugInformation);
+        Map<Integer, String> sampleIdMap = SampleList.getSampleIdMap(new TableReference(sampleTableName, SampleList.SAMPLE_LIST_FIELDS), printDebugInformation);
 
         Collection<String> sampleNames = sampleIdMap.values();
         VCFHeader header = CommonCode.generateRawArrayVcfHeader(new HashSet<>(sampleNames), reference.getSequenceDictionary());
 
         Map<Long, ProbeInfo> probeIdMap;
         if (probeCsvExportFile == null) {
-            probeIdMap = ExtractCohortBQ.getProbeIdMap(probeTableName, printDebugInformation);
+            probeIdMap = ProbeInfo.getProbeIdMapFromBQ(probeTableName, printDebugInformation);
         } else {
-            probeIdMap = ProbeInfo.getProbeIdMap(probeCsvExportFile);
+            probeIdMap = ProbeInfo.getProbeIdMapFromExport(probeCsvExportFile);
         }
 
 

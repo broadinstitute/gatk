@@ -1,9 +1,14 @@
 package org.broadinstitute.hellbender.tools.variantdb;
 
+import com.google.cloud.bigquery.TableResult;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.bigquery.QueryAPIRowReader;
+import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 
@@ -12,6 +17,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class IngestUtils {
     static final Logger logger = LogManager.getLogger(IngestUtils.class);
@@ -51,20 +59,26 @@ public class IngestUtils {
         return sampleId;
     }
 
-    public static Path createSampleDirectory(Path parentDirectory, int sampleDirectoryNumber) {
-        // If this sample set directory doesn't exist yet -- create it
-        final String sampleDirectoryName = String.valueOf(sampleDirectoryNumber);
-        final Path sampleDirectoryPath = parentDirectory.resolve(sampleDirectoryName);
-        final File sampleDirectory = new File(sampleDirectoryPath.toString());
-        if (!sampleDirectory.exists()) {
-            sampleDirectory.mkdir();
-        }
-        return sampleDirectoryPath;
-    }
+//    public static Path createSampleDirectory(Path parentDirectory, int sampleDirectoryNumber) {
+//        // If this sample set directory doesn't exist yet -- create it
+//        final String sampleDirectoryName = String.valueOf(sampleDirectoryNumber);
+//        final Path sampleDirectoryPath = parentDirectory.resolve(sampleDirectoryName);
+//        final File sampleDirectory = new File(sampleDirectoryPath.toString());
+//        if (!sampleDirectory.exists()) {
+//            sampleDirectory.mkdir();
+//        }
+//        return sampleDirectoryPath;
+//    }
 
     // To determine which directory (and ultimately table) the sample's data will go into
     // Since tables have a limited number of samples (default is 4k)
     public static int getTableNumber(String sampleId, int sampleMod) { // this is based on sample id
+        // sample ids 1-4000 will go in directory 001
+        int sampleIdInt = Integer.valueOf(sampleId); // TODO--should sampleId just get refactored as a long?
+        return getTableNumber(sampleIdInt, sampleMod);
+    }
+
+    public static int getTableNumber(int sampleId, int sampleMod) { // this is based on sample id
         // sample ids 1-4000 will go in directory 001
         int sampleIdInt = Integer.valueOf(sampleId); // TODO--should sampleId just get refactored as a long?
         // subtract 1 from the sample id to make it 1-index (or do we want to 0-index?) and add 1 to the dir

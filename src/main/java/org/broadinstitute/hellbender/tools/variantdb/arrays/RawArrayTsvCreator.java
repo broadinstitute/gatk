@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
+import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeInfo;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
 
