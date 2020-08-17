@@ -142,6 +142,11 @@ def choose_mri_tmap(sample_id, folder=None, tmap_name=None, default_tmap_names=B
         style={'description_width': 'initial'},
         layout=widgets.Layout(width='300px'),
     )
+    flip_chooser = widgets.Checkbox(
+        description='Whether to flip the images.',
+        style={'description_width': 'initial'},
+        layout=transpose_chooser.layout,
+    )
     plot_type_chooser = widgets.RadioButtons(
         options={'interactive animation': PlotType.INTERACTIVE, 'panel grid': PlotType.PANEL},
         description='Plot type',
@@ -171,8 +176,8 @@ def choose_mri_tmap(sample_id, folder=None, tmap_name=None, default_tmap_names=B
             widgets.HTML('<h3>Visualization controls</h3>'),
             tmap_name_chooser,
             widgets.HBox([transpose_chooser, fig_width_chooser]),
-            widgets.HBox([plot_type_chooser, color_range_chooser]),
-            instance_chooser,
+            widgets.HBox([flip_chooser, color_range_chooser]),
+            widgets.HBox([plot_type_chooser, instance_chooser]),
         ],
         layout=widgets.Layout(width='auto', border='solid 1px grey'),
     )
@@ -187,6 +192,7 @@ def choose_mri_tmap(sample_id, folder=None, tmap_name=None, default_tmap_names=B
             'instance': instance_chooser,
             'color_range': color_range_chooser,
             'transpose': transpose_chooser,
+            'flip': flip_chooser,
             'fig_width': fig_width_chooser,
         },
     )
@@ -223,7 +229,7 @@ def compute_instance_range(tmap_name):
   return(middle_instance, max_instance)
 
 
-def plot_mri_tmap(sample_id, tmap_cache, tmap_name, plot_type, instance, color_range, transpose, fig_width):
+def plot_mri_tmap(sample_id, tmap_cache, tmap_name, plot_type, instance, color_range, transpose, flip, fig_width):
   """Visualize the applicable MRI series within this HD5 file.
 
   Args:
@@ -232,8 +238,9 @@ def plot_mri_tmap(sample_id, tmap_cache, tmap_name, plot_type, instance, color_r
     tmap_name: The name of the chosen TMAP for the MRI series.
     plot_type: Whether to display instances interactively or in a panel view.
     instance: The particular instance to display, if interactive.
-    color_range: array of minimum and maximum value for the color range
+    color_range: Array of minimum and maximum value for the color range.
     transpose: Whether to transpose the images.
+    flip: Whether to flip the image on its vertical axis
     fig_width: The desired width of the figure. Note that height computed as
       the proportion of the width based on the data to be plotted.
 
@@ -249,6 +256,7 @@ def plot_mri_tmap(sample_id, tmap_cache, tmap_name, plot_type, instance, color_r
         vmin=color_range[0],
         vmax=color_range[1],
         transpose=transpose,
+        flip=flip,
         fig_width=fig_width,
         title_prefix=title_prefix,
     )
@@ -256,12 +264,13 @@ def plot_mri_tmap(sample_id, tmap_cache, tmap_name, plot_type, instance, color_r
     # Note: this print statement causes the current image to go away while the new one is rendering.
     # Do this intensionally for the panel plots, because they are a bit slower to render. It serves
     # a purpose similar to a progress bar.
-    print(f'Rendering {title_prefix}.')
+    print(f'Rendering {title_prefix} . . .')
     plot_mri_tensor_as_panels(
         mri_tensor=mri_tensor,
         vmin=color_range[0],
         vmax=color_range[1],
         transpose=transpose,
+        flip=flip,
         fig_width=fig_width,
         title_prefix=title_prefix,
     )
@@ -269,17 +278,18 @@ def plot_mri_tmap(sample_id, tmap_cache, tmap_name, plot_type, instance, color_r
     return HTML(f'''<div class="alert alert-block alert-danger">Invalid plot type: {plot_type}</div>''')
 
 
-def plot_mri_tensor_as_panels(mri_tensor, vmin, vmax, transpose=False, fig_width=DEFAULT_IMAGE_WIDTH, title_prefix=''):
+def plot_mri_tensor_as_panels(mri_tensor, vmin, vmax, transpose=False, flip=False, fig_width=DEFAULT_IMAGE_WIDTH, title_prefix=''):
   """Visualize an MRI series from a 3D tensor as a panel of static plots.
 
   Args:
-    mri_tensor: the MRI 3D tensor
-    vmin: minimum value for the color range
-    vmax: maximum value for the color range
-    transpose: whether or not to transpose the image
-    fig_width: the desired width of the figure, note that height computed as
-      the proportion of the width based on the data to be plotted
-    title_prefix: text to display as the initial portion of the plot title
+    mri_tensor: The MRI 3D tensor.
+    vmin: Minimum value for the color range.
+    vmax: Maximum value for the color range.
+    transpose: Whether to transpose the image.
+    flip: Whether to flip the image on its vertical axis.
+    fig_width: The desired width of the figure, note that height computed as
+      the proportion of the width based on the data to be plotted.
+    title_prefix: Text to display as the initial portion of the plot title.
   """
   cols = 5
   rows = int(np.ceil(mri_tensor.shape[2] / 5.0))
@@ -295,24 +305,16 @@ def plot_mri_tensor_as_panels(mri_tensor, vmin, vmax, transpose=False, fig_width
   for i in range(0, mri_tensor.shape[2]):
     col = i % cols
     row = i // cols
+    pixels = mri_tensor[:, :, i]
     if transpose:
-      axes[row, col].imshow(
-          mri_tensor[:, :, i].T,
-          cmap='gray',
-          vmin=vmin,
-          vmax=vmax,
-      )
-    else:
-      axes[row, col].imshow(
-          mri_tensor[:, :, i],
-          cmap='gray',
-          vmin=vmin,
-          vmax=vmax,
-      )
+      pixels = pixels.T
+    if flip:
+      pixels = np.flip(pixels, 1)
+    axes[row, col].imshow(pixels, cmap='gray', vmin=vmin, vmax=vmax)
     axes[row, col].set_yticklabels([])
     axes[row, col].set_xticklabels([])
   fig.suptitle(
-      f'{title_prefix}\nColor range: {vmin}-{vmax}, Transpose: {transpose}, Figure size:{fig_width}x{fig_height}',
+      f'{title_prefix}\nColor range: {vmin}-{vmax}, Transpose: {transpose}, Flip: {flip}, Figure size:{fig_width}x{fig_height}',
       fontsize=fig_width,
   )
   fig.subplots_adjust(
@@ -324,18 +326,19 @@ def plot_mri_tensor_as_panels(mri_tensor, vmin, vmax, transpose=False, fig_width
   )
 
 
-def plot_mri_tensor_as_animation(mri_tensor, instance, vmin, vmax, transpose=False, fig_width=DEFAULT_IMAGE_WIDTH, title_prefix=''):
+def plot_mri_tensor_as_animation(mri_tensor, instance, vmin, vmax, transpose=False, flip=False, fig_width=DEFAULT_IMAGE_WIDTH, title_prefix=''):
   """Visualize an MRI series from a 3D tensor as an animation rendered one panel at a time.
 
   Args:
-    mri_tensor: the MRI 3D tensor
-    instance: the particular instance to display
-    vmin: minimum value for the color range
-    vmax: maximum value for the color range
-    transpose: whether or not to transpose the image
-    fig_width: the desired width of the figure, note that height computed as
-      the proportion of the width based on the data to be plotted
-    title_prefix: text to display as the initial portion of the plot title
+    mri_tensor: The MRI 3D tensor.
+    instance: The particular instance to display.
+    vmin: Minimum value for the color range.
+    vmax: Maximum value for the color range.
+    transpose: Whether to transpose the image.
+    flip: Whether to flip the image on its vertical axis.
+    fig_width: The desired width of the figure, note that height computed as
+      the proportion of the width based on the data to be plotted.
+    title_prefix: Text to display as the initial portion of the plot title.
   """
   if mri_tensor.shape[2] < instance:
     pixels = mri_tensor[:, :, -1]
@@ -344,18 +347,18 @@ def plot_mri_tensor_as_animation(mri_tensor, instance, vmin, vmax, transpose=Fal
     pixels = mri_tensor[:, :, instance - 1]
 
   if transpose:
-    height = pixels.T.shape[0]
-    width = pixels.T.shape[1]
-  else:
-    height = pixels.shape[0]
-    width = pixels.shape[1]
+    pixels = pixels.T
+  if flip:
+    pixels = np.flip(pixels, 1)
 
+  height = pixels.shape[0]
+  width = pixels.shape[1]
   fig_height = int(np.ceil(fig_width * (height/width)))
 
   _, ax = plt.subplots(figsize=(fig_width, fig_height), facecolor='beige')
-  ax.imshow(pixels.T if transpose else pixels, cmap='gray', vmin=vmin, vmax=vmax)
+  ax.imshow(pixels, cmap='gray', vmin=vmin, vmax=vmax)
   ax.set_title(
-      f'{title_prefix}, Instance: {instance}\nColor range: {vmin}-{vmax}, Transpose: {transpose}, Figure size:{fig_width}x{fig_height}',
+      f'{title_prefix}, Instance: {instance}\nColor range: {vmin}-{vmax}, Transpose: {transpose}, Flip: {flip}, Figure size:{fig_width}x{fig_height}',
       fontsize=fig_width,
   )
   ax.set_yticklabels([])
