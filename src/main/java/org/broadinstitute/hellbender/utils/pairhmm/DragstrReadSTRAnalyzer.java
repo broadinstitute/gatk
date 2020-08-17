@@ -4,13 +4,13 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.util.Arrays;
 
-public class DragstrReadSTRAnalizer {
+public class DragstrReadSTRAnalyzer {
     private final int[][] repeatsByPeriodAndPosition;
     private final int[] periodWithMostRepeats;
     private final int maxPeriod;
     private int seqLength;
 
-    DragstrReadSTRAnalizer(final int maxSequenceLength, final int maxPeriod) {
+    DragstrReadSTRAnalyzer(final int maxSequenceLength, final int maxPeriod) {
         repeatsByPeriodAndPosition = new int[maxPeriod][maxSequenceLength];
         this.maxPeriod = maxPeriod;
         this.periodWithMostRepeats = new int[maxSequenceLength];

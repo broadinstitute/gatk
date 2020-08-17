@@ -2,13 +2,11 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
-import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.bdgenomics.adam.util.PhredUtils;
 import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.*;
@@ -20,7 +18,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -30,7 +27,7 @@ import java.util.stream.Stream;
  */
 public abstract class GenotypingEngine<Config extends StandardCallerArgumentCollection> {
 
-    protected final VariationalAlleleFrequencyCalculator alleleFrequencyCalculator;
+    protected final AlleleFrequencyCalculator alleleFrequencyCalculator;
 
     protected final Config configuration;
 
@@ -67,7 +64,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         this.doAlleleSpecificCalcs = doAlleleSpecificCalcs;
         logger = LogManager.getLogger(getClass());
         numberOfGenomes = this.samples.numberOfSamples() * configuration.genotypeArgs.samplePloidy;
-        alleleFrequencyCalculator = VariationalAlleleFrequencyCalculator.makeCalculator(configuration.genotypeArgs);
+        alleleFrequencyCalculator = AlleleFrequencyCalculator.makeCalculator(configuration.genotypeArgs);
     }
 
     /**
@@ -174,7 +171,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
 
         if (configuration.genotypeArgs.usePosteriorProbabilitiesToCalculateQual && hasPosteriors(genotypes)) {
-            final double log10NoVariantPosterior = nonVariantPresentLog10PosteriorProbability(genotypes) * -.1;
+            final double log10NoVariantPosterior = phredNoVariantPosteriorProbability(genotypes) * -.1;
             final double qualUpdate = !outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
                     ? log10NoVariantPosterior + 0.0 : MathUtils.log10OneMinusPow10(log10NoVariantPosterior) + 0.0;
             if (!Double.isNaN(qualUpdate)) {
@@ -189,62 +186,18 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         return builder.genotypes(genotypes).attributes(attributes).make();
     }
 
-    protected double nonVariantPresentLog10PosteriorProbability(final GenotypesContext gc) {
+    private double phredNoVariantPosteriorProbability(final GenotypesContext gc) {
         return gc.stream()
-                .map(gt -> gt.getExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY))
-                .mapToDouble(v -> coherceToDouble(v, Double.NaN, true))
-                .filter(v -> !Double.isNaN(v))
-                .min().orElse(Double.NaN);
-    }
-
-    private double coherceToDouble(final Object obj, final double defaultValue, final boolean takeFirstElement) {
-        if (obj == null) {
-            return defaultValue;
-        } else if (obj instanceof CharSequence) {
-            try {
-                return Double.parseDouble(obj.toString());
-            } catch (final NumberFormatException ex) {
-                return defaultValue;
-            }
-        } else if (obj instanceof Number) {
-            return ((Number) obj).doubleValue();
-        } else if (takeFirstElement) {
-            if (obj instanceof Collection) {
-                if( ((Collection)obj).isEmpty()) {
-                    return defaultValue;
-                } else if (obj instanceof List) {
-                    final List<?> asList = (List<?>) obj;
-                    return coherceToDouble(asList.get(0), defaultValue, false);
-                } else {
-                    final Collection<?> collection = (Collection<?>) obj;
-                    return coherceToDouble(collection.iterator().next(), defaultValue, false);
-                }
-            } else if (obj.getClass().isArray()) {
-                if (obj.getClass().getComponentType().isPrimitive()) {
-                    if (Array.getLength(obj) == 0) {
-                        return defaultValue;
-                    } else {
-                        return coherceToDouble(Array.get(obj, 1), defaultValue, false);
-                    }
-                } else {
-                    final Object[] array = (Object[]) obj;
-                    return array.length != 0 ? coherceToDouble(array[0], defaultValue, false) : defaultValue;
-                }
-            } else {
-                return defaultValue;
-            }
-        } else {
-            return defaultValue;
-        }
+                .map(gt -> VariantContextGetters.getAttributeAsDoubleArray(gt, VCFConstants.GENOTYPE_POSTERIORS_KEY, () -> new double[]{Double.NaN}, Double.NaN))
+                .mapToDouble(probs -> probs[0] - QualityUtils.phredSum(probs))
+                .filter(d -> !Double.isNaN(d))
+                // We do not want to return 0 if empty but NaN,
+                // so rather than simply call .sum() we have a custom reduce
+                .reduce(Double.NaN, (a, b) -> Double.isNaN(a) ? b : (Double.isNaN(b) ? a : a + b) );
     }
 
     private boolean hasPosteriors(final GenotypesContext gc) {
-        for (final Genotype genotype : gc) {
-            if (genotype.hasExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY)) {
-                return true;
-            }
-        }
-        return false;
+        return gc.stream().anyMatch(g -> g.hasExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY));
     }
 
     public VariantContext calculateGenotypes(final VariantContext vc) {

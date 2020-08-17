@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.VariationalAlleleFrequencyCalculator;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -19,7 +18,7 @@ public class DragstrParams {
     private final double[][] gop;
     private final double[][] gcp;
     private final double[][] api;
-    private final Map<Object, VariationalAlleleFrequencyCalculator> afcs;
+    private final Map<Object, AlleleFrequencyCalculator> afcs;
 
     public DragstrParams(final String path) {
         this(openBufferedReader(path), path);
@@ -232,8 +231,12 @@ public class DragstrParams {
         return maxRepeats;
     }
 
-    public VariationalAlleleFrequencyCalculator getAFCalculator(final int period, final int repeat, final int ploidy, final double snpHet, final double scale) {
+    public int maximumLengthInBasePairs() {
+        return maxPeriod * maxRepeats;
+    }
+
+    public AlleleFrequencyCalculator getAFCalculator(final int period, final int repeat, final int ploidy, final double snpHet, final double scale) {
         final String keyString = "" + period + '/' + repeat + '/' + ploidy + '/' + snpHet;
-        return afcs.computeIfAbsent(keyString, k -> VariationalAlleleFrequencyCalculator.makeCalculator(this, period, repeat, ploidy, snpHet, scale));
+        return afcs.computeIfAbsent(keyString, k -> AlleleFrequencyCalculator.makeCalculator(this, period, repeat, ploidy, snpHet, scale));
     }
 }

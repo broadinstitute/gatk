@@ -793,6 +793,30 @@ public interface GATKRead extends Locatable {
      */
     Object getTransientAttribute(final Object key);
 
+
+    /**
+     * Returns a transient attribute value as an {@link Optional}.
+     *
+     * @param key the key to the attribute.
+     * @param clazz the expected clazz of the attribute value.
+     * @param <T> the parametric type of the attribute value.
+     * @return never {@code null} but a not-present optional instead.
+     */
+    default <T> Optional<T> getOptionalTransientAttribute(final Object key, final Class<T> clazz) {
+        final Object value = getTransientAttribute(key);
+        if (value != null) {
+            if (clazz.isAssignableFrom(value.getClass())) {
+                return Optional.of(clazz.cast(value));
+            } else {
+                throw new IllegalArgumentException("transient attribute value type (" +
+                        value.getClass().getName() + ") is not assignable to does not match the input class (" +
+                        clazz.getName() + ")");
+            }
+        } else {
+            return Optional.empty();
+        }
+    }
+
     /**
      * Set an integer-valued attribute on the read.
      *

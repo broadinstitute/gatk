@@ -181,7 +181,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         final AlleleLikelihoods<GATKRead, Haplotype> result = new AlleleLikelihoods<>(samples, haplotypes, perSampleReadList);
         final int sampleCount = result.numberOfSamples();
         for (int i = 0; i < sampleCount; i++) {
-            computeReadLikelihoods(result.sampleMatrix(i));
+                computeReadLikelihoods(result.sampleMatrix(i));
         }
 
         result.normalizeLikelihoods(log10globalReadMismappingRate, symmetricallyNormalizeAllelesToReference);
@@ -196,8 +196,8 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
     private ToDoubleFunction<GATKRead> daynamicLog10MinLiklihoodModel(final double dynamicRadQualConstant, final ToDoubleFunction<GATKRead> log10MinTrueLikelihood) {
         return read -> {
-            double dynamicThreshold = calculateDynamicThreshold(read, dynamicRadQualConstant);
-            double log10MaxLikelihoodForTrueAllele = log10MinTrueLikelihood.applyAsDouble(read);
+            final double dynamicThreshold = calculateLog10DynamicReadQualThreshold(read, dynamicRadQualConstant);
+            final double log10MaxLikelihoodForTrueAllele = log10MinTrueLikelihood.applyAsDouble(read);
             if (dynamicThreshold < log10MaxLikelihoodForTrueAllele ) {
                 if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                     HaplotypeCallerGenotypingDebugger.println("For read "+ read.getName() + " replacing old threshold ("+log10MaxLikelihoodForTrueAllele+") with new threshold: "+dynamicThreshold);
@@ -209,22 +209,25 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         };
     }
 
-    static double calculateDynamicThreshold(final GATKRead read, final double dynamicRadQualConstant) {
+    private static double calculateLog10DynamicReadQualThreshold(final GATKRead read, final double dynamicReadQualConstant) {
         double sumMean = 0;
         double sumVariance = 0;
-        byte[] baseQualities = read.getTransientAttribute(HMM_BASE_QUALITIES_TAG) != null ?
-                (byte[]) read.getTransientAttribute(HMM_BASE_QUALITIES_TAG) : read.getBaseQualities();
 
-        for( int i = 0; i < baseQualities.length; i++) {
-            int bq = baseQualities[i];
+        final byte[] baseQualities = read.getOptionalTransientAttribute(HMM_BASE_QUALITIES_TAG, byte[].class)
+                                         .orElseGet(read::getBaseQualities);
+
+        for (final int qualByte : baseQualities) {
+            final int bq = 0xFF & qualByte; // making sure that larger BQ are not casted into negatives.
             // bound the base qualities for lookup between 1 and 40
-            int boundedBq = bq < 1 ? 1 : bq > 40 ? 40 : bq;
-            sumMean +=      dynamicReadQualThreshLookupTable[ (boundedBq - 1) * 3 + 1];
-            sumVariance +=  dynamicReadQualThreshLookupTable[ (boundedBq - 1) * 3 + 2];
+            final int entryIndex = bq <= 1 ? 0 : Math.min(MAXIMUM_DYNAMIC_QUAL_THRESHOLD_ENTRY_BASEQ, bq) - 1;
+            final int meanOffset = entryIndex * DYNAMIC_QUAL_THRESHOLD_TABLE_ENTRY_LENGTH + DYNAMIC_QUAL_THRESHOLD_TABLE_ENTRY_MEAN_OFFSET;
+            final int varOffset = meanOffset + 1;
+            sumMean +=      dynamicReadQualThreshLookupTable[meanOffset];
+            sumVariance +=  dynamicReadQualThreshLookupTable[varOffset];
         }
 
-        double threshold = sumMean + dynamicRadQualConstant * Math.sqrt(sumVariance);
-        return threshold / -10;
+        final double threshold = sumMean + dynamicReadQualConstant * Math.sqrt(sumVariance);
+        return QualityUtils.qualToErrorProbLog10(threshold); // = threshold * -.1;
     }
 
 
@@ -233,7 +236,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     // Format for each row of table: baseQ, mean, variance
     // Actual threshold is calculated over the length of the read as:
     // sum(means) + K * sqrt(sum(variances))
-    static double dynamicReadQualThreshLookupTable[] = {
+    private static double dynamicReadQualThreshLookupTable[] = {
             //baseQ,mean,variance
             1,  5.996842844, 0.196616587, 2,  5.870018422, 1.388545569, 3,  5.401558531, 5.641990128,
             4,  4.818940919, 10.33176216, 5,  4.218758304, 14.25799688, 6,  3.646319832, 17.02880749,
@@ -249,6 +252,11 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             34, 0.017163711, 0.598145851, 35, 0.013949904, 0.500000349, 36, 0.011332027, 0.41742159,
             37, 0.009200898, 0.348056286, 38, 0.007467036, 0.289881373, 39, 0.006057179, 0.241163527,
             40, 0.004911394, 0.200422214};
+
+
+    private static final int MAXIMUM_DYNAMIC_QUAL_THRESHOLD_ENTRY_BASEQ = 40;
+    private static final int DYNAMIC_QUAL_THRESHOLD_TABLE_ENTRY_LENGTH = 3;
+    private static final int DYNAMIC_QUAL_THRESHOLD_TABLE_ENTRY_MEAN_OFFSET = 1;
 
     private ToDoubleFunction<GATKRead> log10MinTrueLikelihood(final double maximumErrorPerBase, final boolean capLikelihoods) {
         return read -> {

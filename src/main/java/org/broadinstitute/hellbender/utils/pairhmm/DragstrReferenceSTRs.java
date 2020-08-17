@@ -78,7 +78,7 @@ public class DragstrReferenceSTRs {
             remainingToMatchUnit = period;
             carryBack = 1;
             for (; rightMargin < sequence.length; rightMargin++) {
-                if (sequence[position++] != sequence[rightMargin]) {
+                        if (sequence[position++] != sequence[rightMargin]) {
                     break;
                 } else if (--remainingToMatchUnit == 0) {
                     carryBack++;

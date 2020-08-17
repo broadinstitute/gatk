@@ -5,6 +5,12 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.Arrays;
 
+/**
+ * Standard or classic pair-hmm score imputator.
+ * <p>
+ *     This implements the default score calculations before the introduction of DRAGstr.
+ * </p>
+ */
 public class StandardPairHMMInputScoreImputator implements PairHMMInputScoreImputator {
 
     private final byte constantGCP;
