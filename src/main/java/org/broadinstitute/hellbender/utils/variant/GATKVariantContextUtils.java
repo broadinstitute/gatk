@@ -11,7 +11,6 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -21,9 +20,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Stra
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.VariationalAlleleFrequencyCalculator;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 
@@ -315,9 +312,9 @@ public final class GATKVariantContextUtils {
                 best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
             }
             gb.alleles(best);
-        } else if (assignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
+        } else if (assignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBRABILITIES) {
             if (gpc == null) {
-                throw new GATKException("cannot uses posteriors without a allele frequency calculator present");
+                throw new GATKException("cannot uses posteriors without an genotype prior calculator present");
             } else {
                 final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, allelesToUse.size());
                 final double[] log10Priors = gpc.getLog10Priors(glCalc, allelesToUse);

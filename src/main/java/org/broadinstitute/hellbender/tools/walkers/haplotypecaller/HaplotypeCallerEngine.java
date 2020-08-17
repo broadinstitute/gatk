@@ -427,7 +427,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             headerInfo.addAll(DragstrUtils.vcfHeaderLines());
         }
 
-        if (hcArgs.standardArgs.genotypeArgs.genotypeAssignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
+        if (hcArgs.standardArgs.genotypeArgs.genotypeAssignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBRABILITIES) {
             headerInfo.add(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_POSTERIORS_KEY, VCFHeaderLineCount.G, VCFHeaderLineType.Float, "genotype posterior in Phred Scale" ));
             headerInfo.add(new VCFFormatHeaderLine(GATKVCFConstants.GENOTYPE_PRIOR_KEY, VCFHeaderLineCount.G, VCFHeaderLineType.Float, "genotype priors in Phred Scale"));
         }

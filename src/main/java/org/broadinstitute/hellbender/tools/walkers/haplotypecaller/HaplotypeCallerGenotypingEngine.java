@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
-import org.broadinstitute.hellbender.tools.haplotypecaller.SimpleGenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -303,13 +302,13 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
     private GenotypePriorCalculator resolveCustomAlleleFrequencyCalculator(final VariantContext vc, final DragstrReferenceSTRs strs, final int pos, final int ploidy, final double snpHeterozygosity, final double indelHeterozygosity) {
        if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors) {
-            return SimpleGenotypePriorCalculator.assumingHW(Math.log10(snpHeterozygosity), Math.log10(indelHeterozygosity));
+            return GenotypePriorCalculator.assumingHW(Math.log10(snpHeterozygosity), Math.log10(indelHeterozygosity));
         } else if (strs == null) {
-            return SimpleGenotypePriorCalculator.givenHetToHomRatio(Math.log10(snpHeterozygosity), Math.log10(indelHeterozygosity), Math.log10(Math.min(snpHeterozygosity, indelHeterozygosity)), hcArgs.likelihoodArgs.dragstrHetHomRatio);
+            return GenotypePriorCalculator.givenHetToHomRatio(Math.log10(snpHeterozygosity), Math.log10(indelHeterozygosity), Math.log10(Math.min(snpHeterozygosity, indelHeterozygosity)), hcArgs.likelihoodArgs.dragstrHetHomRatio);
        } else {
             final int period = strs.period(pos);
             final int repeats = strs.repeatLength(pos);
-            return SimpleGenotypePriorCalculator.givenDragstrParams(hcArgs.likelihoodArgs.dragstrParams, period, repeats, Math.log10(snpHeterozygosity), hcArgs.likelihoodArgs.dragstrHetHomRatio);
+            return GenotypePriorCalculator.givenDragstrParams(hcArgs.likelihoodArgs.dragstrParams, period, repeats, Math.log10(snpHeterozygosity), hcArgs.likelihoodArgs.dragstrHetHomRatio);
         }
     }
 
