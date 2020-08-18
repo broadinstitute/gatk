@@ -4,6 +4,7 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -96,7 +97,7 @@ public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrati
         intervals.forEach(args2::addInterval);
         runCommandLine(args2);
 
-        try(final ReadsDataSource reader = new ReadsPathDataSource(out.toPath())){
+        try(final ReadsDataSource reader = new ReadsPathDataSource(new GATKPath(out))){
             final long count = Utils.stream(reader).count();
             Assert.assertEquals( count, expectedNumberOfReads);
         }

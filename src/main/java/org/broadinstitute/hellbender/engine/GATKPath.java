@@ -7,10 +7,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -37,6 +34,14 @@ public class GATKPath extends PathSpecifier implements TaggedArgument, Serializa
      */
     public GATKPath(final String uriString) {
         super(uriString);
+    }
+
+    public GATKPath(final File file) {
+        super(file.toString());
+    }
+
+    public GATKPath(final Path path) {
+        super(path.toString());
     }
 
     @Override

@@ -106,7 +106,7 @@ before_install:
 # http://docs.travis-ci.com/user/database-setup/#MySQL
 - sudo /etc/init.d/mysql stop
 - sudo /etc/init.d/postgresql stop
-- sudo bash scripts/htsgetScripts/launchDocker.sh
+- sudo bash scripts/htsgetScripts/launch-htsget-reference-server.sh
 
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then

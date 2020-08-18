@@ -2,16 +2,15 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
@@ -24,8 +23,8 @@ public class AllelePileupCounterUnitTest extends GATKBaseTest {
     @Test(dataProvider = "basicCounts")
     public void testBasic(final SimpleInterval interval, final Allele ref, final Allele alt, int minBaseQuality, int gtRefCount, int gtAltCount) {
 
-        final List<Path> bamFiles = Collections.singletonList(IOUtils.getPath(TEST_DREAM_TUMOR_BAM));
-        final List<Path> baiFiles = Collections.singletonList(IOUtils.getPath(TEST_DREAM_TUMOR_BAI));
+        final List<GATKPath> bamFiles = Collections.singletonList(new GATKPath(TEST_DREAM_TUMOR_BAM));
+        final List<GATKPath> baiFiles = Collections.singletonList(new GATKPath(TEST_DREAM_TUMOR_BAI));
         final ReadsDataSource readsDataSource = new ReadsPathDataSource(bamFiles, baiFiles);
         final ReadPileup readPileup = new ReadPileup(interval, () -> readsDataSource.query(interval));
 

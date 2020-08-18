@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import java.io.Serializable;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -64,6 +65,12 @@ public abstract class ReadInputArgumentCollection implements Serializable {
         }
 
         return readIndices.stream().map(GATKPath::toPath).collect(Collectors.toList());
+    }
+
+    public List<GATKPath> getReadIndexPathSpecifiers() {
+        return readIndices == null || readIndices.isEmpty()
+            ? null
+            : Collections.unmodifiableList(readIndices);
     }
 
     /**

@@ -85,7 +85,7 @@ public final class SortSamSparkIntegrationTest extends CommandLineProgramTest {
         SamAssertionUtils.assertSamsEqual(actualOutputFile, expectedOutputFile, ValidationStringency.DEFAULT_STRINGENCY, referenceFile);
 
         //test sorting matches htsjdk
-        try(ReadsDataSource in = new ReadsPathDataSource(actualOutputFile.toPath(), factory )) {
+        try(final ReadsDataSource in = new ReadsPathDataSource(new GATKPath(actualOutputFile), factory )) {
             BaseTest.assertSorted(Utils.stream(in).map(read -> read.convertToSAMRecord(in.getHeader())).iterator(), sortOrder.getComparatorInstance());
         }
     }

@@ -1,3 +1,4 @@
+# this script starts a docker container running a GA4GH reference htsget server for use in htsget tests
 WORKING_DIR=/home/travis/build/broadinstitute
 
 docker pull ga4gh/htsget-ref:1.1.0
