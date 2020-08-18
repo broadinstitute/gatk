@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.ClippingTail;
-import scala.Tuple2;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -133,16 +132,8 @@ public final class TestUtilsForAssemblyBasedSVDiscovery {
      */
     public static AssemblyContigWithFineTunedAlignments makeContigAnalysisReady(final String primarySAMRecord,
                                                                                 final Set<String> canonicalChromosomes) {
-        final AlignedContig alignedContig = fromPrimarySAMRecordString(primarySAMRecord, true);
-
-        final List<AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings> goodAndBadMappings =
-                AssemblyContigAlignmentsConfigPicker
-                        .pickBestConfigurations(alignedContig, canonicalChromosomes, 0.0);
-
-        return
-                AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(
-                        new Tuple2<>(new Tuple2<>(alignedContig.getContigName(), alignedContig.getContigSequence()),
-                        goodAndBadMappings))
-                .next();
+        return fromPrimarySAMRecordString(primarySAMRecord, true)
+                .reconstructContigFromBestConfiguration(canonicalChromosomes, 0.0)
+                .get(0);
     }
 }

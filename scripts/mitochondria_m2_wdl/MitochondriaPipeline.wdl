@@ -8,6 +8,7 @@ workflow MitochondriaPipeline {
 
   meta {
     description: "Takes in an hg38 bam or cram and outputs VCF of SNP/Indel calls on the mitochondria."
+    allowNestedInputs: true
   }
 
   input {

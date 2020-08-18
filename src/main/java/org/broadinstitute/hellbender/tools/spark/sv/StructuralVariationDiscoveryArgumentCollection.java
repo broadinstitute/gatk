@@ -269,7 +269,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
     public enum SvEvidenceFilterType {DENSITY, XGBOOST}
 
-    public static class DiscoverVariantsFromContigAlignmentsSparkArgumentCollection implements Serializable {
+    public static class DiscoverVariantsFromContigAlignmentsArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
         public static final int GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY = STRUCTURAL_VARIANT_SIZE_LOWER_BOUND; // alignment with gap of size >= 50 will be broken apart.

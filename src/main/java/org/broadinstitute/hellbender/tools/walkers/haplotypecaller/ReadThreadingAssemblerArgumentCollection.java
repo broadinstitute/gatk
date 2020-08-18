@@ -132,7 +132,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      *        the regular HaplotypeCaller. Specifically the haplotype finding code does not perform correctly at complicated
      *        sites. Use this mode at your own risk.
      */
-    @Hidden
+    @Advanced
     @Argument(fullName= LINKED_DE_BRUIJN_GRAPH_LONG_NAME, doc = "If enabled, the Assembly Engine will construct a Linked De Bruijn graph to recover better haplotypes", optional = true)
     public boolean useLinkedDeBruijnGraph = false;
 

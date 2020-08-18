@@ -87,6 +87,7 @@ workflow CNVGermlineCohortWorkflow {
       ##############################################
       #### optional arguments for CollectCounts ####
       ##############################################
+      Array[String]? disabled_read_filters_for_collect_counts
       String? collect_counts_format
       Boolean? collect_counts_enable_indexing
       Int? mem_gb_for_collect_counts
@@ -152,6 +153,8 @@ workflow CNVGermlineCohortWorkflow {
       #### arguments for PostprocessGermlineCNVCalls ####
       ###################################################
       Int ref_copy_number_autosomal_contigs
+      Int? mem_gb_for_postprocess_germline_cnv_calls
+      Int? disk_space_gb_for_postprocess_germline_cnv_calls
       Array[String]? allosomal_contigs
 
       ##########################
@@ -206,6 +209,7 @@ workflow CNVGermlineCohortWorkflow {
                 ref_fasta_dict = ref_fasta_dict,
                 format = collect_counts_format,
                 enable_indexing = collect_counts_enable_indexing,
+                disabled_read_filters = disabled_read_filters_for_collect_counts,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_collect_counts,
@@ -353,6 +357,14 @@ workflow CNVGermlineCohortWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
+    call CNVTasks.ScatterPloidyCallsBySample {
+        input :
+            contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar,
+            samples = CollectCounts.entity_id,
+            docker = gatk_docker,
+            preemptible_attempts = preemptible_attempts
+    }
+
     output {
         File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
         Array[File] read_counts_entity_ids = CollectCounts.entity_id
@@ -360,17 +372,17 @@ workflow CNVGermlineCohortWorkflow {
         File? annotated_intervals = AnnotateIntervals.annotated_intervals
         File filtered_intervals = FilterIntervals.filtered_intervals
         File contig_ploidy_model_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_model_tar
-        File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar
+        Array[File] sample_contig_ploidy_calls_tars = ScatterPloidyCallsBySample.sample_contig_ploidy_calls_tar
         Array[File] gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar
         Array[Array[File]] gcnv_calls_tars = GermlineCNVCallerCohortMode.gcnv_call_tars
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCohortMode.gcnv_tracking_tar
         Array[File] genotyped_intervals_vcfs = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
         Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
+        Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
         Array[File] sample_qc_status_files = CollectSampleQualityMetrics.qc_status_file
         Array[String] sample_qc_status_strings = CollectSampleQualityMetrics.qc_status_string
         File model_qc_status_file = CollectModelQualityMetrics.qc_status_file
         String model_qc_string = CollectModelQualityMetrics.qc_status_string
-        Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
     }
 }
 
