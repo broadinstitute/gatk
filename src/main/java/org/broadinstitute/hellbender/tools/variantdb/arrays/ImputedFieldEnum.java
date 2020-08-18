@@ -27,6 +27,19 @@ public enum ImputedFieldEnum {
         }
     },
 
+    chrom {
+        public String getColumnValue(VariantContext variant, String sampleId) {
+            return variant.getContig();
+        }
+
+    },
+
+    position {
+        public String getColumnValue(VariantContext variant, String sampleId) {
+            return String.valueOf(variant.getStart());
+        }
+    },
+
     GT {
         public String getColumnValue(final VariantContext variant, String sampleId) {
             IndexedAlleleList<Allele> alleleList = new IndexedAlleleList<>(variant.getAlleles());
@@ -65,7 +78,7 @@ public enum ImputedFieldEnum {
     };
 
     private static String getIthElementFromAttributeList(String GPStringValue, int i) {
-        String response = null;
+        String response = "null";
         if (GPStringValue != null && !GPStringValue.isEmpty()) {
             String[] vals = GPStringValue.split(",");
             if (vals.length >= i) {
@@ -80,7 +93,8 @@ public enum ImputedFieldEnum {
     }
 
     public static ImputedFieldEnum[] getUncompressedRawArrayFieldEnums() {
-        return new ImputedFieldEnum[] { sample_id, GT, DS, GP1, GP2, GP3 };
+        return ImputedFieldEnum.values();
+//        return new ImputedFieldEnum[] { sample_id, GT, DS, GP1, GP2, GP3 };
     }
 //    public static ImputedArrayFieldEnum[] getCompressedRawArrayFieldEnums() {
 //        return new ImputedArrayFieldEnum[] { basic_array_data, raw_array_data };
