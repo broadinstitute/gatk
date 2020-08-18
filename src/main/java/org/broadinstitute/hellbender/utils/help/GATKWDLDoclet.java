@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.help;
 
-import com.sun.javadoc.ClassDoc;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -82,7 +81,7 @@ public class GATKWDLDoclet extends WDLDoclet {
     }
 
     @Override
-    public boolean includeInDocs(final DocumentedFeature documentedFeature, final ClassDoc classDoc, final Class<?> clazz) {
+    public boolean includeInDocs(final DocumentedFeature documentedFeature, final com.sun.javadoc.ClassDoc classDoc, final Class<?> clazz) {
         boolean hasWorkflowProperties = clazz.getAnnotation(WorkflowProperties.class) != null;
         boolean isCommandLineProgram = clazz.getAnnotation(CommandLineProgramProperties.class) != null;
         if (hasWorkflowProperties) {
