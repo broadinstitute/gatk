@@ -298,7 +298,7 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             // finally, if this type is for an arg that is a WorkflowOutput that is a workflow output, and its type
             // is file, we need to use a different type (String) as the input type for this arg to prevent the workflow
             // manager from attempting to localize the (non-existent) output file when localizing inputs
-            return transformWorkflowResourceOutputTypeToInputType(workflowOutput, convertedWDLType);
+            return transformWorkflowOutputTypeToInputType(workflowOutput, convertedWDLType);
         }
         return super.convertJavaTypeToWDLType(workflowOutput, argumentClass, docType, sourceContext);
     }
