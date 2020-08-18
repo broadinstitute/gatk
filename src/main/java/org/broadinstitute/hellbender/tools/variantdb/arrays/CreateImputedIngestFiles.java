@@ -18,6 +18,8 @@ import org.broadinstitute.hellbender.tools.variantdb.IngestUtils;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.SampleList;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -80,7 +82,7 @@ public final class CreateImputedIngestFiles extends VariantWalker {
             tableNumberToSampleList.get(sampleTableNumber).add(name);
         });
 
-        String runId = new Date().toString();
+        String runId = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMddyy_HHmm"));
         // create the writers for each table number
         tableNumberToSampleList.keySet().forEach(tableNumber -> tableToCreatorMap.put(tableNumber, new ImputedTsvCreator(getTableNumberPrefix(tableNumber), runId, tableNumberToSampleList.get(tableNumber), sampleNameMap, useCompressedData)));
 
@@ -94,7 +96,6 @@ public final class CreateImputedIngestFiles extends VariantWalker {
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        // get sample names and numbers
         tableToCreatorMap.forEach((tableNumber, creator) -> {
             creator.apply(variant);
         });

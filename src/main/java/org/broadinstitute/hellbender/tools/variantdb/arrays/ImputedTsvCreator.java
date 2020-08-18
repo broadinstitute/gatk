@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.security.InvalidParameterException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,7 +37,7 @@ public final class ImputedTsvCreator {
         this.sampleNameMap = sampleNameMap;
         try {
             // Create a raw file to go into the raw dir for _this_ sample
-            final String imputedOutputName = IMPUTED_FILETYPE_PREFIX + tableNumberPrefix + "_" + runId  + IngestConstants.FILETYPE;
+            final String imputedOutputName = IMPUTED_FILETYPE_PREFIX + tableNumberPrefix + runId  + IngestConstants.FILETYPE;
             // write header to it
             List<String> imputedHeader = ImputedTsvCreator.getHeaders();
             arrayWriter = new SimpleXSVWriter(Paths.get(imputedOutputName), IngestConstants.SEPARATOR);
@@ -66,14 +67,16 @@ public final class ImputedTsvCreator {
         GenotypesContext gts = variant.getGenotypes(sampleNames);
 
         gts.forEach(genotype -> {
-        final List<String> rowData = createRow(genotype, variant);
+            final List<String> rowData = createRow(genotype, variant);
 
-        // write the row to the XSV
-        if (rowData.size() == RawArrayFieldEnum.values().length) {
-            SimpleXSVWriter.LineBuilder rawLine = arrayWriter.getNewLineBuilder();
-            rawLine.setRow(rowData);
-            rawLine.write();
-        }
+            // write the row to the XSV
+            if (rowData.size() == ImputedFieldEnum.values().length) {
+                SimpleXSVWriter.LineBuilder rawLine = arrayWriter.getNewLineBuilder();
+                rawLine.setRow(rowData);
+                rawLine.write();
+            } else {
+                throw new InvalidParameterException("rowData size: " + rowData.size() + " does not equal expected number of values: " + ImputedFieldEnum.values().length);
+            }
         });
     }
 
