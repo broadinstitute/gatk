@@ -80,12 +80,12 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
     public static Object[][] badAdditions() {
         final VariantContext vc = getVariantContext();
         return new Object[][]{
-                {vc.getStart(), getValidGenotypeBuilder().PL((int[])null).make()}, //no PLs
                 {vc.getStart() + 1000, getValidGenotypeBuilder().make()}, //bad start
                 {vc.getStart() - 1000, getValidGenotypeBuilder().make()}, //bad start
                 {vc.getStart(), getValidGenotypeBuilder().GQ(1).make()}, // GQ out of bounds
                 {vc.getStart(), getValidGenotypeBuilder().GQ(100).make()}, // GQ out of bounds
                 {vc.getStart(), getValidGenotypeBuilder().alleles(Arrays.asList(REF, REF, REF)).make()}, //wrong ploidy
+                {vc.getStart(), getValidGenotypeBuilder().noPL().noGQ().make()}, //no PL and no GQ
                 {vc.getStart(), null}, //null genotype
         };
     }
@@ -108,6 +108,22 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
         final GVCFBlock band = getHomRefBlock(getVariantContext());
         band.add(vc.getStart(), getValidGenotypeBuilder().make() );
         band.add(vc.getStart() + 1, getValidGenotypeBuilder().PL(new int[] {1,2,4,5,6}).make() );
+    }
+
+    @Test
+    public void testNoPLs() {
+        //add VC with no PLs to block with PLs
+        final VariantContext vc = getVariantContext();
+        final GVCFBlock band = getHomRefBlock(getVariantContext());
+        band.add(vc.getStart(), getValidGenotypeBuilder().make() );
+        band.add(vc.getStart() + 1, getValidGenotypeBuilder().noPL().make());
+        Assert.assertTrue(band.getSize() == 2);
+
+        //add VC with on PLs to block with no PLs
+        final GVCFBlock band2 = getHomRefBlock(getVariantContext());
+        band2.add(vc.getStart(), getValidGenotypeBuilder().noPL().make() );
+        band2.add(vc.getStart() + 1, getValidGenotypeBuilder().noPL().make());
+        Assert.assertTrue(band2.getSize() == 2);
     }
 
     private static int[] getPLArray() {

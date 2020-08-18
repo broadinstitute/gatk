@@ -104,11 +104,13 @@ final class HomRefBlock extends GVCFBlock {
         }
         else { // otherwise take the min with the provided genotype's PLs
             final int[] pls = genotype.getPL();
-            if (pls.length != minPLs.length) {
-                throw new GATKException("trying to merge different PL array sizes: " + pls.length + " != " + minPLs.length);
-            }
-            for (int i = 0; i < pls.length; i++) {
-                minPLs[i] = Math.min(minPLs[i], pls[i]);
+            if (pls != null) {
+                if (pls.length != minPLs.length) {
+                    throw new GATKException("trying to merge different PL array sizes: " + pls.length + " != " + minPLs.length);
+                }
+                for (int i = 0; i < pls.length; i++) {
+                    minPLs[i] = Math.min(minPLs[i], pls[i]);
+                }
             }
         }
 
