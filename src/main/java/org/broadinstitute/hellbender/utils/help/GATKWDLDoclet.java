@@ -29,6 +29,9 @@ public class GATKWDLDoclet extends WDLDoclet {
     public final static String OPT_BUILD_DIR = "-build-dir";
     private String buildDir;
 
+    @Override
+    public String getIndexFileExtension() { return "html"; }
+
     /**
      * Validates the given options against options supported by this doclet.
      *
