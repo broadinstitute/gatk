@@ -1,0 +1,10 @@
+{
+  "readsDataSourceRegistry": {
+    "sources": [
+      {
+        "pattern": "^gatktest\\.(?P<accession>.*)$",
+        "path": "/data/{accession}"
+      }
+    ]
+  }
+}

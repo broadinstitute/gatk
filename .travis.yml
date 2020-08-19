@@ -4,6 +4,8 @@ group: travis_lts
 git:
   depth: 9999999
   lfs_skip_smudge: true
+services:
+  - docker
 jdk:
   - openjdk8
 env:
@@ -104,6 +106,8 @@ before_install:
 # http://docs.travis-ci.com/user/database-setup/#MySQL
 - sudo /etc/init.d/mysql stop
 - sudo /etc/init.d/postgresql stop
+- sudo bash scripts/htsgetScripts/start-htsget-reference-server.sh
+
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't bother building";
@@ -161,7 +165,8 @@ script:
     sudo mkdir -p build/reports/;
     sudo chmod -R a+w build/reports/;
     cp scripts/docker/dockertest.gradle .;
-    sudo docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e "scala.version=${SCALA_VERSION}" -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
+    # Use host network so other docker containers can be reached
+    sudo docker run --net=host -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e "scala.version=${SCALA_VERSION}" -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
     TEST_EXIT_VALUE=$?;
     sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar;
     $( exit ${TEST_EXIT_VALUE} );

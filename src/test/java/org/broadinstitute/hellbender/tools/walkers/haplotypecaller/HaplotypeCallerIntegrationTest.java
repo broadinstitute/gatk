@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
@@ -444,7 +445,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             }
         }
     }
-    
+
     /*
      * Test that GQs are correct when the --floor-blocks argument is supplied
      */
@@ -453,9 +454,9 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testFloorGVCFBlocks", ".vcf");
-        
+
         final List<String> requestedGqBands = Arrays.asList("10","20","30","40","50","60");
-        
+
         final ArgumentsBuilder args = new ArgumentsBuilder().addInput(new File(inputFileName))
         .addReference(new File(referenceFileName))
         .addInterval(new SimpleInterval("20:10009880-10012631"))
@@ -468,11 +469,11 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         .addOutput(output);
         requestedGqBands.forEach(x -> args.add("GQB",x));
         runCommandLine(args);
-        
+
         final List<String> allGqBands = new ArrayList<>(requestedGqBands);
         allGqBands.add("99");
         allGqBands.add("0");
-        
+
         //The interval here is big, so use a FeatureDataSource to limit memory usage
         try (final FeatureDataSource<VariantContext> actualVcs = new FeatureDataSource<>(output)) {
             actualVcs.forEach(vc -> {
@@ -582,7 +583,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(argBuilder.getArgsArray());
 
-        try ( final ReadsDataSource bamOutReadsSource = new ReadsPathDataSource(bamOutput) ) {
+        try ( final ReadsDataSource bamOutReadsSource = new ReadsPathDataSource(new GATKPath(bamOutput)) ) {
             int actualBamoutNumReads = 0;
             for ( final GATKRead read : bamOutReadsSource ) {
                 ++actualBamoutNumReads;

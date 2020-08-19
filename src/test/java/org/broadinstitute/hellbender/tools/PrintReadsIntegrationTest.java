@@ -4,6 +4,7 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -96,7 +97,7 @@ public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrati
         intervals.forEach(args2::addInterval);
         runCommandLine(args2);
 
-        try(final ReadsDataSource reader = new ReadsPathDataSource(out.toPath())){
+        try(final ReadsDataSource reader = new ReadsPathDataSource(new GATKPath(out))){
             final long count = Utils.stream(reader).count();
             Assert.assertEquals( count, expectedNumberOfReads);
         }
@@ -104,4 +105,31 @@ public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrati
         SamAssertionUtils.assertEqualBamFiles(out, out2, false, ValidationStringency.DEFAULT_STRINGENCY);
     }
 
+    @DataProvider
+    public Object[][] getHtsgetPaths() {
+        final String testDirectory = publicTestDir + "org/broadinstitute/hellbender/engine/";
+        return new Object[][]{
+            {new File(testDirectory, "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.bam")},
+            {new File(testDirectory, "reads_data_source_test1_with_unmapped.bam")},
+            {new File(testDirectory, "reads_data_source_test2.bam")},
+            {new File(testDirectory, "reads_data_source_test3.bam")},
+        };
+    }
+
+    @Test(dataProvider = "getHtsgetPaths")
+    public void testHtsgetPaths(final File reads) throws IOException {
+        final File htsgetOut = createTempFile("out", ".bam");
+        final ArgumentsBuilder htsgetArgs = new ArgumentsBuilder()
+            .addInput("htsget://localhost:3000/reads/gatktest." + reads.getName())
+            .addOutput(htsgetOut);
+        runCommandLine(htsgetArgs);
+
+        final File fileOut = createTempFile("out", ".bam");
+        final ArgumentsBuilder fileArgs = new ArgumentsBuilder()
+            .addInput(reads)
+            .addOutput(fileOut);
+        runCommandLine(fileArgs);
+
+        SamAssertionUtils.assertEqualBamFiles(htsgetOut, fileOut, false, ValidationStringency.DEFAULT_STRINGENCY);
+    }
 }

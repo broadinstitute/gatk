@@ -11,6 +11,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -44,7 +45,7 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
         final int expectedReadCount = 11;
 
         boolean shardIsNotValidBam = false;
-        try ( final ReadsDataSource readsSource = new ReadsPathDataSource(bamShard.toPath()) ) {
+        try ( final ReadsDataSource readsSource = new ReadsPathDataSource(new GATKPath(bamShard))) {
             for ( final GATKRead read : readsSource ) {}
         }
         catch ( SAMFormatException e ) {
@@ -64,7 +65,7 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
         SparkUtils.convertHeaderlessHadoopBamShardToBam(bamShard, header, output);
 
         int actualCount = 0;
-        try ( final ReadsDataSource readsSource = new ReadsPathDataSource(output.toPath()) ) {
+        try ( final ReadsDataSource readsSource = new ReadsPathDataSource(new GATKPath(output))) {
             for ( final GATKRead read : readsSource ) { ++actualCount; }
         }
 

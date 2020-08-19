@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.spark;
 import com.google.common.collect.Iterators;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.tools.spark.pipelines.PrintReadsSpark;
@@ -63,7 +64,7 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
     }
 
     private static void assertReadsAreInCoordinatishOrder(final File bam) {
-        try(final ReadsDataSource reads = new ReadsPathDataSource(bam.toPath())){
+        try(final ReadsDataSource reads = new ReadsPathDataSource(new GATKPath(bam))) {
             final Iterator<GATKRead> iter = reads.iterator();
             GATKRead previous = null;
             final ReadCoordinateComparator comparator = new ReadCoordinateComparator(reads.getHeader());
@@ -117,7 +118,7 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
         final File actual = copyLocally(bamOut, "actual");
 
         //assert that the output has the right number of reads and they're ordered correctly
-        try( ReadsDataSource reader = new ReadsPathDataSource(actual.toPath())){
+        try (final ReadsDataSource reader = new ReadsPathDataSource(new GATKPath(actual))) {
             Assert.assertEquals(Iterators.size(reader.iterator()), 1838);
         }
 

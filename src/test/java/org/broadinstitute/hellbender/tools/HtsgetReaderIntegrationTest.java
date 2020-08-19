@@ -1,11 +1,10 @@
 package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.RuntimeIOException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
@@ -15,7 +14,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Collections;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
@@ -40,7 +38,7 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
                 ImmutableMap.of(
                     HtsgetReader.ID_LONG_NAME, FILE_ID,
                     StandardArgumentDefinitions.INTERVALS_LONG_NAME, "chr1",
-                    HtsgetReader.NUM_THREADS_LONG_NAME, "2"),
+                    HtsgetReader.NUM_THREADS_LONG_NAME, "4"),
                 "A1-B000168-3_57_F-1-1_R2.mus.Aligned.out.sorted.bam.refname"
             },
             { // header only
@@ -130,7 +128,7 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
     }
 
     // Test parameters that result in invalid request
-    @Test(dataProvider = "failureParameters", expectedExceptions = UserException.class)
+    @Test(dataProvider = "failureParameters", expectedExceptions = {RuntimeIOException.class, IllegalArgumentException.class})
     public void testFailureParameters(final Map<String, String> params) {
         final File output = createTempFile("output", ".bam");
 
