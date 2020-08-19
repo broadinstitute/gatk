@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -16,18 +17,19 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import htsjdk.samtools.util.htsget.*;
 import org.apache.commons.io.IOUtils;
+import org.apache.http.client.utils.URIBuilder;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.htsgetreader.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import picard.cmdline.programgroups.OtherProgramGroup;
 
 /**
  * A tool that downloads a file hosted on an htsget server to a local file
@@ -46,7 +48,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 @CommandLineProgramProperties(
         summary = "Download a file using htsget",
         oneLineSummary = "Download a file using htsget",
-        programGroup = ExampleProgramGroup.class
+        programGroup = OtherProgramGroup.class
 )
 public class HtsgetReader extends CommandLineProgram {
 
@@ -157,7 +159,18 @@ public class HtsgetReader extends CommandLineProgram {
     @Override
     public Object doWork() {
         // Construct request from command line args and convert to URI
-        final HtsgetRequest req = new HtsgetRequest(endpoint, id)
+        final URI endpointWithId;
+        try {
+            final String endpointPath = endpoint.getPath();
+            final String endpointPathWithSlash = endpointPath.endsWith("/") ? endpointPath : endpointPath.concat("/");
+            endpointWithId = new URIBuilder(endpoint)
+                .setPath(endpointPathWithSlash + id)
+                .build();
+        } catch (final URISyntaxException e) {
+            throw new UserException(String.format("Error appending id: %s to provided endpoint: %s", id, endpoint), e);
+        }
+
+        final HtsgetRequest req = new HtsgetRequest(endpointWithId)
             .withFormat(format)
             .withDataClass(dataClass)
             .withInterval(interval)

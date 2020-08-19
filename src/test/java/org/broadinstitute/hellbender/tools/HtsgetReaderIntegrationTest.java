@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.RuntimeIOException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -70,8 +70,7 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
     }
 
     // Test successful combinations of query parameters
-    // TODO: re-enable and add tags/notags tests once reference server is stable
-    @Test(dataProvider = "successfulParameters", enabled = true)
+    @Test(dataProvider = "successfulParameters")
     public void testSuccessfulParameters(final Map<String, String> params, final String expectedFileName) throws IOException {
         final File expected = new File(getToolTestDataDir(), expectedFileName);
         final File output = createTempFile("output", ".bam");
@@ -129,7 +128,7 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
     }
 
     // Test parameters that result in invalid request
-    @Test(dataProvider = "failureParameters", expectedExceptions = UserException.class)
+    @Test(dataProvider = "failureParameters", expectedExceptions = {RuntimeIOException.class, IllegalArgumentException.class})
     public void testFailureParameters(final Map<String, String> params) {
         final File output = createTempFile("output", ".bam");
 
