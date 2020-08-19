@@ -417,9 +417,6 @@ def createGatkSymlinks(destinationDir, archivePath, suffix, baseJarName, seconda
     createSymlinks(archivePath.getAbsolutePath(), symlinkLocation2)
 }
 
-// TODO was this added for a reason or was it removed from master
-//version = (isRelease ? gitVersion() : gitVersion() + "-SNAPSHOT").replaceAll(".dirty", "")
-
 logger.info("build for version:" + version)
 group = 'org.broadinstitute'
 
