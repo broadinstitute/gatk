@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.sv;
 
+import htsjdk.tribble.Feature;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -9,13 +10,11 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDisc
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.List;
 
 /**
  * Retrieves SV evidence records on a given set of intervals.
@@ -58,7 +57,7 @@ import java.util.List;
 )
 @BetaFeature
 @DocumentedFeature
-public final class LocalizeSVEvidence extends IntervalWalker {
+public final class LocalizeSVEvidence extends FeatureWalker<Feature> {
 
     public static final String EVIDENCE_FILE_NAME = "evidence-file";
     public static final String INCLUDE_HEADER_STRING = "include-header";
@@ -67,14 +66,14 @@ public final class LocalizeSVEvidence extends IntervalWalker {
             doc = "Input file URI with extension '.SR.txt.gz', '.PE.txt.gz', '.BAF.txt.gz', or '.bincov.bed.gz'",
             fullName = EVIDENCE_FILE_NAME
     )
-    private String inputFilePath;
+    private GATKPath inputFilePath;
 
     @Argument(
             doc = "Output file. Note that files ending in '.gz' will NOT be block compressed.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    private String outputFilePath;
+    private File outputFile;
 
     @Argument(
             doc = "Include header if it exists",
@@ -82,63 +81,51 @@ public final class LocalizeSVEvidence extends IntervalWalker {
     )
     private boolean includeHeader = false;
 
-    private File outputFile;
     private PrintStream printStream;
-    private FeatureDataSource<SVEvidence> source;
 
-    private static final int QUERY_LOOKAHEAD = 0;
+    @Override
+    protected boolean isAcceptableFeatureType(final Class<? extends Feature> featureType) {
+        return featureType.isInstance(BafEvidence.class) || featureType.isInstance(DepthEvidence.class)
+                || featureType.isInstance(DiscordantPairEvidence.class) || featureType.isInstance(SplitReadEvidence.class);
+    }
+
+    @Override
+    public GATKPath getDrivingFeaturePath() {
+        return inputFilePath;
+    }
 
     @Override
     public void onTraversalStart() {
-        outputFile = new File(outputFilePath);
         try {
             printStream = IOUtils.makePrintStreamMaybeGzipped(outputFile);
         }
         catch(IOException e) {
             throw new UserException.CouldNotCreateOutputFile(e.getMessage(), e);
         }
-        initializeEvidenceDataSource();
-    }
-
-    private void initializeEvidenceDataSource() {
-        source = new FeatureDataSource<>(
-                inputFilePath,
-                "inputFile",
-                QUERY_LOOKAHEAD,
-                SVEvidence.class,
-                cloudPrefetchBuffer,
-                cloudIndexPrefetchBuffer);
-        doHeader(source);
-    }
-
-    private void doHeader(final FeatureDataSource<SVEvidence> source) {
         if (includeHeader) {
-            final Object header = source.getHeader();
-            if (header != null) {
-                if (header instanceof String) {
-                    printStream.println((String) header);
-                } else {
-                    throw new GATKException.ShouldNeverReachHereException("Expected header object of type " + String.class.getSimpleName());
-                }
+            doHeader();
+        }
+    }
+
+    private void doHeader() {
+        final Object header = null; //TODO getHeaderForFeatures(new FeatureInput<Feature>(getDrivingFeatureFile().getAbsolutePath()));
+        if (header != null) {
+            if (header instanceof String) {
+                printStream.println((String) header);
             } else {
-                logger.warn("Header not found");
+                throw new GATKException.ShouldNeverReachHereException("Expected header object of type " + String.class.getSimpleName());
             }
+        } else {
+            logger.warn("Header not found");
         }
     }
 
     @Override
-    public void apply(final SimpleInterval interval,
+    public void apply(final Feature feature,
                       final ReadsContext readsContext,
                       final ReferenceContext referenceContext,
                       final FeatureContext featureContext) {
-        logger.debug("Retrieving interval: " + interval.toString());
-        write(source.queryAndPrefetch(interval));
-    }
-
-    private void write(final List<SVEvidence> data) {
-        for (final SVEvidence d : data) {
-            printStream.println(d.encode());
-        }
+        printStream.println(feature.toString());
     }
 
     @Override

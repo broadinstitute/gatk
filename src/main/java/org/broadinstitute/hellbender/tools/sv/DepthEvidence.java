@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.tools.sv;
 
+import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public final class DepthEvidence extends SVEvidence {
+public final class DepthEvidence implements Feature {
 
     final String contig;
     final int start;
@@ -36,7 +37,8 @@ public final class DepthEvidence extends SVEvidence {
 
     public int[] getCounts() { return counts; }
 
-    public String encode() {
+    @Override
+    public String toString() {
         final int numCounts = counts.length;
         final List<String> data = new ArrayList<>(3 + numCounts);
         data.add(contig);

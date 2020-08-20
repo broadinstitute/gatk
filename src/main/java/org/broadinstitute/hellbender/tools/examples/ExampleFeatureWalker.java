@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.File;
 import java.io.PrintStream;
 
 /**
@@ -33,8 +32,8 @@ public final class ExampleFeatureWalker extends FeatureWalker<BEDFeature> {
 
     private PrintStream outputStream = null;
 
-    @Argument(shortName = "F", fullName = "feature_file", doc = "Feature file (eg., VCF or BED file)")
-    public File featuresFile;
+    @Argument(shortName = "F", fullName = "feature_file", doc = "Feature file URI (eg., VCF or BED file)")
+    public GATKPath featuresFile;
 
     @Override
     public void onTraversalStart() {
@@ -47,7 +46,7 @@ public final class ExampleFeatureWalker extends FeatureWalker<BEDFeature> {
     }
 
     @Override
-    public File getDrivingFeatureFile() {
+    public GATKPath getDrivingFeaturePath() {
         return featuresFile;
     }
 

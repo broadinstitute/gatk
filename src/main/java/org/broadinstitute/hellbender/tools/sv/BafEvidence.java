@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.tools.sv;
 
+import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.codecs.BafEvidenceCodec;
 
 import java.util.Arrays;
 import java.util.List;
 
-public final class BafEvidence extends SVEvidence {
+public final class BafEvidence implements Feature {
 
     final String sample;
     final String contig;
@@ -42,7 +43,8 @@ public final class BafEvidence extends SVEvidence {
         return value;
     }
 
-    public String encode() {
+    @Override
+    public String toString() {
         final List<String> data = Arrays.asList(
                 contig,
                 Integer.toString(position - 1),

@@ -14,10 +14,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.FeatureWalker;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
@@ -28,7 +25,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -84,10 +80,10 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
     private static final String MAPPING_FULL_NAME = "alias-to-key-mapping";
 
     @Argument(
-            doc = "Input segment file (tab-separated values).  Must have a call column.",
+            doc = "Input segment file URI (tab-separated values).  Must have a call column.",
             fullName = CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME
     )
-    private File segmentFile;
+    private GATKPath segmentFile;
 
     @ArgumentCollection
     private final FuncotatorSegmentArgumentCollection funcotatorArgs = new FuncotatorSegmentArgumentCollection();
@@ -204,7 +200,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
     }
 
     @Override
-    public File getDrivingFeatureFile() {
+    public GATKPath getDrivingFeaturePath() {
         return segmentFile;
     }
 

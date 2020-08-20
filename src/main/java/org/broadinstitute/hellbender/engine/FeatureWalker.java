@@ -7,8 +7,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.io.File;
-
 /**
  * A FeatureWalker is a tool that processes a {@link Feature} at a time from a source of Features, with
  * optional contextual information from a reference, sets of reads, and/or supplementary sources
@@ -55,16 +53,15 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
 
     @SuppressWarnings("unchecked")
     private void initializeDrivingFeatures() {
-        final File drivingFile = getDrivingFeatureFile();
-        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(drivingFile.toPath());
+        final GATKPath drivingFeaturesPath = getDrivingFeaturePath();
+        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(drivingFeaturesPath.toPath());
         if (isAcceptableFeatureType(codec.getFeatureType())) {
-            drivingFeatures = new FeatureDataSource<>(new FeatureInput<>(drivingFile.getAbsolutePath()), FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, null, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, referenceArguments.getReferencePath());
-
-            final FeatureInput<F> drivingFeaturesInput = new FeatureInput<>(drivingFile.getAbsolutePath(), "drivingFeatureFile");
+            final FeatureInput<F> drivingFeaturesInput = new FeatureInput<>(drivingFeaturesPath.toPath().toString());
+            drivingFeatures = new FeatureDataSource<>(drivingFeaturesInput, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, null, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, referenceArguments.getReferencePath());
             features.addToFeatureSources(0, drivingFeaturesInput, codec.getFeatureType(), cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                          referenceArguments.getReferencePath());
         } else {
-            throw new UserException("File " + drivingFile + " contains features of the wrong type.");
+            throw new UserException("File " + drivingFeaturesPath.toPath() + " contains features of the wrong type.");
         }
     }
 
@@ -147,5 +144,5 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
      *
      * @return never {@code null}.
      */
-    public abstract File getDrivingFeatureFile();
+    public abstract GATKPath getDrivingFeaturePath();
 }

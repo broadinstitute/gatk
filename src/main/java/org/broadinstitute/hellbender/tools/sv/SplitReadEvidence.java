@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.tools.sv;
 
+import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
 
 import java.util.Arrays;
 import java.util.List;
 
-public final class SplitReadEvidence extends SVEvidence {
+public final class SplitReadEvidence implements Feature {
 
     final String sample;
     final String contig;
@@ -48,7 +49,8 @@ public final class SplitReadEvidence extends SVEvidence {
         return count;
     }
 
-    public String encode() {
+    @Override
+    public String toString() {
         final List<String> data = Arrays.asList(
                 contig,
                 Integer.toString(position - 1),
