@@ -200,7 +200,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
     }
 
     @Override
-    public GATKPath getDrivingFeaturePath() {
+    public GATKPath getDrivingFeaturesPath() {
         return segmentFile;
     }
 

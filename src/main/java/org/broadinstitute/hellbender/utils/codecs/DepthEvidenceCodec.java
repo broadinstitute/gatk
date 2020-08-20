@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.codecs;
 
 import com.google.common.base.Splitter;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -10,7 +11,7 @@ import java.util.List;
 
 public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence> {
 
-    public static final String FORMAT_SUFFIX = ".bincov.bed.gz";
+    public static final String FORMAT_SUFFIX = ".rd.txt";
     public static final String COL_DELIMITER = "\t";
     private static final Splitter splitter = Splitter.on(COL_DELIMITER);
 
@@ -37,7 +38,13 @@ public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence> {
 
     @Override
     public boolean canDecode(final String path) {
-        return path.endsWith(FORMAT_SUFFIX);
+        final String toDecode;
+        if (IOUtil.hasBlockCompressedExtension(path)) {
+            toDecode = path.substring(0, path.lastIndexOf("."));
+        } else {
+            toDecode = path;
+        }
+        return toDecode.toLowerCase().endsWith(FORMAT_SUFFIX);
     }
 
     @Override

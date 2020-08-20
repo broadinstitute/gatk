@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.codecs;
 
 import com.google.common.base.Splitter;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
@@ -9,7 +10,7 @@ import java.util.List;
 
 public class SplitReadEvidenceCodec extends AsciiFeatureCodec<SplitReadEvidence> {
 
-    public static final String FORMAT_SUFFIX = ".SR.txt.gz";
+    public static final String FORMAT_SUFFIX = ".sr.txt";
     public static final String COL_DELIMITER = "\t";
     public static final String DIRECTION_RIGHT = "right";
     public static final String DIRECTION_LEFT = "left";
@@ -38,8 +39,14 @@ public class SplitReadEvidenceCodec extends AsciiFeatureCodec<SplitReadEvidence>
 
     @Override
     public boolean canDecode(final String path) {
-        return path.endsWith(FORMAT_SUFFIX);
-    } // TODO
+        final String toDecode;
+        if (IOUtil.hasBlockCompressedExtension(path)) {
+            toDecode = path.substring(0, path.lastIndexOf("."));
+        } else {
+            toDecode = path;
+        }
+        return toDecode.toLowerCase().endsWith(FORMAT_SUFFIX);
+    }
 
     @Override
     public Object readActualHeader(final LineIterator reader) { return null; }

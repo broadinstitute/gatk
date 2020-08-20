@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.codecs;
 
 import com.google.common.base.Splitter;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.tools.sv.BafEvidence;
@@ -9,7 +10,7 @@ import java.util.List;
 
 public class BafEvidenceCodec extends AsciiFeatureCodec<BafEvidence> {
 
-    public static final String FORMAT_SUFFIX = ".BAF.txt.gz";
+    public static final String FORMAT_SUFFIX = ".baf.txt";
     public static final String COL_DELIMITER = "\t";
     private static final Splitter splitter = Splitter.on(COL_DELIMITER);
 
@@ -32,7 +33,13 @@ public class BafEvidenceCodec extends AsciiFeatureCodec<BafEvidence> {
 
     @Override
     public boolean canDecode(final String path) {
-        return path.endsWith(FORMAT_SUFFIX);
+        final String toDecode;
+        if (IOUtil.hasBlockCompressedExtension(path)) {
+            toDecode = path.substring(0, path.lastIndexOf("."));
+        } else {
+            toDecode = path;
+        }
+        return toDecode.toLowerCase().endsWith(FORMAT_SUFFIX);
     }
 
     @Override

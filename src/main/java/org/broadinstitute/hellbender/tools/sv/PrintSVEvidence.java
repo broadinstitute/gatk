@@ -17,16 +17,13 @@ import java.io.IOException;
 import java.io.PrintStream;
 
 /**
- * Retrieves SV evidence records on a given set of intervals.
+ * Prints SV evidence records. Can be used with -L to retrieve records on a set of intervals.
  *
  * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
  *         Evidence file URI
- *     </li>
- *     <li>
- *         Interval list
  *     </li>
  * </ul>
  *
@@ -41,7 +38,7 @@ import java.io.PrintStream;
  * <h3>Usage example</h3>
  *
  * <pre>
- *     gatk LocalizeSVEvidence \
+ *     gatk PrintSVEvidence \
  *       --evidence-file gs://bucket/batch.SR.txt.gz \
  *       -L intervals.bed \
  *       -O local.SR.txt.gz
@@ -51,19 +48,19 @@ import java.io.PrintStream;
  */
 
 @CommandLineProgramProperties(
-        summary = "Retrieves SV evidence records",
-        oneLineSummary = "Retrieves SV evidence records",
+        summary = "Prints SV evidence records",
+        oneLineSummary = "Prints SV evidence records",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
 @DocumentedFeature
-public final class LocalizeSVEvidence extends FeatureWalker<Feature> {
+public final class PrintSVEvidence extends FeatureWalker<Feature> {
 
     public static final String EVIDENCE_FILE_NAME = "evidence-file";
-    public static final String INCLUDE_HEADER_STRING = "include-header";
+    public static final String SKIP_HEADER_NAME = "skip-header";
 
     @Argument(
-            doc = "Input file URI with extension '.SR.txt.gz', '.PE.txt.gz', '.BAF.txt.gz', or '.bincov.bed.gz'",
+            doc = "Input file URI with extension '.SR.txt', '.PE.txt', '.BAF.txt', or '.RD.txt' (may be gzipped)",
             fullName = EVIDENCE_FILE_NAME
     )
     private GATKPath inputFilePath;
@@ -76,21 +73,21 @@ public final class LocalizeSVEvidence extends FeatureWalker<Feature> {
     private File outputFile;
 
     @Argument(
-            doc = "Include header if it exists",
-            fullName = INCLUDE_HEADER_STRING
+            doc = "Skip header",
+            fullName = SKIP_HEADER_NAME
     )
-    private boolean includeHeader = false;
+    private boolean skipHeader = false;
 
     private PrintStream printStream;
 
     @Override
     protected boolean isAcceptableFeatureType(final Class<? extends Feature> featureType) {
-        return featureType.isInstance(BafEvidence.class) || featureType.isInstance(DepthEvidence.class)
-                || featureType.isInstance(DiscordantPairEvidence.class) || featureType.isInstance(SplitReadEvidence.class);
+        return featureType.equals(BafEvidence.class) || featureType.equals(DepthEvidence.class)
+                || featureType.equals(DiscordantPairEvidence.class) || featureType.equals(SplitReadEvidence.class);
     }
 
     @Override
-    public GATKPath getDrivingFeaturePath() {
+    public GATKPath getDrivingFeaturesPath() {
         return inputFilePath;
     }
 
@@ -102,13 +99,13 @@ public final class LocalizeSVEvidence extends FeatureWalker<Feature> {
         catch(IOException e) {
             throw new UserException.CouldNotCreateOutputFile(e.getMessage(), e);
         }
-        if (includeHeader) {
+        if (!skipHeader) {
             doHeader();
         }
     }
 
     private void doHeader() {
-        final Object header = null; //TODO getHeaderForFeatures(new FeatureInput<Feature>(getDrivingFeatureFile().getAbsolutePath()));
+        final Object header = getDrivingFeaturesHeader();
         if (header != null) {
             if (header instanceof String) {
                 printStream.println((String) header);
@@ -116,7 +113,7 @@ public final class LocalizeSVEvidence extends FeatureWalker<Feature> {
                 throw new GATKException.ShouldNeverReachHereException("Expected header object of type " + String.class.getSimpleName());
             }
         } else {
-            logger.warn("Header not found");
+            logger.info("Header not found");
         }
     }
 
