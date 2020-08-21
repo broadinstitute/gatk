@@ -44,7 +44,7 @@ public final class RawArrayTsvCreator {
         }
     }
 
-    public RawArrayTsvCreator(final String sampleName, final String sampleId, final String tableNumberPrefix, final Map<String, ProbeInfo> probeDataByName, boolean useCompressedData, final String outputDirectory) {
+    public RawArrayTsvCreator(final String sampleName, final String sampleId, final String tableNumberPrefix, final Map<String, ProbeInfo> probeDataByName, boolean useCompressedData, final File outputDirectory) {
         this.sampleId = sampleId;
         this.probeDataByName = probeDataByName;
         this.useCompressedData = useCompressedData;

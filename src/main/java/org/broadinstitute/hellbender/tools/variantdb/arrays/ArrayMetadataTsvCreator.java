@@ -32,7 +32,7 @@ public class ArrayMetadataTsvCreator {
         return Arrays.stream(ArrayMetadataTsvCreator.HeaderFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
     }
 
-    public void createRow(String sampleName, String sampleId, String tableNumberPrefix, String outputDirectory) {
+    public void createRow(String sampleName, String sampleId, String tableNumberPrefix, File outputDirectory) {
         // if the metadata tsvs don't exist yet -- create them
         try {
             // Create a metadata file to go into the metadata dir for _this_ sample

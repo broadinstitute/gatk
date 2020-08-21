@@ -103,7 +103,7 @@ public final class CreateArrayIngestFiles extends VariantWalker {
         String tableNumberPrefix = String.format("%03d_", sampleTableNumber);
 
         metadataTsvCreator = new ArrayMetadataTsvCreator();
-        metadataTsvCreator.createRow(sampleName, sampleId, tableNumberPrefix, outputDir.toString());
+        metadataTsvCreator.createRow(sampleName, sampleId, tableNumberPrefix, outputDir);
 
         Map<String, ProbeInfo> probeNameMap;
         if (probeCsvFile == null) {
@@ -115,7 +115,7 @@ public final class CreateArrayIngestFiles extends VariantWalker {
         // Set reference version
         ChromosomeEnum.setRefVersion(refVersion);
 
-        tsvCreator = new RawArrayTsvCreator(sampleName, sampleId, tableNumberPrefix, probeNameMap, useCompressedData, outputDir.toString());
+        tsvCreator = new RawArrayTsvCreator(sampleName, sampleId, tableNumberPrefix, probeNameMap, useCompressedData, outputDir);
     }
 
 
