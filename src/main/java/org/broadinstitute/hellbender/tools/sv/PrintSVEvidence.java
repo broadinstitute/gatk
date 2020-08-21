@@ -111,10 +111,6 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
         }
     }
 
-    private boolean validateInputs() {
-        
-    }
-
     private void doHeader() {
         final Object header = getDrivingFeaturesHeader();
         if (header != null) {
