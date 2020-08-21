@@ -1,0 +1,19 @@
+##fileformat=VCFv4.2
+##FORMAT=<ID=BAF,Number=1,Type=Float,Description="B Allele Frequency">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=IGC,Number=1,Type=Float,Description="Illumina GenCall Confidence Score">
+##FORMAT=<ID=LRR,Number=1,Type=Float,Description="Log R Ratio">
+##FORMAT=<ID=NORMX,Number=1,Type=Float,Description="Normalized X intensity">
+##FORMAT=<ID=NORMY,Number=1,Type=Float,Description="Normalized Y intensity">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=ALLELE_A,Number=1,Type=String,Description="A allele">
+##INFO=<ID=ALLELE_B,Number=1,Type=String,Description="B allele">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##contig=<ID=1,length=249250621,assembly=GRCh37>
+##expectedGender=Unknown
+##extendedIlluminaManifestVersion=1.5
+##fingerprintGender=Unknown
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	testSample
+1	5700115	1:5700115-A-T	A	T	.	.	AC=0;AF=0.00;ALLELE_A=A*;ALLELE_B=T;AN=2;	GT:BAF:IGC:LRR:NORMX:NORMY	0/0:0:0.58:-0.235:1.476:0.057
+1	5700116	1:5700116-C-G	C	G	.	.	AC=0;AF=0.00;ALLELE_A=C*;ALLELE_B=G;AN=2;	GT:BAF:IGC:LRR:NORMX:NORMY	0/1:0:0.23:-0.111:1.093:0.118
