@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.BlockCompressedOutputStream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -14,11 +13,13 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -85,8 +86,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     int currentDiscordantPosition = -1;
     String currentChrom = null;
 
-    private OutputStreamWriter peWriter;
-    private OutputStreamWriter srWriter;
+    private PrintStream peWriter;
+    private PrintStream srWriter;
 
     private SAMSequenceDictionary sequenceDictionary;
 
@@ -101,22 +102,14 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         super.onTraversalStart();
 
         try {
-            if (peFile.endsWith(".gz")) {
-                peWriter = new OutputStreamWriter(new BlockCompressedOutputStream(peFile, 6));
-            } else {
-                peWriter = new OutputStreamWriter(new FileOutputStream(new File(peFile)));
-            }
-        } catch (FileNotFoundException e) {
+            peWriter = IOUtils.makePrintStreamMaybeBlockGzipped(new File(peFile), 6);
+        } catch (IOException e) {
             throw new UserException("Could not open " + peFile);
         }
 
         try {
-            if (srFile.endsWith(".gz")) {
-                srWriter = new OutputStreamWriter(new BlockCompressedOutputStream(srFile, 6));
-            } else {
-                srWriter = new OutputStreamWriter(new FileOutputStream(new File(srFile)));
-            }
-        } catch (FileNotFoundException e) {
+            srWriter = IOUtils.makePrintStreamMaybeBlockGzipped(new File(srFile), 6);
+        } catch (IOException e) {
             throw new UserException("Could not open " + srFile);
         }
 
@@ -192,12 +185,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         final String strandA = r.isReadReverseStrand() ? "-" : "+";
         final String strandB = r.isMateReverseStrand() ? "-" : "+";
 
-        try {
-            // subtract 1 from positions to match pysam output
-            peWriter.write(r.getContig() + "\t" + (r.getStart() - 1) + "\t" + strandA + "\t" + r.getMateContig() + "\t" + (r.getMateStart() - 1) + "\t" + strandB + "\t" + sampleName + "\n");
-        } catch (IOException e) {
-            throw new GATKException("Could not write to PE file", e);
-        }
+        // subtract 1 from positions to match pysam output
+        peWriter.println(r.getContig() + "\t" + (r.getStart() - 1) + "\t" + strandA + "\t" + r.getMateContig() + "\t" + (r.getMateStart() - 1) + "\t" + strandB + "\t" + sampleName);
     }
 
     /**
@@ -205,7 +194,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
      * srWriter if necessary.
      */
     @VisibleForTesting
-    public void countSplitRead(final GATKRead read, final PriorityQueue<SplitPos> splitCounts, final OutputStreamWriter srWriter) {
+    public void countSplitRead(final GATKRead read, final PriorityQueue<SplitPos> splitCounts, final PrintStream srWriter) {
         final SplitPos splitPosition = getSplitPosition(read);
         final int readStart = read.getStart();
         if (splitPosition.direction == POSITION.MIDDLE) {
@@ -223,7 +212,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         splitCounts.add(splitPosition);
     }
 
-    private void flushSplitCounts(final Predicate<SplitPos> flushablePosition, final OutputStreamWriter srWriter, final PriorityQueue<SplitPos> splitCounts) {
+    private void flushSplitCounts(final Predicate<SplitPos> flushablePosition, final PrintStream srWriter, final PriorityQueue<SplitPos> splitCounts) {
 
         while (splitCounts.size() > 0 && flushablePosition.test(splitCounts.peek())) {
             SplitPos pos = splitCounts.poll();
@@ -232,11 +221,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
                 countAtPos++;
                 splitCounts.poll();
             }
-            try {
-                srWriter.write(currentChrom + "\t" + (pos.pos - 1) + "\t" + pos.direction.getDescription() + "\t" + countAtPos + "\t" + sampleName + "\n");
-            } catch (IOException e) {
-                throw new GATKException("Could not write to sr file", e);
-            }
+            srWriter.print(currentChrom + "\t" + (pos.pos - 1) + "\t" + pos.direction.getDescription() + "\t" + countAtPos + "\t" + sampleName + "\n");
         }
     }
 
@@ -268,12 +253,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     @Override
     public void closeTool() {
         super.closeTool();
-        try {
-            peWriter.close();
-            srWriter.close();
-        } catch (IOException e) {
-            throw new GATKException("error closing output file", e);
-        }
+        peWriter.close();
+        srWriter.close();
     }
 
     enum POSITION {

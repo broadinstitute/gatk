@@ -39,7 +39,7 @@ import java.io.PrintStream;
  *
  * <pre>
  *     gatk PrintSVEvidence \
- *       --evidence-file gs://bucket/batch.SR.txt.gz \
+ *       --evidence-file gs://my-bucket/batch_name.SR.txt.gz \
  *       -L intervals.bed \
  *       -O local.SR.txt.gz
  * </pre>
@@ -58,25 +58,32 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
 
     public static final String EVIDENCE_FILE_NAME = "evidence-file";
     public static final String SKIP_HEADER_NAME = "skip-header";
+    public static final String COMPRESSION_LEVEL_NAME = "compression-level";
 
     @Argument(
-            doc = "Input file URI with extension '.SR.txt', '.PE.txt', '.BAF.txt', or '.RD.txt' (may be gzipped)",
+            doc = "Input file URI with extension '.SR.txt', '.PE.txt', '.BAF.txt', or '.RD.txt' (may be gzipped).",
             fullName = EVIDENCE_FILE_NAME
     )
     private GATKPath inputFilePath;
 
     @Argument(
-            doc = "Output file. Note that files ending in '.gz' will NOT be block compressed.",
+            doc = "Output file. Filenames ending in '.gz' will be block compressed.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private File outputFile;
 
     @Argument(
-            doc = "Skip header",
+            doc = "Skip printing the header",
             fullName = SKIP_HEADER_NAME
     )
     private boolean skipHeader = false;
+
+    @Argument(
+            doc = "Compression level for gzipped output",
+            fullName = COMPRESSION_LEVEL_NAME
+    )
+    private int compressionLevel = 6;
 
     private PrintStream printStream;
 
@@ -94,7 +101,7 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
     @Override
     public void onTraversalStart() {
         try {
-            printStream = IOUtils.makePrintStreamMaybeGzipped(outputFile);
+            printStream = IOUtils.makePrintStreamMaybeBlockGzipped(outputFile, compressionLevel);
         }
         catch(IOException e) {
             throw new UserException.CouldNotCreateOutputFile(e.getMessage(), e);
@@ -102,6 +109,10 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
         if (!skipHeader) {
             doHeader();
         }
+    }
+
+    private boolean validateInputs() {
+        
     }
 
     private void doHeader() {
