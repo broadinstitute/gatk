@@ -1,13 +1,10 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
 import com.opencsv.CSVReader;
-import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.*;
@@ -158,8 +155,18 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      */
     public TableReader(final Path path) throws IOException {
         this(
-                Utils.nonNull(path, "the input file cannot be null").toString(),
-                IOUtils.makeReaderMaybeGzipped(path));
+            Utils.nonNull(path, "the input file cannot be null").toString(),
+            IOUtils.makeReaderMaybeGzipped(path),
+            new TableReaderOptions()
+        );
+    }
+
+    public TableReader(final Path path, final TableReaderOptions tableReaderOptions) throws IOException {
+        this(
+            Utils.nonNull(path, "the input file cannot be null").toString(),
+            IOUtils.makeReaderMaybeGzipped(path),
+            tableReaderOptions
+        );
     }
 
     /**
@@ -173,7 +180,15 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @throws IOException if any is raised when reading from {@code sourceReader}.
      */
     public TableReader(final Reader sourceReader) throws IOException {
-        this(null, sourceReader);
+        this(null, sourceReader, new TableReaderOptions());
+    }
+
+    public TableReader(final Reader sourceReader, final TableReaderOptions tableReaderOptions) throws IOException {
+        this(null, sourceReader, tableReaderOptions);
+    }
+
+    protected TableReader(final String sourceName, final Reader sourceReader) throws IOException {
+        this(sourceName, sourceReader, new TableReaderOptions());
     }
 
     /**
@@ -187,13 +202,14 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @throws IllegalArgumentException if {@code sourceReader} is {@code null}.
      * @throws IOException              if is raised when reading from the source.
      */
-    protected TableReader(final String sourceName, final Reader sourceReader) throws IOException {
+    protected TableReader(final String sourceName, final Reader sourceReader,
+                          final TableReaderOptions tableReaderOptions) throws IOException {
         Utils.nonNull(sourceReader, "the reader cannot be null");
 
         this.source = sourceName;
         this.reader = sourceReader instanceof LineNumberReader ? (LineNumberReader) sourceReader : new LineNumberReader(sourceReader);
         this.csvReader = new CSVReader(this.reader, TableUtils.COLUMN_SEPARATOR, TableUtils.QUOTE_CHARACTER, TableUtils.ESCAPE_CHARACTER);
-        findAndProcessHeaderLine();
+        findAndProcessHeaderLine(tableReaderOptions);
         this.nextRecordFetched = false;
     }
 
@@ -203,8 +219,11 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @throws IOException            if an {@link IOException} occurred when reading from the source.
      * @throws UserException.BadInput if there is formatting error in the input.
      */
-    protected void findAndProcessHeaderLine() throws IOException {
-        final String[] line = skipCommentLines();
+    protected void findAndProcessHeaderLine(final TableReaderOptions tableReaderOptions) throws IOException {
+        // get header line, and remap any fields that have been requested
+        final String[] line = Arrays.stream(skipCommentLines(tableReaderOptions.headerIsLastComment))
+            .map(columnName -> tableReaderOptions.columnRenamer.getOrDefault(columnName, columnName))
+            .toArray(String[]::new);
         if (line == null) {
             throw formatException("premature end of table: header line not found");
         } else {
@@ -424,16 +443,44 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @return {@code null} if we reached the end of the source, the next non-comment line content otherwise.
      * @throws IOException if it was raised when reading for the source.
      */
-    private String[] skipCommentLines() throws IOException {
+    private String[] skipCommentLines(final boolean headerIsLastComment) throws IOException {
         String[] line;
-        while ((line = csvReader.readNext()) != null) {
-            if (isCommentLine(line)) {
-                processCommentLine(line, reader.getLineNumber());
-            } else {
-                break;
+        if(headerIsLastComment) {
+            String[] maybeHeader = null;
+            while((line = csvReader.readNext()) != null) {
+                if(maybeHeader != null) {
+                    // the previous comment was really a comment, process it
+                    processCommentLine(maybeHeader, reader.getLineNumber() - 1);
+                }
+                if(isCommentLine(line)) {
+                    maybeHeader = line;
+                } else {
+                    break;
+                }
             }
+            // remove the first comment and return header
+            if(maybeHeader == null || maybeHeader.length == 0) {
+                throw formatException("premature end of table: header line empty or not found");
+            }
+            maybeHeader[0] = maybeHeader[0].substring(1 + maybeHeader[0].indexOf(TableUtils.COMMENT_PREFIX)).trim();
+            if(maybeHeader[0].length() == 0) {
+                // remove empty first "word" which was only comment
+                maybeHeader = Arrays.stream(maybeHeader).skip(1).toArray(String[]::new);
+                if(maybeHeader.length == 0) {
+                    throw formatException("header line was empty");
+                }
+            }
+            return maybeHeader;
+        } else {
+            while ((line = csvReader.readNext()) != null) {
+                if (isCommentLine(line)) {
+                    processCommentLine(line, reader.getLineNumber());
+                } else {
+                    return line;
+                }
+            }
+            throw formatException("premature end of table: header line not found");
         }
-        return line;
     }
 
     /**

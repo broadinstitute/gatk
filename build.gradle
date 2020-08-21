@@ -243,6 +243,8 @@ configurations {
 final javadocJDKFiles = ToolProvider.getSystemToolClassLoader() == null ? files([]) : files(((URLClassLoader) ToolProvider.getSystemToolClassLoader()).getURLs())
 
 dependencies {
+    implementation 'org.jetbrains:annotations:19.0.0'
+
     // javadoc utilities; compile/test only to prevent redistribution of sdk jars
     compileOnly(javadocJDKFiles)
     testImplementation(javadocJDKFiles)
@@ -363,6 +365,9 @@ dependencies {
     // Required for COSMIC Funcotator data source:
     implementation 'org.xerial:sqlite-jdbc:3.36.0.3'
     
+    // Required for SV Discovery machine learning
+    implementation group: 'ml.dmlc', name: 'xgboost4j_2.12', version: '1.5.2'
+
     // natural sort
     implementation('net.grey-panther:natural-comparator:1.1')
     implementation('com.fasterxml.jackson.module:jackson-module-scala_' + scalaVersion + ':2.9.8')
