@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -31,15 +32,15 @@ public class ArrayMetadataTsvCreator {
         return Arrays.stream(ArrayMetadataTsvCreator.HeaderFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
     }
 
-    public void createRow(String sampleName, String sampleId, String tableNumberPrefix) {
+    public void createRow(String sampleName, String sampleId, String tableNumberPrefix, File outputDirectory) {
         // if the metadata tsvs don't exist yet -- create them
         try {
             // Create a metadata file to go into the metadata dir for _this_ sample
             // TODO--this should just be one file per sample set?
-            final String sampleMetadataName = IngestConstants.metadataFilePrefix + tableNumberPrefix + sampleName + IngestConstants.FILETYPE;
+            final File sampleMetadataName = new File (outputDirectory, IngestConstants.metadataFilePrefix + tableNumberPrefix + sampleName + IngestConstants.FILETYPE);
             // write header to it
             List<String> sampleListHeader = ArrayMetadataTsvCreator.getHeaders();
-            sampleMetadataWriter = new SimpleXSVWriter(Paths.get(sampleMetadataName), IngestConstants.SEPARATOR);
+            sampleMetadataWriter = new SimpleXSVWriter(sampleMetadataName.toPath(), IngestConstants.SEPARATOR);
             sampleMetadataWriter.setHeaderLine(sampleListHeader);
 
             final List<String> TSVLineToCreateSampleMetadata = createSampleListRow(
