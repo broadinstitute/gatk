@@ -1,12 +1,27 @@
+# stage 1 for constructing the GATK zip
+FROM broadinstitute/gatk:gatkbase-2.3.0 AS gradleBuild
+LABEL stage=gatkIntermediateBuildImage
+
+RUN ls .
+ADD . /gatk
+WORKDIR /gatk
+
+RUN export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
+RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJar/
+RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts
+
+RUN mkdir /gatk/testJars
+RUN echo $( find /gatk/build/libs/ -name "gatk*test.jar")
+RUN cp -r $( find /gatk/build/libs/ -name "gatk*test.jar" ) /gatk/testJars
+RUN cp -r $( find /gatk/build/libs/ -name "gatk*testDependencies.jar" ) /gatk/testJars
+
 # Using OpenJDK 8
 FROM broadinstitute/gatk:gatkbase-2.3.0
 
-# Location of the unzipped gatk bundle files
-ARG ZIPPATH
-
-ADD $ZIPPATH /gatk
-
 WORKDIR /gatk
+
+# Location of the unzipped gatk bundle files
+COPY --from=gradleBuild /gatk/unzippedJar .
 
 #Setup linked jars that may be needed for running gatk
 RUN ln -s $( find /gatk -name "gatk*local.jar" ) gatk.jar
