@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
+import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
@@ -71,9 +72,19 @@ public final class CreateArrayIngestFiles extends VariantWalker {
             optional = true)
     private String refVersion = "37";
 
+    @Argument(
+            fullName = "output-directory",
+            doc = "directory for output tsv files",
+            optional = true)
+    private File outputDir = new File(".");
+
 
     @Override
     public void onTraversalStart() {
+        //set up output directory
+        if (!outputDir.exists() && !outputDir.mkdir()) {
+            throw new RuntimeIOException("Unable to create directory: " + outputDir.getAbsolutePath());
+        }
 
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
@@ -92,7 +103,7 @@ public final class CreateArrayIngestFiles extends VariantWalker {
         String tableNumberPrefix = String.format("%03d_", sampleTableNumber);
 
         metadataTsvCreator = new ArrayMetadataTsvCreator();
-        metadataTsvCreator.createRow(sampleName, sampleId, tableNumberPrefix);
+        metadataTsvCreator.createRow(sampleName, sampleId, tableNumberPrefix, outputDir);
 
         Map<String, ProbeInfo> probeNameMap;
         if (probeCsvFile == null) {
@@ -104,7 +115,7 @@ public final class CreateArrayIngestFiles extends VariantWalker {
         // Set reference version
         ChromosomeEnum.setRefVersion(refVersion);
 
-        tsvCreator = new RawArrayTsvCreator(sampleName, sampleId, tableNumberPrefix, probeNameMap, useCompressedData);
+        tsvCreator = new RawArrayTsvCreator(sampleName, sampleId, tableNumberPrefix, probeNameMap, useCompressedData, outputDir);
     }
 
 
