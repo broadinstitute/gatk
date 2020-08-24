@@ -1,0 +1,3 @@
+ProbeId,Name,GenomeBuild,Chr,Position,Ref,AlleleA,AlleleB,build37Flag
+1,1:5700115-A-T,37,1,5700115,A,A,T,
+2,1:5700116-C-G,37,1,5700116,C,C,G,
