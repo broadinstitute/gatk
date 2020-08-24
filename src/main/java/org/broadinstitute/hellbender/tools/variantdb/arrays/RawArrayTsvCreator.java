@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeInfo;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -43,16 +44,16 @@ public final class RawArrayTsvCreator {
         }
     }
 
-    public RawArrayTsvCreator(final String sampleName, final String sampleId, final String tableNumberPrefix, final Map<String, ProbeInfo> probeDataByName, boolean useCompressedData) {
+    public RawArrayTsvCreator(final String sampleName, final String sampleId, final String tableNumberPrefix, final Map<String, ProbeInfo> probeDataByName, boolean useCompressedData, final File outputDirectory) {
         this.sampleId = sampleId;
         this.probeDataByName = probeDataByName;
         this.useCompressedData = useCompressedData;
         try {
             // Create a raw file to go into the raw dir for _this_ sample
-            final String rawOutputName = RAW_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + IngestConstants.FILETYPE;
+            final File rawOutputName = new File(outputDirectory, RAW_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + IngestConstants.FILETYPE);
             // write header to it
-            List<String> rawHeader = RawArrayTsvCreator.getHeaders();
-            rawArrayWriter = new SimpleXSVWriter(Paths.get(rawOutputName), IngestConstants.SEPARATOR);
+            List<String> rawHeader = RawArrayTsvCreator.getHeaders(useCompressedData);
+            rawArrayWriter = new SimpleXSVWriter(rawOutputName.toPath(), IngestConstants.SEPARATOR);
             rawArrayWriter.setHeaderLine(rawHeader);
         } catch (final IOException e) {
             throw new UserException("Could not create raw outputs", e);
@@ -80,19 +81,25 @@ public final class RawArrayTsvCreator {
         return row;
     }
 
-    public static List<String> getHeaders() {
-        return Arrays.stream(RawArrayFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
+    public static List<String> getHeaders(final boolean useCompressedData) {
+        if (useCompressedData) {
+            return Arrays.stream(RawArrayFieldEnum.getCompressedRawArrayFieldEnums()).map(String::valueOf).collect(Collectors.toList());
+        }
+        return Arrays.stream(RawArrayFieldEnum.getUncompressedRawArrayFieldEnums()).map(String::valueOf).collect(Collectors.toList());
     }
 
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         if (!variant.getFilters().contains("ZEROED_OUT_ASSAY")) {
             final List<String> rowData = createRow(variant, sampleId);
 
+            int length = useCompressedData ? RawArrayFieldEnum.getCompressedRawArrayFieldEnums().length : RawArrayFieldEnum.getUncompressedRawArrayFieldEnums().length;
             // write the row to the XSV
-            if (rowData.size() == RawArrayFieldEnum.values().length) {
+            if (rowData.size() == length) {
                 SimpleXSVWriter.LineBuilder rawLine = rawArrayWriter.getNewLineBuilder();
                 rawLine.setRow(rowData);
                 rawLine.write();
+            } else {
+                throw new UserException("Length of row data didn't match length of expected row data.");
             }
         }
     }
