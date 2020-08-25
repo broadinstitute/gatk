@@ -160,7 +160,7 @@ script:
     echo ${TEST_TYPE};
     sudo mkdir -p build/reports/;
     sudo chmod -R a+w build/reports/;
-    ./gradlew -u root shadowTestClassJar shadowTestJar;
+    ./gradlew clean -u root shadowTestClassJar shadowTestJar;
     sudo mkdir ./testJars;
     sudo echo $( find ./build/libs/ -name "gatk*test.jar");
     sudo cp -r $( find ./build/libs/ -name "gatk*test.jar" ) ./testJars;
