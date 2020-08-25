@@ -118,7 +118,11 @@ workflow TestWDLTool {
     File TestWDLToolrequiredScalarFileOutput = TestWDLTool.TestWDLTool_requiredScalarFileOutput
     File TestWDLToolrequiredScalarFileOutputDictionary = TestWDLTool.TestWDLTool_requiredScalarFileOutputDictionary
     File TestWDLToolrequiredScalarFileOutputIndex = TestWDLTool.TestWDLTool_requiredScalarFileOutputIndex
+    File TestWDLToolrequiredScalarFileOutputDictionary = TestWDLTool.TestWDLTool_requiredScalarFileOutputDictionary
+    File TestWDLToolrequiredScalarFileOutputIndex = TestWDLTool.TestWDLTool_requiredScalarFileOutputIndex
     Array[File] TestWDLToolrequiredListFileOutput = TestWDLTool.TestWDLTool_requiredListFileOutput
+    Array[File] TestWDLToolrequiredListFileOutputDictionary = TestWDLTool.TestWDLTool_requiredListFileOutputDictionary
+    Array[File] TestWDLToolrequiredListFileOutputIndex = TestWDLTool.TestWDLTool_requiredListFileOutputIndex
     Array[File] TestWDLToolrequiredListFileOutputDictionary = TestWDLTool.TestWDLTool_requiredListFileOutputDictionary
     Array[File] TestWDLToolrequiredListFileOutputIndex = TestWDLTool.TestWDLTool_requiredListFileOutputIndex
   }
@@ -221,7 +225,11 @@ task TestWDLTool {
     File TestWDLTool_requiredScalarFileOutput = requiredScalarFileOutput
     File TestWDLTool_requiredScalarFileOutputDictionary = requiredScalarFileOutputDictionary
     File TestWDLTool_requiredScalarFileOutputIndex = requiredScalarFileOutputIndex
+    File TestWDLTool_requiredScalarFileOutputDictionary = requiredScalarFileOutputDictionary
+    File TestWDLTool_requiredScalarFileOutputIndex = requiredScalarFileOutputIndex
     Array[File] TestWDLTool_requiredListFileOutput = requiredListFileOutput
+    Array[File] TestWDLTool_requiredListFileOutputDictionary = requiredListFileOutputDictionary
+    Array[File] TestWDLTool_requiredListFileOutputIndex = requiredListFileOutputIndex
     Array[File] TestWDLTool_requiredListFileOutputDictionary = requiredListFileOutputDictionary
     Array[File] TestWDLTool_requiredListFileOutputIndex = requiredListFileOutputIndex
   }
