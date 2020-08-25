@@ -310,11 +310,11 @@ task GetContamination {
   fi
 
   grep -v "SampleID" output-noquotes > output-data
-  awk '{print $2}' output-data > contamination.txt
-  awk '{print $6}' output-data > major_hg.txt
-  awk '{print $8}' output-data > minor_hg.txt
-  awk '{print $14}' output-data > mean_het_major.txt
-  awk '{print $15}' output-data > mean_het_minor.txt
+  awk -F "\t" '{print $2}' output-data > contamination.txt
+  awk -F "\t" '{print $6}' output-data > major_hg.txt
+  awk -F "\t" '{print $8}' output-data > minor_hg.txt
+  awk -F "\t" '{print $14}' output-data > mean_het_major.txt
+  awk -F "\t" '{print $15}' output-data > mean_het_minor.txt
   >>>
   runtime {
     preemptible: select_first([preemptible_tries, 5])
