@@ -77,7 +77,7 @@ public class PSTree {
 
     /**
      * Adds a node to the tree. ID must be unique, and all arguments must be non-null.
-     * If the node isEnabled, its properties are modified
+     * If the node exists, its properties are modified
      */
     public void addNode(final int id, final String name, final int parent, final long length, final String rank) {
         Utils.validateArg((name != null)  && (rank != null), "Passed a null argument to addNode()");
@@ -85,7 +85,7 @@ public class PSTree {
         Utils.validateArg(parent != NULL_NODE, "Passed invalid parent ID to addNode()");
         Utils.validateArg(root != id, "Tried to set root attributes using addNode()");
 
-        //If the node already isEnabled, keep its current children and set everything else
+        //If the node already exists, keep its current children and set everything else
         if (!tree.containsKey(id)) {
             tree.put(id, new PSTreeNode());
         }

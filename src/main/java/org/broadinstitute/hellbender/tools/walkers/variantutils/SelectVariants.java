@@ -120,7 +120,7 @@ public final class SelectVariants extends VariantWalker {
     private static final double MAX_NOCALL_FRACTION_DEFAULT_VALUE = 1.0;
 
     /**
-     * A site is considered discordant if there isEnabled some sample in the variant track that has a non-reference
+     * A site is considered discordant if there exists some sample in the variant track that has a non-reference
      * genotype and either the site isn't present in this track, the sample isn't present in this track, or the
      * sample is called reference in this track.
      */
@@ -616,7 +616,7 @@ public final class SelectVariants extends VariantWalker {
 
         // Not excluding non-variants OR (subsetted polymorphic variants AND not spanning deletion) AND (including filtered loci OR subsetted variant) is not filtered
         // If exclude non-variants argument is not called, filtering will NOT occur.
-        // If exclude non-variants is called, and a spanning deletion isEnabled, the spanning deletion will be filtered
+        // If exclude non-variants is called, and a spanning deletion exists, the spanning deletion will be filtered
         // If exclude non-variants is called, it is a polymorphic variant, but not a spanning deletion, filtering will not occur
         // True iff exclude-filtered is not called or the filteredGenotypeToNocall is not already filtered
 

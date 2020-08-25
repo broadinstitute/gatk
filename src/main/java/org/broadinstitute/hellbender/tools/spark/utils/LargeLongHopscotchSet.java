@@ -196,7 +196,7 @@ public final class LargeLongHopscotchSet implements Serializable {
             while (!innerIterator.hasNext()) {
                 //While we are at the end of a partition, try to move on
                 if (outerIterator.hasNext()) {
-                    //A next partition isEnabled, so move to it
+                    //A next partition exists, so move to it
                     innerIterator = outerIterator.next().iterator();
                 } else {
                     //There are no partitions left, so kill the iterator

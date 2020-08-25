@@ -20,7 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Integration test on the SV pipeline as it isEnabled right now [2017-03-06]
+ * Integration test on the SV pipeline as it exists right now [2017-03-06]
  */
 public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgramTest {
 

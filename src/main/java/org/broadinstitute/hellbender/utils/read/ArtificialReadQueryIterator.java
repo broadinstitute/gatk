@@ -89,7 +89,7 @@ public final class ArtificialReadQueryIterator extends ArtificialReadIterator {
      * @param stop   the stop postition
      */
     private void initialize( String contig, int start, int stop ) {
-        // throw away data from the previous invocation, if one isEnabled.
+        // throw away data from the previous invocation, if one exists.
         ensureUntouched();
         reset();
 

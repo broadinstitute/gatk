@@ -3422,13 +3422,13 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 { "gencode.v26.primary_assembly.annotation.gtf", testResourceDir, false},    // File does not exist
                 { "gencode.v26.long_noncoding_RNAs.gtf"        , testResourceDir, false},    // File does not exist
 
-                { "gencode.invalid_short_header.gtf"           , testResourceDir, false},    // File isEnabled, has invalid header
-                { "gencode.invalid_malformed_header.gtf"       , testResourceDir, false},    // File isEnabled, has invalid header
-                { "gencode.invalid_malformed_header_desc.gtf"  , testResourceDir, false},    // File isEnabled, has invalid header
-                { "gencode.invalid_malformed_header_prov.gtf"  , testResourceDir, false},    // File isEnabled, has invalid header
-                { "gencode.invalid_malformed_header_cont.gtf"  , testResourceDir, false},    // File isEnabled, has invalid header
-                { "gencode.invalid_malformed_header_form.gtf"  , testResourceDir, false},    // File isEnabled, has invalid header
-                { "gencode.invalid_malformed_header_date.gtf"  , testResourceDir, false},    // File isEnabled, has invalid header
+                { "gencode.invalid_short_header.gtf"           , testResourceDir, false},    // File exists, has invalid header
+                { "gencode.invalid_malformed_header.gtf"       , testResourceDir, false},    // File exists, has invalid header
+                { "gencode.invalid_malformed_header_desc.gtf"  , testResourceDir, false},    // File exists, has invalid header
+                { "gencode.invalid_malformed_header_prov.gtf"  , testResourceDir, false},    // File exists, has invalid header
+                { "gencode.invalid_malformed_header_cont.gtf"  , testResourceDir, false},    // File exists, has invalid header
+                { "gencode.invalid_malformed_header_form.gtf"  , testResourceDir, false},    // File exists, has invalid header
+                { "gencode.invalid_malformed_header_date.gtf"  , testResourceDir, false},    // File exists, has invalid header
 
                 { "gencode.valid1.gtf"                           , testResourceDir, true},   // Valid file
                 { "gencode.valid_gencode_file2.gtf"              , testResourceDir, true},   // Valid file

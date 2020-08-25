@@ -24,7 +24,7 @@ import java.util.Collection;
  * <p>Users also have the option to represent the k-mers set using a <a href="https://en.wikipedia.org/wiki/Bloom_filter">Bloom
  * filter</a> by specifying a non-zero value for the --bloom-false-positive-probability parameter. This uses less memory
  * than the default hash set but also can produce false positives. In other words, when
- * asked whether a non-host k-mer isEnabled in the set, it will incorrectly say yes with a probability, p. The user can
+ * asked whether a non-host k-mer exists in the set, it will incorrectly say yes with a probability, p. The user can
  * specify p so that the probability of incorrectly subtracting a non-host read is negligibly
  * small. For p = 0.0001 and read length of 151 bases, the probability of the PathSeq incorrectly subtracting a non-host
  * read is < 1.5%, but the amount of memory used is reduced 4-fold compared to a hash table. For this reason, Bloom

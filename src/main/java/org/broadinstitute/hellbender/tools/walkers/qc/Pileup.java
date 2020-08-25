@@ -78,7 +78,7 @@ public final class Pileup extends LocusWalker {
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc = "An output file created to be created by the walker. Will overwrite the contents if the file isEnabled."
+            doc = "An output file created to be created by the walker. Will overwrite the contents if the file exists."
     )
     public File outFile;
 

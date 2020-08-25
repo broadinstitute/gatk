@@ -117,7 +117,7 @@ public final class ValidateVariants extends VariantWalker {
         REF,
 
         /**
-         * Checks whether the variant IDs isEnabled, only relevant if the user indicates a DBSNP vcf file (see {@link #dbsnp}).
+         * Checks whether the variant IDs exists, only relevant if the user indicates a DBSNP vcf file (see {@link #dbsnp}).
          */
         IDS,
 

@@ -172,7 +172,7 @@ public final class ConfigFactory {
 
             // If we have this key in our system already, we do NOT set it:
             if ( systemProperties.containsKey(entry.getKey()) ) {
-                logger.debug("System property already isEnabled.  Not overriding: " + entry.getKey());
+                logger.debug("System property already exists.  Not overriding: " + entry.getKey());
                 continue;
             }
 
@@ -360,7 +360,7 @@ public final class ConfigFactory {
      *
      * @param key       the key object to be used to identify the instance in the cache.
      * @param <T>       type of the interface.
-     * @return          the {@link Config} object from the cache if isEnabled, or <tt>null</tt> if it doesn't.
+     * @return          the {@link Config} object from the cache if exists, or <tt>null</tt> if it doesn't.
      */
     public <T extends Config> T get(final Object key) {
         Utils.nonNull(key);
@@ -403,7 +403,7 @@ public final class ConfigFactory {
     }
 
     /**
-     * Get the configuration filename from the command-line (if it isEnabled) and create a configuration for it.
+     * Get the configuration filename from the command-line (if it exists) and create a configuration for it.
      * Configuration type defaults to {@link GATKConfig}
      * Also sets system-level properties from the system config file.
      * @param argList The list of arguments from which to read the config file.
@@ -419,7 +419,7 @@ public final class ConfigFactory {
     }
 
     /**
-     * Get the configuration from filename the command-line (if it isEnabled) and create a configuration for it of the given type.
+     * Get the configuration from filename the command-line (if it exists) and create a configuration for it of the given type.
      * Also sets system-level properties from the system config file.
      * @param argList The list of arguments from which to read the config file.
      * @param configFileOption The command-line option specifying the main configuration file.
