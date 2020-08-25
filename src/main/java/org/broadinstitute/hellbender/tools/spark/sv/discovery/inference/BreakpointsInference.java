@@ -121,7 +121,7 @@ public abstract class BreakpointsInference {
                 " alt seq: " + (getInferredAltHaplotypeSequence() == null ? "NULL" : getInferredAltHaplotypeSequence()) ;
     }
 
-    // TODO: 5/28/18 a bug isEnabled here in location inference that when homology isEnabled, see ticket 4883
+    // TODO: 5/28/18 a bug exists here in location inference that when homology exists, see ticket 4883
     //       we are implicitly assuming that the hom. seq. has no micro insertion/deletions
     //       in its alignments at breakpoints (as we are simply adding/subtracting hom. len.)
     //       this is not a serious problem,

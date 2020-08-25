@@ -485,7 +485,7 @@ public abstract class BaseTest {
         System.err.println("$" + key + " = " + credsFile);
         Path credsPath = Paths.get(credsFile);
         boolean exists = Files.exists(credsPath);
-        System.err.println("File isEnabled: " + exists);
+        System.err.println("File exists: " + exists);
         if (exists) {
             try {
                 System.err.println("Key lines from file:");

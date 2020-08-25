@@ -39,7 +39,7 @@ public final class BwaSparkEngine implements AutoCloseable {
      * @param ctx           the Spark context
      * @param referenceFile the path to the reference file named <i>_prefix_.fa</i>, which is used to find the image file with name <i>_prefix_.fa.img</i>.
      *                      Can be <code>null</code> if the indexFileName is provided.
-     * @param indexFileName the index image file name that already isEnabled, or <code>null</code> to have the image file automatically distributed.
+     * @param indexFileName the index image file name that already exists, or <code>null</code> to have the image file automatically distributed.
      * @param inputHeader   the SAM file header to use for reads
      * @param refDictionary the sequence dictionary to use for reads if the SAM file header doesn't have one (or it's empty)
      */

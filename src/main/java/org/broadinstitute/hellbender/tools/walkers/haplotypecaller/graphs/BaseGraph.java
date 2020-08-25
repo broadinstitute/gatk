@@ -202,20 +202,20 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     }
 
     /**
-     * Traverse the graph and get the next reference vertex if it isEnabled
+     * Traverse the graph and get the next reference vertex if it exists
      * @param v the current vertex, can be null
-     * @return  the next reference vertex if it isEnabled, otherwise null
+     * @return  the next reference vertex if it exists, otherwise null
      */
     public final V getNextReferenceVertex( final V v ) {
         return getNextReferenceVertex(v, false, Optional.<E>empty());
     }
 
     /**
-     * Traverse the graph and get the next reference vertex if it isEnabled
+     * Traverse the graph and get the next reference vertex if it exists
      * @param v the current vertex, can be null
      * @param allowNonRefPaths if true, allow sub-paths that are non-reference if there is only a single outgoing edge
      * @param blacklistedEdge optional edge to ignore in the traversal down; useful to exclude the non-reference dangling paths
-     * @return the next vertex (but not necessarily on the reference path if allowNonRefPaths is true) if it isEnabled, otherwise null
+     * @return the next vertex (but not necessarily on the reference path if allowNonRefPaths is true) if it exists, otherwise null
      */
     public final V getNextReferenceVertex( final V v, final boolean allowNonRefPaths, final Optional<E> blacklistedEdge ) {
         if( v == null ) { return null; }
@@ -245,9 +245,9 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     }
 
     /**
-     * Traverse the graph and get the previous reference vertex if it isEnabled
+     * Traverse the graph and get the previous reference vertex if it exists
      * @param v the current vertex, can be null
-     * @return  the previous reference vertex if it isEnabled or null otherwise.
+     * @return  the previous reference vertex if it exists or null otherwise.
      */
     public final V getPrevReferenceVertex( final V v ) {
         if( v == null ) { return null; }
@@ -577,7 +577,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     /**
      * Get the incoming edge of v.  Requires that there be only one such edge or throws an error
      * @param v our vertex
-     * @return the single incoming edge to v, or null if none isEnabled
+     * @return the single incoming edge to v, or null if none exists
      */
     public final E incomingEdgeOf(final V v) {
         Utils.nonNull(v);
@@ -587,7 +587,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     /**
      * Get the outgoing edge of v.  Requires that there be only one such edge or throws an error
      * @param v our vertex
-     * @return the single outgoing edge from v, or null if none isEnabled
+     * @return the single outgoing edge from v, or null if none exists
      */
     public final E outgoingEdgeOf(final V v) {
         Utils.nonNull(v);
@@ -606,7 +606,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     }
 
     /**
-     * Add edge between source -> target if none isEnabled, or add e to an already existing one if present
+     * Add edge between source -> target if none exists, or add e to an already existing one if present
      *
      * @param source source vertex
      * @param target vertex

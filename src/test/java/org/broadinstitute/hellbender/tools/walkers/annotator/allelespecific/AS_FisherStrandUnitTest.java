@@ -9,7 +9,7 @@ import java.util.List;
 import static org.testng.Assert.*;
 
 /**
- * This class isEnabled in order to run GATK3 concordance tests using the framework of ReducibleAnnotationBaseTest
+ * This class exists in order to run GATK3 concordance tests using the framework of ReducibleAnnotationBaseTest
  * Created by emeryj on 8/11/17.
  */
 public class AS_FisherStrandUnitTest extends ReducibleAnnotationBaseTest {

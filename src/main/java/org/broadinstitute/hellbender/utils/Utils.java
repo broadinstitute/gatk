@@ -602,10 +602,10 @@ public final class Utils {
             throw new FileNotFoundException("File '" + fname + "' does not exist");
         }
         if (Files.isDirectory(path)) {
-            throw new IOException("File '" + fname + "' isEnabled but is a directory");
+            throw new IOException("File '" + fname + "' exists but is a directory");
         }
         if (!Files.isRegularFile(path)) {
-            throw new IOException("File '" + fname + "' isEnabled but is not a regular file");
+            throw new IOException("File '" + fname + "' exists but is not a regular file");
         }
         try {
             final MessageDigest md = MessageDigest.getInstance("MD5");
@@ -687,7 +687,7 @@ public final class Utils {
      * Checks that a {@link Collection} is not {@code null} and that it is not empty.
      * If it's non-null and non-empty it returns the true
      * @param collection any Collection
-     * @return true if the collection isEnabled and has elements
+     * @return true if the collection exists and has elements
      */
     public static boolean isNonEmpty(Collection<?> collection){
         return collection != null && !collection.isEmpty();

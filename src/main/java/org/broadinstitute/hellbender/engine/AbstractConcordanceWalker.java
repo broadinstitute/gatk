@@ -204,7 +204,7 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
             }
         }
 
-        // if a variant only isEnabled in the eval vcf, it is either a false positive or a filtered true negative
+        // if a variant only exists in the eval vcf, it is either a false positive or a filtered true negative
         private TruthVersusEval nextEvalOnlyVariant() {
             final VariantContext evalVariant = evalIterator.next();
             return evalVariant.isFiltered() ? TruthVersusEval.filteredTrueNegative(evalVariant) : TruthVersusEval.falsePositive(evalVariant);

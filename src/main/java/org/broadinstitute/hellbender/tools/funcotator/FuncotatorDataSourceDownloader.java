@@ -108,7 +108,7 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
 
     @Argument(fullName = OVERWRITE_ARG_LONG_NAME,
             shortName = OVERWRITE_ARG_LONG_NAME,
-            doc = "Overwrite output file if it isEnabled already.",
+            doc = "Overwrite output file if it exists already.",
             optional = true)
     private boolean overwriteOutputFile = false;
 

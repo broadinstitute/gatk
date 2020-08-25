@@ -328,7 +328,7 @@ public final class IntervalUtils {
         // Note that since contigs can contain periods in their names, we can't use the mere presence of an "extension"
         // as evidence that the user intended the String to be interpreted as a file.
         else if ( new File(arg).exists() ) {
-            throw new UserException.CouldNotReadInputFile(arg, String.format("The file %s isEnabled, but does not contain Features " +
+            throw new UserException.CouldNotReadInputFile(arg, String.format("The file %s exists, but does not contain Features " +
                     "(ie., is not in a supported Feature file format such as vcf, bcf, bed, or interval_list), " +
                     "and does not have one of the supported interval file extensions (" + GATK_INTERVAL_FILE_EXTENSIONS + "). " +
                     "Please rename your file with the appropriate extension. If %s is NOT supposed to be a file, " +
@@ -1094,7 +1094,7 @@ public final class IntervalUtils {
         // Keep a list of all valid interpretations
         final List<SimpleInterval> resolvedIntervals = new ArrayList<>();
 
-        // Treat the entire query string as a contig name. If it isEnabled in the sequence dictionary,
+        // Treat the entire query string as a contig name. If it exists in the sequence dictionary,
         // count that as one valid interpretation.
         final SAMSequenceRecord queryAsContigName = sequenceDictionary.getSequence(intervalQueryString);
         if (queryAsContigName != null) {
@@ -1197,7 +1197,7 @@ public final class IntervalUtils {
      *
      * @param interval interval to check
      * @param dictionary dictionary to use to validate contig bounds
-     * @return true if the interval's contig isEnabled in the dictionary, and the interval is within its bounds, otherwise false
+     * @return true if the interval's contig exists in the dictionary, and the interval is within its bounds, otherwise false
      */
     public static boolean intervalIsOnDictionaryContig( final SimpleInterval interval, final SAMSequenceDictionary dictionary ) {
         Utils.nonNull(interval);

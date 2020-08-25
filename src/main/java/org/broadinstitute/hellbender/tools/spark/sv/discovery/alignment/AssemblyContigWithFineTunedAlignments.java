@@ -189,7 +189,7 @@ public final class AssemblyContigWithFineTunedAlignments {
     }
 
     /**
-     * This method isEnabled because extending the assembly contig in either direction
+     * This method exists because extending the assembly contig in either direction
      * could (not always, see ticket #4229) change
      * <ul>
      *     <li>the interpretation and</li>

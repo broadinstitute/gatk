@@ -219,7 +219,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
                     sortedAlleleCounts[0] = allele0Plus1;
                 }
             } else { // && freq0 > 1 as per sortedAlleleCounts format restrictions. In this case allele0 will mutated to '0' with frequency decreased by 1.
-                if (allele0And1AreConsecutive) { // we don't need to add a component for allele0 + 1 since it already isEnabled.
+                if (allele0And1AreConsecutive) { // we don't need to add a component for allele0 + 1 since it already exists.
                     sortedAlleleCounts[0] = 0;
                     sortedAlleleCounts[1] = freq0 - 1;
                     sortedAlleleCounts[3]++;
@@ -276,7 +276,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
                 // newSortedAlleleCounts[1] = 1; // :) no need to do it because it is already the case (freq0 == 1).
             }
         } else { // && freq0 > 1 as per sortedAlleleCounts format restrictions. In this case allele0 will muttated to '0' with frequency decreased by 1.
-            if (allele0And1AreConsecutive) { // we don't need to add a component for allele0 + 1 since it already isEnabled.
+            if (allele0And1AreConsecutive) { // we don't need to add a component for allele0 + 1 since it already exists.
                 newSortedAlleleCounts = sortedAlleleCounts.clone();
                 newSortedAlleleCounts[0] = 0;
                 newSortedAlleleCounts[1] = freq0 - 1;

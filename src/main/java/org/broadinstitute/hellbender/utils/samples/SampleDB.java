@@ -191,7 +191,7 @@ public final class SampleDB {
     /**
      * Get the sample's mother
      * @param offSpring child of mother to return
-     * @return sample object with relationship mother, if isEnabled, or null
+     * @return sample object with relationship mother, if exists, or null
      */
     public Sample getMother(Sample offSpring) {
         String maternalID = offSpring.getMaternalID();
@@ -201,7 +201,7 @@ public final class SampleDB {
     /**
      * Get the sample's father
      * @param offSpring child of father to return
-     * @return sample object with relationship father, if isEnabled, or null
+     * @return sample object with relationship father, if exists, or null
      */
     public Sample getFather(Sample offSpring) {
         String paternalID = offSpring.getPaternalID();
@@ -211,7 +211,7 @@ public final class SampleDB {
     /**
      * Get the sample's father and mother
      * @param offSpring child of parents to return
-     * @return sample objects with relationship parents, if isEnabled, or null
+     * @return sample objects with relationship parents, if exists, or null
      */
     public List<Sample> getParents(final Sample offSpring) {
         final List<Sample> parents = new ArrayList<>(2);

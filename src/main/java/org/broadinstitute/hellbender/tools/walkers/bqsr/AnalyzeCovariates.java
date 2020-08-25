@@ -291,7 +291,7 @@ public final class AnalyzeCovariates extends CommandLineProgram {
         }
         if (value.exists() && !value.isFile()) {
             throw new CommandLineException.BadArgumentValue(name, "the output file location '"
-                    + value + "' isEnabled as not a file");
+                    + value + "' exists as not a file");
         }
         final File parent = value.getParentFile();
         if (parent == null) {
@@ -299,7 +299,7 @@ public final class AnalyzeCovariates extends CommandLineProgram {
         }
         if (!parent.exists()) {
             throw new CommandLineException.BadArgumentValue(name, "the output file parent directory '"
-                    + parent + "' does not isEnabled or is unreachable");
+                    + parent + "' does not exists or is unreachable");
         } else if (!parent.isDirectory()) {
             throw new CommandLineException.BadArgumentValue(name, "the output file parent directory '"
                     + parent + "' is not a directory");
@@ -465,7 +465,7 @@ public final class AnalyzeCovariates extends CommandLineProgram {
      * Returns the csv file to use.
      * <p/>
      * This is the the one specified by the user if any or a temporary file
-     * that will be deleted as soon as the VM isEnabled by default.
+     * that will be deleted as soon as the VM exists by default.
      *
      * @return never <code>null</code>.
      */

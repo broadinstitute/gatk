@@ -580,7 +580,7 @@ public class NucleotideUnitTest {
         } catch (final IllegalAccessException e) {
             Assert.fail("Long name constant " + name + " is not accessible");
         } catch (final NoSuchFieldException e) {
-            Assert.fail("Long name constant " + name + " does not isEnabled");
+            Assert.fail("Long name constant " + name + " does not exist");
         } catch (final ClassCastException e) {
             Assert.fail("Long name constant " + name + " so not typed as " + Nucleotide.class.getName());
         }

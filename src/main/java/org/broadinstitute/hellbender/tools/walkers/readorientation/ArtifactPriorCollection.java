@@ -84,7 +84,7 @@ public class ArtifactPriorCollection {
         /**
          * We iterate through the canonical kmers instead of all reference contexts because otherwise we would
          * visit each reference context twice and get an error the second time, as updating an artifact prior that already
-         * isEnabled in the container class is prohibited. {@link ArtifactPriorCollection.set} automatically sets its reverse complement
+         * exists in the container class is prohibited. {@link ArtifactPriorCollection.set} automatically sets its reverse complement
          * for you.
          */
         for (final String refContext : F1R2FilterConstants.CANONICAL_KMERS){

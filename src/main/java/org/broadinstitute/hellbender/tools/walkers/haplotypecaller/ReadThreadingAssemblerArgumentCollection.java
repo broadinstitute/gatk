@@ -153,7 +153,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public boolean disableArtificialHaplotypeRecovery = false;
 
     /**
-     * This option isEnabled purely to support concordance with DRAGEN-GATK, it is not recommended to enable this in most use cases.
+     * This option exists purely to support concordance with DRAGEN-GATK, it is not recommended to enable this in most use cases.
      * Use this toggle to re-enable the GATK3 behavior of checking for graph cycles (and consequently throwing away the graph) before
      * purning low weight chains.
      */

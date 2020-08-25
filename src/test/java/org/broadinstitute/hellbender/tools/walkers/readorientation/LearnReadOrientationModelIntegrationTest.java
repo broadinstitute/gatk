@@ -160,7 +160,7 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
         Assert.assertTrue(new File(extractedPriorsDir, sample2 + LearnReadOrientationModel.ARTIFACT_PRIOR_EXTENSION).exists());
     }
 
-    // make sure that nothing goes wrong if the target territory is so small that no data isEnabled for some contexts
+    // make sure that nothing goes wrong if the target territory is so small that no data exists for some contexts
     @Test
     public void testFewSites() throws IOException {
         // Step 1: CollectF1R2Counts

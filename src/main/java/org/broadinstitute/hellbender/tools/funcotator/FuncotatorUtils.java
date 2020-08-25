@@ -1320,7 +1320,7 @@ public final class FuncotatorUtils {
      * Get the aligned coding sequence for the given reference allele.
      * NOTE: alignedRefAlleleStart must be less than or equal to codingSequenceRefAlleleStart.
      * @param referenceSnippet {@link StrandCorrectedReferenceBases} containing a short excerpt of the reference sequence around the given reference allele.  Must not be {@code null}.
-     * @param referencePadding Number of bases in {@code referenceSnippet} before the reference allele starts.  This padding isEnabled at the end as well (plus some other bases to account for the length of the alternate allele if it is longer than the reference).  Must be >= 0.
+     * @param referencePadding Number of bases in {@code referenceSnippet} before the reference allele starts.  This padding exists at the end as well (plus some other bases to account for the length of the alternate allele if it is longer than the reference).  Must be >= 0.
      * @param refAllele The reference {@link Allele}.  Must not be {@code null}.
      * @param altAllele The alternate {@link Allele}.  Must not be {@code null}.
      * @param codingSequenceRefAlleleStart The position (1-based, inclusive) in the coding sequence where the {@code refAllele} starts.
@@ -1710,7 +1710,7 @@ public final class FuncotatorUtils {
     /**
      * Converts a given B37 style contig name to the equivalent in hg19.
      * @param b37Contig The contig name from the B37 Human Genome reference to convert to the equivalent contig from the HG19 Human Genome reference.
-     * @return The HG19 equivalent of the given B37 contig name, if such an equivalent name isEnabled.  If no equivalent name isEnabled, returns the given {@code b37Contig}.
+     * @return The HG19 equivalent of the given B37 contig name, if such an equivalent name exists.  If no equivalent name exists, returns the given {@code b37Contig}.
      */
     public static String convertB37ContigToHg19Contig( final String b37Contig ) {
         return B37_To_HG19_CONTIG_NAME_MAP.getOrDefault(b37Contig, b37Contig);
@@ -1719,7 +1719,7 @@ public final class FuncotatorUtils {
     /**
      * Converts a given HG19 style contig name to the equivalent in B37.
      * @param hg19Contig The contig name from the HG19 Human Genome reference to convert to the equivalent contig from the B37 Human Genome reference.
-     * @return The B37 equivalent of the given HG19 contig name, if such an equivalent name isEnabled.  If no equivalent name isEnabled, returns the given {@code hg19Contig}.
+     * @return The B37 equivalent of the given HG19 contig name, if such an equivalent name exists.  If no equivalent name exists, returns the given {@code hg19Contig}.
      */
     public static String convertHG19ContigToB37Contig( final String hg19Contig ) {
         return HG19_TO_B37_CONTIG_NAME_MAP.getOrDefault(hg19Contig, hg19Contig);
@@ -2041,7 +2041,7 @@ public final class FuncotatorUtils {
     }
 
     /**
-     * Removes the transcript ID version number from the given transcript ID (if it isEnabled).
+     * Removes the transcript ID version number from the given transcript ID (if it exists).
      * @param transcriptId The transcript from which to remove the version number.
      * @return The {@link String} corresponding to the given {@code transcriptId} without a version number.
      */

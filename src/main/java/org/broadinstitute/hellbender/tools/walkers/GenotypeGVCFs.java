@@ -107,7 +107,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
     /**
      * Import all data between specified intervals.   Improves performance using large lists of intervals, as in exome
-     * sequencing, especially if GVCF data only isEnabled for specified intervals.  Use with
+     * sequencing, especially if GVCF data only exists for specified intervals.  Use with
      * --only-output-calls-starting-in-intervals if input GVCFs contain calls outside the specified intervals.
      */
     @Argument(fullName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,

@@ -485,7 +485,7 @@ public final class IOUtils {
                 Files.createDirectories(extractedEntryPath);
             }
             else {
-                // Make sure the parent directory isEnabled:
+                // Make sure the parent directory exists:
                 Files.createDirectories(extractedEntryPath.getParent());
 
                 if ( entry.isFIFO() ) {
@@ -496,7 +496,7 @@ public final class IOUtils {
                     // Handle a symbolic link:
                     final String linkName = entry.getLinkName();
 
-                    // If the link already isEnabled, we must clear it:
+                    // If the link already exists, we must clear it:
                     if ( Files.exists(extractedEntryPath) && overwriteExistingFiles ) {
                         removeFileWithWarning(extractedEntryPath);
                     }
@@ -507,7 +507,7 @@ public final class IOUtils {
                     // Handle a hard link:
                     final String linkName = entry.getLinkName();
 
-                    // If the link already isEnabled, we must clear it:
+                    // If the link already exists, we must clear it:
                     if ( Files.exists(extractedEntryPath) && overwriteExistingFiles ) {
                         removeFileWithWarning(extractedEntryPath);
                     }
@@ -569,14 +569,14 @@ public final class IOUtils {
                 logger.warn("Overwriting existing output destination: " + p.toUri());
             }
             else {
-                throw new UserException("Output destination already isEnabled: " + p.toUri());
+                throw new UserException("Output destination already exists: " + p.toUri());
             }
         }
     }
 
     /**
      * Create a Unix FIFO file with the given path string.
-     * If requested file already isEnabled, will throw an exception.
+     * If requested file already exists, will throw an exception.
      * Will throw an Exception on failure.
      * @param fifoFilePath {@link Path} to the FIFO file to be created.
      * @return The {@link File} object pointing to the created FIFO file.
@@ -586,7 +586,7 @@ public final class IOUtils {
     }
 
     private static void removeFileWithWarning(final Path filePath) {
-        logger.warn("File already isEnabled in path.  Replacing existing file: " + filePath.toUri());
+        logger.warn("File already exists in path.  Replacing existing file: " + filePath.toUri());
         try {
             Files.delete(filePath);
         }
@@ -599,7 +599,7 @@ public final class IOUtils {
      * Create a Unix FIFO file with the given path string.
      * Will throw an Exception on failure.
      * @param fifoFilePath {@link Path} to the FIFO file to be created.
-     * @param overwriteExisting If {@code true} will overwrite an existing file in the requested location for the FIFO file.  If {@code false} will throw an exception if the file isEnabled.
+     * @param overwriteExisting If {@code true} will overwrite an existing file in the requested location for the FIFO file.  If {@code false} will throw an exception if the file exists.
      * @return The {@link File} object pointing to the created FIFO file.
      */
     public static File createFifoFile(final Path fifoFilePath, final boolean overwriteExisting) {
@@ -607,7 +607,7 @@ public final class IOUtils {
         // Make sure we're allowed to create the file:
         if ( Files.exists(fifoFilePath) ) {
             if ( (!overwriteExisting) ) {
-                throw new UserException("Cannot create fifo file.  File already isEnabled: " + fifoFilePath.toUri());
+                throw new UserException("Cannot create fifo file.  File already exists: " + fifoFilePath.toUri());
             }
             else {
                 removeFileWithWarning(fifoFilePath);

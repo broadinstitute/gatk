@@ -193,7 +193,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         Assert.assertEquals(res, tabixIndex.getAbsolutePath());
         tabixIndex.deleteOnExit();
 
-        Assert.assertTrue(tabixIndex.exists(), tabixIndex + " does not isEnabled");
+        Assert.assertTrue(tabixIndex.exists(), tabixIndex + " does not exists");
         final Index index = IndexFactory.loadIndex(tabixIndex.toString());
         Assert.assertTrue(index instanceof TabixIndex);
 

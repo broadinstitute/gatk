@@ -108,10 +108,10 @@ public final class SparkUtils {
     }
 
     /**
-     * Determine if the <code>targetPath</code> isEnabled.
+     * Determine if the <code>targetPath</code> exists.
      * @param ctx JavaSparkContext
      * @param targetURI the <code>org.apache.hadoop.fs.Path</code> URI to check
-     * @return true if the targetPath isEnabled, otherwise false
+     * @return true if the targetPath exists, otherwise false
      */
     public static boolean hadoopPathExists(final JavaSparkContext ctx, final URI targetURI) {
         Utils.nonNull(ctx);

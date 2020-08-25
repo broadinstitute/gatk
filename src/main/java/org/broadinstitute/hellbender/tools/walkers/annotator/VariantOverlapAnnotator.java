@@ -66,7 +66,7 @@ public final class VariantOverlapAnnotator {
     }
 
     /**
-     * Update rsID of vcToAnnotate with rsID match found in vcsAtLoc, if one isEnabled
+     * Update rsID of vcToAnnotate with rsID match found in vcsAtLoc, if one exists
      *
      * @param vcsAtLoc a list of variant contexts starting at this location to use as sources for rsID values
      * @param vcToAnnotate a variant context to annotate
