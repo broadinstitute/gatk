@@ -158,15 +158,15 @@ script:
     fi;
     sudo docker images;
     echo ${TEST_TYPE};
-    sudo mkdir -p build/reports/;
-    sudo chmod -R a+w build/reports/;
     sudo rm -r ./build;
     sudo ./gradlew clean shadowTestClassJar shadowTestJar;
     sudo mkdir ./testJars;
     sudo echo $( find ./build/libs/ -name "gatk*test.jar");
     sudo cp -r $( find ./build/libs/ -name "gatk*test.jar" ) ./testJars;
     sudo cp -r $( find ./build/libs/ -name "gatk*testDependencies.jar" ) ./testJars;
-     sudo cp scripts/docker/dockertest.gradle .;
+    sudo mkdir -p build/reports/;
+    sudo chmod -R a+w build/reports/;
+    sudo cp scripts/docker/dockertest.gradle .;
     sudo docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e "scala.version=${SCALA_VERSION}" -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
     TEST_EXIT_VALUE=$?;
     sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar;
