@@ -363,6 +363,16 @@ task ${name} {
     <#else>
         <#list requiredOutputs as outputName, outputType>
     ${outputType} ${name}${outputName?substring(2)} = ${name}.${name}_${outputName?substring(2)}
+            <#if requiredCompanions?? && requiredCompanions[outputName]??>
+                <#list requiredCompanions[outputName] as companion>
+    ${outputType} ${name}${companion.name?substring(2)} = ${name}.${name}_${companion.name?substring(2)}
+                </#list>
+            </#if>
+            <#if optionalCompanions?? && optionalCompanions[outputName]??>
+                <#list optionalCompanions[outputName] as companion>
+    ${outputType}? ${name}${companion.name?substring(2)} = ${name}.${name}_${companion.name?substring(2)}
+                </#list>
+            </#if>
         </#list>
     </#if>
 </#macro>
@@ -374,6 +384,16 @@ task ${name} {
     <#else>
         <#list requiredOutputs as outputName, outputType>
     ${outputType} ${name}_${outputName?substring(2)} = ${outputName?substring(2)}
+            <#if requiredCompanions?? && requiredCompanions[outputName]??>
+                <#list requiredCompanions[outputName] as companion>
+    ${outputType} ${name}_${companion.name?substring(2)} = ${companion.name?substring(2)}
+                </#list>
+            </#if>
+            <#if optionalCompanions?? && optionalCompanions[outputName]??>
+                <#list optionalCompanions[outputName] as companion>
+    ${outputType}? ${name}_${companion.name?substring(2)} = ${companion.name?substring(2)}
+                </#list>
+            </#if>
         </#list>
     </#if>
 </#macro>
