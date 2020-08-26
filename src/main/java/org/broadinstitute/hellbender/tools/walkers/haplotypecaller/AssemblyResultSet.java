@@ -2,6 +2,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -519,13 +520,17 @@ public final class AssemblyResultSet {
     }
 
     /**
-     * Get all of the VariantContexts in the event maps for all haplotypes, sorted by their start position
+     * Get all of the VariantContexts in the event maps for all haplotypes, sorted by their start position and then arbitrarily by indel length followed by bases
      * @param haplotypes the set of haplotypes to grab the VCs from
      * @return a sorted set of variant contexts
      */
     private static SortedSet<VariantContext> getAllVariantContexts( final List<Haplotype> haplotypes ) {
         // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
-        final TreeSet<VariantContext> vcs = new TreeSet<>(Comparator.comparingInt(VariantContext::getStart));
+        final TreeSet<VariantContext> vcs = new TreeSet<>(
+                Comparator.comparingInt(VariantContext::getStart)
+                        // Decide arbitrarily so as not to accidentally throw away overlapping variants
+                .thenComparingInt(vc -> vc.getReference().length())
+                .thenComparing(vc -> vc.getAlternateAllele(0)));
 
         for( final Haplotype h : haplotypes ) {
             vcs.addAll(h.getEventMap().getVariantContexts());
