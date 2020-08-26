@@ -447,7 +447,9 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
                 // note that path normalization removes the extra / in file://
                 {"/local/file://example.txt", "/local/file:/example.txt"},
                 {"file:///local/example.txt", "/local/example.txt"},
-                {"gs://dir/example.txt", "gs://dir/example.txt"}
+                {"gs://dir/example.txt", "gs://dir/example.txt"},
+                {"/local/with#unusual?characters", "/local/with#unusual?characters"},
+                {"file:///local/with%23unusual%3Fcharacters", "/local/with#unusual?characters"}
         };
     }
 
