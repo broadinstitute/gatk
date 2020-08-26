@@ -16,8 +16,8 @@ public class PipelineSupportIntegrationTest extends GATKBaseTest {
     // Asserting that Picard programs are able to pipe their output without errors
     public void testPipeForPicardTools() {
         File output = createTempFile("testOutput",".bam");
-        BaseTest.runProcess(ProcessController.getThreadLocal(), new String[]{"/bin/sh","-c"," $GATK_LAUNCH_SCRIPT/gatk SortSam -I "+INPUT_BAM+" -O /dev/stdout -SO coordinate " +
-                "| $GATK_LAUNCH_SCRIPT/gatk SetNmMdAndUqTags -I /dev/stdin -O "+ output.getAbsolutePath()+ " --CREATE_INDEX true -R "+b37_reference_20_21});//.split(" "));
+        BaseTest.runProcess(ProcessController.getThreadLocal(), new String[]{"/bin/sh","-c"," ${GATK_LAUNCH_SCRIPT} SortSam -I "+INPUT_BAM+" -O /dev/stdout -SO coordinate " +
+                "| ${GATK_LAUNCH_SCRIPT} SetNmMdAndUqTags -I /dev/stdin -O "+ output.getAbsolutePath()+ " --CREATE_INDEX true -R "+b37_reference_20_21});//.split(" "));
         try (ReadsDataSource inputReads = new ReadsPathDataSource(new File(INPUT_BAM).toPath());
              ReadsDataSource outputReads = new ReadsPathDataSource(output.toPath())) {
             Assert.assertTrue(inputReads.iterator().hasNext());
