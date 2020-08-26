@@ -26,6 +26,7 @@ import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 
 import java.io.*;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -822,10 +823,19 @@ public final class IOUtils {
      * @return a String with the absolute name, and the file:// protocol removed, if it was present.
      */
     public static String getAbsolutePathWithoutFileProtocol(final Path path) {
-        if(path.toString().startsWith("file://") || CloudStorageFileSystem.URI_SCHEME.equals(path.toUri().getScheme())) {
+        // A URI is opaque if, and only if, it is absolute and its scheme-specific part does not begin with a slash character ('/')
+        String scheme;
+        try {
+            scheme = new URI(path.toAbsolutePath().toString()).getScheme();
+        } catch (URISyntaxException ex){
+            //not a URI so not scheme by definition
+            scheme = null;
+        }
+
+        if(scheme != null) {
             return path.toAbsolutePath().toUri().toString().replaceFirst("^file://", "");
         }
-        // If the path isn't actually a URI then calling toUri() on it will mess up any characters that are escaped in a uri
+        // If the path isn't actually an encoded URI then calling toUri() on it will mess up any characters that are escaped in a uri
         // but which might be valid in the path. This would include # which is common in CWL packed workflows
         return path.toAbsolutePath().toString();
     }
