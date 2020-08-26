@@ -518,7 +518,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                                            final int loc,
                                                            final List<VariantContext> expectedVcsAtThisLocation) {
 
-        final List<VariantContext> vcsAtThisPosition = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, true);
+        final List<VariantContext> vcsAtThisPosition = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, true, false, null);
         Assert.assertEquals(vcsAtThisPosition.size(), expectedVcsAtThisLocation.size());
         for (int i = 0; i < expectedVcsAtThisLocation.size(); i++) {
             VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedVcsAtThisLocation.get(i), new ArrayList<>(), Collections.emptyList());
@@ -691,7 +691,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                    final int loc,
                                    final List<Haplotype> haplotypes,
                                    final Map<Allele, List<Haplotype>> expectedEventMap) {
-        final Map<Allele, List<Haplotype>> actualEventMap = AssemblyBasedCallerUtils.createAlleleMapper(mergedVc, loc, haplotypes, false);
+        final Map<Allele, List<Haplotype>> actualEventMap = AssemblyBasedCallerUtils.createAlleleMapper(mergedVc, loc, haplotypes, false, false, null);
         Assert.assertEquals(actualEventMap.size(), expectedEventMap.size());
         for (final Allele key : actualEventMap.keySet()) {
             Assert.assertTrue(expectedEventMap.containsKey(key), "Got unexpected allele " + key + " with values " + actualEventMap.get(key));

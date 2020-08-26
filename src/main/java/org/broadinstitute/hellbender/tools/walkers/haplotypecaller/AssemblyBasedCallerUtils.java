@@ -509,25 +509,46 @@ public final class AssemblyBasedCallerUtils {
      * @param loc The start position we are genotyping
      * @param haplotypes list of active haplotypes at the current location
      * @param includeSpanningEvents If true, will also return events that span loc
+     * @param limitSpanningEventsToCalled
+     * @param calledVariants
      */
     public static List<VariantContext> getVariantContextsFromActiveHaplotypes(final int loc,
-                                                                                 final List<Haplotype> haplotypes,
-                                                                                 final boolean includeSpanningEvents) {
+                                                                              final List<Haplotype> haplotypes,
+                                                                              final boolean includeSpanningEvents,
+                                                                              final boolean limitSpanningEventsToCalled,
+                                                                              final List<VariantContext> calledVariants) {
         final List<VariantContext> results = new ArrayList<>();
         final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new HashSet<>();
 
         haplotypes.stream()
-                .flatMap(h -> Utils.stream(h.getEventMap().getOverlappingEvents(loc)))
+                .flatMap(h -> {
+                    final List<VariantContext> overlappingEvents = h.getEventMap().getOverlappingEvents(loc);
+                    Map<Haplotype, VariantContext> map = overlappingEvents.stream().collect(Collectors.toMap(v -> h, v -> v));
+                    return map.entrySet().stream();
+                })
                 .filter(Objects::nonNull)
-                .filter(v -> (includeSpanningEvents || v.getStart() == loc))
-                .forEach(v -> {
-                    final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(v.getStart(), v.getAlleles());
+                .filter(e -> e.getValue() != null)
+                .filter(e -> ((includeSpanningEvents && includeSpanningDeletion(limitSpanningEventsToCalled, calledVariants, e.getValue())) || e.getValue().getStart() == loc))
+                .forEach(e -> {
+                    final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(e.getValue().getStart(), e.getValue().getAlleles());
                     if (! uniqueLocationsAndAlleles.contains(locationAndAlleles)) {
                         uniqueLocationsAndAlleles.add(locationAndAlleles);
-                        results.add(v);
+                        results.add(e.getValue());
                     }
                 });
         return results;
+    }
+
+    private static boolean includeSpanningDeletion(final boolean limitSpanningEventsToCalled,
+                                                   final List<VariantContext> calledVariants,
+                                                   final VariantContext candidateVariant) {
+        return ! limitSpanningEventsToCalled || matchesCalledDeletion(candidateVariant, calledVariants);
+    }
+
+    private static boolean matchesCalledDeletion(final VariantContext candidateVariant, final List<VariantContext> calledVariants) {
+        return calledVariants.stream()
+                .filter(VariantContext::isIndel)
+                .anyMatch(v -> v.getStart() == candidateVariant.getStart() && v.getEnd() == candidateVariant.getEnd());
     }
 
     /**
@@ -538,10 +559,17 @@ public final class AssemblyBasedCallerUtils {
      * @param mergedVC The merged variant context for the locus, which includes all active alternate alleles merged to a single reference allele
      * @param loc The active locus being genotyped
      * @param haplotypes Haplotypes for the current active region
-     * @param emitSpanningDels If true will map spanning events to a * allele instead of reference // TODO add a test for this behavior
+     * @param spanningDels If true will map spanning events to a * allele instead of reference
+     * @param limitSpanningEventsToCalled  // TODO add a test for this behavior
+     * @param calledVariants
      * @return
      */
-    public static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC, final int loc, final List<Haplotype> haplotypes, final boolean emitSpanningDels) {
+    public static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC,
+                                                                  final int loc,
+                                                                  final List<Haplotype> haplotypes,
+                                                                  final boolean spanningDels,
+                                                                  final boolean limitSpanningEventsToCalled,
+                                                                  final List<VariantContext> calledVariants) {
 
         final Map<Allele, List<Haplotype>> result = new LinkedHashMap<>();
 
@@ -591,7 +619,7 @@ public final class AssemblyBasedCallerUtils {
                     }
 
                 } else {
-                    if (emitSpanningDels) {
+                    if (spanningDels && includeSpanningDeletion(limitSpanningEventsToCalled, calledVariants, spanningEvent)) {
                         // the event starts prior to the current location, so it's a spanning deletion
                         if (!result.containsKey(Allele.SPAN_DEL)) {
                             result.put(Allele.SPAN_DEL, new ArrayList<>());
