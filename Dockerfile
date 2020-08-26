@@ -45,6 +45,7 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export TEST_JAR=\$( find /jars -name \"gatk*test.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export TEST_DEPENDENCY_JAR=\$( find /jars -name \"gatk*testDependencies.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export GATK_JAR=$( find /gatk -name "gatk*local.jar" )" >> /root/run_unit_tests.sh && \
+    echo "export GATK_LAUNCH_SCRIPT=$( find /gatk -name "gatk" )" >> /root/run_unit_tests.sh && \
     echo "mkdir /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "cp -rp /gatkCloneMountPoint/src/main/java/* /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "export SOURCE_DIR=/gatk/srcdir" >> /root/run_unit_tests.sh && \
