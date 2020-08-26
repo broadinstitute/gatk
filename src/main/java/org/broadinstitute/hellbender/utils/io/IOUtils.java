@@ -823,7 +823,6 @@ public final class IOUtils {
      * @return a String with the absolute name, and the file:// protocol removed, if it was present.
      */
     public static String getAbsolutePathWithoutFileProtocol(final Path path) {
-        // A URI is opaque if, and only if, it is absolute and its scheme-specific part does not begin with a slash character ('/')
         String scheme;
         try {
             scheme = new URI(path.toAbsolutePath().toString()).getScheme();
