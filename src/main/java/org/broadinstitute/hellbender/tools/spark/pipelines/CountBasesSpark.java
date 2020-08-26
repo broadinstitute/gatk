@@ -66,7 +66,7 @@ public final class CountBasesSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
 
-        final long count = reads.map(r -> (long)r.getLength()).reduce(Long::sum);
+        final long count = reads.map(r -> (long)r.getLength()).fold(0L, Long::sum);
         System.out.println(count);
 
         if( out != null) {
