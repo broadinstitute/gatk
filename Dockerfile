@@ -63,6 +63,7 @@ ENV CLASSPATH /gatk/gatk.jar:$CLASSPATH
 # Start GATK Python environment
 
 WORKDIR /gatk
+RUN chmod -R a+rw /gatk
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
