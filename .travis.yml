@@ -173,7 +173,7 @@ script:
     $( exit ${TEST_EXIT_VALUE} );
   else
     ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
-    export GATK_LAUNCH_SCRIPT="$(pwd)/gatk"
+    export GATK_LAUNCH_SCRIPT="$(pwd)/gatk";
     travis_wait 50 ./gradlew -Dscala.version=${SCALA_VERSION} jacocoTestReport;
   fi;
 # This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
