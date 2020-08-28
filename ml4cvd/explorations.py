@@ -28,8 +28,8 @@ from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.TensorMap import TensorMap, Interpretation, decompress_data
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
 from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4cvd.plots import evaluate_predictions, subplot_rocs, subplot_scatters
-from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference, SUBPLOT_SIZE
+from ml4cvd.plots import evaluate_predictions, subplot_rocs, subplot_scatters, SUBPLOT_SIZE
+from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference, plot_categorical_tmap_over_time
 from ml4cvd.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 
@@ -897,10 +897,10 @@ def explore(args):
 
     # Check if any tmaps are categorical
     if Interpretation.CATEGORICAL in [tm.interpretation for tm in tmaps]:
-
+        categorical_tmaps = [tm for tm in tmaps if tm.interpretation is Interpretation.CATEGORICAL]
         # Iterate through 1) df, 2) df without NaN-containing rows (intersect)
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
-            for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.CATEGORICAL]:
+            for tm in categorical_tmaps:
                 counts = []
                 counts_missing = []
                 if tm.channel_map:
@@ -920,13 +920,13 @@ def explore(args):
                 counts.append(sum(counts))
 
                 # Create list of row names
-                cm_names = [cm for cm in tm.channel_map] + [f"missing", f"total"]
+                cm_names = [cm for cm in tm.channel_map] + ["missing", "total"]
 
                 # Transform list into dataframe indexed by channel maps
                 df_stats = pd.DataFrame(counts, index=cm_names, columns=["counts"])
 
                 # Add new column: percent of all counts
-                df_stats["percent_of_total"] = df_stats["counts"] / df_stats.loc[f"total"]["counts"] * 100
+                df_stats["percent_of_total"] = df_stats["counts"] / df_stats.loc["total"]["counts"] * 100
 
                 # Save parent dataframe to CSV on disk
                 fpath = os.path.join(
@@ -936,6 +936,35 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.CATEGORICAL} {tm.name} tmaps to {fpath}")
+
+        # Plot counts of categorical TMAPs over time
+        if args.time_tensor and (args.time_tensor in args.input_tensors):
+            min_plotted_counts = 2
+            for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
+                freq = args.time_frequency  # Monthly frequency
+                time_tensors = pd.to_datetime(df_cur[args.time_tensor])
+                min_date = time_tensors.min()
+                max_date = time_tensors.max()
+                date_range = pd.date_range(min_date, max_date, freq=freq)
+                for tm in categorical_tmaps:
+                    date_range_filtered = [date_range[0]]
+                    prev_date = min_date
+                    tm_counts = defaultdict(list)
+                    for i, date in enumerate(date_range[1:]):
+                        sub_df = df_cur[(time_tensors >= prev_date) & (time_tensors < date)]
+                        channel_sum = 0
+                        for cm in tm.channel_map:
+                            partial_sum = np.sum(sub_df[f'{tm.name} {cm}'])
+                            channel_sum += partial_sum
+                            tm_counts[cm].append(partial_sum)
+                        if channel_sum > min_plotted_counts:
+                            date_range_filtered.append(date)
+                        else:
+                            for cm in tm.channel_map:
+                                tm_counts[cm].pop()
+                        prev_date = date
+                    fpath = os.path.join(args.output_folder, args.id, f'{tm.name}_over_time_{df_str}.png')
+                    plot_categorical_tmap_over_time(tm_counts, tm.name, date_range_filtered, fpath)
 
     # Check if any tmaps are continuous
     if Interpretation.CONTINUOUS in [tm.interpretation for tm in tmaps]:

@@ -315,6 +315,11 @@ def parse_args():
         help='TensorMap or column name of values in csv to report distribution on, e.g. mortality. '
              'Label distribution reporting is optional. Can list multiple labels to report.',
     )
+    parser.add_argument(
+        '--time_frequency',
+        help='Frequency string indicating resolution of counts over time. Also multiples are accepted, e.g. "3M".',
+        default='3M',
+    )
 
     args = parser.parse_args()
     _process_args(args)

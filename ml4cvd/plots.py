@@ -1313,6 +1313,26 @@ def plot_cross_reference(args, xref_df, title, time_description, window_start, w
     logging.info(f'Saved histogram of days relative to {window_end} to {fpath}')
 
 
+def plot_categorical_tmap_over_time(counts, tmap_name, dates, fpath):
+    f, ax = plt.subplots()
+    f.set_size_inches(12, 6.75)
+    ax.set_title(tmap_name)
+    colors = [[c, c, c] for c in np.linspace(1.0, 0.2, len(counts))]
+    bottom = np.zeros(len(dates)-1)
+    for i, (cm, counts_cm) in enumerate(sorted(counts.items(), key=lambda kv: np.sum(kv[1]), reverse=True)):
+        label = cm + f', n={int(np.sum(counts_cm))}' if i < 20 else None
+        ax.bar(range(1, len(dates)), counts_cm, width=1, bottom=bottom, edgecolor='black', linewidth=.5,
+               label=label, color=colors[i])
+        bottom += np.array(counts_cm)
+        ax.legend()
+    ax.set_xlim(1, len(dates))
+    ax.set_xticks(range(1, len(dates), 12))
+    ax.set_xticklabels([date.year for date in dates[1::12]], rotation=45)
+    ax.set_ylabel('counts per increment of time frequency')
+    ax.legend(loc='upper left')
+    f.savefig(fpath, dpi=500)
+
+
 def _ecg_rest_traces_and_text(hd5):
     """Extracts ECG resting traces from HD5 and returns a dictionary based on biosppy template"""
     path_prefix = 'ukb_ecg_rest'
