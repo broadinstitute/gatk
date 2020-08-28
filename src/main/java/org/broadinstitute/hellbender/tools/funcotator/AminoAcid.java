@@ -22,7 +22,11 @@ public enum AminoAcid {
     THREONINE("Threonine","Thr","T",new String[]{"ACA","ACC","ACG","ACT"}),
     TRYPTOPHAN("Tryptophan","Trp","W",new String[]{"TGG"}),
     TYROSINE("Tyrosine","Tyr","Y",new String[]{"TAC","TAT"}),
-    VALINE("Valine","Val","V",new String[]{"GTA","GTC","GTG","GTT"});
+    VALINE("Valine","Val","V",new String[]{"GTA","GTC","GTG","GTT"}),
+
+    // Need to have an undecodable Amino acid here in case we encounter an IUPAC base that causes a protein
+    // sequence to be ambiguous.
+    UNDECODABLE("Undecodable Amino Acid", "UNDECODABLE", "?", new String[]{});
 
     /**
      * The length of a codon in bases.

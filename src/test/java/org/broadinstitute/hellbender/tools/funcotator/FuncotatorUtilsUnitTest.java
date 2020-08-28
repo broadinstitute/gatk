@@ -1891,7 +1891,8 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                         "Threonine",
                         "Tryptophan",
                         "Tyrosine",
-                        "Valine"
+                        "Valine",
+                        "Undecodable Amino Acid"
                 }
         );
     }
@@ -1921,6 +1922,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                         "Trp",
                         "Tyr",
                         "Val",
+                        "UNDECODABLE"
                 }
         );
     }
