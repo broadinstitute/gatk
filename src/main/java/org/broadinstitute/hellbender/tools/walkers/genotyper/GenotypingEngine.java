@@ -171,7 +171,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
 
         if (configuration.genotypeArgs.usePosteriorProbabilitiesToCalculateQual && hasPosteriors(genotypes)) {
-            final double log10NoVariantPosterior = phredNoVariantPosteriorProbability(genotypes) * -.1;
+            final double log10NoVariantPosterior = nonVariantPresentLog10PosteriorProbability(outputAlleles, genotypes);
             final double qualUpdate = !outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
                     ? log10NoVariantPosterior + 0.0 : MathUtils.log10OneMinusPow10(log10NoVariantPosterior) + 0.0;
             if (!Double.isNaN(qualUpdate)) {
@@ -186,16 +186,39 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         return builder.genotypes(genotypes).attributes(attributes).make();
     }
 
-    private double phredNoVariantPosteriorProbability(final GenotypesContext gc) {
+    protected double nonVariantPresentLog10PosteriorProbability(final List<Allele> alleles, final GenotypesContext gc) {
         return gc.stream()
-                .map(gt -> VariantContextGetters.getAttributeAsDoubleArray(gt, VCFConstants.GENOTYPE_POSTERIORS_KEY, () -> new double[]{Double.NaN}, Double.NaN))
-                //TODO reverting the following a change during refactoring, more sound but different to what it was:
-                //        .mapToDouble(probs -> probs[0] - QualityUtils.phredSum(probs))
-                .mapToDouble(probs -> probs[0])
+                .mapToDouble(gt -> extractPNoAlt(alleles, gt))
                 .filter(d -> !Double.isNaN(d))
-                // We do not want to return 0 if empty but NaN,
-                // so rather than simply call .sum() we have a custom reduce
                 .reduce(Double.NaN, (a, b) -> Double.isNaN(a) ? b : (Double.isNaN(b) ? a : a + b) );
+    }
+
+    private double extractPNoAlt(final List<Allele> alleles, final Genotype gt) {
+        final double[] gpArray = VariantContextGetters.getAttributeAsDoubleArray(gt, VCFConstants.GENOTYPE_POSTERIORS_KEY, () -> new double[]{Double.NaN}, Double.NaN);
+        final double pNoAlt = extractPNoAlt(alleles, gt, gpArray);
+        return pNoAlt;
+    }
+
+    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
+
+    private double extractPNoAlt(final List<Allele> alleles, final Genotype gt, final double[] posteriors) {
+        if (!alleles.contains(Allele.SPAN_DEL)) {
+            return posteriors[0] - QualityUtils.phredSum(posteriors);
+        } else {
+            // here we need to get indices of genotypes composed of REF and * alleles
+            final int ploidy = gt.getPloidy();
+            final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, alleles.size());
+            final int spanDelIndex = alleles.indexOf(Allele.SPAN_DEL);
+            // allele counts are in the GenotypeLikelihoodCalculator format of {ref index, ref count, span del index, span del count}
+            final int[] nonVariantIndices = new IndexRange(0, ploidy+1).mapToInteger(n -> glCalc.alleleCountsToIndex(0, ploidy - n, spanDelIndex, n));
+
+            final double[] nonVariantLog10Posteriors = MathUtils.applyToArray(nonVariantIndices, n -> n);
+
+            // when the only alt allele is the spanning deletion the probability that the site is non-variant
+            // may be so close to 1 that finite precision error in log10SumLog10 (called by phredSum) yields a positive value,
+            // which is bogus.  Thus we cap it at 0. See AlleleFrequencyCalculator.
+            return Math.max(0, QualityUtils.phredSum(nonVariantLog10Posteriors)) - QualityUtils.phredSum(posteriors);
+        }
     }
 
     private boolean hasPosteriors(final GenotypesContext gc) {
