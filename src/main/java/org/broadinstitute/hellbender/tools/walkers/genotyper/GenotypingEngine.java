@@ -2,13 +2,11 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
-import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.bdgenomics.adam.util.PhredUtils;
 import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.*;
@@ -18,7 +16,6 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.lang.reflect.Array;
 import java.util.*;
@@ -174,7 +171,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
 
         if (configuration.genotypeArgs.usePosteriorProbabilitiesToCalculateQual && hasPosteriors(genotypes)) {
-            final double log10NoVariantPosterior = nonVariantPresentLog10PosteriorProbability(genotypes) * -.1;
+            final double log10NoVariantPosterior = nonVariantPresentLog10PosteriorProbability(outputAlleles, genotypes);
             final double qualUpdate = !outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
                     ? log10NoVariantPosterior + 0.0 : MathUtils.log10OneMinusPow10(log10NoVariantPosterior) + 0.0;
             if (!Double.isNaN(qualUpdate)) {
@@ -189,15 +186,72 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         return builder.genotypes(genotypes).attributes(attributes).make();
     }
 
-    protected double nonVariantPresentLog10PosteriorProbability(final GenotypesContext gc) {
+    protected double nonVariantPresentLog10PosteriorProbability(final List<Allele> alleles, final GenotypesContext gc) {
         return gc.stream()
-                .map(gt -> gt.getExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY))
-                .mapToDouble(v -> coherceToDouble(v, Double.NaN, true))
+                .mapToDouble(gt -> extractPNoAlt(alleles, gt))
                 .filter(v -> !Double.isNaN(v))
                 .min().orElse(Double.NaN);
     }
 
-    private double coherceToDouble(final Object obj, final double defaultValue, final boolean takeFirstElement) {
+    private double extractPNoAlt(final List<Allele> alleles, final Genotype gt) {
+        final Object gpAttribute = gt.getExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY);
+        final double[] gpArray = coerceToDoubleArray(gpAttribute, Double.NaN);
+        final double pNoAlt = extractPNoAlt(alleles, gt, gpArray);
+        return pNoAlt;
+    }
+
+    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
+
+    private double extractPNoAlt(final List<Allele> alleles, final Genotype gt, final double[] posteriors) {
+        if (!alleles.contains(Allele.SPAN_DEL)) {
+            return posteriors[0] * -.1;
+        } else {
+            // here we need to get indices of genotypes composed of REF and * alleles
+            final int ploidy = gt.getPloidy();
+            final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, alleles.size());
+            final int spanDelIndex = alleles.indexOf(Allele.SPAN_DEL);
+            // allele counts are in the GenotypeLikelihoodCalculator format of {ref index, ref count, span del index, span del count}
+            final int[] nonVariantIndices = new IndexRange(0, ploidy+1).mapToInteger(n -> glCalc.alleleCountsToIndex(new int[]{0, ploidy - n, spanDelIndex, n}));
+
+            final double[] nonVariantLog10Posteriors = MathUtils.applyToArray(nonVariantIndices, n -> posteriors[n] * -.1);
+            // when the only alt allele is the spanning deletion the probability that the site is non-variant
+            // may be so close to 1 that finite precision error in log10SumLog10 yields a positive value,
+            // which is bogus.  Thus we cap it at 0.
+            return Math.min(0,MathUtils.log10SumLog10(nonVariantLog10Posteriors));
+        }
+    }
+
+    private double[] coerceToDoubleArray(final Object obj, final double defaultElementValue) {
+        if (obj instanceof Collection) {
+            if( ((Collection)obj).isEmpty()) {
+                return new double[]{};
+            } else {
+                final Collection<?> collection = (Collection<?>) obj;
+                final int size = collection.size();
+                double[] result = new double[size];
+                int i = 0;
+                for (Object element : collection) {
+                    result[i] = coerceToDouble(element, defaultElementValue, false);
+                }
+                return result;
+            }
+        } else if (obj.getClass().isArray()) {
+            final int size = Array.getLength(obj);
+            if (size == 0) {
+                return new double[]{};
+            } else {
+                double[] result = new double[size];
+                Object[] objArray = (Object[]) obj;
+                for (int i = 0; i < size; i++) {
+                    result[i] = coerceToDouble(objArray[i], defaultElementValue, false);
+                }
+                return result;
+            }
+        }
+        return new double[]{coerceToDouble(obj, defaultElementValue, false)};
+    }
+
+    private double coerceToDouble(final Object obj, final double defaultValue, final boolean takeFirstElement) {
         if (obj == null) {
             return defaultValue;
         } else if (obj instanceof CharSequence) {
@@ -214,21 +268,21 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                     return defaultValue;
                 } else if (obj instanceof List) {
                     final List<?> asList = (List<?>) obj;
-                    return coherceToDouble(asList.get(0), defaultValue, false);
+                    return coerceToDouble(asList.get(0), defaultValue, false);
                 } else {
                     final Collection<?> collection = (Collection<?>) obj;
-                    return coherceToDouble(collection.iterator().next(), defaultValue, false);
+                    return coerceToDouble(collection.iterator().next(), defaultValue, false);
                 }
             } else if (obj.getClass().isArray()) {
                 if (obj.getClass().getComponentType().isPrimitive()) {
                     if (Array.getLength(obj) == 0) {
                         return defaultValue;
                     } else {
-                        return coherceToDouble(Array.get(obj, 1), defaultValue, false);
+                        return coerceToDouble(Array.get(obj, 1), defaultValue, false);
                     }
                 } else {
                     final Object[] array = (Object[]) obj;
-                    return array.length != 0 ? coherceToDouble(array[0], defaultValue, false) : defaultValue;
+                    return array.length != 0 ? coerceToDouble(array[0], defaultValue, false) : defaultValue;
                 }
             } else {
                 return defaultValue;
