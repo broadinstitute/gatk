@@ -112,17 +112,22 @@ if [ -n "${IS_PUSH}" ]; then
 else
     RELEASE=false
 fi
+./gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
+ZIPPATHGATK=$( find ./build -name "*bundle-files-collected" )
+mv ${ZIPPATHGATK} ./unzippedJar
+ZIPPATHPYTHON=$( find ./unzippedJar -name "gatkPython*.zip" )
+unzip -o -j ${ZIPPATHPYTHON} -d ./unzippedJar/scripts
+
+mkdir ${STAGING_ABSOLUTE_PATH:-.}/testJars
+mv $( find ./build/libs/ -name "gatk*test.jar" ) ${STAGING_ABSOLUTE_PATH:-.}/testJars
+mv $( find ./build/libs/ -name "gatk*testDependencies.jar" ) ${STAGING_ABSOLUTE_PATH:-.}/testJars
 
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
 if [ -n "${IS_PUSH}" ]; then
-    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --squash .
+    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --squash --build-arg ZIPPATH=./unzippedJar .
 else
-    docker build -t ${REPO_PRJ}:${GITHUB_TAG} .
+    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg ZIPPATH=./unzippedJar .
 fi
-# Since we build the docker image with stages, the first build stage for GATK will be leftover in
-# the local docker context after executing the above commands. This step reclaims that space automatically
-# by removing the intermediate image based on a tag we assign it.
-docker image prune -f --filter label=stage=gatkIntermediateBuildImage
 
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 

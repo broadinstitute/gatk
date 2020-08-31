@@ -1,22 +1,12 @@
-# stage 1 for constructing the GATK zip
-FROM broadinstitute/gatk:gatkbase-2.3.0 AS gradleBuild
-LABEL stage=gatkIntermediateBuildImage
-
-RUN ls .
-ADD . /gatk
-WORKDIR /gatk
-
-RUN export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
-RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJar/
-RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts
-
 # Using OpenJDK 8
 FROM broadinstitute/gatk:gatkbase-2.3.0
 
-WORKDIR /gatk
-
 # Location of the unzipped gatk bundle files
-COPY --from=gradleBuild /gatk/unzippedJar .
+ARG ZIPPATH
+
+ADD $ZIPPATH /gatk
+
+WORKDIR /gatk
 
 #Setup linked jars that may be needed for running gatk
 RUN ln -s $( find /gatk -name "gatk*local.jar" ) gatk.jar
@@ -40,7 +30,6 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export TEST_JAR=\$( find /jars -name \"gatk*test.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export TEST_DEPENDENCY_JAR=\$( find /jars -name \"gatk*testDependencies.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export GATK_JAR=$( find /gatk -name "gatk*local.jar" )" >> /root/run_unit_tests.sh && \
-    echo "export GATK_LAUNCH_SCRIPT=/gatk/gatk" >> /root/run_unit_tests.sh && \
     echo "mkdir /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "cp -rp /gatkCloneMountPoint/src/main/java/* /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "export SOURCE_DIR=/gatk/srcdir" >> /root/run_unit_tests.sh && \
@@ -58,7 +47,6 @@ ENV CLASSPATH /gatk/gatk.jar:$CLASSPATH
 # Start GATK Python environment
 
 WORKDIR /gatk
-RUN chmod -R a+rw /gatk
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
