@@ -119,6 +119,9 @@ if [ -n "${IS_PUSH}" ]; then
 else
     docker build -t ${REPO_PRJ}:${GITHUB_TAG} .
 fi
+# Since we build the docker image with stages, the first build stage for GATK will be leftover in
+# the local docker context after executing the above commands. This step reclaims that space automatically
+# by removing the intermediate image based on a tag we assign it.
 docker image prune -f --filter label=stage=gatkIntermediateBuildImage
 
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then

@@ -158,6 +158,7 @@ script:
     fi;
     sudo docker images;
     echo ${TEST_TYPE};
+  # Because the docker build for GATK doesn't include the test code or the src files we have to manually collect them into a location to be mounted in for performing tests
     ./gradlew clean shadowTestClassJar shadowTestJar;
     mkdir ./testJars;
     echo $( find ./build/libs/ -name "gatk*test.jar");
