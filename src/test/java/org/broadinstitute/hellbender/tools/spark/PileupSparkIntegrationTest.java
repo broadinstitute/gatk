@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -24,9 +25,8 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
     }
 
     private File createTempFile() throws IOException {
-        final File out = File.createTempFile("out", ".txt");
+        final File out = IOUtils.createTempFile("out", ".txt");
         out.delete();
-        out.deleteOnExit();
         return out;
     }
 

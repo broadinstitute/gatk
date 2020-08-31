@@ -4,19 +4,17 @@ import com.google.common.collect.ImmutableSortedMap;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.testutils.BaseTest;
-import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MergeAnnotatedRegionsIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/utils/";
@@ -24,7 +22,7 @@ public class MergeAnnotatedRegionsIntegrationTest extends CommandLineProgramTest
     private static final String REF = hg19MiniReference;
 
     @Test
-    public void basicTest() throws IOException {
+    public void basicTest() {
         // This test is a bit more like the real world
         final File outputFile = BaseTest.createTempFile("mergeannotatedregions", ".seg");
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
