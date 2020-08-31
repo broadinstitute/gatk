@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -120,6 +122,19 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
         }
 
         return tests.subList(2,3).toArray(new Object[][]{});       //HACK!
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "Contig chrNotInReference not found in reference.*")
+    //Testing a case where an NPE was thrown when somehow the reference sequence dictionary didn't contain a contig in the
+    //assembly region.
+    public void testMimatchedReferenceAndRegion(){
+        final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
+        final String contigNotInReference = "chrNotInReference";
+        sequenceDictionary.addSequence(new SAMSequenceRecord(contigNotInReference, 1000));
+        //it's not possible to create an assembly region on a contig that isn't in the given SamHeader
+        final SAMFileHeader modifiedHeader = new SAMFileHeader(sequenceDictionary);
+        final AssemblyRegion assemblyRegion = new AssemblyRegion(new SimpleInterval(contigNotInReference,1, 200), 10, modifiedHeader);
+        assemblyRegion.getAssemblyRegionReference(hg19ReferenceReader, 10);
     }
 
     @Test(dataProvider = "AssemblyRegionReads")

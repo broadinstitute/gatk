@@ -1,9 +1,10 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -77,7 +78,9 @@ public final class AssemblyRegion implements Locatable {
 
     private static SimpleInterval makePaddedSpan(final SimpleInterval activeSpan, final int padding, final SAMFileHeader header) {
         final String contig = activeSpan.getContig();
-        return IntervalUtils.trimIntervalToContig(contig, activeSpan.getStart() - padding, activeSpan.getEnd() + padding, header.getSequence(contig).getSequenceLength());
+        final SAMSequenceRecord sequence = Utils.nonNull(header.getSequence(contig), () -> "Header does not contain Contig: " + contig
+                + "\nContigs in Header: " + listContigsAsString(header.getSequenceDictionary()));
+        return IntervalUtils.trimIntervalToContig(contig, activeSpan.getStart() - padding, activeSpan.getEnd() + padding, sequence.getSequenceLength());
     }
 
     /**
@@ -304,9 +307,22 @@ public final class AssemblyRegion implements Locatable {
         Utils.validateArg( padding >= 0, () -> "padding must be a positive integer but got " + padding);
         Utils.validateArg( genomeLoc.size() > 0, () -> "GenomeLoc must have size > 0 but got " + genomeLoc);
 
-        return referenceReader.getSubsequenceAt( genomeLoc.getContig(),
+        final String contig = genomeLoc.getContig();
+        final SAMSequenceRecord sequence = Utils.nonNull(referenceReader.getSequenceDictionary().getSequence(contig),
+                () -> "Contig " + contig + " not found in reference. " +
+                        "\nPlease check that you are using a compatible reference for your data." +
+                        "\nReference Sequences: " + listContigsAsString(referenceReader.getSequenceDictionary()));
+
+        return referenceReader.getSubsequenceAt(contig,
                 Math.max(1, genomeLoc.getStart() - padding),
-                Math.min(referenceReader.getSequenceDictionary().getSequence(genomeLoc.getContig()).getSequenceLength(), genomeLoc.getEnd() + padding) ).getBases();
+                Math.min(sequence.getSequenceLength(), genomeLoc.getEnd() + padding)).getBases();
+    }
+
+    private static String listContigsAsString(final SAMSequenceDictionary sequenceDictionary) {
+        return sequenceDictionary.getSequences()
+                .stream()
+                .map(SAMSequenceRecord::getContig)
+                .collect(Collectors.joining(",", "[", "]"));
     }
 
     /**
