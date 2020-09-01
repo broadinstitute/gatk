@@ -123,6 +123,7 @@ install:
 script:
 # run a basic sanity check to be sure that gatk doesn't explode
 # run tests
+# Because the docker build for GATK doesn't include the test code or the src files we have to manually collect them into a location to be mounted in for performing tests
 - if [[ $TRAVIS_EVENT_TYPE == cron ]]; then
     echo "Not running any tests for nightly builds";
   elif [[ $TEST_TYPE == wdlGen ]]; then
@@ -158,7 +159,6 @@ script:
     fi;
     sudo docker images;
     echo ${TEST_TYPE};
-  # Because the docker build for GATK doesn't include the test code or the src files we have to manually collect them into a location to be mounted in for performing tests
     ./gradlew clean shadowTestClassJar shadowTestJar;
     mkdir ./testJars;
     echo $( find ./build/libs/ -name "gatk*test.jar");
