@@ -121,7 +121,7 @@ import java.util.stream.Collectors;
  *       --batch-size 50 \
  *       -L chr1:1000-10000 \
  *       --sample-name-map cohort.sample_map \
- *       --tmp-dir=/path/to/large/tmp \
+ *       --tmp-dir /path/to/large/tmp \
  *       --reader-threads 5
  *  </pre>
  *
@@ -142,7 +142,7 @@ import java.util.stream.Collectors;
  *      -V data/gvcfs/father.g.vcf.gz \
  *      -V data/gvcfs/son.g.vcf.gz \
  *      --genomicsdb-update-workspace-path my_database \
- *      --tmp-dir=/path/to/large/tmp \
+ *      --tmp-dir /path/to/large/tmp \
  *  </pre>
  *  In the incremental import case, no intervals are specified in the command because the tool will use the same 
  *  intervals used in the initial import. Sample map is also supported for incremental import
