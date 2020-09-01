@@ -67,7 +67,7 @@ import java.util.*;
  *   -R Homo_sapiens_assembly38.fasta \
  *   -V gendb://my_database \
  *   -O output.vcf.gz \
- *   --tmp-dir=/path/to/large/tmp
+ *   --tmp-dir /path/to/large/tmp
  * </pre>
  *
  * <h3>Caveats</h3>
