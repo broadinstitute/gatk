@@ -5,12 +5,15 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -78,8 +81,10 @@ public final class AssemblyRegion implements Locatable {
 
     private static SimpleInterval makePaddedSpan(final SimpleInterval activeSpan, final int padding, final SAMFileHeader header) {
         final String contig = activeSpan.getContig();
-        final SAMSequenceRecord sequence = Utils.nonNull(header.getSequence(contig), () -> "Header does not contain Contig: " + contig
-                + "\nContigs in Header: " + listContigsAsString(header.getSequenceDictionary()));
+        final SAMSequenceRecord sequence = header.getSequence(contig);
+        if( sequence == null) {
+            throw new UserException.MissingContigInSequenceDictionary(contig, header.getSequenceDictionary());
+        }
         return IntervalUtils.trimIntervalToContig(contig, activeSpan.getStart() - padding, activeSpan.getEnd() + padding, sequence.getSequenceLength());
     }
 
@@ -308,21 +313,16 @@ public final class AssemblyRegion implements Locatable {
         Utils.validateArg( genomeLoc.size() > 0, () -> "GenomeLoc must have size > 0 but got " + genomeLoc);
 
         final String contig = genomeLoc.getContig();
-        final SAMSequenceRecord sequence = Utils.nonNull(referenceReader.getSequenceDictionary().getSequence(contig),
-                () -> "Contig " + contig + " not found in reference. " +
-                        "\nPlease check that you are using a compatible reference for your data." +
-                        "\nReference Sequences: " + listContigsAsString(referenceReader.getSequenceDictionary()));
-
+        final SAMSequenceDictionary sequenceDictionary = referenceReader.getSequenceDictionary();
+        final SAMSequenceRecord sequence = sequenceDictionary.getSequence(contig);
+        if ( sequence == null ) {
+            throw new UserException.MissingContigInSequenceDictionary("Contig: " + contig + " not found in reference dictionary." +
+                    "\nPlease check that you are using a compatible reference for your data." +
+                    "\nReference Contigs: " + ReadUtils.prettyPrintSequenceRecords(sequenceDictionary));
+        }
         return referenceReader.getSubsequenceAt(contig,
                 Math.max(1, genomeLoc.getStart() - padding),
                 Math.min(sequence.getSequenceLength(), genomeLoc.getEnd() + padding)).getBases();
-    }
-
-    private static String listContigsAsString(final SAMSequenceDictionary sequenceDictionary) {
-        return sequenceDictionary.getSequences()
-                .stream()
-                .map(SAMSequenceRecord::getContig)
-                .collect(Collectors.joining(",", "[", "]"));
     }
 
     /**
