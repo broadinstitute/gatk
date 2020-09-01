@@ -99,10 +99,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setPosition( final String contig, final int start ) {
-        if ( contig == null || contig.equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME) || start < 1 ) {
-            throw new IllegalArgumentException("contig must be non-null and not equal to " + SAMRecord.NO_ALIGNMENT_REFERENCE_NAME
-                    + ", and start must be >= 1 \ncontig = " + contig + "\nstart = " + start);
-        }
+        assertPositionIsValid(contig, start);
 
         clearCachedValues();
         samRecord.setReferenceName(contig);
@@ -193,9 +190,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setMatePosition( final String contig, final int start ) {
-        if ( contig == null || contig.equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME) || start < 1 ) {
-            throw new IllegalArgumentException("contig must be non-null and not equal to " + SAMRecord.NO_ALIGNMENT_REFERENCE_NAME + ", and start must be >= 1");
-        }
+        assertPositionIsValid(contig, start);
 
         clearCachedValues();
 
@@ -205,6 +200,13 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         samRecord.setMateReferenceName(contig);
         samRecord.setMateAlignmentStart(start);
         samRecord.setMateUnmappedFlag(false);
+    }
+
+    private static void assertPositionIsValid(final String contig, final int start) {
+        if ( contig == null || contig.equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME) || start < 1 ) {
+            throw new IllegalArgumentException("contig must be non-null and not equal to " + SAMRecord.NO_ALIGNMENT_REFERENCE_NAME + ", and start must be >= 1"
+            + "\nContig: " + contig + "\nStart: " + start);
+        }
     }
 
     @Override
@@ -235,7 +237,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     @Override
     public void setMappingQuality( final int mappingQuality ) {
         if ( mappingQuality < 0 || mappingQuality > 255 ) {
-            throw new IllegalArgumentException("mapping quality must be >= 0 and <= 255");
+            throw new IllegalArgumentException("mapping quality must be >= 0 and <= 255 \nMappingQuality: " + mappingQuality);
         }
 
         clearCachedValues();
