@@ -81,6 +81,8 @@ releases of the toolkit.
       includes the R dependencies used for plotting in some of the tools. The ```gatk``` environment 
       requires hardware with AVX support for tools that depend on TensorFlow (e.g. CNNScoreVariant). The GATK Docker image 
       comes with the ```gatk``` environment pre-configured.
+      	* At this time, the only supported platforms are 64-bit Linux distributions. The required Conda environment does
+	  not currently build on macOS or OS X. 
     * To establish the environment when not using the Docker image, a conda environment must first be "created", and
       then "activated":
         * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed (Miniconda is sufficient).
