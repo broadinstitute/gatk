@@ -547,7 +547,7 @@ public final class AssemblyBasedCallerUtils {
 
     private static boolean matchesCalledDeletion(final VariantContext candidateVariant, final List<VariantContext> calledVariants) {
         return calledVariants.stream()
-                .filter(VariantContext::isIndel)
+                .filter(VariantContext::isSimpleDeletion)
                 .anyMatch(v -> v.getStart() == candidateVariant.getStart() && v.getEnd() == candidateVariant.getEnd());
     }
 
@@ -619,11 +619,8 @@ public final class AssemblyBasedCallerUtils {
                     }
 
                 } else {
-                    if (spanningDels && includeSpanningDeletion(limitSpanningEventsToCalled, calledVariants, spanningEvent)) {
+                    if (spanningDels && result.containsKey(Allele.SPAN_DEL)) {
                         // the event starts prior to the current location, so it's a spanning deletion
-                        if (!result.containsKey(Allele.SPAN_DEL)) {
-                            result.put(Allele.SPAN_DEL, new ArrayList<>());
-                        }
                         result.get(Allele.SPAN_DEL).add(h);
                         // there might be a del+ins at the site in question and this would miss one of them unless its a continue
                         break; //Why is there a break here? Shouldn't this be a continue? Why should the first spanning event overlap?A
