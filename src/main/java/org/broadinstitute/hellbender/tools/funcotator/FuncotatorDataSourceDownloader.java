@@ -79,7 +79,7 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
     @VisibleForTesting
     static Path   GERMLINE_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + ".sha256");
 
-    private static String SOMATIC_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + "s";
+    public static String SOMATIC_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + "s";
 
     public static Path   SOMATIC_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + ".tar.gz");
     @VisibleForTesting
