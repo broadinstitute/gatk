@@ -26,19 +26,4 @@ public class LeftAlignIndelsIntegrationTest extends CommandLineProgramTest {
 
         IntegrationTestSpec.assertEqualTextFiles(output, expected, "@");
     }
-
-    // regression test for https://github.com/broadinstitute/gatk/issues/6765
-    @Test
-    public void testNegativeIndicesBug() {
-        final File input = new File("/Users/davidben/Desktop/walawi-bug/walawi.bam");
-        final File output = createTempFile("output", ".bam");
-
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addReference(hg38Reference)
-                .addInterval("chr2")
-                .addInput(input)
-                .addOutput(output);
-
-        runCommandLine(args);
-    }
 }
