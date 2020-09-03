@@ -170,10 +170,7 @@ public final class ChainPrunerUnitTest extends GATKBaseTest {
         final List<KBestHaplotype<SeqVertex, BaseEdge>> bestPaths = new GraphBasedKBestHaplotypeFinder<>(seqGraph).findBestHaplotypes(10);
 
         final OptionalInt altIndex = IntStream.range(0, bestPaths.size()).filter(n -> bestPaths.get(n).haplotype().basesMatch(alt)).findFirst();
-        //Assert.assertTrue(altIndex.isPresent());
-        if (!altIndex.isPresent()) {
-            int g = 90;
-        }
+        Assert.assertTrue(altIndex.isPresent());
 
         // ref path should not be pruned even if all reads are alt
         final OptionalInt refIndex = IntStream.range(0, bestPaths.size()).filter(n -> bestPaths.get(n).haplotype().basesMatch(ref)).findFirst();
@@ -181,8 +178,8 @@ public final class ChainPrunerUnitTest extends GATKBaseTest {
 
         // the haplotype score is the sum of the log-10 of all branching fractions, so the alt haplotype score should come out to
         // around the log-10 of the allele fraction up to some fudge factor, assuming we didn't do any dumb pruning
-        //Assert.assertEquals(bestPaths.get(altIndex.getAsInt()).score(), Math.log10(altFraction), 0.5);
-        //Assert.assertTrue(bestPaths.size() < 15);
+        Assert.assertEquals(bestPaths.get(altIndex.getAsInt()).score(), Math.log10(altFraction), 0.5);
+        Assert.assertTrue(bestPaths.size() < 15);
     }
 
     // test that in graph with good path A -> B -> C and bad edges A -> D -> C and D -> B that the adjacency of bad edges --
