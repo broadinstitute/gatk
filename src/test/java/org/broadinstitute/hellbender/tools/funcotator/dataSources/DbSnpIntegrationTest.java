@@ -122,13 +122,6 @@ public class DbSnpIntegrationTest extends CommandLineProgramTest {
 
         // 3 - Attempt to read sites and features from the FeatureDataSource:
         final List<VariantContext> features = dbSnpDataSource.queryAndPrefetch(interval);
-
-        if (features.size() > 1) {
-            for ( final VariantContext feature : features ) {
-                System.out.println(feature);
-            }
-        }
-
         Assert.assertEquals(features.size(), 1);
 
         final VariantContext dbSnpVariant = features.get(0);
