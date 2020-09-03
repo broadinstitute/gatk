@@ -400,6 +400,10 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             return new ActivityProfileState(refInterval, 0.0);
         }
 
+        // if a site is active, count it toward the total of callable sites even if its depth is below the threshold
+        if (pileup.size() < minCallableDepth) {
+            callableSites.increment();
+        }
         return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.NONE, null);
     }
 
