@@ -12,10 +12,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeInfo;
-<<<<<<< HEAD
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeQcMetrics;
-=======
->>>>>>> a47100a8d... add imputed tsv creator and refactor
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.nextgen.ExtractCohort;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
@@ -201,11 +198,7 @@ public class ArrayExtractCohort extends GATKTool {
 
         Map<Long, ProbeInfo> probeIdMap;
         if (probeCsvExportFile == null) {
-<<<<<<< HEAD
             probeIdMap = ProbeInfo.getProbeIdMapWithStorageAPI(probeTableName, printDebugInformation);
-=======
-            probeIdMap = ProbeInfo.getProbeIdMapFromBQ(probeTableName, printDebugInformation);
->>>>>>> a47100a8d... add imputed tsv creator and refactor
         } else {
             probeIdMap = ProbeInfo.getProbeIdMapFromExport(probeCsvExportFile);
         }
