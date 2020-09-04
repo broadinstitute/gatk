@@ -3,10 +3,11 @@ package org.broadinstitute.hellbender.tools.variantdb.arrays.tables;
 import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 
-import com.google.cloud.bigquery.TableResult;
+import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.QueryAPIRowReader;
+import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
+import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -103,42 +104,41 @@ public class ProbeInfo {
         }        
     }
 
-    public static Map<Long, ProbeInfo> getProbeIdMapFromBQ(String fqProbeTableName, boolean printDebugInformation) {
-
+    public static Map<Long, ProbeInfo> getProbeIdMapWithStorageAPI(String fqProbeTableName, boolean printDebugInformation) {
         Map<Long, ProbeInfo> results = new HashMap<>();
 
-        // Get the query string:
-        final String sampleListQueryString =
-                "SELECT ProbeId, Name, GenomeBuild, Chr, Position, Ref, AlleleA, AlleleB, build37Flag" +
-                        " FROM `" + fqProbeTableName + "`";
-
-
-        // Execute the query:
-        final TableResult result = BigQueryUtils.executeQuery(sampleListQueryString);
+        TableReference tableRef = new TableReference(fqProbeTableName, ProbeInfoSchema.PROBE_INFO_FIELDS);
 
         System.out.println("Beginning probe retrieval...");
-        for (final FieldValueList row : result.iterateAll()) {
-            ProbeInfo p = new ProbeInfo(row.get(0).getLongValue(),
-                    getOptionalString(row.get(1)), // name
-                    getOptionalString(row.get(2)), // refBuild
-                    row.get(3).getStringValue(), // contig
-                    row.get(4).getLongValue(),   // position
-                    getOptionalString(row.get(5)), // ref
-                    getOptionalString(row.get(6)), // alleleA
-                    getOptionalString(row.get(7)),// alleleB
-                    getOptionalString(row.get(8))); // build37Flag
-            results.put(p.probeId, p);
+        long start = System.currentTimeMillis();
 
+        try (final StorageAPIAvroReader reader = new StorageAPIAvroReader(tableRef)) {
+            for ( final GenericRecord row : reader ) {                
+                ProbeInfo p = new ProbeInfo(
+                    (Long) row.get(ProbeInfoSchema.PROBE_ID),
+                    getOptionalString(row, ProbeInfoSchema.NAME),
+                    getOptionalString(row, ProbeInfoSchema.REF_BUILD),
+                    getOptionalString(row, ProbeInfoSchema.CONTIG),
+                    (Long) row.get(ProbeInfoSchema.POSITION),
+                    getOptionalString(row, ProbeInfoSchema.REF),
+                    getOptionalString(row, ProbeInfoSchema.ALLELE_A),
+                    getOptionalString(row, ProbeInfoSchema.ALLELE_B),
+                    getOptionalString(row, ProbeInfoSchema.FLAG)
+                );
+                results.put(p.probeId, p);
+            }
         }
-        System.out.println("Done probe retrieval...");
+
+        long elapsed = System.currentTimeMillis() - start;
+        System.out.println("Completed probe retrieval... (" + elapsed + " ms)");
 
         return results;
     }
 
-    private static String getOptionalString(FieldValue v) {
-        return (v == null || v.isNull()) ? null : v.getStringValue();
+    private static String getOptionalString(GenericRecord rec, String fieldName) {
+        Object o = rec.get(fieldName);
+        return ( o == null ? null : o.toString());
     }
-
 
     public static Map<String, ProbeInfo> getProbeNameMap(final String probeCsvExportFile) {
         Map<String, ProbeInfo> results = new HashMap<>();
@@ -147,6 +147,15 @@ public class ProbeInfo {
         }
         return results;
     }
+
+    @Override
+    public String toString() {
+        return "ProbeInfo [contig=" + contig 
+                + ", name=" + name + ", position=" + position + ", probeId=" + probeId + ", ref=" + ref + ", refBuild="
+                + refBuild + ", alleleA=" + alleleA + ", alleleB=" + alleleB + ", flag=" + flag + "]";
+    }
+
+
     
 
 }
