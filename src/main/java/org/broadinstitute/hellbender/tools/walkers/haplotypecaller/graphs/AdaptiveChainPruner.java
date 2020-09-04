@@ -114,7 +114,7 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
                 .mapToInt(v -> Math.max(vertexToGoodOutgoingChains.get(v).size() - 1, 0)).sum();
 
         if (numberOfVariantsInGraph > maxUnprunedVariants) {
-            markWorstGoodChainsToSatisfyMaxVariants(chainLogOdds, vertexToGoodIncomingChains, vertexToGoodOutgoingChains, goodChains, errorChains);
+            errorChains.addAll(goodChainsToPruneToSatisfyMaxVariants(chainLogOdds, goodChains));
         }
 
         return errorChains;
@@ -124,68 +124,78 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
      * If there are too many apparent variants in the graph we do extra pruning of the worst chains until we have few enough variants.
      *
      * @param chainLogOdds  two-sided log odds for each chain in the graph
-     * @param vertexToGoodIncomingChains    good incoming chains for each branching vertex in the graph
-     * @param vertexToGoodOutgoingChains    good outgoing chains for each branching vertex in the graph
-     * @param goodChains    chains that were initially considered good.  This set will be shrunk in-place
-     * @param errorChains   chains that were initially considered bad.  This set will be expanded in-place
+     * @param goodChains    chains that were initially considered good.
      */
-    private void markWorstGoodChainsToSatisfyMaxVariants(Map<Path<V, E>, Pair<Double, Double>> chainLogOdds, Multimap<V, Path<V, E>> vertexToGoodIncomingChains, Multimap<V, Path<V, E>> vertexToGoodOutgoingChains, Set<Path<V, E>> goodChains, Set<Path<V, E>> errorChains) {
-        // the vertex-to-good-incoming/outgoing chain maps contain all chains with log odds passing the threshold, even if
-        // the seeding and extending process revealed them to be errors.  We need to cull such chains for the following steps
-        for (final Path<V,E> chain : errorChains) {
-            vertexToGoodOutgoingChains.remove(chain.getFirstVertex(), chain);
-            vertexToGoodIncomingChains.remove(chain.getLastVertex(), chain);
+    private Set<Path<V, E>> goodChainsToPruneToSatisfyMaxVariants(Map<Path<V, E>, Pair<Double, Double>> chainLogOdds, Set<Path<V, E>> goodChains) {
+        final Set<Path<V, E>> newlyPrunedChains = new HashSet<>();
+
+        // define the subgraph of good chains -- we're going to shrink this
+        final Multimap<V, Path<V, E>> incoming = ArrayListMultimap.create();
+        final Multimap<V, Path<V, E>> outgoing = ArrayListMultimap.create();
+        for (final Path<V,E> goodChain : goodChains) {
+            outgoing.put(goodChain.getFirstVertex(), goodChain);
+            incoming.put(goodChain.getLastVertex(), goodChain);
         }
 
-        // recalculate now that we have more accurate vertex-to-good-chains maps
-        final int numberOfVariantsInGraph = vertexToGoodOutgoingChains.keySet().stream()
-                .mapToInt(v -> Math.max(vertexToGoodOutgoingChains.get(v).size() - 1, 0)).sum();
+        // find "subgraph chains", that is, maximal non-branching paths within the subgraph of good chains.
+        // These may comprise multiple good chains that were split by error chains.
+        final List<List<Path<V,E>>> subgraphChains = new ArrayList<>();
+        for (final Path<V,E> startChain : goodChains) {
+            // find chains that start subgraph chains
+            if (incoming.get(startChain.getFirstVertex()).size() == 1 && outgoing.get(startChain.getFirstVertex()).size() == 1) {
+                continue;
+            }
+
+            final List<Path<V,E>> subgraphChain = new ArrayList<>();
+            V leftVertex = startChain.getFirstVertex();
+
+            do {
+                Path<V, E> chain = outgoing.get(leftVertex).iterator().next();
+                subgraphChain.add(chain);
+                leftVertex = chain.getLastVertex();
+            } while (incoming.get(leftVertex).size() == 1 && outgoing.get(leftVertex).size() == 1);
+
+            subgraphChains.add(subgraphChain);
+        }
+
+        // done up to here
+
+        int numberOfVariantsInGraph = outgoing.keySet().stream().mapToInt(v -> Math.max(outgoing.get(v).size() - 1, 0)).sum();
 
         // start with the worst good variants
-        final PriorityQueue<Path<V,E>> excessGoodChainsToPrune = new PriorityQueue<>(
+        final PriorityQueue<Path<V,E>> pruningQueue = new PriorityQueue<>(
                 Comparator.comparingDouble((Path<V,E> c) -> Math.min(chainLogOdds.get(c).getLeft(), chainLogOdds.get(c).getRight()))
                         .thenComparing((Path<V,E> c) -> c.getFirstVertex().getSequence(), BaseUtils.BASES_COMPARATOR));
 
-        excessGoodChainsToPrune.addAll(goodChains);
+        pruningQueue.addAll(goodChains);
 
-        for (int n = 0; n < numberOfVariantsInGraph - maxUnprunedVariants; n++) {
-            // it's possible we already deleted some chains when extending an earlier chain
-            while (!excessGoodChainsToPrune.isEmpty() && errorChains.contains(excessGoodChainsToPrune.peek())) {
-                excessGoodChainsToPrune.poll();
-            }
+        while( !pruningQueue.isEmpty() && numberOfVariantsInGraph > maxUnprunedVariants) {
 
-            if (excessGoodChainsToPrune.isEmpty()) {
-                break;
-            }
-
-            final Path<V,E> worstGoodChain = excessGoodChainsToPrune.poll();
-
-
-            if (errorChains.contains(worstGoodChain)) {
+            final Path<V,E> worstGoodChain = pruningQueue.poll();
+            if (newlyPrunedChains.contains(worstGoodChain)) {   // it's possible we already deleted this chain when extending an earlier chain
                 continue;
             }
-            errorChains.add(worstGoodChain);
 
-            // This chain may be part of a larger non-branching path within the subgraph of non-error chains.
-            // We will delete all of this latter path, aka the "subgraph chain".  This corresponds to the removal
-            // of one variant.
+            // This chain may be part of a larger non-branching path within the good subgraph, all of which we delete.
 
             // first, move to the start of the subgraph chain
             V leftVertex = worstGoodChain.getFirstVertex();
-            while (vertexToGoodIncomingChains.get(leftVertex).size() == 1 && vertexToGoodOutgoingChains.get(leftVertex).size() == 1) {
-                leftVertex = vertexToGoodIncomingChains.get(leftVertex).iterator().next().getFirstVertex();
+            while (incoming.get(leftVertex).size() == 1 && outgoing.get(leftVertex).size() == 1) {
+                leftVertex = incoming.get(leftVertex).iterator().next().getFirstVertex();
             }
 
             // now delete every chain in the subgraph chain
             do {
-                Path<V, E> chainToRemove = vertexToGoodOutgoingChains.get(leftVertex).iterator().next();
+                Path<V, E> chainToRemove = outgoing.get(leftVertex).iterator().next();
                 final V rightVertex = chainToRemove.getLastVertex();
-                errorChains.add(chainToRemove);
-                vertexToGoodOutgoingChains.remove(leftVertex, chainToRemove);
-                vertexToGoodIncomingChains.remove(rightVertex, chainToRemove);
+                newlyPrunedChains.add(chainToRemove);
+                outgoing.remove(leftVertex, chainToRemove);
+                incoming.remove(rightVertex, chainToRemove);
                 leftVertex = rightVertex;
-            } while (vertexToGoodIncomingChains.get(leftVertex).isEmpty() && vertexToGoodOutgoingChains.get(leftVertex).size() == 1);
+            } while (incoming.get(leftVertex).isEmpty() && outgoing.get(leftVertex).size() == 1);
+            numberOfVariantsInGraph--;
         }
+        return newlyPrunedChains;
     }
 
     // find the chain containing the edge of greatest weight, taking care to break ties deterministically
