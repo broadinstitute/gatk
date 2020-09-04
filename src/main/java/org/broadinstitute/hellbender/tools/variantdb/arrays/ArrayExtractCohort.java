@@ -134,7 +134,7 @@ public class ArrayExtractCohort extends GATKTool {
 
         Map<Long, ProbeInfo> probeIdMap;
         if (probeCsvExportFile == null) {
-            probeIdMap = ProbeInfo.getProbeIdMapFromBQ(probeTableName, printDebugInformation);
+            probeIdMap = ProbeInfo.getProbeIdMapWithStorageAPI(probeTableName, printDebugInformation);
         } else {
             probeIdMap = ProbeInfo.getProbeIdMapFromExport(probeCsvExportFile);
         }

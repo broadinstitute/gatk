@@ -313,19 +313,19 @@ public class ArrayExtractCohortEngine {
         } else {
             Object gt = sampleRecord.get("GT_encoded");
             ArrayGenotype agt;
-            if (gt == null || gt.toString().length() == 0) {
+            if ("AA".equals(gt.toString())) {
                 genotypeAlleles.add(alleleA);
                 genotypeAlleles.add(alleleA);
                 agt =  ArrayGenotype.AA;
-            } else if ("X".equals(gt.toString())) {
+            } else if ("AB".equals(gt.toString())) {
                 genotypeAlleles.add(alleleA);
                 genotypeAlleles.add(alleleB);
                 agt =  ArrayGenotype.AB;
-            } else if ("B".equals(gt.toString())) {
+            } else if ("BB".equals(gt.toString())) {
                 genotypeAlleles.add(alleleB);
                 genotypeAlleles.add(alleleB);
                 agt =  ArrayGenotype.BB;
-            } else if ("U".equals(gt.toString())) {
+            } else if (".".equals(gt.toString())) {
                 genotypeAlleles.add(Allele.NO_CALL);
                 genotypeAlleles.add(Allele.NO_CALL);
                 agt =  ArrayGenotype.NO_CALL;
