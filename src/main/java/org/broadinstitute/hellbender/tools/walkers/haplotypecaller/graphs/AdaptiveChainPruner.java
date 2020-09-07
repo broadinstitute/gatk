@@ -160,7 +160,8 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
 
         // done up to here
 
-        int numberOfVariantsInGraph = outgoing.keySet().stream().mapToInt(v -> Math.max(outgoing.get(v).size() - 1, 0)).sum();
+        int numberOfVariantsInGraph = subgraphChains
+                outgoing.keySet().stream().mapToInt(v -> Math.max(outgoing.get(v).size() - 1, 0)).sum();
 
         // start with the worst good variants
         final PriorityQueue<Path<V,E>> pruningQueue = new PriorityQueue<>(
