@@ -9,12 +9,8 @@ public final class StandardArgumentDefinitions {
     private StandardArgumentDefinitions(){}
 
     public static final String INPUT_LONG_NAME = "input";
-    public static final String INPUT_INDEX_COMPANION = INPUT_LONG_NAME + "Index";
     public static final String OUTPUT_LONG_NAME = "output";
-    public static final String OUTPUT_INDEX_COMPANION = OUTPUT_LONG_NAME + "Index";
     public static final String REFERENCE_LONG_NAME = "reference";
-    public static final String REFERENCE_INDEX_COMPANION = REFERENCE_LONG_NAME + "Index";
-    public static final String REFERENCE_DICTIONARY_COMPANION = REFERENCE_LONG_NAME + "Dictionary";
     public static final String VARIANT_LONG_NAME = "variant";
     public static final String FEATURE_LONG_NAME = "feature";
     public static final String INTERVALS_LONG_NAME = "intervals";
@@ -88,6 +84,13 @@ public final class StandardArgumentDefinitions {
     public static final String DUPLICATE_SCORING_STRATEGY_SHORT_NAME = "DS";
     public static final String METRICS_FILE_LONG_NAME = "metrics-file";
     public static final String METRICS_FILE_SHORT_NAME = "M";
+
+    // Constants for use as companion attributes in WDL WorkflowInput/WorkflowOutput annotations. These values
+    // are used by the WDL generator to emit separate task/workflow input and output arguments for companion files.
+    public static final String INPUT_INDEX_COMPANION = INPUT_LONG_NAME + "Index";
+    public static final String OUTPUT_INDEX_COMPANION = OUTPUT_LONG_NAME + "Index";
+    public static final String REFERENCE_INDEX_COMPANION = REFERENCE_LONG_NAME + "Index";
+    public static final String REFERENCE_DICTIONARY_COMPANION = REFERENCE_LONG_NAME + "Dictionary";
 
     /**
      * The option specifying a main configuration file.

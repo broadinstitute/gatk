@@ -39,7 +39,7 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void wdlGenSmokeTest() throws IOException, ParseException {
+    private void wdlGenSmokeTest() throws IOException, ParseException {
         final File wdlTestTargetDir = createTempDir("wdlgentest");
         doWDLGenTest(wdlGenTestPackages, "src/main/java", wdlTestTargetDir);
 
@@ -53,7 +53,7 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
     // This test uses a test tool with all combinations of input/output, list/scalar, across all types, including
     // companions, to ensure that the various templates use the template maps correctly.
     @Test
-    public void wdlGenTemplateTest() throws IOException, ParseException {
+    private void wdlGenTemplateTest() throws IOException, ParseException {
         final File expectedResultsDir = new File("src/test/resources/org/broadinstitute/hellbender/utils/wdltest/");
         final File wdlTestTargetDir = createTempDir("wdlgentemplatetest");
 
@@ -112,7 +112,7 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
 
     // suppress deprecation warning on Java 11 since we're using deprecated javadoc APIs
     @SuppressWarnings({"deprecation","removal"})
-    public void doWDLGenTest(List<String> testPackages, final String sourcePath, final File wdlTestTargetDir) {
+    private void doWDLGenTest(List<String> testPackages, final String sourcePath, final File wdlTestTargetDir) {
 
         final String[] argArray = new String[]{
                 "javadoc",

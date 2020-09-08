@@ -60,7 +60,7 @@ import java.util.Random;
 @BetaFeature
 @WorkflowProperties
 public class DownsampleByDuplicateSet extends DuplicateSetWalker {
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output BAM file")
     @WorkflowOutput(optionalCompanions = {StandardArgumentDefinitions.OUTPUT_INDEX_COMPANION})
     public GATKPath outputBam;
 

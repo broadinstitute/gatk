@@ -14,8 +14,9 @@ import java.util.List;
  */
 public final class RequiredReadInputArgumentCollection extends ReadInputArgumentCollection {
     private static final long serialVersionUID = 1L;
-    @WorkflowInput(optionalCompanions = StandardArgumentDefinitions.INPUT_INDEX_COMPANION)
+
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "BAM/SAM/CRAM file containing reads", optional = false, common = true)
+    @WorkflowInput(optionalCompanions = StandardArgumentDefinitions.INPUT_INDEX_COMPANION)
     public List<GATKPath> readFilesNames;
 
     /**

@@ -34,7 +34,7 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
     // This must be kept in sync with the value used in build.gradle, where the file is created
     private final static String dummyWDLTestFileName = "dummyWDLTestFile";
 
-    private static String WDL_TEST_VALUE_PROPERTY = "testValue";
+    private final static String WDL_TEST_VALUE_PROPERTY = "testValue";
 
     // Map of Java argument types that the WDL generator knows how to convert to a WDL type, along with the
     // corresponding string substitution that needs to be run on the (Barclay-generated) string that describes
