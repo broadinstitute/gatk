@@ -7,6 +7,7 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.hellbender.utils.Tail;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -253,12 +254,12 @@ public final class CigarUtilsUnitTest {
 
     @Test(dataProvider = "allClipFunkyCigars", expectedExceptions = IllegalArgumentException.class)
     public void testLeftClipFunkly(final Cigar cigar) {
-        CigarUtils.countClippedBases(cigar, ClippingTail.LEFT_TAIL);
+        CigarUtils.countClippedBases(cigar, Tail.LEFT);
     }
 
     @Test(dataProvider = "allClipFunkyCigars", expectedExceptions = IllegalArgumentException.class)
     public void testRightClipFunkly(final Cigar cigar) {
-        CigarUtils.countClippedBases(cigar, ClippingTail.RIGHT_TAIL);
+        CigarUtils.countClippedBases(cigar, Tail.RIGHT);
     }
 
     @Test
@@ -276,10 +277,10 @@ public final class CigarUtilsUnitTest {
                 .stream().map(pair -> Pair.of(TextCigarCodec.decode(pair.getLeft()), pair.getRight())).collect(Collectors.toList());
 
         for (final Pair<Cigar, int[]> test : tests) {
-            Assert.assertEquals(CigarUtils.countClippedBases(test.getLeft(), ClippingTail.LEFT_TAIL, CigarOperator.HARD_CLIP), test.getRight()[0]);
-            Assert.assertEquals(CigarUtils.countClippedBases(test.getLeft(), ClippingTail.LEFT_TAIL, CigarOperator.SOFT_CLIP), test.getRight()[1]);
-            Assert.assertEquals(CigarUtils.countClippedBases(test.getLeft(), ClippingTail.RIGHT_TAIL, CigarOperator.HARD_CLIP), test.getRight()[2]);
-            Assert.assertEquals(CigarUtils.countClippedBases(test.getLeft(), ClippingTail.RIGHT_TAIL, CigarOperator.SOFT_CLIP), test.getRight()[3]);
+            Assert.assertEquals(CigarUtils.countClippedBases(test.getLeft(), Tail.LEFT, CigarOperator.HARD_CLIP), test.getRight()[0]);
+            Assert.assertEquals(CigarUtils.countClippedBases(test.getLeft(), Tail.LEFT, CigarOperator.SOFT_CLIP), test.getRight()[1]);
+            Assert.assertEquals(CigarUtils.countClippedBases(test.getLeft(), Tail.RIGHT, CigarOperator.HARD_CLIP), test.getRight()[2]);
+            Assert.assertEquals(CigarUtils.countClippedBases(test.getLeft(), Tail.RIGHT, CigarOperator.SOFT_CLIP), test.getRight()[3]);
         }
     }
 
@@ -308,16 +309,16 @@ public final class CigarUtilsUnitTest {
             }
         }
 
-        Assert.assertEquals(leftSoft, CigarUtils.countClippedBases(cigar, ClippingTail.LEFT_TAIL, CigarOperator.SOFT_CLIP));
-        Assert.assertEquals(leftHard, CigarUtils.countClippedBases(cigar, ClippingTail.LEFT_TAIL, CigarOperator.HARD_CLIP));
-        Assert.assertEquals(rightSoft, CigarUtils.countClippedBases(cigar, ClippingTail.RIGHT_TAIL, CigarOperator.SOFT_CLIP));
-        Assert.assertEquals(rightHard, CigarUtils.countClippedBases(cigar, ClippingTail.RIGHT_TAIL, CigarOperator.HARD_CLIP));
+        Assert.assertEquals(leftSoft, CigarUtils.countClippedBases(cigar, Tail.LEFT, CigarOperator.SOFT_CLIP));
+        Assert.assertEquals(leftHard, CigarUtils.countClippedBases(cigar, Tail.LEFT, CigarOperator.HARD_CLIP));
+        Assert.assertEquals(rightSoft, CigarUtils.countClippedBases(cigar, Tail.RIGHT, CigarOperator.SOFT_CLIP));
+        Assert.assertEquals(rightHard, CigarUtils.countClippedBases(cigar, Tail.RIGHT, CigarOperator.HARD_CLIP));
 
         Assert.assertEquals(leftSoft + rightSoft, CigarUtils.countClippedBases(cigar, CigarOperator.SOFT_CLIP));
         Assert.assertEquals(leftHard + rightHard, CigarUtils.countClippedBases(cigar, CigarOperator.HARD_CLIP));
 
-        Assert.assertEquals(leftSoft + leftHard, CigarUtils.countClippedBases(cigar, ClippingTail.LEFT_TAIL));
-        Assert.assertEquals(rightSoft + rightHard, CigarUtils.countClippedBases(cigar, ClippingTail.RIGHT_TAIL));
+        Assert.assertEquals(leftSoft + leftHard, CigarUtils.countClippedBases(cigar, Tail.LEFT));
+        Assert.assertEquals(rightSoft + rightHard, CigarUtils.countClippedBases(cigar, Tail.RIGHT));
 
         Assert.assertEquals(leftSoft + rightSoft + leftHard + rightHard, CigarUtils.countClippedBases(cigar));
     }

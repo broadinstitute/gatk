@@ -1,16 +1,12 @@
 package org.broadinstitute.hellbender.utils.read;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.TextCigarCodec;
-import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
-import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
-import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.Tail;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
@@ -18,7 +14,6 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Predicate;
 
 public final class CigarUtils {
 
@@ -286,7 +281,7 @@ public final class CigarUtils {
     /**
      * Count the number of soft- or hard- clipped bases from either the left or right end of a cigar
      */
-    public static int countClippedBases(final Cigar cigar, final ClippingTail tail, final CigarOperator typeOfClip) {
+    public static int countClippedBases(final Cigar cigar, final Tail tail, final CigarOperator typeOfClip) {
         Utils.validateArg(typeOfClip.isClipping(), "typeOfClip must be a clipping operator");
 
         final int size = cigar.numCigarElements();
@@ -298,7 +293,7 @@ public final class CigarUtils {
         int result = 0;
 
         for (int n = 0; n < size; n++) {
-            final int index = (tail == ClippingTail.LEFT_TAIL ? n : size - n - 1);
+            final int index = (tail == Tail.LEFT ? n : size - n - 1);
             final CigarElement element = cigar.getCigarElement(index);
             if (!element.getOperator().isClipping()) {
                 return result;
@@ -313,7 +308,7 @@ public final class CigarUtils {
     /**
      * Count the number clipped bases (both soft and hard) from either the left or right end of a cigar
      */
-    public static int countClippedBases(final Cigar cigar, final ClippingTail tail) {
+    public static int countClippedBases(final Cigar cigar, final Tail tail) {
         return countClippedBases(cigar, tail, CigarOperator.SOFT_CLIP) + countClippedBases(cigar, tail, CigarOperator.HARD_CLIP);
     }
 
@@ -321,14 +316,14 @@ public final class CigarUtils {
      * Count the number of soft- and hard-clipped bases over both ends of a cigar
      */
     public static int countClippedBases(final Cigar cigar, final CigarOperator clippingType) {
-        return countClippedBases(cigar, ClippingTail.LEFT_TAIL, clippingType) + countClippedBases(cigar, ClippingTail.RIGHT_TAIL, clippingType);
+        return countClippedBases(cigar, Tail.LEFT, clippingType) + countClippedBases(cigar, Tail.RIGHT, clippingType);
     }
 
     /**
      * Count the number of clipped bases (both soft and hard) over both ends of a cigar
      */
     public static int countClippedBases(final Cigar cigar) {
-        return countClippedBases(cigar, ClippingTail.LEFT_TAIL) + countClippedBases(cigar, ClippingTail.RIGHT_TAIL);
+        return countClippedBases(cigar, Tail.LEFT) + countClippedBases(cigar, Tail.RIGHT);
     }
 
     public static int countAlignedBases(final Cigar cigar ) {

@@ -104,14 +104,18 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
         while (!chainsToAdd.isEmpty() && variantCount.intValue() <= maxUnprunedVariants) {
             final Path<V,E> chain = chainsToAdd.poll().getLeft();
 
+            if (!goodChains.add(chain)) {
+                continue;
+            }
+
             // When we add an outgoing chain starting from a vertex with other good outgoing chains, we add a variant
-            final boolean newVariant = verticesThatAlreadyHaveOutgoingGoodChains.add(chain.getFirstVertex());
+            final boolean newVariant = !verticesThatAlreadyHaveOutgoingGoodChains.add(chain.getFirstVertex());
             if (newVariant) {
                 variantCount.increment();
             }
 
             // check whether we've already added this chain from the other side or we've exceeded the variant count limit
-            if (!goodChains.add(chain) || (newVariant && variantCount.intValue() > maxUnprunedVariants)) {
+            if (newVariant && variantCount.intValue() > maxUnprunedVariants) {
                 continue;
             }
 

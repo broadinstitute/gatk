@@ -726,7 +726,7 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "mappedGatkReadsData")
     public void testGetFirstAlignedBaseOffset(final GATKRead read) {
         final int actual = ReadUtils.getFirstAlignedBaseOffset(read);
-        final int expected = CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL) - CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL, CigarOperator.HARD_CLIP);
+        final int expected = CigarUtils.countClippedBases(read.getCigar(), Tail.LEFT) - CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL, CigarOperator.HARD_CLIP);
         Assert.assertEquals(actual, expected);
     }
 
