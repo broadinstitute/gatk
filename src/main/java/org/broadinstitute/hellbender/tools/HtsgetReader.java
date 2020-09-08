@@ -258,13 +258,16 @@ public class HtsgetReader extends CommandLineProgram {
             final ObjectMapper mapper = this.getObjectMapper();
 
             if (resp.getStatusLine() == null) {
-                throw new UserException("htsget server response did not contain status line");
+                throw new UserException(String.format("htsget server response did not contain status line for request %s", reqURI));
             }
             final int statusCode = resp.getStatusLine().getStatusCode();
             if (400 <= statusCode && statusCode < 500) {
                 final HtsgetErrorResponse err = mapper.readValue(jsonBody, HtsgetErrorResponse.class);
-                throw new UserException("Invalid request, received error code: " + statusCode + ", error type: "
-                        + err.getError() + ", message: " + err.getMessage());
+                throw new UserException(String.format("Invalid request %s, received error code: %d, error type: %s, message: %s",
+                        reqURI,
+                        statusCode,
+                        err.getError(),
+                        err.getMessage()));
             } else if (statusCode == 200) {
                 final HtsgetResponse response = mapper.readValue(jsonBody, HtsgetResponse.class);
 
@@ -280,10 +283,10 @@ public class HtsgetReader extends CommandLineProgram {
                     this.checkMd5(response);
                 }
             } else {
-                throw new UserException("Unrecognized status code: " + statusCode);
+                throw new UserException(String.format("Unrecognized status code: %d for request %s", statusCode, reqURI));
             }
         } catch (final IOException e) {
-            throw new UserException("IOException during htsget download", e);
+            throw new UserException(String.format("IOException during htsget download for %s", reqURI), e);
         }
         return null;
     }
