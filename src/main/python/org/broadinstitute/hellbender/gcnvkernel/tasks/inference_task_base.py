@@ -705,6 +705,10 @@ class HybridInferenceParameters:
                               type=float,
                               help="Adamax second moment estimator forgetting factor")
 
+        process_and_maybe_add("random_seed",
+                              type=int,
+                              help="Random seed for the inference task")
+
         process_and_maybe_add("log_emission_samples_per_round",
                               type=int,
                               help="Number of log emission posterior samples per sampling round")

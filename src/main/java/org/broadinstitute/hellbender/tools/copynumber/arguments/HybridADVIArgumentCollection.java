@@ -16,6 +16,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
     public static final String LEARNING_RATE_LONG_NAME = "learning-rate";
     public static final String ADAMAX_BETA_1_LONG_NAME = "adamax-beta-1";
     public static final String ADAMAX_BETA_2_LONG_NAME = "adamax-beta-2";
+    public static final String RANDOM_SEED = "random-seed";
     public static final String LOG_EMISSION_SAMPLES_PER_ROUND_LONG_NAME = "log-emission-samples-per-round";
     public static final String LOG_EMISSION_SAMPLING_MEDIAN_REL_ERROR_LONG_NAME = "log-emission-sampling-median-rel-error";
     public static final String LOG_EMISSION_SAMPLING_ROUNDS_LONG_NAME = "log-emission-sampling-rounds";
@@ -40,6 +41,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
         LEARNING_RATE("learning_rate"),
         ADAMAX_BETA_1("adamax_beta1"),
         ADAMAX_BETA_2("adamax_beta2"),
+        RANDOM_SEED("random_seed"),
         LOG_EMISSION_SAMPLES_PER_ROUND("log_emission_samples_per_round"),
         LOG_EMISSION_SAMPLING_MEDIAN_REL_ERROR("log_emission_sampling_median_rel_error"),
         LOG_EMISSION_SAMPLING_ROUNDS("log_emission_sampling_rounds"),
@@ -97,6 +99,15 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
     )
     private double adamaxBeta2 =
             (Double) getDefaultValue(HybridADVIArgument.ADAMAX_BETA_2);
+
+    @Argument(
+            doc="Random seed for the inference task",
+            fullName = RANDOM_SEED,
+            optional = true,
+            minValue = 0
+    )
+    private int randomSeed =
+            (Integer) getDefaultValue(HybridADVIArgument.RANDOM_SEED);
 
     @Argument(
             doc="Log emission samples drawn per round of sampling.",
@@ -280,6 +291,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
                 String.format("--" + HybridADVIArgument.LEARNING_RATE.pythonArg + "=%e", learningRate),
                 String.format("--" + HybridADVIArgument.ADAMAX_BETA_1.pythonArg + "=%e", adamaxBeta1),
                 String.format("--" + HybridADVIArgument.ADAMAX_BETA_2.pythonArg + "=%e", adamaxBeta2),
+                String.format("--" + HybridADVIArgument.RANDOM_SEED.pythonArg + "=%d", randomSeed),
                 String.format("--" + HybridADVIArgument.LOG_EMISSION_SAMPLES_PER_ROUND.pythonArg + "=%d",
                         logEmissionSamplesPerRound),
                 String.format("--" + HybridADVIArgument.LOG_EMISSION_SAMPLING_ROUNDS.pythonArg + "=%d",

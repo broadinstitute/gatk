@@ -13,6 +13,7 @@ public final class GermlineContigPloidyHybridADVIArgumentCollection extends Hybr
         defaultValue.put(HybridADVIArgument.LEARNING_RATE, 0.05);
         defaultValue.put(HybridADVIArgument.ADAMAX_BETA_1, 0.9);
         defaultValue.put(HybridADVIArgument.ADAMAX_BETA_2, 0.999);
+        defaultValue.put(HybridADVIArgument.RANDOM_SEED, 1984);
         defaultValue.put(HybridADVIArgument.LOG_EMISSION_SAMPLES_PER_ROUND, 2000);
         defaultValue.put(HybridADVIArgument.LOG_EMISSION_SAMPLING_MEDIAN_REL_ERROR, 0.0005);
         defaultValue.put(HybridADVIArgument.LOG_EMISSION_SAMPLING_ROUNDS, 100);

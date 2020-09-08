@@ -13,6 +13,7 @@ public final class GermlineCNVHybridADVIArgumentCollection extends HybridADVIArg
         defaultValue.put(HybridADVIArgument.LEARNING_RATE, 0.01);
         defaultValue.put(HybridADVIArgument.ADAMAX_BETA_1, 0.9);
         defaultValue.put(HybridADVIArgument.ADAMAX_BETA_2, 0.99);
+        defaultValue.put(HybridADVIArgument.RANDOM_SEED, 1984);
         defaultValue.put(HybridADVIArgument.LOG_EMISSION_SAMPLES_PER_ROUND, 50);
         defaultValue.put(HybridADVIArgument.LOG_EMISSION_SAMPLING_MEDIAN_REL_ERROR, 0.005);
         defaultValue.put(HybridADVIArgument.LOG_EMISSION_SAMPLING_ROUNDS, 10);
