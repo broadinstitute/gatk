@@ -124,7 +124,7 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
                 "-output-file-extension", "wdl",
                 "-build-timestamp", "2016/11/11 11:11:11",
                 "-build-dir", ".",
-                "-absolute-version", "1.1-111",
+                "-absolute-version", "1.2.3.4",
                 "-verbose"
         };
 

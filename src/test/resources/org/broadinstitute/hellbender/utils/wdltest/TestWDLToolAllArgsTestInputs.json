@@ -1,5 +1,5 @@
 {
-  "TestWDLTool.dockerImage": "broadinstitute/gatk:1.1-111",
+  "TestWDLTool.dockerImage": "broadinstitute/gatk:1.2.3.4",
   "TestWDLTool.gatk": "java -cp ./build/libs/gatk.jar org.broadinstitute.hellbender.CommandLineArgumentValidatorMain",
   "TestWDLTool.memoryRequirements": "8G",
   "TestWDLTool.diskRequirements": "local-disk 40 HDD",

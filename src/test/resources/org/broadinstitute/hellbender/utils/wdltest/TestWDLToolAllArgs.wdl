@@ -1,6 +1,6 @@
 version 1.0
 
-# Run TestWDLTool (WDL auto generated from GATK Version 1.1-111)
+# Run TestWDLTool (WDL auto generated from GATK Version 1.2.3.4)
 #
 # WDL Test Tool to test WDL Generation
 #
