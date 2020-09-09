@@ -40,6 +40,7 @@ public class TestWDLTool {
     public List<File> positionalListFileInput;
 
     // required input Files
+
     @Argument(fullName = "requiredScalarFileInputNoCompanions",
             shortName = "requiredScalarFileInputNoCompanions",
             doc = "requiredScalarFileInputNoCompanions doc",
@@ -82,7 +83,17 @@ public class TestWDLTool {
     @WorkflowInput(optionalCompanions={"requiredListFileInputOptionalCompanionsDictionary", "requiredListFileInputOptionalCompanionsIndex"}, localizationOptional = true)
     public List<File> requiredListFileInputOptionalCompanions;
 
+    @Argument(fullName = "requiredListFileInputMixedCompanions",
+            shortName = "requiredListFileInputMixedCompanions",
+            doc = "requiredListFileInputMixedCompanions doc",
+            optional = false)
+    @WorkflowInput(
+            requiredCompanions = {"requiredListFileInputMixedCompanionsRequired"},
+            optionalCompanions = {"requiredListFileInputMixedCompanionsOptional"})
+    public List<File> requiredListFileInputMixedCompanions;
+
     // required output Files
+
     @Argument(fullName = "requiredScalarFileOutputNoCompanions",
             shortName = "requiredScalarFileOutputNoCompanions",
             doc = "requiredScalarFileOutputNoCompanions doc",
@@ -125,7 +136,17 @@ public class TestWDLTool {
     @WorkflowOutput(optionalCompanions={"requiredListFileOutputOptionalCompanionsDictionary", "requiredListFileOutputOptionalCompanionsIndex"})
     public List<File> requiredListFileOutputOptionalCompanions;
 
+    @Argument(fullName = "requiredListFileOutputMixedCompanions",
+            shortName = "requiredListFileOutputMixedCompanions",
+            doc = "requiredListFileOutputMixedCompanions doc",
+            optional = false)
+    @WorkflowOutput(
+            requiredCompanions = {"requiredListFileOutputMixedCompanionsRequired"},
+            optionalCompanions = {"requiredListFileOutputMixedCompanionsOptional"})
+    public List<File> requiredListFileOutputMixedCompanions;
+
     // optional input Files
+
     @Argument(fullName = "optionalScalarFileInputNoCompanions",
             shortName = "optionalScalarFileInputNoCompanions",
             doc = "optionalScalarFileInputNoCompanions doc",
@@ -168,7 +189,17 @@ public class TestWDLTool {
     @WorkflowInput(optionalCompanions={"optionalListFileInputOptionalCompanionsDictionary", "optionalListFileInputOptionalCompanionsIndex"})
     public List<File> optionalListFileInputOptionalCompanions;
 
+    @Argument(fullName = "optionalListFileInputMixedCompanions",
+            shortName = "optionalListFileInputMixedCompanions",
+            doc = "optionalListFileInputMixedCompanions doc",
+            optional = true)
+    @WorkflowInput(
+            requiredCompanions = {"optionalListFileInputMixedCompanionsRequired"},
+            optionalCompanions = {"optionalListFileInputMixedCompanionsOptional"})
+    public List<File> optionalListFileInputMixedCompanions;
+
     // optional output Files
+
     @Argument(fullName = "optionalScalarFileOutputNoCompanions",
             shortName = "optionalScalarFileOutputNoCompanions",
             doc = "optionalScalarFileOutputNoCompanions doc",
@@ -196,6 +227,15 @@ public class TestWDLTool {
             optional = true)
     @WorkflowOutput(requiredCompanions={"optionalListFileOutputRequiredCompanionsDictionary", "optionalListFileOutputRequiredCompanionsIndex"})
     public List<File> optionalListFileOutputRequiredCompanions;
+
+    @Argument(fullName = "optionalListFileOutputMixedCompanions",
+            shortName = "optionalListFileOutputMixedCompanions",
+            doc = "optionalListFileOutputMixedCompanions doc",
+            optional = true)
+    @WorkflowOutput(
+            requiredCompanions = {"optionalListFileOutputMixedCompanionsRequired"},
+            optionalCompanions = {"optionalListFileOutputMixedCompanionsOptional"})
+    public List<File> optionalListFileOutputMixedCompanions;
 
     // non-File types
 

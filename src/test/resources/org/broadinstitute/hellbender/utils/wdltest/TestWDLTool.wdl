@@ -19,6 +19,9 @@ version 1.0
 #    posIndex                                           Companion resource for positionalArgs                       
 #
 #  Required Tool Arguments
+#    requiredListFileInputMixedCompanions               requiredListFileInputMixedCompanions doc                    
+#    requiredListFileInputMixedCompanionsRequired       Companion resource for requiredListFileInputMixedCompanions 
+#    requiredListFileInputMixedCompanionsOptional       Optional Companion resource for requiredListFileInputMixedCompanions 
 #    requiredListFileInputNoCompanions                  requiredListFileInputNoCompanions doc                       
 #    requiredListFileInputOptionalCompanions            requiredListFileInputOptionalCompanions doc                 
 #    requiredListFileInputOptionalCompanionsDictionary  Optional Companion resource for requiredListFileInputOptionalCompanions
@@ -26,6 +29,9 @@ version 1.0
 #    requiredListFileInputRequiredCompanions            requiredListFileInputRequiredCompanions doc                 
 #    requiredListFileInputRequiredCompanionsDictionary  Companion resource for requiredListFileInputRequiredCompanions
 #    requiredListFileInputRequiredCompanionsIndex       Companion resource for requiredListFileInputRequiredCompanions
+#    requiredListFileOutputMixedCompanions              requiredListFileOutputMixedCompanions doc                   
+#    requiredListFileOutputMixedCompanionsRequired      Companion resource for requiredListFileOutputMixedCompanions
+#    requiredListFileOutputMixedCompanionsOptional      Optional Companion resource for requiredListFileOutputMixedCompanions
 #    requiredListFileOutputNoCompanions                 requiredListFileOutputNoCompanions doc                      
 #    requiredListFileOutputOptionalCompanions           requiredListFileOutputOptionalCompanions doc                
 #    requiredListFileOutputOptionalCompanionsDictionary Optional Companion resource for requiredListFileOutputOptionalCompanions
@@ -73,6 +79,9 @@ workflow TestWDLTool {
     Array[File] posIndex
 
     # Required Arguments
+    Array[File] requiredListFileInputMixedCompanions
+    Array[File] requiredListFileInputMixedCompanionsRequired
+    Array[File]? requiredListFileInputMixedCompanionsOptional
     Array[File] requiredListFileInputNoCompanions
     Array[File] requiredListFileInputOptionalCompanions
     Array[File]? requiredListFileInputOptionalCompanionsDictionary
@@ -80,6 +89,9 @@ workflow TestWDLTool {
     Array[File] requiredListFileInputRequiredCompanions
     Array[File] requiredListFileInputRequiredCompanionsDictionary
     Array[File] requiredListFileInputRequiredCompanionsIndex
+    Array[String] requiredListFileOutputMixedCompanions
+    Array[String] requiredListFileOutputMixedCompanionsRequired
+    Array[String]? requiredListFileOutputMixedCompanionsOptional
     Array[String] requiredListFileOutputNoCompanions
     Array[String] requiredListFileOutputOptionalCompanions
     Array[String]? requiredListFileOutputOptionalCompanionsDictionary
@@ -130,6 +142,9 @@ workflow TestWDLTool {
         posIndex                                           = posIndex,
 
         # Required Arguments
+        requiredListFileInputMixedCompanions               = requiredListFileInputMixedCompanions,
+        requiredListFileInputMixedCompanionsRequired       = requiredListFileInputMixedCompanionsRequired,
+        requiredListFileInputMixedCompanionsOptional       = requiredListFileInputMixedCompanionsOptional,
         requiredListFileInputNoCompanions                  = requiredListFileInputNoCompanions,
         requiredListFileInputOptionalCompanions            = requiredListFileInputOptionalCompanions,
         requiredListFileInputOptionalCompanionsDictionary  = requiredListFileInputOptionalCompanionsDictionary,
@@ -137,6 +152,9 @@ workflow TestWDLTool {
         requiredListFileInputRequiredCompanions            = requiredListFileInputRequiredCompanions,
         requiredListFileInputRequiredCompanionsDictionary  = requiredListFileInputRequiredCompanionsDictionary,
         requiredListFileInputRequiredCompanionsIndex       = requiredListFileInputRequiredCompanionsIndex,
+        requiredListFileOutputMixedCompanions              = requiredListFileOutputMixedCompanions,
+        requiredListFileOutputMixedCompanionsRequired      = requiredListFileOutputMixedCompanionsRequired,
+        requiredListFileOutputMixedCompanionsOptional      = requiredListFileOutputMixedCompanionsOptional,
         requiredListFileOutputNoCompanions                 = requiredListFileOutputNoCompanions,
         requiredListFileOutputOptionalCompanions           = requiredListFileOutputOptionalCompanions,
         requiredListFileOutputOptionalCompanionsDictionary = requiredListFileOutputOptionalCompanionsDictionary,
@@ -181,6 +199,10 @@ workflow TestWDLTool {
     Array[File] TestWDLToolrequiredListFileOutputOptionalCompanions = TestWDLTool.TestWDLTool_requiredListFileOutputOptionalCompanions
     Array[File]? TestWDLToolrequiredListFileOutputOptionalCompanionsDictionary = TestWDLTool.TestWDLTool_requiredListFileOutputOptionalCompanionsDictionary
     Array[File]? TestWDLToolrequiredListFileOutputOptionalCompanionsIndex = TestWDLTool.TestWDLTool_requiredListFileOutputOptionalCompanionsIndex
+    Array[File] TestWDLToolrequiredListFileOutputMixedCompanions = TestWDLTool.TestWDLTool_requiredListFileOutputMixedCompanions
+    Array[File] TestWDLToolrequiredListFileOutputMixedCompanionsRequired = TestWDLTool.TestWDLTool_requiredListFileOutputMixedCompanionsRequired
+    Array[File]? TestWDLToolrequiredListFileOutputMixedCompanionsOptional = TestWDLTool.TestWDLTool_requiredListFileOutputMixedCompanionsOptional
+    Array[File] TestWDLToolrequiredListFileOutputMixedCompanionsRequired = TestWDLTool.TestWDLTool_requiredListFileOutputMixedCompanionsRequired
   }
 
   parameter_meta {
@@ -198,6 +220,9 @@ workflow TestWDLTool {
     posIndex: { description: "Companion resource for positionalArgs" }
 
     # Required Arguments
+    requiredListFileInputMixedCompanions: { description: "requiredListFileInputMixedCompanions doc" }
+    requiredListFileInputMixedCompanionsRequired: { description: "Companion resource for requiredListFileInputMixedCompanions" }
+    requiredListFileInputMixedCompanionsOptional: { description: "Companion resource for requiredListFileInputMixedCompanions" }
     requiredListFileInputNoCompanions: { description: "requiredListFileInputNoCompanions doc" }
     requiredListFileInputOptionalCompanions: {
         description: "requiredListFileInputOptionalCompanions doc",
@@ -223,6 +248,9 @@ workflow TestWDLTool {
       description: "Companion resource for requiredListFileInputRequiredCompanions",
       localization_optional : true 
     }
+    requiredListFileOutputMixedCompanions: { description: "requiredListFileOutputMixedCompanions doc" }
+    requiredListFileOutputMixedCompanionsRequired: { description: "Companion resource for requiredListFileOutputMixedCompanions" }
+    requiredListFileOutputMixedCompanionsOptional: { description: "Companion resource for requiredListFileOutputMixedCompanions" }
     requiredListFileOutputNoCompanions: { description: "requiredListFileOutputNoCompanions doc" }
     requiredListFileOutputOptionalCompanions: { description: "requiredListFileOutputOptionalCompanions doc" }
     requiredListFileOutputOptionalCompanionsDictionary: { description: "Companion resource for requiredListFileOutputOptionalCompanions" }
@@ -276,6 +304,9 @@ task TestWDLTool {
     String preemptibleRequirements
     String bootdisksizegbRequirements
     Array[File] positionalArgs
+    Array[File] requiredListFileInputMixedCompanions
+    Array[File] requiredListFileInputMixedCompanionsRequired
+    Array[File]? requiredListFileInputMixedCompanionsOptional
     Array[File] requiredListFileInputNoCompanions
     Array[File] requiredListFileInputOptionalCompanions
     Array[File]? requiredListFileInputOptionalCompanionsDictionary
@@ -283,6 +314,9 @@ task TestWDLTool {
     Array[File] requiredListFileInputRequiredCompanions
     Array[File] requiredListFileInputRequiredCompanionsDictionary
     Array[File] requiredListFileInputRequiredCompanionsIndex
+    Array[String] requiredListFileOutputMixedCompanions
+    Array[String] requiredListFileOutputMixedCompanionsRequired
+    Array[String]? requiredListFileOutputMixedCompanionsOptional
     Array[String] requiredListFileOutputNoCompanions
     Array[String] requiredListFileOutputOptionalCompanions
     Array[String]? requiredListFileOutputOptionalCompanionsDictionary
@@ -310,9 +344,11 @@ task TestWDLTool {
   command <<<
     ~{gatk} TestWDLTool \
     ~{sep=' ' positionalArgs} \
+    --requiredListFileInputMixedCompanions ~{sep=' --requiredListFileInputMixedCompanions ' requiredListFileInputMixedCompanions} \
     --requiredListFileInputNoCompanions ~{sep=' --requiredListFileInputNoCompanions ' requiredListFileInputNoCompanions} \
     --requiredListFileInputOptionalCompanions ~{sep=' --requiredListFileInputOptionalCompanions ' requiredListFileInputOptionalCompanions} \
     --requiredListFileInputRequiredCompanions ~{sep=' --requiredListFileInputRequiredCompanions ' requiredListFileInputRequiredCompanions} \
+    --requiredListFileOutputMixedCompanions ~{sep=' --requiredListFileOutputMixedCompanions ' requiredListFileOutputMixedCompanions} \
     --requiredListFileOutputNoCompanions ~{sep=' --requiredListFileOutputNoCompanions ' requiredListFileOutputNoCompanions} \
     --requiredListFileOutputOptionalCompanions ~{sep=' --requiredListFileOutputOptionalCompanions ' requiredListFileOutputOptionalCompanions} \
     --requiredListFileOutputRequiredCompanions ~{sep=' --requiredListFileOutputRequiredCompanions ' requiredListFileOutputRequiredCompanions} \
@@ -354,6 +390,10 @@ task TestWDLTool {
     Array[File] TestWDLTool_requiredListFileOutputOptionalCompanions = requiredListFileOutputOptionalCompanions
     Array[File]? TestWDLTool_requiredListFileOutputOptionalCompanionsDictionary = requiredListFileOutputOptionalCompanionsDictionary
     Array[File]? TestWDLTool_requiredListFileOutputOptionalCompanionsIndex = requiredListFileOutputOptionalCompanionsIndex
+    Array[File] TestWDLTool_requiredListFileOutputMixedCompanions = requiredListFileOutputMixedCompanions
+    Array[File] TestWDLTool_requiredListFileOutputMixedCompanionsRequired = requiredListFileOutputMixedCompanionsRequired
+    Array[File]? TestWDLTool_requiredListFileOutputMixedCompanionsOptional = requiredListFileOutputMixedCompanionsOptional
+    Array[File] TestWDLTool_requiredListFileOutputMixedCompanionsRequired = requiredListFileOutputMixedCompanionsRequired
   }
 
   parameter_meta {
@@ -371,6 +411,9 @@ task TestWDLTool {
     posIndex: { description: "Companion resource for positionalArgs" }
 
     # Required Arguments
+    requiredListFileInputMixedCompanions: { description: "requiredListFileInputMixedCompanions doc" }
+    requiredListFileInputMixedCompanionsRequired: { description: "Companion resource for requiredListFileInputMixedCompanions" }
+    requiredListFileInputMixedCompanionsOptional: { description: "Companion resource for requiredListFileInputMixedCompanions" }
     requiredListFileInputNoCompanions: { description: "requiredListFileInputNoCompanions doc" }
     requiredListFileInputOptionalCompanions: {
         description: "requiredListFileInputOptionalCompanions doc",
@@ -396,6 +439,9 @@ task TestWDLTool {
       description: "Companion resource for requiredListFileInputRequiredCompanions",
       localization_optional : true 
     }
+    requiredListFileOutputMixedCompanions: { description: "requiredListFileOutputMixedCompanions doc" }
+    requiredListFileOutputMixedCompanionsRequired: { description: "Companion resource for requiredListFileOutputMixedCompanions" }
+    requiredListFileOutputMixedCompanionsOptional: { description: "Companion resource for requiredListFileOutputMixedCompanions" }
     requiredListFileOutputNoCompanions: { description: "requiredListFileOutputNoCompanions doc" }
     requiredListFileOutputOptionalCompanions: { description: "requiredListFileOutputOptionalCompanions doc" }
     requiredListFileOutputOptionalCompanionsDictionary: { description: "Companion resource for requiredListFileOutputOptionalCompanions" }
