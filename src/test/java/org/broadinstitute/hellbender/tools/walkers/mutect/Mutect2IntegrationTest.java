@@ -162,7 +162,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                     args -> runOrientationFilter ? args.add(M2FiltersArgumentCollection.ARTIFACT_PRIOR_TABLE_NAME, orientationModel) : args);
 
             final File concordanceSummary = createTempFile("concordance", ".txt");
-            runConcordance(truth, filteredVcf,concordanceSummary, CHROMOSOME_20, mask);
+            final File truePositivesFalseNegatives = createTempFile("tpfn", ".vcf");
+            runConcordance(truth, filteredVcf,concordanceSummary, CHROMOSOME_20, mask, Optional.of (truePositivesFalseNegatives));
 
             final List<ConcordanceSummaryRecord> summaryRecords = new ConcordanceSummaryRecord.Reader(concordanceSummary.toPath()).toList();
             summaryRecords.forEach(rec -> {
@@ -216,7 +217,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference);
 
         final File concordanceSummary = createTempFile("concordance", ".txt");
-        runConcordance(truth, filteredVcf, concordanceSummary, CHROMOSOME_20, mask);
+        runConcordance(truth, filteredVcf, concordanceSummary, CHROMOSOME_20, mask, Optional.empty());
 
         final List<ConcordanceSummaryRecord> summaryRecords = new ConcordanceSummaryRecord.Reader(concordanceSummary.toPath()).toList();
         summaryRecords.forEach(rec -> {
@@ -882,13 +883,15 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runCommandLine(argsWithAdditions, FilterMutectCalls.class.getSimpleName());
     }
 
-    private void runConcordance(final File truth, final File eval, final File summary, final String interval, final File mask) {
+    private void runConcordance(final File truth, final File eval, final File summary, final String interval, final File mask, final Optional<File> truePositivesFalseNegatives) {
         final ArgumentsBuilder concordanceArgs = new ArgumentsBuilder()
                 .add(Concordance.TRUTH_VARIANTS_LONG_NAME, truth)
                 .add(Concordance.EVAL_VARIANTS_LONG_NAME, eval)
                 .addInterval(new SimpleInterval(interval))
                 .add(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, mask)
                 .add(Concordance.SUMMARY_LONG_NAME, summary);
+
+        truePositivesFalseNegatives.ifPresent(file -> concordanceArgs.add(Concordance.TRUE_POSITIVES_AND_FALSE_NEGATIVES_SHORT_NAME, file));
         runCommandLine(concordanceArgs, Concordance.class.getSimpleName());
     }
 
