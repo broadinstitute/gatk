@@ -758,7 +758,7 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
     doFirst {
         // make sure the output folder exists or we can create it
         if (!gatkWDLDir.exists() && !gatkWDLDir.mkdirs()) {
-            throw new GradleException(String.format("Failure creating folder (%s) for GATK DL output in task (%s)",
+            throw new GradleException(String.format("Failure creating folder (%s) for GATK WDL output in task (%s)",
                     gatkWDLDir.getAbsolutePath(),
                     it.name));
         }
@@ -792,10 +792,12 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
 }
 
 task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
-    // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
-    // WOMTOOL_JAR set to the jar locations
-    if (System.getenv('CROMWELL_JAR') == null || System.getenv('WOMTOOL_JAR') == null) {
-        logger.warn("Running this task requires the CROMWELL_JAR and WOMTOOL_JAR environment variables to be set")
+    doFirst {
+        // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
+        // WOMTOOL_JAR set to the jar locations
+        if (System.getenv('CROMWELL_JAR') == null || System.getenv('WOMTOOL_JAR') == null) {
+            throw new GradleException("Running this task requires the CROMWELL_JAR and WOMTOOL_JAR environment variables to be set")
+        }
     }
 
     def execWDLValidation = { validateWDL ->
@@ -817,26 +819,35 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
         def wdlFiles = fileTree(dir: wdlGenFolder).filter {
             f -> !f.getAbsolutePath().endsWith(".html") && !f.getAbsolutePath().endsWith(".json")
         }
-        wdlFiles.any() { wdlFile ->
-            final womtoolLocation = System.getenv('WOMTOOL_JAR')
-            final validateWDLCommand = "java -jar $womtoolLocation validate $wdlFile"
-            execWDLValidation(validateWDLCommand)
-        }
+        final womtoolLocation = System.getenv('WOMTOOL_JAR')
+//        wdlFiles.any() { wdlFile ->
+//            final validateWDLCommand = "java -jar $womtoolLocation validate $wdlFile"
+//            execWDLValidation(validateWDLCommand)
+//        }
 
         // now execute the *AllArgs test wdls using cromwell
         wdlFiles = fileTree(dir: wdlGenFolder).filter {
             f -> f.getAbsolutePath().endsWith("AllArgsTest.wdl")
         }
-        wdlFiles.any() { wdlFile ->
-            final cromwellLocation = System.getenv('CROMWELL_JAR')
-            final testInputJSON = getWLDInputJSONTestFileNameFromWDLName(wdlFile)
-            final runWDLCommand = "java -jar $cromwellLocation run --inputs $testInputJSON $wdlFile"
-            // the test JSON input file is populated by the WDL gen process with this dummy file name
-            // to satisfy cromwell's attempt to de/localize input files
-            def buildDir = System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath()
-            final createDummyTestInputFile = "touch $buildDir/dummyWDLTestFile"
-            execWDLValidation(createDummyTestInputFile)
-            execWDLValidation(runWDLCommand)
+
+        // the test JSON input file is populated by the WDL gen process with the name of this dummy file
+        // to satisfy cromwell's attempt to de/localize input/output files
+        def buildDir = System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath()
+        final dummyWDLTestFileName = "$buildDir/dummyWDLTestFile"
+        final File dummyWDLTestFile = file(dummyWDLTestFileName)
+        final cromwellLocation = System.getenv('CROMWELL_JAR')
+        try {
+            wdlFiles.any() { wdlFile ->
+                final testInputJSON = getWLDInputJSONTestFileNameFromWDLName(wdlFile)
+                final runWDLCommand = "java -jar $cromwellLocation run --inputs $testInputJSON $wdlFile"
+                execWDLValidation("touch $dummyWDLTestFileName")
+                execWDLValidation(runWDLCommand)
+            }
+        } finally {
+            // delete the dummy test file and the 'cromwell-executions' directory left behind by cromwell
+            dummyWDLTestFile.delete()
+            file("$buildDir/cromwell-executions").deleteDir()
+            file("$buildDir/cromwell-workflow-logs").deleteDir()
         }
     }
 
