@@ -72,7 +72,8 @@ public class HtsgetReaderIntegrationTest extends CommandLineProgramTest {
     }
 
     // Test successful combinations of query parameters
-    @Test(dataProvider = "successfulParameters")
+    // disabled until https://github.com/broadinstitute/gatk/pull/6799 is resolved
+    @Test(enabled = false, dataProvider = "successfulParameters")
     public void testSuccessfulParameters(final Map<String, String> params, final String expectedFileName) throws IOException {
         final File expected = new File(getToolTestDataDir(), expectedFileName);
         final File output = createTempFile("output", ".bam");
