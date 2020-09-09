@@ -115,57 +115,23 @@ public class DbSnpIntegrationTest extends CommandLineProgramTest {
                 : DB_SNP_HG19_FILE_PATH;
 
         // 2 - Create a FeatureDataSource from the dbSNP VCF:
-        final FeatureDataSource<VariantContext> dbSnpDataSource = new FeatureDataSource<>(dbSnpFile.toUri().toString());
+        try ( final FeatureDataSource<VariantContext> dbSnpDataSource = new FeatureDataSource<>(dbSnpFile.toUri().toString()) ) {
 
-        // Do a dummy check here:
-        Assert.assertNotNull(dbSnpDataSource);
+            // Do a dummy check here:
+            Assert.assertNotNull(dbSnpDataSource);
 
-        // 3 - Attempt to read sites and features from the FeatureDataSource:
-        final List<VariantContext> features = dbSnpDataSource.queryAndPrefetch(interval);
-        Assert.assertEquals(features.size(), 1);
+            // 3 - Attempt to read sites and features from the FeatureDataSource:
+            final List<VariantContext> features = dbSnpDataSource.queryAndPrefetch(interval);
+            Assert.assertEquals(features.size(), 1);
 
-        final VariantContext dbSnpVariant = features.get(0);
-        Assert.assertEquals(dbSnpVariant.getContig(), interval.getContig());
-        Assert.assertEquals(dbSnpVariant.getStart(), interval.getStart());
-        Assert.assertEquals(dbSnpVariant.getEnd(), interval.getEnd());
-        Assert.assertEquals(dbSnpVariant.getID(), expectedID);
-        Assert.assertEquals(dbSnpVariant.getAlleles().size(), 2);
-        Assert.assertEquals(dbSnpVariant.getAlleles().get(0), expectedRefAllele, "Variant has incorrect ref allele: " + dbSnpVariant.getAlleles().get(0)  + " != " + expectedRefAllele + " [" + interval + " in " + dbSnpFile + "]");
-        Assert.assertEquals(dbSnpVariant.getAlleles().get(1), expectedAltAllele);
+            final VariantContext dbSnpVariant = features.get(0);
+            Assert.assertEquals(dbSnpVariant.getContig(), interval.getContig());
+            Assert.assertEquals(dbSnpVariant.getStart(), interval.getStart());
+            Assert.assertEquals(dbSnpVariant.getEnd(), interval.getEnd());
+            Assert.assertEquals(dbSnpVariant.getID(), expectedID);
+            Assert.assertEquals(dbSnpVariant.getAlleles().size(), 2);
+            Assert.assertEquals(dbSnpVariant.getAlleles().get(0), expectedRefAllele, "Variant has incorrect ref allele: " + dbSnpVariant.getAlleles().get(0) + " != " + expectedRefAllele + " [" + interval + " in " + dbSnpFile + "]");
+            Assert.assertEquals(dbSnpVariant.getAlleles().get(1), expectedAltAllele);
+        }
     }
-
-
-////    @Test(groups={"cloud"})
-//    @Test
-//    public void testDbSnpDataSourceParsing() {
-//        // 1 - Extract the dbSNP file from the current datasources for Funcotator:
-//        logger.info("Creating input stream from gcloud file:");
-//        try (final InputStream dataSourcesInputStream = new BufferedInputStream(Files.newInputStream(DB_SNP_FILE_NAME))) {
-//            final Path dbSnpPath = extractAndReturnDbSnpPath(dataSourcesInputStream);
-//
-//            // 2 - Create a FeatureDataSource from the dbSNP VCF:
-//            final FeatureDataSource<VariantContext> dbSnpDataSource = new FeatureDataSource<>(dbSnpPath.toUri().toString());
-//
-//            // Do a dummy check here:
-//            Assert.assertNotNull(dbSnpDataSource);
-//
-//            // 3 - Attempt to read sites and features from the FeatureDataSource that would fail with the old code:
-//            final List<Locatable> intervalsToQuery = Arrays.asList(
-//                    new SimpleInterval("chr1", 84349784, 84349786), // rs17131617 T/C
-//                    new SimpleInterval("chrX", 80688069, 80688071), // rs3122407 T/C
-//                    new SimpleInterval("chrY", 13355943, 13355945), // rs2032654 A/G
-//                    new SimpleInterval("chrM", 5131, 5134)    // rs199476116 2-BP DEL, 5132AA
-//            );
-//
-//            for (int i = 0; i < intervalsToQuery.size(); ++i) {
-//                final Locatable interval = intervalsToQuery.get(i);
-//                final List<VariantContext> features = dbSnpDataSource.queryAndPrefetch(interval);
-//
-//                Assert.assertEquals(features.size(), 1);
-//            }
-//        }
-//        catch (final IOException ex) {
-//            throw new UserException("Unable to open data sources from gcloud!", ex);
-//        }
-//    }
 }

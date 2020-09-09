@@ -17,17 +17,17 @@ public abstract class BaseFuncotatorArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /** String representing the b37 version of the homo sapiens reference. */
-    protected static String FuncotatorReferenceVersionB37 = "b37";
+    protected static final String FuncotatorReferenceVersionB37 = "b37";
     /**
      * String representing the hg19 version of the homo sapiens reference.
      * This variable is necessary to resolve the differences between b37 and hg19 when
      * dealing with Homo Sapiens samples.
      */
     @VisibleForTesting
-    public static String FuncotatorReferenceVersionHg19 = "hg19";
+    public static final String FuncotatorReferenceVersionHg19 = "hg19";
     /** String representing the hg38 version of the homo sapiens reference. */
     @VisibleForTesting
-    public static String FuncotatorReferenceVersionHg38 = "hg38";
+    public static final String FuncotatorReferenceVersionHg38 = "hg38";
 
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
