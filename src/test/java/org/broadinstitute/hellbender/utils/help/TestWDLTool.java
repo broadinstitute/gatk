@@ -39,64 +39,163 @@ public class TestWDLTool {
     @WorkflowInput(requiredCompanions={"posDictionary", "posIndex"})
     public List<File> positionalListFileInput;
 
-    // required Files
-    @Argument(fullName = "requiredScalarFileInput",
-            shortName = "requiredScalarFileInput",
-            doc = "requiredScalarFileInput doc",
+    // required input Files
+    @Argument(fullName = "requiredScalarFileInputNoCompanions",
+            shortName = "requiredScalarFileInputNoCompanions",
+            doc = "requiredScalarFileInputNoCompanions doc",
             optional = false)
-    @WorkflowInput(requiredCompanions={"requiredScalarFileInputDictionary", "requiredScalarFileInputIndex"}, localizationOptional = true)
-    public File requiredScalarFileInput;
+    @WorkflowInput
+    public File requiredScalarFileInputNoCompanions;
 
-    @Argument(fullName = "requiredListFileInput",
-            shortName = "requiredListFileInput",
-            doc = "requiredListFileInput doc",
+    @Argument(fullName = "requiredScalarFileInputRequiredCompanions",
+            shortName = "requiredScalarFileInputRequiredCompanions",
+            doc = "requiredScalarFileInputRequiredCompanions doc",
             optional = false)
-    @WorkflowInput(requiredCompanions={"requiredListFileInputDictionary", "requiredListFileInputIndex"}, localizationOptional = true)
-    public List<File> requiredListFileInput;
+    @WorkflowInput(requiredCompanions={"requiredScalarFileInputRequiredCompanionsDictionary", "requiredScalarFileInputRequiredCompanionsIndex"}, localizationOptional = true)
+    public File requiredScalarFileInputRequiredCompanions;
 
-    @Argument(fullName = "requiredScalarFileOutput",
-            shortName = "requiredScalarFileOutput",
-            doc = "requiredScalarFileOutput doc",
+    @Argument(fullName = "requiredScalarFileInputOptionalCompanions",
+            shortName = "requiredScalarFileInputOptionalCompanions",
+            doc = "requiredScalarFileInputOptionalCompanions doc",
             optional = false)
-    @WorkflowOutput(requiredCompanions={"requiredScalarFileOutputDictionary", "requiredScalarFileOutputIndex"})
-    public File requiredScalarFileOutput;
+    @WorkflowInput(optionalCompanions={"requiredScalarFileInputOptionalCompanionsDictionary", "requiredScalarFileInputOptionalCompanionsIndex"}, localizationOptional = true)
+    public File requiredScalarFileInputOptionalCompanions;
 
-    @Argument(fullName = "requiredListFileOutput",
-            shortName = "requiredListFileOutput",
-            doc = "requiredListFileOutput doc",
+    @Argument(fullName = "requiredListFileInputNoCompanions",
+            shortName = "requiredListFileInputNoCompanions",
+            doc = "requiredListFileInputNoCompanions doc",
             optional = false)
-    @WorkflowOutput(requiredCompanions={"requiredListFileOutputDictionary", "requiredListFileOutputIndex"})
-    public List<File> requiredListFileOutput;
+    @WorkflowInput
+    public List<File> requiredListFileInputNoCompanions;
 
+    @Argument(fullName = "requiredListFileInputRequiredCompanions",
+            shortName = "requiredListFileInputRequiredCompanions",
+            doc = "requiredListFileInputRequiredCompanions doc",
+            optional = false)
+    @WorkflowInput(requiredCompanions={"requiredListFileInputRequiredCompanionsDictionary", "requiredListFileInputRequiredCompanionsIndex"}, localizationOptional = true)
+    public List<File> requiredListFileInputRequiredCompanions;
 
-    // optional Files
-    @Argument(fullName = "optionalScalarFileInput",
-            shortName = "optionalScalarFileInput",
-            doc = "optionalScalarFileInput doc",
+    @Argument(fullName = "requiredListFileInputOptionalCompanions",
+            shortName = "requiredListFileInputOptionalCompanions",
+            doc = "requiredListFileInputOptionalCompanions doc",
+            optional = false)
+    @WorkflowInput(optionalCompanions={"requiredListFileInputOptionalCompanionsDictionary", "requiredListFileInputOptionalCompanionsIndex"}, localizationOptional = true)
+    public List<File> requiredListFileInputOptionalCompanions;
+
+    // required output Files
+    @Argument(fullName = "requiredScalarFileOutputNoCompanions",
+            shortName = "requiredScalarFileOutputNoCompanions",
+            doc = "requiredScalarFileOutputNoCompanions doc",
+            optional = false)
+    @WorkflowOutput
+    public File requiredScalarFileOutputNoCompanions;
+
+    @Argument(fullName = "requiredScalarFileOutputRequiredCompanions",
+            shortName = "requiredScalarFileOutputRequiredCompanions",
+            doc = "requiredScalarFileOutputRequiredCompanions doc",
+            optional = false)
+    @WorkflowOutput(requiredCompanions={"requiredScalarFileOutputRequiredCompanionsDictionary", "requiredScalarFileOutputRequiredCompanionsIndex"})
+    public File requiredScalarFileOutputRequiredCompanions;
+
+    @Argument(fullName = "requiredScalarFileOutputOptionalCompanions",
+            shortName = "requiredScalarFileOutputOptionalCompanions",
+            doc = "requiredScalarFileOutputOptionalCompanions doc",
+            optional = false)
+    @WorkflowOutput(optionalCompanions={"requiredScalarFileOutputOptionalCompanionsDictionary", "requiredScalarFileOutputOptionalCompanionsIndex"})
+    public File requiredScalarFileOutputOptionalCompanions;
+
+    @Argument(fullName = "requiredListFileOutputNoCompanions",
+            shortName = "requiredListFileOutputNoCompanions",
+            doc = "requiredListFileOutputNoCompanions doc",
+            optional = false)
+    @WorkflowOutput
+    public List<File> requiredListFileOutputNoCompanions;
+
+    @Argument(fullName = "requiredListFileOutputRequiredCompanions",
+            shortName = "requiredListFileOutputRequiredCompanions",
+            doc = "requiredListFileOutputRequiredCompanions doc",
+            optional = false)
+    @WorkflowOutput(requiredCompanions={"requiredListFileOutputRequiredCompanionsDictionary", "requiredListFileOutputRequiredCompanionsIndex"})
+    public List<File> requiredListFileOutputRequiredCompanions;
+
+    @Argument(fullName = "requiredListFileOutputOptionalCompanions",
+            shortName = "requiredListFileOutputOptionalCompanions",
+            doc = "requiredListFileOutputOptionalCompanions doc",
+            optional = false)
+    @WorkflowOutput(optionalCompanions={"requiredListFileOutputOptionalCompanionsDictionary", "requiredListFileOutputOptionalCompanionsIndex"})
+    public List<File> requiredListFileOutputOptionalCompanions;
+
+    // optional input Files
+    @Argument(fullName = "optionalScalarFileInputNoCompanions",
+            shortName = "optionalScalarFileInputNoCompanions",
+            doc = "optionalScalarFileInputNoCompanions doc",
             optional = true)
-    @WorkflowInput(requiredCompanions={"optionalScalarFileInputDictionary", "optionalScalarFileInputIndex"})
-    public File optionalScalarFileInput;
+    @WorkflowInput
+    public File optionalScalarFileInputNoCompanions;
 
-    @Argument(fullName = "optionalListFileInput",
-            shortName = "optionalListFileInput",
-            doc = "optionalListFileInput doc",
+    @Argument(fullName = "optionalScalarFileInputOptionalCompanions",
+            shortName = "optionalScalarFileInputOptionalCompanions",
+            doc = "optionalScalarFileInputOptionalCompanions doc",
             optional = true)
-    @WorkflowInput(requiredCompanions={"optionalListFileInputDictionary", "optionalListFileInputIndex"})
-    public List<File> optionalListFileInput;
+    @WorkflowInput(optionalCompanions={"optionalScalarFileInputOptionalCompanionsDictionary", "optionalScalarFileInputOptionalCompanionsIndex"})
+    public File optionalScalarFileInputOptionalCompanions;
 
-    @Argument(fullName = "optionaldScalarFileOutput",
-            shortName = "optionalScalarFileOutput",
-            doc = "optionalScalarFileOutput doc",
+    @Argument(fullName = "optionalScalarFileInputRequiredCompanions",
+            shortName = "optionalScalarFileInputRequiredCompanions",
+            doc = "optionalScalarFileInputRequiredCompanions doc",
             optional = true)
-    @WorkflowOutput(requiredCompanions={"optionalScalarFileOutputDictionary", "optionalScalarFileOutputIndex"})
-    public File optionalScalarFileOutput;
+    @WorkflowInput(requiredCompanions={"optionalScalarFileInputRequiredCompanionsDictionary", "optionalScalarFileInputRequiredCompanionsIndex"})
+    public File optionalScalarFileInputRequiredCompanions;
 
-    @Argument(fullName = "optionaldListFileOutput",
-            shortName = "optionalListFileOutput",
-            doc = "optionalListFileOutput doc",
+    @Argument(fullName = "optionalListFileInputNoCompanions",
+            shortName = "optionalListFileInputNoCompanions",
+            doc = "optionalListFileInputNoCompanions doc",
             optional = true)
-    @WorkflowOutput(requiredCompanions={"optionalListFileOutputDictionary", "optionalListFileOutputIndex"})
-    public List<File> optionalListFileOutput;
+    @WorkflowInput
+    public List<File> optionalListFileInputNoCompanions;
+
+    @Argument(fullName = "optionalListFileInputRequiredCompanions",
+            shortName = "optionalListFileInputRequiredCompanions",
+            doc = "optionalListFileInputRequiredCompanions doc",
+            optional = true)
+    @WorkflowInput(requiredCompanions={"optionalListFileInputRequiredCompanionsDictionary", "optionalListFileInputRequiredCompanionsIndex"})
+    public List<File> optionalListFileInputRequiredCompanions;
+
+    @Argument(fullName = "optionalListFileInputOptionalCompanions",
+            shortName = "optionalListFileInputOptionalCompanions",
+            doc = "optionalListFileInputOptionalCompanions doc",
+            optional = true)
+    @WorkflowInput(optionalCompanions={"optionalListFileInputOptionalCompanionsDictionary", "optionalListFileInputOptionalCompanionsIndex"})
+    public List<File> optionalListFileInputOptionalCompanions;
+
+    // optional output Files
+    @Argument(fullName = "optionalScalarFileOutputNoCompanions",
+            shortName = "optionalScalarFileOutputNoCompanions",
+            doc = "optionalScalarFileOutputNoCompanions doc",
+            optional = true)
+    @WorkflowOutput
+    public File optionalScalarFileOutputNoCompanions;
+
+    @Argument(fullName = "optionalScalarFileOutputRequiredCompanions",
+            shortName = "optionalScalarFileOutputRequiredCompanions",
+            doc = "optionalScalarFileOutputRequiredCompanions doc",
+            optional = true)
+    @WorkflowOutput(requiredCompanions={"optionalScalarFileOutputRequiredCompanionsDictionary", "optionalScalarFileOutputRequiredCompanionsIndex"})
+    public File optionalScalarFileOutputRequiredCompanions;
+
+    @Argument(fullName = "optionalScalarFileOutputOptionalCompanions",
+            shortName = "optionalScalarFileOutputOptionalCompanions",
+            doc = "optionalScalarFileOutputOptionalCompanions doc",
+            optional = true)
+    @WorkflowOutput(requiredCompanions={"optionalScalarFileOutputOptionalCompanionsDictionary", "optionalScalarFileOutputOptionalCompanionsIndex"})
+    public File optionalScalarFileOutputOptionalCompanions;
+
+    @Argument(fullName = "optionalListFileOutputRequiredCompanions",
+            shortName = "optionalListFileOutputRequiredCompanions",
+            doc = "optionalListFileOutputRequiredCompanions doc",
+            optional = true)
+    @WorkflowOutput(requiredCompanions={"optionalListFileOutputRequiredCompanionsDictionary", "optionalListFileOutputRequiredCompanionsIndex"})
+    public List<File> optionalListFileOutputRequiredCompanions;
 
     // non-File types
 

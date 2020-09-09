@@ -19,39 +19,67 @@ version 1.0
 #    posIndex                                           Companion resource for positionalArgs                       
 #
 #  Required Tool Arguments
-#    requiredListFileInput                              requiredListFileInput doc                                   
-#    requiredListFileInputDictionary                    Companion resource for requiredListFileInput                
-#    requiredListFileInputIndex                         Companion resource for requiredListFileInput                
-#    requiredListFileOutput                             requiredListFileOutput doc                                  
-#    requiredListFileOutputDictionary                   Companion resource for requiredListFileOutput               
-#    requiredListFileOutputIndex                        Companion resource for requiredListFileOutput               
-#    requiredScalarFileInput                            requiredScalarFileInput doc                                 
-#    requiredScalarFileInputDictionary                  Companion resource for requiredScalarFileInput              
-#    requiredScalarFileInputIndex                       Companion resource for requiredScalarFileInput              
-#    requiredScalarFileOutput                           requiredScalarFileOutput doc                                
-#    requiredScalarFileOutputDictionary                 Companion resource for requiredScalarFileOutput             
-#    requiredScalarFileOutputIndex                      Companion resource for requiredScalarFileOutput             
+#    requiredListFileInputNoCompanions                  requiredListFileInputNoCompanions doc                       
+#    requiredListFileInputOptionalCompanions            requiredListFileInputOptionalCompanions doc                 
+#    requiredListFileInputOptionalCompanionsDictionary  Optional Companion resource for requiredListFileInputOptionalCompanions
+#    requiredListFileInputOptionalCompanionsIndex       Optional Companion resource for requiredListFileInputOptionalCompanions
+#    requiredListFileInputRequiredCompanions            requiredListFileInputRequiredCompanions doc                 
+#    requiredListFileInputRequiredCompanionsDictionary  Companion resource for requiredListFileInputRequiredCompanions
+#    requiredListFileInputRequiredCompanionsIndex       Companion resource for requiredListFileInputRequiredCompanions
+#    requiredListFileOutputNoCompanions                 requiredListFileOutputNoCompanions doc                      
+#    requiredListFileOutputOptionalCompanions           requiredListFileOutputOptionalCompanions doc                
+#    requiredListFileOutputOptionalCompanionsDictionary Optional Companion resource for requiredListFileOutputOptionalCompanions
+#    requiredListFileOutputOptionalCompanionsIndex      Optional Companion resource for requiredListFileOutputOptionalCompanions
+#    requiredListFileOutputRequiredCompanions           requiredListFileOutputRequiredCompanions doc                
+#    requiredListFileOutputRequiredCompanionsDictionary Companion resource for requiredListFileOutputRequiredCompanions
+#    requiredListFileOutputRequiredCompanionsIndex      Companion resource for requiredListFileOutputRequiredCompanions
+#    requiredScalarFileInputNoCompanions                requiredScalarFileInputNoCompanions doc                     
+#    requiredScalarFileInputOptionalCompanions          requiredScalarFileInputOptionalCompanions doc               
+#    requiredScalarFileInputOptionalCompanionsDictionary Optional Companion resource for requiredScalarFileInputOptionalCompanions
+#    requiredScalarFileInputOptionalCompanionsIndex     Optional Companion resource for requiredScalarFileInputOptionalCompanions
+#    requiredScalarFileInputRequiredCompanions          requiredScalarFileInputRequiredCompanions doc               
+#    requiredScalarFileInputRequiredCompanionsDictionary Companion resource for requiredScalarFileInputRequiredCompanions
+#    requiredScalarFileInputRequiredCompanionsIndex     Companion resource for requiredScalarFileInputRequiredCompanions
+#    requiredScalarFileOutputNoCompanions               requiredScalarFileOutputNoCompanions doc                    
+#    requiredScalarFileOutputOptionalCompanions         requiredScalarFileOutputOptionalCompanions doc              
+#    requiredScalarFileOutputOptionalCompanionsDictionary Optional Companion resource for requiredScalarFileOutputOptionalCompanions
+#    requiredScalarFileOutputOptionalCompanionsIndex    Optional Companion resource for requiredScalarFileOutputOptionalCompanions
+#    requiredScalarFileOutputRequiredCompanions         requiredScalarFileOutputRequiredCompanions doc              
+#    requiredScalarFileOutputRequiredCompanionsDictionary Companion resource for requiredScalarFileOutputRequiredCompanions
+#    requiredScalarFileOutputRequiredCompanionsIndex    Companion resource for requiredScalarFileOutputRequiredCompanions
 #
 #  Optional Tool Arguments
-#    optionaldListFileOutput                            optionalListFileOutput doc                                  
-#    optionalListFileOutputDictionary                   Optional Companion resource for optionaldListFileOutput              
-#    optionalListFileOutputIndex                        Optional Companion resource for optionaldListFileOutput              
-#    optionaldScalarFileOutput                          optionalScalarFileOutput doc                                
-#    optionalScalarFileOutputDictionary                 Optional Companion resource for optionaldScalarFileOutput            
-#    optionalScalarFileOutputIndex                      Optional Companion resource for optionaldScalarFileOutput            
 #    optionalListDoubleInput                            optionalListDoubleInput doc                                 
-#    optionalListFileInput                              optionalListFileInput doc                                   
-#    optionalListFileInputDictionary                    Optional Companion resource for optionalListFileInput                
-#    optionalListFileInputIndex                         Optional Companion resource for optionalListFileInput                
+#    optionalListFileInputNoCompanions                  optionalListFileInputNoCompanions doc                       
+#    optionalListFileInputOptionalCompanions            optionalListFileInputOptionalCompanions doc                 
+#    optionalListFileInputOptionalCompanionsDictionary  Optional Companion resource for optionalListFileInputOptionalCompanions
+#    optionalListFileInputOptionalCompanionsIndex       Optional Companion resource for optionalListFileInputOptionalCompanions
+#    optionalListFileInputRequiredCompanions            optionalListFileInputRequiredCompanions doc                 
+#    optionalListFileInputRequiredCompanionsDictionary  Optional Companion resource for optionalListFileInputRequiredCompanions
+#    optionalListFileInputRequiredCompanionsIndex       Optional Companion resource for optionalListFileInputRequiredCompanions
+#    optionalListFileOutputRequiredCompanions           optionalListFileOutputRequiredCompanions doc                
+#    optionalListFileOutputRequiredCompanionsDictionary Optional Companion resource for optionalListFileOutputRequiredCompanions
+#    optionalListFileOutputRequiredCompanionsIndex      Optional Companion resource for optionalListFileOutputRequiredCompanions
 #    optionalListFloatInput                             optionalListFloatInput doc                                  
 #    optionalListIntegerInput                           optionalListIntegerInput doc                                
 #    optionalListLongInput                              optionalListLongInput doc                                   
 #    optionalListStringInput                            optionalListStringInput doc                                 
 #    optionalScalarDoubleInput                          optionalScalarDoubleInput doc                               
 #    optionalScalarDoublePrimitiveInput                 optionalScalarDoublePrimitiveInput doc                      
-#    optionalScalarFileInput                            optionalScalarFileInput doc                                 
-#    optionalScalarFileInputDictionary                  Optional Companion resource for optionalScalarFileInput              
-#    optionalScalarFileInputIndex                       Optional Companion resource for optionalScalarFileInput              
+#    optionalScalarFileInputNoCompanions                optionalScalarFileInputNoCompanions doc                     
+#    optionalScalarFileInputOptionalCompanions          optionalScalarFileInputOptionalCompanions doc               
+#    optionalScalarFileInputOptionalCompanionsDictionary Optional Companion resource for optionalScalarFileInputOptionalCompanions
+#    optionalScalarFileInputOptionalCompanionsIndex     Optional Companion resource for optionalScalarFileInputOptionalCompanions
+#    optionalScalarFileInputRequiredCompanions          optionalScalarFileInputRequiredCompanions doc               
+#    optionalScalarFileInputRequiredCompanionsDictionary Optional Companion resource for optionalScalarFileInputRequiredCompanions
+#    optionalScalarFileInputRequiredCompanionsIndex     Optional Companion resource for optionalScalarFileInputRequiredCompanions
+#    optionalScalarFileOutputNoCompanions               optionalScalarFileOutputNoCompanions doc                    
+#    optionalScalarFileOutputOptionalCompanions         optionalScalarFileOutputOptionalCompanions doc              
+#    optionalScalarFileOutputOptionalCompanionsDictionary Optional Companion resource for optionalScalarFileOutputOptionalCompanions
+#    optionalScalarFileOutputOptionalCompanionsIndex    Optional Companion resource for optionalScalarFileOutputOptionalCompanions
+#    optionalScalarFileOutputRequiredCompanions         optionalScalarFileOutputRequiredCompanions doc              
+#    optionalScalarFileOutputRequiredCompanionsDictionary Optional Companion resource for optionalScalarFileOutputRequiredCompanions
+#    optionalScalarFileOutputRequiredCompanionsIndex    Optional Companion resource for optionalScalarFileOutputRequiredCompanions
 #    optionalScalarFloatInput                           optionalScalarFloatInput doc                                
 #    optionalScalarFloatPrimitiveInput                  optionalScalarFloatPrimitiveInput doc                       
 #    optionalScalarIntegerInput                         optionalScalarIntegerInput doc                              
@@ -85,39 +113,67 @@ workflow TestWDLTool {
     Array[File] posIndex
 
     # Required Arguments
-    Array[File] requiredListFileInput
-    Array[File] requiredListFileInputDictionary
-    Array[File] requiredListFileInputIndex
-    Array[String] requiredListFileOutput
-    Array[String] requiredListFileOutputDictionary
-    Array[String] requiredListFileOutputIndex
-    File requiredScalarFileInput
-    File requiredScalarFileInputDictionary
-    File requiredScalarFileInputIndex
-    String requiredScalarFileOutput
-    String requiredScalarFileOutputDictionary
-    String requiredScalarFileOutputIndex
+    Array[File] requiredListFileInputNoCompanions
+    Array[File] requiredListFileInputOptionalCompanions
+    Array[File]? requiredListFileInputOptionalCompanionsDictionary
+    Array[File]? requiredListFileInputOptionalCompanionsIndex
+    Array[File] requiredListFileInputRequiredCompanions
+    Array[File] requiredListFileInputRequiredCompanionsDictionary
+    Array[File] requiredListFileInputRequiredCompanionsIndex
+    Array[String] requiredListFileOutputNoCompanions
+    Array[String] requiredListFileOutputOptionalCompanions
+    Array[String]? requiredListFileOutputOptionalCompanionsDictionary
+    Array[String]? requiredListFileOutputOptionalCompanionsIndex
+    Array[String] requiredListFileOutputRequiredCompanions
+    Array[String] requiredListFileOutputRequiredCompanionsDictionary
+    Array[String] requiredListFileOutputRequiredCompanionsIndex
+    File requiredScalarFileInputNoCompanions
+    File requiredScalarFileInputOptionalCompanions
+    File? requiredScalarFileInputOptionalCompanionsDictionary
+    File? requiredScalarFileInputOptionalCompanionsIndex
+    File requiredScalarFileInputRequiredCompanions
+    File requiredScalarFileInputRequiredCompanionsDictionary
+    File requiredScalarFileInputRequiredCompanionsIndex
+    String requiredScalarFileOutputNoCompanions
+    String requiredScalarFileOutputOptionalCompanions
+    String? requiredScalarFileOutputOptionalCompanionsDictionary
+    String? requiredScalarFileOutputOptionalCompanionsIndex
+    String requiredScalarFileOutputRequiredCompanions
+    String requiredScalarFileOutputRequiredCompanionsDictionary
+    String requiredScalarFileOutputRequiredCompanionsIndex
 
     # Optional Tool Arguments
-    Array[String]? optionaldListFileOutput
-    Array[String]? optionalListFileOutputDictionary
-    Array[String]? optionalListFileOutputIndex
-    String? optionaldScalarFileOutput
-    String? optionalScalarFileOutputDictionary
-    String? optionalScalarFileOutputIndex
     Array[Float]? optionalListDoubleInput
-    Array[File]? optionalListFileInput
-    Array[File]? optionalListFileInputDictionary
-    Array[File]? optionalListFileInputIndex
+    Array[File]? optionalListFileInputNoCompanions
+    Array[File]? optionalListFileInputOptionalCompanions
+    Array[File]? optionalListFileInputOptionalCompanionsDictionary
+    Array[File]? optionalListFileInputOptionalCompanionsIndex
+    Array[File]? optionalListFileInputRequiredCompanions
+    Array[File]? optionalListFileInputRequiredCompanionsDictionary
+    Array[File]? optionalListFileInputRequiredCompanionsIndex
+    Array[String]? optionalListFileOutputRequiredCompanions
+    Array[String]? optionalListFileOutputRequiredCompanionsDictionary
+    Array[String]? optionalListFileOutputRequiredCompanionsIndex
     Array[Float]? optionalListFloatInput
     Array[Int]? optionalListIntegerInput
     Array[Int]? optionalListLongInput
     Array[String]? optionalListStringInput
     Float? optionalScalarDoubleInput
     Float? optionalScalarDoublePrimitiveInput
-    File? optionalScalarFileInput
-    File? optionalScalarFileInputDictionary
-    File? optionalScalarFileInputIndex
+    File? optionalScalarFileInputNoCompanions
+    File? optionalScalarFileInputOptionalCompanions
+    File? optionalScalarFileInputOptionalCompanionsDictionary
+    File? optionalScalarFileInputOptionalCompanionsIndex
+    File? optionalScalarFileInputRequiredCompanions
+    File? optionalScalarFileInputRequiredCompanionsDictionary
+    File? optionalScalarFileInputRequiredCompanionsIndex
+    String? optionalScalarFileOutputNoCompanions
+    String? optionalScalarFileOutputOptionalCompanions
+    String? optionalScalarFileOutputOptionalCompanionsDictionary
+    String? optionalScalarFileOutputOptionalCompanionsIndex
+    String? optionalScalarFileOutputRequiredCompanions
+    String? optionalScalarFileOutputRequiredCompanionsDictionary
+    String? optionalScalarFileOutputRequiredCompanionsIndex
     Float? optionalScalarFloatInput
     Float? optionalScalarFloatPrimitiveInput
     Int? optionalScalarIntegerInput
@@ -154,39 +210,67 @@ workflow TestWDLTool {
         posIndex                                           = posIndex,
 
         # Required Arguments
-        requiredListFileInput                              = requiredListFileInput,
-        requiredListFileInputDictionary                    = requiredListFileInputDictionary,
-        requiredListFileInputIndex                         = requiredListFileInputIndex,
-        requiredListFileOutput                             = requiredListFileOutput,
-        requiredListFileOutputDictionary                   = requiredListFileOutputDictionary,
-        requiredListFileOutputIndex                        = requiredListFileOutputIndex,
-        requiredScalarFileInput                            = requiredScalarFileInput,
-        requiredScalarFileInputDictionary                  = requiredScalarFileInputDictionary,
-        requiredScalarFileInputIndex                       = requiredScalarFileInputIndex,
-        requiredScalarFileOutput                           = requiredScalarFileOutput,
-        requiredScalarFileOutputDictionary                 = requiredScalarFileOutputDictionary,
-        requiredScalarFileOutputIndex                      = requiredScalarFileOutputIndex,
+        requiredListFileInputNoCompanions                  = requiredListFileInputNoCompanions,
+        requiredListFileInputOptionalCompanions            = requiredListFileInputOptionalCompanions,
+        requiredListFileInputOptionalCompanionsDictionary  = requiredListFileInputOptionalCompanionsDictionary,
+        requiredListFileInputOptionalCompanionsIndex       = requiredListFileInputOptionalCompanionsIndex,
+        requiredListFileInputRequiredCompanions            = requiredListFileInputRequiredCompanions,
+        requiredListFileInputRequiredCompanionsDictionary  = requiredListFileInputRequiredCompanionsDictionary,
+        requiredListFileInputRequiredCompanionsIndex       = requiredListFileInputRequiredCompanionsIndex,
+        requiredListFileOutputNoCompanions                 = requiredListFileOutputNoCompanions,
+        requiredListFileOutputOptionalCompanions           = requiredListFileOutputOptionalCompanions,
+        requiredListFileOutputOptionalCompanionsDictionary = requiredListFileOutputOptionalCompanionsDictionary,
+        requiredListFileOutputOptionalCompanionsIndex      = requiredListFileOutputOptionalCompanionsIndex,
+        requiredListFileOutputRequiredCompanions           = requiredListFileOutputRequiredCompanions,
+        requiredListFileOutputRequiredCompanionsDictionary = requiredListFileOutputRequiredCompanionsDictionary,
+        requiredListFileOutputRequiredCompanionsIndex      = requiredListFileOutputRequiredCompanionsIndex,
+        requiredScalarFileInputNoCompanions                = requiredScalarFileInputNoCompanions,
+        requiredScalarFileInputOptionalCompanions          = requiredScalarFileInputOptionalCompanions,
+        requiredScalarFileInputOptionalCompanionsDictionary = requiredScalarFileInputOptionalCompanionsDictionary,
+        requiredScalarFileInputOptionalCompanionsIndex     = requiredScalarFileInputOptionalCompanionsIndex,
+        requiredScalarFileInputRequiredCompanions          = requiredScalarFileInputRequiredCompanions,
+        requiredScalarFileInputRequiredCompanionsDictionary = requiredScalarFileInputRequiredCompanionsDictionary,
+        requiredScalarFileInputRequiredCompanionsIndex     = requiredScalarFileInputRequiredCompanionsIndex,
+        requiredScalarFileOutputNoCompanions               = requiredScalarFileOutputNoCompanions,
+        requiredScalarFileOutputOptionalCompanions         = requiredScalarFileOutputOptionalCompanions,
+        requiredScalarFileOutputOptionalCompanionsDictionary = requiredScalarFileOutputOptionalCompanionsDictionary,
+        requiredScalarFileOutputOptionalCompanionsIndex    = requiredScalarFileOutputOptionalCompanionsIndex,
+        requiredScalarFileOutputRequiredCompanions         = requiredScalarFileOutputRequiredCompanions,
+        requiredScalarFileOutputRequiredCompanionsDictionary = requiredScalarFileOutputRequiredCompanionsDictionary,
+        requiredScalarFileOutputRequiredCompanionsIndex    = requiredScalarFileOutputRequiredCompanionsIndex,
 
         # Optional Tool Arguments
-        optionaldListFileOutput                            = optionaldListFileOutput,
-        optionalListFileOutputDictionary                   = optionalListFileOutputDictionary,
-        optionalListFileOutputIndex                        = optionalListFileOutputIndex,
-        optionaldScalarFileOutput                          = optionaldScalarFileOutput,
-        optionalScalarFileOutputDictionary                 = optionalScalarFileOutputDictionary,
-        optionalScalarFileOutputIndex                      = optionalScalarFileOutputIndex,
         optionalListDoubleInput                            = optionalListDoubleInput,
-        optionalListFileInput                              = optionalListFileInput,
-        optionalListFileInputDictionary                    = optionalListFileInputDictionary,
-        optionalListFileInputIndex                         = optionalListFileInputIndex,
+        optionalListFileInputNoCompanions                  = optionalListFileInputNoCompanions,
+        optionalListFileInputOptionalCompanions            = optionalListFileInputOptionalCompanions,
+        optionalListFileInputOptionalCompanionsDictionary  = optionalListFileInputOptionalCompanionsDictionary,
+        optionalListFileInputOptionalCompanionsIndex       = optionalListFileInputOptionalCompanionsIndex,
+        optionalListFileInputRequiredCompanions            = optionalListFileInputRequiredCompanions,
+        optionalListFileInputRequiredCompanionsDictionary  = optionalListFileInputRequiredCompanionsDictionary,
+        optionalListFileInputRequiredCompanionsIndex       = optionalListFileInputRequiredCompanionsIndex,
+        optionalListFileOutputRequiredCompanions           = optionalListFileOutputRequiredCompanions,
+        optionalListFileOutputRequiredCompanionsDictionary = optionalListFileOutputRequiredCompanionsDictionary,
+        optionalListFileOutputRequiredCompanionsIndex      = optionalListFileOutputRequiredCompanionsIndex,
         optionalListFloatInput                             = optionalListFloatInput,
         optionalListIntegerInput                           = optionalListIntegerInput,
         optionalListLongInput                              = optionalListLongInput,
         optionalListStringInput                            = optionalListStringInput,
         optionalScalarDoubleInput                          = optionalScalarDoubleInput,
         optionalScalarDoublePrimitiveInput                 = optionalScalarDoublePrimitiveInput,
-        optionalScalarFileInput                            = optionalScalarFileInput,
-        optionalScalarFileInputDictionary                  = optionalScalarFileInputDictionary,
-        optionalScalarFileInputIndex                       = optionalScalarFileInputIndex,
+        optionalScalarFileInputNoCompanions                = optionalScalarFileInputNoCompanions,
+        optionalScalarFileInputOptionalCompanions          = optionalScalarFileInputOptionalCompanions,
+        optionalScalarFileInputOptionalCompanionsDictionary = optionalScalarFileInputOptionalCompanionsDictionary,
+        optionalScalarFileInputOptionalCompanionsIndex     = optionalScalarFileInputOptionalCompanionsIndex,
+        optionalScalarFileInputRequiredCompanions          = optionalScalarFileInputRequiredCompanions,
+        optionalScalarFileInputRequiredCompanionsDictionary = optionalScalarFileInputRequiredCompanionsDictionary,
+        optionalScalarFileInputRequiredCompanionsIndex     = optionalScalarFileInputRequiredCompanionsIndex,
+        optionalScalarFileOutputNoCompanions               = optionalScalarFileOutputNoCompanions,
+        optionalScalarFileOutputOptionalCompanions         = optionalScalarFileOutputOptionalCompanions,
+        optionalScalarFileOutputOptionalCompanionsDictionary = optionalScalarFileOutputOptionalCompanionsDictionary,
+        optionalScalarFileOutputOptionalCompanionsIndex    = optionalScalarFileOutputOptionalCompanionsIndex,
+        optionalScalarFileOutputRequiredCompanions         = optionalScalarFileOutputRequiredCompanions,
+        optionalScalarFileOutputRequiredCompanionsDictionary = optionalScalarFileOutputRequiredCompanionsDictionary,
+        optionalScalarFileOutputRequiredCompanionsIndex    = optionalScalarFileOutputRequiredCompanionsIndex,
         optionalScalarFloatInput                           = optionalScalarFloatInput,
         optionalScalarFloatPrimitiveInput                  = optionalScalarFloatPrimitiveInput,
         optionalScalarIntegerInput                         = optionalScalarIntegerInput,
@@ -199,18 +283,30 @@ workflow TestWDLTool {
 
   output {
     # Workflow Outputs                                  
-    File TestWDLToolrequiredScalarFileOutput = TestWDLTool.TestWDLTool_requiredScalarFileOutput
-    File TestWDLToolrequiredScalarFileOutputDictionary = TestWDLTool.TestWDLTool_requiredScalarFileOutputDictionary
-    File TestWDLToolrequiredScalarFileOutputIndex = TestWDLTool.TestWDLTool_requiredScalarFileOutputIndex
-    Array[File] TestWDLToolrequiredListFileOutput = TestWDLTool.TestWDLTool_requiredListFileOutput
-    Array[File] TestWDLToolrequiredListFileOutputDictionary = TestWDLTool.TestWDLTool_requiredListFileOutputDictionary
-    Array[File] TestWDLToolrequiredListFileOutputIndex = TestWDLTool.TestWDLTool_requiredListFileOutputIndex
-    File? TestWDLTooloptionaldScalarFileOutput = TestWDLTool.TestWDLTool_optionaldScalarFileOutput
-    File? TestWDLTooloptionalScalarFileOutputDictionary = TestWDLTool.TestWDLTool_optionalScalarFileOutputDictionary
-    File? TestWDLTooloptionalScalarFileOutputIndex = TestWDLTool.TestWDLTool_optionalScalarFileOutputIndex
-    Array[File]? TestWDLTooloptionaldListFileOutput = TestWDLTool.TestWDLTool_optionaldListFileOutput
-    Array[File]? TestWDLTooloptionalListFileOutputDictionary = TestWDLTool.TestWDLTool_optionalListFileOutputDictionary
-    Array[File]? TestWDLTooloptionalListFileOutputIndex = TestWDLTool.TestWDLTool_optionalListFileOutputIndex
+    File TestWDLToolrequiredScalarFileOutputNoCompanions = TestWDLTool.TestWDLTool_requiredScalarFileOutputNoCompanions
+    File TestWDLToolrequiredScalarFileOutputRequiredCompanions = TestWDLTool.TestWDLTool_requiredScalarFileOutputRequiredCompanions
+    File TestWDLToolrequiredScalarFileOutputRequiredCompanionsDictionary = TestWDLTool.TestWDLTool_requiredScalarFileOutputRequiredCompanionsDictionary
+    File TestWDLToolrequiredScalarFileOutputRequiredCompanionsIndex = TestWDLTool.TestWDLTool_requiredScalarFileOutputRequiredCompanionsIndex
+    File TestWDLToolrequiredScalarFileOutputOptionalCompanions = TestWDLTool.TestWDLTool_requiredScalarFileOutputOptionalCompanions
+    File? TestWDLToolrequiredScalarFileOutputOptionalCompanionsDictionary = TestWDLTool.TestWDLTool_requiredScalarFileOutputOptionalCompanionsDictionary
+    File? TestWDLToolrequiredScalarFileOutputOptionalCompanionsIndex = TestWDLTool.TestWDLTool_requiredScalarFileOutputOptionalCompanionsIndex
+    Array[File] TestWDLToolrequiredListFileOutputNoCompanions = TestWDLTool.TestWDLTool_requiredListFileOutputNoCompanions
+    Array[File] TestWDLToolrequiredListFileOutputRequiredCompanions = TestWDLTool.TestWDLTool_requiredListFileOutputRequiredCompanions
+    Array[File] TestWDLToolrequiredListFileOutputRequiredCompanionsDictionary = TestWDLTool.TestWDLTool_requiredListFileOutputRequiredCompanionsDictionary
+    Array[File] TestWDLToolrequiredListFileOutputRequiredCompanionsIndex = TestWDLTool.TestWDLTool_requiredListFileOutputRequiredCompanionsIndex
+    Array[File] TestWDLToolrequiredListFileOutputOptionalCompanions = TestWDLTool.TestWDLTool_requiredListFileOutputOptionalCompanions
+    Array[File]? TestWDLToolrequiredListFileOutputOptionalCompanionsDictionary = TestWDLTool.TestWDLTool_requiredListFileOutputOptionalCompanionsDictionary
+    Array[File]? TestWDLToolrequiredListFileOutputOptionalCompanionsIndex = TestWDLTool.TestWDLTool_requiredListFileOutputOptionalCompanionsIndex
+    File? TestWDLTooloptionalScalarFileOutputNoCompanions = TestWDLTool.TestWDLTool_optionalScalarFileOutputNoCompanions
+    File? TestWDLTooloptionalScalarFileOutputRequiredCompanions = TestWDLTool.TestWDLTool_optionalScalarFileOutputRequiredCompanions
+    File? TestWDLTooloptionalScalarFileOutputRequiredCompanionsDictionary = TestWDLTool.TestWDLTool_optionalScalarFileOutputRequiredCompanionsDictionary
+    File? TestWDLTooloptionalScalarFileOutputRequiredCompanionsIndex = TestWDLTool.TestWDLTool_optionalScalarFileOutputRequiredCompanionsIndex
+    File? TestWDLTooloptionalScalarFileOutputOptionalCompanions = TestWDLTool.TestWDLTool_optionalScalarFileOutputOptionalCompanions
+    File? TestWDLTooloptionalScalarFileOutputOptionalCompanionsDictionary = TestWDLTool.TestWDLTool_optionalScalarFileOutputOptionalCompanionsDictionary
+    File? TestWDLTooloptionalScalarFileOutputOptionalCompanionsIndex = TestWDLTool.TestWDLTool_optionalScalarFileOutputOptionalCompanionsIndex
+    Array[File]? TestWDLTooloptionalListFileOutputRequiredCompanions = TestWDLTool.TestWDLTool_optionalListFileOutputRequiredCompanions
+    Array[File]? TestWDLTooloptionalListFileOutputRequiredCompanionsDictionary = TestWDLTool.TestWDLTool_optionalListFileOutputRequiredCompanionsDictionary
+    Array[File]? TestWDLTooloptionalListFileOutputRequiredCompanionsIndex = TestWDLTool.TestWDLTool_optionalListFileOutputRequiredCompanionsIndex
   }
 
   parameter_meta {
@@ -228,57 +324,103 @@ workflow TestWDLTool {
     posIndex: { description: "Companion resource for positionalArgs" }
 
     # Required Arguments
-    requiredListFileInput: {
-      description: "requiredListFileInput doc",
+    requiredListFileInputNoCompanions: { description: "requiredListFileInputNoCompanions doc" }
+    requiredListFileInputOptionalCompanions: {
+      description: "requiredListFileInputOptionalCompanions doc",
       localization_optional : true 
     }
-    requiredListFileInputDictionary: {
-      description: "Companion resource for requiredListFileInput",
+    requiredListFileInputOptionalCompanionsDictionary: {
+      description: "Companion resource for requiredListFileInputOptionalCompanions",
       localization_optional : true 
     }
-    requiredListFileInputIndex: {
-      description: "Companion resource for requiredListFileInput",
+    requiredListFileInputOptionalCompanionsIndex: {
+      description: "Companion resource for requiredListFileInputOptionalCompanions",
       localization_optional : true 
     }
-    requiredListFileOutput: { description: "requiredListFileOutput doc" }
-    requiredListFileOutputDictionary: { description: "Companion resource for requiredListFileOutput" }
-    requiredListFileOutputIndex: { description: "Companion resource for requiredListFileOutput" }
-    requiredScalarFileInput: {
-      description: "requiredScalarFileInput doc",
+    requiredListFileInputRequiredCompanions: {
+      description: "requiredListFileInputRequiredCompanions doc",
       localization_optional : true 
     }
-    requiredScalarFileInputDictionary: {
-      description: "Companion resource for requiredScalarFileInput",
+    requiredListFileInputRequiredCompanionsDictionary: {
+      description: "Companion resource for requiredListFileInputRequiredCompanions",
       localization_optional : true 
     }
-    requiredScalarFileInputIndex: {
-      description: "Companion resource for requiredScalarFileInput",
+    requiredListFileInputRequiredCompanionsIndex: {
+      description: "Companion resource for requiredListFileInputRequiredCompanions",
       localization_optional : true 
     }
-    requiredScalarFileOutput: { description: "requiredScalarFileOutput doc" }
-    requiredScalarFileOutputDictionary: { description: "Companion resource for requiredScalarFileOutput" }
-    requiredScalarFileOutputIndex: { description: "Companion resource for requiredScalarFileOutput" }
+    requiredListFileOutputNoCompanions: { description: "requiredListFileOutputNoCompanions doc" }
+    requiredListFileOutputOptionalCompanions: { description: "requiredListFileOutputOptionalCompanions doc" }
+    requiredListFileOutputOptionalCompanionsDictionary: { description: "Companion resource for requiredListFileOutputOptionalCompanions" }
+    requiredListFileOutputOptionalCompanionsIndex: { description: "Companion resource for requiredListFileOutputOptionalCompanions" }
+    requiredListFileOutputRequiredCompanions: { description: "requiredListFileOutputRequiredCompanions doc" }
+    requiredListFileOutputRequiredCompanionsDictionary: { description: "Companion resource for requiredListFileOutputRequiredCompanions" }
+    requiredListFileOutputRequiredCompanionsIndex: { description: "Companion resource for requiredListFileOutputRequiredCompanions" }
+    requiredScalarFileInputNoCompanions: { description: "requiredScalarFileInputNoCompanions doc" }
+    requiredScalarFileInputOptionalCompanions: {
+      description: "requiredScalarFileInputOptionalCompanions doc",
+      localization_optional : true 
+    }
+    requiredScalarFileInputOptionalCompanionsDictionary: {
+      description: "Companion resource for requiredScalarFileInputOptionalCompanions",
+      localization_optional : true 
+    }
+    requiredScalarFileInputOptionalCompanionsIndex: {
+      description: "Companion resource for requiredScalarFileInputOptionalCompanions",
+      localization_optional : true 
+    }
+    requiredScalarFileInputRequiredCompanions: {
+      description: "requiredScalarFileInputRequiredCompanions doc",
+      localization_optional : true 
+    }
+    requiredScalarFileInputRequiredCompanionsDictionary: {
+      description: "Companion resource for requiredScalarFileInputRequiredCompanions",
+      localization_optional : true 
+    }
+    requiredScalarFileInputRequiredCompanionsIndex: {
+      description: "Companion resource for requiredScalarFileInputRequiredCompanions",
+      localization_optional : true 
+    }
+    requiredScalarFileOutputNoCompanions: { description: "requiredScalarFileOutputNoCompanions doc" }
+    requiredScalarFileOutputOptionalCompanions: { description: "requiredScalarFileOutputOptionalCompanions doc" }
+    requiredScalarFileOutputOptionalCompanionsDictionary: { description: "Companion resource for requiredScalarFileOutputOptionalCompanions" }
+    requiredScalarFileOutputOptionalCompanionsIndex: { description: "Companion resource for requiredScalarFileOutputOptionalCompanions" }
+    requiredScalarFileOutputRequiredCompanions: { description: "requiredScalarFileOutputRequiredCompanions doc" }
+    requiredScalarFileOutputRequiredCompanionsDictionary: { description: "Companion resource for requiredScalarFileOutputRequiredCompanions" }
+    requiredScalarFileOutputRequiredCompanionsIndex: { description: "Companion resource for requiredScalarFileOutputRequiredCompanions" }
 
     # Optional Tool Arguments
-    optionaldListFileOutput: { description: "optionalListFileOutput doc" }
-    optionalListFileOutputDictionary: { description: "Companion resource for optionaldListFileOutput" }
-    optionalListFileOutputIndex: { description: "Companion resource for optionaldListFileOutput" }
-    optionaldScalarFileOutput: { description: "optionalScalarFileOutput doc" }
-    optionalScalarFileOutputDictionary: { description: "Companion resource for optionaldScalarFileOutput" }
-    optionalScalarFileOutputIndex: { description: "Companion resource for optionaldScalarFileOutput" }
     optionalListDoubleInput: { description: "optionalListDoubleInput doc" }
-    optionalListFileInput: { description: "optionalListFileInput doc" }
-    optionalListFileInputDictionary: { description: "Companion resource for optionalListFileInput" }
-    optionalListFileInputIndex: { description: "Companion resource for optionalListFileInput" }
+    optionalListFileInputNoCompanions: { description: "optionalListFileInputNoCompanions doc" }
+    optionalListFileInputOptionalCompanions: { description: "optionalListFileInputOptionalCompanions doc" }
+    optionalListFileInputOptionalCompanionsDictionary: { description: "Companion resource for optionalListFileInputOptionalCompanions" }
+    optionalListFileInputOptionalCompanionsIndex: { description: "Companion resource for optionalListFileInputOptionalCompanions" }
+    optionalListFileInputRequiredCompanions: { description: "optionalListFileInputRequiredCompanions doc" }
+    optionalListFileInputRequiredCompanionsDictionary: { description: "Companion resource for optionalListFileInputRequiredCompanions" }
+    optionalListFileInputRequiredCompanionsIndex: { description: "Companion resource for optionalListFileInputRequiredCompanions" }
+    optionalListFileOutputRequiredCompanions: { description: "optionalListFileOutputRequiredCompanions doc" }
+    optionalListFileOutputRequiredCompanionsDictionary: { description: "Companion resource for optionalListFileOutputRequiredCompanions" }
+    optionalListFileOutputRequiredCompanionsIndex: { description: "Companion resource for optionalListFileOutputRequiredCompanions" }
     optionalListFloatInput: { description: "optionalListFloatInput doc" }
     optionalListIntegerInput: { description: "optionalListIntegerInput doc" }
     optionalListLongInput: { description: "optionalListLongInput doc" }
     optionalListStringInput: { description: "optionalListStringInput doc" }
     optionalScalarDoubleInput: { description: "optionalScalarDoubleInput doc" }
     optionalScalarDoublePrimitiveInput: { description: "optionalScalarDoublePrimitiveInput doc" }
-    optionalScalarFileInput: { description: "optionalScalarFileInput doc" }
-    optionalScalarFileInputDictionary: { description: "Companion resource for optionalScalarFileInput" }
-    optionalScalarFileInputIndex: { description: "Companion resource for optionalScalarFileInput" }
+    optionalScalarFileInputNoCompanions: { description: "optionalScalarFileInputNoCompanions doc" }
+    optionalScalarFileInputOptionalCompanions: { description: "optionalScalarFileInputOptionalCompanions doc" }
+    optionalScalarFileInputOptionalCompanionsDictionary: { description: "Companion resource for optionalScalarFileInputOptionalCompanions" }
+    optionalScalarFileInputOptionalCompanionsIndex: { description: "Companion resource for optionalScalarFileInputOptionalCompanions" }
+    optionalScalarFileInputRequiredCompanions: { description: "optionalScalarFileInputRequiredCompanions doc" }
+    optionalScalarFileInputRequiredCompanionsDictionary: { description: "Companion resource for optionalScalarFileInputRequiredCompanions" }
+    optionalScalarFileInputRequiredCompanionsIndex: { description: "Companion resource for optionalScalarFileInputRequiredCompanions" }
+    optionalScalarFileOutputNoCompanions: { description: "optionalScalarFileOutputNoCompanions doc" }
+    optionalScalarFileOutputOptionalCompanions: { description: "optionalScalarFileOutputOptionalCompanions doc" }
+    optionalScalarFileOutputOptionalCompanionsDictionary: { description: "Companion resource for optionalScalarFileOutputOptionalCompanions" }
+    optionalScalarFileOutputOptionalCompanionsIndex: { description: "Companion resource for optionalScalarFileOutputOptionalCompanions" }
+    optionalScalarFileOutputRequiredCompanions: { description: "optionalScalarFileOutputRequiredCompanions doc" }
+    optionalScalarFileOutputRequiredCompanionsDictionary: { description: "Companion resource for optionalScalarFileOutputRequiredCompanions" }
+    optionalScalarFileOutputRequiredCompanionsIndex: { description: "Companion resource for optionalScalarFileOutputRequiredCompanions" }
     optionalScalarFloatInput: { description: "optionalScalarFloatInput doc" }
     optionalScalarFloatPrimitiveInput: { description: "optionalScalarFloatPrimitiveInput doc" }
     optionalScalarIntegerInput: { description: "optionalScalarIntegerInput doc" }
@@ -300,37 +442,65 @@ task TestWDLTool {
     String preemptibleRequirements
     String bootdisksizegbRequirements
     Array[File] positionalArgs
-    Array[File] requiredListFileInput
-    Array[File] requiredListFileInputDictionary
-    Array[File] requiredListFileInputIndex
-    Array[String] requiredListFileOutput
-    Array[String] requiredListFileOutputDictionary
-    Array[String] requiredListFileOutputIndex
-    File requiredScalarFileInput
-    File requiredScalarFileInputDictionary
-    File requiredScalarFileInputIndex
-    String requiredScalarFileOutput
-    String requiredScalarFileOutputDictionary
-    String requiredScalarFileOutputIndex
-    Array[String]? optionaldListFileOutput
-    Array[String]? optionalListFileOutputDictionary
-    Array[String]? optionalListFileOutputIndex
-    String? optionaldScalarFileOutput
-    String? optionalScalarFileOutputDictionary
-    String? optionalScalarFileOutputIndex
+    Array[File] requiredListFileInputNoCompanions
+    Array[File] requiredListFileInputOptionalCompanions
+    Array[File]? requiredListFileInputOptionalCompanionsDictionary
+    Array[File]? requiredListFileInputOptionalCompanionsIndex
+    Array[File] requiredListFileInputRequiredCompanions
+    Array[File] requiredListFileInputRequiredCompanionsDictionary
+    Array[File] requiredListFileInputRequiredCompanionsIndex
+    Array[String] requiredListFileOutputNoCompanions
+    Array[String] requiredListFileOutputOptionalCompanions
+    Array[String]? requiredListFileOutputOptionalCompanionsDictionary
+    Array[String]? requiredListFileOutputOptionalCompanionsIndex
+    Array[String] requiredListFileOutputRequiredCompanions
+    Array[String] requiredListFileOutputRequiredCompanionsDictionary
+    Array[String] requiredListFileOutputRequiredCompanionsIndex
+    File requiredScalarFileInputNoCompanions
+    File requiredScalarFileInputOptionalCompanions
+    File? requiredScalarFileInputOptionalCompanionsDictionary
+    File? requiredScalarFileInputOptionalCompanionsIndex
+    File requiredScalarFileInputRequiredCompanions
+    File requiredScalarFileInputRequiredCompanionsDictionary
+    File requiredScalarFileInputRequiredCompanionsIndex
+    String requiredScalarFileOutputNoCompanions
+    String requiredScalarFileOutputOptionalCompanions
+    String? requiredScalarFileOutputOptionalCompanionsDictionary
+    String? requiredScalarFileOutputOptionalCompanionsIndex
+    String requiredScalarFileOutputRequiredCompanions
+    String requiredScalarFileOutputRequiredCompanionsDictionary
+    String requiredScalarFileOutputRequiredCompanionsIndex
     Array[Float]? optionalListDoubleInput
-    Array[File]? optionalListFileInput
-    Array[File]? optionalListFileInputDictionary
-    Array[File]? optionalListFileInputIndex
+    Array[File]? optionalListFileInputNoCompanions
+    Array[File]? optionalListFileInputOptionalCompanions
+    Array[File]? optionalListFileInputOptionalCompanionsDictionary
+    Array[File]? optionalListFileInputOptionalCompanionsIndex
+    Array[File]? optionalListFileInputRequiredCompanions
+    Array[File]? optionalListFileInputRequiredCompanionsDictionary
+    Array[File]? optionalListFileInputRequiredCompanionsIndex
+    Array[String]? optionalListFileOutputRequiredCompanions
+    Array[String]? optionalListFileOutputRequiredCompanionsDictionary
+    Array[String]? optionalListFileOutputRequiredCompanionsIndex
     Array[Float]? optionalListFloatInput
     Array[Int]? optionalListIntegerInput
     Array[Int]? optionalListLongInput
     Array[String]? optionalListStringInput
     Float? optionalScalarDoubleInput
     Float? optionalScalarDoublePrimitiveInput
-    File? optionalScalarFileInput
-    File? optionalScalarFileInputDictionary
-    File? optionalScalarFileInputIndex
+    File? optionalScalarFileInputNoCompanions
+    File? optionalScalarFileInputOptionalCompanions
+    File? optionalScalarFileInputOptionalCompanionsDictionary
+    File? optionalScalarFileInputOptionalCompanionsIndex
+    File? optionalScalarFileInputRequiredCompanions
+    File? optionalScalarFileInputRequiredCompanionsDictionary
+    File? optionalScalarFileInputRequiredCompanionsIndex
+    String? optionalScalarFileOutputNoCompanions
+    String? optionalScalarFileOutputOptionalCompanions
+    String? optionalScalarFileOutputOptionalCompanionsDictionary
+    String? optionalScalarFileOutputOptionalCompanionsIndex
+    String? optionalScalarFileOutputRequiredCompanions
+    String? optionalScalarFileOutputRequiredCompanionsDictionary
+    String? optionalScalarFileOutputRequiredCompanionsIndex
     Float? optionalScalarFloatInput
     Float? optionalScalarFloatPrimitiveInput
     Int? optionalScalarIntegerInput
@@ -344,21 +514,35 @@ task TestWDLTool {
   command <<<
     ~{gatk} TestWDLTool \
     ~{sep=' ' positionalArgs} \
-    --requiredListFileInput ~{sep=' --requiredListFileInput ' requiredListFileInput} \
-    --requiredListFileOutput ~{sep=' --requiredListFileOutput ' requiredListFileOutput} \
-    --requiredScalarFileInput ~{sep=' --requiredScalarFileInput ' requiredScalarFileInput} \
-    --requiredScalarFileOutput ~{sep=' --requiredScalarFileOutput ' requiredScalarFileOutput} \
-    ~{true='--optionaldListFileOutput ' false='' defined(optionaldListFileOutput)}~{sep=' --optionaldListFileOutput ' optionaldListFileOutput} \
-    ~{true='--optionaldScalarFileOutput ' false='' defined(optionaldScalarFileOutput)}~{sep=' --optionaldScalarFileOutput ' optionaldScalarFileOutput} \
+    --requiredListFileInputNoCompanions ~{sep=' --requiredListFileInputNoCompanions ' requiredListFileInputNoCompanions} \
+    --requiredListFileInputOptionalCompanions ~{sep=' --requiredListFileInputOptionalCompanions ' requiredListFileInputOptionalCompanions} \
+    --requiredListFileInputRequiredCompanions ~{sep=' --requiredListFileInputRequiredCompanions ' requiredListFileInputRequiredCompanions} \
+    --requiredListFileOutputNoCompanions ~{sep=' --requiredListFileOutputNoCompanions ' requiredListFileOutputNoCompanions} \
+    --requiredListFileOutputOptionalCompanions ~{sep=' --requiredListFileOutputOptionalCompanions ' requiredListFileOutputOptionalCompanions} \
+    --requiredListFileOutputRequiredCompanions ~{sep=' --requiredListFileOutputRequiredCompanions ' requiredListFileOutputRequiredCompanions} \
+    --requiredScalarFileInputNoCompanions ~{sep=' --requiredScalarFileInputNoCompanions ' requiredScalarFileInputNoCompanions} \
+    --requiredScalarFileInputOptionalCompanions ~{sep=' --requiredScalarFileInputOptionalCompanions ' requiredScalarFileInputOptionalCompanions} \
+    --requiredScalarFileInputRequiredCompanions ~{sep=' --requiredScalarFileInputRequiredCompanions ' requiredScalarFileInputRequiredCompanions} \
+    --requiredScalarFileOutputNoCompanions ~{sep=' --requiredScalarFileOutputNoCompanions ' requiredScalarFileOutputNoCompanions} \
+    --requiredScalarFileOutputOptionalCompanions ~{sep=' --requiredScalarFileOutputOptionalCompanions ' requiredScalarFileOutputOptionalCompanions} \
+    --requiredScalarFileOutputRequiredCompanions ~{sep=' --requiredScalarFileOutputRequiredCompanions ' requiredScalarFileOutputRequiredCompanions} \
     ~{true='--optionalListDoubleInput ' false='' defined(optionalListDoubleInput)}~{sep=' --optionalListDoubleInput ' optionalListDoubleInput} \
-    ~{true='--optionalListFileInput ' false='' defined(optionalListFileInput)}~{sep=' --optionalListFileInput ' optionalListFileInput} \
+    ~{true='--optionalListFileInputNoCompanions ' false='' defined(optionalListFileInputNoCompanions)}~{sep=' --optionalListFileInputNoCompanions ' optionalListFileInputNoCompanions} \
+    ~{true='--optionalListFileInputOptionalCompanions ' false='' defined(optionalListFileInputOptionalCompanions)}~{sep=' --optionalListFileInputOptionalCompanions ' optionalListFileInputOptionalCompanions} \
+    ~{true='--optionalListFileInputRequiredCompanions ' false='' defined(optionalListFileInputRequiredCompanions)}~{sep=' --optionalListFileInputRequiredCompanions ' optionalListFileInputRequiredCompanions} \
+    ~{true='--optionalListFileOutputRequiredCompanions ' false='' defined(optionalListFileOutputRequiredCompanions)}~{sep=' --optionalListFileOutputRequiredCompanions ' optionalListFileOutputRequiredCompanions} \
     ~{true='--optionalListFloatInput ' false='' defined(optionalListFloatInput)}~{sep=' --optionalListFloatInput ' optionalListFloatInput} \
     ~{true='--optionalListIntegerInput ' false='' defined(optionalListIntegerInput)}~{sep=' --optionalListIntegerInput ' optionalListIntegerInput} \
     ~{true='--optionalListLongInput ' false='' defined(optionalListLongInput)}~{sep=' --optionalListLongInput ' optionalListLongInput} \
     ~{true='--optionalListStringInput ' false='' defined(optionalListStringInput)}~{sep=' --optionalListStringInput ' optionalListStringInput} \
     ~{true='--optionalScalarDoubleInput ' false='' defined(optionalScalarDoubleInput)}~{sep=' --optionalScalarDoubleInput ' optionalScalarDoubleInput} \
     ~{true='--optionalScalarDoublePrimitiveInput ' false='' defined(optionalScalarDoublePrimitiveInput)}~{sep=' --optionalScalarDoublePrimitiveInput ' optionalScalarDoublePrimitiveInput} \
-    ~{true='--optionalScalarFileInput ' false='' defined(optionalScalarFileInput)}~{sep=' --optionalScalarFileInput ' optionalScalarFileInput} \
+    ~{true='--optionalScalarFileInputNoCompanions ' false='' defined(optionalScalarFileInputNoCompanions)}~{sep=' --optionalScalarFileInputNoCompanions ' optionalScalarFileInputNoCompanions} \
+    ~{true='--optionalScalarFileInputOptionalCompanions ' false='' defined(optionalScalarFileInputOptionalCompanions)}~{sep=' --optionalScalarFileInputOptionalCompanions ' optionalScalarFileInputOptionalCompanions} \
+    ~{true='--optionalScalarFileInputRequiredCompanions ' false='' defined(optionalScalarFileInputRequiredCompanions)}~{sep=' --optionalScalarFileInputRequiredCompanions ' optionalScalarFileInputRequiredCompanions} \
+    ~{true='--optionalScalarFileOutputNoCompanions ' false='' defined(optionalScalarFileOutputNoCompanions)}~{sep=' --optionalScalarFileOutputNoCompanions ' optionalScalarFileOutputNoCompanions} \
+    ~{true='--optionalScalarFileOutputOptionalCompanions ' false='' defined(optionalScalarFileOutputOptionalCompanions)}~{sep=' --optionalScalarFileOutputOptionalCompanions ' optionalScalarFileOutputOptionalCompanions} \
+    ~{true='--optionalScalarFileOutputRequiredCompanions ' false='' defined(optionalScalarFileOutputRequiredCompanions)}~{sep=' --optionalScalarFileOutputRequiredCompanions ' optionalScalarFileOutputRequiredCompanions} \
     ~{true='--optionalScalarFloatInput ' false='' defined(optionalScalarFloatInput)}~{sep=' --optionalScalarFloatInput ' optionalScalarFloatInput} \
     ~{true='--optionalScalarFloatPrimitiveInput ' false='' defined(optionalScalarFloatPrimitiveInput)}~{sep=' --optionalScalarFloatPrimitiveInput ' optionalScalarFloatPrimitiveInput} \
     ~{true='--optionalScalarIntegerInput ' false='' defined(optionalScalarIntegerInput)}~{sep=' --optionalScalarIntegerInput ' optionalScalarIntegerInput} \
@@ -380,18 +564,30 @@ task TestWDLTool {
 
   output {
     # Task Outputs                                      
-    File TestWDLTool_requiredScalarFileOutput = requiredScalarFileOutput
-    File TestWDLTool_requiredScalarFileOutputDictionary = requiredScalarFileOutputDictionary
-    File TestWDLTool_requiredScalarFileOutputIndex = requiredScalarFileOutputIndex
-    Array[File] TestWDLTool_requiredListFileOutput = requiredListFileOutput
-    Array[File] TestWDLTool_requiredListFileOutputDictionary = requiredListFileOutputDictionary
-    Array[File] TestWDLTool_requiredListFileOutputIndex = requiredListFileOutputIndex
-    File? TestWDLTool_optionaldScalarFileOutput = optionaldScalarFileOutput
-    File? TestWDLTool_optionalScalarFileOutputDictionary = optionalScalarFileOutputDictionary
-    File? TestWDLTool_optionalScalarFileOutputIndex = optionalScalarFileOutputIndex
-    Array[File]? TestWDLTool_optionaldListFileOutput = optionaldListFileOutput
-    Array[File]? TestWDLTool_optionalListFileOutputDictionary = optionalListFileOutputDictionary
-    Array[File]? TestWDLTool_optionalListFileOutputIndex = optionalListFileOutputIndex
+    File TestWDLTool_requiredScalarFileOutputNoCompanions = requiredScalarFileOutputNoCompanions
+    File TestWDLTool_requiredScalarFileOutputRequiredCompanions = requiredScalarFileOutputRequiredCompanions
+    File TestWDLTool_requiredScalarFileOutputRequiredCompanionsDictionary = requiredScalarFileOutputRequiredCompanionsDictionary
+    File TestWDLTool_requiredScalarFileOutputRequiredCompanionsIndex = requiredScalarFileOutputRequiredCompanionsIndex
+    File TestWDLTool_requiredScalarFileOutputOptionalCompanions = requiredScalarFileOutputOptionalCompanions
+    File? TestWDLTool_requiredScalarFileOutputOptionalCompanionsDictionary = requiredScalarFileOutputOptionalCompanionsDictionary
+    File? TestWDLTool_requiredScalarFileOutputOptionalCompanionsIndex = requiredScalarFileOutputOptionalCompanionsIndex
+    Array[File] TestWDLTool_requiredListFileOutputNoCompanions = requiredListFileOutputNoCompanions
+    Array[File] TestWDLTool_requiredListFileOutputRequiredCompanions = requiredListFileOutputRequiredCompanions
+    Array[File] TestWDLTool_requiredListFileOutputRequiredCompanionsDictionary = requiredListFileOutputRequiredCompanionsDictionary
+    Array[File] TestWDLTool_requiredListFileOutputRequiredCompanionsIndex = requiredListFileOutputRequiredCompanionsIndex
+    Array[File] TestWDLTool_requiredListFileOutputOptionalCompanions = requiredListFileOutputOptionalCompanions
+    Array[File]? TestWDLTool_requiredListFileOutputOptionalCompanionsDictionary = requiredListFileOutputOptionalCompanionsDictionary
+    Array[File]? TestWDLTool_requiredListFileOutputOptionalCompanionsIndex = requiredListFileOutputOptionalCompanionsIndex
+    File? TestWDLTool_optionalScalarFileOutputNoCompanions = optionalScalarFileOutputNoCompanions
+    File? TestWDLTool_optionalScalarFileOutputRequiredCompanions = optionalScalarFileOutputRequiredCompanions
+    File? TestWDLTool_optionalScalarFileOutputRequiredCompanionsDictionary = optionalScalarFileOutputRequiredCompanionsDictionary
+    File? TestWDLTool_optionalScalarFileOutputRequiredCompanionsIndex = optionalScalarFileOutputRequiredCompanionsIndex
+    File? TestWDLTool_optionalScalarFileOutputOptionalCompanions = optionalScalarFileOutputOptionalCompanions
+    File? TestWDLTool_optionalScalarFileOutputOptionalCompanionsDictionary = optionalScalarFileOutputOptionalCompanionsDictionary
+    File? TestWDLTool_optionalScalarFileOutputOptionalCompanionsIndex = optionalScalarFileOutputOptionalCompanionsIndex
+    Array[File]? TestWDLTool_optionalListFileOutputRequiredCompanions = optionalListFileOutputRequiredCompanions
+    Array[File]? TestWDLTool_optionalListFileOutputRequiredCompanionsDictionary = optionalListFileOutputRequiredCompanionsDictionary
+    Array[File]? TestWDLTool_optionalListFileOutputRequiredCompanionsIndex = optionalListFileOutputRequiredCompanionsIndex
   }
 
   parameter_meta {
@@ -409,57 +605,103 @@ task TestWDLTool {
     posIndex: { description: "Companion resource for positionalArgs" }
 
     # Required Arguments
-    requiredListFileInput: {
-      description: "requiredListFileInput doc",
+    requiredListFileInputNoCompanions: { description: "requiredListFileInputNoCompanions doc" }
+    requiredListFileInputOptionalCompanions: {
+      description: "requiredListFileInputOptionalCompanions doc",
       localization_optional : true 
     }
-    requiredListFileInputDictionary: {
-      description: "Companion resource for requiredListFileInput",
+    requiredListFileInputOptionalCompanionsDictionary: {
+      description: "Companion resource for requiredListFileInputOptionalCompanions",
       localization_optional : true 
     }
-    requiredListFileInputIndex: {
-      description: "Companion resource for requiredListFileInput",
+    requiredListFileInputOptionalCompanionsIndex: {
+      description: "Companion resource for requiredListFileInputOptionalCompanions",
       localization_optional : true 
     }
-    requiredListFileOutput: { description: "requiredListFileOutput doc" }
-    requiredListFileOutputDictionary: { description: "Companion resource for requiredListFileOutput" }
-    requiredListFileOutputIndex: { description: "Companion resource for requiredListFileOutput" }
-    requiredScalarFileInput: {
-      description: "requiredScalarFileInput doc",
+    requiredListFileInputRequiredCompanions: {
+      description: "requiredListFileInputRequiredCompanions doc",
       localization_optional : true 
     }
-    requiredScalarFileInputDictionary: {
-      description: "Companion resource for requiredScalarFileInput",
+    requiredListFileInputRequiredCompanionsDictionary: {
+      description: "Companion resource for requiredListFileInputRequiredCompanions",
       localization_optional : true 
     }
-    requiredScalarFileInputIndex: {
-      description: "Companion resource for requiredScalarFileInput",
+    requiredListFileInputRequiredCompanionsIndex: {
+      description: "Companion resource for requiredListFileInputRequiredCompanions",
       localization_optional : true 
     }
-    requiredScalarFileOutput: { description: "requiredScalarFileOutput doc" }
-    requiredScalarFileOutputDictionary: { description: "Companion resource for requiredScalarFileOutput" }
-    requiredScalarFileOutputIndex: { description: "Companion resource for requiredScalarFileOutput" }
+    requiredListFileOutputNoCompanions: { description: "requiredListFileOutputNoCompanions doc" }
+    requiredListFileOutputOptionalCompanions: { description: "requiredListFileOutputOptionalCompanions doc" }
+    requiredListFileOutputOptionalCompanionsDictionary: { description: "Companion resource for requiredListFileOutputOptionalCompanions" }
+    requiredListFileOutputOptionalCompanionsIndex: { description: "Companion resource for requiredListFileOutputOptionalCompanions" }
+    requiredListFileOutputRequiredCompanions: { description: "requiredListFileOutputRequiredCompanions doc" }
+    requiredListFileOutputRequiredCompanionsDictionary: { description: "Companion resource for requiredListFileOutputRequiredCompanions" }
+    requiredListFileOutputRequiredCompanionsIndex: { description: "Companion resource for requiredListFileOutputRequiredCompanions" }
+    requiredScalarFileInputNoCompanions: { description: "requiredScalarFileInputNoCompanions doc" }
+    requiredScalarFileInputOptionalCompanions: {
+      description: "requiredScalarFileInputOptionalCompanions doc",
+      localization_optional : true 
+    }
+    requiredScalarFileInputOptionalCompanionsDictionary: {
+      description: "Companion resource for requiredScalarFileInputOptionalCompanions",
+      localization_optional : true 
+    }
+    requiredScalarFileInputOptionalCompanionsIndex: {
+      description: "Companion resource for requiredScalarFileInputOptionalCompanions",
+      localization_optional : true 
+    }
+    requiredScalarFileInputRequiredCompanions: {
+      description: "requiredScalarFileInputRequiredCompanions doc",
+      localization_optional : true 
+    }
+    requiredScalarFileInputRequiredCompanionsDictionary: {
+      description: "Companion resource for requiredScalarFileInputRequiredCompanions",
+      localization_optional : true 
+    }
+    requiredScalarFileInputRequiredCompanionsIndex: {
+      description: "Companion resource for requiredScalarFileInputRequiredCompanions",
+      localization_optional : true 
+    }
+    requiredScalarFileOutputNoCompanions: { description: "requiredScalarFileOutputNoCompanions doc" }
+    requiredScalarFileOutputOptionalCompanions: { description: "requiredScalarFileOutputOptionalCompanions doc" }
+    requiredScalarFileOutputOptionalCompanionsDictionary: { description: "Companion resource for requiredScalarFileOutputOptionalCompanions" }
+    requiredScalarFileOutputOptionalCompanionsIndex: { description: "Companion resource for requiredScalarFileOutputOptionalCompanions" }
+    requiredScalarFileOutputRequiredCompanions: { description: "requiredScalarFileOutputRequiredCompanions doc" }
+    requiredScalarFileOutputRequiredCompanionsDictionary: { description: "Companion resource for requiredScalarFileOutputRequiredCompanions" }
+    requiredScalarFileOutputRequiredCompanionsIndex: { description: "Companion resource for requiredScalarFileOutputRequiredCompanions" }
 
     # Optional Tool Arguments
-    optionaldListFileOutput: { description: "optionalListFileOutput doc" }
-    optionalListFileOutputDictionary: { description: "Companion resource for optionaldListFileOutput" }
-    optionalListFileOutputIndex: { description: "Companion resource for optionaldListFileOutput" }
-    optionaldScalarFileOutput: { description: "optionalScalarFileOutput doc" }
-    optionalScalarFileOutputDictionary: { description: "Companion resource for optionaldScalarFileOutput" }
-    optionalScalarFileOutputIndex: { description: "Companion resource for optionaldScalarFileOutput" }
     optionalListDoubleInput: { description: "optionalListDoubleInput doc" }
-    optionalListFileInput: { description: "optionalListFileInput doc" }
-    optionalListFileInputDictionary: { description: "Companion resource for optionalListFileInput" }
-    optionalListFileInputIndex: { description: "Companion resource for optionalListFileInput" }
+    optionalListFileInputNoCompanions: { description: "optionalListFileInputNoCompanions doc" }
+    optionalListFileInputOptionalCompanions: { description: "optionalListFileInputOptionalCompanions doc" }
+    optionalListFileInputOptionalCompanionsDictionary: { description: "Companion resource for optionalListFileInputOptionalCompanions" }
+    optionalListFileInputOptionalCompanionsIndex: { description: "Companion resource for optionalListFileInputOptionalCompanions" }
+    optionalListFileInputRequiredCompanions: { description: "optionalListFileInputRequiredCompanions doc" }
+    optionalListFileInputRequiredCompanionsDictionary: { description: "Companion resource for optionalListFileInputRequiredCompanions" }
+    optionalListFileInputRequiredCompanionsIndex: { description: "Companion resource for optionalListFileInputRequiredCompanions" }
+    optionalListFileOutputRequiredCompanions: { description: "optionalListFileOutputRequiredCompanions doc" }
+    optionalListFileOutputRequiredCompanionsDictionary: { description: "Companion resource for optionalListFileOutputRequiredCompanions" }
+    optionalListFileOutputRequiredCompanionsIndex: { description: "Companion resource for optionalListFileOutputRequiredCompanions" }
     optionalListFloatInput: { description: "optionalListFloatInput doc" }
     optionalListIntegerInput: { description: "optionalListIntegerInput doc" }
     optionalListLongInput: { description: "optionalListLongInput doc" }
     optionalListStringInput: { description: "optionalListStringInput doc" }
     optionalScalarDoubleInput: { description: "optionalScalarDoubleInput doc" }
     optionalScalarDoublePrimitiveInput: { description: "optionalScalarDoublePrimitiveInput doc" }
-    optionalScalarFileInput: { description: "optionalScalarFileInput doc" }
-    optionalScalarFileInputDictionary: { description: "Companion resource for optionalScalarFileInput" }
-    optionalScalarFileInputIndex: { description: "Companion resource for optionalScalarFileInput" }
+    optionalScalarFileInputNoCompanions: { description: "optionalScalarFileInputNoCompanions doc" }
+    optionalScalarFileInputOptionalCompanions: { description: "optionalScalarFileInputOptionalCompanions doc" }
+    optionalScalarFileInputOptionalCompanionsDictionary: { description: "Companion resource for optionalScalarFileInputOptionalCompanions" }
+    optionalScalarFileInputOptionalCompanionsIndex: { description: "Companion resource for optionalScalarFileInputOptionalCompanions" }
+    optionalScalarFileInputRequiredCompanions: { description: "optionalScalarFileInputRequiredCompanions doc" }
+    optionalScalarFileInputRequiredCompanionsDictionary: { description: "Companion resource for optionalScalarFileInputRequiredCompanions" }
+    optionalScalarFileInputRequiredCompanionsIndex: { description: "Companion resource for optionalScalarFileInputRequiredCompanions" }
+    optionalScalarFileOutputNoCompanions: { description: "optionalScalarFileOutputNoCompanions doc" }
+    optionalScalarFileOutputOptionalCompanions: { description: "optionalScalarFileOutputOptionalCompanions doc" }
+    optionalScalarFileOutputOptionalCompanionsDictionary: { description: "Companion resource for optionalScalarFileOutputOptionalCompanions" }
+    optionalScalarFileOutputOptionalCompanionsIndex: { description: "Companion resource for optionalScalarFileOutputOptionalCompanions" }
+    optionalScalarFileOutputRequiredCompanions: { description: "optionalScalarFileOutputRequiredCompanions doc" }
+    optionalScalarFileOutputRequiredCompanionsDictionary: { description: "Companion resource for optionalScalarFileOutputRequiredCompanions" }
+    optionalScalarFileOutputRequiredCompanionsIndex: { description: "Companion resource for optionalScalarFileOutputRequiredCompanions" }
     optionalScalarFloatInput: { description: "optionalScalarFloatInput doc" }
     optionalScalarFloatPrimitiveInput: { description: "optionalScalarFloatPrimitiveInput doc" }
     optionalScalarIntegerInput: { description: "optionalScalarIntegerInput doc" }
