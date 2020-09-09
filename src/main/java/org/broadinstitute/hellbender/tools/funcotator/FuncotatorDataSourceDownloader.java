@@ -71,19 +71,17 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
     //==================================================================================================================
     // Private Static Members:
 
-    private static String BASE_URL = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.7.20200521";
+    private static final String BASE_URL = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.7.20200521";
 
-    private static String GERMLINE_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + "g";
+    private static final String GERMLINE_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + "g";
     @VisibleForTesting
-    static Path   GERMLINE_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + ".tar.gz");
-    @VisibleForTesting
-    static Path   GERMLINE_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + ".sha256");
+    static final Path   GERMLINE_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + ".tar.gz");
+    private static final Path   GERMLINE_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + ".sha256");
 
-    public static String SOMATIC_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + "s";
+    public static final String SOMATIC_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + "s";
 
-    public static Path   SOMATIC_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + ".tar.gz");
-    @VisibleForTesting
-    static Path   SOMATIC_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + ".sha256");
+    public static final Path   SOMATIC_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + ".tar.gz");
+    private static final Path   SOMATIC_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + ".sha256");
 
     //==================================================================================================================
     // Private Members:
