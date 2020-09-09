@@ -41,6 +41,7 @@ releases of the toolkit.
     * [Building GATK4 Docker images](#docker_building)
     * [Releasing GATK4](#releasing_gatk)
     * [Generating GATK4 documentation](#gatkdocs)
+    * [Generating GATK4 WDL Wrappers](#gatkwdlgen)
     * [Using Zenhub to track github issues](#zenhub)
 * [Further Reading on Spark](#spark_further_reading)
 * [How to contribute to GATK](#contribute)
@@ -556,6 +557,20 @@ Please see the [How to release GATK4](https://github.com/broadinstitute/gatk/wik
 To generate GATK documentation, run `./gradlew gatkDoc`
 
 * Generated docs will be in the `build/docs/gatkdoc` directory.
+
+#### <a name="gatkwdlgen">Generating GATK4 WDL Wrappers</a>
+
+* A WDL wrapper can be generated for any GATK4 tool that is annotated for WDL generation (see the wiki article
+[How to Prepare a GATK tool for WDL Auto Generation](https://github.com/broadinstitute/gatk/wiki/How-to-Prepare-a-GATK-tool-for-WDL-Auto-Generation))
+to learn more about WDL annotations.
+
+* To generate the WDL Wrappers, run `./gradlew gatkWDLGen`. The generated WDLs and accompanying JSON input files can
+be found in the `build/docs/wdlGen` folder.
+
+* To generate WDL Wrappers and validate the resulting outputs, run `./gradlew gatkWDLGenValidation`.
+Running this task requires a local [cromwell](https://github.com/broadinstitute/cromwell) installation, and environment
+variables `CROMWELL_JAR` and `WOMTOOL_JAR` to be set to the full pathnames of the `cromwell` and `womtool` jar files.
+If no local install is available, this task will run automatically on travis in a separate job whenever a PR is submitted.
 
 #### <a name="zenhub">Using Zenhub to track github issues</a>
 
