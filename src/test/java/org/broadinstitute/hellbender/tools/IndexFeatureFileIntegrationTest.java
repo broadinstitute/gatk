@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gtf.EnsemblGtfCodec;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
@@ -31,6 +32,7 @@ import java.util.List;
 public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTest {
 
     final File ENSEMBL_GTF_TEST_FILE = new File(largeFileTestDir + "funcotator/ecoli_ds/gencode/ASM584v2/Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.44.gtf");
+    final File GENCODE_NEW_LIFTOVER_FILE = new File(largeFileTestDir + "funcotator/gencode.v34lift37.annotation.REORDERED.excerpt.gtf");
 
     @Test
     public void testVCFIndex() {
@@ -488,5 +490,25 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
                 Assert.assertEquals(feature.getGeneName(), expectedGeneNames[ i ]);
             }
         }
+    }
+
+    @Test
+    public void testNewGencodeLiftoverGtfFile() {
+        // The latest gencode files for hg19 have slightly different header information and formatting
+        // than previous versions (first noticed for gencode v34).
+        // This is because they are lifting over the hg38 version to hg19.
+        // This test is designed to ensure that such a file can still be indexed with the
+        // gencode codec.
+
+        // Required Args:
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+
+        final File output = createTempFile(GENCODE_NEW_LIFTOVER_FILE.getName(), ".idx");
+
+        arguments.addInput(GENCODE_NEW_LIFTOVER_FILE);
+        arguments.addOutput(output.getAbsolutePath());
+
+        // Run the beast:
+        runCommandLine(arguments);
     }
 }
