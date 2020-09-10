@@ -12,10 +12,7 @@ import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.RandomDNA;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -726,7 +723,7 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "mappedGatkReadsData")
     public void testGetFirstAlignedBaseOffset(final GATKRead read) {
         final int actual = ReadUtils.getFirstAlignedBaseOffset(read);
-        final int expected = CigarUtils.countClippedBases(read.getCigar(), Tail.LEFT) - CigarUtils.countClippedBases(read.getCigar(), ClippingTail.LEFT_TAIL, CigarOperator.HARD_CLIP);
+        final int expected = CigarUtils.countClippedBases(read.getCigar(), Tail.LEFT) - CigarUtils.countClippedBases(read.getCigar(), Tail.LEFT, CigarOperator.HARD_CLIP);
         Assert.assertEquals(actual, expected);
     }
 
