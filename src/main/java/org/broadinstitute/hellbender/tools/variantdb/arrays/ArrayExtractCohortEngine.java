@@ -34,6 +34,9 @@ public class ArrayExtractCohortEngine {
 
     private final VariantContextWriter vcfWriter;
 
+    private final Integer minProbeId;
+    private final Integer maxProbeId;
+
     private final boolean useCompressedData;
     private final boolean printDebugInformation;
     private final int localSortMaxRecordsInRam;
@@ -61,6 +64,8 @@ public class ArrayExtractCohortEngine {
                                     final Map<Integer, String> sampleIdMap,
                                     final Map<Long, ProbeInfo> probeIdMap,
                                     final String cohortTableName,
+                                    final Integer minProbeId,
+                                    final Integer maxProbeId,
                                     final int localSortMaxRecordsInRam,
                                     final boolean useCompressedData,
                                     final boolean printDebugInformation,
@@ -80,7 +85,8 @@ public class ArrayExtractCohortEngine {
         this.probeIdMap = probeIdMap;
 
         this.cohortTableRef = new TableReference(cohortTableName, useCompressedData? SchemaUtils.RAW_ARRAY_COHORT_FIELDS_COMPRESSED:SchemaUtils.RAW_ARRAY_COHORT_FIELDS_UNCOMPRESSED);
-
+        this.minProbeId = minProbeId;
+        this.maxProbeId = maxProbeId;
         this.useCompressedData = useCompressedData;
         this.printDebugInformation = printDebugInformation;
         this.progressMeter = progressMeter;
@@ -97,7 +103,13 @@ public class ArrayExtractCohortEngine {
         if (printDebugInformation) {
             logger.debug("using storage api with local sort");
         }
-        final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef);
+
+        String rowRestriction = null;
+        if (minProbeId != null && maxProbeId != null) {
+            rowRestriction = "probe_id >= " + minProbeId + " AND probe_id <= " + maxProbeId;
+        }
+
+        final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction);
         createVariantsFromUngroupedTableResult(storageAPIAvroReader);
     }
 
