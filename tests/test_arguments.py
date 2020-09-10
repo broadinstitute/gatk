@@ -1,8 +1,8 @@
 import sys
 import mock
 import pytest
-from ml4cvd.arguments import parse_args, TMAPS
-from ml4cvd.test_utils import TMAPS as MOCK_TMAPS
+from ml4h.arguments import parse_args, TMAPS
+from ml4h.test_utils import TMAPS as MOCK_TMAPS
 
 
 @mock.patch.dict(TMAPS, MOCK_TMAPS)

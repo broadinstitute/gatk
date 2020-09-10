@@ -9,12 +9,12 @@ RUN pip3 uninstall -y enum34
 # local edits by placing it in the home directory with write access for
 # jupyter-user.
 USER $USER
-RUN mkdir -p $HOME/ml4cvd_pkg
-COPY --chown=jupyter-user:users ml4cvd $HOME/ml4cvd_pkg/ml4cvd
-COPY --chown=jupyter-user:users config $HOME/ml4cvd_pkg/config
-ENV PYTHONPATH $PYTHONPATH:$HOME/ml4cvd_pkg
+RUN mkdir -p $HOME/ml4h_pkg
+COPY --chown=jupyter-user:users ml4h $HOME/ml4h_pkg/ml4h
+COPY --chown=jupyter-user:users config $HOME/ml4h_pkg/config
+ENV PYTHONPATH $PYTHONPATH:$HOME/ml4h_pkg
 
-RUN pip3 install --user -r $HOME/ml4cvd_pkg/config/tensorflow-requirements.txt \
+RUN pip3 install --user -r $HOME/ml4h_pkg/config/tensorflow-requirements.txt \
   # Upgrade to a newer version so that %%bigquery does not print the
   # first few rows of the downloaded dataframe of query results.
   # Pin version due to https://github.com/googleapis/google-cloud-python/issues/9965

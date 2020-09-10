@@ -126,7 +126,7 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
     echo -e "\nLaunching job for sample IDs starting with $MIN_SAMPLE_ID and ending with $MAX_SAMPLE_ID via:"
 
         cat <<LAUNCH_CMDLINE_MESSAGE
-            $HOME/ml/scripts/tf.sh -r -c $HOME/ml/ml4cvd/recipes.py
+            $HOME/ml/scripts/tf.sh -r -c $HOME/ml/ml4h/recipes.py
                 --mode $TENSORIZE_MODE \
                 --tensors $TENSOR_PATH \
                 --output_folder $TENSOR_PATH \
@@ -135,7 +135,7 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
                 --max_sample_id $MAX_SAMPLE_ID &
 LAUNCH_CMDLINE_MESSAGE
 
-    $HOME/ml/scripts/tf.sh -r -c $HOME/ml/ml4cvd/recipes.py \
+    $HOME/ml/scripts/tf.sh -r -c $HOME/ml/ml4h/recipes.py \
 		--mode $TENSORIZE_MODE \
 		--tensors $TENSOR_PATH \
 		--output_folder $TENSOR_PATH \

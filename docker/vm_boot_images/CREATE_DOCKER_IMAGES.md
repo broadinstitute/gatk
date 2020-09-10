@@ -34,7 +34,7 @@ With [Homebrew](https://brew.sh/), you can use
     export MACHINE_TYPE=n1-standard-1
     export BASE_IMAGE=ubuntu-1804-bionic-v20190429
     export BASE_IMAGE_PROJECT=ubuntu-os-cloud
-    export CPU_IMAGE=ml4cvd-image
+    export CPU_IMAGE=ml4h-image
     export GPU_IMAGE=dl-image
     export CPU_VM=${USER}-create-cpu-image
     export CPU_TEST_VM=${USER}-test-cpu-image
@@ -173,7 +173,7 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
 * If you created a CPU image, that new image will be selected automatically because it is the latest
   one in the specified image family. Now, verify that the correct disk(s) are mounted and bucket(s) are `gcsfuse`d.
     ```
-    ls /mnt/ml4cvd && ls /mnt/disks/*
+    ls /mnt/ml4h && ls /mnt/disks/*
     ``` 
     
 * Set up your SSH keys on the VM for GitHub to be able to clone the `ml` repo.
@@ -199,7 +199,7 @@ instances from GCP's gcr.io. Run this while you're logged into your VM:
     ```
   You need to log out after that (`exit`) then ssh back in so everything takes effect.
 
-* Run the tests (`ml/ml4cvd/DATA_MODELING_TESTS.md`)
+* Run the tests (`ml/ml4h/DATA_MODELING_TESTS.md`)
 
 * Exit out of the VM and delete it:
     ```

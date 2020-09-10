@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/broadinstitute/ml4cvd/go/bulkprocess"
+	"github.com/broadinstitute/ml4h/go/bulkprocess"
 )
 
 var (

@@ -32,7 +32,7 @@ WITH oper4 AS (
       WHEN h.admidate IS NULL AND h.opdate IS NOT NULL THEN h.opdate 
       ELSE h.epistart
     END vdate
-  FROM `broad-ml4cvd.ukbb7089_201904.hesin_oper` sec 
+  FROM `broad-ml4cvd.ukbb7089_201904.hesin_oper` sec
   LEFT JOIN `broad-ml4cvd.ukbb7089_201904.hesin` h ON sec.eid=h.eid AND sec.record_id=h.record_id
   WHERE TRUE
     AND sec.oper4 IS NOT NULL
@@ -43,7 +43,7 @@ WITH oper4 AS (
       WHEN h.admidate IS NULL AND h.opdate IS NOT NULL THEN h.opdate 
       ELSE h.epistart
     END vdate
-  FROM `broad-ml4cvd.ukbb7089_201904.hesin_diag10` sec 
+  FROM `broad-ml4cvd.ukbb7089_201904.hesin_diag10` sec
   LEFT JOIN `broad-ml4cvd.ukbb7089_201904.hesin` h ON sec.eid=h.eid AND sec.record_id=h.record_id
   WHERE TRUE
     AND sec.diag_icd10 IS NOT NULL

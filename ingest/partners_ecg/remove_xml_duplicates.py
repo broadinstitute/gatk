@@ -15,7 +15,7 @@ def _parse_args():
 
     args = parser.parse_args()
 
-    # This is temporary becuase I can't figure out how to import load_config from ml4cvd.logger
+    # This is temporary becuase I can't figure out how to import load_config from ml4h.logger
     now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s",

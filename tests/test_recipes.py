@@ -3,17 +3,17 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from ml4cvd.recipes import inference_file_name, hidden_inference_file_name
-from ml4cvd.recipes import train_multimodal_multitask, compare_multimodal_multitask_models
-from ml4cvd.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
-from ml4cvd.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
-from ml4cvd.explorations import _continuous_explore_header, _categorical_explore_header, _should_error_detect, explore
+from ml4h.recipes import inference_file_name, hidden_inference_file_name
+from ml4h.recipes import train_multimodal_multitask, compare_multimodal_multitask_models
+from ml4h.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
+from ml4h.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
+from ml4h.explorations import _continuous_explore_header, _categorical_explore_header, _should_error_detect, explore
 # Imports with test in their name
-from ml4cvd.recipes import test_multimodal_multitask as tst_multimodal_multitask
-from ml4cvd.recipes import test_multimodal_scalar_tasks as tst_multimodal_scalar_tasks
-from ml4cvd.test_utils import TMAPS_UP_TO_4D
-from ml4cvd.test_utils import build_hdf5s
-from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4h.recipes import test_multimodal_multitask as tst_multimodal_multitask
+from ml4h.recipes import test_multimodal_scalar_tasks as tst_multimodal_scalar_tasks
+from ml4h.test_utils import TMAPS_UP_TO_4D
+from ml4h.test_utils import build_hdf5s
+from ml4h.TensorMap import TensorMap, Interpretation
 
 
 class TestRecipes:

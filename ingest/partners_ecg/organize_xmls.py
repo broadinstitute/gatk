@@ -27,7 +27,7 @@ def _process_args(args):
 
     now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
 
-    # This is temporary becuase I can't figure out how to import load_config from ml4cvd.logger
+    # This is temporary becuase I can't figure out how to import load_config from ml4h.logger
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s",
                         handlers=[

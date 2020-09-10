@@ -16,8 +16,8 @@ SHARED_DATA=shared_data
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 #Phecode CSVs (beta 2.2 release) are located in 
-ICD10_FILE="gs://ml4cvd/data/phecodes/Phecode_map_v1_2_icd10_beta.csv.gz"
-PHECODE_DEF_FILE="gs://ml4cvd/data/phecodes/phecode_definitions1.2.csv.gz"
+ICD10_FILE="gs://ml4h/data/phecodes/Phecode_map_v1_2_icd10_beta.csv.gz"
+PHECODE_DEF_FILE="gs://ml4h/data/phecodes/phecode_definitions1.2.csv.gz"
 
 #phecode definitions
 bq load \

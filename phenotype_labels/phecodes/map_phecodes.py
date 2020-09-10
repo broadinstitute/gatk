@@ -23,7 +23,7 @@ PARAMS = {
     'pheno_dataset': PHENO_DATASET,
     'phecode_dict': PHECODES_DATASET + '.phecode_dictionary',
     'phecode_icd10': PHECODES_DATASET + '.phecode_icd10',
-    'gs_bucket': 'ml4cvd',
+    'gs_bucket': 'ml4h',
     'gs_location': 'data/tmp/',
     'output_schema': os.path.join(CWD, 'phecode_mapping.json'),
     'output_file': PHENO_DATASET + '_phecode_mapping.csv.gz',

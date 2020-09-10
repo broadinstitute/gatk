@@ -1,5 +1,5 @@
 ---
-name: ML4CVD issue template
+name: ml4h issue template
 about: default issue template
 title: ''
 labels: ''

@@ -22,4 +22,4 @@ repos:
   rev: master
   hooks:
     - id: add-trailing-comma
-      exclude: "ml4cvd/tensor_maps_by_script.py"
+      exclude: "ml4h/tensormap/ukb/by_script.py"

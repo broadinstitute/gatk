@@ -1,7 +1,7 @@
 # Minimal set of packages to tensorize using Dataflow (tested on OSX-64)
 # To be used to create the Python env on which to pip freeze to create the requirements file for Dataflow
 
-name: ml4cvd_dataflow
+name: ml4h_dataflow
 channels:
   - defaults
   - anaconda

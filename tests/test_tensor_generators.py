@@ -4,8 +4,8 @@ import pytest
 import numpy as np
 from collections import defaultdict
 
-from ml4cvd.defines import TENSOR_EXT
-from ml4cvd.tensor_generators import _sample_csv_to_set, get_train_valid_test_paths, get_train_valid_test_paths_split_by_csvs
+from ml4h.defines import TENSOR_EXT
+from ml4h.tensor_generators import _sample_csv_to_set, get_train_valid_test_paths, get_train_valid_test_paths_split_by_csvs
 
 
 def _write_samples(csv_path, sample_ids, use_header=False, write_dupes=False):

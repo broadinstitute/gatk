@@ -1,6 +1,6 @@
-# Subset of envs/ml4cvd_gpu.yml with packages unavailable to install on OSX-64 removed
+# Subset of envs/ml4h_gpu.yml with packages unavailable to install on OSX-64 removed
 
-name: ml4cvd
+name: ml4h
 channels:
   - defaults
   - anaconda

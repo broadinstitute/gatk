@@ -119,7 +119,7 @@ As an overview, these tools work in a two-stage manner. The first stage is data 
 
 The **convert\*** tools convert pre-existing data (two classes- the ones you just converted into a csv or api calls to the UK Biobank website) into a format that can be easily ingested by BigQuery. Output of the convert functions should be piped into a file. 
 
-These data sets should then be uploaded into a google storage bucket (e.g. `gsutil cp file gc://ml4cvd/<yourname>/`).
+These data sets should then be uploaded into a google storage bucket (e.g. `gsutil cp file gc://ml4h/<yourname>/`).
 
 The **import\*** tools apply the correct schema to get that data that has been converted and put up in a Google Storage bucket now loaded into BigQuery.
 

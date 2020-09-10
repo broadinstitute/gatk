@@ -6,10 +6,10 @@ from itertools import cycle
 from collections import defaultdict
 from typing import List, Optional, Dict, Tuple, Iterator
 
-from ml4cvd.TensorMap import TensorMap
-from ml4cvd.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators, check_no_bottleneck
-from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
-from ml4cvd.test_utils import LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX
+from ml4h.TensorMap import TensorMap
+from ml4h.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators, check_no_bottleneck
+from ml4h.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
+from ml4h.test_utils import LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX
 
 
 MEAN_PRECISION_EPS = .02  # how much mean precision degradation is acceptable
@@ -354,8 +354,8 @@ class TestModelPerformance:
         if not os.path.exists(tensor_path):
             pytest.skip('To test brain segmentation performance, attach disk brains-all-together')
 
-        from ml4cvd.tensor_from_file import TMAPS
-        from ml4cvd.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
+        from ml4h.tensor_from_file import TMAPS
+        from ml4h.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
         from multiprocessing import cpu_count
         from sklearn.metrics import average_precision_score
 

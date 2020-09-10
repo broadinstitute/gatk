@@ -3,7 +3,7 @@
 # server-conf-scripts are for configuration of a *fresh* VM and should not be
 # treated as startup scripts. (They are not idempotent.)
 
-GCP_BUCKET="ml4cvd"
+GCP_BUCKET="ml4h"
 
 # We assume we are running as a regular user, not root.
 
