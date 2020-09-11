@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
+import com.google.api.gax.rpc.ServerStream;
 import com.google.cloud.bigquery.storage.v1beta1.*;
+import com.google.cloud.bigquery.storage.v1beta1.ReadOptions.TableReadOptions.Builder;
 import com.google.common.base.Preconditions;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
@@ -30,7 +32,8 @@ public class StorageAPIAvroReader implements GATKAvroReader {
 
     private DatumReader<GenericRecord> datumReader;
 
-    // Decoder object will be reused to avoid re-allocation and too much garbage collection.
+    // Decoder object will be reused to avoid re-allocation and too much garbage
+    // collection.
     private BinaryDecoder decoder = null;
 
     private AvroProto.AvroRows currentAvroRows;
@@ -39,6 +42,10 @@ public class StorageAPIAvroReader implements GATKAvroReader {
     private GenericRecord nextRow = null;
 
     public StorageAPIAvroReader(final TableReference tableRef) {
+        this(tableRef, null);
+    }
+
+    public StorageAPIAvroReader(final TableReference tableRef, final String rowRestriction) {
 
         try {
             this.client = BigQueryStorageClient.create();
@@ -51,10 +58,14 @@ public class StorageAPIAvroReader implements GATKAvroReader {
                     .setTableId(tableRef.tableName)
                     .build();
 
-            final ReadOptions.TableReadOptions tableReadOptions =
-                    ReadOptions.TableReadOptions.newBuilder()
-                            .addAllSelectedFields(tableRef.fields)
-                            .build();
+            Builder readOptions = ReadOptions.TableReadOptions.newBuilder()
+                    .addAllSelectedFields(tableRef.fields);
+
+            if (rowRestriction != null) {
+                readOptions.setRowRestriction(rowRestriction);
+            }
+                    
+            final ReadOptions.TableReadOptions tableReadOptions = readOptions.build();
 
             final Storage.CreateReadSessionRequest.Builder builder = Storage.CreateReadSessionRequest.newBuilder()
                     .setParent(parent)
