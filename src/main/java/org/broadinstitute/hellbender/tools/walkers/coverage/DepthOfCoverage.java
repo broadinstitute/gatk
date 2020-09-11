@@ -73,7 +73,7 @@ import java.util.*;
  *   -I input_bams.list
  *   [-geneList refSeq.sorted.refseq] \
  *   [-partition-type readgroup] \
- *   [-summary-coverage-threshold 4 -summary-coverage-threshold 6 -summary-coverage-threshold 10] \
+ *   [--summary-coverage-threshold 4 --summary-coverage-threshold 6 --summary-coverage-threshold 10] \
  *   [-L my_capture_genes.interval_list]
  * </pre>
  */
