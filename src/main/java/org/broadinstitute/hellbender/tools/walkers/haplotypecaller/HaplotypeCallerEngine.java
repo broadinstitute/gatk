@@ -427,7 +427,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             headerInfo.addAll(DragstrUtils.vcfHeaderLines());
         }
 
-        if (hcArgs.standardArgs.genotypeArgs.genotypeAssignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBRABILITIES) {
+        if (hcArgs.standardArgs.genotypeArgs.genotypeAssignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
             headerInfo.add(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_POSTERIORS_KEY, VCFHeaderLineCount.G, VCFHeaderLineType.Float, "genotype posterior in Phred Scale" ));
             headerInfo.add(new VCFFormatHeaderLine(GATKVCFConstants.GENOTYPE_PRIOR_KEY, VCFHeaderLineCount.G, VCFHeaderLineType.Float, "genotype priors in Phred Scale"));
         }
@@ -447,7 +447,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         Utils.nonNull(vcfWriter);
         vcfWriter.writeHeader(makeVCFHeader(sequenceDictionary, defaultToolHeaderLines));
     }
-
 
     /**
      * Given a pileup, returns an ActivityProfileState containing the probability (0.0 to 1.0) that it's an "active" site.

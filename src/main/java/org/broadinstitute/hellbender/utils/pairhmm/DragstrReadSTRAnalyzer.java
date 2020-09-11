@@ -7,13 +7,13 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import java.util.Arrays;
 
 /**
- * Utility to find repeats on read sequences.
+ * Utility to find short-tandem-repeats on read sequences.
  * <p>
  *     For each position of a read base sequence indicates the overlapping repeat unit with the largest repeat length.
  *     In case of a tie the shorter unit takes preference.
  * </p>
  * <p>
- *     To be a bit more specific for a position <i>i</i> and repeat unit period length <i>p</i> the algorithm consider
+ *     To be a bit more specific, for a position <i>i</i> and repeat unit period length <i>p</i> the algorithm considers
  *     all the <i>p-kmer</i> overlapping units + the one starting in the next position <i>i + 1</i>.
  * </p>
  * <p>
@@ -83,7 +83,7 @@ public class DragstrReadSTRAnalyzer {
         this.maxPeriod = maxPeriod;
         this.periodWithMostRepeats = new int[maxSequenceLength];
         this.heap = new int[maxPeriod + 1];
-        this.tempRunLengths = new int[maxSequenceLength];
+        this.tempRunLengths = new int[maxSequenceLength + 1];
     }
 
     /**
@@ -144,18 +144,18 @@ public class DragstrReadSTRAnalyzer {
 
     /**
      * Load a new base sequence in the analyzer.
-     * @param sequence the target base sequence.
+     * @param bases the target base sequence.
      */
-    public void load(final byte[] sequence) {
-        if (sequence.length > repeatsByPeriodAndPosition[0].length) {
+    public void load(final byte[] bases) {
+        if (bases.length > repeatsByPeriodAndPosition[0].length) {
             throw new IllegalArgumentException("input sequence is too long");
         }
-        seqLength = sequence.length;
+        seqLength = bases.length;
         // periodIndex == periodLength - 1 since in Java indexes start with 0.
 
-        calculateRepeatsForPeriodOne(sequence); // simpler and faster code for period-length == 0.
+        calculateRepeatsForPeriodOne(bases); // simpler and faster code for period-length == 0.
         for (int period = 2; period <= maxPeriod; period++) {
-            calculateRepeatsForPeriodTwoAndAbove(period, sequence);
+            calculateRepeatsForPeriodTwoAndAbove(period, bases);
         }
 
         // finally we update the periodWithMostRepeats array
@@ -195,13 +195,13 @@ public class DragstrReadSTRAnalyzer {
         int carryBack = tempRunLengths[position--] = 1; //prevValue holds the num of repeats reported in the previous (+1) position.
         for (positionPlusPeriod = position + period, matchedCycles = 0; position >= 0; position--, positionPlusPeriod--) {
             if (sequence[position] == sequence[positionPlusPeriod]) { // we keep matching repeat unit bases.
-                if (++matchedCycles == period) { // we go a new full repeat matched so the run length increases:
+                if (++matchedCycles == period) { // we got a new full repeat matched so the run length increases:
                     tempRunLengths[position] = ++carryBack;
-                    matchedCycles = 0; // we reset the match-run-length to 0.
-                } else { // we simply copy the run length from the +1 position base.
+                    matchedCycles = 0; // we reset the match-run-length to 0 as we start over (a new repeat).
+                } else { // if we haven't completed a repeat we simply copy the run length from the +1 position base.
                     tempRunLengths[position] = carryBack;
                 }
-            } else { // we bump into a mismatch that end the run.
+            } else { // we bump into a mismatch that ends the run.
                 carryBack = tempRunLengths[position] = 1;
                 matchedCycles = 0; // we reset the match-run-length to 0.
             }
@@ -209,10 +209,10 @@ public class DragstrReadSTRAnalyzer {
         // Now we propagate forward the number of equivalent repeats up stream:
         // So at the end runLength[X] == the repeats (up and down-stream) of the
         // unit of length period that starts at X.
-        // The outside for loop iterates along different repeat unit start offsets (here named cycles):
+        // The outside for-loop iterates over different repeat unit start offsets (here named cycles):
         for (cycleIndex = 0; cycleIndex < period; cycleIndex++) {
-            // The left most repeated unit runLength[i] contains the actual run length for all
-            // the units to the right. We copy that value forward to the other run-length units.
+            // The left most repeated unit runLength[i] contains the actual run length for all the matching
+            // units to the right. We copy that value forward to the other run-length units.
             // We do this by iterating over consecutive repeat runs.
             for (position = cycleIndex; position < seqLength; position += period) {
                 final int totalRunLength = tempRunLengths[position];
@@ -226,9 +226,8 @@ public class DragstrReadSTRAnalyzer {
         // only at the beginning of the sequence for period 2 or above (e.g. ^CACATG would yield periods 122211 repeats
         // 12221 when the natural/intuitive solution is period 222211 reps 222211). This is true for the original Matlab
         // and latest DRAGEN so we must add this here:
-        tempRunLengths[0]--; // No need to bother to check than repeats decreases to less than 1 since if so, period == 1 will win anyways.
-
-        // Finally we need to propagate the best run-lengths to neighboor positions
+        if (tempRunLengths[0] > 1) tempRunLengths[0]--;
+        // Finally we need to propagate the best run-lengths to neighbor positions
         // so that a position has the maximum run-length of all the possible
         // units that contain the position + the unit that follow up-stream.
         final int[] finalRunLengths = repeatsByPeriodAndPosition[period - 1];
@@ -236,25 +235,28 @@ public class DragstrReadSTRAnalyzer {
         Arrays.fill(heap, 0, heapSize, 0);
         int currentMax = heap[0] = tempRunLengths[0];
         // the first period length prefix is trivial:
-        // a position's max run-lenght is the largest seen so far and the following position's
+        // a position's max run-length is the largest seen so far and the following position's
         // We use this opportunity to populate the
         // run-length max-heap
-        for (position = 0; position < period; ) {
+        final int stop0 = Math.min(period, seqLength - 1);
+        for (position = 0; position < stop0; ) {
             finalRunLengths[position] = currentMax = Math.max(currentMax, heap[++position] = tempRunLengths[position]);
             fixHeap(position, heapSize);
         }
-        for (int outPosition = 0; ++position < seqLength; ) {
-            final int valueOut = tempRunLengths[outPosition++];
-            final int valueIn = tempRunLengths[position];
-            if (valueIn != valueOut) {
+
+        tempRunLengths[seqLength] = 1; // we add this 1 as the runLength after the last sequence position which in fact does not exist.
+                                       // this allows us to save a conditional to avoid a index-out-of-range.
+        for (int outPosition = 0; position < seqLength;) {
+            final int valueOut = tempRunLengths[outPosition++]; // value leaving the heap.
+            final int valueIn = tempRunLengths[++position]; // value entering the heap.
+            if (valueIn != valueOut) { // these two are the same (often the case) we don't need to do a heap updating at all.
                 final int fixHeapIdx = ArrayUtils.indexOf(heap, valueOut); // O(n) search although usually n is very small.
                 heap[fixHeapIdx] = valueIn;
                 fixHeap(fixHeapIdx, heapSize);
                 currentMax = heap[0];
             }
-            finalRunLengths[position - 1] = currentMax;
+            finalRunLengths[position - 1] = currentMax; // we use the heap's max as the final run-length for the prev position.
         }
-        finalRunLengths[position - 1] = currentMax; // we need to do the last one.
     }
 
     private void fixHeap(final int idx, final int heapSize) {
@@ -279,8 +281,6 @@ public class DragstrReadSTRAnalyzer {
         } while (idx > 0);
         heap[idx] = value;
     }
-
-    // Method useful when debugging, keep it around just in case.
 
     /**
      * Check that the content of the heap is correct given its size.
@@ -324,22 +324,18 @@ public class DragstrReadSTRAnalyzer {
     }
 
     /**
-     * I faster and simpler implementation of {@link #calculateRepeatsForPeriodTwoAndAbove(int, byte[])}
+     * Faster and simpler implementation of {@link #calculateRepeatsForPeriodTwoAndAbove(int, byte[])}
      * for period == 1.
-     * <p>
-     *     Avoids the unecessary matched cycles book-keeping and the use of  very trivial heap.
-     * </p>
-     * @param sequence
      */
-    private void calculateRepeatsForPeriodOne(final byte[] sequence) {
+    private void calculateRepeatsForPeriodOne(final byte[] bases) {
         final int[] runLengths = repeatsByPeriodAndPosition[0];
         final int rightMargin = seqLength - 1;
-        byte last = sequence[rightMargin];
+        byte last = bases[rightMargin];
 
         // backward phase:
         int carryBack = runLengths[rightMargin] = 1;
         for (int position = rightMargin - 1; position >= 0; position--) {
-            final byte next = sequence[position];
+            final byte next = bases[position];
             runLengths[position] = next == last ? ++carryBack : (carryBack = 1);
             last = next;
         }
@@ -347,12 +343,12 @@ public class DragstrReadSTRAnalyzer {
         // last = sequence[0]; // already true.
         int prevRunLength = runLengths[0];
         for (int position = 1; position <= rightMargin; position++) {
-            final byte next = sequence[position];
+            final byte next = bases[position];
             if (next == last) {
                 runLengths[position] = prevRunLength;
             } else {
                 final int thisRunLength = runLengths[position];
-                if (prevRunLength < thisRunLength) {
+                if (prevRunLength < thisRunLength) { // so we propagate this position run-length to the prev position if longer.
                     runLengths[position - 1] = thisRunLength;
                 }
                 last = next;

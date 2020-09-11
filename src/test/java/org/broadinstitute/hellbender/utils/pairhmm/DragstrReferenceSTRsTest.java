@@ -11,24 +11,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-
-/**
- * Tool to figure out the period and repeat-length (in units) of STRs in a reference sequence.
- * <p>
- *    The period and repeat-length of a reference sequence position is determined as follow.
- *    The STR unit is solelly determined by the sequence from that base onwards.
- * </p>
- * <p>
- *     If the backward base sequence contains additional copies of that unit these are added to the repeat-length.
- * </p>
- * <p>
- *     However a larger repeat-length for a different STR unit upstream would effectively being ignored.
- * </p>
- * <p>
- *     All sites period and forward repeat-length are determined in a single pass thru the sequence (O(L * MaxPeriod)).
- *     The backward additional unit count is calculated on demand.
- * </p>
- */
 public class DragstrReferenceSTRsTest {
 
     @Test(dataProvider = "testSequenceAndMaxPeriodData")

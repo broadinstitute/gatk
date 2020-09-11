@@ -4,7 +4,6 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import it.unimi.dsi.fastutil.ints.*;
-import org.apache.commons.lang.ArrayUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -293,7 +292,7 @@ class ByteMapIntervalPileup implements IntervalPileup {
             this.row = row;
             this.read = read;
             final Cigar cigar = read.getCigar();
-            final int referenceWidth = CigarUtils.countRefBases(cigar);
+            final int referenceWidth = cigar.getReferenceLength();
             int referenceOffset = read.getStart() - pileup.referenceBases.getInterval().getStart();
             int readOffset = 0;
             minColumn = Math.max(0, referenceOffset);

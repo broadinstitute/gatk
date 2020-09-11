@@ -16,19 +16,24 @@ import java.io.Serializable;
 public final class LikelihoodEngineArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static final String BASE_QUALITY_SCORE_THRESHOLD_FULLNAME = "base-quality-score-threshold";
+    public static final String DRAGSTR_PARAMS_PATH_FULLNAME = "dragstr-params-path";
+    public static final String DRAGSTR_HET_HOM_RATIO_FULLNAME = "dragstr-het-hom-ratio";
+    public static final String DONT_USE_DRAGSTR_PAIRHMM_FULLNAME = "dont-use-dragstr-pair-hmm-scores";
+
     /**
      * Bases with a quality below this threshold will reduced to the minimum usable qualiy score (6).
      */
-    @Argument(fullName = "base-quality-score-threshold", doc = "Base qualities below this threshold will be reduced to the minimum (" + QualityUtils.MIN_USABLE_Q_SCORE + ")", optional = true)
+    @Argument(fullName = BASE_QUALITY_SCORE_THRESHOLD_FULLNAME, doc = "Base qualities below this threshold will be reduced to the minimum (" + QualityUtils.MIN_USABLE_Q_SCORE + ")", optional = true)
     public byte BASE_QUALITY_SCORE_THRESHOLD = PairHMM.BASE_QUALITY_SCORE_THRESHOLD;
 
-    @Argument(fullName="dragstr-params-path", doc="location of the DRAGstr model parameters for STR error correction used in the Pair HMM. When provided, it overrides other PCR error correcting mechanisms", optional = true)
+    @Argument(fullName = DRAGSTR_PARAMS_PATH_FULLNAME, doc = "location of the DRAGstr model parameters for STR error correction used in the Pair HMM. When provided, it overrides other PCR error correcting mechanisms", optional = true)
     public DragstrParams dragstrParams = null;
 
-    @Argument(fullName="dragstr-het-hom-ratio", doc="het to hom prior ratio use with DRAGstr on", optional = true)
+    @Argument(fullName = DRAGSTR_HET_HOM_RATIO_FULLNAME, doc="het to hom prior ratio use with DRAGstr on", optional = true)
     public int dragstrHetHomRatio = 2;
 
-    @Argument(fullName="dont-use-dragstr-pair-hmm-scores", doc="disable DRAGstr pair-hmm score when dragstr-params-path was provided", optional = false)
+    @Argument(fullName = DONT_USE_DRAGSTR_PAIRHMM_FULLNAME, doc="disable DRAGstr pair-hmm score even when dragstr-params-path was provided", optional = false)
     public boolean dontUseDragstrPairHMMScores = false;
 
     @Advanced
