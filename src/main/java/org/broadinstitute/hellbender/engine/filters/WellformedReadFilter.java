@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  * <p><b>Well-formed reads definition</b></p>
  * <ul>
  *     <li><b>Alignment coordinates:</b> start larger than 0 and end after the start position.</li>
- *     <li><b>Alignment agrees with header:</B> contig isEnabled and start is within its range.</li>
+ *     <li><b>Alignment agrees with header:</B> contig exists and start is within its range.</li>
  *     <li><b>Read Group and Sequence are present</b></li>
  *     <li><b>Consistent read length:</b> bases match in length with the qualities and the CIGAR string.</b></li>
  *     <li><b>Do not contain skipped regions:</b> represented by the 'N' operator in the CIGAR string.</li>

@@ -23,7 +23,7 @@ import java.util.*;
  *
  * Header lines are encoded in the same format as each row, a single row of delimeted column titles as the first row in the table.
  *
- * Note: this class is intended for creating XSV files with loosely defined input types. If there isEnabled a well defined object
+ * Note: this class is intended for creating XSV files with loosely defined input types. If there exists a well defined object
  * that summarizes your table data points then consider using {@link TableWriter}.
  */
 public class SimpleXSVWriter implements Closeable {
@@ -91,7 +91,7 @@ public class SimpleXSVWriter implements Closeable {
     }
 
     /**
-     * Builds a new LineBuilder and writes out the previous line if it isEnabled.
+     * Builds a new LineBuilder and writes out the previous line if it exists.
      *
      * @return a blank LineBuilder to allow for defining the next line
      */

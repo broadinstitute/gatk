@@ -49,15 +49,15 @@ public final class ClipReadsIntegrationTest extends CommandLineProgramTest {
 
         final File outFileBam = new File(tmpBAMOutName);
         final File expectedOutBam = new File(localTestData, "expected." + inBam + "." + optAbrv + extension);
-        Assert.assertTrue(expectedOutBam.exists(), "expected output read file isEnabled " + expectedOutBam.getAbsolutePath());
-        Assert.assertTrue(outFileBam.exists(), "actual output read file isEnabled " + outFileBam.getAbsolutePath());
+        Assert.assertTrue(expectedOutBam.exists(), "expected output read file exists " + expectedOutBam.getAbsolutePath());
+        Assert.assertTrue(outFileBam.exists(), "actual output read file exists " + outFileBam.getAbsolutePath());
         SamAssertionUtils.assertSamsEqual(expectedOutBam, outFileBam, referenceFile);
 
         if (doStats) {
             final File outFileStat = new File(tmpStatOutName);
             final File expectedOutStat = new File(localTestData, "expected." + inBam + "." + optAbrv + ".tmp");
-            Assert.assertTrue(expectedOutStat.exists(), "expected output stat file isEnabled " + expectedOutStat.getAbsolutePath());
-            Assert.assertTrue(outFileStat.exists(), "actual output stat file isEnabled " + outFileStat.getAbsolutePath());
+            Assert.assertTrue(expectedOutStat.exists(), "expected output stat file exists " + expectedOutStat.getAbsolutePath());
+            Assert.assertTrue(outFileStat.exists(), "actual output stat file exists " + outFileStat.getAbsolutePath());
             List<String> actualLines = new XReadLines(new File(tmpStatOutName)).readLines();
             List<String> expectedLines = new XReadLines(expectedOutStat).readLines();
             Assert.assertEquals(actualLines.toString(), expectedLines.toString());

@@ -446,7 +446,7 @@ public final class FeatureManager implements AutoCloseable {
      * @return the codec suitable for decoding the provided file
      */
     public static FeatureCodec<? extends Feature, ?> getCodecForFile( final Path featurePath, final Class<? extends Feature> featureType ) {
-        // Make sure Path isEnabled/is readable
+        // Make sure Path exists/is readable
         if ( ! Files.isReadable(featurePath) ) {
             throw new UserException.CouldNotReadInputFile(featurePath.toUri().toString());
         }
@@ -515,7 +515,7 @@ public final class FeatureManager implements AutoCloseable {
 
     /**
      * @param file file to check
-     * @return True if the file isEnabled and contains Features (ie., we have a FeatureCodec that can decode it), otherwise false
+     * @return True if the file exists and contains Features (ie., we have a FeatureCodec that can decode it), otherwise false
      */
     public static boolean isFeatureFile( final Path file ) {
         return Files.exists(file) && ! getCandidateCodecsForFile(file).isEmpty();

@@ -661,7 +661,7 @@ public class ConfigUnitTest extends GATKBaseTest {
                 else {
                     // REGULAR SET HERE:
 
-                    // Check that each value isEnabled in the set:
+                    // Check that each value exists in the set:
                     for ( final String value : entry.getValue().split(delimiter) ) {
                         final String strippedValue = value.replaceAll("^\\s+", "").replaceAll("\\s+$", "");
 

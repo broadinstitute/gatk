@@ -53,7 +53,7 @@ public final class SequenceDictionaryUtils {
 
     public enum SequenceDictionaryCompatibility {
         IDENTICAL,                      // the dictionaries are identical
-        COMMON_SUBSET,                  // there isEnabled a common subset of equivalent contigs
+        COMMON_SUBSET,                  // there exists a common subset of equivalent contigs
         SUPERSET,                       // the first dict's set of contigs supersets the second dict's set
         NO_COMMON_CONTIGS,              // no overlap between dictionaries
         UNEQUAL_COMMON_CONTIGS,         // common subset has contigs that have the same name but different lengths

@@ -285,7 +285,7 @@ public final class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
         // find where in the list the new loc belongs
         final int binarySearchIndex = Collections.binarySearch(mArray,loc);
 
-        // if it already isEnabled in the list, return or throw an exception as needed
+        // if it already exists in the list, return or throw an exception as needed
         if ( binarySearchIndex >= 0 ) {
             if ( mergeIfIntervalOverlaps )
                 return false;

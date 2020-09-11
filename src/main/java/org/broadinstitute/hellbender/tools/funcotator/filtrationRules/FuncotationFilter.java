@@ -87,7 +87,7 @@ public abstract class FuncotationFilter {
      * Does the set of funcotations contain the key supplied
      * @param funcotations A Set of Map.Entry key-value pairs of funcotations
      * @param key The key to look for
-     * @return Whether or not the key isEnabled in the funcotations
+     * @return Whether or not the key exists in the funcotations
      */
     protected Boolean containsKey(Set<Map.Entry<String, String>> funcotations, String key) {
         return funcotations.stream().anyMatch(entry -> entry.getKey().equals(key));

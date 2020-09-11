@@ -35,11 +35,11 @@ import java.util.*;
  *
  * - Main idea of the algorithm is to try to substitute a sequence of bases in a read by a sequence better supported by kmers.
  * - For each "unsolid" kmer observed in reads, we try to find a "solid" kmer within a maximum Hamming distance.
- * - If such solid kmer isEnabled, then this unsolid kmer is "correctable", otherwise, uncorrectable.
+ * - If such solid kmer exists, then this unsolid kmer is "correctable", otherwise, uncorrectable.
  * - For each read, then:
  * -- Walk through  read and visit all kmers.
  * -- If kmer is solid, continue to next kmer.
- * -- If not, and if it's correctable (i.e. there isEnabled a mapping from an unsolid kmer to a solid kmer within a given Hamming distance),
+ * -- If not, and if it's correctable (i.e. there exists a mapping from an unsolid kmer to a solid kmer within a given Hamming distance),
  *    add the bases and offsets corresponding to differing positions between unsolid and solid kmer to correction list.
  * -- At the end, each base in read will have a list of corrections associated with it. We can then choose to correct or not.
  *    If read has only consistent corrections, then we can correct base to common base in corrections.

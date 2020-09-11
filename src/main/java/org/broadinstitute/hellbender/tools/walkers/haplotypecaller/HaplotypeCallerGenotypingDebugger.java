@@ -29,7 +29,7 @@ public class HaplotypeCallerGenotypingDebugger{
         return genotyperDebugOutStream != null;
     }
 
-    // Print the provided text to the debugger if it isEnabled
+    // Print the provided text to the debugger if it exists
     public static synchronized void println(final String debug) {
         if (genotyperDebugOutStream != null) {
             genotyperDebugOutStream.println(debug);

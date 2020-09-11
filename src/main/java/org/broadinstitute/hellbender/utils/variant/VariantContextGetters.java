@@ -27,7 +27,7 @@ public class VariantContextGetters {
      * @param defaultValue default value to return in case the attribute does not have a value defined.
      * @return the string version of the attribute value.
      * @throws IllegalArgumentException if {@code genotype} or {@code key} is {@code null}.
-     * @throws NumberFormatException if the annotation isEnabled, and its string transformation cannot be convert into an integer.
+     * @throws NumberFormatException if the annotation exists, and its string transformation cannot be convert into an integer.
      */
     public static int getAttributeAsInt(final Genotype genotype, final String key, final int defaultValue) {
         Utils.nonNull(genotype);
@@ -83,7 +83,7 @@ public class VariantContextGetters {
      * @param defaultValue default value to return in case the attribute does not have a value defined.
      * @return the string version of the attribute value.
      * @throws IllegalArgumentException if {@code genotype} or {@code key} is {@code null}.
-     * @throws NumberFormatException if the annotation isEnabled, and its string transformation cannot be convert into a double.
+     * @throws NumberFormatException if the annotation exists, and its string transformation cannot be convert into a double.
      */
     public static double getAttributeAsDouble(final Genotype genotype, final String key, final double defaultValue) {
         Utils.nonNull(genotype);

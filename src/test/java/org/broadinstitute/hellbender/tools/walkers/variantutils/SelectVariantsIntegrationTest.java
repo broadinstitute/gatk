@@ -400,7 +400,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 baseTestString(" -sn " + sampleName + " --remove-unused-alternates --exclude-non-variants", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_RemoveSingleSpanDelAlleleNoSpanDel.vcf")
         );
-        spec.executeTest("test encounter no instance of '*' as only ALT allele and ensure line is removed when only monomorphic allele isEnabled" + testFile, this);
+        spec.executeTest("test encounter no instance of '*' as only ALT allele and ensure line is removed when only monomorphic allele exists" + testFile, this);
     }
 
     @Test

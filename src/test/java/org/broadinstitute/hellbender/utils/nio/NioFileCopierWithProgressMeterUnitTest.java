@@ -358,7 +358,7 @@ public class NioFileCopierWithProgressMeterUnitTest extends GATKBaseTest {
         // Do the copy:
         xerox.initiateCopy();
 
-        // Verify the output file isEnabled and that the files are the same:
+        // Verify the output file exists and that the files are the same:
         Assert.assertTrue(Files.exists(destPath));
         try {
             Assert.assertEquals(Files.readAllBytes(destPath), Files.readAllBytes(sourcePath));
@@ -383,11 +383,11 @@ public class NioFileCopierWithProgressMeterUnitTest extends GATKBaseTest {
         // Copy the file a first time:
         NioFileCopierWithProgressMeter.create(sourcePath, destPath).setVerbosity(NioFileCopierWithProgressMeter.Verbosity.SILENT).initiateCopy();
 
-        // Do the copy a second time to ensure that dest already isEnabled
+        // Do the copy a second time to ensure that dest already exists
         // and set the overwrite flag to ensure it will not fail:
         NioFileCopierWithProgressMeter.create(sourcePath, destPath).setVerbosity(NioFileCopierWithProgressMeter.Verbosity.SILENT).setOverwriteExisting(true).initiateCopy();
 
-        // Verify the output file isEnabled and that the files are the same:
+        // Verify the output file exists and that the files are the same:
         Assert.assertTrue(Files.exists(destPath));
         try {
             Assert.assertEquals(Files.readAllBytes(destPath), Files.readAllBytes(sourcePath));
@@ -413,7 +413,7 @@ public class NioFileCopierWithProgressMeterUnitTest extends GATKBaseTest {
         // Copy the file a first time:
         NioFileCopierWithProgressMeter.create(sourcePath, destPath).setVerbosity(NioFileCopierWithProgressMeter.Verbosity.SILENT).initiateCopy();
 
-        // Do the copy a second time to ensure that dest already isEnabled
+        // Do the copy a second time to ensure that dest already exists
         // and set the overwrite flag to ensure it will fail:
         NioFileCopierWithProgressMeter.create(sourcePath, destPath).setVerbosity(NioFileCopierWithProgressMeter.Verbosity.SILENT).setOverwriteExisting(false).initiateCopy();
     }

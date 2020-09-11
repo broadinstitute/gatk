@@ -193,7 +193,7 @@ public final class ReadsSparkSource implements Serializable {
     }
 
     /**
-     * Check that for CRAM the reference is set to a file that isEnabled and is not 2bit.
+     * Check that for CRAM the reference is set to a file that exists and is not 2bit.
      * @return a <code>GATKPathSpecifier</code> or <code>null</code> if not CRAM
      */
     static GATKPathSpecifier checkCramReference(final JavaSparkContext ctx, final String filePath, final GATKPathSpecifier referencePathSpecifier) {

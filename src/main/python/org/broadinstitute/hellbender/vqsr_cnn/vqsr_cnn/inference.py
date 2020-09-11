@@ -79,7 +79,7 @@ def score_and_write_batch(model: keras.Model,
         annotation_set: The name for the set of annotations to use
         window_size: The size of the context window of genomic bases, i.e the width of the tensor
         read_limit: The maximum number of reads to encode in a tensor, i.e. the height of the tensor
-        tensor_dir : If this path isEnabled write hd5 files for each tensor (optional for debugging)
+        tensor_dir : If this path exists write hd5 files for each tensor (optional for debugging)
     """
     annotation_batch = []
     reference_batch = []

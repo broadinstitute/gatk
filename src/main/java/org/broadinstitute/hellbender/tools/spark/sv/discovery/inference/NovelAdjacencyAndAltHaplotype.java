@@ -32,7 +32,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
  * <p>
  *     It essentially represents a bi-path "big" bubble between two reference locations.
  *     One path is the "reference path" consisting of the contiguous block of bases that can be extracted from the reference,
- *     if possible (i.e. no contiguous block isEnabled between locations from difference chromosomes).
+ *     if possible (i.e. no contiguous block exists between locations from difference chromosomes).
  *     The other path is encoded with the alt haplotype sequence.
  * </p>
  */

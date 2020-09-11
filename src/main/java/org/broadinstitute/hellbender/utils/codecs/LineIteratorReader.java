@@ -11,7 +11,7 @@ import java.io.Reader;
  *
  * <p>
  *     This class is useful to implement <i>codecs</i> for formats for which a {@link Reader} based parser already
- *     isEnabled.
+ *     exists.
  * </p>
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
