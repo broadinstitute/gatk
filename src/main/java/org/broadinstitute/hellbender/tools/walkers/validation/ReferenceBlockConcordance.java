@@ -87,13 +87,13 @@ public class ReferenceBlockConcordance extends AbstractConcordanceWalker {
     @Override
     protected Predicate<VariantContext> makeTruthVariantFilter() {
         // Explicitly allow symbolic variants
-        return vc -> !vc.isStructuralIndel();
+        return VariantContext::isSymbolic;
     }
 
     @Override
     protected Predicate<VariantContext> makeEvalVariantFilter() {
         // Explicitly allow symbolic variants
-        return vc -> !vc.isStructuralIndel();
+        return VariantContext::isSymbolic;
     }
 
     private boolean isNonRef(VariantContext variantContext) {
