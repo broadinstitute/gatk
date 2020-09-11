@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.BinaryTableReader;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import static org.broadinstitute.hellbender.utils.pairhmm.DragstrConstants.*;

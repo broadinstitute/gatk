@@ -15,15 +15,13 @@ public class StandardPairHMMInputScoreImputator implements PairHMMInputScoreImpu
 
     private final byte constantGCP;
 
-    private final byte defaultGOP;
-
-    private StandardPairHMMInputScoreImputator(final byte defaultGOP, final byte constantGCP) {
+    private StandardPairHMMInputScoreImputator(final byte constantGCP) {
         this.constantGCP = constantGCP;
-        this.defaultGOP = defaultGOP;
+
     }
 
-    public static StandardPairHMMInputScoreImputator newInstance(final byte defaultGOP, final byte constantGCP) {
-        return new StandardPairHMMInputScoreImputator(defaultGOP, constantGCP);
+    public static StandardPairHMMInputScoreImputator newInstance(final byte constantGCP) {
+        return new StandardPairHMMInputScoreImputator(constantGCP);
     }
 
     @Override
@@ -31,19 +29,12 @@ public class StandardPairHMMInputScoreImputator implements PairHMMInputScoreImpu
         return new PairHMMInputScoreImputation() {
             @Override
             public byte[] delOpenPenalties() {
-                final byte[] existing = ReadUtils.getExistingBaseDeletionQualities(read);
-                return existing == null ? defaultGOPs(read) : existing;
-            }
-
-            private byte[] defaultGOPs(final GATKRead read) {
-                final byte[] existing = ReadUtils.getExistingBaseInsertionQualities(read);
-                return existing == null ? defaultGOPs(read) : existing;
+                return ReadUtils.getBaseDeletionQualities(read);
             }
 
             @Override
             public byte[] insOpenPenalties() {
-                final byte[] existing = ReadUtils.getExistingBaseInsertionQualities(read);
-                return existing == null ? defaultGOPs(read) : existing;
+                return ReadUtils.getBaseInsertionQualities(read);
             }
 
             @Override

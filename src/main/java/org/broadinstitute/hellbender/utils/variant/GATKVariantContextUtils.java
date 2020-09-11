@@ -312,36 +312,29 @@ public final class GATKVariantContextUtils {
                 best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
             }
             gb.alleles(best);
-        } else if (assignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBRABILITIES) {
+        } else if (assignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
             if (gpc == null) {
                 throw new GATKException("cannot uses posteriors without an genotype prior calculator present");
             } else {
+                // Calculate posteriors.
                 final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, allelesToUse.size());
                 final double[] log10Priors = gpc.getLog10Priors(glCalc, allelesToUse);
-                final double[] log10Posteriors = new double[genotypeLikelihoods.length];
-                double bestPosterior = Double.NEGATIVE_INFINITY;
-                int bestGenotypeIndex = 0;
-                for (int i = 0; i < genotypeLikelihoods.length; i++) {
-                    final double log10Posterior = log10Posteriors[i] = log10Priors[i] + genotypeLikelihoods[i];
-                    if (log10Posterior > bestPosterior) {
-                        bestGenotypeIndex = i;
-                        bestPosterior = log10Posterior;
-                    }
-                }
-                for (int i = 0; i < log10Posteriors.length; i++) {
-                    log10Posteriors[i] -= bestPosterior;
-                }
-                gb.alleles(glCalc.genotypeAlleleCountsAt(bestGenotypeIndex).asAlleleList(allelesToUse));
-                if ( allelesToUse.size() > 0 ) {
-                    gb.log10PError(getGQLog10FromPosteriors(bestGenotypeIndex, log10Posteriors));
-                }
-                gb.attribute(VCFConstants.GENOTYPE_POSTERIORS_KEY, Arrays.stream(log10Posteriors)
+                final double[] log10Posteriors = MathUtils.ebeAdd(log10Priors, genotypeLikelihoods);
+                final double[] normaizedLog10Posteriors = MathUtils.scaleLogSpaceArrayForNumericalStability(log10Posteriors);
+                // Update GP and PG annotations:
+                gb.attribute(VCFConstants.GENOTYPE_POSTERIORS_KEY, Arrays.stream(normaizedLog10Posteriors)
                         .map(v -> v == 0.0 ? 0.0 : v * -10) // the reason for the == 0.0 is to avoid a signed 0 output "-0.0"
                         .mapToObj(GATKVariantContextUtils::formatGP).toArray());
-//                System.out.println("After applying the prior: "+ Arrays.toString(log10Posteriors));
-                gb.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, Arrays.stream(log10Priors)
+                gb.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, Arrays.stream(normaizedLog10Posteriors)
                         .map(v -> v == 0.0 ? 0.0 : v * -10)
                         .mapToObj(GATKVariantContextUtils::formatGP).toArray());
+                // Set the GQ accordingly
+                final int maxPosteriorIndex = MathUtils.maxElementIndex(log10Posteriors);
+                if ( allelesToUse.size() > 0 ) {
+                    gb.log10PError(getGQLog10FromPosteriors(maxPosteriorIndex, log10Posteriors));
+                }
+                // Finally we update the genotype alleles.
+                gb.alleles(glCalc.genotypeAlleleCountsAt(maxPosteriorIndex).asAlleleList(allelesToUse));
             }
         }
     }
@@ -349,27 +342,26 @@ public final class GATKVariantContextUtils {
     private static double getGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] log10Posteriors) {
         if (bestGenotypeIndex < 0) {
             return CommonInfo.NO_LOG10_PERROR;
-        } else if (log10Posteriors.length == 3) { // most common case
-            if (bestGenotypeIndex == 0) {
-                return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors[1], log10Posteriors[2]));
-            } else if (bestGenotypeIndex == 1) {
-                return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors[0], log10Posteriors[2]));
-            } else {
-                return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors[0], log10Posteriors[1]));
+        } else {
+            switch (log10Posteriors.length) {
+                case 0:
+                case 1: return CommonInfo.NO_LOG10_PERROR;
+                case 2: return bestGenotypeIndex == 0 ? log10Posteriors[1] : log10Posteriors[0];
+                case 3: return Math.min(0, MathUtils.log10SumLog10(
+                                 log10Posteriors[ bestGenotypeIndex == 0 ? 2 : bestGenotypeIndex - 1],
+                                 log10Posteriors[ bestGenotypeIndex == 2 ? 0 : bestGenotypeIndex + 1]));
+                default:
+                    if (bestGenotypeIndex == 0) {
+                        return MathUtils.log10SumLog10(log10Posteriors, 1, log10Posteriors.length);
+                    } else if (bestGenotypeIndex == log10Posteriors.length - 1) {
+                        return MathUtils.log10SumLog10(log10Posteriors, 0, bestGenotypeIndex);
+                    } else {
+                        return Math.min(0.0, MathUtils.log10SumLog10(
+                                MathUtils.log10sumLog10(log10Posteriors, 0, bestGenotypeIndex),
+                                MathUtils.log10sumLog10(log10Posteriors, bestGenotypeIndex + 1, log10Posteriors.length)
+                        ));
+                    }
             }
-        } else if (log10Posteriors.length == 2) { // trival haploid single alt allele case.
-            return bestGenotypeIndex == 0 ? log10Posteriors[1] : log10Posteriors[0];
-        } else if (log10Posteriors.length > 3) { // general case.
-            final double[] loosingLog10Posteriors = new double[log10Posteriors.length -1];
-            if (bestGenotypeIndex > 0) {
-                System.arraycopy(log10Posteriors, 0, loosingLog10Posteriors, 0, bestGenotypeIndex);
-            }
-            if (bestGenotypeIndex < loosingLog10Posteriors.length) {
-                System.arraycopy(log10Posteriors, bestGenotypeIndex + 1, loosingLog10Posteriors, bestGenotypeIndex, loosingLog10Posteriors.length - bestGenotypeIndex);
-            }
-            return Math.min(0.0, MathUtils.log10sumLog10(loosingLog10Posteriors));
-        } else { // just in case a safe failure code for 1 and 0 genotype cases
-            return CommonInfo.NO_LOG10_PERROR;
         }
     }
 

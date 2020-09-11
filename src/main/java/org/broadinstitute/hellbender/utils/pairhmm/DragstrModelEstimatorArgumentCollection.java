@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.hellbender.utils.dragstr.DoubleSequence;
 
 public class DragstrModelEstimatorArgumentCollection {
 

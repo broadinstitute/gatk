@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import org.broadinstitute.hellbender.utils.BinaryTableReader;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -10,6 +11,7 @@ import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
+import org.broadinstitute.hellbender.utils.utils.BinaryTableWriter;
 
 import java.io.*;
 import java.util.Arrays;
@@ -53,10 +55,6 @@ public class DragstrLocus {
         return unit.length;
     }
 
-    byte[] getUnitUnsafe() {
-        return unit;
-    }
-
     public byte[] getUnit() {
         return unit.clone();
     }
@@ -87,7 +85,7 @@ public class DragstrLocus {
     public static BinaryTableReader<DragstrLocus> binaryReader(final InputStream in) {
         return new BinaryTableReader<DragstrLocus>(new DataInputStream(in)) {
             @Override
-            protected DragstrLocus readRecord(final PushbackDataInput input) throws IOException {
+            protected DragstrLocus readRecord(final DataInput input) throws IOException {
                 final int chrIdx = input.readUnsignedShort();
                 final long start = input.readLong();
                 final int unitLength =  input.readUnsignedByte();

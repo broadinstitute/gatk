@@ -1,10 +1,39 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
 
+/**
+ * Tool to figure out the period and repeat-length (in units) of STRs in a reference sequence.
+ * <p>
+ *    The period and repeat-length of a reference sequence position is determined as follow:
+ *    The STR unit is determined only by the sequence from that base onwards.
+ * </p>
+ * <p>
+ *     If the backward base sequence contains additional copies of that unit these are added to the repeat-length.
+ * </p>
+ * <p>
+ *     However a larger repeat-length for a different STR unit upstream would effectively being ignored. Usually this
+ *     rule does not come into play but there is an exception every now and then.
+ * </p>
+ * <p>
+ *     For example:
+ *     <pre>
+ *         ...ATACACACACACACACAC^ACTACTACTACTGAAGA....
+ *     </pre>
+ *     Where (^) denotes the boundary between down and up-stream from the position of interest (in this case the A that follows)
+ * </p><p>
+ *     In this case the would take 'ACT' with 4 repeats although 'AC' has plenty more repeats upstream
+ * </p>
+ * <p>
+ *     All sites' period and forward repeat-length are determined in a single pass thru the sequence (O(L * MaxPeriod)).
+ *     The backward additional unit count is calculated on demand.
+ * </p>
+ */
 public class DragstrReferenceSTRs {
+
     private final int start;
     private final int end;
     private final byte[] bases;
@@ -19,8 +48,15 @@ public class DragstrReferenceSTRs {
         this.forwardRepeats = repeats;
     }
 
+    /**
+     * Returns the number of consecutive repeated units for a position
+     * @param position the target position in the loaded base sequene.
+     * @return 1 or greater.
+     */
     public int repeatLength(final int position) {
+        // we get the forward repeat count:
         int result = lookup(position, forwardRepeats);
+        // and then we need to add any further up-stream repeats for that unit.
         final int period = this.period[position - start];
         for (int i = position - 1, j = position + period, k = period; i >= 0; i--) {
             if (bases[i] != bases[--j]) {
@@ -33,6 +69,11 @@ public class DragstrReferenceSTRs {
         return result;
     }
 
+    /**
+     * Return a new array with a copy of the repeat unit bases starting at a particular position
+     * @param position the query position.
+     * @return never {@code null}.
+     */
     public byte[] repeatUnit(final int position) {
         final int length = lookup(position, period);
         return Arrays.copyOfRange(bases, position, position + length);
@@ -42,6 +83,11 @@ public class DragstrReferenceSTRs {
         return new String(repeatUnit(position));
     }
 
+    /**
+     * Returns the STR period at a given position.ß
+     * @param position the target position
+     * @return 1 or greater.
+     */
     public int period(final int position) {
         return lookup(position, period);
     }
@@ -55,30 +101,35 @@ public class DragstrReferenceSTRs {
         }
     }
 
-
-    public static DragstrReferenceSTRs of(final byte[] sequence, final int start, final int end, final int maxPeriod) {
-        if (end < start || start < 0 || end > sequence.length) {
-            throw new IndexOutOfBoundsException("bad indexes " + start  + " " + end + " " + sequence.length);
+    public static DragstrReferenceSTRs of(final byte[] bases, final int start, final int end, final int maxPeriod) {
+        Utils.nonNull(bases, "the input bases cannot be null");
+        if (end < start || start < 0 || end > bases.length) {
+            throw new IndexOutOfBoundsException("bad indexes " + start  + " " + end + " " + bases.length);
         } else if (start >= end) {
-            return new DragstrReferenceSTRs(sequence, start, end, ArrayUtils.EMPTY_INT_ARRAY, ArrayUtils.EMPTY_INT_ARRAY);
+            return new DragstrReferenceSTRs(bases, start, end, ArrayUtils.EMPTY_INT_ARRAY, ArrayUtils.EMPTY_INT_ARRAY);
         }
-        final int[] repeats = processPeriodOne(sequence, start, end);
+
+        // Period one's processing code is trivial, so do it separately and we initialize the best period and repeat
+        // at the same time.
+        final int[] repeats = processPeriodOne(bases, start, end);
         final int[] periods = new int[end - start];
         Arrays.fill(periods, 1);
         for (int period = 2; period <= maxPeriod; period++) {
-            if (sequence.length  < period << 1) {
+            if (bases.length  < period << 1) {
                 break;
             }
             int position, remainingToMatchUnit, carryBack, rightMargin, positionPlusPeriod, resultArrayOffset;
 
-            // We first find the right-margin enclosing the last repeat that would match
-            // a prospective repeat unit within [start,end):
-            rightMargin = Math.min(end + period, sequence.length) - 1;
+            // We first find the right-margin enclosing the last consecutive repeat in the input base sequence that would match
+            // a prospective repeat unit within the target interval [start,end):
+            rightMargin = Math.min(end + period, bases.length) - 1;
             final int rightMostStart = position = rightMargin - period;
+            // reaminingToMatchUnit is a countdown reaching 0 when we have match yet another full repeat.
             remainingToMatchUnit = period;
+            // carryBack would count the number of matching repeats outside the target interval
             carryBack = 1;
-            for (; rightMargin < sequence.length; rightMargin++) {
-                        if (sequence[position++] != sequence[rightMargin]) {
+            for (; rightMargin < bases.length; rightMargin++) {
+                        if (bases[position++] != bases[rightMargin]) {
                     break;
                 } else if (--remainingToMatchUnit == 0) {
                     carryBack++;
@@ -86,24 +137,24 @@ public class DragstrReferenceSTRs {
                 }
             }
 
-            // then we work our way backwards carrying on number of conseqcutive matching units
+            // No we work our way backwards carrying on number of consecutive matching units
             // and updating.
-            // carryBack and matchesRun has been updated in the forward pass so they correspond to the value
+            // carryBack and remainingToMatchUnit has been updated in the forward pass so they correspond to the value
             // at rightMostStart.
             if ((resultArrayOffset = rightMostStart - start) >= 0 && carryBack > repeats[resultArrayOffset]) {
                 repeats[resultArrayOffset] = carryBack;
                 periods[resultArrayOffset] = period;
             }
 
-            boolean inZone = false;
+            boolean inTragetRange = false;
             for (position = rightMostStart - 1, positionPlusPeriod = position + period,
                  resultArrayOffset = position - start; position >= start; position--, positionPlusPeriod--, resultArrayOffset--) {
-                if (sequence[position] == sequence[positionPlusPeriod]) {
+                if (bases[position] == bases[positionPlusPeriod]) {
                     if (--remainingToMatchUnit == 0) { // have we matched yet another unit of length period?
                         ++carryBack;
                         remainingToMatchUnit = period;
                     }
-                    if ((inZone |= position < end) && carryBack > repeats[resultArrayOffset]) {
+                    if ((inTragetRange |= position < end) && carryBack > repeats[resultArrayOffset]) {
                         repeats[resultArrayOffset] = carryBack;
                         periods[resultArrayOffset] = period;
                     }
@@ -113,20 +164,23 @@ public class DragstrReferenceSTRs {
                 }
             }
         }
-        return new DragstrReferenceSTRs(sequence, start, end, periods, repeats);
+        return new DragstrReferenceSTRs(bases, start, end, periods, repeats);
     }
 
-    private static int[] processPeriodOne(final byte[] sequence, final int start, final int end) {
+    /**
+     * Special faster code for period == 1.
+     */
+    private static int[] processPeriodOne(final byte[] bases, final int start, final int end) {
         final int[] repeats = new int[end - start];
-        byte last = sequence[end - 1];
+        byte last = bases[end - 1];
 
         // backward phase:
         int rightMargin, position;
-        for (rightMargin = end; rightMargin < sequence.length && sequence[rightMargin] == last; rightMargin++);
+        for (rightMargin = end; rightMargin < bases.length && bases[rightMargin] == last; rightMargin++) {};
         int carryBack = rightMargin - end;
         int offset;
         for (position = end - 1, offset = position - start; position >= start; position--, offset--) {
-            final byte next = sequence[position];
+            final byte next = bases[position];
             repeats[offset] = next == last ? ++carryBack : (carryBack = 1);
             last = next;
         }

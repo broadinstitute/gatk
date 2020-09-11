@@ -5,26 +5,24 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.concurrent.*;
-
 public class LazyLoadingReferenceNucleotideSequence implements NucleotideSequence {
     private final String id;
     private final long length;
     private int bufferSize;
     private byte[] buffer;
-    private byte[] previousBuffer;
+    private byte[] upstreamBuffer;
     private final ReferenceDataSource dataSource;
     private long bufferStart;
     private long bufferEnd;
 
 
-    public LazyLoadingReferenceNucleotideSequence(final ReferenceDataSource dataSource, final String id, final long length, final int bufferSize) {
+    private LazyLoadingReferenceNucleotideSequence(final ReferenceDataSource dataSource, final String id, final long length, final int bufferSize) {
         this.dataSource = dataSource;
         this.id = id;
         this.length = length;
         this.bufferSize = bufferSize < 128 ? 128 : bufferSize;
         this.buffer = null;
-        this.previousBuffer = null;
+        this.upstreamBuffer = null;
         this.bufferStart = -1;
         this.bufferEnd = -1;
     }
@@ -32,7 +30,7 @@ public class LazyLoadingReferenceNucleotideSequence implements NucleotideSequenc
     private void loadStartingAt(final long start) {
         final long maximumEnd = start + bufferSize - 1;
         final long newEnd = maximumEnd > length ? length : maximumEnd;
-        previousBuffer = buffer != null && bufferStart == start - buffer.length ? buffer : null; // only cache previous if it is contiguous.
+        upstreamBuffer = buffer != null && bufferStart == start - buffer.length ? buffer : null; // only cache previous if it is contiguous.
         buffer = dataSource.queryAndPrefetch(id, start, newEnd).getBases();
         bufferStart = start;
         bufferEnd = newEnd;
@@ -58,8 +56,8 @@ public class LazyLoadingReferenceNucleotideSequence implements NucleotideSequenc
         if (location < bufferStart) {
             if (location < 0) {
                 throw new IllegalArgumentException("invalid location outside range: " + location);
-            } else if (previousBuffer != null && location >= bufferStart - previousBuffer.length) {
-                return previousBuffer[(int) (location - (bufferStart - previousBuffer.length))];
+            } else if (upstreamBuffer != null && location >= bufferStart - upstreamBuffer.length) {
+                return upstreamBuffer[(int) (location - (bufferStart - upstreamBuffer.length))];
             } else {
                 loadStartingAt(location);
                 return buffer[0];

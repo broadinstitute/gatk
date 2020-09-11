@@ -29,7 +29,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.function.BiPredicate;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -83,8 +82,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     protected boolean forceKeepAllele(final Allele allele) {
         return allele.equals(Allele.NON_REF_ALLELE,false) || referenceConfidenceMode != ReferenceConfidenceMode.NONE;
     }
-
-
 
     /**
      * Main entry point of class - given a particular set of haplotypes, samples and reference context, compute
@@ -148,10 +145,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(readLikelihoods, activeRegionWindow);
         }
 
-        final DragstrReferenceSTRs dragstrs = isDragstrSTRAnalyzerNecessary(startPosKeySet, haplotypes)
-                ? DragstrReferenceSTRs.of(ref,startPosKeySet.first() - refLoc.getStart(),
-                startPosKeySet.last() + 2 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod())
-                : null;
+        // null if there is no potential uses of DRAGstr in this region.
+        final DragstrReferenceSTRs dragstrs = constructDragstrReferenceSTRAnalyzerIfNecessary(haplotypes, ref, refLoc, startPosKeySet);
 
         final BiPredicate<GATKRead, Locatable> readQualifiesForGenotypingPredicate = composeReadQualifiesForGenotypingPredicate(hcArgs);
 
@@ -220,7 +215,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 mergedAllelesListSizeBeforePossibleTrimming++;
             }
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart(), dragstrs);
-            final GenotypePriorCalculator gpc = resolveCustomAlleleFrequencyCalculator(mergedVC, dragstrs, loc - refLoc.getStart() + 1, ploidy, snpHeterozygosity, indelHeterozygosity);
+            final GenotypePriorCalculator gpc = resolveGenotypePriorCalculator(dragstrs, loc - refLoc.getStart() + 1, snpHeterozygosity, indelHeterozygosity);
             final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), gpc, givenAlleles);
             if( call != null ) {
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
@@ -230,7 +225,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
                 if (dragstrs != null && GATKVariantContextUtils.containsInlineIndel(annotatedCall)) {
                     final int strOffset = loc - refLoc.getStart() + 1;
-                    annotatedCall = DragstrUtils.annotate(annotatedCall, hcArgs.likelihoodArgs.dragstrParams, dragstrs.period(strOffset), dragstrs.repeatLength(strOffset));
+                    annotatedCall = DragstrUtils.annotateVariantContextWithDragstrParametersUsed(annotatedCall, hcArgs.likelihoodArgs.dragstrParams, dragstrs.period(strOffset), dragstrs.repeatLength(strOffset));
                 }
                 returnCalls.add( annotatedCall );
 
@@ -244,6 +239,32 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
         final List<VariantContext> phasedCalls = doPhysicalPhasing ? AssemblyBasedCallerUtils.phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
+    }
+
+    /**
+     * If there is potential to use DRAGstr in the region based on the event map, then this method composes the
+     *   STR finder.
+     * @param haplotypes reconstructed haplotypes.
+     * @param ref the reference haplotype sequence.
+     * @param refLoc the interval of the sequence provided.
+     * @param startPosKeySet the location of events within the haplotypes on the reference sequence.
+     * @return {@code null} iff there is no chance that we would be using DRAGstr in this region based
+     *    on the reconstructed haplotypes.
+     */
+    private DragstrReferenceSTRs constructDragstrReferenceSTRAnalyzerIfNecessary(final List<Haplotype> haplotypes,
+                                                                                 final byte[] ref,
+                                                                                 final SimpleInterval refLoc,
+                                                                                 final SortedSet<Integer> startPosKeySet) {
+        if (isDragstrSTRAnalyzerNecessary(startPosKeySet, haplotypes)) {
+            final int offset = startPosKeySet.first() - refLoc.getStart();
+            final int to = startPosKeySet.last() - refLoc.getStart() + 2;
+                // +2 = +1+1
+                // where one +1 is because starPosKeySet indexes are 1-based and offset/to are 0-based.
+                //   and the other +1 is because we need to analyze/include one base after each event position including the last.
+            return  DragstrReferenceSTRs.of(ref, offset, to, hcArgs.likelihoodArgs.dragstrParams.maximumPeriod());
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -282,25 +303,15 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * </p>
      */
     private boolean isDragstrSTRAnalyzerNecessary(SortedSet<Integer> startPosKeySet, List<Haplotype> haplotypes) {
-        if (startPosKeySet.isEmpty()) {
-            return false;
-        } else if (hcArgs.likelihoodArgs.dragstrParams == null) {
-            return false;
-        } else if (hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors) {
-            return false;
-        } else {
-            for (final Haplotype haplotype : haplotypes) {
-                for (final VariantContext vc : haplotype.getEventMap().getVariantContexts()) {
-                    if (GATKVariantContextUtils.containsInlineIndel(vc)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
+        return !startPosKeySet.isEmpty() && hcArgs.likelihoodArgs.dragstrParams != null
+                && !hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors &&
+                haplotypes.stream()
+                        .anyMatch(h -> h.getEventMap().getVariantContexts().stream()
+                                .anyMatch(GATKVariantContextUtils::containsInlineIndel));
     }
 
-    private GenotypePriorCalculator resolveCustomAlleleFrequencyCalculator(final VariantContext vc, final DragstrReferenceSTRs strs, final int pos, final int ploidy, final double snpHeterozygosity, final double indelHeterozygosity) {
+    private GenotypePriorCalculator resolveGenotypePriorCalculator(final DragstrReferenceSTRs strs, final int pos,
+                                                                   final double snpHeterozygosity, final double indelHeterozygosity) {
        if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors) {
             return GenotypePriorCalculator.assumingHW(Math.log10(snpHeterozygosity), Math.log10(indelHeterozygosity));
         } else if (strs == null) {

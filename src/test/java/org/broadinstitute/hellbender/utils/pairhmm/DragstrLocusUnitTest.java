@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
+import org.broadinstitute.hellbender.utils.BinaryTableReader;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
+import org.broadinstitute.hellbender.utils.utils.BinaryTableWriter;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -18,29 +20,25 @@ import java.util.stream.Collectors;
 
 public class DragstrLocusUnitTest {
 
-    @Test()
-    private void testWriteRead() throws IOException {
+    @Test
+    public void tetWriteRead() throws IOException {
         final File binaryFile = File.createTempFile("test-dl", ".bin");
         final File textFile = File.createTempFile("test-dl", ".tab");
-        //binaryFile.deleteOnExit();
-        //textFile.deleteOnExit();
-        final BinaryTableWriter<DragstrLocus> binaryWriter = DragstrLocus.binaryWriter(binaryFile);
-        final TableWriter<DragstrLocus> textWriter = DragstrLocus.textWriter(new FileOutputStream(textFile));
-        final List<DragstrLocus> loci = Arrays.stream(randomLoci()).map(oo -> (DragstrLocus) oo[0]).collect(Collectors.toList());
-        binaryWriter.writeAll(loci);
-        binaryWriter.close();
-        textWriter.writeAllRecords(loci);
-        textWriter.close();
-        System.err.println(binaryFile);
-        System.err.println(textFile);
-        System.err.println(binaryFile.length());
-        System.err.println(textFile.length());
-        final BinaryTableReader<DragstrLocus> binaryReader = DragstrLocus.binaryReader(new FileInputStream(binaryFile));
-        final List<DragstrLocus> loci2 = binaryReader.readAll();
+        try (final BinaryTableWriter<DragstrLocus> binaryWriter = DragstrLocus.binaryWriter(binaryFile);
+             final TableWriter<DragstrLocus> textWriter = DragstrLocus.textWriter(new FileOutputStream(textFile))) {
+            final List<DragstrLocus> loci = Arrays.stream(randomLoci()).map(oo -> (DragstrLocus) oo[0]).collect(Collectors.toList());
+            binaryWriter.writeAll(loci);
+            textWriter.writeAllRecords(loci);
+            System.err.println(binaryFile);
+            System.err.println(textFile);
+            System.err.println(binaryFile.length());
+            System.err.println(textFile.length());
+            final BinaryTableReader<DragstrLocus> binaryReader = DragstrLocus.binaryReader(new FileInputStream(binaryFile));
+            final List<DragstrLocus> loci2 = binaryReader.readAll();
 
-        Assert.assertEquals(loci, loci2);
+            Assert.assertEquals(loci, loci2);
+        }
     }
-
 
     @DataProvider(name="randomLoci")
     public Object[][] randomLoci() {
@@ -62,7 +60,6 @@ public class DragstrLocusUnitTest {
             final long start = rdn.nextInt(lengths[chrIdx]) + 1;
             final DragstrLocus locus = DragstrLocus.make(chrIdx, start, unit, repeatCount);
             result.add(locus);
-
         }
         return result.stream().map(dl -> new Object[] { dl }).toArray(Object[][]::new);
     }

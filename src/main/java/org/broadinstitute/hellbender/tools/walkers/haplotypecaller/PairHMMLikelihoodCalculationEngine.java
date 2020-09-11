@@ -230,7 +230,6 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         return QualityUtils.qualToErrorProbLog10(threshold); // = threshold * -.1;
     }
 
-
     // TODO i don't like having a lookup table be static like this, i would prefer this be computed at initialization (with the default values being saved as a test)
     // table used for disqualifying reads for genotyping
     // Format for each row of table: baseQ, mean, variance
@@ -252,7 +251,6 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             34, 0.017163711, 0.598145851, 35, 0.013949904, 0.500000349, 36, 0.011332027, 0.41742159,
             37, 0.009200898, 0.348056286, 38, 0.007467036, 0.289881373, 39, 0.006057179, 0.241163527,
             40, 0.004911394, 0.200422214};
-
 
     private static final int MAXIMUM_DYNAMIC_QUAL_THRESHOLD_ENTRY_BASEQ = 40;
     private static final int DYNAMIC_QUAL_THRESHOLD_TABLE_ENTRY_LENGTH = 3;
@@ -399,11 +397,10 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     private byte[] pcrIndelErrorModelCache;
     private PairHMMInputScoreImputator inputScoreImputator;
 
-
     private void initializePCRErrorModel() {
 
         inputScoreImputator = dragstrParams == null
-                ? StandardPairHMMInputScoreImputator.newInstance(ReadUtils.DEFAULT_INSERTION_DELETION_QUAL, constantGCP)
+                ? StandardPairHMMInputScoreImputator.newInstance(constantGCP)
                 : DragstrPairHMMInputScoreImputator.newInstance(dragstrParams) ;
 
         if ( !pcrErrorModel.hasRateFactor() ) {

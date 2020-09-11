@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.pairhmm;
+package org.broadinstitute.hellbender.utils.dragstr;
 
 import it.unimi.dsi.fastutil.doubles.AbstractDoubleList;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
@@ -11,30 +11,45 @@ import java.util.regex.Pattern;
 
 /**
  * A sequence of doubles specificator that can be used as a user argument.
+ * <p>
+ *     Currently it support the format start:step:end where the seqeuence generated is
+ *     start, start + step, start + 2*step,..., start + N*step where N is the largerst N that keep the number less
+ *     than end.
+ * </p>
  */
-public class DoubleSequence {
+public final class DoubleSequence {
 
+    /**
+     * Double literal pattern.
+     */
     private static final Pattern DOUBLE_PATTERN = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?");
-
-    private final String input;
-
-    private final String description;
-
-    private DoubleList values;
 
     /**
      * Currently the only supported format for the string descriptor is:
      * start:step:end.
      */
-    public static final Pattern STEP_DECRIPTION_PATTERN = Pattern.compile(
+    private static final Pattern STEP_DECRIPTION_PATTERN = Pattern.compile(
             String.format("^(%s):(%s):(%s)$", DOUBLE_PATTERN, DOUBLE_PATTERN, DOUBLE_PATTERN));
 
+    /**
+     * Holds a copy of the spec that was used to generate this sequence.
+     */
+    private final String spec;
 
-    public DoubleSequence(final String decriptor) {
-        Utils.nonNull(decriptor);
-        final Matcher matcher = STEP_DECRIPTION_PATTERN.matcher(decriptor);
+    /**
+     * The sequence double values.
+     */
+    private DoubleList values;
+    
+    /**
+     * Creates a sequence given its spec.
+     * @param spec never {@code null}.
+     */
+    public DoubleSequence(final String spec) {
+        Utils.nonNull(spec);
+        final Matcher matcher = STEP_DECRIPTION_PATTERN.matcher(spec);
         if (!matcher.matches()) {
-            throw new CommandLineException.BadArgumentValue("invalid double sequence specificatior: " + decriptor);
+            throw new CommandLineException.BadArgumentValue("invalid double sequence specificatior: " + spec);
         }
         final double left = Double.parseDouble(matcher.group(1));
         final double step = Double.parseDouble(matcher.group(2));
@@ -57,9 +72,8 @@ public class DoubleSequence {
                 return valueArray.clone();
             }
         };
-        description = String.format("starting at %s to %s in increments/decrements of %s", matcher.group(1), matcher.group(3), matcher.group(2));
 
-        input = decriptor;
+        this.spec = spec;
     }
 
     public double get(final int index) {
@@ -71,15 +85,11 @@ public class DoubleSequence {
     }
 
     public String toString() {
-        return input;
+        return spec;
     }
 
     public double[] toDoubleArray() {
         return values.toDoubleArray();
-    }
-
-    public String getDescription() {
-        return description;
     }
 }
 

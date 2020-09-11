@@ -4,20 +4,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntFunction;
 
-public class AutoCloseableList<E extends AutoCloseable> implements AutoCloseable {
-
-    private final List<E> elements;
+/**
+ * List of autocloseables that when closed it closes all its elements.
+ * @param <E> the element auto-closeable type.
+ */
+public final class AutoCloseableList<E extends AutoCloseable> extends AutoCloseableCollection<List<E>> {
 
     private AutoCloseableList(final List<E> elements) {
-        this.elements = elements;
+        super(elements);
     }
 
     public E get(final int index) {
-        return elements.get(index);
-    }
-
-    public int size() {
-        return elements.size();
+        return autoCloseables.get(index);
     }
 
     public static <E extends AutoCloseable> AutoCloseableList<E> of(final List<E> elements) {
@@ -31,24 +29,5 @@ public class AutoCloseableList<E extends AutoCloseable> implements AutoCloseable
             elements.add(constr.apply(i));
         }
         return new AutoCloseableList<>(elements);
-    }
-
-    @Override
-    public void close() {
-        RuntimeException first = null;
-        for(final E element : elements) {
-            try {
-                element.close();
-            } catch (final Exception ex) {
-                if (first == null) {
-                    first = new RuntimeException(ex);
-                } else {
-                    first.addSuppressed(ex);
-                }
-            }
-        }
-        if (first != null) {
-            throw first;
-        }
     }
 }

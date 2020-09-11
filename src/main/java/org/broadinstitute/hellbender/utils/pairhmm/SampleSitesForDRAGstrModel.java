@@ -4,28 +4,26 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceDictionaryCodec;
 import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.reference.FastaReferenceWriter;
 import org.apache.commons.compress.archivers.jar.JarArchiveOutputStream;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
+import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKTool;
-import org.broadinstitute.hellbender.engine.ProgressMeter;
-import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.fasta.FastaReferenceMaker;
+import org.broadinstitute.hellbender.utils.BinaryTableReader;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.AutoCloseableList;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
+import org.broadinstitute.hellbender.utils.utils.BinaryTableWriter;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 
 import java.io.*;
@@ -245,7 +243,11 @@ public class SampleSitesForDRAGstrModel extends GATKTool {
     }
 
     public void onShutdown() {
-        Utils.deleteFileTree(tempDir);
+        try {
+            FileUtils.deleteDirectory(tempDir);
+        } catch (IOException e) {
+            logger.warn("difficulties deleting the temporary data folder " + tempDir);
+        }
         super.onShutdown();
     }
 
