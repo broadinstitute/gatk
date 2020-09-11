@@ -172,14 +172,6 @@ public class VariantRecalibrator extends MultiVariantWalker {
     /////////////////////////////
 
     /**
-     * These additional calls should be unfiltered and annotated with the error covariates that are intended to be used for modeling.
-     */
-    @Argument(fullName="aggregate",
-            shortName = "aggregate", doc="Additional raw input variants to be used in building the model",
-            optional=true)
-    private List<FeatureInput<VariantContext>> aggregate = new ArrayList<>();
-
-    /**
      * Any set of VCF files to use as lists of training, truth, or known sites.
      * Training - The program builds the Gaussian mixture model using input variants that overlap with these training sites.
      * Truth - The program uses these truth sites to determine where to set the cutoff in VQSLOD sensitivity.
@@ -540,10 +532,6 @@ public class VariantRecalibrator extends MultiVariantWalker {
 
     private void consumeQueuedVariants() {
         variantsAtLocus.forEach(v -> addVariantDatum(v.left, true, v.right));
-        if (!aggregate.isEmpty()) {
-            // use the first featureContext in the queue for the aggregate resources
-            addOverlappingAggregateVariants(aggregate, false, variantsAtLocus.get(0).getRight());
-        }
         variantsAtLocus.clear();
     }
 
