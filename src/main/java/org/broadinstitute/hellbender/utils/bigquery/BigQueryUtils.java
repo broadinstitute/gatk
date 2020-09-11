@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
 import com.google.cloud.bigquery.*;
-import com.google.cloud.bigquery.storage.v1beta1.*;
+import com.google.cloud.bigquery.storage.v1.*;
 import com.google.common.base.Preconditions;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
@@ -412,7 +412,7 @@ public class BigQueryUtils {
          *
          * @param avroRows object returned from the ReadRowsResponse.
          */
-        public void processRows( AvroProto.AvroRows avroRows ) throws IOException {
+        public void processRows( AvroRows avroRows ) throws IOException {
             decoder = DecoderFactory.get()
                     .binaryDecoder(avroRows.getSerializedBinaryRows().toByteArray(), decoder);
 
