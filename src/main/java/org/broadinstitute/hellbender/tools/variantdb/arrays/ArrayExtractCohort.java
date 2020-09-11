@@ -78,6 +78,20 @@ public class ArrayExtractCohort extends GATKTool {
     private String probeCsvExportFile = null;
 
     @Argument(
+            fullName = "min-probe-id",
+            doc = "When extracting data, only include probes with id >= this value",
+            optional = true
+    )
+    private Integer minProbeId = null;
+
+    @Argument(
+        fullName = "max-probe-id",
+        doc = "When extracting data, only include probes with id <= this value",
+        optional = true
+    )
+    private Integer maxProbeId = null;
+
+    @Argument(
             fullName = "cohort-extract-table",
             doc = "Fully qualified name of the table where the cohort data exists (already subsetted)",
             optional = false
@@ -122,6 +136,10 @@ public class ArrayExtractCohort extends GATKTool {
     protected void onStartup() {
         super.onStartup();
 
+        if (minProbeId != null ^ maxProbeId != null) {
+            throw new IllegalArgumentException("Either both or neither of min-probe-id and max-probe-id must be specified");
+        }
+
         //TODO verify what we really need here
         final VariantAnnotatorEngine annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
 
@@ -152,6 +170,8 @@ public class ArrayExtractCohort extends GATKTool {
                 sampleIdMap,
                 probeIdMap,
                 cohortTable,
+                minProbeId,
+                maxProbeId,
                 localSortMaxRecordsInRam,
                 useCompressedData,
                 printDebugInformation,
