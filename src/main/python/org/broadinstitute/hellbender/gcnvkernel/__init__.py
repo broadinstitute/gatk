@@ -23,6 +23,7 @@ from .tasks.task_case_denoising_calling import CaseDenoisingCallingTask
 from .tasks.task_case_ploidy_determination import CasePloidyInferenceTask
 from .tasks.task_cohort_denoising_calling import CohortDenoisingAndCallingMainTask, CohortDenoisingAndCallingWarmUpTask
 from .tasks.task_cohort_ploidy_determination import CohortPloidyInferenceTask
+from .tasks.inference_task_base import ConvergenceError
 from .utils import cli_commons, math
 
 assert pymc3_version == "3.1", "gcnvkernel currently only supports PyMC3 3.1; version found: {0}; " \

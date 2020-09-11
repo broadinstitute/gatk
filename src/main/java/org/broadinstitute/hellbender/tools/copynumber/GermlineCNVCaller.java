@@ -18,12 +18,14 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
+import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils.streamOfSubsettedAndValidatedReadCounts;
@@ -64,6 +66,11 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  * ("default") copy-number state of all intervals contained in that contig for the corresponding sample. All other
  * copy-number states are treated as alternative states and get equal shares from the total alternative state
  * probability (set using the {@code p-alt} argument).</p>
+ *
+ * <p>Note that in rare cases the inference process can diverge which will lead to an error on the Python side.
+ * In such cases the inference will be automatically restarted one more time with a new random seed. If inference
+ * diverges the second time we suggest checking if input count or karyotype values or other inputs are abnormal
+ * (an example of abnormality is a count file containing mostly zeros). </p>
  *
  * <h3>Python environment setup</h3>
  *
@@ -208,6 +215,12 @@ public final class GermlineCNVCaller extends CommandLineProgram {
     public static final String CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME = "contig-ploidy-calls";
     public static final String RUN_MODE_LONG_NAME = "run-mode";
 
+    // Starting gCNV random seed
+    private static final int STARTING_SEED = 1984;
+
+    // Default exit code output by gCNV python indicating divergence error; needs to be in sync with the corresponding gcnvkernel constant
+    private static final int DIVERGED_INFERENCE_EXIT_CODE = 239;
+
     @Argument(
             doc = "Input paths for read-count files containing integer read counts in genomic intervals for all samples.  " +
                     "All intervals specified via -L/-XL must be contained; " +
@@ -305,11 +318,35 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         //count files for these intervals to temporary files
         final List<File> intervalSubsetReadCountFiles = writeIntervalSubsetReadCountFiles();
 
-        //call python inference code
-        final boolean pythonReturnCode = executeGermlineCNVCallerPythonScript(intervalSubsetReadCountFiles);
+        final String script = (runMode == RunMode.COHORT) ? COHORT_DENOISING_CALLING_PYTHON_SCRIPT : CASE_SAMPLE_CALLING_PYTHON_SCRIPT;
 
-        if (!pythonReturnCode) {
-            throw new UserException("Python return code was non-zero.");
+        //call python inference code
+        final PythonScriptExecutor executor = new PythonScriptExecutor(true);
+        ProcessOutput pythonProcessOutput = executor.executeScriptAndGetOutput(
+                new Resource(script, GermlineCNVCaller.class),
+                null,
+                composePythonArguments(intervalSubsetReadCountFiles, STARTING_SEED));
+        if (pythonProcessOutput.getExitValue() != 0) {
+            // We restart once if the inference diverged
+            if (pythonProcessOutput.getExitValue() == DIVERGED_INFERENCE_EXIT_CODE) {
+                final Random generator = new Random(STARTING_SEED);
+                final int nextGCNVSeed = generator.nextInt();
+                logger.info("The inference failed to converge and will be restarted once with a different random seed.");
+                pythonProcessOutput = executor.executeScriptAndGetOutput(
+                        new Resource(script, GermlineCNVCaller.class),
+                        null,
+                        composePythonArguments(intervalSubsetReadCountFiles, nextGCNVSeed));
+            } else {
+                throw executor.getScriptException(executor.getExceptionMessageFromScriptError(pythonProcessOutput));
+            }
+        }
+
+        if (pythonProcessOutput.getExitValue() != 0) {
+            if (pythonProcessOutput.getExitValue() == DIVERGED_INFERENCE_EXIT_CODE) {
+                logger.info("The inference failed to converge twice. We suggest checking if input count or karyotype" +
+                        " values or other inputs are abnormal (an example of abnormality is a count file containing mostly zeros).");
+            }
+            throw executor.getScriptException(executor.getExceptionMessageFromScriptError(pythonProcessOutput));
         }
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
@@ -397,8 +434,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         return intervalSubsetReadCountFiles;
     }
 
-    private boolean executeGermlineCNVCallerPythonScript(final List<File> intervalSubsetReadCountFiles) {
-        final PythonScriptExecutor executor = new PythonScriptExecutor(true);
+    private List<String> composePythonArguments(final List<File> intervalSubsetReadCountFiles, final int randomSeed) {
         final String outputDirArg = CopyNumberArgumentValidationUtils.addTrailingSlashIfNecessary(outputDir.getAbsolutePath());
 
         //add required arguments
@@ -411,10 +447,10 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         if (inputModelDir != null) {
             arguments.add("--input_model_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputModelDir));
         }
+        arguments.add(String.format("--random_seed=%d", randomSeed));
 
-        final String script;
+        // in CASE mode, explicit GC bias modeling is set by the model
         if (runMode == RunMode.COHORT) {
-            script = COHORT_DENOISING_CALLING_PYTHON_SCRIPT;
             //these are the annotated intervals, if provided
             arguments.add("--modeling_interval_list=" + CopyNumberArgumentValidationUtils.getCanonicalPath(specifiedIntervalsFile));
             arguments.add("--output_model_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputDirArg + outputPrefix + MODEL_PATH_SUFFIX));
@@ -423,9 +459,6 @@ public final class GermlineCNVCaller extends CommandLineProgram {
             } else {
                 arguments.add("--enable_explicit_gc_bias_modeling=False");
             }
-        } else {
-            script = CASE_SAMPLE_CALLING_PYTHON_SCRIPT;
-            // in CASE mode, explicit GC bias modeling is set by the model
         }
 
         arguments.add("--read_count_tsv_files");
@@ -435,9 +468,6 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         arguments.addAll(germlineCallingArgumentCollection.generatePythonArguments(runMode));
         arguments.addAll(germlineCNVHybridADVIArgumentCollection.generatePythonArguments());
 
-        return executor.executeScript(
-                new Resource(script, GermlineCNVCaller.class),
-                null,
-                arguments);
+        return arguments;
     }
 }
