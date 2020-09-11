@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.read.ClippingTail;
+import org.broadinstitute.hellbender.utils.Tail;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -90,8 +90,8 @@ public final class TestUtilsForAssemblyBasedSVDiscovery {
 
         final SimpleInterval refSpan = new SimpleInterval(chr, start, start - 1 + cigar.getReferenceLength());
         return new AlignmentInterval(refSpan,
-                CigarUtils.countClippedBases(readCigar, ClippingTail.LEFT_TAIL) + 1,
-                CigarUtils.countUnclippedReadBases(readCigar) - CigarUtils.countClippedBases(readCigar, ClippingTail.RIGHT_TAIL),
+                CigarUtils.countClippedBases(readCigar, Tail.LEFT) + 1,
+                CigarUtils.countUnclippedReadBases(readCigar) - CigarUtils.countClippedBases(readCigar, Tail.RIGHT),
                 readCigar,
                 forwardStrand,
                 mapQual, numMismatch, alignerScore,

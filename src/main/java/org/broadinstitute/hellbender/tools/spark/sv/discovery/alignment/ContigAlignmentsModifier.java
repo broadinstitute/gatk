@@ -7,10 +7,10 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Tail;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import scala.Tuple2;
 import scala.Tuple3;
 
@@ -64,10 +64,10 @@ public final class ContigAlignmentsModifier {
             newTigStart = originalContigStart;
             newTigEnd   = Math.min(originalContigEnd - clipLengthOnRead,
                                    CigarUtils.countUnclippedReadBases(newCigarAlong5to3DirectionOfContig) -
-                                           CigarUtils.countClippedBases(newCigarAlong5to3DirectionOfContig, ClippingTail.RIGHT_TAIL));
+                                           CigarUtils.countClippedBases(newCigarAlong5to3DirectionOfContig, Tail.RIGHT));
         } else {
             newTigStart = Math.max(originalContigStart + clipLengthOnRead,
-                                   CigarUtils.countClippedBases(newCigarAlong5to3DirectionOfContig, ClippingTail.LEFT_TAIL) + 1);
+                                   CigarUtils.countClippedBases(newCigarAlong5to3DirectionOfContig, Tail.LEFT) + 1);
             newTigEnd   = originalContigEnd;
         }
 
