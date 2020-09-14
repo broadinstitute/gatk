@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
+package org.broadinstitute.hellbender.utils.pairhmm;
 
 public interface PairHMMInputScoreImputation {
 

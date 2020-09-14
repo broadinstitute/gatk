@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.pairhmm;
+package org.broadinstitute.hellbender.utils.dragstr;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -32,7 +32,7 @@ import java.util.Arrays;
  *     The backward additional unit count is calculated on demand.
  * </p>
  */
-public class DragstrReferenceSTRs {
+public final class DragstrReferenceAnalyzer {
 
     private final int start;
     private final int end;
@@ -40,7 +40,7 @@ public class DragstrReferenceSTRs {
     private final int[] period;
     private final int[] forwardRepeats;
 
-    private DragstrReferenceSTRs(final byte[] bases, final int start, final int end, final int[] period, final int[] repeats) {
+    private DragstrReferenceAnalyzer(final byte[] bases, final int start, final int end, final int[] period, final int[] repeats) {
         this.start = start;
         this.end = end;
         this.bases = bases;
@@ -101,12 +101,12 @@ public class DragstrReferenceSTRs {
         }
     }
 
-    public static DragstrReferenceSTRs of(final byte[] bases, final int start, final int end, final int maxPeriod) {
+    public static DragstrReferenceAnalyzer of(final byte[] bases, final int start, final int end, final int maxPeriod) {
         Utils.nonNull(bases, "the input bases cannot be null");
         if (end < start || start < 0 || end > bases.length) {
             throw new IndexOutOfBoundsException("bad indexes " + start  + " " + end + " " + bases.length);
         } else if (start >= end) {
-            return new DragstrReferenceSTRs(bases, start, end, ArrayUtils.EMPTY_INT_ARRAY, ArrayUtils.EMPTY_INT_ARRAY);
+            return new DragstrReferenceAnalyzer(bases, start, end, ArrayUtils.EMPTY_INT_ARRAY, ArrayUtils.EMPTY_INT_ARRAY);
         }
 
         // Period one's processing code is trivial, so do it separately and we initialize the best period and repeat
@@ -164,7 +164,7 @@ public class DragstrReferenceSTRs {
                 }
             }
         }
-        return new DragstrReferenceSTRs(bases, start, end, periods, repeats);
+        return new DragstrReferenceAnalyzer(bases, start, end, periods, repeats);
     }
 
     /**

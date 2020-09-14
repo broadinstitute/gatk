@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.utils.pairhmm.DragstrReadSTRAnalyzer;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
+import org.broadinstitute.hellbender.utils.pairhmm.PairHMMInputScoreImputation;
+import org.broadinstitute.hellbender.utils.pairhmm.PairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
@@ -60,7 +61,7 @@ public class DragstrPairHMMInputScoreImputator implements PairHMMInputScoreImput
         final byte[] gop = new byte[length];
         final byte[] gcp = new byte[length];
 
-        final DragstrReadSTRAnalyzer analyzer =  new DragstrReadSTRAnalyzer(bases, params.maximumPeriod());
+        final DragstrReadSTRAnalyzer analyzer =  DragstrReadSTRAnalyzer.of(read, params.maximumPeriod());
 
         for (int i = 0; i < length - 1; i++) {
             final int period = analyzer.mostRepeatedPeriod(i);

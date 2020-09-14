@@ -3,14 +3,14 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingDebugger;
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -75,7 +75,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
 
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data,
                                                                             byte[] paddedReference, int offsetForRefIntoEvent,
-                                                                            final DragstrReferenceSTRs dragstrs) {
+                                                                            final DragstrReferenceAnalyzer dragstrs) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 

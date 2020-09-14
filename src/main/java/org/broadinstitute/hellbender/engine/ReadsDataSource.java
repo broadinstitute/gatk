@@ -92,6 +92,11 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
     private boolean indicesAvailable;
 
     /**
+     * Has it been closed already.
+     */
+    private boolean isClosed;
+
+    /**
      * Initialize this data source with a single SAM/BAM file and validation stringency SILENT.
      *
      * @param samFile SAM/BAM file, not null.
@@ -492,6 +497,10 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      */
     @Override
     public void close() {
+        if (isClosed) {
+            return;
+        }
+        isClosed = true;
         closePreviousIterationsIfNecessary();
 
         try {
@@ -502,6 +511,10 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         catch ( IOException e ) {
             throw new GATKException("Error closing SAMReader");
         }
+    }
+
+    boolean isClosed() {
+        return isClosed;
     }
 
     /**

@@ -33,7 +33,6 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -424,7 +423,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         if (hcArgs.likelihoodArgs.dragstrParams != null) {
-            headerInfo.addAll(DragstrUtils.vcfHeaderLines());
+            headerInfo.addAll(DragstrVariantContextAnnotations.vcfHeaderLines());
         }
 
         if (hcArgs.standardArgs.genotypeArgs.genotypeAssignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {

@@ -1,26 +1,23 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.utils.RandomDNA;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
-public class DragstrReferenceSTRsTest {
+public class DragstrReferenceAnalyzerTest {
 
     @Test(dataProvider = "testSequenceAndMaxPeriodData")
     public void testRepeatPeriodAndCountFullSequence(final String sequenceStr, final int maxPeriod) {
         final byte[] sequence = sequenceStr.getBytes();
-        final DragstrReferenceSTRs subject = DragstrReferenceSTRs.of(sequence, 0, sequence.length, maxPeriod);
+        final DragstrReferenceAnalyzer subject = DragstrReferenceAnalyzer.of(sequence, 0, sequence.length, maxPeriod);
         assertCorrectness(subject, sequenceStr, maxPeriod, 0, sequence.length);
     }
 
-    private void assertCorrectness(final DragstrReferenceSTRs subject, final String sequence, final int maxPeriod, final int start, final int end) {
+    private void assertCorrectness(final DragstrReferenceAnalyzer subject, final String sequence, final int maxPeriod, final int start, final int end) {
         for (int position = start; position < end; position++) {
             final int[] expectedBestPeriodAndRepeat = calculateBestPeriodAndRepeat(sequence, position, maxPeriod);
             Assert.assertEquals(subject.period(position), expectedBestPeriodAndRepeat[0], "" + position);
@@ -35,7 +32,7 @@ public class DragstrReferenceSTRsTest {
     public void testRepeatBestPeriodAndCountPartialSequence(final String seqStr, final int maxPeriod) {
         for (int start = 0; start <= 6; start++) {
             for (int end = 7; end < seqStr.length(); end++) {
-                final DragstrReferenceSTRs partialSubject = DragstrReferenceSTRs.of(seqStr.getBytes(), start, end, maxPeriod);
+                final DragstrReferenceAnalyzer partialSubject = DragstrReferenceAnalyzer.of(seqStr.getBytes(), start, end, maxPeriod);
                 for (int pos = start; pos < end; pos++) {
                     final int[] result = calculateBestPeriodAndRepeat(seqStr, pos, maxPeriod);
                     Assert.assertEquals(result[0], partialSubject.period(pos));

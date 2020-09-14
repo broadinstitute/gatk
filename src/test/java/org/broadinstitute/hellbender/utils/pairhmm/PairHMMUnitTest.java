@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.google.common.base.Strings;
 import htsjdk.samtools.CigarOperator;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.StandardPairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;

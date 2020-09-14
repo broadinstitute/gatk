@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
-import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -20,8 +20,7 @@ import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -146,7 +145,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         }
 
         // null if there is no potential uses of DRAGstr in this region.
-        final DragstrReferenceSTRs dragstrs = constructDragstrReferenceSTRAnalyzerIfNecessary(haplotypes, ref, refLoc, startPosKeySet);
+        final DragstrReferenceAnalyzer dragstrs = constructDragstrReferenceSTRAnalyzerIfNecessary(haplotypes, ref, refLoc, startPosKeySet);
 
         final BiPredicate<GATKRead, Locatable> readQualifiesForGenotypingPredicate = composeReadQualifiesForGenotypingPredicate(hcArgs);
 
@@ -225,7 +224,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
                 if (dragstrs != null && GATKVariantContextUtils.containsInlineIndel(annotatedCall)) {
                     final int strOffset = loc - refLoc.getStart() + 1;
-                    annotatedCall = DragstrUtils.annotateVariantContextWithDragstrParametersUsed(annotatedCall, hcArgs.likelihoodArgs.dragstrParams, dragstrs.period(strOffset), dragstrs.repeatLength(strOffset));
+                    annotatedCall = DragstrVariantContextAnnotations.annotateVariantContextWithDragstrParametersUsed(annotatedCall, hcArgs.likelihoodArgs.dragstrParams, dragstrs.period(strOffset), dragstrs.repeatLength(strOffset));
                 }
                 returnCalls.add( annotatedCall );
 
@@ -251,17 +250,17 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @return {@code null} iff there is no chance that we would be using DRAGstr in this region based
      *    on the reconstructed haplotypes.
      */
-    private DragstrReferenceSTRs constructDragstrReferenceSTRAnalyzerIfNecessary(final List<Haplotype> haplotypes,
-                                                                                 final byte[] ref,
-                                                                                 final SimpleInterval refLoc,
-                                                                                 final SortedSet<Integer> startPosKeySet) {
+    private DragstrReferenceAnalyzer constructDragstrReferenceSTRAnalyzerIfNecessary(final List<Haplotype> haplotypes,
+                                                                                     final byte[] ref,
+                                                                                     final SimpleInterval refLoc,
+                                                                                     final SortedSet<Integer> startPosKeySet) {
         if (isDragstrSTRAnalyzerNecessary(startPosKeySet, haplotypes)) {
             final int offset = startPosKeySet.first() - refLoc.getStart();
             final int to = startPosKeySet.last() - refLoc.getStart() + 2;
                 // +2 = +1+1
                 // where one +1 is because starPosKeySet indexes are 1-based and offset/to are 0-based.
                 //   and the other +1 is because we need to analyze/include one base after each event position including the last.
-            return  DragstrReferenceSTRs.of(ref, offset, to, hcArgs.likelihoodArgs.dragstrParams.maximumPeriod());
+            return  DragstrReferenceAnalyzer.of(ref, offset, to, hcArgs.likelihoodArgs.dragstrParams.maximumPeriod());
         } else {
             return null;
         }
@@ -310,7 +309,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                                 .anyMatch(GATKVariantContextUtils::containsInlineIndel));
     }
 
-    private GenotypePriorCalculator resolveGenotypePriorCalculator(final DragstrReferenceSTRs strs, final int pos,
+    private GenotypePriorCalculator resolveGenotypePriorCalculator(final DragstrReferenceAnalyzer strs, final int pos,
                                                                    final double snpHeterozygosity, final double indelHeterozygosity) {
        if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors) {
             return GenotypePriorCalculator.assumingHW(Math.log10(snpHeterozygosity), Math.log10(indelHeterozygosity));
@@ -497,7 +496,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @param mergedVC               Input VC with event to genotype
      * @return                       GenotypesContext object wrapping genotype objects with PLs
      */
-    protected GenotypesContext calculateGLsForThisEvent(final AlleleLikelihoods<GATKRead, Allele> readLikelihoods, final VariantContext mergedVC, final List<Allele> noCallAlleles, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceSTRs dragstrs) {
+    protected GenotypesContext calculateGLsForThisEvent(final AlleleLikelihoods<GATKRead, Allele> readLikelihoods, final VariantContext mergedVC, final List<Allele> noCallAlleles, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceAnalyzer dragstrs) {
         Utils.nonNull(readLikelihoods, "readLikelihoods");
         Utils.nonNull(mergedVC, "mergedVC");
         final List<Allele> vcAlleles = mergedVC.getAlleles();

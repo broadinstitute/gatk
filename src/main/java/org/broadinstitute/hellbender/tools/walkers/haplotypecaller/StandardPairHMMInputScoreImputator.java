@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import org.broadinstitute.hellbender.utils.pairhmm.PairHMMInputScoreImputation;
+import org.broadinstitute.hellbender.utils.pairhmm.PairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 

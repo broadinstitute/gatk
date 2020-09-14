@@ -222,6 +222,21 @@ public final class ProgressMeter {
         }
     }
 
+    public void update( final Locatable currentLocus, final long recordCountIncrease ) {
+        Utils.validate(started, "the progress meter has not been started yet");
+        Utils.validate( !stopped, "the progress meter has been stopped already");
+        final long previousNumRecordsProcessed = numRecordsProcessed;
+        numRecordsProcessed += recordCountIncrease;
+        if ( previousNumRecordsProcessed / recordsBetweenTimeChecks != (numRecordsProcessed / recordsBetweenTimeChecks) ) {
+            currentTimeMs = timeFunction.getAsLong();
+            this.currentLocus = currentLocus;
+            if ( secondsSinceLastPrint() >= secondsBetweenUpdates ) {
+                printProgress();
+                lastPrintTimeMs = currentTimeMs;
+            }
+        }
+    }
+
     /**
      * Stop the progress meter and output summary statistics to the logger
      * @throws IllegalStateException if the meter has not been started yet or has been stopped already
