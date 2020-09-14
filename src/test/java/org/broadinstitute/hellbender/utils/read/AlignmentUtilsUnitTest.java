@@ -786,24 +786,30 @@ public final class AlignmentUtilsUnitTest {
     // given a read string and a reference string over the same context, test with different permutations of clipping
     // and preceding/following reference bases
     private void testWithClipsAndReferenceContext(final String refString, final String readString, final String originalCigar, final String expectedCigar) {
-        for (int leadingSoftClips : new int[] {0, 5}) {
-            for (int trailingSoftClips : new int[] {0, 5}) {
-                for (int extraRefInFront : new int[] {0, 10}) {
-                    for (int extraRefInBack : new int[] {0, 10}) {
-                        final byte[] readBases = new byte[readString.length() + leadingSoftClips + trailingSoftClips];
-                        final byte[] refBases = new byte[refString.length() + extraRefInFront + extraRefInBack];
-                        BaseUtils.fillWithRandomBases(readBases, 0, leadingSoftClips);
-                        BaseUtils.fillWithRandomBases(readBases, leadingSoftClips + readString.length(), readBases.length);
-                        System.arraycopy(readString.getBytes(), 0, readBases, leadingSoftClips, readString.length());
+        for (int leadingHardClips : new int[] {0, 5}) {
+            for (int trailingHardClips : new int[]{0, 5}) {
+                for (int leadingSoftClips : new int[]{0, 5}) {
+                    for (int trailingSoftClips : new int[]{0, 5}) {
+                        for (int extraRefInFront : new int[]{0, 10}) {
+                            for (int extraRefInBack : new int[]{0, 10}) {
+                                final byte[] readBases = new byte[readString.length() + leadingSoftClips + trailingSoftClips];
+                                final byte[] refBases = new byte[refString.length() + extraRefInFront + extraRefInBack];
+                                BaseUtils.fillWithRandomBases(readBases, 0, leadingSoftClips);
+                                BaseUtils.fillWithRandomBases(readBases, leadingSoftClips + readString.length(), readBases.length);
+                                System.arraycopy(readString.getBytes(), 0, readBases, leadingSoftClips, readString.length());
 
-                        BaseUtils.fillWithRandomBases(refBases, 0, extraRefInFront);
-                        BaseUtils.fillWithRandomBases(refBases, extraRefInFront + refString.length(), refBases.length);
-                        System.arraycopy(refString.getBytes(), 0, refBases, extraRefInFront, refString.length());
-                        final String originalCigarWithClips = (leadingSoftClips > 0 ? leadingSoftClips + "S" : "") + originalCigar + (trailingSoftClips > 0 ? trailingSoftClips + "S" : "");
-                        final String expectedCigarWithClips = (leadingSoftClips > 0 ? leadingSoftClips + "S" : "") + expectedCigar + (trailingSoftClips > 0 ? trailingSoftClips + "S" : "");
+                                BaseUtils.fillWithRandomBases(refBases, 0, extraRefInFront);
+                                BaseUtils.fillWithRandomBases(refBases, extraRefInFront + refString.length(), refBases.length);
+                                System.arraycopy(refString.getBytes(), 0, refBases, extraRefInFront, refString.length());
+                                final String originalCigarWithClips = (leadingHardClips > 0 ? leadingHardClips + "H" : "") + (leadingSoftClips > 0 ? leadingSoftClips + "S" : "")
+                                        + originalCigar + (trailingSoftClips > 0 ? trailingSoftClips + "S" : "") + (trailingHardClips > 0 ? trailingHardClips + "H" : "");
+                                final String expectedCigarWithClips = (leadingHardClips > 0 ? leadingHardClips + "H" : "") + (leadingSoftClips > 0 ? leadingSoftClips + "S" : "") +
+                                        expectedCigar + (trailingSoftClips > 0 ? trailingSoftClips + "S" : "") + (trailingHardClips > 0 ? trailingHardClips + "H" : "");
 
-                        final Cigar result = AlignmentUtils.leftAlignIndels(TextCigarCodec.decode(originalCigarWithClips), refBases, readBases, extraRefInFront).getCigar();
-                        Assert.assertEquals(result.toString(), expectedCigarWithClips);
+                                final Cigar result = AlignmentUtils.leftAlignIndels(TextCigarCodec.decode(originalCigarWithClips), refBases, readBases, extraRefInFront).getCigar();
+                                Assert.assertEquals(result.toString(), expectedCigarWithClips);
+                            }
+                        }
                     }
                 }
             }

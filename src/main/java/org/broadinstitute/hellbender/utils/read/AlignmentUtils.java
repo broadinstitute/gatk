@@ -738,11 +738,9 @@ public final class AlignmentUtils {
                     refIndelRange.shiftEndLeft(refIndelRange.size());       // ref indel range is now empty and points to start of left-aligned indel
                     readIndelRange.shiftEndLeft(readIndelRange.size());     // read indel range is now empty and points to start of left-aligned indel
 
-                    refIndelRange.shiftLeft(newMatchOnLeftDueToTrimming);
-                    if (element.getOperator().consumesReferenceBases()) {
-                        refIndelRange.shiftLeft(remainingBasesOnLeft);
-                    }   // now ref indel range is empty and points to end of element preceding this match block
-                    readIndelRange.shiftLeft(remainingBasesOnLeft + newMatchOnLeftDueToTrimming);         // now read indel range is empty and points to end of element preceding this match block
+                    refIndelRange.shiftLeft(newMatchOnLeftDueToTrimming + (element.getOperator().consumesReferenceBases() ? remainingBasesOnLeft : 0));
+                    readIndelRange.shiftLeft(newMatchOnLeftDueToTrimming + (element.getOperator().consumesReadBases() ? remainingBasesOnLeft : 0));
+                    // now read and ref indel ranges are empty and point to end of element preceding this block
                 }
                 resultRightToLeft.add(new CigarElement(newMatchOnLeftDueToTrimming, CigarOperator.MATCH_OR_MISMATCH));
                 resultRightToLeft.add(new CigarElement(remainingBasesOnLeft, element.getOperator()));
