@@ -91,9 +91,9 @@ public final class FragmentUtils {
         if (halfOfPcrIndelQual.isPresent()) {
             final int maxIndelQual = halfOfPcrIndelQual.getAsInt();
             final byte[] firstReadInsertionQuals = ReadUtils.getBaseInsertionQualities(firstRead);
-            final byte[] firstReadDeletionQuals = ReadUtils.getBaseInsertionQualities(firstRead);
+            final byte[] firstReadDeletionQuals = ReadUtils.getBaseDeletionQualities(firstRead);
             final byte[] secondReadInsertionQuals = ReadUtils.getBaseInsertionQualities(secondRead);
-            final byte[] secondReadDeletionQuals = ReadUtils.getBaseInsertionQualities(secondRead);
+            final byte[] secondReadDeletionQuals = ReadUtils.getBaseDeletionQualities(secondRead);
 
             for (int i = 0; i < numOverlappingBases; i++) {
                 final int firstReadIndex = firstReadStop + i;
