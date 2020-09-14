@@ -1,7 +1,7 @@
 # ml4h
 `ml4h` is a project aimed at using machine learning to model multi-modal cardiovascular
 time series and imaging data. `ml4h` began as a set of tools to make it easy to work
-with the UK Biobank on the Google Cloud and has since expanded to include other data sources
+with the UK Biobank on Google Cloud Platform and has since expanded to include other data sources
 and functionality.   
 
 
@@ -9,6 +9,7 @@ Getting Started
 * [Setting up your local environment](#setting-up-your-local-environment)
 * [Setting up a remote VM](#setting-up-a-remote-vm)
 * Modeling/Data Sources/Tests [(`ml4h/DATA_MODELING_TESTS.md`)](ml4h/DATA_MODELING_TESTS.md)
+* [Contributing Code](#contributing-code)
 
 Advanced Topics:
 * Tensorizing Data (going from raw data to arrays suitable for modeling, in `ml4h/tensorize/README.md, TENSORIZE.md` )
@@ -19,7 +20,7 @@ Clone the repo
 ```
 git clone git@github.com:broadinstitute/ml.git
 ```
-Make sure you have installed the [google cloud tools (gcloud)](https://cloud.google.com/storage/docs/gsutil_install). With [Homebrew](https://brew.sh/), you can use
+Make sure you have installed the [Google Cloud SDK (gcloud)](https://cloud.google.com/sdk/docs/downloads-interactive). With [Homebrew](https://brew.sh/), you can use
 ```
 brew cask install google-cloud-sdk
 ```
@@ -145,29 +146,6 @@ If you get a public key error run: `gcloud compute config-ssh`
 
 Now open a browser on your laptop and go to the URL `http://localhost:8888`
 
+## Contributing code
 
-### Installing git-secrets
-
-```git-secrets``` helps us avoid committing secrets (e.g. private keys) and other critical data (e.g. PHI) to our 
-repositories. ```git-secrets``` can be obtained via [github](https://github.com/awslabs/git-secrets) or on MacOS can be 
-installed with Homebrew by running ```brew install git-secrets```. 
-
-To add hooks to all repositories that you initialize or clone in the future:
-
-```git secrets --install --global```
-
-To add hooks to all local repositories:
-
-```
-git secrets --install ~/.git-templates/git-secrets
-git config --global init.templateDir ~/.git-templates/git-secrets
-```
-
-We maintain our own custom "provider" to cover any private keys or other critical data that we would like to avoid 
-committing to our repositories. Feel free to add ```egrep```-compatible regular expressions to 
-```git_secrets_provider_ml4h.txt``` to match types of critical data that are not currently covered by the patterns in that 
-file. To register the patterns in this file with ```git-secrets```:
-
-```
-git secrets --add-provider -- cat ${HOME}/ml/git_secrets_provider_ml4h.txt
-```
+Want to contribute code to this project? Please see [CONTRIBUTING](./CONTRIBUTING.md) for developer setup and other details.
