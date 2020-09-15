@@ -39,12 +39,12 @@ public final class FragmentUtils {
                 "attempting to merge two reads with different names " + firstRead + " and " + secondRead);
 
         // don't adjust fragments that do not overlap
-        if (firstRead.getEnd() < secondRead.getStart() || !firstRead.getContig().equals(secondRead.getContig())) {
+        if (firstRead.getSoftEnd() < secondRead.getSoftStart() || !firstRead.getContig().equals(secondRead.getContig())) {
             return;
         }
 
         // the offset and cigar operator in the first read at the start of the left read
-        final Pair<Integer, CigarOperator> offsetAndOperator = ReadUtils.getReadIndexForReferenceCoordinate(firstRead, secondRead.getStart());
+        final Pair<Integer, CigarOperator> offsetAndOperator = ReadUtils.getReadIndexForReferenceCoordinate(firstRead, secondRead.getSoftStart());
         final CigarOperator operator = offsetAndOperator.getRight();
         final int offset = offsetAndOperator.getLeft();
         if (offset == ReadUtils.READ_INDEX_NOT_FOUND) { // no overlap

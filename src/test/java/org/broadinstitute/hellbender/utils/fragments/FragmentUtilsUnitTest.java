@@ -37,6 +37,31 @@ public class FragmentUtilsUnitTest extends GATKBaseTest {
         return read;
     }
 
+    private GATKRead makeOverlappingReadWithSoftClip(final String leftFlank, final int leftQual, final int leftSoftClipLength,
+                                                     final String overlapBases, final byte[] overlapQuals,
+                                                     final String rightFlank, final int rightQual, final int rightSoftClipLength,
+                                                     final int unclippedStart) {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        header.addReadGroup(new SAMReadGroupRecord("RG1"));
+        final String bases = leftFlank + overlapBases + rightFlank;
+        final int readLength = bases.length();
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, unclippedStart+leftSoftClipLength, readLength);
+        final byte[] leftQuals = Utils.dupBytes((byte) leftQual, leftFlank.length());
+        final byte[] rightQuals = Utils.dupBytes((byte) rightQual, rightFlank.length());
+        final byte[] quals = Utils.concat(leftQuals, overlapQuals, rightQuals);
+
+        String cigarString = leftSoftClipLength > 0? leftSoftClipLength + "S" : "";
+        cigarString = cigarString + (readLength - leftSoftClipLength - rightSoftClipLength) + "M";
+        if (rightSoftClipLength>0)
+            cigarString = cigarString + rightSoftClipLength + "S";
+        read.setCigar(cigarString);
+        read.setBases(bases.getBytes());
+        read.setBaseQualities(quals);
+        read.setReadGroup("RG1");
+        read.setMappingQuality(60);
+        return read;
+    }
+
     @DataProvider(name = "AdjustFragmentsTest")
     public Object[][] createAdjustFragmentsTest() throws Exception {
         List<Object[]> tests = new ArrayList<>();
@@ -53,6 +78,22 @@ public class FragmentUtilsUnitTest extends GATKBaseTest {
             final GATKRead read1  = makeOverlappingRead(leftFlank, HIGH_QUALITY, overlappingBases, overlappingBaseQuals, "", HIGH_QUALITY, 1);
             final GATKRead read2  = makeOverlappingRead("", HIGH_QUALITY, overlappingBases, overlappingBaseQuals, rightFlank, HIGH_QUALITY, leftFlank.length() + 1);
             tests.add(new Object[]{read1, read2, overlapSize});
+        }
+
+        final int overlapSize = allOverlappingBases.length();
+        final byte[] overlappingBaseQuals = new byte[overlapSize];
+        for ( int i = 0; i < overlapSize; i++ ) {
+            overlappingBaseQuals[i] = HIGH_QUALITY;
+        }
+        for (int leftSoftClipSize1 = 0; leftSoftClipSize1 <= 10; leftSoftClipSize1+=5)
+        for (int rightSoftClipSize1 = 0; rightSoftClipSize1 <= 10; rightSoftClipSize1+=5)
+        for (int leftSoftClipSize2 = 0; leftSoftClipSize2 <= 10; leftSoftClipSize2+=5)
+        for (int rightSoftClipSize2 = 0; rightSoftClipSize2 <= 10; rightSoftClipSize2+=5) {
+            final GATKRead read1 = makeOverlappingReadWithSoftClip(leftFlank, HIGH_QUALITY, leftSoftClipSize1, allOverlappingBases,
+                                                                   overlappingBaseQuals, "", HIGH_QUALITY, rightSoftClipSize1, 1);
+            final GATKRead read2 = makeOverlappingReadWithSoftClip("", HIGH_QUALITY, leftSoftClipSize2, allOverlappingBases,
+                                                                   overlappingBaseQuals, rightFlank, HIGH_QUALITY, rightSoftClipSize2, leftFlank.length()+1);
+            tests.add(new Object[] {read1, read2, overlapSize});
         }
 
         return tests.toArray(new Object[][]{});
