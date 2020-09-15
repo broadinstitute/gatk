@@ -150,6 +150,36 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String COMBINED_WITH_NEW_MQ = toolsTestDir + "/walkers/GenomicsDBImport/newMQcalc.combined.g.vcf";
     private static final List<SimpleInterval> INTERVAL2 = Arrays.asList(new SimpleInterval("20", 1, 11_000_000));
     private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList("RAW_MQ","RAW_MQandDP");  //CombineGVCFs doesn't support the old RAW_MQ anymore
+    // we're using vcfs instead of gvcfs for many contigs test, and these attributes don't have default combine operations in GenomicsDB
+    private static final List<String> MANY_CONTIGS_ATTRIBUTES_TO_IGNORE = Arrays.asList("HaplotypeScore","MLEAC", "MLEAF");
+    private static final String P717 = largeFileTestDir + "Ptrichocarpa.v3.sorted.p717.vcf";
+    private static final String P717_2 = largeFileTestDir + "Ptrichocarpa.v3.sorted.p717_2.vcf";
+    private static final List<String> MANY_CONTIGS_VCF = Arrays.asList(P717, P717_2);
+    private static final String EXPECTED_SEVERAL_CONTIGS_VCF = largeFileTestDir + "Ptrichocarpa.v3.p717.p717_2.combined.final.expected.vcf";
+    private static final String MANY_CONTIGS_REF = largeFileTestDir + "Populus_trichocarpa.Pop_tri_v3.dna.nonchromosomal_subset_renamed.fa";
+    // scaffold_3123 has been removed to test non adjacent interval list works (after scaffold_3381 in header)
+    private static final List<String> MANY_CONTIGS_NON_ADJACENT_INTERVALS = Arrays.asList("scaffold_3121", "scaffold_3427", "scaffold_3213", "scaffold_3050", "scaffold_3381",
+        "scaffold_3472", "scaffold_2907", "scaffold_3046", "scaffold_3412", "scaffold_3304", "scaffold_3332", "scaffold_3326", "scaffold_3230",
+        "scaffold_3160", "scaffold_3403", "scaffold_2851", "scaffold_3416", "scaffold_3340", "scaffold_2911", "scaffold_3442", "scaffold_3681", "scaffold_2889",
+        "scaffold_3305", "scaffold_3335", "scaffold_3316", "scaffold_3126", "scaffold_3363", "scaffold_2844", "scaffold_3388", "scaffold_3285", "scaffold_2968",
+        "scaffold_3074", "scaffold_3436", "scaffold_3289", "scaffold_3264", "scaffold_2919", "scaffold_3422", "scaffold_3393", "scaffold_3387", "scaffold_3453",
+        "scaffold_3171", "scaffold_3372", "scaffold_3389", "scaffold_3259", "scaffold_2930", "scaffold_3129", "scaffold_3044", "scaffold_3147", "scaffold_2885",
+        "scaffold_3452", "scaffold_3202", "scaffold_3263", "scaffold_3354", "scaffold_3134", "scaffold_3255", "scaffold_3320", "scaffold_3523", "scaffold_3432",
+        "scaffold_3239", "scaffold_3206", "scaffold_3437", "scaffold_2922", "scaffold_3136", "scaffold_3292", "scaffold_3391", "scaffold_3061", "scaffold_3250",
+        "scaffold_3226", "scaffold_2857", "scaffold_3528", "scaffold_3325", "scaffold_3296", "scaffold_3298", "scaffold_2924", "scaffold_3157", "scaffold_2855",
+        "scaffold_3275", "scaffold_3007", "scaffold_3306", "scaffold_3179", "scaffold_3060", "scaffold_3222", "scaffold_3648", "scaffold_3005", "scaffold_3020",
+        "scaffold_3194", "scaffold_3328", "scaffold_3251", "scaffold_3547", "scaffold_3342", "scaffold_3139", "scaffold_3262", "scaffold_3210", "scaffold_2981",
+        "scaffold_2933", "scaffold_3056", "scaffold_3413", "scaffold_3064", "scaffold_3353", "scaffold_2913", "scaffold_3445", "scaffold_3374", "scaffold_3214",
+        "scaffold_3423", "scaffold_3095", "scaffold_2965", "scaffold_3357", "scaffold_3021", "scaffold_3228", "scaffold_3300", "scaffold_3042", "scaffold_3312",
+        "scaffold_3537", "scaffold_3058", "scaffold_3425", "scaffold_3431", "scaffold_3368", "scaffold_2951", "scaffold_3356", "scaffold_3116", "scaffold_3257",
+        "scaffold_3478", "scaffold_3068", "scaffold_3008", "scaffold_2893", "scaffold_3088", "scaffold_3269", "scaffold_3245", "scaffold_3190", "scaffold_3054",
+        "scaffold_3383", "scaffold_3346", "scaffold_3223", "scaffold_3446", "scaffold_3370", "scaffold_3252", "scaffold_3053", "scaffold_3100", "scaffold_2838",
+        "scaffold_3272", "scaffold_3384", "scaffold_2868", "scaffold_3398", "scaffold_3107", "scaffold_3014", "scaffold_3364", "scaffold_2987", "scaffold_3191",
+        "scaffold_3076", "scaffold_3246", "scaffold_3011", "scaffold_3348", "scaffold_3231", "scaffold_3448", "scaffold_3360", "scaffold_3352", "scaffold_3294",
+        "scaffold_2853", "scaffold_3024", "scaffold_3426", "scaffold_3379", "scaffold_3440", "scaffold_3550", "scaffold_2879", "scaffold_3362", "scaffold_3236");
+    private static final int SEVERAL_CONTIGS = 7;
+    private static final String MANY_CONTIGS_INTERVAL_PICARD_STYLE_EXPECTED =
+            toolsTestDir + "GenomicsDBImport/Ptrichocarpa.v3.expected.interval_list";
 
     @Override
     public String getTestedClassName() {
@@ -202,6 +232,17 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     @Test
     public void testGenomicsDBImportFileInputsAgainstCombineGVCFMergeContigsToSinglePartition() throws IOException {
         testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, INTERVAL_20_21, b38_reference_20_21, new String[0], 1, 1, false);
+    }
+
+    @Test
+    public void testGenomicsDBImportMergeContigsManyNonAdjacentContigsToSeveralContigs() throws IOException {
+        List<SimpleInterval> manyContigs = MANY_CONTIGS_NON_ADJACENT_INTERVALS.stream().map(SimpleInterval::new).collect(Collectors.toList());
+        final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
+
+        writeToGenomicsDB(MANY_CONTIGS_VCF, manyContigs, workspace, 0, false, 0, 1, false, false, false, SEVERAL_CONTIGS, false);
+        checkJSONFilesAreWritten(workspace);
+        checkGenomicsDBAgainstExpected(workspace, manyContigs, EXPECTED_SEVERAL_CONTIGS_VCF, MANY_CONTIGS_REF, true,
+                MANY_CONTIGS_ATTRIBUTES_TO_IGNORE, true, false);
     }
 
     @Test(expectedExceptions = {UserException.class}, expectedExceptionsMessageRegExp=".*entire contigs be specified.*")
@@ -1044,21 +1085,21 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     public void testGenomicsDBBasicIncremental() throws IOException {
         final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
         testIncrementalImport(2, INTERVAL, workspace, 0, true, true, COMBINED_WITH_GENOTYPES, 0, false);
-        createAndCheckIntervalListFromExistingWorkspace(workspace, true);
+        createAndCheckIntervalListFromExistingWorkspace(workspace, INTERVAL_PICARD_STYLE_EXPECTED);
     }
 
     @Test
     public void testGenomicsDBIncrementalAndBatchSize1WithNonAdjacentIntervals() throws IOException {
         final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
         testIncrementalImport(2, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 1, false, true, "", 0, false);
-        createAndCheckIntervalListFromExistingWorkspace(workspace, false);
+        createAndCheckIntervalListFromExistingWorkspace(workspace, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS_PICARD_STYLE_EXPECTED);
     }
 
     @Test
     public void testGenomicsDBIncrementalAndBatchSize1WithNonAdjacentIntervalsMergeContigsIntoPartitions() throws IOException {
         final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
         testIncrementalImport(2, INTERVAL_20_21, workspace, 1, false, true, "", 1, false);
-        createAndCheckIntervalListFromExistingWorkspace(workspace, false, true);
+        createAndCheckIntervalListFromExistingWorkspace(workspace, MERGED_CONTIGS_INTERVAL_PICARD_STYLE_EXPECTED);
     }
 
     @Test
@@ -1075,12 +1116,21 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                               COMBINED_WITH_GENOTYPES, 0, false);
     }
 
-    private void createAndCheckIntervalListFromExistingWorkspace(final String workspace, final Boolean singleInterval) {
-        createAndCheckIntervalListFromExistingWorkspace(workspace, singleInterval, false);
+    @Test
+    public void testGenomicsDBIncrementalWithManyNonAdjacentContigsToSeveralPartitions() throws IOException {
+        List<SimpleInterval> manyContigs = MANY_CONTIGS_NON_ADJACENT_INTERVALS.stream().map(SimpleInterval::new).collect(Collectors.toList());
+        final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
+
+        writeToGenomicsDB(MANY_CONTIGS_VCF.subList(0, 1), manyContigs, workspace, 0, false, 0, 1, false, false, false, SEVERAL_CONTIGS, false);
+        writeToGenomicsDB(MANY_CONTIGS_VCF.subList(1, 2), manyContigs, workspace, 0, false, 0, 1, false, false, true, SEVERAL_CONTIGS, false);
+        checkJSONFilesAreWritten(workspace);
+        checkGenomicsDBAgainstExpected(workspace, manyContigs, EXPECTED_SEVERAL_CONTIGS_VCF, MANY_CONTIGS_REF, true,
+                MANY_CONTIGS_ATTRIBUTES_TO_IGNORE, true, false);
+
+        createAndCheckIntervalListFromExistingWorkspace(workspace, MANY_CONTIGS_INTERVAL_PICARD_STYLE_EXPECTED);
     }
 
-    private void createAndCheckIntervalListFromExistingWorkspace(final String workspace, final Boolean singleInterval,
-                                                                 final Boolean mergedContigs) {
+    private void createAndCheckIntervalListFromExistingWorkspace(final String workspace, final String expectedOutput) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         final String outputIntervalList = workspace + "interval_output";
         args.add(GenomicsDBImport.INCREMENTAL_WORKSPACE_ARG_LONG_NAME, workspace);
@@ -1088,15 +1138,6 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
         runCommandLine(args);
 
-        String expectedOutput;
-        if (mergedContigs) {
-            expectedOutput = MERGED_CONTIGS_INTERVAL_PICARD_STYLE_EXPECTED;
-        }
-        else if (singleInterval) {
-            expectedOutput = INTERVAL_PICARD_STYLE_EXPECTED;
-        } else {
-            expectedOutput = MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS_PICARD_STYLE_EXPECTED;
-        }
         final IntervalList generatedInterval = IntervalList.fromFile(new File(outputIntervalList));
         final IntervalList expectedInterval = IntervalList.fromFile(new File(expectedOutput));
         Assert.assertTrue(generatedInterval.sorted().equals(expectedInterval.sorted()));

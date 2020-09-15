@@ -725,6 +725,8 @@ public final class GenomicsDBImport extends GATKTool {
 
     private List<GenomicsDBImportConfiguration.Partition> generatePartitionListFromWorkspace() {
         String[] partitions = GenomicsDBUtils.listGenomicsDBArrays(workspace);
+        // sort here to keep partition order
+        Arrays.sort(partitions);
         List<GenomicsDBImportConfiguration.Partition> configPartitions = new ArrayList<>();
         for (String partition : partitions) {
             long[] bounds = GenomicsDBUtils.getArrayColumnBounds(workspace, partition);
@@ -759,16 +761,15 @@ public final class GenomicsDBImport extends GATKTool {
                 org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.getProtobufVidMappingFromJsonFile(vidMapJSONFile);
     
             List<String> partitions = Arrays.asList(GenomicsDBUtils.listGenomicsDBArrays(workspace));
-            return partitions.stream().map(partition -> {
+            return partitions.stream().flatMap(partition -> {
                 long[] bounds = GenomicsDBUtils.getArrayColumnBounds(workspace, partition);
                 // merge-contigs-into-num-partitions ensures entire contigs are within a given partition
                 // so we just check here that contig starts within the given bounds
                 return vidMapPB.getContigsList().stream()
                         .filter(x -> x.getTiledbColumnOffset() >= bounds[ARRAY_COLUMN_BOUNDS_START] &&  
                         x.getTiledbColumnOffset() <= bounds[ARRAY_COLUMN_BOUNDS_END])
-                        .map(x -> new SimpleInterval(x.getName(), 1, Math.toIntExact(x.getLength())))
-                        .collect(Collectors.toList());
-            }).flatMap(List::stream).collect(Collectors.toList());
+                        .map(x -> new SimpleInterval(x.getName(), 1, Math.toIntExact(x.getLength())));
+            }).collect(Collectors.toList());
         } catch (final IOException e) {
             throw new UserException("Could not get vid map protobuf from file:" + vidMapJSONFile + 
                     ". Is the workspace corrupted?", e);
