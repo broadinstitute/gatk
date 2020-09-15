@@ -267,7 +267,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference);
 
         VariantContextTestUtils.streamVcf(unfilteredVcf).flatMap(vc -> vc.getGenotypes().stream()).forEach(g -> Assert.assertTrue(g.hasAD()));
-        final long numVariants = VariantContextTestUtils.streamVcf(unfilteredVcf).count();
+        final long numVariants = VariantContextTestUtils.streamVcf(filteredVcf)
+                .filter(VariantContext::isNotFiltered)
+                .count();
         Assert.assertTrue(numVariants < 4);
     }
 
@@ -502,12 +504,12 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<String> expectedKeys = Arrays.asList(
                 "chrM:152-152 T*, [C]",
                 "chrM:263-263 A*, [G]",
-                "chrM:302-302 A*, [AC, ACC, C]",
+                "chrM:302-302 A*, [AC, ACC, ACCCCCCCCCCCCC, C]",
                 "chrM:310-310 T*, [C, TC]",
                 "chrM:750-750 A*, [G]");
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
 
-        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1709);
+        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1741);
     }
 
     @DataProvider(name = "vcfsForFiltering")
