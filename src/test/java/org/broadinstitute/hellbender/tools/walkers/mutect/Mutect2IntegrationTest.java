@@ -375,6 +375,28 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    // test that the dont-use-soft-clips option actually does something
+    @Test
+    public void testDontUseSoftClips() {
+        Utils.resetRandomGenerator();
+        final File tumor = new File(NA12878_20_21_WGS_bam);
+        final int start = 10050000;
+
+        final SimpleInterval interval = new SimpleInterval("20", start, start + 25000);
+
+        final File calls1 = createTempFile("unfiltered", ".vcf");
+        runMutect2(tumor, calls1, interval.toString(), b37Reference, Optional.of(GNOMAD));
+
+        final File calls2 = createTempFile("unfiltered", ".vcf");
+        runMutect2(tumor, calls2, interval.toString(), b37Reference, Optional.of(GNOMAD),
+                args -> args.addFlag(AssemblyBasedCallerArgumentCollection.DONT_USE_SOFT_CLIPPED_BASES_LONG_NAME));
+
+        final List<VariantContext> indelsWithSoftClips = VariantContextTestUtils.streamVcf(calls1).filter(VariantContext::isIndel).collect(Collectors.toList());
+        final List<VariantContext> indelsWithoutSoftClips = VariantContextTestUtils.streamVcf(calls2).filter(VariantContext::isIndel).collect(Collectors.toList());
+
+        Assert.assertTrue(indelsWithoutSoftClips.size() < indelsWithSoftClips.size());
+    }
+
 
     // make sure that force calling with given alleles that normally wouldn't be called due to complete lack of coverage
     // doesn't run into any edge case bug involving empty likelihoods matrices
