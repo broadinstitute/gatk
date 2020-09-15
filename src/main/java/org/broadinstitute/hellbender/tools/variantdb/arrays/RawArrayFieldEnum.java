@@ -3,7 +3,13 @@ package org.broadinstitute.hellbender.tools.variantdb.arrays;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeInfo;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 
 /**
@@ -30,43 +36,6 @@ public enum RawArrayFieldEnum {
 
     // This where the validation step (required vs not) lives  -- fail if there is missing data for a required field
     // and just leave it empty if not required
-    basic_array_data {
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
-            String gt = GT_encoded.getColumnValue(variant, probeInfo, sampleId);
-            BasicArrayData.ArrayGenotype agt;
-            if (".".equals(gt)) {
-                agt = BasicArrayData.ArrayGenotype.NO_CALL;
-            } else {
-                agt = BasicArrayData.ArrayGenotype.valueOf(gt);
-            }
-            BasicArrayData d = new BasicArrayData(Integer.parseInt(sampleId), (int) probeInfo.probeId, agt);
-            return String.valueOf(d.encode());
-        }
-    },
-
-    raw_array_data {
-        private Float convert(String s) {
-            if (s == null || "".equals(s) || "null".equals(s) ) {
-                return null;
-            } else {
-                return Float.parseFloat(s);                
-            }
-        }
-
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
-            String normx = NORMX.getColumnValue(variant, probeInfo, sampleId);
-            String normy = NORMY.getColumnValue(variant, probeInfo, sampleId);
-            String baf = BAF.getColumnValue(variant, probeInfo, sampleId);
-            String lrr = LRR.getColumnValue(variant, probeInfo, sampleId);
-
-            RawArrayData d = new RawArrayData(convert(normx),
-                                              convert(normy),
-                                              convert(baf),
-                                              convert(lrr)
-                                              );
-            return String.valueOf(d.encode());
-        }
-    },
 
     probe_id { // Required
         public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
@@ -74,23 +43,32 @@ public enum RawArrayFieldEnum {
         }
     },
 
-    GT_encoded {
+    GT_encoded { // Required
         public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
-            Genotype g = variant.getGenotype(0);
+            List<Integer> alleleIndexes = CommonCode.getGTAlleleIndexes(variant);
+
             RawArrayTsvCreator.GT_encoding gt = RawArrayTsvCreator.GT_encoding.MISSING;
-            if (g.isHomRef() || g.isHomVar()) {
-                Allele allele = g.getAllele(0);
-                if (allele.basesMatch(probeInfo.alleleA)) {
-                    gt = RawArrayTsvCreator.GT_encoding.AA;
-                } else if (allele.basesMatch(probeInfo.alleleB)) {
-                    gt = RawArrayTsvCreator.GT_encoding.BB;
+            if (alleleIndexes.size() == 2) {
+                Set<Integer> uniqueAlleleIndexes = new HashSet<>(alleleIndexes);
+
+                if (uniqueAlleleIndexes.size() == 1) {
+                    // we know it's HOM something
+                    if (uniqueAlleleIndexes.contains(0)) {
+                        gt = RawArrayTsvCreator.GT_encoding.HOM_REF;
+                    } else if (uniqueAlleleIndexes.contains(1)) {
+                        gt = RawArrayTsvCreator.GT_encoding.HOM_VAR;
+                    } else if (uniqueAlleleIndexes.contains(2)) {
+                        gt = RawArrayTsvCreator.GT_encoding.HOM_ALT2;
+                    }
                 } else {
-                    throw new IllegalStateException("allele: " + allele + " must match either A: " + probeInfo.alleleA + " or B: " + probeInfo.alleleB);
+                    // we know its het
+                    if (uniqueAlleleIndexes.containsAll(new HashSet<>(Arrays.asList(0, 1)))) {
+                        gt = RawArrayTsvCreator.GT_encoding.HET0_1;
+                    } else if (uniqueAlleleIndexes.containsAll(new HashSet<>(Arrays.asList(1, 2))))
+                        gt = RawArrayTsvCreator.GT_encoding.HET1_2;
                 }
-            } else if (g.isHet()) {
-                gt = RawArrayTsvCreator.GT_encoding.AB;
             }
-            return gt.getValue();
+            return gt == RawArrayTsvCreator.value_to_drop ? "null" : gt.getValue();
         }
     },
 
@@ -121,8 +99,5 @@ public enum RawArrayFieldEnum {
 
     public static RawArrayFieldEnum[] getUncompressedRawArrayFieldEnums() {
         return new RawArrayFieldEnum[] { sample_id, probe_id, GT_encoded, NORMX, NORMY, BAF, LRR };
-    }
-    public static RawArrayFieldEnum[] getCompressedRawArrayFieldEnums() {
-        return new RawArrayFieldEnum[] { basic_array_data, raw_array_data };
     }
 }
