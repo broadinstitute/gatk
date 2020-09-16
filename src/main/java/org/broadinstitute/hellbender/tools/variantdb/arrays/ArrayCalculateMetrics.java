@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
-import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.TableResult;
+import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -10,9 +9,11 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
+import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.GenotypeCountsSchema;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ExcessHet;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
+import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
 import java.io.IOException;
@@ -65,31 +66,30 @@ public class ArrayCalculateMetrics extends GATKTool {
     public void traverse() {
         progressMeter.setRecordsBetweenTimeChecks(1000L);
 
-        final String genotypeCountQueryString =
-                "SELECT * FROM `" + genotypeCountsTable + "`";
+        TableReference tableRef = new TableReference(genotypeCountsTable, GenotypeCountsSchema.GENOTYPE_COUNTS_FIELDS);
 
-        //Execute Query
-        final TableResult result = BigQueryUtils.executeQuery(genotypeCountQueryString);
+        try (final StorageAPIAvroReader reader = new StorageAPIAvroReader(tableRef)) {
+            for ( final GenericRecord row : reader ) {
+                List<String> thisRow = new ArrayList<>();
+                // data in row should never be null
+                long probeId = (Long) row.get(0);
+                thisRow.add(String.valueOf(probeId));
 
-        for (final FieldValueList row : result.iterateAll()) {
-            List<String> thisRow = new ArrayList<>();
-            Long probeId = row.get(0).getLongValue();
-            thisRow.add(String.valueOf(probeId));
+                GenotypeCounts genotypeCounts = new GenotypeCounts((Long) row.get(1), (Long) row.get(2), (Long) row.get(3));
+                long noCalls = (Long) row.get(4);
+                int sampleCount = (int) genotypeCounts.getRefs() + (int) genotypeCounts.getHets() + (int) genotypeCounts.getHoms() + (int) noCalls;
+                double excessHetPval = ExcessHet.calculateEH(genotypeCounts, sampleCount).getRight();
+                thisRow.add(String.format("%.0f", excessHetPval));
 
-            GenotypeCounts genotypeCounts = new GenotypeCounts(row.get(1).getDoubleValue(), row.get(2).getDoubleValue(), row.get(3).getDoubleValue());
-            long noCalls = row.get(4).getLongValue();
-            Integer sampleCount = (int) genotypeCounts.getRefs() + (int) genotypeCounts.getHets() + (int) genotypeCounts.getHoms() + (int) noCalls;
-            Double excessHetPval = ExcessHet.calculateEH(genotypeCounts, sampleCount).getRight();
-            thisRow.add(String.valueOf(excessHetPval));
+                double callRate = 1.0 - ((double) noCalls / sampleCount);
+                thisRow.add(String.format("%.3f", callRate));
 
-            Double callRate = 1.0 - ((double) noCalls / sampleCount);
-            thisRow.add(String.valueOf(callRate));
+                boolean invariant = genotypeCounts.getHets() + genotypeCounts.getHoms() == 0;
+                thisRow.add(String.valueOf(invariant));
 
-            Boolean invariant = genotypeCounts.getHets() + genotypeCounts.getHoms() == 0;
-            thisRow.add(String.valueOf(invariant));
-
-            metricsTsvWriter.getNewLineBuilder().setRow(thisRow);
-            progressMeter.update(null);
+                metricsTsvWriter.getNewLineBuilder().setRow(thisRow);
+                progressMeter.update(null);
+            }
         }
     }
 
