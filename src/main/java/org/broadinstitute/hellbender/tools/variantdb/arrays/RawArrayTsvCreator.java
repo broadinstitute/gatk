@@ -83,10 +83,10 @@ public final class RawArrayTsvCreator {
                     row.add(sampleId);
                     break;
                 case probe_id:
-                    row.add(probeInfo.toString());
+                    row.add(String.valueOf(probeInfo.probeId));
                     break;
                 default:
-                    row.add(fieldEnum.getColumnValue(variant, probeInfo, sampleId));
+                    row.add(fieldEnum.getColumnValue(variant));
             }
         }
 

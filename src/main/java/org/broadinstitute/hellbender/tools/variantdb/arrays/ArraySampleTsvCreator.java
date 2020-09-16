@@ -23,32 +23,34 @@ public class ArraySampleTsvCreator {
 
 
     public ArraySampleTsvCreator(String metricsFilepath) {
-        BufferedReader reader = null;
-        try {
-            String columns = null;
-            String values = null;
-            reader = new BufferedReader(new FileReader(metricsFilepath));
-            String line = reader.readLine();
-            while (line != null) {
-                if (!line.startsWith("#") && !line.trim().isEmpty()) {
-                    if (columns == null) {
-                        columns = line;
-                    } else if (values == null) {
-                        values = line;
-                    } else {
-                        // there are more lines than expected - output a warning
-                        logger.warn("more lines than expected in metrics file: " + line);
+        if (metricsFilepath != null && !metricsFilepath.isEmpty()) {
+            BufferedReader reader = null;
+            try {
+                String columns = null;
+                String values = null;
+                reader = new BufferedReader(new FileReader(metricsFilepath));
+                String line = reader.readLine();
+                while (line != null) {
+                    if (!line.startsWith("#") && !line.trim().isEmpty()) {
+                        if (columns == null) {
+                            columns = line;
+                        } else if (values == null) {
+                            values = line;
+                        } else {
+                            // there are more lines than expected - output a warning
+                            logger.warn("more lines than expected in metrics file: " + line);
+                        }
                     }
+                    line = reader.readLine();
                 }
-                line = reader.readLine();
+
+                List<String> colList = Arrays.asList(columns.split("\t"));
+                List<String> valList = Arrays.asList(values.split("\t"));
+                metricsMap = IntStream.range(0, colList.size()).boxed().collect(Collectors.toMap(colList::get, valList::get));
+
+            } catch (IOException e) {
+                throw new RuntimeException("could not read metrics file", e);
             }
-
-            List<String> colList = Arrays.asList(columns.split("\t"));
-            List<String> valList = Arrays.asList(values.split("\t"));
-            metricsMap = IntStream.range(0, colList.size()).boxed().collect(Collectors.toMap(colList::get, valList::get));
-
-        } catch (IOException e) {
-            throw new RuntimeException("could not read metrics file", e);
         }
     }
 
@@ -85,7 +87,11 @@ public class ArraySampleTsvCreator {
 
         for (final ArraySampleFieldEnum fieldEnum : ArraySampleFieldEnum.values()) {
             if (fieldEnum != ArraySampleFieldEnum.sample_id && fieldEnum != ArraySampleFieldEnum.sample_name) {
-                row.add(fieldEnum.getColumnValue(metricsMap));
+                if (metricsMap == null) {
+                    row.add("null");
+                } else {
+                    row.add(fieldEnum.getColumnValue(metricsMap));
+                }
             }
         }
         return row;
