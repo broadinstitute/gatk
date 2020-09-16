@@ -12,7 +12,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.BasicArrayData.ArrayGenotype;
-import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeInfo;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
@@ -375,10 +374,10 @@ public class ArrayExtractCohortEngine {
         }
         genotypeBuilder.alleles(genotypeAlleles);
 
-        genotypeBuilder.attribute(CommonCode.NORMX, formatFloatForVcf(normx));
-        genotypeBuilder.attribute(CommonCode.NORMY, formatFloatForVcf(normy));
-        genotypeBuilder.attribute(CommonCode.BAF, formatFloatForVcf(baf));
-        genotypeBuilder.attribute(CommonCode.LRR, formatFloatForVcf(lrr));      
+        genotypeBuilder.attribute(RawArrayTsvCreator.NORMX, formatFloatForVcf(normx));
+        genotypeBuilder.attribute(RawArrayTsvCreator.NORMY, formatFloatForVcf(normy));
+        genotypeBuilder.attribute(RawArrayTsvCreator.BAF, formatFloatForVcf(baf));
+        genotypeBuilder.attribute(RawArrayTsvCreator.LRR, formatFloatForVcf(lrr));
 
         genotypeBuilder.name(sample);
 

@@ -29,11 +29,18 @@ import java.util.Map;
 public final class CreateArrayIngestFiles extends VariantWalker {
     static final Logger logger = LogManager.getLogger(CreateArrayIngestFiles.class);
 
-    private ArrayMetadataTsvCreator metadataTsvCreator;
+    private ArraySampleTsvCreator sampleTsvCreator;
     private RawArrayTsvCreator tsvCreator;
 
     private String sampleName;
     private String sampleId;
+
+    @Argument(
+            fullName = "metrics-file",
+            shortName = "QCF",
+            doc = "Filepath to picard metrics file",
+            optional = true)  // TODO change this to false for release
+    private String metricsFilePath = null;
 
     @Argument(fullName = "sample-name-mapping",
             shortName = "SNM",
@@ -60,11 +67,6 @@ public final class CreateArrayIngestFiles extends VariantWalker {
         optional = true)
     private String probeCsvFile = null;
 
-    @Argument(
-            fullName = "use-compressed-data",
-            doc = "If true, use bit-packed fields for data",
-            optional = true)
-    private boolean useCompressedData = false;
 
     @Argument(
             fullName = "ref-version",
@@ -102,8 +104,8 @@ public final class CreateArrayIngestFiles extends VariantWalker {
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
         String tableNumberPrefix = String.format("%03d_", sampleTableNumber);
 
-        metadataTsvCreator = new ArrayMetadataTsvCreator();
-        metadataTsvCreator.createRow(sampleName, sampleId, tableNumberPrefix, outputDir);
+        sampleTsvCreator = new ArraySampleTsvCreator(metricsFilePath);
+        sampleTsvCreator.createRow(sampleName, sampleId, tableNumberPrefix, outputDir);
 
         Map<String, ProbeInfo> probeNameMap;
         if (probeCsvFile == null) {
@@ -115,7 +117,7 @@ public final class CreateArrayIngestFiles extends VariantWalker {
         // Set reference version
         ChromosomeEnum.setRefVersion(refVersion);
 
-        tsvCreator = new RawArrayTsvCreator(sampleName, sampleId, tableNumberPrefix, probeNameMap, useCompressedData, outputDir);
+        tsvCreator = new RawArrayTsvCreator(sampleName, sampleId, tableNumberPrefix, probeNameMap, outputDir);
     }
 
 
@@ -137,8 +139,8 @@ public final class CreateArrayIngestFiles extends VariantWalker {
         if (tsvCreator != null) {
             tsvCreator.closeTool();
         }
-        if (metadataTsvCreator != null) {
-            metadataTsvCreator.closeTool();
+        if (sampleTsvCreator != null) {
+            sampleTsvCreator.closeTool();
         }
     }
 }

@@ -1,29 +1,51 @@
 package org.broadinstitute.hellbender.tools.variantdb;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.hellbender.tools.variantdb.arrays.RawArrayTsvCreator;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 //TODO rename this or get rid of it. a place holder for now
 public class CommonCode {
-    public static final String NORMX = "NORMX";
-    public static final String NORMY = "NORMY";
-    public static final String BAF = "BAF";
-    public static final String LRR = "LRR";
 
+
+    public static String getGTString(final VariantContext variant) {
+        List<Integer> allele_indices = getGTAlleleIndexes(variant);
+        if (allele_indices.size() != 2){
+            throw new IllegalArgumentException("GT doesnt have two alleles");
+        }
+        String separator = variant.getGenotype(0).isPhased() ? VCFConstants.PHASED : VCFConstants.UNPHASED;
+        return StringUtils.join(allele_indices, separator);
+    }
+
+    public static List<Integer> getGTAlleleIndexes(final VariantContext variant) {
+        IndexedAlleleList<Allele> alleleList = new IndexedAlleleList<>(variant.getAlleles());
+        ArrayList<Integer> allele_indices = new ArrayList<Integer>();
+
+        for (Allele allele : variant.getGenotype(0).getAlleles()) {
+            allele_indices.add(alleleList.indexOfAllele(allele));
+        }
+        return allele_indices;
+    }
 
     public static VCFHeader generateRawArrayVcfHeader(Set<String> sampleNames, final SAMSequenceDictionary sequenceDictionary) {       
         final Set<VCFHeaderLine> lines = new HashSet<>();
 
         lines.add(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_KEY));
-        lines.add(new VCFFormatHeaderLine(NORMX, 1, VCFHeaderLineType.Float, "Normalized X intensity"));
-        lines.add(new VCFFormatHeaderLine(NORMY, 1, VCFHeaderLineType.Float, "Normalized Y intensity"));
-        lines.add(new VCFFormatHeaderLine(BAF, 1, VCFHeaderLineType.Float, "B Allele Frequency"));
-        lines.add(new VCFFormatHeaderLine(LRR, 1, VCFHeaderLineType.Float, "Log R Ratio"));
+        lines.add(new VCFFormatHeaderLine(RawArrayTsvCreator.NORMX, 1, VCFHeaderLineType.Float, "Normalized X intensity"));
+        lines.add(new VCFFormatHeaderLine(RawArrayTsvCreator.NORMY, 1, VCFHeaderLineType.Float, "Normalized Y intensity"));
+        lines.add(new VCFFormatHeaderLine(RawArrayTsvCreator.BAF, 1, VCFHeaderLineType.Float, "B Allele Frequency"));
+        lines.add(new VCFFormatHeaderLine(RawArrayTsvCreator.LRR, 1, VCFHeaderLineType.Float, "Log R Ratio"));
 
 
         final VCFHeader header = new VCFHeader(lines, sampleNames);
