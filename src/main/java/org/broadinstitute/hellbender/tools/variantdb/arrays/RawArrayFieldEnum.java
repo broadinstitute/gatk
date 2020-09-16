@@ -14,37 +14,24 @@ import java.util.Set;
 
 /**
  * Expected headers for the  uncompressed array table
- *     sample, // req
- *     probe_id, // req
- *     GT_encoded,
+ *     sample, // required
+ *     probe_id, // required
+ *     GT_encoded, // required
  *     NORMX, // intensity
  *     NORMY, // intensity
  *     BAF // b allele fraction --> AD proxy
  *     LRR // Log R ratio --> intensity value instead of DP
  * 
- * Headers for the compressed array table
- *     basic_array_data
- *     raw_array_data
  */
 
 public enum RawArrayFieldEnum {
-    sample_id {
-        public String getColumnValue(VariantContext variant, ProbeInfo probeInfo, String sampleId) {
-            return sampleId;
-        }
-    },
+    // fail if there is missing data for a required field
+    // and return the string "null" if there is missing data for an optional field
 
-    // This where the validation step (required vs not) lives  -- fail if there is missing data for a required field
-    // and just leave it empty if not required
-
-    probe_id { // Required
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
-            return String.valueOf(probeInfo.probeId);
-        }
-    },
-
+    sample_id,
+    probe_id,
     GT_encoded { // Required
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
+        public String getColumnValue(final VariantContext variant) {
             List<Integer> alleleIndexes = CommonCode.getGTAlleleIndexes(variant);
 
             RawArrayTsvCreator.GT_encoding gt = RawArrayTsvCreator.GT_encoding.MISSING;
@@ -72,28 +59,36 @@ public enum RawArrayFieldEnum {
         }
     },
 
-    NORMX {
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
-            return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("NORMX"));
+    NORMX { // Required
+        public String getColumnValue(final VariantContext variant) {
+            Object value = variant.getGenotype(0).getExtendedAttribute("NORMX");
+            if (value == null) {
+                throw new IllegalStateException("Missing required value NORMX for variant:  \t" + variant);
+            }
+            return  String.valueOf(value);
         }
     },
-    NORMY {
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
-            return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("NORMY"));
+    NORMY { // Required
+        public String getColumnValue(final VariantContext variant) {
+            Object value = variant.getGenotype(0).getExtendedAttribute("NORMY");
+            if (value == null) {
+                throw new IllegalStateException("Missing required value NORMY for variant:  \t" + variant);
+            }
+            return  String.valueOf(value);
         }
     },
     BAF {
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
+        public String getColumnValue(final VariantContext variant) {
             return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("BAF"));
         }
     },
     LRR {
-        public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
+        public String getColumnValue(final VariantContext variant) {
             return  String.valueOf(variant.getGenotype(0).getExtendedAttribute("LRR"));
         }
     };
 
-    public String getColumnValue(final VariantContext variant, ProbeInfo probeInfo, String sampleId) {
+    public String getColumnValue(final VariantContext variant) {
         throw new IllegalArgumentException("Not implemented");
     }
 

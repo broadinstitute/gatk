@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
@@ -13,6 +15,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class ArraySampleTsvCreator {
+
+    private static final Logger logger = LogManager.getLogger(ArraySampleTsvCreator.class);
 
     private SimpleXSVWriter sampleMetadataWriter = null;
     private Map<String, String> metricsMap;
@@ -29,9 +33,11 @@ public class ArraySampleTsvCreator {
                 if (!line.startsWith("#") && !line.trim().isEmpty()) {
                     if (columns == null) {
                         columns = line;
-                    } else {
+                    } else if (values == null) {
                         values = line;
-                        break;
+                    } else {
+                        // there are more lines than expected - output a warning
+                        logger.warn("more lines than expected in metrics file: " + line);
                     }
                 }
                 line = reader.readLine();

@@ -74,12 +74,22 @@ public final class RawArrayTsvCreator {
         }
         ProbeInfo probeInfo = probeDataByName.get(rsid);
         if (probeInfo == null) {
-            logger.warn("no probe found for variant with ID: " + variant.getID() + "\t" + variant);
-        } else {
-            for (final RawArrayFieldEnum fieldEnum : RawArrayFieldEnum.getUncompressedRawArrayFieldEnums()) {
-                row.add(fieldEnum.getColumnValue(variant, probeInfo, sampleId));
+            throw new IllegalStateException("Cannot be missing required probe ID for variant " + variant.getID() + "\t" + variant);
+        }
+
+        for (final RawArrayFieldEnum fieldEnum : RawArrayFieldEnum.getUncompressedRawArrayFieldEnums()) {
+            switch (fieldEnum) {
+                case sample_id:
+                    row.add(sampleId);
+                    break;
+                case probe_id:
+                    row.add(probeInfo.toString());
+                    break;
+                default:
+                    row.add(fieldEnum.getColumnValue(variant, probeInfo, sampleId));
             }
         }
+
         return row;
     }
 
