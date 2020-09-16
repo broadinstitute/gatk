@@ -44,6 +44,25 @@ public class CommonCode {
         return allele_indices;
     }
 
+    public static String getGTString(final VariantContext variant) {
+        List<Integer> allele_indices = getGTAlleleIndexes(variant);
+        if (allele_indices.size() != 2){
+            throw new IllegalArgumentException("GT doesnt have two alleles");
+        }
+        String separator = variant.getGenotype(0).isPhased() ? VCFConstants.PHASED : VCFConstants.UNPHASED;
+        return StringUtils.join(allele_indices, separator);
+    }
+
+    public static List<Integer> getGTAlleleIndexes(final VariantContext variant) {
+        IndexedAlleleList<Allele> alleleList = new IndexedAlleleList<>(variant.getAlleles());
+        ArrayList<Integer> allele_indices = new ArrayList<Integer>();
+
+        for (Allele allele : variant.getGenotype(0).getAlleles()) {
+            allele_indices.add(alleleList.indexOfAllele(allele));
+        }
+        return allele_indices;
+    }
+
     public static VCFHeader generateRawArrayVcfHeader(Set<String> sampleNames, final SAMSequenceDictionary sequenceDictionary) {       
         final Set<VCFHeaderLine> lines = new HashSet<>();
 
