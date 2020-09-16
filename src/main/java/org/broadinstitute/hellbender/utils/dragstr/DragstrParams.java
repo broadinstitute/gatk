@@ -75,7 +75,20 @@ public final class DragstrParams {
     public static final String GCP_TABLE_NAME = "GCP";
     public static final String API_TABLE_NAME = "API";
 
+    /**
+     * String returned by {@link #toString()} when this object has not been retrieved from nor persisted into a file.
+     */
+    private static final String NOT_PERSISTENT_STRING = "<non-persistent>";
+
+    /**
+     * Initial size of the buffer/builder used to compose lines in the output text format.
+     */
     private static int LINE_BUILDER_BUFFER_SIZE = 1024;
+
+    /**
+     * Holds the path of the file this param where loaded from or persistent into last.
+     */
+    private String path;
 
     /**
      * Gap-Open-Penalty default Phred scores.
@@ -225,6 +238,7 @@ public final class DragstrParams {
 
     private DragstrParams(final BufferedReader reader, final String path) {
         try {
+            this.path = path;
             String header;
             while ((header = reader.readLine()) != null) {
                 if (!header.startsWith("#")) {
@@ -295,7 +309,8 @@ public final class DragstrParams {
     public void print(final String path) {
         try (final BufferedWriter writer = openBufferedWriter(path);
              final PrintWriter printWriter = new PrintWriter(writer)) {
-            print(printWriter);
+            print(printWriter, path);
+            this.path = path;
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile(path, ex);
         }
@@ -304,8 +319,9 @@ public final class DragstrParams {
     /**
      * Dump the parameters in their text file form given the sink print writer.
      * @param printWriter the sink for the dump.
+     * @param path if not null indicates the input writer resource.
      */
-    public void print(final PrintWriter printWriter) {
+    public void print(final PrintWriter printWriter, final String path) {
         final StringBuilder lineBuilder = new StringBuilder(LINE_BUILDER_BUFFER_SIZE);
         lineBuilder.append(String.format("%5s", "1"));
         for (int i = 2; i <= maxRepeats; i++) {
@@ -316,6 +332,9 @@ public final class DragstrParams {
         printTable(printWriter, lineBuilder, GOP_TABLE_NAME, gop);
         printTable(printWriter, lineBuilder, GCP_TABLE_NAME, gcp);
         printTable(printWriter, lineBuilder, API_TABLE_NAME, api);
+        if (path != null) {
+            this.path = path;
+        }
     }
 
     private void printTable(final PrintWriter printWriter, final StringBuilder lineBuilder, final String tableName, final double[][] table)  {
@@ -474,5 +493,10 @@ public final class DragstrParams {
     public AlleleFrequencyCalculator getAFCalculator(final int period, final int repeat, final int ploidy, final double snpHet, final double scale) {
         final String keyString = "" + period + '/' + repeat + '/' + ploidy + '/' + snpHet + '/' + scale;
         return afcs.computeIfAbsent(keyString, k -> AlleleFrequencyCalculator.makeCalculator(this, period, repeat, ploidy, snpHet, scale));
+    }
+
+    @Override
+    public String toString() {
+        return path;
     }
 }

@@ -18,6 +18,15 @@ public class DragstrParamsUnitTest extends BaseTest {
     public static final String TEST_PARAMS_FILE = "org/broadinstitute/hellbender/utils/dragstr/dna_nexus_novaseq_plus0_0_params.txt";
 
     @Test
+    public void testToString() throws IOException {
+        final String inputParamsFile = ("src/test/resources/" +  TEST_PARAMS_FILE);
+        final DragstrParams subject = new DragstrParams(inputParamsFile);
+        Assert.assertNotNull(subject.toString());
+        final File pathFile = new File(subject.toString());
+        Assert.assertEquals(pathFile.getCanonicalFile(), new File(inputParamsFile).getCanonicalFile());
+    }
+
+    @Test
     public void testReadWriteAndQuery() throws IOException {
         final String inputParamsFile = ("src/test/resources/" +  TEST_PARAMS_FILE);
         final File outputParamsFile = File.createTempFile("dragst-params-test", ".txt");
@@ -58,8 +67,9 @@ public class DragstrParamsUnitTest extends BaseTest {
             }
             Assert.assertNull(l1);
             Assert.assertNull(l2);
+        } finally {
+            outputParamsFile.delete();
         }
-        outputParamsFile.delete();
     }
 
     @Test(dependsOnMethods = "testReadWriteAndQuery")

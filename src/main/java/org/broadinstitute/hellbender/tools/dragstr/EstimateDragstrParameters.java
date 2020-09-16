@@ -180,10 +180,10 @@ public class EstimateDragstrParameters extends GATKTool {
                 logger.info("Estimating parameters used sampled down cases");
                 final DragstrParams estimate = estimateParams(finalSites);
                 logger.info("Done with estimation, printing output");
-                estimate.print(writer);
+                estimate.print(writer, output);
             } else {
                 logger.warn("Not enough cases to estimate parameters, using defaults");
-                DragstrParams.DEFAULT.print(writer);
+                DragstrParams.DEFAULT.print(writer, output);
             }
         }
     }
