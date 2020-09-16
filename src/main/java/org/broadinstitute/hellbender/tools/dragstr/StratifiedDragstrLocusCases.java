@@ -3,7 +3,14 @@ package org.broadinstitute.hellbender.tools.dragstr;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-class StratifiedDragstrLocusCases {
+/**
+ * Collection of {@link DragstrLocusCase} stratified by period and repeat length.
+ * <p>
+ *  Cases belonging to every possible combination can be added individually, and
+ *   added or retrieved as a group using a {@link DragstrLocusCases} instance.
+ * </p>
+ */
+final class StratifiedDragstrLocusCases {
 
     private int size;
     DragstrLocusCases[][] perPeriodAndRepeat;
@@ -83,7 +90,16 @@ class StratifiedDragstrLocusCases {
         size++;
     }
 
-    public StratifiedDragstrLocusCases qualifyingOnly(final int minDepth, final int minMQ, final int maxSup) {
+    /**
+     * Returns the subset of cases that pass a set of standard filters
+     * based on depth, minimum MQ and maximum number of
+     * supplementary alignments.
+     *
+     * <p>
+     *  Changes on the returned collection won't have any effect on this one and <i>vice-versa</i>.
+     * </p>
+     */
+    StratifiedDragstrLocusCases qualifyingOnly(final int minDepth, final int minMQ, final int maxSup) {
         final StratifiedDragstrLocusCases result = new StratifiedDragstrLocusCases(perPeriodAndRepeat.length, perPeriodAndRepeat[0].length);
         for (final DragstrLocusCases[] periodCases : perPeriodAndRepeat) {
             for (final DragstrLocusCases cases : periodCases) {

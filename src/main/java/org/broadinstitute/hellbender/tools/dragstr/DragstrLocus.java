@@ -180,6 +180,16 @@ public class DragstrLocus {
         };
     }
 
+    /**
+     * Returns loci whose start base is located within an particular interval.
+     * @param path path to the file containing the dragstr-loci.
+     * @param index the index for that file pre-loaded in memory.
+     * @param chrIdx the target interval contig index.
+     * @param start the first base of the target interval 1-based.
+     * @param end the last base of the target interval (inclusive).
+     * @return never {@code null} but perhaps a read that returns not records.
+     * @throws IOException in case of an underlying IO issue.
+     */
     public static BinaryTableReader<DragstrLocus> binaryReader(final String path, final BinaryTableIndex index,
                                                                final int chrIdx, final int start, final int end)
        throws IOException {
@@ -189,26 +199,32 @@ public class DragstrLocus {
             return BinaryTableReader.emptyReader();
         }
         final InputStream in = BucketUtils.openFile(path);
-        in.skip(offset);
+        if (in.skip(offset) != offset) {
+            throw new IOException("failed to skip the requested number of bytes");
+        }
 
         return new BinaryTableReader<DragstrLocus>(in, null) {
 
             @Override
             protected DragstrLocus readRecord(final DataInput input) throws IOException {
+
+                while (true) {
                     final int c = input.readInt();
                     final long s = input.readLong();
                     final byte p = input.readByte();
                     final short l = input.readShort();
                     final long m = input.readLong();
-                    if (chrIdx != c) {
+                    if (chrIdx != c) { // always we have an entry in the index for each chromosome
+                                       // so we should not any chridx that is not the intervals is end of the line.
                         return null;
                     } else if (s > end) {
                         return null;
                     } else if (s >= start) {
                         return new DragstrLocus(c, s, p, l, m);
-                    } else {
-                        return null;
                     }
+                    // notice that eventually we hit the end of the stream or another chromosome.
+                    // or we go beyond the requested interval, so this is not going to loop forever.
+                }
             }
         };
     }
@@ -339,7 +355,7 @@ public class DragstrLocus {
             }
         }
 
-        public static BinaryTableIndex load(final String path) throws IOException {
+        public static BinaryTableIndex load(final String path) {
             return load(BucketUtils.openFile(path));
         }
 

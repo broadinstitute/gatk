@@ -4,11 +4,13 @@ import com.google.common.io.Files;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceDictionaryCodec;
 import htsjdk.samtools.util.BufferedLineReader;
+import htsjdk.samtools.util.Lazy;
 import htsjdk.samtools.util.LineReader;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.NullWriter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.dragstr.DragstrLocus;
+import org.broadinstitute.hellbender.utils.BinaryTableReader;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.ZipUtils;
 import org.broadinstitute.hellbender.tools.dragstr.STRDecimationTable;
@@ -31,6 +33,7 @@ public final class STRTableFile implements AutoCloseable {
     private final File dir;
     private boolean closed;
     private SAMSequenceDictionary dictionary;
+    private Lazy<DragstrLocus.BinaryTableIndex> lociIndex;
 
     /**
      * Array with the name of the minimum content in the str-table file zip.
@@ -46,21 +49,36 @@ public final class STRTableFile implements AutoCloseable {
         } catch (FileNotFoundException e) {
             throw new GATKException("cannot read dictionary for str-table-file in " + dir);
         }
+        lociIndex = new Lazy<>(() -> DragstrLocus.BinaryTableIndex.load(new File(this.dir, SITES_INDEX_FILE_NAME).toString()));
     }
 
     /**
-     * Return a loci stream for a given interval in the genome.
+     * Return a loci reader for a given interval in the genome.
      * @param interval the target interval.
-     * @return never {@code null}, but perhaps an empty string with count == 0;
+     *
+     * @return never {@code null}, but perhaps an "empty" reader that won't return any locus.
      */
-    public Stream<DragstrLocus> locusStream(final SimpleInterval interval) {
+    public BinaryTableReader<DragstrLocus> locusReader(final SimpleInterval interval) {
         checkIsNotClose();
         try {
-            final DragstrLocus.BinaryTableIndex lociIndex = DragstrLocus.BinaryTableIndex.load(new File(dir, SITES_INDEX_FILE_NAME).toString());
-            return DragstrLocus.binaryReader(new File(dir, SITES_FILE_NAME).toString(), lociIndex,
-                    dictionary.getSequenceIndex(interval.getContig()), interval.getStart(), interval.getEnd()).stream();
+           return DragstrLocus.binaryReader(new File(dir, SITES_FILE_NAME).toString(), lociIndex.get(),
+                    dictionary.getSequenceIndex(interval.getContig()), interval.getStart(), interval.getEnd());
         } catch (final IOException ex) {
             throw new GATKException("problems accessing to " + interval + " in str-table-file " + dir);
+        }
+    }
+
+    /**
+     * Return a loci reader across the whole genome.
+     *
+     * @return never {@code null}, but perhaps an "empty" reader that won't return any locus.
+     */
+    public BinaryTableReader<DragstrLocus> locusReader() {
+        checkIsNotClose();
+        try {
+            return DragstrLocus.binaryReader(new File(dir, SITES_FILE_NAME));
+        } catch (final IOException ex) {
+            throw new GATKException("problems accessing to in str-table-file " + dir);
         }
     }
 
@@ -123,4 +141,5 @@ public final class STRTableFile implements AutoCloseable {
                            // closed to be consistent with other accessors.
         return dictionary;
     }
+
 }
