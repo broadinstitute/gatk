@@ -62,7 +62,7 @@ public class MetadataTsvCreator {
         try {
             // Create a metadata file to go into the metadata dir for _this_ sample
             // TODO--this should just be one file per sample set?
-            final String sampleMetadataName = IngestConstants.metadataFilePrefix + tableNumberPrefix + sampleName + IngestConstants.FILETYPE;
+            final String sampleMetadataName = IngestConstants.sampleMetadataFilePrefix + tableNumberPrefix + sampleName + IngestConstants.FILETYPE;
             // write header to it
             List<String> sampleListHeader = MetadataTsvCreator.getHeaders();
             sampleMetadataWriter = new SimpleXSVWriter(Paths.get(sampleMetadataName), IngestConstants.SEPARATOR);

@@ -23,16 +23,23 @@ import java.util.stream.Collectors;
 public final class RawArrayTsvCreator {
     static final Logger logger = LogManager.getLogger(RawArrayTsvCreator.class);
 
+    public static final String NORMX = "NORMX";
+    public static final String NORMY = "NORMY";
+    public static final String BAF = "BAF";
+    public static final String LRR = "LRR";
+    public static final GT_encoding value_to_drop = GT_encoding.HOM_REF;
+
     private SimpleXSVWriter rawArrayWriter = null;
     private final String sampleId;
     private final Map<String, ProbeInfo> probeDataByName;
-    private final boolean useCompressedData;
     private static String RAW_FILETYPE_PREFIX = "raw_";
 
     enum GT_encoding {
-        AA("AA"),
-        AB("AB"),
-        BB("BB"),
+        HOM_REF("R"),
+        HET0_1("X"),
+        HOM_VAR("A"),
+        HET1_2("Y"),
+        HOM_ALT2("B"),
         MISSING(".");
 
         String value;
@@ -44,15 +51,14 @@ public final class RawArrayTsvCreator {
         }
     }
 
-    public RawArrayTsvCreator(final String sampleName, final String sampleId, final String tableNumberPrefix, final Map<String, ProbeInfo> probeDataByName, boolean useCompressedData, final File outputDirectory) {
+    public RawArrayTsvCreator(final String sampleName, final String sampleId, final String tableNumberPrefix, final Map<String, ProbeInfo> probeDataByName, final File outputDirectory) {
         this.sampleId = sampleId;
         this.probeDataByName = probeDataByName;
-        this.useCompressedData = useCompressedData;
         try {
             // Create a raw file to go into the raw dir for _this_ sample
             final File rawOutputName = new File(outputDirectory, RAW_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + IngestConstants.FILETYPE);
             // write header to it
-            List<String> rawHeader = RawArrayTsvCreator.getHeaders(useCompressedData);
+            List<String> rawHeader = RawArrayTsvCreator.getHeaders();
             rawArrayWriter = new SimpleXSVWriter(rawOutputName.toPath(), IngestConstants.SEPARATOR);
             rawArrayWriter.setHeaderLine(rawHeader);
         } catch (final IOException e) {
@@ -68,23 +74,26 @@ public final class RawArrayTsvCreator {
         }
         ProbeInfo probeInfo = probeDataByName.get(rsid);
         if (probeInfo == null) {
-            logger.warn("no probe found for variant with ID: " + variant.getID() + "\t" + variant);
-        } else {
-            RawArrayFieldEnum[] fields = RawArrayFieldEnum.getCompressedRawArrayFieldEnums();
-            if (!useCompressedData) {
-                fields = RawArrayFieldEnum.getUncompressedRawArrayFieldEnums();
-            }
-            for (final RawArrayFieldEnum fieldEnum : fields) {
-                row.add(fieldEnum.getColumnValue(variant, probeInfo, sampleId));
+            throw new IllegalStateException("Cannot be missing required probe ID for variant " + variant.getID() + "\t" + variant);
+        }
+
+        for (final RawArrayFieldEnum fieldEnum : RawArrayFieldEnum.getUncompressedRawArrayFieldEnums()) {
+            switch (fieldEnum) {
+                case sample_id:
+                    row.add(sampleId);
+                    break;
+                case probe_id:
+                    row.add(String.valueOf(probeInfo.probeId));
+                    break;
+                default:
+                    row.add(fieldEnum.getColumnValue(variant));
             }
         }
+
         return row;
     }
 
-    public static List<String> getHeaders(final boolean useCompressedData) {
-        if (useCompressedData) {
-            return Arrays.stream(RawArrayFieldEnum.getCompressedRawArrayFieldEnums()).map(String::valueOf).collect(Collectors.toList());
-        }
+    public static List<String> getHeaders() {
         return Arrays.stream(RawArrayFieldEnum.getUncompressedRawArrayFieldEnums()).map(String::valueOf).collect(Collectors.toList());
     }
 
@@ -92,7 +101,7 @@ public final class RawArrayTsvCreator {
         if (!variant.getFilters().contains("ZEROED_OUT_ASSAY")) {
             final List<String> rowData = createRow(variant, sampleId);
 
-            int length = useCompressedData ? RawArrayFieldEnum.getCompressedRawArrayFieldEnums().length : RawArrayFieldEnum.getUncompressedRawArrayFieldEnums().length;
+            int length = RawArrayFieldEnum.getUncompressedRawArrayFieldEnums().length;
             // write the row to the XSV
             if (rowData.size() == length) {
                 SimpleXSVWriter.LineBuilder rawLine = rawArrayWriter.getNewLineBuilder();
