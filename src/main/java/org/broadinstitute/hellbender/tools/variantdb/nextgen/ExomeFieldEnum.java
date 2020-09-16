@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -192,17 +193,8 @@ public enum ExomeFieldEnum {
 
     call_GT {
         public String getColumnValue(final VariantContext variant) {
-            IndexedAlleleList<Allele> alleleList = new IndexedAlleleList<>(variant.getAlleles());
-            ArrayList<Integer> allele_indices = new ArrayList<Integer>();
-
-            for (Allele allele : variant.getGenotype(0).getAlleles()) {
-                allele_indices.add(alleleList.indexOfAllele(allele));
-            }
-            if (allele_indices.size() != 2){
-                throw new IllegalArgumentException("GT doesnt have two alleles");
-            }
-            String separator = variant.getGenotype(0).isPhased() ? VCFConstants.PHASED : VCFConstants.UNPHASED;
-            return StringUtils.join(allele_indices, separator);
+            // TODO how is missing handled?
+            return CommonCode.getGTString(variant);
         }
     },
 
