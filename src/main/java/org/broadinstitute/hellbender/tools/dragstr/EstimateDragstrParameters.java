@@ -109,7 +109,7 @@ public class EstimateDragstrParameters extends GATKTool {
     protected void onStartup() {
         super.onStartup();
         hyperParameters.validate();
-        dictionary = getBestAvailableSequenceDictionary();
+        dictionary = directlyAccessEngineReadsDataSource().getSequenceDictionary();
         if (runInParallel) {
             if (threads == 1) {
                 logger.warn("parallel processing was requested but the number of threads was set to 1");
@@ -458,10 +458,18 @@ public class EstimateDragstrParameters extends GATKTool {
     }
 
     private StratifiedDragstrLocusCases collectCaseStatsSequencial(final List<SimpleInterval> intervals, final STRTableFile strTable) {
-        return intervals.stream()
-                .flatMap(interval -> streamShardCasesStats(interval, directlyAccessEngineReadsDataSource(), strTable))
-                .peek(caze -> progressMeter.update(caze.getLocation(dictionary)))
-                .collect(DragstrLocusCaseStratificator.make(hyperParameters.maxPeriod, hyperParameters.maxRepeatLength));
+        final StratifiedDragstrLocusCases result = StratifiedDragstrLocusCases.make(hyperParameters.maxPeriod, hyperParameters.maxRepeatLength);
+        final ReadsDataSource dataSource = directlyAccessEngineReadsDataSource();
+        for (final SimpleInterval interval : intervals) {
+            try (final BinaryTableReader<DragstrLocus> reader = strTable.locusReader(interval)) {
+                streamShardCasesStats(interval, readStream(dataSource, interval), reader.stream())
+                        .peek(caze -> progressMeter.update(caze.getLocation(dictionary)))
+                        .forEach(result::add);
+            } catch (final IOException ex) {
+                throw new GATKException("problems accessing str-table-file at " + strTablePath);
+            }
+        }
+        return result;
     }
 
     private StratifiedDragstrLocusCases collectCaseStatsParallel(final List<SimpleInterval> intervals, final int shardSize, final STRTableFile strTable) {
@@ -478,8 +486,9 @@ public class EstimateDragstrParameters extends GATKTool {
             return Utils.runInParallel(threads, () ->
                         shards.parallelStream()
                                 .map(shard -> {
-                                    try (final AutoCloseableReference<ReadsDataSource> readsSource = readsDataSourcePool.borrowAutoReturn()) {
-                                        final StratifiedDragstrLocusCases result = streamShardCasesStats(shard, readsSource.get(), strTable)
+                                    try (final AutoCloseableReference<ReadsDataSource> readsSource = readsDataSourcePool.borrowAutoReturn();
+                                         final BinaryTableReader<DragstrLocus> lociReader = strTable.locusReader(shard)) {
+                                        final StratifiedDragstrLocusCases result = streamShardCasesStats(shard, readStream(readsSource.get(), shard), lociReader.stream())
                                                 .collect(DragstrLocusCaseStratificator.make(hyperParameters.maxPeriod, hyperParameters.maxRepeatLength));
                                         final int resultSize = result.size();
                                         synchronized (numberBasesProcessed) {
@@ -487,6 +496,8 @@ public class EstimateDragstrParameters extends GATKTool {
                                             progressMeter.update(absoluteCoordinates.toSimpleInterval(processed, 1), resultSize);
                                         }
                                         return result;
+                                    } catch (final IOException ex) {
+                                        throw new GATKException("problems accessing the str-table-file contents at " + strTablePath, ex);
                                     }
                                 }).reduce(StratifiedDragstrLocusCases::merge).orElseGet(() -> new StratifiedDragstrLocusCases(hyperParameters.maxPeriod, hyperParameters.maxRepeatLength)));
         }
@@ -746,18 +757,17 @@ public class EstimateDragstrParameters extends GATKTool {
      *     all the relevant reads that overlap the STR.
      * </p>
      * @param shard the target shard.
-     * @param readsDataSource the reads data source.
-     * @param strTable the str-table-file.
+     * @param reads a stream on the reads in the input shard.
+     * @param loci a stream on the loci in the input shard.
      * @return never {@code null}, perhaps an empty stream.
      */
-    private Stream<DragstrLocusCase> streamShardCasesStats(final SimpleInterval shard,
-                                                           final ReadsDataSource readsDataSource, final STRTableFile strTable) {
+    private Stream<DragstrLocusCase> streamShardCasesStats(final SimpleInterval shard, final Stream<GATKRead> reads, final Stream<DragstrLocus> loci) {
+        final int contigLength = dictionary.getSequence(shard.getContig()).getSequenceLength();
 
         return StreamSupport.stream(new Spliterator<DragstrLocusCase>() {
 
-            private final long contigLength = readsDataSource.getSequenceDictionary().getSequence(shard.getContig()).getSequenceLength();
-            private final Spliterator<GATKRead> readSpliterator = readStream(readsDataSource, shard).spliterator();
-            private final Spliterator<DragstrLocus> lociSpliterator = strTable.locusStream(shard).spliterator();
+            private final Spliterator<GATKRead> readSpliterator = reads.spliterator();
+            private final Spliterator<DragstrLocus> lociSpliterator = loci.spliterator();
             private final ShardReadBuffer readBuffer = new ShardReadBuffer();
 
             private GATKRead read;
