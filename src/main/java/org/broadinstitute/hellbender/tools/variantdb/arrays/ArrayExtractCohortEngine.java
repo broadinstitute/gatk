@@ -312,7 +312,6 @@ public class ArrayExtractCohortEngine {
                 genotypeAlleles.add(alleles.get(2));
                 break;
             case MISSING:
-            default:
                 genotypeAlleles.add(Allele.NO_CALL);
                 genotypeAlleles.add(Allele.NO_CALL);
                 break;
@@ -374,7 +373,7 @@ public class ArrayExtractCohortEngine {
         builder.start(startPosition);
         builder.id(probeInfo.name);
 
-        List<Allele> alleles = createAllelesFromProbeInfo(probeInfo);
+        List<Allele> alleles = new ArrayList<>();
         Allele ref = Allele.create(probeInfo.ref, true);
         alleles.add(ref);
 

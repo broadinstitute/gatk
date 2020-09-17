@@ -100,7 +100,7 @@ public class ArrayExtractCohort extends GATKTool {
 
     @Argument(
             fullName = "gt-only",
-            doc = "If true, only get the genotype info",
+            doc = "If true, only get the genotype info. Otherwise include NORMX, NORMY, BAF, and LRR",
             optional = true)
     private boolean gtDataOnly = false;
 
