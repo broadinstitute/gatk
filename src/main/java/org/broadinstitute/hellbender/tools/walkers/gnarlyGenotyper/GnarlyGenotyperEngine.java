@@ -225,7 +225,7 @@ public final class GnarlyGenotyperEngine {
             final int refCount = Math.max(numCalledAlleles / 2 - gtCounts.get(1) - gtCounts.get(2), 0);
             //homRefs don't get counted properly because ref blocks aren't annotated
             gtCounts.set(0, refCount);
-            final Pair<Integer, Double> eh = ExcessHet.calculateEH(variant, new GenotypeCounts(gtCounts.get(0), gtCounts.get(1), gtCounts.get(2)), numCalledAlleles / 2);
+            final Pair<Integer, Double> eh = ExcessHet.calculateEH(new GenotypeCounts(gtCounts.get(0), gtCounts.get(1), gtCounts.get(2)), numCalledAlleles / 2);
             vcfBuilder.attribute(GATKVCFConstants.EXCESS_HET_KEY, String.format("%.4f", eh.getRight()));
             vcfBuilder.rmAttribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY);
             if (annotationDBBuilder != null) {
