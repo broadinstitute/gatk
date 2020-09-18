@@ -8,25 +8,27 @@ import org.apache.commons.collections4.Predicate;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import picard.sam.util.Pair;
 
-import java.io.File;
+import java.io.OutputStreamWriter;
 
 /**
  * Evaluate GVCF reference block concordance of an input GVCF against a truth GVCF.
  *
- * <p>This tool evaluates two GVCF files against each other and produces three histograms:</p>
+ * <p>This tool evaluates reference blocks of two GVCF files against each other and produces three histograms:</p>
  *
  * <ul>
- *     <li>Truth block histogram: Indicates the number of occurrence of reference blocks with a given confidence score and length in the truth GVCF</li>
- *     <li>Eval block histogram: Indicates the number of occurrence of reference blocks with a given confidence score and length in the eval GVCF</li>
- *     <li>Confidence concordance histogram: Reflects the confidence scores of bases in reference blocks in the truth and eval VCF, respectively. An entry of 10 at bin "80,90" means that 10 bases in the truth GVCF have a confidence score of 80 while those same bases have a score of 90 in the eval GVCF.</li>
+ *     <li>Truth block histogram: Indicates the number of occurrences of reference blocks with a given confidence score and length in the truth GVCF</li>
+ *     <li>Eval block histogram: Indicates the number of occurrences of reference blocks with a given confidence score and length in the eval GVCF</li>
+ *     <li>Confidence concordance histogram: Reflects the confidence scores of bases in reference blocks in the truth and eval VCF, respectively. An entry of 10 at bin "80,90" means that there are 10 bases which simultaneously have a reference confidence of 80 in the truth GVCF and a reference confidence of 90 in the eval GVCF.</li>
  * </ul>
  *
- * <p>In contrast to the {@link Concordance} tool, this tool considers all variants, regardless of passing or failing filters.</p>
+ * <p>This tool only considers bases in reference blocks and, in contrast to the {@link Concordance} tool, regardless of passing or failing filters.</p>
  *
  * <h3>Usage example</h3>
  *
@@ -64,18 +66,18 @@ public class ReferenceBlockConcordance extends AbstractConcordanceWalker {
     @Argument(doc = "A histogram of block lengths and their associated confidence scores for the truth sample",
             fullName = TRUTH_BLOCK_HISTOGRAM_LONG_NAME,
             shortName = TRUTH_BLOCK_HISTOGRAM_SHORT_NAME)
-    protected File truthBlockHistogramFile;
+    protected GATKPath truthBlockHistogramFile;
     @Argument(doc = "A histogram of block lengths and their associated confidence scores for the eval sample",
             fullName = EVAL_BLOCK_HISTOGRAM_LONG_NAME,
             shortName = EVAL_BLOCK_HISTOGRAM_SHORT_NAME)
-    protected File evalBlockHistogramFile;
+    protected GATKPath evalBlockHistogramFile;
     @Argument(doc = "Reflects the confidence scores of bases in reference blocks in the truth and eval VCF, respectively. An entry of 10 at bin \"80,90\" means that 10 bases in the truth GVCF have a confidence score of 80 while those same bases have a score of 90 in the eval GVCF.",
             fullName = CONFIDENCE_CONCORDANCE_HISTOGRAM_LONG_NAME,
             shortName = CONFIDENCE_CONCORDANCE_HISTOGRAM_SHORT_NAME)
-    protected File confidenceConcordanceHistogramFile;
+    protected GATKPath confidenceConcordanceHistogramFile;
 
     // TODO this should be a Histogram<Pair<Integer, Integer>>, however, the MetricsFile class cannot read
-    // arbitrary types, therefore, it must be converted to a String, which is probably much slower
+    // arbitrary types, therefore, it must be converted to a String, which is may be slower
     private final Histogram<String> truthBlockHistogram = new Histogram<>();
     private final Histogram<String> evalBlockHistogram = new Histogram<>();
     private final Histogram<String> confidenceConcordanceHistogram = new Histogram<>();
@@ -87,41 +89,35 @@ public class ReferenceBlockConcordance extends AbstractConcordanceWalker {
     @Override
     protected Predicate<VariantContext> makeTruthVariantFilter() {
         // Explicitly allow symbolic variants
-        return VariantContext::isSymbolic;
+        return this::isHomRef;
     }
 
     @Override
     protected Predicate<VariantContext> makeEvalVariantFilter() {
         // Explicitly allow symbolic variants
-        return VariantContext::isSymbolic;
+        return this::isHomRef;
     }
 
-    private boolean isNonRef(VariantContext variantContext) {
-        return variantContext.isSymbolic() && variantContext.getAlternateAllele(0).isNonRefAllele();
-    }
-
-    private void evaluateEndOfContig() {
-        if (currentTruthVariantContext != null && currentEvalVariantContext != null) {
-            int blockStart = Math.max(currentTruthVariantContext.getStart(), currentEvalVariantContext.getStart());
-            int blockEnd = Math.min(currentTruthVariantContext.getEnd(), currentEvalVariantContext.getEnd());
-            int jointBlockLength = blockEnd - blockStart + 1;
-            if (jointBlockLength > 0) {
-                confidenceConcordanceHistogram.increment(new Pair<>(currentTruthVariantContext.getGenotype(0).getGQ(), currentEvalVariantContext.getGenotype(0).getGQ()).toString(), jointBlockLength);
-            }
-        }
-
-        currentTruthVariantContext = null;
-        currentEvalVariantContext = null;
-        currentContig = null;
+    private boolean isHomRef(VariantContext variantContext) {
+        return variantContext.getGenotypes().get(0).isHomRef();
     }
 
     private void evaluateNewContig(TruthVersusEval truthVersusEval) {
-        // If not beginning of file
-        if (currentContig != null) {
-            evaluateEndOfContig();
-        }
+        currentTruthVariantContext = null;
+        currentEvalVariantContext = null;
 
         currentContig = truthVersusEval.getTruthIfPresentElseEval().getContig();
+    }
+
+    private Pair<Integer, Integer> extractLengthAndGQ(VariantContext variant) {
+        final SimpleInterval interval = new SimpleInterval(variant);
+
+        if (variant.getGenotypes().size() != 1) {
+            throw new IllegalStateException(String.format("A multisample GVCF file was provided, however, only single sample GVCFs are currently supported. This occurred when reading \"%s\".", variant.toStringDecodeGenotypes()));
+        }
+        final Genotype genotype = variant.getGenotype(0);
+        final int gq = genotype.getGQ();
+        return new Pair<>(interval.getLengthOnReference(), gq);
     }
 
     @Override
@@ -131,56 +127,35 @@ public class ReferenceBlockConcordance extends AbstractConcordanceWalker {
             evaluateNewContig(truthVersusEval);
         }
 
-        // Evaluate only when currently seeing two NON_REF blocks
-        if (currentTruthVariantContext != null && currentEvalVariantContext != null) {
-            int blockStart = Math.max(currentTruthVariantContext.getStart(), currentEvalVariantContext.getStart());
-            int blockEnd = Math.min(currentTruthVariantContext.getEnd(), currentEvalVariantContext.getEnd());
-            int jointBlockLength = blockEnd - blockStart + 1;
-            // It is possible that jointBlockLength is negative if there is a gap in one file and the start of a new block in the other file.
-            // Since there is no overlap though, we can just skip that case.
-            if (jointBlockLength > 0) {
-                confidenceConcordanceHistogram.increment(new Pair<>(currentTruthVariantContext.getGenotype(0).getGQ(), currentEvalVariantContext.getGenotype(0).getGQ()).toString(), blockEnd - blockStart + 1);
-            }
-
-            int currentPosition = truthVersusEval.getTruthIfPresentElseEval().getStart();
-            if (truthVersusEval.hasTruth() || currentPosition >= currentTruthVariantContext.getEnd()) {
-                currentTruthVariantContext = null;
-            }
-            if (truthVersusEval.hasEval() || currentPosition >= currentEvalVariantContext.getEnd()) {
-                currentEvalVariantContext = null;
-            }
-        }
-
         // Truth
-        if (truthVersusEval.hasTruth() && isNonRef(truthVersusEval.getTruth())) {
+        if (truthVersusEval.hasTruth()) {
             currentTruthVariantContext = truthVersusEval.getTruth();
 
-            // The end is inclusive, thus the plus one when calculating the length
-            int blockLength = truthVersusEval.getTruth().getEnd() - truthVersusEval.getTruth().getStart() + 1;
-
-            // TODO can a non_ref block ever have a number of genotypes != 1?
-            if(truthVersusEval.getTruth().getGenotypes().size() != 1) {
-                throw new IllegalStateException(String.format("The NON_REF block \"%s\" has more than one genotype, which is not supported.", truthVersusEval.getTruth().toStringDecodeGenotypes()));
-            }
-            Genotype genotype = truthVersusEval.getTruth().getGenotype(0);
-            int gq = genotype.getGQ();
-            truthBlockHistogram.increment(new Pair<>(blockLength, gq).toString());
+            truthBlockHistogram.increment(extractLengthAndGQ(truthVersusEval.getTruth()).toString());
         }
 
         // Eval
-        if (truthVersusEval.hasEval() && isNonRef(truthVersusEval.getEval())) {
+        if (truthVersusEval.hasEval()) {
             currentEvalVariantContext = truthVersusEval.getEval();
 
-            // The end is inclusive, thus the plus one when calculating the length
-            int blockLength = truthVersusEval.getEval().getEnd() - truthVersusEval.getEval().getStart() + 1;
+            evalBlockHistogram.increment(extractLengthAndGQ(truthVersusEval.getEval()).toString());
+        }
 
-            // TODO can a non_ref block ever have a number of genotypes != 1?
-            if(truthVersusEval.getEval().getGenotypes().size() != 1) {
-                throw new IllegalStateException(String.format("The NON_REF block \"%s\" has more than one genotype, which is not supported.", truthVersusEval.getEval().toStringDecodeGenotypes()));
+        final int currentPosition = truthVersusEval.getTruthIfPresentElseEval().getStart();
+        if (currentTruthVariantContext != null && currentPosition > currentTruthVariantContext.getEnd()) {
+            currentTruthVariantContext = null;
+        }
+        if (currentEvalVariantContext != null && currentPosition > currentEvalVariantContext.getEnd()) {
+            currentEvalVariantContext = null;
+        }
+
+        // Evaluate only when currently seeing two NON_REF blocks
+        if (currentTruthVariantContext != null && currentEvalVariantContext != null) {
+            final SimpleInterval truthInterval = new SimpleInterval(currentTruthVariantContext);
+            final SimpleInterval evalInterval = new SimpleInterval(currentEvalVariantContext);
+            if (truthInterval.overlaps(evalInterval)) {
+                confidenceConcordanceHistogram.increment(new Pair<>(currentTruthVariantContext.getGenotype(0).getGQ(), currentEvalVariantContext.getGenotype(0).getGQ()).toString(), truthInterval.intersect(evalInterval).getLengthOnReference());
             }
-            Genotype genotype = truthVersusEval.getEval().getGenotype(0);
-            int gq = genotype.getGQ();
-            evalBlockHistogram.increment(new Pair<>(blockLength, gq).toString());
         }
     }
 
@@ -193,22 +168,20 @@ public class ReferenceBlockConcordance extends AbstractConcordanceWalker {
     public Object onTraversalSuccess() {
         super.onTraversalSuccess();
 
-        evaluateEndOfContig();
-
         // Truth histogram
-        MetricsFile<?, String> metricsFile = getMetricsFile();
-        metricsFile.addHistogram(truthBlockHistogram);
-        metricsFile.write(truthBlockHistogramFile);
+        final MetricsFile<?, String> truthBlockMetricsFile = getMetricsFile();
+        truthBlockMetricsFile.addHistogram(truthBlockHistogram);
+        truthBlockMetricsFile.write(new OutputStreamWriter(truthBlockHistogramFile.getOutputStream()));
 
         // Eval histogram
-        metricsFile = getMetricsFile();
-        metricsFile.addHistogram(evalBlockHistogram);
-        metricsFile.write(evalBlockHistogramFile);
+        final MetricsFile<?, String> evalBlockMetricsFile = getMetricsFile();
+        evalBlockMetricsFile.addHistogram(evalBlockHistogram);
+        evalBlockMetricsFile.write(new OutputStreamWriter(evalBlockHistogramFile.getOutputStream()));
 
         // Confidence concordance
-        metricsFile = getMetricsFile();
-        metricsFile.addHistogram(confidenceConcordanceHistogram);
-        metricsFile.write(confidenceConcordanceHistogramFile);
+        final MetricsFile<?, String> confidenceConcordanceMetricsFile = getMetricsFile();
+        confidenceConcordanceMetricsFile.addHistogram(confidenceConcordanceHistogram);
+        confidenceConcordanceMetricsFile.write(new OutputStreamWriter(confidenceConcordanceHistogramFile.getOutputStream()));
 
         return "SUCCESS";
     }
