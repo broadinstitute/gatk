@@ -34,23 +34,6 @@ public final class RawArrayTsvCreator {
     private final Map<String, ProbeInfo> probeDataByName;
     private static String RAW_FILETYPE_PREFIX = "raw_";
 
-    enum GT_encoding {
-        HOM_REF("R"),
-        HET0_1("X"),
-        HOM_VAR("A"),
-        HET1_2("Y"),
-        HOM_ALT2("B"),
-        MISSING(".");
-
-        String value;
-        GT_encoding(String v) {
-            value = v;
-        }
-        String getValue() {
-            return value;
-        }
-    }
-
     public RawArrayTsvCreator(final String sampleName, final String sampleId, final String tableNumberPrefix, final Map<String, ProbeInfo> probeDataByName, final File outputDirectory) {
         this.sampleId = sampleId;
         this.probeDataByName = probeDataByName;
