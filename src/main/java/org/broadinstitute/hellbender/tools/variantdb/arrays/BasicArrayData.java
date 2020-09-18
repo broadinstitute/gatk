@@ -5,6 +5,8 @@ import static org.broadinstitute.hellbender.tools.variantdb.BinaryUtils.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 public class BasicArrayData {
+    // TODO remove this before prod
+    // replace with
     public static enum ArrayGenotype {
         // Order is critical here, the ordinal is the int encoding
         AA,AB, BB, NO_CALL
