@@ -57,8 +57,8 @@ public class ArrayExtractCohort extends GATKTool {
     private String projectID = null;
 
     @Argument(
-            fullName = "sample-info-table",
-            doc = "Fully qualified name of a bigquery table containing a single column `sample` that describes the full list of samples to evoque",
+            fullName = "cohort-sample-table",
+            doc = "Fully qualified name of a bigquery table containing the sample_id and sample_name for the samples in the cohort you are extracting ",
             optional = true
     )
     private String sampleTableName = null;
@@ -99,6 +99,12 @@ public class ArrayExtractCohort extends GATKTool {
     private String cohortTable = null;
 
     @Argument(
+            fullName = "gt-only",
+            doc = "If true, only get the genotype info. Otherwise include NORMX, NORMY, BAF, and LRR",
+            optional = true)
+    private boolean gtDataOnly = false;
+
+    @Argument(
             fullName = "use-compressed-data",
             doc = "If true, use bit-packed fields for data",
             optional = true)
@@ -116,6 +122,14 @@ public class ArrayExtractCohort extends GATKTool {
             optional = true
     )
     private int localSortMaxRecordsInRam = DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM;
+
+    // TODO remove before production
+    @Argument(
+            fullName = "use-legacy-gt-encoding",
+            doc = "If the GT encodoing was AA, AB, BB",
+            optional = true
+    )
+    private Boolean useLegacyGTEncoding = false;
 
     @Override
     public boolean requiresReference() {
@@ -170,12 +184,14 @@ public class ArrayExtractCohort extends GATKTool {
                 sampleIdMap,
                 probeIdMap,
                 cohortTable,
+                gtDataOnly,
                 minProbeId,
                 maxProbeId,
                 localSortMaxRecordsInRam,
                 useCompressedData,
                 printDebugInformation,
-                progressMeter);
+                progressMeter,
+                useLegacyGTEncoding);
         vcfWriter.writeHeader(header);
     }
 

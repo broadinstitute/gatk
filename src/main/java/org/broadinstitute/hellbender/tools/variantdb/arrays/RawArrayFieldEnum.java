@@ -36,26 +36,25 @@ public enum RawArrayFieldEnum {
     GT_encoded { // Required
         public String getColumnValue(final VariantContext variant) {
             List<Integer> alleleIndexes = CommonCode.getGTAlleleIndexes(variant);
-
-            RawArrayTsvCreator.GT_encoding gt = RawArrayTsvCreator.GT_encoding.MISSING;
+            GT_encoding gt = GT_encoding.MISSING;
             if (alleleIndexes.size() == 2) {
                 Set<Integer> uniqueAlleleIndexes = new HashSet<>(alleleIndexes);
 
                 if (uniqueAlleleIndexes.size() == 1) {
                     // we know it's HOM something
                     if (uniqueAlleleIndexes.contains(0)) {
-                        gt = RawArrayTsvCreator.GT_encoding.HOM_REF;
+                        gt = GT_encoding.HOM_REF;
                     } else if (uniqueAlleleIndexes.contains(1)) {
-                        gt = RawArrayTsvCreator.GT_encoding.HOM_VAR;
+                        gt = GT_encoding.HOM_VAR;
                     } else if (uniqueAlleleIndexes.contains(2)) {
-                        gt = RawArrayTsvCreator.GT_encoding.HOM_ALT2;
+                        gt = GT_encoding.HOM_ALT2;
                     }
                 } else {
                     // we know its het
                     if (uniqueAlleleIndexes.containsAll(new HashSet<>(Arrays.asList(0, 1)))) {
-                        gt = RawArrayTsvCreator.GT_encoding.HET0_1;
+                        gt = GT_encoding.HET0_1;
                     } else if (uniqueAlleleIndexes.containsAll(new HashSet<>(Arrays.asList(1, 2))))
-                        gt = RawArrayTsvCreator.GT_encoding.HET1_2;
+                        gt = GT_encoding.HET1_2;
                 }
             } else {
                 logger.warn("Found " + alleleIndexes.size() + " alleles instead of 2. Not processing variant \t" + variant);
