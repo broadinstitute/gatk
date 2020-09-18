@@ -39,6 +39,10 @@ from biosppy.signals import ecg
 from scipy.ndimage.filters import gaussian_filter
 from scipy import stats
 
+import ml4h.tensormap.ukb.ecg
+import ml4h.tensormap.mgb.ecg
+from ml4h.tensormap.mgb.dynamic import make_waveform_maps
+
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import concordance_index, coefficient_of_determination
 from ml4h.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, PARTNERS_DATETIME_FORMAT, PARTNERS_DATE_FORMAT, HD5_GROUP_CHAR
@@ -1221,16 +1225,15 @@ def _plot_partners_figure(
 
 def plot_partners_ecgs(args):
     plot_tensors = [
-        'partners_ecg_patientid', 'partners_ecg_firstname', 'partners_ecg_lastname',
-        'partners_ecg_sex',       'partners_ecg_dob',       'partners_ecg_age',
-        'partners_ecg_datetime',  'partners_ecg_sitename',  'partners_ecg_location',
-        'partners_ecg_read_md',   'partners_ecg_taxis_md',  'partners_ecg_rate_md',
-        'partners_ecg_pr_md',     'partners_ecg_qrs_md',    'partners_ecg_qt_md',
-        'partners_ecg_paxis_md',  'partners_ecg_raxis_md',  'partners_ecg_qtc_md',
+        ml4h.tensormap.mgb.ecg.partners_ecg_patientid, ml4h.tensormap.mgb.ecg.partners_ecg_firstname, ml4h.tensormap.mgb.ecg.partners_ecg_lastname,
+        ml4h.tensormap.mgb.ecg.partners_ecg_sex,       ml4h.tensormap.mgb.ecg.partners_ecg_dob,       ml4h.tensormap.mgb.ecg.partners_ecg_age,
+        ml4h.tensormap.mgb.ecg.partners_ecg_datetime,  ml4h.tensormap.mgb.ecg.partners_ecg_sitename,  ml4h.tensormap.mgb.ecg.partners_ecg_location,
+        ml4h.tensormap.mgb.ecg.partners_ecg_read_md,   ml4h.tensormap.mgb.ecg.partners_ecg_taxis_md,  ml4h.tensormap.mgb.ecg.partners_ecg_rate_md,
+        ml4h.tensormap.mgb.ecg.partners_ecg_pr_md,     ml4h.tensormap.mgb.ecg.partners_ecg_qrs_md,    ml4h.tensormap.mgb.ecg.partners_ecg_qt_md,
+        ml4h.tensormap.mgb.ecg.partners_ecg_paxis_md,  ml4h.tensormap.mgb.ecg.partners_ecg_raxis_md,  ml4h.tensormap.mgb.ecg.partners_ecg_qtc_md,
     ]
-    voltage_tensor = 'partners_ecg_2500_raw'
-    from ml4h.tensor_maps_partners_ecg_labels import TMAPS
-    tensor_maps_in = [TMAPS[it] for it in plot_tensors + [voltage_tensor]]
+    voltage_tensor = make_waveform_maps('partners_ecg_2500_raw')
+    tensor_maps_in = plot_tensors + [voltage_tensor]
     tensor_paths = [os.path.join(args.tensors, tp) for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
 
     if 'clinical' == args.plot_mode:
@@ -1497,13 +1500,12 @@ def plot_ecg_rest(
     :param is_blind: if True, the plot gets blinded (helpful for review and annotation)
     """
     map_fields_to_tmaps = {
-        'ramp': 'ecg_rest_ramplitude_raw',
-        'samp': 'ecg_rest_samplitude_raw',
-        'aVL': 'ecg_rest_lvh_avl',
-        'Sokolow_Lyon': 'ecg_rest_lvh_sokolow_lyon',
-        'Cornell': 'ecg_rest_lvh_cornell',
-    }
-    from ml4h.tensor_from_file import TMAPS
+        'ramp': ml4h.tensormap.ukb.ecg.ecg_rest_ramplitude_raw,
+        'samp': ml4h.tensormap.ukb.ecg.ecg_rest_samplitude_raw,
+        'aVL': ml4h.tensormap.ukb.ecg.ecg_rest_lvh_avl,
+        'Sokolow_Lyon': ml4h.tensormap.ukb.ecg.ecg_rest_lvh_sokolow_lyon,
+        'Cornell': ml4h.tensormap.ukb.ecg.ecg_rest_lvh_cornell,
+    }    
     raw_scale = 0.005 # Conversion from raw to mV
     default_yrange = ECG_REST_PLOT_DEFAULT_YRANGE # mV
     time_interval = 2.5 # time-interval per plot in seconds. ts_Reference data is in s, voltage measurement is 5 uv per lsb
@@ -1515,7 +1517,7 @@ def plot_ecg_rest(
         with h5py.File(tensor_path, 'r') as hd5:
             traces, text = _ecg_rest_traces_and_text(hd5)
             for field in map_fields_to_tmaps:
-                tm = TMAPS[map_fields_to_tmaps[field]]
+                tm = map_fields_to_tmaps[field]
                 patient_dic[field] = np.zeros(tm.shape)
                 try:
                     patient_dic[field][:] = tm.tensor_from_file(tm, hd5)
