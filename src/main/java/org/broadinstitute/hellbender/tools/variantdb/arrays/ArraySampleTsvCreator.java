@@ -82,16 +82,21 @@ public class ArraySampleTsvCreator {
 
     private List<String> createSampleListRow(String sampleName, String sampleId) {
         List<String> row = new ArrayList<>();
-        row.add(sampleName);
-        row.add(sampleId);
 
         for (final ArraySampleFieldEnum fieldEnum : ArraySampleFieldEnum.values()) {
-            if (fieldEnum != ArraySampleFieldEnum.sample_id && fieldEnum != ArraySampleFieldEnum.sample_name) {
-                if (metricsMap == null) {
-                    row.add("null");
-                } else {
-                    row.add(fieldEnum.getColumnValue(metricsMap));
-                }
+            switch (fieldEnum) {
+                case sample_id:
+                    row.add(sampleId);
+                    break;
+                case sample_name:
+                    row.add(sampleName);
+                    break;
+                default:
+                    if (metricsMap == null) {
+                        row.add("null");
+                    } else {
+                        row.add(fieldEnum.getColumnValue(metricsMap));
+                    }
             }
         }
         return row;
