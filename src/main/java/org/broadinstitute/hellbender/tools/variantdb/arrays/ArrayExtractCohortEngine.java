@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
@@ -33,10 +30,11 @@ public class ArrayExtractCohortEngine {
 
     private final VariantContextWriter vcfWriter;
 
+    private boolean gtDataOnly;
     private final Integer minProbeId;
     private final Integer maxProbeId;
 
-    private final boolean useCompressedData;
+//    private final boolean useCompressedData;
     private final boolean printDebugInformation;
     private final int localSortMaxRecordsInRam;
     private final TableReference cohortTableRef;
@@ -55,6 +53,8 @@ public class ArrayExtractCohortEngine {
     private int totalNumberOfVariants = 0;
     private int totalNumberOfSites = 0;
 
+    private final boolean useLegacyGTEncoding; //TODO remove
+
     public ArrayExtractCohortEngine(final String projectID,
                                     final VariantContextWriter vcfWriter,
                                     final VCFHeader vcfHeader,
@@ -63,12 +63,14 @@ public class ArrayExtractCohortEngine {
                                     final Map<Integer, String> sampleIdMap,
                                     final Map<Long, ProbeInfo> probeIdMap,
                                     final String cohortTableName,
+                                    final boolean gtDataOnly,
                                     final Integer minProbeId,
                                     final Integer maxProbeId,
                                     final int localSortMaxRecordsInRam,
                                     final boolean useCompressedData,
                                     final boolean printDebugInformation,
-                                    final ProgressMeter progressMeter) {
+                                    final ProgressMeter progressMeter,
+                                    final boolean useLegacyGTEncoding) {
 
         this.df.setMaximumFractionDigits(3);
         this.df.setGroupingSize(0);
@@ -80,19 +82,21 @@ public class ArrayExtractCohortEngine {
         this.refSource = refSource;
         this.sampleIdMap = sampleIdMap;
         this.sampleNames = new HashSet<>(sampleIdMap.values());
+        this.gtDataOnly = gtDataOnly;
 
         this.probeIdMap = probeIdMap;
 
         this.cohortTableRef = new TableReference(cohortTableName, useCompressedData? SchemaUtils.RAW_ARRAY_COHORT_FIELDS_COMPRESSED:SchemaUtils.RAW_ARRAY_COHORT_FIELDS_UNCOMPRESSED);
         this.minProbeId = minProbeId;
         this.maxProbeId = maxProbeId;
-        this.useCompressedData = useCompressedData;
+//        this.useCompressedData = useCompressedData;
         this.printDebugInformation = printDebugInformation;
         this.progressMeter = progressMeter;
 
         // TODO: what is the right variant context merger for arrays?
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
+        this.useLegacyGTEncoding = useLegacyGTEncoding;
     }
 
     int getTotalNumberOfVariants() { return totalNumberOfVariants; }
@@ -120,7 +124,7 @@ public class ArrayExtractCohortEngine {
         final Set<String> columnNames = new HashSet<>();
         schema.getFields().forEach(field -> columnNames.add(field.name()));
 
-        Comparator<GenericRecord> comparator = this.useCompressedData ? COMPRESSED_PROBE_ID_COMPARATOR : UNCOMPRESSED_PROBE_ID_COMPARATOR;
+        Comparator<GenericRecord> comparator = UNCOMPRESSED_PROBE_ID_COMPARATOR;
 
         SortingCollection<GenericRecord> sortingCollection =  getAvroProbeIdSortingCollection(schema, localSortMaxRecordsInRam, comparator);
         for ( final GenericRecord queryRow : avroReader ) {
@@ -135,13 +139,13 @@ public class ArrayExtractCohortEngine {
 
         for ( final GenericRecord sortedRow : sortingCollection ) {
             long probeId;
-            if (useCompressedData) {
-                final long bits = (Long) sortedRow.get(SchemaUtils.BASIC_ARRAY_DATA_FIELD_NAME);
-                BasicArrayData data = new BasicArrayData(bits);
-                probeId = data.probeId;
-            } else {
+//            if (useCompressedData) {
+//                final long bits = (Long) sortedRow.get(SchemaUtils.BASIC_ARRAY_DATA_FIELD_NAME);
+//                BasicArrayData data = new BasicArrayData(bits);
+//                probeId = data.probeId;
+//            } else {
                 probeId = (Long) sortedRow.get("probe_id");
-            }
+//            }
 
             if ( probeId != currentProbeId && currentProbeId != -1 ) {
                 ++totalNumberOfSites;
@@ -177,16 +181,16 @@ public class ArrayExtractCohortEngine {
 
         for ( final GenericRecord sampleRecord : sampleRecordsAtPosition ) {
             final long sampleId;
-            if (useCompressedData) {
-                final long bits = (Long) sampleRecord.get(SchemaUtils.BASIC_ARRAY_DATA_FIELD_NAME);
-                BasicArrayData data = new BasicArrayData(bits);
-                sampleId = data.sampleId;
-            } else {
+//            if (useCompressedData) {
+//                final long bits = (Long) sampleRecord.get(SchemaUtils.BASIC_ARRAY_DATA_FIELD_NAME);
+//                BasicArrayData data = new BasicArrayData(bits);
+//                sampleId = data.sampleId;
+//            } else {
                 sampleId = (Long) sampleRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME);
 
                 // TODO: hack to test roundtrip
 
-            }
+//            }
 
             // TODO: handle missing values
             String sampleName = sampleIdMap.get((int) sampleId);            
@@ -199,8 +203,12 @@ public class ArrayExtractCohortEngine {
             }
 
             ++totalNumberOfVariants;
-            unmergedCalls.add(createVariantContextFromSampleRecord(probeInfo, sampleRecord, columnNames, contig, position, sampleName));
+            if (useLegacyGTEncoding) {
+                unmergedCalls.add(createVariantContextFromSampleRecordLegacyGT(probeInfo, sampleRecord, columnNames, contig, position, sampleName));
+            } else {
+                unmergedCalls.add(createVariantContextFromSampleRecord(probeInfo, sampleRecord, columnNames, contig, position, sampleName));
 
+            }
         }
 
         if ( printDebugInformation ) {
@@ -266,9 +274,107 @@ public class ArrayExtractCohortEngine {
         builder.chr(contig);
         builder.start(startPosition);
         builder.id(probeInfo.name);
-        
+
+        final List<Allele> alleles = createAllelesFromProbeInfo(probeInfo);
+
+        builder.alleles(alleles);
+        builder.stop(startPosition + alleles.get(0).length() - 1);
+
+        List<Allele> genotypeAlleles = new ArrayList<Allele>();
+
+        Object gtObj = sampleRecord.get(RawArrayFieldEnum.GT_encoded.name());
+        GT_encoding gt;
+        if (gtObj == null) {
+            gt = RawArrayTsvCreator.value_to_drop;
+        } else {
+            gt = GT_encoding.getGTEncodingFromValue(gtObj.toString());
+        }
+
+        switch (gt) {
+            case HOM_REF:
+                genotypeAlleles.add(alleles.get(0));
+                genotypeAlleles.add(alleles.get(0));
+                break;
+            case HET0_1:
+                genotypeAlleles.add(alleles.get(0));
+                genotypeAlleles.add(alleles.get(1));
+                break;
+            case HOM_VAR:
+                genotypeAlleles.add(alleles.get(1));
+                genotypeAlleles.add(alleles.get(1));
+                break;
+            case HET1_2:
+                genotypeAlleles.add(alleles.get(1));
+                genotypeAlleles.add(alleles.get(2));
+                break;
+            case HOM_ALT2:
+                genotypeAlleles.add(alleles.get(2));
+                genotypeAlleles.add(alleles.get(2));
+                break;
+            case MISSING:
+                genotypeAlleles.add(Allele.NO_CALL);
+                genotypeAlleles.add(Allele.NO_CALL);
+                break;
+        }
+
+        genotypeBuilder.alleles(genotypeAlleles);
+
+        if (!gtDataOnly) {
+            genotypeBuilder.attribute(RawArrayTsvCreator.NORMX, formatFloatForVcf(getNullableFloatFromDouble(sampleRecord.get(RawArrayFieldEnum.NORMX.name()))));
+            genotypeBuilder.attribute(RawArrayTsvCreator.NORMY, formatFloatForVcf(getNullableFloatFromDouble(sampleRecord.get(RawArrayFieldEnum.NORMY.name()))));
+            genotypeBuilder.attribute(RawArrayTsvCreator.BAF, formatFloatForVcf(getNullableFloatFromDouble(sampleRecord.get(RawArrayFieldEnum.BAF.name()))));
+            genotypeBuilder.attribute(RawArrayTsvCreator.LRR, formatFloatForVcf(getNullableFloatFromDouble(sampleRecord.get(RawArrayFieldEnum.LRR.name()))));
+        }
+
+        genotypeBuilder.name(sample);
+
+        builder.genotypes(genotypeBuilder.make());
+
+        try {
+            VariantContext vc = builder.make();
+            return vc;
+        } catch (Exception e) {
+            System.out.println("Error: "+ e.getMessage() + " processing " + sampleRecord + " PI: " + probeInfo.alleleA + "/" +probeInfo.alleleB + " with ga " + genotypeAlleles + " and alleles " + alleles);
+            throw e;
+        }
+
+    }
+
+    List<Allele> createAllelesFromProbeInfo(final ProbeInfo probeInfo) {
         final List<Allele> alleles = new ArrayList<>();
-        Allele ref = Allele.create(probeInfo.ref, true);        
+        Allele ref = Allele.create(probeInfo.ref, true);
+        alleles.add(ref);
+
+        Allele alleleA = Allele.create(probeInfo.alleleA, false);
+        Allele alleleB = Allele.create(probeInfo.alleleB, false);
+
+        boolean alleleAisRef = probeInfo.ref.equals(probeInfo.alleleA);
+        boolean alleleBisRef = probeInfo.ref.equals(probeInfo.alleleB);
+
+        if (alleleAisRef) {
+            alleleA = ref;
+        } else {
+            alleles.add(alleleA);
+        }
+
+        if (alleleBisRef) {
+            alleleB = ref;
+        } else {
+            alleles.add(alleleB);
+        }
+        return alleles;
+    }
+
+        private VariantContext createVariantContextFromSampleRecordLegacyGT(final ProbeInfo probeInfo, final GenericRecord sampleRecord, final Set<String> columnNames, final String contig, final long startPosition, final String sample) {
+        final VariantContextBuilder builder = new VariantContextBuilder();
+        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
+
+        builder.chr(contig);
+        builder.start(startPosition);
+        builder.id(probeInfo.name);
+
+        List<Allele> alleles = new ArrayList<>();
+        Allele ref = Allele.create(probeInfo.ref, true);
         alleles.add(ref);
 
         Allele alleleA = Allele.create(probeInfo.alleleA, false);
@@ -298,80 +404,80 @@ public class ArrayExtractCohortEngine {
         Float lrr;
         List<Allele> genotypeAlleles = new ArrayList<Allele>();
 
-        if (this.useCompressedData) {
-            final BasicArrayData basicData = new BasicArrayData((Long) sampleRecord.get(SchemaUtils.BASIC_ARRAY_DATA_FIELD_NAME));
-            Object rd = sampleRecord.get(SchemaUtils.RAW_ARRAY_DATA_FIELD_NAME);
 
-            final RawArrayData rawData = new RawArrayData((Long) rd);
-            normx = rawData.normx;
-            normy = rawData.normy;
-            lrr = rawData.lrr;
-            baf = rawData.baf;
-
-            if (basicData.genotype == ArrayGenotype.AA) {
-                genotypeAlleles.add(alleleA);
-                genotypeAlleles.add(alleleA);
-            } else if (basicData.genotype == ArrayGenotype.AB) {
-                genotypeAlleles.add(alleleA);
-                genotypeAlleles.add(alleleB);
-            } else if (basicData.genotype == ArrayGenotype.BB) {
-                genotypeAlleles.add(alleleB);
-                genotypeAlleles.add(alleleB);
-            } else {
-                genotypeAlleles.add(Allele.NO_CALL);
-                genotypeAlleles.add(Allele.NO_CALL);
-            }
+//        if (this.useCompressedData) {
+//            final BasicArrayData basicData = new BasicArrayData((Long) sampleRecord.get(SchemaUtils.BASIC_ARRAY_DATA_FIELD_NAME));
+//            Object rd = sampleRecord.get(SchemaUtils.RAW_ARRAY_DATA_FIELD_NAME);
+//
+//            final RawArrayData rawData = new RawArrayData((Long) rd);
+//            normx = rawData.normx;
+//            normy = rawData.normy;
+//            lrr = rawData.lrr;
+//            baf = rawData.baf;
+//
+//            if (basicData.genotype == ArrayGenotype.AA) {
+//                genotypeAlleles.add(alleleA);
+//                genotypeAlleles.add(alleleA);
+//            } else if (basicData.genotype == ArrayGenotype.AB) {
+//                genotypeAlleles.add(alleleA);
+//                genotypeAlleles.add(alleleB);
+//            } else if (basicData.genotype == ArrayGenotype.BB) {
+//                genotypeAlleles.add(alleleB);
+//                genotypeAlleles.add(alleleB);
+//            } else {
+//                genotypeAlleles.add(Allele.NO_CALL);
+//                genotypeAlleles.add(Allele.NO_CALL);
+//            }
+//        } else {
+        Object gt = sampleRecord.get("GT_encoded");
+        ArrayGenotype agt;
+        // for compatibility with old GT encoding
+        if ("AA".equals(gt.toString())) {
+            genotypeAlleles.add(alleleA);
+            genotypeAlleles.add(alleleA);
+            agt =  ArrayGenotype.AA;
+        } else if ("AB".equals(gt.toString())) {
+            genotypeAlleles.add(alleleA);
+            genotypeAlleles.add(alleleB);
+            agt =  ArrayGenotype.AB;
+        } else if ("BB".equals(gt.toString())) {
+            genotypeAlleles.add(alleleB);
+            genotypeAlleles.add(alleleB);
+            agt =  ArrayGenotype.BB;
+        } else if (".".equals(gt.toString())) {
+            genotypeAlleles.add(Allele.NO_CALL);
+            genotypeAlleles.add(Allele.NO_CALL);
+            agt =  ArrayGenotype.NO_CALL;
         } else {
-            Object gt = sampleRecord.get("GT_encoded");
-            ArrayGenotype agt;
-            if ("AA".equals(gt.toString())) {
-                genotypeAlleles.add(alleleA);
-                genotypeAlleles.add(alleleA);
-                agt =  ArrayGenotype.AA;
-            } else if ("AB".equals(gt.toString())) {
-                genotypeAlleles.add(alleleA);
-                genotypeAlleles.add(alleleB);
-                agt =  ArrayGenotype.AB;
-            } else if ("BB".equals(gt.toString())) {
-                genotypeAlleles.add(alleleB);
-                genotypeAlleles.add(alleleB);
-                agt =  ArrayGenotype.BB;
-            } else if (".".equals(gt.toString())) {
-                genotypeAlleles.add(Allele.NO_CALL);
-                genotypeAlleles.add(Allele.NO_CALL);
-                agt =  ArrayGenotype.NO_CALL;
-            } else {
-                System.out.println("Processing getnotype " + gt.toString());
-                throw new RuntimeException();
-            }
-
-            // TODO: constantize
-            try {
-                normx = getNullableFloatFromDouble(sampleRecord.get("NORMX"));
-                normy = getNullableFloatFromDouble(sampleRecord.get("NORMY"));            
-                baf = getNullableFloatFromDouble(sampleRecord.get("BAF"));
-                lrr = getNullableFloatFromDouble(sampleRecord.get("LRR"));
-
-                // Hack to pack and unpack data
-                BasicArrayData b = new BasicArrayData(0, (int) probeInfo.probeId, agt);
-                RawArrayData d = new RawArrayData(normx, normy, lrr, baf);
-
-                long bits = d.encode();
-                RawArrayData d2 = new RawArrayData(bits);
-                normx = d2.normx;
-                normy = d2.normy;
-                baf = d2.baf;
-                lrr = d2.lrr;
-
-            } catch (NullPointerException npe) {
-                System.out.println("NPE on " + sampleRecord);
-                System.out.println("NPE on BAF " + sampleRecord.get("BAF"));
-                System.out.println("NPE on LRR " +sampleRecord.get("LRR"));
-                throw npe;
-            }
-
-
+            System.out.println("Processing getnotype " + gt.toString());
+            throw new RuntimeException();
         }
+
+        // TODO: constantize
+        try {
+            normx = getNullableFloatFromDouble(sampleRecord.get("NORMX"));
+            normy = getNullableFloatFromDouble(sampleRecord.get("NORMY"));
+            baf = getNullableFloatFromDouble(sampleRecord.get("BAF"));
+            lrr = getNullableFloatFromDouble(sampleRecord.get("LRR"));
+
+            // Hack to pack and unpack data
+            BasicArrayData b = new BasicArrayData(0, (int) probeInfo.probeId, agt);
+            RawArrayData d = new RawArrayData(normx, normy, lrr, baf);
+
+            long bits = d.encode();
+            RawArrayData d2 = new RawArrayData(bits);
+            normx = d2.normx;
+            normy = d2.normy;
+            baf = d2.baf;
+            lrr = d2.lrr;
+
+        } catch (NullPointerException npe) {
+            System.out.println("NPE on " + sampleRecord);
+            System.out.println("NPE on BAF " + sampleRecord.get("BAF"));
+            System.out.println("NPE on LRR " +sampleRecord.get("LRR"));
+            throw npe;
+        }
+
         genotypeBuilder.alleles(genotypeAlleles);
 
         genotypeBuilder.attribute(RawArrayTsvCreator.NORMX, formatFloatForVcf(normx));
