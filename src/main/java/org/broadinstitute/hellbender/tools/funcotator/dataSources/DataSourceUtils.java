@@ -61,11 +61,7 @@ final public class DataSourceUtils {
     @VisibleForTesting
     static final int MIN_MINOR_VERSION_NUMBER = 6;
     @VisibleForTesting
-    static final int MIN_YEAR_RELEASED        = 2019;
-    @VisibleForTesting
-    static final int MIN_MONTH_RELEASED       = 1;
-    @VisibleForTesting
-    static final int MIN_DAY_RELEASED         = 24;
+    static final Calendar MIN_DATE                = new GregorianCalendar(2019, Calendar.JANUARY, 24);
 
     // Track out maximum version number here:
     @VisibleForTesting
@@ -73,17 +69,13 @@ final public class DataSourceUtils {
     @VisibleForTesting
     static final int MAX_MINOR_VERSION_NUMBER = 7;
     @VisibleForTesting
-    static final int MAX_YEAR_RELEASED        = 2020;
-    @VisibleForTesting
-    static final int MAX_MONTH_RELEASED       = 5;
-    @VisibleForTesting
-    static final int MAX_DAY_RELEASED         = 21;
+    static final Calendar MAX_DATE            = new GregorianCalendar(2020, Calendar.MAY, 21);
 
     //==================================================================================================================
     // Public Static Members:
 
     /** The minimum version of the data sources required for funcotator to run.  */
-    public static final String CURRENT_MINIMUM_DATA_SOURCE_VERSION         = String.format("v%d.%d.%d%02d%02d", MIN_MAJOR_VERSION_NUMBER, MIN_MINOR_VERSION_NUMBER, MIN_YEAR_RELEASED, MIN_MONTH_RELEASED, MIN_DAY_RELEASED);
+    public static final String CURRENT_MINIMUM_DATA_SOURCE_VERSION         = String.format("v%d.%d.%d%02d%02d", MIN_MAJOR_VERSION_NUMBER, MIN_MINOR_VERSION_NUMBER, MIN_DATE.get(Calendar.YEAR), MIN_DATE.get(Calendar.MONTH)+1, MIN_DATE.get(Calendar.DAY_OF_MONTH));
     public static final String MANIFEST_FILE_NAME                          = "MANIFEST.txt";
     public static final String DATA_SOURCES_FTP_PATH                       = "ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/";
     public static final String DATA_SOURCES_BUCKET_PATH                    = "gs://broad-public-datasets/funcotator/";
@@ -208,7 +200,7 @@ final public class DataSourceUtils {
      * @param directory The {@link Path} of the directory in which to search for a config file.  Must not be {@code null}.
      * @return The {@link Path} to the config file found in the given {@code directory}.
      */
-    public static Path getConfigfile(final Path directory) {
+    private static Path getConfigfile(final Path directory) {
 
         Utils.nonNull(directory);
 
@@ -237,7 +229,7 @@ final public class DataSourceUtils {
     }
 
     /** @return {@code true} if the given {@link Path} exists, is readable, and is a directory; {@code false} otherwise. */
-    public static boolean isValidDirectory(final Path p) {
+    private static boolean isValidDirectory(final Path p) {
         Utils.nonNull(p);
         return Files.exists(p) && Files.isReadable(p) && Files.isDirectory(p);
     }
@@ -640,7 +632,7 @@ final public class DataSourceUtils {
                 Integer versionYear      = null;
                 Integer versionMonth     = null;
                 Integer versionDay       = null;
-                String  versionDecorator = null;
+                String  versionDecorator;
                 String  source           = null;
                 String  alternateSource  = null;
 
@@ -735,6 +727,9 @@ final public class DataSourceUtils {
     }
 
     @VisibleForTesting
+    /**
+     *
+     */
     static boolean validateVersionInformation(final int major, final int minor, final int year, final int month, final int day) {
 
         // Compare from largest to smallest differences for Min version:
@@ -744,19 +739,6 @@ final public class DataSourceUtils {
         if ( minor <  MIN_MINOR_VERSION_NUMBER ) {
             return false;
         }
-        if ( year < MIN_YEAR_RELEASED ) {
-            return false;
-        }
-        else if ( year == MIN_YEAR_RELEASED ) {
-            if ( month < MIN_MONTH_RELEASED ) {
-                return false;
-            }
-            else if ( month == MIN_MONTH_RELEASED ) {
-                if ( day < MIN_DAY_RELEASED ) {
-                    return false;
-                }
-            }
-        }
 
         // Compare from largest to smallest differences for Max version:
         if ( major > MAX_MAJOR_VERSION_NUMBER ) {
@@ -765,21 +747,13 @@ final public class DataSourceUtils {
         if ( minor >  MAX_MINOR_VERSION_NUMBER ) {
             return false;
         }
-        if ( year > MAX_YEAR_RELEASED ) {
-            return false;
-        }
-        else if ( year == MAX_YEAR_RELEASED ) {
-            if ( month > MAX_MONTH_RELEASED ) {
-                return false;
-            }
-            else if ( month == MAX_MONTH_RELEASED ) {
-                if ( day > MAX_DAY_RELEASED ) {
-                    return false;
-                }
-            }
-        }
 
-        return true;
+        // Now make sure the date is between or equal to the min and max date:
+        // Note: we have to convert the month as parsed into a Calendar.MONTH constant.
+        final Calendar versionCal = new GregorianCalendar(year, Utils.getCalendarMonth(month), day);
+
+        // A valid date is between min and max date inclusive.
+        return (!versionCal.before(MIN_DATE)) && (!versionCal.after(MAX_DATE));
     }
 
     // ========================================================================================================

@@ -1,12 +1,15 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources;
 
+import org.aeonbits.owner.util.Collections;
 import org.apache.commons.lang.RandomStringUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.List;
@@ -31,51 +34,25 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
 
         final ArrayList<Object[]> testArgs = new ArrayList<>();
 
-//        final ArrayList<Integer> baseArgs = new ArrayList<>();
-//        baseArgs.add(DataSourceUtils.MIN_MAJOR_VERSION_NUMBER);
-//        baseArgs.add(DataSourceUtils.MIN_MINOR_VERSION_NUMBER);
-//        baseArgs.add(DataSourceUtils.MIN_YEAR_RELEASED);
-//        baseArgs.add(DataSourceUtils.MIN_MONTH_RELEASED);
-//        baseArgs.add(DataSourceUtils.MIN_DAY_RELEASED);
-//
-//        for ( int offset = -1 ; offset < 2; ++offset ) {
-//            for ( int i = 0; i < baseArgs.size(); ++i ) {
-//
-//                final ArrayList<Object> argList = new ArrayList<>(baseArgs.subList(0, i));
-//                argList.add(baseArgs.get(i) + offset);
-//
-//                if ( i < baseArgs.size() - 1) {
-//                    argList.addAll(baseArgs.subList(i + 1, baseArgs.size()));
-//                }
-//
-//                argList.add(offset >= 0);
-//
-//                testArgs.add(argList.toArray());
-//            }
-//        }
-
         final ArrayList<Integer> baseArgs = new ArrayList<>();
         baseArgs.add(DataSourceUtils.MIN_MAJOR_VERSION_NUMBER);
         baseArgs.add(DataSourceUtils.MIN_MINOR_VERSION_NUMBER);
-        baseArgs.add(DataSourceUtils.MIN_YEAR_RELEASED);
-        baseArgs.add(DataSourceUtils.MIN_MONTH_RELEASED);
-        baseArgs.add(DataSourceUtils.MIN_DAY_RELEASED);
+        baseArgs.add(DataSourceUtils.MIN_DATE.get(Calendar.YEAR));
+        baseArgs.add(DataSourceUtils.MIN_DATE.get(Calendar.MONTH));
+        baseArgs.add(DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH));
 
         final ArrayList<Integer> goodRange = new ArrayList<>();
         goodRange.add(DataSourceUtils.MAX_MAJOR_VERSION_NUMBER - DataSourceUtils.MIN_MAJOR_VERSION_NUMBER);
         goodRange.add(DataSourceUtils.MAX_MINOR_VERSION_NUMBER - DataSourceUtils.MIN_MINOR_VERSION_NUMBER);
-        goodRange.add(DataSourceUtils.MAX_YEAR_RELEASED - DataSourceUtils.MIN_YEAR_RELEASED);
-        goodRange.add(DataSourceUtils.MAX_MONTH_RELEASED - DataSourceUtils.MIN_MONTH_RELEASED);
-        goodRange.add(DataSourceUtils.MAX_DAY_RELEASED - DataSourceUtils.MIN_DAY_RELEASED);
-
-        final long minVersionTimestamp = new GregorianCalendar(
-                DataSourceUtils.MIN_YEAR_RELEASED,
-                DataSourceUtils.MIN_MONTH_RELEASED,
-                DataSourceUtils.MIN_DAY_RELEASED).getTimeInMillis();
-        final long maxVersionTimestamp = new GregorianCalendar(
-                DataSourceUtils.MAX_YEAR_RELEASED,
-                DataSourceUtils.MAX_MONTH_RELEASED,
-                DataSourceUtils.MAX_DAY_RELEASED).getTimeInMillis();
+        goodRange.add(
+                DataSourceUtils.MAX_DATE.get(Calendar.YEAR) - DataSourceUtils.MIN_DATE.get(Calendar.YEAR)
+        );
+        goodRange.add(
+                DataSourceUtils.MAX_DATE.get(Calendar.MONTH) - DataSourceUtils.MIN_DATE.get(Calendar.MONTH)
+        );
+        goodRange.add(
+                DataSourceUtils.MAX_DATE.get(Calendar.DAY_OF_MONTH) - DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH)
+        );
 
         final int MAX_OFFSET = 5;
 
@@ -89,17 +66,29 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
                     argList.addAll(baseArgs.subList(i + 1, baseArgs.size()));
                 }
 
-                final long timestamp = new GregorianCalendar(
-                        (Integer)argList.get(2),
-                        (Integer)argList.get(3),
-                        (Integer)argList.get(4)).getTimeInMillis();
+                try {
+                    final Calendar releaseDate = new GregorianCalendar(
+                            (int) argList.get(2), Utils.getCalendarMonth((int) argList.get(3)), (int) argList.get(4)
+                    );
 
-                boolean passes = ((Integer)argList.get(0) >= DataSourceUtils.MIN_MAJOR_VERSION_NUMBER) && ((Integer)argList.get(0) <= DataSourceUtils.MAX_MAJOR_VERSION_NUMBER);
-                passes = passes && ((Integer)argList.get(1) >= DataSourceUtils.MIN_MINOR_VERSION_NUMBER) && ((Integer)argList.get(1) <= DataSourceUtils.MAX_MINOR_VERSION_NUMBER);
-                passes = passes && (timestamp >= minVersionTimestamp) && (timestamp <= maxVersionTimestamp);
-                argList.add(passes);
+                    boolean passes = ((Integer) argList.get(0) >= DataSourceUtils.MIN_MAJOR_VERSION_NUMBER) && ((Integer) argList.get(0) <= DataSourceUtils.MAX_MAJOR_VERSION_NUMBER);
+                    passes = passes && ((Integer) argList.get(1) >= DataSourceUtils.MIN_MINOR_VERSION_NUMBER) && ((Integer) argList.get(1) <= DataSourceUtils.MAX_MINOR_VERSION_NUMBER);
+                    passes = passes &&
+                            (!releaseDate.before(DataSourceUtils.MIN_DATE)) &&
+                            (!releaseDate.after(DataSourceUtils.MAX_DATE));
 
-                testArgs.add(argList.toArray());
+                    testArgs.add(
+                            Collections.list(
+                                    argList.get(0),
+                                    argList.get(1),
+                                    releaseDate,
+                                    passes
+                            ).toArray()
+                    );
+                }
+                catch (final IllegalArgumentException ex) {
+                    // If this happened we gave the code an invalid month.  We should ignore this case.
+                }
             }
         }
 
@@ -107,9 +96,9 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
         final ArrayList<Integer> minArgs = new ArrayList<>();
         minArgs.add(DataSourceUtils.MIN_MAJOR_VERSION_NUMBER);
         minArgs.add(DataSourceUtils.MIN_MINOR_VERSION_NUMBER);
-        minArgs.add(DataSourceUtils.MIN_YEAR_RELEASED);
-        minArgs.add(DataSourceUtils.MIN_MONTH_RELEASED);
-        minArgs.add(DataSourceUtils.MIN_DAY_RELEASED);
+        minArgs.add(DataSourceUtils.MIN_DATE.get(Calendar.YEAR));
+        minArgs.add(DataSourceUtils.MIN_DATE.get(Calendar.MONTH));
+        minArgs.add(DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH));
 
         for ( int offset = -2 ; offset < -1; ++offset ) {
             for ( int i = 0; i < minArgs.size(); ++i ) {
@@ -121,8 +110,21 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
                     argList.addAll(minArgs.subList(i + 1, minArgs.size()));
                 }
 
-                argList.add(false);
-                testArgs.add(argList.toArray());
+                try {
+                    testArgs.add(
+                            Collections.list(
+                                    argList.get(0),
+                                    argList.get(1),
+                                    new GregorianCalendar(
+                                            (int) argList.get(2), (int) argList.get(3), (int) argList.get(4)
+                                    ),
+                                    false
+                            ).toArray()
+                    );
+                }
+                catch (final IllegalArgumentException ex) {
+                    // If this happened we gave the code an invalid month.  We should ignore this case.
+                }
             }
         }
 
@@ -130,9 +132,9 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
         final ArrayList<Integer> maxArgs = new ArrayList<>();
         maxArgs.add(DataSourceUtils.MAX_MAJOR_VERSION_NUMBER);
         maxArgs.add(DataSourceUtils.MAX_MINOR_VERSION_NUMBER);
-        maxArgs.add(DataSourceUtils.MAX_YEAR_RELEASED);
-        maxArgs.add(DataSourceUtils.MAX_MONTH_RELEASED);
-        maxArgs.add(DataSourceUtils.MAX_DAY_RELEASED);
+        maxArgs.add(DataSourceUtils.MAX_DATE.get(Calendar.YEAR));
+        maxArgs.add(DataSourceUtils.MAX_DATE.get(Calendar.MONTH));
+        maxArgs.add(DataSourceUtils.MAX_DATE.get(Calendar.DAY_OF_MONTH));
 
         for ( int offset = 1 ; offset < 3; ++offset ) {
             for ( int i = 0; i < maxArgs.size(); ++i ) {
@@ -144,33 +146,54 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
                     argList.addAll(maxArgs.subList(i + 1, maxArgs.size()));
                 }
 
-                argList.add(false);
-                testArgs.add(argList.toArray());
+                try {
+                    testArgs.add(
+                        Collections.list(
+                            argList.get(0),
+                            argList.get(1),
+                            new GregorianCalendar(
+                                    (int)argList.get(2), (int) argList.get(3), (int)argList.get(4)
+                            ),
+                            false
+                        ).toArray()
+                    );
+                }
+                catch (final IllegalArgumentException ex) {
+                    // If this happened we gave the code an invalid month.  We should ignore this case.
+                }
             }
         }
 
         // Some specific test cases to prevent regression of version checks:
         // 1 Month after OK release date, but 1 day before OK release date (should pass):
-        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_YEAR_RELEASED, DataSourceUtils.MIN_MONTH_RELEASED+1, DataSourceUtils.MIN_DAY_RELEASED-1, true } );
+        final Calendar c1 = new GregorianCalendar(DataSourceUtils.MIN_DATE.get(Calendar.YEAR), DataSourceUtils.MIN_DATE.get(Calendar.MONTH) + 1, DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH) - 1);
+        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, c1, true } );
         // 1 Year after OK release date, but 1 day before OK release date (should pass):
-        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_YEAR_RELEASED+1, DataSourceUtils.MIN_MONTH_RELEASED, DataSourceUtils.MIN_DAY_RELEASED-1, true } );
+        final Calendar c2 = new GregorianCalendar(DataSourceUtils.MIN_DATE.get(Calendar.YEAR)+1, DataSourceUtils.MIN_DATE.get(Calendar.MONTH) , DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH) - 1);
+        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, c2, true } );
         // 1 Year after OK release date, but 1 month before OK release date (should pass):
-        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_YEAR_RELEASED+1, DataSourceUtils.MIN_MONTH_RELEASED-1, DataSourceUtils.MIN_DAY_RELEASED, true } );
+        final Calendar c3 = new GregorianCalendar(DataSourceUtils.MIN_DATE.get(Calendar.YEAR)+1, DataSourceUtils.MIN_DATE.get(Calendar.MONTH) - 1, DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH));
+        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, c3, true } );
         // 1 Year after OK release date, but 1 month and 1 day before OK release date (should pass):
-        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_YEAR_RELEASED+1, DataSourceUtils.MIN_MONTH_RELEASED-1, DataSourceUtils.MIN_DAY_RELEASED-1, true } );
+        final Calendar c4 = new GregorianCalendar(DataSourceUtils.MIN_DATE.get(Calendar.YEAR)+1, DataSourceUtils.MIN_DATE.get(Calendar.MONTH) - 1, DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH) - 1);
+        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, c4, true } );
 
-        // A couple Values in the middle:
-        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_YEAR_RELEASED+1, DataSourceUtils.MIN_MONTH_RELEASED, DataSourceUtils.MIN_DAY_RELEASED, true } );
-        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_YEAR_RELEASED+1, DataSourceUtils.MIN_MONTH_RELEASED, DataSourceUtils.MIN_DAY_RELEASED, true } );
+        // A value in the middle:
+        final Calendar c5 = new GregorianCalendar(DataSourceUtils.MIN_DATE.get(Calendar.YEAR)+1, DataSourceUtils.MIN_DATE.get(Calendar.MONTH), DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH));
+        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, c5, true } );
 
         // 1 Month before OK max date, but 1 day before OK max release date (should pass):
-        testArgs.add( new Object[] { DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, DataSourceUtils.MAX_YEAR_RELEASED, DataSourceUtils.MAX_MONTH_RELEASED-1, DataSourceUtils.MAX_DAY_RELEASED+1, true } );
+        final Calendar c6 = new GregorianCalendar(DataSourceUtils.MAX_DATE.get(Calendar.YEAR), DataSourceUtils.MAX_DATE.get(Calendar.MONTH) - 1, DataSourceUtils.MAX_DATE.get(Calendar.DAY_OF_MONTH) + 1);
+        testArgs.add( new Object[] { DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, c6, true } );
         // 1 Year before OK max release date, but 1 day before OK max release date (should pass):
-        testArgs.add( new Object[] { DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, DataSourceUtils.MAX_YEAR_RELEASED-1, DataSourceUtils.MAX_MONTH_RELEASED, DataSourceUtils.MAX_DAY_RELEASED+1, true } );
+        final Calendar c7 = new GregorianCalendar(DataSourceUtils.MAX_DATE.get(Calendar.YEAR) - 1  , DataSourceUtils.MAX_DATE.get(Calendar.MONTH), DataSourceUtils.MAX_DATE.get(Calendar.DAY_OF_MONTH) + 1);
+        testArgs.add( new Object[] { DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, c7, true } );
         // 1 Year before OK max release date, but 1 month before OK max release date (should pass):
-        testArgs.add( new Object[] { DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, DataSourceUtils.MAX_YEAR_RELEASED-1, DataSourceUtils.MAX_MONTH_RELEASED-1, DataSourceUtils.MAX_DAY_RELEASED, true } );
+        final Calendar c8 = new GregorianCalendar(DataSourceUtils.MAX_DATE.get(Calendar.YEAR) - 1, DataSourceUtils.MAX_DATE.get(Calendar.MONTH) - 1, DataSourceUtils.MAX_DATE.get(Calendar.DAY_OF_MONTH));
+        testArgs.add( new Object[] { DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, c8, true } );
         // 1 Year before OK max release date, but 1 month and 1 day before OK max release date (should pass):
-        testArgs.add( new Object[] { DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, DataSourceUtils.MAX_YEAR_RELEASED-1, DataSourceUtils.MAX_MONTH_RELEASED-1, DataSourceUtils.MAX_DAY_RELEASED+1, true } );
+        final Calendar c9 = new GregorianCalendar(DataSourceUtils.MAX_DATE.get(Calendar.YEAR)-1, DataSourceUtils.MAX_DATE.get(Calendar.MONTH) - 1, DataSourceUtils.MAX_DATE.get(Calendar.DAY_OF_MONTH) + 1);
+        testArgs.add( new Object[] { DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, c9, true } );
 
         return testArgs;
     }
@@ -194,12 +217,17 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
             for ( int whitespace = 0; whitespace < 2; ++whitespace ) {
                 for ( int decoratorCount = 0; decoratorCount < 10; ++decoratorCount ) {
 
+                    // Some sanity checks here for proper version numbers:
+                    if (((Integer)args[0]) < 0 || ((Integer)args[1]) < 0){
+                        continue;
+                    }
+
                     final String whitespaceString = whitespace != 0 ? "\t \t \t " : " ";
                     final String decoratorString  = decoratorCount  !=0 ? RandomStringUtils.randomAlphanumeric(decoratorCount) : "";
 
                     testArgs.add(
                             new Object[] {
-                                    args[0],args[1],args[2],args[3],args[4],
+                                    args[0],args[1],args[2],
                                     decoratorString,
                                     whitespaceString
                             }
@@ -218,34 +246,37 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "provideForValidateVersionInformation")
     public void testValidateVersionInformation(final Integer major,
                                                final Integer minor,
-                                               final Integer year,
-                                               final Integer month,
-                                               final Integer day,
+                                               final Calendar releaseDate,
                                                final Boolean expected) {
         Assert.assertEquals(
                 DataSourceUtils.validateVersionInformation(
-                    major.intValue(),
-                    minor.intValue(),
-                    year.intValue(),
-                    month.intValue(),
-                    day.intValue()),
-            expected.booleanValue() );
+                    major,
+                    minor,
+                    releaseDate.get(Calendar.YEAR),
+                    releaseDate.get(Calendar.MONTH)+1,
+                    releaseDate.get(Calendar.DAY_OF_MONTH)),
+            expected.booleanValue()
+        );
     }
 
     @Test(dataProvider = "provideForTestVersionRegex")
     public void testVersionRegex(final Integer major,
                                  final Integer minor,
-                                 final Integer year,
-                                 final Integer month,
-                                 final Integer day,
+                                 final Calendar releaseDate,
                                  final String decorator,
                                  final String leadingWhitespace ) {
 
         // Construct the string:
         final String versionString = String.format(
                 "%s%s%d.%d.%4d%02d%02d%s",
-                 DataSourceUtils.MANIFEST_VERSION_LINE_START,leadingWhitespace,
-                 major,minor,year,month,day,decorator
+                DataSourceUtils.MANIFEST_VERSION_LINE_START,
+                leadingWhitespace,
+                major,
+                minor,
+                releaseDate.get(Calendar.YEAR),
+                releaseDate.get(Calendar.MONTH) + 1,
+                releaseDate.get(Calendar.DAY_OF_MONTH),
+                decorator
         );
 
         final Matcher matcher = DataSourceUtils.VERSION_PATTERN.matcher(versionString);
@@ -261,9 +292,9 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
 
         Assert.assertEquals( versionMajor, major );
         Assert.assertEquals( versionMinor, minor );
-        Assert.assertEquals( versionYear, year );
-        Assert.assertEquals( versionMonth, month );
-        Assert.assertEquals( versionDay, day );
+        Assert.assertEquals( versionYear.intValue(), releaseDate.get(Calendar.YEAR) );
+        Assert.assertEquals( versionMonth.intValue(), releaseDate.get(Calendar.MONTH) + 1 );
+        Assert.assertEquals( versionDay.intValue(), releaseDate.get(Calendar.DAY_OF_MONTH) );
         Assert.assertEquals( versionDecorator, decorator );
     }
 

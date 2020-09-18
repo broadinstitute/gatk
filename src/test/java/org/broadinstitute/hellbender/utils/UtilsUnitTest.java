@@ -40,7 +40,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         Utils.forceJVMLocaleToUSEnglish();
 
         // Get the current locale
-        Locale l = Locale.getDefault();
+        final Locale l = Locale.getDefault();
 
         Assert.assertEquals(l, Locale.US);
     }
@@ -977,5 +977,51 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public void testTestFilterCollectionByExpressions(Set<String> values, Collection<String> filters, boolean exactMatch, Set<String> expected) {
         Set<String> actual = Utils.filterCollectionByExpressions(values, filters, exactMatch);
         Assert.assertEquals(actual, expected);
+    }
+
+    @DataProvider
+    public Object[][] provideForTestGetCalendarMonth() {
+        return new Object[][] {
+                {1, Calendar.JANUARY},
+                {2, Calendar.FEBRUARY},
+                {3, Calendar.MARCH},
+                {4, Calendar.APRIL},
+                {5, Calendar.MAY},
+                {6, Calendar.JUNE},
+                {7, Calendar.JULY},
+                {8, Calendar.AUGUST},
+                {9, Calendar.SEPTEMBER},
+                {10, Calendar.OCTOBER},
+                {11, Calendar.NOVEMBER},
+                {12, Calendar.DECEMBER},
+        };
+    }
+
+    @Test(dataProvider = "provideForTestGetCalendarMonth")
+    public void testGetCalendarMonth(final int month, final int expected) {
+        Assert.assertEquals(Utils.getCalendarMonth(month), expected);
+    }
+
+    @DataProvider
+    public Iterator<Object[]> provideForTestGetCalendarMonthOutOfRange() {
+        final List<Object[]> l = new ArrayList<>();
+
+        // Below range:
+        for (int i = 0; i > -10; --i ) {
+            l.add(new Object[] {i});
+        }
+
+        // Above range:
+        for (int i = 13; i < 25; ++i ) {
+            l.add(new Object[] {i});
+        }
+
+        return l.iterator();
+    }
+
+    @Test(dataProvider = "provideForTestGetCalendarMonthOutOfRange",
+            expectedExceptions = IllegalArgumentException.class)
+    public void testGetCalendarMonthOutOfRange(final int month) {
+        Utils.getCalendarMonth(month);
     }
 }
