@@ -195,6 +195,30 @@ public final class AlignmentUtilsUnitTest {
             tests.add(new Object[]{read, badHap, refHap, refStart, expectedPos, goodCigar});
          }
 
+        // example where the haplotype has a deletion relative to reference and the read aligns right after the deletion
+        {
+            final String ref = "GGGATCCTGCTACAAAGGTGAAACCCAGGAGAGTGTGGAGTCCAGAGTGTTGCCAGGACCCAGGCACAGGCATTAGTGCCCGTTGGAGAAAACAGGGGAATCCCGAAGAAATGGTGGGTCCTGGCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC";
+            // ref-to-hap:      |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||^^||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+            //        hap:      GGGATCCTGCTACAAAGGTGAAACCCAGGAGAGTGTGGAGTCCAGAGTGTTGCCAGGACCCAGGCACAGGCATTAGTGCCCGTTGGAGAAAAC**GGGAATCCCGAAGAAATGGTGGGTCCTGGCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC
+            // hap-to-read:                                                                                                    ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+            // aligned read:                                                                                                   GGGAATCCCGAAGAAATGGTGGGTCCTGGCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC
+
+            final String hap = "GGGATCCTGCTACAAAGGTGAAACCCAGGAGAGTGTGGAGTCCAGAGTGTTGCCAGGACCCAGGCACAGGCATTAGTGCCCGTTGGAGAAAACGGGAATCCCGAAGAAATGGTGGGTCCTGGCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC";
+            final String readBases = "GGGAATCCCGAAGAAATGGTGGGTCCTGGCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC";
+            final String hapCigar = "93M2D92M";
+            final GATKRead read = makeReadForAlignedToRefTest(readBases);
+            final int refStart = 13011;
+            final int hapStart = 553;
+            final int alignmentOffset = 93; // right next to the '2D' part of hapCigar
+            final String goodCigar = readBases.length() + "M";
+            final Haplotype badHap = new Haplotype(hap.getBytes());
+            badHap.setCigar(TextCigarCodec.decode(hapCigar));
+            badHap.setAlignmentStartHapwrtRef(hapStart);
+            final Haplotype refHap = makeHaplotypeForAlignedToRefTest(ref, ref.length() + "M");
+
+            final int expectedPos = refStart + hapStart + alignmentOffset + 2; // 2 from 2D
+            tests.add(new Object[]{read, badHap, refHap, refStart, expectedPos, goodCigar});
+        }
         return tests.toArray(new Object[][]{});
     }
 
@@ -1107,6 +1131,7 @@ public final class AlignmentUtilsUnitTest {
         tests.add(new Object[]{ "30M5D30M5D30M", 80, 90 });
         tests.add(new Object[]{ "30M5D30M5I30M", 80, 80 });
         tests.add(new Object[]{ "30M5D30M5I30M", 80, 80 });
+        tests.add(new Object[]{ "30M5D30M5D30M", 70, 80 });
 
         return tests.toArray(new Object[][]{});
     }
