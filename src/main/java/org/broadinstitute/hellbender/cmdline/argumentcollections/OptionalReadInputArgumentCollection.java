@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.WorkflowInput;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
 
@@ -20,6 +21,7 @@ public final class OptionalReadInputArgumentCollection extends ReadInputArgument
             doc = "BAM/SAM/CRAM file containing reads",
             optional = true,
             common = true)
+    @WorkflowInput(optionalCompanions = StandardArgumentDefinitions.INPUT_INDEX_COMPANION)
     private List<GATKPath> readInputNames = new ArrayList<>();
 
     /**

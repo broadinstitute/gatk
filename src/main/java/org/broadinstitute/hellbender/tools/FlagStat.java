@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -32,13 +33,14 @@ import java.text.NumberFormat;
  *     -I input.bam
  * </pre>
  */
-@DocumentedFeature
 @CommandLineProgramProperties(
 	summary = "Accumulate flag statistics given a BAM file, e.g. total number of reads with QC failure flag set, " +
             "number of duplicates, percentage mapped etc.",
 	oneLineSummary = "Accumulate flag statistics given a BAM file",
     programGroup = DiagnosticsAndQCProgramGroup.class
 )
+@DocumentedFeature
+@WorkflowProperties
 public final class FlagStat extends ReadWalker {
 
     private final FlagStatus sum = new FlagStatus();

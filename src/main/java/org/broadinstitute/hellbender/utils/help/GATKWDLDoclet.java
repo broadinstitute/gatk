@@ -4,6 +4,8 @@ import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import org.apache.commons.io.FilenameUtils;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
 import org.broadinstitute.barclay.help.*;
 
 import java.io.*;
@@ -26,6 +28,9 @@ public class GATKWDLDoclet extends WDLDoclet {
     // the directory where the wdlgen build is running
     public final static String OPT_BUILD_DIR = "-build-dir";
     private String buildDir;
+
+    @Override
+    public String getIndexFileExtension() { return "html"; }
 
     /**
      * Validates the given options against options supported by this doclet.

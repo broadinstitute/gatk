@@ -8,6 +8,8 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
@@ -92,6 +94,7 @@ import java.util.stream.Collectors;
         programGroup = CoverageAnalysisProgramGroup.class
 )
 @DocumentedFeature
+@WorkflowProperties
 public final class CollectReadCounts extends ReadWalker {
     public enum Format {
         TSV, HDF5
@@ -106,6 +109,7 @@ public final class CollectReadCounts extends ReadWalker {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
+    @WorkflowOutput
     private File outputCountsFile = null;
 
     @Argument(
