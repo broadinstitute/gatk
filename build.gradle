@@ -746,7 +746,7 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
     options.addStringOption("caller-post-arg-max-occurs", "1 1 1 1 1 1 1 1 1 1")
 }
 
-def getWLDInputJSONTestFileNameFromWDLName(File wdlName) {
+def getWDLInputJSONTestFileNameFromWDLName(File wdlName) {
     String fileWithoutExt = wdlName.name.take(wdlName.name.lastIndexOf('.'))
     return new File (wdlName.getParentFile(), fileWithoutExt + "Inputs.json").getAbsolutePath()
 }
@@ -820,10 +820,10 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
             f -> !f.getAbsolutePath().endsWith(".html") && !f.getAbsolutePath().endsWith(".json")
         }
         final womtoolLocation = System.getenv('WOMTOOL_JAR')
-//        wdlFiles.any() { wdlFile ->
-//            final validateWDLCommand = "java -jar $womtoolLocation validate $wdlFile"
-//            execWDLValidation(validateWDLCommand)
-//        }
+        wdlFiles.any() { wdlFile ->
+            final validateWDLCommand = "java -jar $womtoolLocation validate $wdlFile"
+            execWDLValidation(validateWDLCommand)
+        }
 
         // now execute the *AllArgs test wdls using cromwell
         wdlFiles = fileTree(dir: wdlGenFolder).filter {
@@ -838,7 +838,7 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
         final cromwellLocation = System.getenv('CROMWELL_JAR')
         try {
             wdlFiles.any() { wdlFile ->
-                final testInputJSON = getWLDInputJSONTestFileNameFromWDLName(wdlFile)
+                final testInputJSON = getWDLInputJSONTestFileNameFromWDLName(wdlFile)
                 final runWDLCommand = "java -jar $cromwellLocation run --inputs $testInputJSON $wdlFile"
                 execWDLValidation("touch $dummyWDLTestFileName")
                 execWDLValidation(runWDLCommand)
