@@ -9,13 +9,16 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.BasicArrayData.ArrayGenotype;
+import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeInfo;
+import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeQcMetrics;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.*;
 import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.text.DecimalFormat;
 import java.util.*;
@@ -48,12 +51,19 @@ public class ArrayExtractCohortEngine {
     private final Set<String> sampleNames;
 
     private final Map<Long, ProbeInfo> probeIdMap;
+    private final Map<Long, ProbeQcMetrics> probeQcMetricsMap;
+
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
 
     private int totalNumberOfVariants = 0;
     private int totalNumberOfSites = 0;
 
     private final boolean useLegacyGTEncoding; //TODO remove
+
+    final boolean removeFilteredVariants;
+    final float excessHetThreshold;
+    final float callRateThreshold;
+    final boolean filterInvariants;
 
     public ArrayExtractCohortEngine(final String projectID,
                                     final VariantContextWriter vcfWriter,
@@ -62,6 +72,7 @@ public class ArrayExtractCohortEngine {
                                     final ReferenceDataSource refSource,
                                     final Map<Integer, String> sampleIdMap,
                                     final Map<Long, ProbeInfo> probeIdMap,
+                                    final Map<Long, ProbeQcMetrics> probeQcMetricsMap,
                                     final String cohortTableName,
                                     final boolean gtDataOnly,
                                     final Integer minProbeId,
@@ -70,7 +81,11 @@ public class ArrayExtractCohortEngine {
                                     final boolean useCompressedData,
                                     final boolean printDebugInformation,
                                     final ProgressMeter progressMeter,
-                                    final boolean useLegacyGTEncoding) {
+                                    final boolean useLegacyGTEncoding,
+                                    final boolean removeFilteredVariants,
+                                    final float excessHetThreshold,
+                                    final float callRateThreshold,
+                                    final boolean filterInvariants) {
 
         this.df.setMaximumFractionDigits(3);
         this.df.setGroupingSize(0);
@@ -85,6 +100,7 @@ public class ArrayExtractCohortEngine {
         this.gtDataOnly = gtDataOnly;
 
         this.probeIdMap = probeIdMap;
+        this.probeQcMetricsMap = probeQcMetricsMap;
 
         this.cohortTableRef = new TableReference(cohortTableName, useCompressedData? SchemaUtils.RAW_ARRAY_COHORT_FIELDS_COMPRESSED:SchemaUtils.RAW_ARRAY_COHORT_FIELDS_UNCOMPRESSED);
         this.minProbeId = minProbeId;
@@ -97,6 +113,11 @@ public class ArrayExtractCohortEngine {
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
         this.useLegacyGTEncoding = useLegacyGTEncoding;
+
+        this.removeFilteredVariants = removeFilteredVariants;
+        this.excessHetThreshold = excessHetThreshold;
+        this.callRateThreshold = callRateThreshold;
+        this.filterInvariants = filterInvariants;
     }
 
     int getTotalNumberOfVariants() { return totalNumberOfVariants; }
@@ -215,10 +236,10 @@ public class ArrayExtractCohortEngine {
             logger.info(contig + ":" + position + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, contig, position, refAllele);
+        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, contig, position, refAllele, probeId);
     }
 
-    private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls, final Set<String> currentVariantSamplesSeen, final String contig, final long start, final Allele refAllele) {
+    private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls, final Set<String> currentVariantSamplesSeen, final String contig, final long start, final Allele refAllele, long probeId) {
 
         // TODO: this is where we infer missing data points... once we know what we want to drop
         // final Set<String> samplesNotEncountered = Sets.difference(sampleNames, currentVariantSamplesSeen);
@@ -235,7 +256,39 @@ public class ArrayExtractCohortEngine {
                 true);
 
 
-        final VariantContext finalVC = mergedVC;
+        // Add QC info
+        VariantContext finalVC;
+        if (probeQcMetricsMap != null) {
+            final ProbeQcMetrics probeQcMetrics = probeQcMetricsMap.get(probeId);
+
+            if (probeQcMetrics == null) {
+                //TODO:: what should behavior be here? Defaulting to conservative approach of exploding
+                throw new RuntimeException("Unable to find QC metrics for " + probeId);
+            }
+
+            final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
+
+            builder.attribute(GATKVCFConstants.EXCESS_HET_KEY, probeQcMetrics.excess_het);
+            if (probeQcMetrics.excess_het > excessHetThreshold) {
+                builder.filter("EXCESS_HET");
+            }
+
+            builder.attribute(CommonCode.CALL_RATE, probeQcMetrics.call_rate);
+            if (probeQcMetrics.call_rate < callRateThreshold) {
+                builder.filter("CALL_RATE");
+            }
+
+            builder.attribute(CommonCode.INVARIANT, probeQcMetrics.invariant);
+            if (probeQcMetrics.invariant && filterInvariants) {
+                builder.filter("INVARIANT");
+            }
+            
+
+            // TODO: implement "remove-filtered-variants"
+            finalVC = builder.make();
+        } else {
+            finalVC = mergedVC;
+        }
 
         // TODO: this was commented out... probably need to re-enable
 //        final VariantContext annotatedVC = enableVariantAnnotator ?
@@ -246,14 +299,11 @@ public class ArrayExtractCohortEngine {
 //            progressMeter.update(annotatedVC);
 //        }
 
-        if ( finalVC != null ) {
+
+        if (!finalVC.isFiltered() || !removeFilteredVariants) {
             vcfWriter.add(finalVC);
-            progressMeter.update(finalVC);
-        } else {
-            // TODO should i print a warning here?
-            vcfWriter.add(mergedVC);
-            progressMeter.update(mergedVC);
         }
+        progressMeter.update(finalVC);
     }
 
     private String formatFloatForVcf(final Float value) {

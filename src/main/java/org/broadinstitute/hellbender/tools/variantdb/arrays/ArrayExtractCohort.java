@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeInfo;
+import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeQcMetrics;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.nextgen.ExtractCohort;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
@@ -92,6 +93,13 @@ public class ArrayExtractCohort extends GATKTool {
     private Integer maxProbeId = null;
 
     @Argument(
+        fullName = "qc-metrics-table",
+        doc = "Fully qualified name of a bigquery table containing probe qc information",
+        optional = true
+    )
+    private String qcMetricsTableName = null;
+
+    @Argument(
             fullName = "cohort-extract-table",
             doc = "Fully qualified name of the table where the cohort data exists (already subsetted)",
             optional = false
@@ -103,6 +111,30 @@ public class ArrayExtractCohort extends GATKTool {
             doc = "If true, only get the genotype info. Otherwise include NORMX, NORMY, BAF, and LRR",
             optional = true)
     private boolean gtDataOnly = false;
+
+    @Argument(
+        fullName = "remove-filtered-variants",
+        doc = "If true, don't emit variants that are filtered out",
+        optional = true)
+    private boolean removeFilteredVariants = false;
+
+    @Argument(
+        fullName = "excess-het-threshold",
+        doc = "Filter variants with excess het greater than this value",
+        optional = true)
+    private float excessHetThreshold = 60.0f;
+
+    @Argument(
+        fullName = "call-rate-threshold",
+        doc = "Filter variants with a call rate less than this value",
+        optional = true)
+    private float callRateThreshold = 0.95f;
+    
+    @Argument(
+        fullName = "filter-invariants",
+        doc = "Filter variants with no called variants in the qc metrics",
+        optional = true)
+    private boolean filterInvariants = false;
 
     @Argument(
             fullName = "use-compressed-data",
@@ -171,7 +203,11 @@ public class ArrayExtractCohort extends GATKTool {
             probeIdMap = ProbeInfo.getProbeIdMapFromExport(probeCsvExportFile);
         }
 
-
+        // if we have a qcMetrics table, augment the probeInfo map with that information
+        Map<Long, ProbeQcMetrics> probeQcMetricsMap = null;
+        if (qcMetricsTableName != null) {
+            probeQcMetricsMap = ProbeQcMetrics.getProbeQcMetricsWithStorageAPI(qcMetricsTableName);
+        }
 
         //ChromosomeEnum.setRefVersion(refVersion);
 
@@ -183,6 +219,7 @@ public class ArrayExtractCohort extends GATKTool {
                 reference,
                 sampleIdMap,
                 probeIdMap,
+                probeQcMetricsMap,
                 cohortTable,
                 gtDataOnly,
                 minProbeId,
@@ -191,7 +228,11 @@ public class ArrayExtractCohort extends GATKTool {
                 useCompressedData,
                 printDebugInformation,
                 progressMeter,
-                useLegacyGTEncoding);
+                useLegacyGTEncoding,
+                removeFilteredVariants,
+                excessHetThreshold,
+                callRateThreshold,
+                filterInvariants);
         vcfWriter.writeHeader(header);
     }
 
