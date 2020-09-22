@@ -361,16 +361,16 @@ task ${name} {
     <#if requiredOutputs?size == 0>
     File ${name}results = ${name}.${name}_results
     <#else>
-        <#list requiredOutputs as outputName, outputType>
-    ${outputType} ${name}${outputName?substring(2)} = ${name}.${name}_${outputName?substring(2)}
-            <#if requiredCompanions?? && requiredCompanions[outputName]??>
-                <#list requiredCompanions[outputName] as companion>
-    ${outputType} ${name}${companion.name?substring(2)} = ${name}.${name}_${companion.name?substring(2)}
+        <#list requiredOutputs?keys as requiredKey>
+    ${requiredOutputs[requiredKey]} ${name}${requiredKey?substring(2)} = ${name}.${name}_${requiredKey?substring(2)}
+            <#if requiredCompanions?? && requiredCompanions[requiredKey]??>
+                <#list requiredCompanions[requiredKey] as companion>
+    ${requiredOutputs[requiredKey]} ${name}${companion.name?substring(2)} = ${name}.${name}_${companion.name?substring(2)}
                 </#list>
             </#if>
-            <#if optionalCompanions?? && optionalCompanions[outputName]??>
-                <#list optionalCompanions[outputName] as companion>
-    ${outputType}? ${name}${companion.name?substring(2)} = ${name}.${name}_${companion.name?substring(2)}
+            <#if optionalCompanions?? && optionalCompanions[requiredKey]??>
+                <#list optionalCompanions[requiredKey] as companion>
+    ${requiredOutputs[requiredKey]}? ${name}${companion.name?substring(2)} = ${name}.${name}_${companion.name?substring(2)}
                 </#list>
             </#if>
         </#list>
@@ -382,16 +382,16 @@ task ${name} {
     <#if requiredOutputs?size == 0>
     File ${name}_results = stdout()
     <#else>
-        <#list requiredOutputs as outputName, outputType>
-    ${outputType} ${name}_${outputName?substring(2)} = ${outputName?substring(2)}
-            <#if requiredCompanions?? && requiredCompanions[outputName]??>
-                <#list requiredCompanions[outputName] as companion>
-    ${outputType} ${name}_${companion.name?substring(2)} = ${companion.name?substring(2)}
+        <#list requiredOutputs?keys as requiredKey>
+    ${requiredOutputs[requiredKey]} ${name}_${requiredKey?substring(2)} = ${requiredKey?substring(2)}
+            <#if requiredCompanions?? && requiredCompanions[requiredKey]??>
+                <#list requiredCompanions[requiredKey] as companion>
+    ${requiredOutputs[requiredKey]} ${name}_${companion.name?substring(2)} = ${companion.name?substring(2)}
                 </#list>
             </#if>
-            <#if optionalCompanions?? && optionalCompanions[outputName]??>
-                <#list optionalCompanions[outputName] as companion>
-    ${outputType}? ${name}_${companion.name?substring(2)} = ${companion.name?substring(2)}
+            <#if optionalCompanions?? && optionalCompanions[requiredKey]??>
+                <#list optionalCompanions[requiredKey] as companion>
+    ${requiredOutputs[requiredKey]}? ${name}_${companion.name?substring(2)} = ${companion.name?substring(2)}
                 </#list>
             </#if>
         </#list>
