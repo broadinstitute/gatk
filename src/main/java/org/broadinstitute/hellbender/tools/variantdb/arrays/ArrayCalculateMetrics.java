@@ -44,7 +44,7 @@ public class ArrayCalculateMetrics extends GATKTool {
 
     public enum HeaderFieldEnum {
         probe_id,
-        hwe_pval,
+        excess_het,
         call_rate,
         invariant
     }
@@ -72,14 +72,19 @@ public class ArrayCalculateMetrics extends GATKTool {
             for ( final GenericRecord row : reader ) {
                 List<String> thisRow = new ArrayList<>();
                 // data in row should never be null
-                long probeId = (Long) row.get(0);
+                long probeId = (Long) row.get(GenotypeCountsSchema.PROBE_ID_INDEX);
                 thisRow.add(String.valueOf(probeId));
 
-                GenotypeCounts genotypeCounts = new GenotypeCounts((Long) row.get(1), (Long) row.get(2), (Long) row.get(3));
-                long noCalls = (Long) row.get(4);
+                long combined_hom_var = (Long) row.get(GenotypeCountsSchema.HOM_VAR_INDEX) +
+                        (Long) row.get(GenotypeCountsSchema.HET_1_2_INDEX) +
+                        (Long) row.get(GenotypeCountsSchema.HOM_VAR_2_2_INDEX);
+
+                GenotypeCounts genotypeCounts = new GenotypeCounts((Long) row.get(GenotypeCountsSchema.HOM_REF_INDEX),
+                        (Long) row.get(GenotypeCountsSchema.HET_INDEX), combined_hom_var);
+                long noCalls = (Long) row.get(GenotypeCountsSchema.NO_CALL_INDEX);
                 int sampleCount = (int) genotypeCounts.getRefs() + (int) genotypeCounts.getHets() + (int) genotypeCounts.getHoms() + (int) noCalls;
-                double excessHetPval = ExcessHet.calculateEH(genotypeCounts, sampleCount).getRight();
-                thisRow.add(String.format("%.0f", excessHetPval));
+                double excessHet = ExcessHet.calculateEH(genotypeCounts, sampleCount).getRight();
+                thisRow.add(String.format("%.0f", excessHet));
 
                 double callRate = 1.0 - ((double) noCalls / sampleCount);
                 thisRow.add(String.format("%.3f", callRate));
