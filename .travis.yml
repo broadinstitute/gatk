@@ -124,7 +124,7 @@ script:
 # run a basic sanity check to be sure that gatk doesn't explode
 # run tests
 # Because the docker build for GATK doesn't include the test code or the src files we have to manually collect them into a location to be mounted in for performing tests
-- travis wait 40 if [[ $TRAVIS_EVENT_TYPE == cron ]]; then
+- if [[ $TRAVIS_EVENT_TYPE == cron ]]; then
     echo "Not running any tests for nightly builds";
   elif [[ $TEST_TYPE == wdlGen ]]; then
     ./gradlew gatkWDLGenValidation;
@@ -138,15 +138,15 @@ script:
     travis_wait 60 bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh CASE;
   elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
     echo "Running CNV somatic workflows";
-    bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
+    travis_wait 60 bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
   elif [[ $RUN_M2_WDL == true ]]; then
     echo "Deleting some unused files before running M2 WDL...";
     rm -Rf src/test/resources/large/VQSR;
     echo "Running M2 WDL";
-    sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
+    travis_wait 60 sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
   elif [[ $RUN_CNN_WDL == true ]]; then
     echo "Running CNN WDL";
-    sudo bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
+    travis_wait 60 sudo bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image and running appropriate tests..." ;
     if [ ${TRAVIS_PULL_REQUEST} != false ]; then

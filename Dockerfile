@@ -6,7 +6,6 @@ RUN ls .
 ADD . /gatk
 WORKDIR /gatk
 
-RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
 RUN apt-get --assume-yes install git-lfs
 RUN git lfs install
 
