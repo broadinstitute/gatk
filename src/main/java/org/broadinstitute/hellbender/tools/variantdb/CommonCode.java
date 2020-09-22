@@ -17,7 +17,12 @@ import java.util.Set;
 
 //TODO rename this or get rid of it. a place holder for now
 public class CommonCode {
+    public static String CALL_RATE = "CALL_RATE";
+    public static String INVARIANT = "INVARIANT";
 
+    public static String EXCESS_HET_FILTER = "EXCESS_HET";
+    public static String CALL_RATE_FILTER = "CALL_RATE";
+    public static String INVARIANT_FILTER = "INVARIANT";
 
     public static String getGTString(final VariantContext variant) {
         List<Integer> allele_indices = getGTAlleleIndexes(variant);
@@ -47,6 +52,16 @@ public class CommonCode {
         lines.add(new VCFFormatHeaderLine(RawArrayTsvCreator.BAF, 1, VCFHeaderLineType.Float, "B Allele Frequency"));
         lines.add(new VCFFormatHeaderLine(RawArrayTsvCreator.LRR, 1, VCFHeaderLineType.Float, "Log R Ratio"));
 
+        // TODO: do we need to differentiate these from the same values calculated on this VCF (ie not the full set)
+        lines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EXCESS_HET_KEY));
+
+        // TODO: are there offical headers for this?
+        lines.add(new VCFInfoHeaderLine(CALL_RATE, 1, VCFHeaderLineType.Float, "Call Rate"));
+        lines.add(new VCFInfoHeaderLine(INVARIANT, 1, VCFHeaderLineType.Flag, "Invariant"));
+
+        lines.add(new VCFFilterHeaderLine(INVARIANT_FILTER, "No variant samples in reference QC panel"));
+        lines.add(new VCFFilterHeaderLine(CALL_RATE_FILTER, "Inadequate call rate in reference QC panel"));
+        lines.add(new VCFFilterHeaderLine(EXCESS_HET_FILTER, "Excess Hets in reference QC panel"));
 
         final VCFHeader header = new VCFHeader(lines, sampleNames);
         header.setSequenceDictionary(sequenceDictionary);
