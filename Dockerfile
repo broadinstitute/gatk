@@ -6,6 +6,12 @@ RUN ls .
 ADD . /gatk
 WORKDIR /gatk
 
+RUN add-apt-repository universe && apt update
+RUN apt-get --assume-yes install git-lfs
+RUN git lfs install
+
+RUN git lfs pull
+
 RUN export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
 RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJar/
 RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts
