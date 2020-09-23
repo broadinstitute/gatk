@@ -4,6 +4,7 @@ import com.google.cloud.bigquery.FieldValueList;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 
+/** A BigQuery record for a row of results from a query. */
 public class QueryRecord implements GenericRecord {
     private final FieldValueList fields;
 
@@ -19,8 +20,6 @@ public class QueryRecord implements GenericRecord {
     public Object get(String key) {
         return fields.get(key).getStringValue();
     }
-
-//    public long getLong(String key) { return fields.get(key).getLongValue(); }
 
     @Override
     public void put(int i, Object v) {

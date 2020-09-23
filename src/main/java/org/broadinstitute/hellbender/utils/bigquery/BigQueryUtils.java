@@ -25,7 +25,9 @@ import java.util.stream.StreamSupport;
  *
  * Created by jonn on 4/17/19.
  */
-public class BigQueryUtils {
+public final class BigQueryUtils {
+    private BigQueryUtils(){}
+
     private static final Logger logger = LogManager.getLogger(BigQueryUtils.class);
 
     //==================================================================================================================
@@ -62,7 +64,7 @@ public class BigQueryUtils {
     }
 
     /**
-     * Executes the given {@code queryString} on the default instance of {@link BigQuery} as created by {@link #getBigQueryEndPoint()}.
+     * Executes the given {@code queryString} on the provided BigQuery instance.
      * Will block until results are returned.
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
      * @param bigQuery The {@link BigQuery} instance against which to execute the given {@code queryString}.
@@ -86,7 +88,7 @@ public class BigQueryUtils {
     }
 
     /**
-     * Executes the given {@code queryString} on the default instance of {@link BigQuery} as created by {@link #getBigQueryEndPoint()}.
+     * Executes the given {@code queryString} on the provided BigQuery instance.
      * Will block until results are returned.
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
      * @param bigQuery The {@link BigQuery} instance against which to execute the given {@code queryString}.  Must contain the table name in the `FROM` clause for the table from which to retrieve data.
@@ -339,7 +341,7 @@ public class BigQueryUtils {
             result = queryJob.getQueryResults();
 
             long bytesProcessed = ((JobStatistics.QueryStatistics) queryJob.getStatistics()).getTotalBytesProcessed();
-            logger.info(String.format("Actual %s MB scanned", bytesProcessed/1000000));
+            logger.info(String.format("%.2f MB actually scanned", bytesProcessed / 1000000.0));
 
         }
         catch (final InterruptedException ex) {
@@ -363,87 +365,32 @@ public class BigQueryUtils {
         return bytesProcessed;
     }
 
-//    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID) {
-//
-//        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, false);
-//    }
-//
-//    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID, final boolean runQueryInBatchMode) {
-//        final String tempTableDataset = "temp_tables";
-//        final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
-//        final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
-//
-//        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString);
-//        logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
-//
-//        final String queryStringIntoTempTable = "CREATE TABLE `" + tempTableFullyQualified + "`\n" +
-//                "OPTIONS(\n" +
-//                "  expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)\n" +
-//                ") AS\n" +
-//                queryString;
-//
-//        final TableResult result = executeQuery(queryStringIntoTempTable, runQueryInBatchMode);
-//
-//        final Table tableInfo = getBigQueryEndPoint().getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
-//        logger.info(String.format("Query temp table created with %s rows and %s bytes in size", tableInfo.getNumRows(), tableInfo.getNumBytes()));
-//
-//        return new StorageAPIAvroReader(projectID, tempTableDataset, tempTableName, fieldsToRetrieve);
-//    }
+    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID) {
 
-    private static class SimpleRowReader {
+        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, false);
+    }
 
-        private static int rowCount = 0;
+    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID, final boolean runQueryInBatchMode) {
+        final String tempTableDataset = "temp_tables";
+        final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
+        final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
 
-        private final DatumReader<GenericRecord> datumReader;
+        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString);
+        logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
 
-        // Decoder object will be reused to avoid re-allocation and too much garbage collection.
-        private BinaryDecoder decoder = null;
+        final String queryStringIntoTempTable = "CREATE TABLE `" + tempTableFullyQualified + "`\n" +
+                "OPTIONS(\n" +
+                "  expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)\n" +
+                ") AS\n" +
+                queryString;
 
-        // GenericRecord object will be reused.
-        private GenericRecord row = null;
+        executeQuery(queryStringIntoTempTable, runQueryInBatchMode);
 
-        public SimpleRowReader( org.apache.avro.Schema schema ) {
-            Preconditions.checkNotNull(schema);
-            datumReader = new GenericDatumReader<>(schema);
-        }
+        final Table tableInfo = getBigQueryEndPoint().getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
+        logger.info(String.format("Query temp table created with %s rows and %s bytes in size", tableInfo.getNumRows(), tableInfo.getNumBytes()));
 
-        /**
-         * Sample method for processing AVRO rows which only validates decoding.
-         *
-         * @param avroRows object returned from the ReadRowsResponse.
-         */
-        public void processRows( AvroRows avroRows ) throws IOException {
-            decoder = DecoderFactory.get()
-                    .binaryDecoder(avroRows.getSerializedBinaryRows().toByteArray(), decoder);
+        TableReference tr = new TableReference(tempTableFullyQualified, fieldsToRetrieve);
 
-            while ( !decoder.isEnd() ) {
-                rowCount++;
-                // Reusing object row
-                row = datumReader.read(row, decoder);
-
-                System.out.println("Schema:");
-                row.getSchema().getFields().forEach(field -> System.out.println(field.name()));
-                System.out.println("Values schema:");
-                final List<org.apache.avro.Schema.Field> valuesFields = row.getSchema().getField("values").schema().getElementType().getFields(); //.getFields().forEach(field -> System.out.println(field.name()));
-
-                System.out.println("Position: " + row.get("position"));
-                row.getSchema().getFields().forEach(field -> System.out.println(field.name() + " " + row.get(field.name())));
-
-                System.out.println("values class: " + row.get("values").getClass());
-                final GenericData.Array<?> valArray = (GenericData.Array) row.get("values");
-                for ( final Object valArrayItem : valArray ) {
-                    System.out.println(valArrayItem.getClass());
-                    final GenericData.Record valRec = (GenericData.Record) valArrayItem;
-                    for ( final org.apache.avro.Schema.Field valField : valRec.getSchema().getFields() ) {
-                        System.out.println(valField.name() + ": " + valRec.get(valField.name()));
-                    }
-                }
-
-                System.exit(0);
-                if ( rowCount % 100 == 0 ) {
-                    System.out.println("Processed " + rowCount + " rows");
-                }
-            }
-        }
+        return new StorageAPIAvroReader(tr);
     }
 }
