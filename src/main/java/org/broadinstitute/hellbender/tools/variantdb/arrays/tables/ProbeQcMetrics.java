@@ -9,13 +9,13 @@ import java.util.Map;
 
 public class ProbeQcMetrics {
     public final long probeId;
-    public final Double excess_het;
+    public final Double hwe_pval;
     public final Double call_rate;
     public final Boolean invariant;
 
-    public ProbeQcMetrics(final long probeId, final Double excess_het, final Double call_rate, final Boolean invariant) {
+    public ProbeQcMetrics(final long probeId, final Double hwe_pval, final Double call_rate, final Boolean invariant) {
         this.probeId = probeId;
-        this.excess_het = excess_het;
+        this.hwe_pval = hwe_pval;
         this.call_rate = call_rate;
         this.invariant = invariant;
     }
@@ -32,7 +32,7 @@ public class ProbeQcMetrics {
             for ( final GenericRecord row : reader ) {                
                 ProbeQcMetrics p = new ProbeQcMetrics(
                     (Long) row.get(ProbeQcMetricsSchema.PROBE_ID),
-                    getOptionalDouble(row, ProbeQcMetricsSchema.EXCESS_HET),
+                    getOptionalDouble(row, ProbeQcMetricsSchema.HWE_PVAL),
                     getOptionalDouble(row, ProbeQcMetricsSchema.CALL_RATE),
                     getOptionalBoolean(row, ProbeQcMetricsSchema.INVARIANT)
                 );
@@ -58,7 +58,7 @@ public class ProbeQcMetrics {
 
     @Override
     public String toString() {
-        return "ProbeQcMetric [probeId=" + probeId + ", excess_het=" + excess_het + ", call_rate="
+        return "ProbeQcMetric [probeId=" + probeId + ", hwe_pval=" + hwe_pval + ", call_rate="
                 + call_rate + ", invariant=" + invariant + "]";
     }
 
