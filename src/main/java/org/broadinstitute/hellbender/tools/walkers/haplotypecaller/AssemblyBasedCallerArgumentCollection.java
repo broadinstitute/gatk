@@ -5,6 +5,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
@@ -31,6 +32,10 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public static final String EMIT_REF_CONFIDENCE_LONG_NAME = "emit-ref-confidence";
     public static final String EMIT_REF_CONFIDENCE_SHORT_NAME = "ERC";
     public static final String ALLELE_EXTENSION_LONG_NAME = "allele-informative-reads-overlap-margin";
+
+    public static final String DANGLING_ENDS_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME = "dangling-ends-smith-waterman-parameters-table";
+    public static final String HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME = "haplotype-to-reference-smith-waterman-parameters-table";
+    public static final String READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME = "read-to-haplotype-smith-waterman-parameters-table";
 
     public ReadThreadingAssembler createReadThreadingAssembler() {
         final ReadThreadingAssembler assemblyEngine = assemblerArgs.makeReadThreadingAssembler();
@@ -148,4 +153,25 @@ public abstract class AssemblyBasedCallerArgumentCollection {
                     "that overlap the variant or any base no further than this distance expressed in base pairs",
             optional = true)
     public int informativeReadOverlapMargin = 2;
+
+    @Advanced
+    @Argument(fullName = DANGLING_ENDS_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME,
+            //TODO
+            doc = "",
+            optional = true)
+    public GATKPath danglingEndsSmithWatermanParametersTablePath;
+
+    @Advanced
+    @Argument(fullName = HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME,
+            //TODO
+            doc = "",
+            optional = true)
+    public GATKPath haplotypeToReferenceSmithWatermanParametersTablePath;
+
+    @Advanced
+    @Argument(fullName = READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME,
+            //TODO
+            doc = "",
+            optional = true)
+    public GATKPath readToHaplotypeSmithWatermanParametersTablePath;
 }
