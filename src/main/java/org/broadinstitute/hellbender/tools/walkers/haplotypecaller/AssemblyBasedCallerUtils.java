@@ -65,6 +65,7 @@ public final class AssemblyBasedCallerUtils {
     // get realigned incorrectly.  See https://github.com/broadinstitute/gatk/issues/5060
     public static final int MINIMUM_READ_LENGTH_AFTER_TRIMMING = 10;
 
+    // this notation now means: "0": REF or '*'; "1": site-specific alt allele
     private static final String phase01 = "0|1";
     private static final String phase10 = "1|0";
 
@@ -650,9 +651,8 @@ public final class AssemblyBasedCallerUtils {
             }
 
             // keep track of the haplotypes that contain this particular alternate allele
-            final Allele alt = call.getAlternateAllele(0);
-            final Predicate<VariantContext> hasThisAlt = vc -> (vc.getStart() == call.getStart() && vc.getAlternateAlleles().contains(alt)) ||
-                    (Allele.SPAN_DEL.equals(alt) && vc.getStart() < call.getStart() && vc.getEnd() >= call.getStart());
+            final Allele alt = getSiteSpecificAlternateAllele(call);
+            final Predicate<VariantContext> hasThisAlt = vc -> (vc.getStart() == call.getStart() && vc.getAlternateAlleles().contains(alt));
             final Set<Haplotype> hapsWithAllele = calledHaplotypes.stream()
                     .filter(h -> h.getEventMap().getVariantContexts().stream().anyMatch(hasThisAlt))
                     .collect(Collectors.toCollection(HashSet<Haplotype>::new));
@@ -661,6 +661,11 @@ public final class AssemblyBasedCallerUtils {
         }
 
         return haplotypeMap;
+    }
+
+    private static Allele getSiteSpecificAlternateAllele(final VariantContext call) {
+        final Allele allele = call.getAlternateAlleles().stream().filter(a -> isSiteSpecificAltAllele(a)).findFirst().orElse(null);
+        return allele;
     }
 
     /**
@@ -815,7 +820,16 @@ public final class AssemblyBasedCallerUtils {
      * @return true if this variant context is bi-allelic, ignoring the NON-REF symbolic allele, false otherwise
      */
     private static boolean isBiallelic(final VariantContext vc) {
-        return vc.isBiallelic() || (vc.getNAlleles() == 3 && vc.getAlternateAlleles().contains(Allele.NON_REF_ALLELE));
+        if (vc.isBiallelic()) return true;
+        final long siteSpecificAltAlleles = vc.getAlternateAlleles().stream().filter(a -> isSiteSpecificAltAllele(a)).count();
+        return siteSpecificAltAlleles == 1L;
+    }
+
+    private static boolean isSiteSpecificAltAllele(final Allele a) {
+        if(a.isReference()) return false;
+        if (Allele.NON_REF_ALLELE.equals(a)) return false;
+        if (Allele.SPAN_DEL.equals(a)) return false;
+        return true;
     }
 
     /**
@@ -840,9 +854,18 @@ public final class AssemblyBasedCallerUtils {
         final List<Genotype> phasedGenotypes = new ArrayList<>();
         for ( final Genotype g : vc.getGenotypes() ) {
             final List<Allele> alleles = g.getAlleles();
-            if (phaseGT.equals(phase10) && g.isHet()) Collections.reverse(alleles); // swap the alleles if heterozygous
+            final List<Allele> newAlleles = new ArrayList<>(alleles);
+            if (phaseGT.equals(phase10) && g.isHet()) {
+                if (! isSiteSpecificAltAllele(newAlleles.get(0))) {
+                    Collections.reverse(newAlleles); // swap the alleles if heterozygous
+                }
+            } else if (phaseGT.equals(phase01) && g.isHet()) {
+                if (!isSiteSpecificAltAllele(newAlleles.get(1))) {
+                    Collections.reverse(newAlleles); // swap the alleles if heterozygous
+                }
+            }
             final Genotype genotype = new GenotypeBuilder(g)
-                .alleles(alleles)
+                .alleles(newAlleles)
                 .phased(true)
                 .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, ID)
                 .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, phaseGT)

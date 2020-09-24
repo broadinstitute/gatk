@@ -723,27 +723,60 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         // test no phased variants, empty map
         final Map<VariantContext, Pair<Integer, String>> nonePhased1 = new HashMap<>();
-        tests.add(new Object[]{calls, nonePhased1, 0, 0, 0});
+        tests.add(new Object[]{calls, nonePhased1, 0, 0, 0, calls});
 
         // test no phased variants, full map, exception expected
         final Map<VariantContext, Pair<Integer, String>> nonePhased2 = new HashMap<>();
-        nonePhased2.put(vc1, Pair.of(0, "0/1"));
-        nonePhased2.put(vc2, Pair.of(1, "0/1"));
-        nonePhased2.put(vc3, Pair.of(2, "0/1"));
-        tests.add(new Object[]{calls, nonePhased2, 3, -1, -1});
+        nonePhased2.put(vc1, Pair.of(0, "0|1"));
+        nonePhased2.put(vc2, Pair.of(1, "0|1"));
+        nonePhased2.put(vc3, Pair.of(2, "0|1"));
+        tests.add(new Object[]{calls, nonePhased2, 3, -1, -1, calls});
 
         // test 2 phased variants
+        final Genotype g1P = new GenotypeBuilder().alleles(Arrays.asList(ref, altC)).phased(true).make();
+        final VariantContext vc1P = new VariantContextBuilder().chr("20").start(1).stop(1).alleles(Arrays.asList(ref, altC)).genotypes(g1P).make();
+        final Genotype g2P = new GenotypeBuilder().alleles(Arrays.asList(altC, ref)).phased(true).make();
+        final VariantContext vc2P = new VariantContextBuilder().chr("20").start(2).stop(2).alleles(Arrays.asList(ref, altC)).genotypes(g2P).make();
+        final List<VariantContext> phasedCalls = Arrays.asList(vc1P, vc2P, vc3);
+
         final Map<VariantContext, Pair<Integer, String>> twoPhased = new HashMap<>();
-        twoPhased.put(vc1, Pair.of(0, "0/1"));
-        twoPhased.put(vc2, Pair.of(0, "0/1"));
-        tests.add(new Object[]{calls, twoPhased, 1, 1, 2});
+        twoPhased.put(vc1, Pair.of(0, "0|1"));
+        twoPhased.put(vc2, Pair.of(0, "1|0"));
+        tests.add(new Object[]{calls, twoPhased, 1, 1, 2, phasedCalls});
 
         // test all phased variants
+        final Genotype g3P = new GenotypeBuilder().alleles(Arrays.asList(ref, altC)).phased(true).make();
+        final VariantContext vc3P = new VariantContextBuilder().chr("20").start(3).stop(3).alleles(Arrays.asList(ref, altC)).genotypes(g3P).make();
+        final List<VariantContext> phasedCalls2 = Arrays.asList(vc1P, vc2P, vc3P);
+
         final Map<VariantContext, Pair<Integer, String>> allPhased = new HashMap<>();
-        allPhased.put(vc1, Pair.of(0, "0/1"));
-        allPhased.put(vc2, Pair.of(0, "0/1"));
-        allPhased.put(vc3, Pair.of(0, "0/1"));
-        tests.add(new Object[]{calls, allPhased, 1, 1, 3});
+        allPhased.put(vc1, Pair.of(0, "0|1"));
+        allPhased.put(vc2, Pair.of(0, "1|0"));
+        allPhased.put(vc3, Pair.of(0, "0|1"));
+        tests.add(new Object[]{calls, allPhased, 1, 1, 3, phasedCalls2});
+
+        // test a spanning deletion case: unphased snp, deletion, spanned snp
+        final Allele delref = Allele.create("AA", true);
+        final Allele delalt = Allele.create("A", false);
+
+
+        final Genotype g4 = new GenotypeBuilder().alleles(Arrays.asList(delref, delalt)).make();
+        final VariantContext vc4 = new VariantContextBuilder().chr("20").start(3).stop(4).alleles(Arrays.asList(delref, delalt)).genotypes(g4).make();
+        final Genotype g5 = new GenotypeBuilder().alleles(Arrays.asList(Allele.SPAN_DEL, altC)).make();
+        final VariantContext vc5 = new VariantContextBuilder().chr("20").start(4).stop(4).alleles(Arrays.asList(ref, Allele.SPAN_DEL, altC)).genotypes(g5).make();
+
+        final Genotype g4P = new GenotypeBuilder().alleles(Arrays.asList(delref, delalt)).phased(true).make();
+        final VariantContext vc4P = new VariantContextBuilder().chr("20").start(3).stop(4).alleles(Arrays.asList(delref, delalt)).genotypes(g4P).make();
+        final Genotype g5P = new GenotypeBuilder().alleles(Arrays.asList(altC, Allele.SPAN_DEL)).phased(true).make();
+        final VariantContext vc5P = new VariantContextBuilder().chr("20").start(4).stop(4).alleles(Arrays.asList(ref, Allele.SPAN_DEL, altC)).genotypes(g5P).make();
+
+        final List<VariantContext> spandelCalls = Arrays.asList(vc1, vc4, vc5);
+        final List<VariantContext> spandelPhasedCalls = Arrays.asList(vc1, vc4P, vc5P);
+
+        final Map<VariantContext, Pair<Integer, String>> phasedSpanDel = new HashMap<>();
+        phasedSpanDel.put(vc4, Pair.of(0, "0|1"));
+        phasedSpanDel.put(vc5, Pair.of(0, "1|0"));
+        tests.add(new Object[]{spandelCalls, phasedSpanDel, 1, 1, 2, spandelPhasedCalls});
 
         return tests.toArray(new Object[][]{});
     }
@@ -753,7 +786,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                          final Map<VariantContext, Pair<Integer, String>> phaseMap,
                                          final int endIndex,
                                          final int expectedNumGroups,
-                                         final int expectedGroupSize) {
+                                         final int expectedGroupSize,
+                                         final List<VariantContext> expectedPhasedCalls) {
         final List<VariantContext> actualPhasedCalls;
         try {
             actualPhasedCalls = AssemblyBasedCallerUtils.constructPhaseGroups(calls, phaseMap, endIndex);
@@ -764,13 +798,18 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         final Set<String> uniqueGroups = new HashSet<>();
         int counter = 0;
+        int vcIdx = 0;
         for ( final VariantContext call : actualPhasedCalls ) {
+            int gtIdx = 0;
             for ( final Genotype g : call.getGenotypes() ) {
                 if ( g.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY) ) {
                     uniqueGroups.add(g.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY).toString());
+                    Assert.assertEquals(g.getGenotypeString(), expectedPhasedCalls.get(vcIdx).getGenotype(gtIdx).getGenotypeString());
                     counter++;
                 }
+                gtIdx++;
             }
+            vcIdx++;
         }
 
         Assert.assertEquals(uniqueGroups.size(), expectedNumGroups);
@@ -898,6 +937,33 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypeMap.put(vc4, haplotypes4complete);
         tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 0, 0, 0, 0, 0});
 
+        final Allele refForDel = Allele.create("AA", true);
+        final Allele altDel = Allele.create("A", false);
+
+        final VariantContext delVC = new VariantContextBuilder().chr("20").start(3).stop(4).alleles(Arrays.asList(refForDel, altDel)).make();
+        final VariantContext spannedSnpVC = new VariantContextBuilder().chr("20").start(4).stop(4).alleles(Arrays.asList(ref, Allele.SPAN_DEL, altT)).make();
+
+        final Haplotype spandelHap = new Haplotype("AAAA".getBytes());
+        spandelHap.setEventMap(new EventMap(Arrays.asList(delVC)));
+
+        final Haplotype spannedSnp = new Haplotype("AAATA".getBytes());
+        spannedSnp.setEventMap(new EventMap(Arrays.asList(spannedSnpVC)));
+
+        final Set<Haplotype> haplotypesWithSpanDel = new HashSet<>();
+        haplotypesWithSpanDel.add(spandelHap);
+
+        final Set<Haplotype> haplotypesWithSpannedSNP = new HashSet<>();
+        haplotypesWithSpannedSNP.add(spannedSnp);
+
+        final Map<VariantContext, Set<Haplotype>> spanDelHapMap = new HashMap<>();
+        spanDelHapMap.put(delVC, haplotypesWithSpanDel);
+        spanDelHapMap.put(spannedSnpVC, haplotypesWithSpannedSNP);
+
+        final List<VariantContext> spandelCalls = new ArrayList<>();
+        spandelCalls.add(delVC);
+        spandelCalls.add(spannedSnpVC);
+
+        tests.add(new Object[]{spandelCalls, new HashMap<>(spanDelHapMap), 2, 2, 1, 1, 1});
         return tests.toArray(new Object[][]{});
     }
 
@@ -946,9 +1012,22 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         AtoC2.getEventMap().put(4, vc2);
         haplotypes.add(AtoC2);
 
+        final VariantContext spannedSnpVC = new VariantContextBuilder().chr("20").start(4).stop(4).alleles(Arrays.asList(ref, altT, Allele.SPAN_DEL)).make();
+
+        final Haplotype spandelHap = new Haplotype("AAAA".getBytes());
+
+        final List<Allele> deletionAlleles = Arrays.asList(Allele.create("AA", true), Allele.create("A"));
+        final VariantContextBuilder deletionVCBuilder = new VariantContextBuilder("a", "20", 3, 4, deletionAlleles);
+        final VariantContext deletionVc = deletionVCBuilder.make();
+        spandelHap.setEventMap(new EventMap(Arrays.asList(deletionVc)));
+
+        final Set<Haplotype> haplotypesWithSpanDel = new HashSet<>(haplotypes);
+        haplotypesWithSpanDel.add(spandelHap);
+
         tests.add(new Object[]{vc1, haplotypes, AtoC1});
         tests.add(new Object[]{vc2, haplotypes, AtoC2});
         tests.add(new Object[]{new VariantContextBuilder().chr("20").start(1).stop(1).alleles(Arrays.asList(ref, altT)).make(), haplotypes, null});
+        tests.add(new Object[]{spannedSnpVC, haplotypesWithSpanDel, AtoC2});
 
         return tests.toArray(new Object[][]{});
     }
