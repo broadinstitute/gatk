@@ -38,20 +38,36 @@ public class StrandBiasUtils {
      * @param perAlleleValues forward and reverse read counts for each allele
      * @return a String appropriate to use for annotating a GVCF
      */
-    protected static String makeRawAnnotationString(final List<Allele> vcAlleles, final Map<Allele, List<Integer>> perAlleleValues) {
-        final List<String> alleleStrings = vcAlleles.stream()
-                // does not replace a null value with zero list - only if the key is not in the map
-                .map(a -> perAlleleValues.getOrDefault(a, ZERO_LIST))
-                .map(StrandBiasUtils::encode)
-                .collect(Collectors.toList());
-        return String.join(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM, alleleStrings);
-
+    public static String makeRawAnnotationString(final List<Allele> vcAlleles, final Map<Allele, List<Integer>> perAlleleValues) {
+        String annotationString = "";
+        for (final Allele a : vcAlleles) {
+            if (!annotationString.isEmpty()) {
+                annotationString += AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM;
+            }
+            List<Integer> alleleValues = perAlleleValues.get(a);
+            if (alleleValues == null) {
+                alleleValues = ZERO_LIST;
+            }
+            annotationString += encode(alleleValues);
+        }
+        return annotationString;
     }
 
+    /**
+     * Helper method to convert StrandBias values to string format
+     * @param alleleValues values to  format
+     * @return formatted string
+     */
     public static String encode(List<Integer> alleleValues) {
-        return String.join(",", alleleValues.stream().map(i -> i.toString()).collect(Collectors.toList()));
+        String annotationString = "";
+        for (int j =0; j < alleleValues.size(); j++) {
+            annotationString += alleleValues.get(j);
+            if (j < alleleValues.size()-1) {
+                annotationString += ",";
+            }
+        }
+        return annotationString;
     }
-
 
     /**
      Allocate and fill a Nx2 strand contingency table where N is the number of alleles.  In the end, it'll look something like this:
