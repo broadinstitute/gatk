@@ -19,8 +19,9 @@ import java.util.Set;
 public class CommonCode {
     public static String CALL_RATE = "CALL_RATE";
     public static String INVARIANT = "INVARIANT";
+    public static String HWE = "HWE";
 
-    public static String EXCESS_HET_FILTER = "EXCESS_HET";
+    public static String HWE_FILTER = "HWE";
     public static String CALL_RATE_FILTER = "CALL_RATE";
     public static String INVARIANT_FILTER = "INVARIANT";
 
@@ -58,10 +59,11 @@ public class CommonCode {
         // TODO: are there offical headers for this?
         lines.add(new VCFInfoHeaderLine(CALL_RATE, 1, VCFHeaderLineType.Float, "Call Rate"));
         lines.add(new VCFInfoHeaderLine(INVARIANT, 1, VCFHeaderLineType.Flag, "Invariant"));
+        lines.add(new VCFInfoHeaderLine(HWE, 1, VCFHeaderLineType.Float, "Phred-scaled HWE p-value"));
 
         lines.add(new VCFFilterHeaderLine(INVARIANT_FILTER, "No variant samples in reference QC panel"));
         lines.add(new VCFFilterHeaderLine(CALL_RATE_FILTER, "Inadequate call rate in reference QC panel"));
-        lines.add(new VCFFilterHeaderLine(EXCESS_HET_FILTER, "Excess Hets in reference QC panel"));
+        lines.add(new VCFFilterHeaderLine(HWE_FILTER, "HWE is violated in reference QC panel"));
 
         final VCFHeader header = new VCFHeader(lines, sampleNames);
         header.setSequenceDictionary(sequenceDictionary);
@@ -150,8 +152,6 @@ public class CommonCode {
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.QUAL_BY_DEPTH_KEY));
-
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EXCESS_HET_KEY));
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
 
