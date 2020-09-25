@@ -1,17 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.primitives.Ints;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.List;
@@ -46,10 +40,11 @@ public class ReadPosition extends PerAlleleAnnotation implements StandardMutectA
     protected String getVcfKey() { return GATKVCFConstants.MEDIAN_READ_POSITON_KEY; }
 
     @Override
-    protected String getDescription() { return "median distance from end of read"; }
-
-    @Override
     protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
+        return getPosition(read, vc);
+    }
+
+    public static OptionalInt getPosition(final GATKRead read, final VariantContext vc) {
         if (vc.getStart() < read.getStart() || read.getEnd() < vc.getStart()) {
             return OptionalInt.empty();
         }

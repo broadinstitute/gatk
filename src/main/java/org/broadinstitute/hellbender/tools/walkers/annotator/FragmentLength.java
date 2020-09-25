@@ -34,9 +34,6 @@ public class FragmentLength extends PerAlleleAnnotation implements StandardMutec
     protected String getVcfKey() { return GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY; }
 
     @Override
-    protected String getDescription() { return "median fragment length"; }
-
-    @Override
     protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
         //abs because fragment lengths are negative if mate comes first

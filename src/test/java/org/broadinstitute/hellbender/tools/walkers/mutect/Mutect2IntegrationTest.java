@@ -16,6 +16,8 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AssemblyComplexity;
+import org.broadinstitute.hellbender.tools.walkers.annotator.FeaturizedReadSets;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
@@ -295,6 +297,28 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         // every variant on this interval in this sample is in gnomAD
         Assert.assertTrue(numVariantsPassingFilters < 2);
+    }
+    
+    // run tumor-only using our mini gnomAD on NA12878, which is not a tumor
+    @Test
+    public void testTrainingDataMode() {
+        Utils.resetRandomGenerator();
+        final File tumor = new File(NA12878_20_21_WGS_bam);
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        
+        final List<String> assemblyComplexityKeys = new AssemblyComplexity().getKeyNames();
+        final List<String> featurizedReadSetKeys = new FeaturizedReadSets().getKeyNames();
+        
+        //runMutect2(tumor, unfilteredVcf, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD));
+        runMutect2(tumor, unfilteredVcf, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD),
+                   args -> args.addFlag(ReadThreadingAssemblerArgumentCollection.LINKED_DE_BRUIJN_GRAPH_LONG_NAME),
+                   args -> args.addFlag(M2ArgumentCollection.TRAINING_DATA_MODE_LONG_NAME));
+        
+        VariantContextTestUtils.streamVcf(unfilteredVcf).forEach(vc -> {
+            Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.REFERENCE_BASES_KEY));
+            assemblyComplexityKeys.forEach(key -> Assert.assertTrue(vc.hasAttribute(key)));
+            vc.getGenotypes().forEach(gt -> featurizedReadSetKeys.forEach(key -> Assert.assertTrue(gt.hasExtendedAttribute(key))));
+        });
     }
 
     // make sure we can call tumor alts when the normal has a different alt at the same site

@@ -263,8 +263,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             if ( !containsCalls(calledHaplotypes) ) {
                 // no called all of the potential haplotypes
                 return referenceModelForNoVariation(originalAssemblyRegion);
-            }
-            else {
+            } else {
                 final List<VariantContext> result = new LinkedList<>();
                 // output left-flanking non-variant section, then variant-containing section, then right flank
                 trimmingResult.nonVariantLeftFlankRegion().ifPresent(flank -> result.addAll(referenceModelForNoVariation(flank)));
@@ -385,6 +384,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         if (tumorLogOdds < MTAC.getInitialLogOdds()) {
             return new ActivityProfileState(refInterval, 0.0);
+        } else if (MTAC.trainingDataMode) {
+            return new ActivityProfileState(ref.getInterval(), 1.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
             normalPileupQualBuffer.accumulateQuals(normalPileup, refBase, MTAC.pcrSnvQual);
