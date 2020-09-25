@@ -61,7 +61,7 @@ public class ArrayExtractCohortEngine {
     private final boolean useLegacyGTEncoding; //TODO remove
 
     final boolean removeFilteredVariants;
-    final float excessHetThreshold;
+    final float hwePvalThreshold;
     final float callRateThreshold;
     final boolean filterInvariants;
 
@@ -83,7 +83,7 @@ public class ArrayExtractCohortEngine {
                                     final ProgressMeter progressMeter,
                                     final boolean useLegacyGTEncoding,
                                     final boolean removeFilteredVariants,
-                                    final float excessHetThreshold,
+                                    final float hwePvalThreshold,
                                     final float callRateThreshold,
                                     final boolean filterInvariants) {
 
@@ -115,7 +115,7 @@ public class ArrayExtractCohortEngine {
         this.useLegacyGTEncoding = useLegacyGTEncoding;
 
         this.removeFilteredVariants = removeFilteredVariants;
-        this.excessHetThreshold = excessHetThreshold;
+        this.hwePvalThreshold = hwePvalThreshold;
         this.callRateThreshold = callRateThreshold;
         this.filterInvariants = filterInvariants;
     }
@@ -268,9 +268,9 @@ public class ArrayExtractCohortEngine {
 
             final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
-            builder.attribute(GATKVCFConstants.EXCESS_HET_KEY, probeQcMetrics.excess_het);
-            if (probeQcMetrics.excess_het > excessHetThreshold) {
-                builder.filter("EXCESS_HET");
+            builder.attribute(CommonCode.HWE, probeQcMetrics.hwe_pval);
+            if (probeQcMetrics.hwe_pval > hwePvalThreshold) {
+                builder.filter("HWE_PVAL");
             }
 
             builder.attribute(CommonCode.CALL_RATE, probeQcMetrics.call_rate);

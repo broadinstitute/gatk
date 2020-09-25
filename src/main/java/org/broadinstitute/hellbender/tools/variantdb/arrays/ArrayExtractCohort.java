@@ -119,10 +119,10 @@ public class ArrayExtractCohort extends GATKTool {
     private boolean removeFilteredVariants = false;
 
     @Argument(
-        fullName = "excess-het-threshold",
-        doc = "Filter variants with excess het greater than this value",
+        fullName = "hwe-phred-scaled-threshold",
+        doc = "Filter variants with HWE phred-scaled p-value greater than this value",
         optional = true)
-    private float excessHetThreshold = 60.0f;
+    private float hwePvalThreshold = 60.0f;
 
     @Argument(
         fullName = "call-rate-threshold",
@@ -230,7 +230,7 @@ public class ArrayExtractCohort extends GATKTool {
                 progressMeter,
                 useLegacyGTEncoding,
                 removeFilteredVariants,
-                excessHetThreshold,
+                hwePvalThreshold,
                 callRateThreshold,
                 filterInvariants);
         vcfWriter.writeHeader(header);

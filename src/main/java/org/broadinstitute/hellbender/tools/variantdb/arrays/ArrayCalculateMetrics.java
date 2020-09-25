@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
+import htsjdk.tribble.util.popgen.HardyWeinbergCalculation;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -10,7 +11,6 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.GenotypeCountsSchema;
-import org.broadinstitute.hellbender.tools.walkers.annotator.ExcessHet;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
@@ -44,7 +44,7 @@ public class ArrayCalculateMetrics extends GATKTool {
 
     public enum HeaderFieldEnum {
         probe_id,
-        excess_het,
+        hwe_pval,
         call_rate,
         invariant
     }
@@ -72,19 +72,26 @@ public class ArrayCalculateMetrics extends GATKTool {
             for ( final GenericRecord row : reader ) {
                 List<String> thisRow = new ArrayList<>();
                 // data in row should never be null
-                long probeId = (Long) row.get(GenotypeCountsSchema.PROBE_ID_INDEX);
+                long probeId = (Long) row.get(GenotypeCountsSchema.PROBE_ID);
                 thisRow.add(String.valueOf(probeId));
 
-                long combined_hom_var = (Long) row.get(GenotypeCountsSchema.HOM_VAR_INDEX) +
-                        (Long) row.get(GenotypeCountsSchema.HET_1_2_INDEX) +
-                        (Long) row.get(GenotypeCountsSchema.HOM_VAR_2_2_INDEX);
+                long combined_hom_var = (Long) row.get(GenotypeCountsSchema.HOM_VAR_COUNT) +
+                        (Long) row.get(GenotypeCountsSchema.HET_1_2_COUNT) +
+                        (Long) row.get(GenotypeCountsSchema.HOM_VAR_COUNT);
 
-                GenotypeCounts genotypeCounts = new GenotypeCounts((Long) row.get(GenotypeCountsSchema.HOM_REF_INDEX),
-                        (Long) row.get(GenotypeCountsSchema.HET_INDEX), combined_hom_var);
-                long noCalls = (Long) row.get(GenotypeCountsSchema.NO_CALL_INDEX);
+                GenotypeCounts genotypeCounts = new GenotypeCounts((Long) row.get(GenotypeCountsSchema.HOM_REF_COUNT),
+                        (Long) row.get(GenotypeCountsSchema.HET_COUNT), combined_hom_var);
+                long noCalls = (Long) row.get(GenotypeCountsSchema.NO_CALL_COUNT);
                 int sampleCount = (int) genotypeCounts.getRefs() + (int) genotypeCounts.getHets() + (int) genotypeCounts.getHoms() + (int) noCalls;
-                double excessHet = ExcessHet.calculateEH(genotypeCounts, sampleCount).getRight();
-                thisRow.add(String.format("%.0f", excessHet));
+                double hwe;
+                // If there's no data set the p-value to 1.
+                if (genotypeCounts.getRefs() + genotypeCounts.getHets() + genotypeCounts.getHoms() <= 0) {
+                    hwe = 1;
+                } else {
+                    hwe = HardyWeinbergCalculation.hwCalculate((int) genotypeCounts.getRefs(), (int) genotypeCounts.getHets(), (int) genotypeCounts.getHoms());
+                }
+                double phredHwe = hwe == 1 ? 0 : Math.floor(-10.0 * Math.log10(hwe));
+                thisRow.add(String.format("%.0f", phredHwe));
 
                 double callRate = 1.0 - ((double) noCalls / sampleCount);
                 thisRow.add(String.format("%.3f", callRate));
