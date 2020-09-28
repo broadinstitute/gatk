@@ -486,7 +486,7 @@ public class EstimateDragstrParameters extends GATKTool {
             return Utils.runInParallel(threads, () ->
                         shards.parallelStream()
                                 .map(shard -> {
-                                    try (final AutoCloseableReference<ReadsDataSource> readsSource = readsDataSourcePool.borrowAutoReturn();
+                                    try (final AutoCloseableReference<ReadsPathDataSource> readsSource = readsDataSourcePool.borrowAutoReturn();
                                          final BinaryTableReader<DragstrLocus> lociReader = strTable.locusReader(shard)) {
                                         final StratifiedDragstrLocusCases result = streamShardCasesStats(shard, readStream(readsSource.get(), shard), lociReader.stream())
                                                 .collect(DragstrLocusCaseStratificator.make(hyperParameters.maxPeriod, hyperParameters.maxRepeatLength));

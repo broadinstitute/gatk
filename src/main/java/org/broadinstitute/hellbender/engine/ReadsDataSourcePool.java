@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * Pool of {@link ReadsDataSource} instances.
  */
-public final class ReadsDataSourcePool extends GenericObjectPool<ReadsDataSource> implements AutoCloseable {
+public final class ReadsDataSourcePool extends GenericObjectPool<ReadsPathDataSource> implements AutoCloseable {
 
     public ReadsDataSourcePool(final List<Path> readPaths) {
         super(new Factory(readPaths));
@@ -24,12 +24,12 @@ public final class ReadsDataSourcePool extends GenericObjectPool<ReadsDataSource
      * the source back to the pool.
      * @return never {@code null}.
      */
-    public AutoCloseableReference<ReadsDataSource> borrowAutoReturn() {
+    public AutoCloseableReference<ReadsPathDataSource> borrowAutoReturn() {
         return AutoCloseableReference.of(borrowObject(), this::returnObject);
     }
 
     @Override
-    public ReadsDataSource borrowObject() {
+    public ReadsPathDataSource borrowObject() {
         try {
             return super.borrowObject();
         } catch (Exception e) {
@@ -38,7 +38,7 @@ public final class ReadsDataSourcePool extends GenericObjectPool<ReadsDataSource
     }
 
     @Override
-    public void returnObject(final ReadsDataSource dataSource) {
+    public void returnObject(final ReadsPathDataSource dataSource) {
         try {
             super.returnObject(dataSource);
         } catch (Exception e) {
@@ -54,7 +54,7 @@ public final class ReadsDataSourcePool extends GenericObjectPool<ReadsDataSource
         }
     }
 
-    private static class Factory extends BasePoolableObjectFactory<ReadsDataSource> {
+    private static class Factory extends BasePoolableObjectFactory<ReadsPathDataSource> {
 
         private final List<Path> paths;
 
@@ -63,17 +63,17 @@ public final class ReadsDataSourcePool extends GenericObjectPool<ReadsDataSource
         }
 
         @Override
-        public ReadsDataSource makeObject() {
-            return new ReadsDataSource(paths);
+        public ReadsPathDataSource makeObject() {
+            return new ReadsPathDataSource(paths);
         }
 
         @Override
-        public void destroyObject(final ReadsDataSource dataSource) {
+        public void destroyObject(final ReadsPathDataSource dataSource) {
             dataSource.close();
         }
 
         @Override
-        public boolean validateObject(final ReadsDataSource dataSource) {
+        public boolean validateObject(final ReadsPathDataSource dataSource) {
             return !dataSource.isClosed();
         }
     }
