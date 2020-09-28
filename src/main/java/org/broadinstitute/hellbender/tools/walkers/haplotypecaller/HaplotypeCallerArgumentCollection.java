@@ -25,6 +25,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public static final String GQ_BAND_SHORT_NAME = "GQB";
     public static final String DO_NOT_CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME = "do-not-correct-overlapping-quality";
     public static final String OUTPUT_BLOCK_LOWER_BOUNDS = "floor-blocks";
+    public static final String DRAGEN_GATK_MODE_LONG_NAME = "dragen-mode";
 
 
     @ArgumentCollection
@@ -122,6 +123,15 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     /**
      * These arguments are associated with DRAGEN-GATK
      */
+
+    /**
+     * DRAGEN-GATK mode changes a long list of arguments to support running DRAGEN-GATK with FRD + BQD + STRE (with or without
+     * a provided STRE table provided):
+     *
+     *
+     */
+    @Argument(fullName = DRAGEN_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).")
+    public Boolean dragenMode = false;
     @Advanced
     @Argument(fullName = "apply-bqd", doc = "If enabled this argument will apply the DRAGEN-GATK BaseQualityDropout model to the genotyping model for filtering sites due to Linked Error mode.", optional = true)
     public boolean applyBQD = false;
@@ -129,7 +139,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName = "apply-frd", doc = "If enabled this argument will apply the DRAGEN-GATK ForeignReadDetection model to the genotyping model for filtering sites.", optional = true)
     public boolean applyFRD = false;
     @Advanced
-    @Argument(fullName = "disable-spanning-event-genotyping", doc = "If enabled this argument will diable inclusion of the '*' spanning event when genotyping events that overlap deletions", optional = true)
+    @Argument(fullName = "disable-spanning-event-genotyping", doc = "If enabled this argument will disable inclusion of the '*' spanning event when genotyping events that overlap deletions", optional = true)
     public boolean disableSpanningEventGenotyping = false;
     @Advanced
     @Argument(fullName = "transform-dragen-mapping-quality", doc = "If enabled this argument will map DRAGEN aligner aligned reads with mapping quality <=250 to scale up to MQ 50", optional = true)
@@ -139,7 +149,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     //TODO pull the threshold from that filter since it might or might not exist by the time we go to filter for threading, really
     //TODO we should unify on the readFilter version of this check i think but perhaps they are seperate for athropological historical reasons and it is thus culturally protected?
     @Advanced
-    @Argument(fullName = "mapping-quality-threshold", doc = "Control the threshold for dicounting reads from genotyping/calling due to mapping quality")
+    @Argument(fullName = "mapping-quality-threshold", doc = "Control the threshold for discounting reads from genotyping/calling due to mapping quality")
     public int mappingQualityThreshold = HaplotypeCallerEngine.DEFAULT_READ_QUALITY_FILTER_THRESHOLD;
     @Advanced
     @Argument(fullName = "max-effective-depth-adjustment-for-frd", doc = "Set the maximum depth to modify FRD adjustment to in the event of high depth sites (0 to disable)", optional = false)
