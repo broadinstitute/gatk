@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.pairhmm;
+package org.broadinstitute.hellbender.utils.dragstr;
 
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.testng.Assert;
@@ -9,9 +9,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.function.IntFunction;
-import java.util.function.IntToDoubleFunction;
-import java.util.stream.Collectors;
 
 /**
  * Unit test for class {@link DragstrParams}.

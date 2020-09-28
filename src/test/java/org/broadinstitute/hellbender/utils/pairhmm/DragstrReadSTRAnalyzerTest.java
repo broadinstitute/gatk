@@ -36,16 +36,15 @@ public final class DragstrReadSTRAnalyzerTest extends BaseTest {
 
     @Test(dataProvider = "testCasesData")
     public void testSingleSequence(final String seq, final String periods, final String repeats) {
-        final DragstrReadSTRAnalyzer analizer = new DragstrReadSTRAnalyzer(seq.length(), MAX_PERIOD);
-        assertCorrectAnalyzerResults(seq, periods, repeats, analizer);
+        final DragstrReadSTRAnalyzer analizer = DragstrReadSTRAnalyzer.of(seq.getBytes(), MAX_PERIOD);
+        assertCorrectAnalyzerResults(periods, repeats, analizer);
     }
 
-    private void assertCorrectAnalyzerResults(String seq, String periods, String repeats, DragstrReadSTRAnalyzer analizer) {
+    private void assertCorrectAnalyzerResults(String periods, String repeats, DragstrReadSTRAnalyzer analizer) {
         final int[] periodsAsInts = Arrays.stream(periods.split("\\s+"))
                 .mapToInt(s -> Integer.parseInt(s, 16)).toArray();
         final int[] repeatsAsInts = Arrays.stream(repeats.split("\\s+"))
                 .mapToInt(s -> Integer.parseInt(s, 16)).toArray();
-        analizer.load(seq.getBytes());
         assertCorrectAnalyzerResults(periodsAsInts, repeatsAsInts, analizer);
     }
 
@@ -56,19 +55,6 @@ public final class DragstrReadSTRAnalyzerTest extends BaseTest {
         for (int i = 0; i < periodsAsInts.length; i++) {
             Assert.assertEquals(analizer.mostRepeatedPeriod(i), periodsAsInts[i], "wrong period at position " + i + " where exepected repeat is " + repeatsAsInts[i] + " and/but it is " + analizer.numberOfMostRepeats(i) + "; ");
             Assert.assertEquals(Math.min(MAX_REPEATS, analizer.numberOfMostRepeats(i)), repeatsAsInts[i], "wrong repeat number at position " + i + " where exepected period is " + periodsAsInts[i] + " and/but it is " + analizer.mostRepeatedPeriod(i) + "; ");
-        }
-    }
-
-    @Test
-    public void testMultiSequence() {
-        final Object[][] cases = testCasesData();
-        final int maxSeqLength = Arrays.stream(cases).map(o -> (String)o[0]).mapToInt(String::length).max().orElse(0);
-        final DragstrReadSTRAnalyzer subject = new DragstrReadSTRAnalyzer(maxSeqLength, MAX_PERIOD);
-        for (final Object[] params : cases) {
-            final String seq = (String) params[0];
-            final String periods = (String) params[1];
-            final String repeats = (String) params[2];
-            assertCorrectAnalyzerResults(seq, periods, repeats, subject);
         }
     }
 
@@ -98,8 +84,7 @@ public final class DragstrReadSTRAnalyzerTest extends BaseTest {
     @Test(dataProvider = "testSequenceAndMaxPeriodData")
     public void testRepeatPeriodAndCount(final String sequenceStr, final int maxPeriod) {
         final byte[] sequence = sequenceStr.getBytes();
-        final DragstrReadSTRAnalyzer rpc = new DragstrReadSTRAnalyzer(sequence.length, maxPeriod);
-        rpc.load(sequence);
+        final DragstrReadSTRAnalyzer rpc = DragstrReadSTRAnalyzer.of(sequence, maxPeriod);
         for (int position = 0; position < sequence.length; position++) {
             for (int period = 1; period <= maxPeriod; period++) {
                 final int repeatCount = rpc.numberOfRepeats(position, period);
@@ -112,17 +97,12 @@ public final class DragstrReadSTRAnalyzerTest extends BaseTest {
     @Test(dataProvider = "testSequenceAndMaxPeriodData")
     public void testRepeatBestPeriodAndCount(final String sequenceStr, final int maxPeriod) {
         final byte[] sequence = sequenceStr.getBytes();
-        final DragstrReadSTRAnalyzer rpc = new DragstrReadSTRAnalyzer(sequence, maxPeriod);
+        final DragstrReadSTRAnalyzer rpc = DragstrReadSTRAnalyzer.of(sequence, maxPeriod);
         for (int position = 0; position < sequence.length; position++) {
             final int[] expected = calculateBestPeriodAndRepeat(sequence, position, maxPeriod);
             final int bestPeriod = rpc.mostRepeatedPeriod(position);
             final int bestRepeat = rpc.numberOfMostRepeats(position);
-            try {
-                Assert.assertEquals(bestPeriod, expected[0], new String(sequence) + " " + position);
-            } catch (final AssertionError err) {
-                rpc.load(sequence);
-                throw err;
-            }
+            Assert.assertEquals(bestPeriod, expected[0], new String(sequence) + " " + position);
             Assert.assertEquals(bestRepeat, expected[1], new String(sequence) + " " + position);
         }
     }
@@ -132,7 +112,7 @@ public final class DragstrReadSTRAnalyzerTest extends BaseTest {
      * that has a maximum number of repeated units. In case of a tie, the smaller unit is considered a better
      * one.
      */
-    public static int[] calculateBestPeriodAndRepeat(final byte[] sequence, final int position, final int maxPeriod) {
+    private static int[] calculateBestPeriodAndRepeat(final byte[] sequence, final int position, final int maxPeriod) {
         final int[] result = new int[2];
         result[0] = 1;
         result[1] = calculateExpectedRepeatLength(sequence, position, 1);

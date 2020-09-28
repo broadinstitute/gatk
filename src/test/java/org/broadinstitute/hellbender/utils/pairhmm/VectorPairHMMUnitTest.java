@@ -3,9 +3,6 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PairHMMInputScoreImputation;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PairHMMInputScoreImputator;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.StandardPairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -18,9 +15,7 @@ import picard.util.BasicInputParser;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 public final class VectorPairHMMUnitTest extends GATKBaseTest {
 

@@ -93,6 +93,11 @@ public final class ReadsPathDataSource implements ReadsDataSource {
     private boolean indicesAvailable;
 
     /**
+     * Has it been closed already.
+     */
+    private boolean isClosed;
+
+    /**
      * Initialize this data source with a single SAM/BAM file and validation stringency SILENT.
      *
      * @param samFile SAM/BAM file, not null.
@@ -474,7 +479,6 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      * doesn't support serial iterators, and can't be serially re-traversed without re-initialization of the
      * underlying reader (and {@code ReadsPathDataSource}.
      */
-    @Override
     public boolean supportsSerialIteration() {
         return !hasSAMInputs();
     }
@@ -484,6 +488,10 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      */
     @Override
     public void close() {
+        if (isClosed) {
+            return;
+        }
+        isClosed = true;
         closePreviousIterationsIfNecessary();
 
         try {
@@ -494,6 +502,10 @@ public final class ReadsPathDataSource implements ReadsDataSource {
         catch ( IOException e ) {
             throw new GATKException("Error closing SAMReader");
         }
+    }
+
+    boolean isClosed() {
+        return isClosed;
     }
 
     /**

@@ -187,16 +187,16 @@ public final class MathUtils {
      * </p>
      *
      * @param start the first values of the sequence.
-     * @param end the limit of the sequence
+     * @param limit the limit of the sequence
      * @param step the step increment (or decrement) between elements of the sequence.
      * @return never {@code null}.
      */
-    public static double[] doubles(final double start, final double end, final double step) {
+    public static double[] doubles(final double start, final double limit, final double step) {
         ParamUtils.isFinite(start, "the start must be finite");
-        ParamUtils.isFinite(end, "the end must be finite");
+        ParamUtils.isFinite(limit, "the limit must be finite");
         ParamUtils.isFinite(step, "the step must be finite");
         final double tolerance = Math.pow(10, Math.floor(Math.min(0, Math.log10(Math.abs(step)) - 3)));
-        final double diff = end - start;
+        final double diff = limit - start;
         if (Math.abs(diff) < tolerance) {
             return new double[] {start};
         }
@@ -213,13 +213,26 @@ public final class MathUtils {
             for (int i = 0; i < length; i++) {
                 result[i] = start + step * i;
             }
-            if (Math.abs(result[result.length - 1] - end) <= tolerance) {
-                result[result.length - 1] = end;
+            if (Math.abs(result[result.length - 1] - limit) <= tolerance) {
+                result[result.length - 1] = limit;
             }
             return result;
         } else {
             throw new IllegalArgumentException("the max - min difference and increment must have the same sign");
         }
+    }
+
+    /**
+     * Returns an array of doubles filled with a particular value.
+     * @param repeats number of elements in the returned array.
+     * @param val the fill value.
+     * @return never {@code null}.
+     */
+    public static double[] doubles(final int repeats, final double val) {
+        ParamUtils.isPositiveOrZero(repeats, "repeats must be 0 or greater");
+        final double[] result = new double[repeats];
+        Arrays.fill(result, val);
+        return result;
     }
 
     @FunctionalInterface

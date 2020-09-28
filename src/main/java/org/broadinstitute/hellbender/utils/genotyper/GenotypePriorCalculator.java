@@ -1,18 +1,17 @@
-package org.broadinstitute.hellbender.tools.haplotypecaller;
+package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.math3.util.MathArrays;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.List;
-
 
 /**
  * Class to compose genotype prior probability calculators.
@@ -69,12 +68,21 @@ public final class GenotypePriorCalculator {
         diffValues = MathArrays.ebeSubtract(homValues, hetValues);
     }
 
-    public static GenotypePriorCalculator givenHetToHomRatio(final double snpHet, final double indelHet,
-                                                             final double otherHet, final double hetHomRatio) {
+    /**
+     * Calculate priors based on fix heterozygosities (per event type) and het to hom-var prior ratio.
+     *
+     * @param log10SnpHet snp heterozygosity in log10 scale.
+     * @param log10IndelHet indel heterozygosity in log10 scale.
+     * @param log10OtherHet heterozygosity for other type of variants in log10 scale.
+     * @param hetHomRatio ratio between the het-var and hom-var genotype priors for the same allele in linear scale.
+     * @return never {@code null}.
+     */
+    public static GenotypePriorCalculator givenHetToHomRatio(final double log10SnpHet, final double log10IndelHet,
+                                                             final double log10OtherHet, final double hetHomRatio) {
         final double log10Ratio = Math.log10(hetHomRatio);
-        return new GenotypePriorCalculator(snpHet, snpHet - log10Ratio,
-                indelHet, indelHet - log10Ratio,
-                otherHet, otherHet - log10Ratio);
+        return new GenotypePriorCalculator(log10SnpHet, log10SnpHet - log10Ratio,
+                log10IndelHet, log10IndelHet - log10Ratio,
+                log10OtherHet, log10OtherHet - log10Ratio);
     }
 
     /**

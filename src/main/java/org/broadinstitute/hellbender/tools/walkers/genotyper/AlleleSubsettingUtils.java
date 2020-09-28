@@ -7,7 +7,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;

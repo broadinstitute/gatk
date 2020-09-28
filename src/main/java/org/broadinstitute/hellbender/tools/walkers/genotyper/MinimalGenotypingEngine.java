@@ -1,16 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
-import com.sun.istack.NotNull;
-import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.Collections;
@@ -88,7 +86,7 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<StandardCall
 
             final byte[] bases = referenceContext.getBases(interval);
             final int startOffset = vc.getStart() - interval.getStart();
-            final DragstrReferenceSTRs analyzer = DragstrReferenceSTRs.of(bases, startOffset, startOffset + 1, dragstrParams.maximumPeriod());
+            final DragstrReferenceAnalyzer analyzer = DragstrReferenceAnalyzer.of(bases, startOffset, startOffset + 1, dragstrParams.maximumPeriod());
             final int period = analyzer.period(startOffset);
             final int repeats = analyzer.repeatLength(startOffset);
 

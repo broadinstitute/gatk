@@ -7,6 +7,8 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.MathArrays;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
@@ -15,7 +17,7 @@ import org.broadinstitute.hellbender.utils.Dirichlet;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 
 import java.util.Arrays;
 import java.util.List;
@@ -28,14 +30,14 @@ import java.util.stream.IntStream;
  */
 public final class AlleleFrequencyCalculator {
 
-
     private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
     private static final double THRESHOLD_FOR_ALLELE_COUNT_CONVERGENCE = 0.1;
     private static final int HOM_REF_GENOTYPE_INDEX = 0;
+
     private final double refPseudocount;
     private final double snpPseudocount;
     private final double indelPseudocount;
-    protected final int defaultPloidy;
+    private final int defaultPloidy;
 
     public AlleleFrequencyCalculator(final double refPseudocount, final double snpPseudocount, final double indelPseudocount, final int defaultPloidy) {
         this.refPseudocount = refPseudocount;
@@ -51,7 +53,9 @@ public final class AlleleFrequencyCalculator {
         return new AlleleFrequencyCalculator(refPseudocount, snpPseudocount, indelPseudocount, genotypeArgs.samplePloidy);
     }
 
-    public static AlleleFrequencyCalculator makeCalculator(DragstrParams dragstrParms, int period, int repeats, int ploidy, double snpHeterozygosity, double scale) {
+    public static AlleleFrequencyCalculator makeCalculator(final DragstrParams dragstrParms, final int period,
+                                                           final int repeats, final int ploidy,
+                                                           final double snpHeterozygosity, final double scale) {
         final double api = dragstrParms.api(period, repeats);
         final double log10IndelFreq = api * -.1;
         final double log10RefFreq = MathUtils.log10OneMinusPow10(log10IndelFreq);
@@ -73,6 +77,36 @@ public final class AlleleFrequencyCalculator {
         });
         return MathUtils.normalizeLog10(log10Posteriors);
     }
+
+    public double[] getPriorFrequencies(final AlleleList<Allele> alleleList) {
+        final double total = this.snpPseudocount + this.refPseudocount + this.indelPseudocount;
+        final double[] result = new double[alleleList.numberOfAlleles()];
+        final int refLength = alleleList.indexOfReference() == -1 ? -1 : alleleList.getAllele(alleleList.indexOfReference()).length();
+        if (refLength == -1) {
+            throw new GATKException("allele list must have a reference allele");
+        }
+        for (int i = 0; i < alleleList.numberOfAlleles(); i++) {
+            final Allele a = alleleList.getAllele(i);
+            if (a.isReference()) {
+                result[i] = this.refPseudocount / total;
+            } else if (a.isSymbolic() || a == Allele.SPAN_DEL) {
+                if (Allele.SV_SIMPLE_INS.equals(a) || Allele.SV_SIMPLE_DEL.equals(a)) {
+                    result[i] = this.indelPseudocount / total;
+                    // arbitrary assumes that indels are the least likely and that other SV as 10 times as unlikely as indel.
+                } else {
+                    result[i] = this.snpPseudocount / (total * 10);
+                }
+            } else {
+                if (a.length() == refLength) {
+                    result[i] = this.snpPseudocount / total;
+                } else {
+                    result[i] = this.indelPseudocount / total;
+                }
+            }
+        }
+        return result;
+    }
+
 
     private static int[] genotypeIndicesWithOnlyRefAndSpanDel(final int ploidy, final List<Allele> alleles) {
         final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, alleles.size());

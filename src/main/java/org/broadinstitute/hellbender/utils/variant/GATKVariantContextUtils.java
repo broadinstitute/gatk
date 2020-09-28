@@ -18,7 +18,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.haplotypecaller.GenotypePriorCalculator;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;

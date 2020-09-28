@@ -6,10 +6,9 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
-import org.broadinstitute.hellbender.utils.pairhmm.DragstrReferenceSTRs;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,7 +37,7 @@ public final class IndependentSampleGenotypesModel implements GenotypingModel {
         calculators = new GenotypeLikelihoodCalculators();
     }
 
-    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceSTRs dragstrs) {
+    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceAnalyzer dragstrs) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 
