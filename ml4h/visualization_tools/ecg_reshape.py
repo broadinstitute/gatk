@@ -1,53 +1,57 @@
 """Methods for reshaping raw ECG signal data for use in the pandas ecosystem."""
 import os
 import tempfile
+from typing import Any, Dict, Optional, Tuple, Union
 
+import numpy as np
+import pandas as pd
 from biosppy.signals.tools import filter_signal
 import h5py
 from ml4h.defines import ECG_BIKE_LEADS
 from ml4h.defines import ECG_REST_LEADS
 from ml4h.runtime_data_defines import get_exercise_ecg_hd5_folder
 from ml4h.runtime_data_defines import get_resting_ecg_hd5_folder
-from ml4h.tensor_maps_by_hand import TMAPS
-import numpy as np
-import pandas as pd
+from ml4h.TensorMap import TensorMap
+import ml4h.tensormap.ukb.ecg as ecg_tmaps
 import tensorflow as tf
 
 
 RAW_SCALE = 0.005  # Convert to mV.
 SAMPLING_RATE = 500.0
-DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME = 'ecg_rest'
+DEFAULT_RESTING_ECG_SIGNAL_TMAP = ecg_tmaps.ecg_rest
 
 # TODO(deflaux): parameterize exercise ECG by TMAP name if there is similar ECG data from other studies.
-EXERCISE_ECG_SIGNAL_TMAP = TMAPS['ecg-bike-raw-full']
+EXERCISE_ECG_SIGNAL_TMAP = ecg_tmaps.ecg_bike_raw_full
 EXERCISE_ECG_TREND_TMAPS = [
-    TMAPS['ecg-bike-raw-trend-hr'],
-    TMAPS['ecg-bike-raw-trend-load'],
-    TMAPS['ecg-bike-raw-trend-grade'],
-    TMAPS['ecg-bike-raw-trend-artifact'],
-    TMAPS['ecg-bike-raw-trend-mets'],
-    TMAPS['ecg-bike-raw-trend-pacecount'],
-    TMAPS['ecg-bike-raw-trend-phasename'],
-    TMAPS['ecg-bike-raw-trend-phasetime'],
-    TMAPS['ecg-bike-raw-trend-time'],
-    TMAPS['ecg-bike-raw-trend-vecount'],
+    ecg_tmaps.ecg_bike_raw_trend_hr,
+    ecg_tmaps.ecg_bike_raw_trend_load,
+    ecg_tmaps.ecg_bike_raw_trend_grade,
+    ecg_tmaps.ecg_bike_raw_trend_artifact,
+    ecg_tmaps.ecg_bike_raw_trend_mets,
+    ecg_tmaps.ecg_bike_raw_trend_pacecount,
+    ecg_tmaps.ecg_bike_raw_trend_phasename,
+    ecg_tmaps.ecg_bike_raw_trend_phasetime,
+    ecg_tmaps.ecg_bike_raw_trend_time,
+    ecg_tmaps.ecg_bike_raw_trend_vecount,
 ]
 EXERCISE_PHASES = {0.0: 'Pretest', 1.0: 'Exercise', 2.0: 'Recovery'}
 
 
-def _examine_available_keys(hd5):
+def _examine_available_keys(hd5: Dict[str, Any]) -> None:
   print(f'hd5 ECG keys {[k for k in hd5.keys() if "ecg" in k]}')
   for key in [k for k in hd5.keys() if 'ecg' in k]:
-    print(f'hd5 {key} keys {[k for k in hd5[key].keys()]}')
+    print(f'hd5 {key} keys {k for k in hd5[key]}')
 
 
-def reshape_resting_ecg_to_tidy(sample_id, folder=None, tmap_name=DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME):
+def reshape_resting_ecg_to_tidy(
+    sample_id: Union[int, str], folder: Optional[str] = None, tmap: TensorMap = DEFAULT_RESTING_ECG_SIGNAL_TMAP,
+) -> pd.DataFrame:
   """Wrangle resting ECG data to tidy.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
     folder: The local or Cloud Storage folder under which the files reside.
-    tmap_name: The name of the TMAP to use for ecg input.
+    tmap: The TensorMap to use for ECG input.
 
   Returns:
     A pandas dataframe in tidy format or print a notebook-friendly error and return an empty dataframe.
@@ -55,7 +59,7 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None, tmap_name=DEFAULT_RESTIN
   if folder is None:
     folder = get_resting_ecg_hd5_folder(sample_id)
 
-  data = {'lead': [], 'raw': [], 'ts_reference': [], 'filtered': [], 'filtered_1': [], 'filtered_2': []}
+  data: Dict[str, Any] = {'lead': [], 'raw': [], 'ts_reference': [], 'filtered': [], 'filtered_1': [], 'filtered_2': []}
 
   with tempfile.TemporaryDirectory() as tmpdirname:
     sample_hd5 = str(sample_id) + '.hd5'
@@ -69,10 +73,10 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None, tmap_name=DEFAULT_RESTIN
 
     with h5py.File(local_path, mode='r') as hd5:
       try:
-        signals = TMAPS[tmap_name].tensor_from_file(TMAPS[tmap_name], hd5)
+        signals = tmap.tensor_from_file(tmap, hd5)
       except (KeyError, ValueError) as e:
-        print(f'''Warning: Resting ECG TMAP {tmap_name} not available for sample {sample_id}.
-        Use the tmap_name parameter to choose a different TMAP.\n\n{e}''')
+        print(f'''Warning: Resting ECG TMAP {tmap.name} not available for sample {sample_id}.
+        Use the tmap parameter to choose a different TMAP.\n\n{e}''')
         _examine_available_keys(hd5)
         return pd.DataFrame(data)
       for (lead, channel) in ECG_REST_LEADS.items():
@@ -136,7 +140,9 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None, tmap_name=DEFAULT_RESTIN
   return tidy_signal_df
 
 
-def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
+def reshape_exercise_ecg_to_tidy(
+    sample_id: Union[int, str], folder: Optional[str] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
   """Wrangle exercise ECG signal data to tidy format.
 
   Args:
@@ -208,7 +214,9 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
   return (trend_df, tidy_signal_df)
 
 
-def reshape_exercise_ecg_and_trend_to_tidy(sample_id, folder=None):
+def reshape_exercise_ecg_and_trend_to_tidy(
+    sample_id: Union[int, str], folder: Optional[str] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
   """Wrangle exercise ECG signal and trend data to tidy format.
 
   Args:

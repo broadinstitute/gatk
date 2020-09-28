@@ -1,4 +1,4 @@
-"""Methods for integration of interactive dicom plots within notebooks.
+"""Methods for integration of interactive DICOM plots within notebooks.
 
 TODO:
 * Continue to *pragmatically* improve this to make the visualization controls
@@ -8,14 +8,15 @@ TODO:
 import collections
 import os
 import tempfile
+from typing import Any, DefaultDict, Dict, Optional, Tuple
 import zipfile
 
 from IPython.display import display
 from IPython.display import HTML
+import numpy as np
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
 from ml4h.runtime_data_defines import get_mri_folders
-import numpy as np
 import pydicom
 import tensorflow as tf
 
@@ -27,15 +28,12 @@ MIN_COLOR_RANGE = 0
 MAX_COLOR_RANGE = 6000
 
 
-def choose_mri(sample_id, folder=None):
+def choose_mri(sample_id, folder: Optional[str] = None) -> None:
   """Render widget to choose the MRI to plot.
 
   Args:
     sample_id: The id of the sample to retrieve.
     folder: The local or Cloud Storage folder under which the files reside.
-
-  Returns:
-    ipywidget or HTML upon error.
   """
   if folder is None:
     folders = get_mri_folders(sample_id)
@@ -45,22 +43,26 @@ def choose_mri(sample_id, folder=None):
   sample_mris = []
   sample_mri_glob = str(sample_id) + '_*.zip'
   try:
-    for folder in folders:
-      sample_mris.extend(tf.io.gfile.glob(pattern=os.path.join(folder, sample_mri_glob)))
+    for f in folders:
+      sample_mris.extend(tf.io.gfile.glob(pattern=os.path.join(f, sample_mri_glob)))
   except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-    return HTML(f'''
-    <div class="alert alert-block alert-danger">
+    display(
+        HTML(f'''<div class="alert alert-block alert-danger">
     <b>Warning:</b> MRI not available for sample {sample_id} in {folders}:
     <hr><p><pre>{e.message}</pre></p>
     Use the <kbd>folder</kbd> parameter to read DICOMs from a different local directory or Cloud Storage bucket.
-    </div>''')
+    </div>'''),
+    )
+    return
 
   if not sample_mris:
-    return HTML(f'''
-    <div class="alert alert-block alert-danger">
+    display(
+        HTML(f'''<div class="alert alert-block alert-danger">
     <b>Warning:</b> MRI DICOMs not available for sample {sample_id} in {folders}.<br>
     Use the <kbd>folder</kbd> parameter to read DICOMs from a different local directory or Cloud Storage bucket.
-    </div>''')
+    </div>'''),
+    )
+    return
 
   mri_chooser = widgets.Dropdown(
       options=sample_mris,
@@ -77,14 +79,11 @@ def choose_mri(sample_id, folder=None):
   display(file_controls_ui, file_controls_output)
 
 
-def choose_mri_series(sample_mri):
+def choose_mri_series(sample_mri: str) -> None:
   """Render widgets and interactive plots for MRIs.
 
   Args:
     sample_mri: The local or Cloud Storage path to the MRI file.
-
-  Returns:
-    ipywidget or HTML upon error.
   """
   with tempfile.TemporaryDirectory() as tmpdirname:
     local_path = os.path.join(tmpdirname, os.path.basename(sample_mri))
@@ -93,13 +92,15 @@ def choose_mri_series(sample_mri):
       with zipfile.ZipFile(local_path, 'r') as zip_ref:
         zip_ref.extractall(tmpdirname)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-      return HTML(f'''
-      <div class="alert alert-block alert-danger">
+      display(
+          HTML(f'''<div class="alert alert-block alert-danger">
       <b>Warning:</b> Cardiac MRI not available for sample {os.path.basename(sample_mri)}:
       <hr><p><pre>{e.message}</pre></p>
-      </div>''')
+      </div>'''),
+      )
+      return
 
-    unordered_dicoms = collections.defaultdict(dict)
+    unordered_dicoms: DefaultDict[Any, Any] = collections.defaultdict(dict)
     for dcm_file in os.listdir(tmpdirname):
       if not dcm_file.endswith('.dcm'):
         continue
@@ -112,8 +113,13 @@ def choose_mri_series(sample_mri):
       unordered_dicoms[key1][key2] = dcm
 
   if not unordered_dicoms:
-    print(f'\n\nNo series available in MRI for sample {os.path.basename(sample_mri)}\n\nTry a different MRI.')
-    return None
+    display(
+        HTML(f'''<div class="alert alert-block alert-warning">
+    No series available in MRI for sample {os.path.basename(sample_mri)}.
+    Try a different MRI.
+    </div>'''),
+    )
+    return
 
   # Convert from dict of dicts to dict of ordered lists.
   dicoms = {}
@@ -134,7 +140,7 @@ def choose_mri_series(sample_mri):
       style={'description_width': 'initial'},
       layout=widgets.Layout(width='800px'),
   )
-  # Slide through dicom image instances using a slide bar.
+  # Slide through DICOM image instances using a slide bar.
   instance_chooser = widgets.IntSlider(
       continuous_update=True,
       value=default_instance_value,
@@ -212,25 +218,25 @@ def choose_mri_series(sample_mri):
   display(viz_controls_ui, viz_controls_output)
 
 
-def compute_color_range(dicoms, series_name):
+def compute_color_range(dicoms: Dict[str, Any], series_name: str) -> Tuple[int, int]:
   """Compute the mean values for the color ranges of instances in the series."""
   vmin = np.mean([np.min(d.pixel_array) for d in dicoms[series_name]])
   vmax = np.mean([np.max(d.pixel_array) for d in dicoms[series_name]])
-  return(vmin, vmax)
+  return (vmin, vmax)
 
 
-def compute_instance_range(dicoms, series_name):
+def compute_instance_range(dicoms: Dict[str, Any], series_name: str) -> Tuple[int, int]:
   """Compute middle and max instances."""
   middle_instance = int(len(dicoms[series_name]) / 2)
   max_instance = len(dicoms[series_name])
-  return(middle_instance, max_instance)
+  return (middle_instance, max_instance)
 
 
 def dicom_animation(
-    dicoms, series_name, instance, vmin, vmax, transpose,
-    fig_width, title_prefix='',
-):
-  """Render one frame of a dicom animation.
+    dicoms: Dict[str, Any], series_name: str, instance: int, vmin: int, vmax: int, transpose: bool,
+    fig_width: int, title_prefix: str = '',
+) -> None:
+  """Render one frame of a DICOM animation.
 
   Args:
     dicoms: the dictionary DICOM series and instances lists
@@ -250,7 +256,7 @@ def dicom_animation(
     dcm = dicoms[series_name][instance - 1]
     if instance != dcm.InstanceNumber:
       # Notice invalid input, but don't throw an error.
-      print(f'WARNING: Instance parameter {str(instance)} and dicom instance number {str(dcm.InstanceNumber)} do not match.')
+      print(f'WARNING: Instance parameter {str(instance)} and instance number {str(dcm.InstanceNumber)} do not match.')
 
   if transpose:
     height = dcm.pixel_array.T.shape[0]

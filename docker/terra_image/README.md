@@ -2,13 +2,13 @@
 
 To build and push:
 ```
-mv ml4cvd ml4cvdBAK_$(date +"%Y%m%d_%H%M%S") \
+mv ml4h ml4hBAK_$(date +"%Y%m%d_%H%M%S") \
   && mv config configBAK_$(date +"%Y%m%d_%H%M%S") \
-  && cp -r ../../ml4cvd . \
+  && cp -r ../../ml4h . \
   && cp -r ../vm_boot_images/config . \
   && gcloud --project uk-biobank-sek-data builds submit \
   --timeout 20m \
-  --tag gcr.io/uk-biobank-sek-data/ml4cvd_terra:`date +"%Y%m%d_%H%M%S"` .
+  --tag gcr.io/uk-biobank-sek-data/ml4h_terra:`date +"%Y%m%d_%H%M%S"` .
 ```
 Notes:
 
@@ -20,5 +20,5 @@ available to docker.
 cd notebooks
 find . -name "*.ipynb" -type f -print0 | \
   xargs -0 perl -i -pe \
-  's/gcr.io\/uk-biobank-sek-data\/ml4cvd_terra:\d{8}_\d{6}/gcr.io\/uk-biobank-sek-data\/ml4cvd_terra:20200623_145127/g'
+  's/gcr.io\/uk-biobank-sek-data\/ml4h_terra:\d{8}_\d{6}/gcr.io\/uk-biobank-sek-data\/ml4h_terra:20200623_145127/g'
 ```

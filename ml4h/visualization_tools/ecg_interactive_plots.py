@@ -2,10 +2,12 @@
 
 import os
 import tempfile
+from typing import Optional, Union
 
-import altair as alt  # Interactive data visualization for plots.
 from IPython.display import HTML
-from ml4h.visualization_tools.ecg_reshape import DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME
+import altair as alt  # Interactive data visualization for plots.
+from ml4h.TensorMap import TensorMap
+from ml4h.visualization_tools.ecg_reshape import DEFAULT_RESTING_ECG_SIGNAL_TMAP
 from ml4h.visualization_tools.ecg_reshape import reshape_exercise_ecg_to_tidy
 from ml4h.visualization_tools.ecg_reshape import reshape_resting_ecg_to_tidy
 
@@ -31,18 +33,21 @@ EXERCISE_ECG_SIGNAL_DATA_FILE = tempfile.NamedTemporaryFile(
 )
 
 
-def resting_ecg_interactive_plot(sample_id, folder=None, tmap_name=DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME):
+def resting_ecg_interactive_plot(
+    sample_id: Union[int, str], folder: Optional[str] = None,
+    tmap: TensorMap = DEFAULT_RESTING_ECG_SIGNAL_TMAP,
+) -> Union[HTML, alt.Chart]:
   """Wrangle resting ECG data to tidy and present it as an interactive plot.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
     folder: The local or Cloud Storage folder under which the files reside.
-    tmap_name: The name of the TMAP to use for ecg input.
+    tmap: The TensorMap to use for ECG input.
 
   Returns:
     An Altair plot or a notebook-friendly error.
   """
-  tidy_resting_ecg_signal = reshape_resting_ecg_to_tidy(sample_id, folder, tmap_name)
+  tidy_resting_ecg_signal = reshape_resting_ecg_to_tidy(sample_id, folder, tmap)
   if tidy_resting_ecg_signal.shape[0] == 0:
     return HTML(f'''
       <div class="alert alert-block alert-danger">
@@ -85,7 +90,9 @@ def resting_ecg_interactive_plot(sample_id, folder=None, tmap_name=DEFAULT_RESTI
   return upper & lower
 
 
-def exercise_ecg_interactive_plot(sample_id, folder=None, time_interval_seconds=10):
+def exercise_ecg_interactive_plot(
+    sample_id: Union[int, str], folder: Optional[str] = None, time_interval_seconds: int = 10,
+) -> Union[HTML, alt.Chart]:
   """Wrangle exercise ECG data to tidy and present it as an interactive plot.
 
   Args:
@@ -140,7 +147,8 @@ def exercise_ecg_interactive_plot(sample_id, folder=None, time_interval_seconds=
       lead_select,
   ).transform_filter(
       # https://github.com/altair-viz/altair/issues/1960
-      f'((toNumber({brush.name}.time) - {time_interval_seconds/2.0}) < datum.time) && (datum.time < toNumber({brush.name}.time) + {time_interval_seconds/2.0})',
+      f'''((toNumber({brush.name}.time) - {time_interval_seconds/2.0}) < datum.time)
+           && (datum.time < toNumber({brush.name}.time) + {time_interval_seconds/2.0})''',
   )
 
   return trend.encode(y='heartrate:Q') & trend.encode(y='load:Q') & signal
