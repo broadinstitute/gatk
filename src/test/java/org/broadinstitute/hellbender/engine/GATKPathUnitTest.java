@@ -12,6 +12,8 @@ import org.testng.annotations.Test;
 
 import java.io.*;
 import java.nio.file.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class GATKPathUnitTest extends GATKBaseTest {
@@ -551,6 +553,85 @@ public class GATKPathUnitTest extends GATKBaseTest {
     @Test(dataProvider = "isHadoopURLTestCases")
     public void testIsHadoopURL(final String referenceSpec, final boolean expectedIsHadoop) {
         Assert.assertEquals(new GATKPath(referenceSpec).isHadoopURL(), expectedIsHadoop);
+    }
+
+    private Map<String, String> getMapWithOneTag() {
+        return new HashMap<String, String>() {
+            { this.put("tag1", "value1"); }
+        };
+    }
+
+    private Map<String, String> getMapWithTwoTags() {
+        return new HashMap<String, String>() {
+            { this.put("tag1", "value1"); }
+            { this.put("tag2", "value2"); }
+        };
+    }
+
+    @DataProvider(name="tagTestCases")
+    public Object[][] tagTestCases() {
+        return new Object[][] {
+                // uri, tag name, attribute map, expected tag, expected attribute map
+                { "someFile.bam", null, null, null, null},
+                { "someFile.bam", "sometag", null, "sometag", null },
+                { "someFile.bam", null, getMapWithOneTag(), null, getMapWithOneTag() },
+                { "someFile.bam", "sometag", getMapWithOneTag(), "sometag", getMapWithOneTag() },
+                { "someFile.bam", null, getMapWithTwoTags(), null, getMapWithTwoTags() },
+                { "someFile.bam", "sometag", getMapWithTwoTags(), "sometag", getMapWithTwoTags() },
+        };
+    }
+
+    private GATKPath getGATKPathWithTags(
+            final String uriString,
+            final String tagName,
+            final Map<String, String> attributeMap) {
+        final GATKPath gatkPath = new GATKPath(uriString);
+        if (tagName != null) {
+            gatkPath.setTag(tagName);
+        }
+        if (attributeMap != null) {
+            gatkPath.setTagAttributes(attributeMap);
+        }
+        return gatkPath;
+    }
+
+    @Test(dataProvider = "tagTestCases")
+    public void testTagsAndAttributes(
+            final String uriString,
+            final String tagName,
+            final Map<String, String> attributeMap,
+            final String expectedTagName,
+            final Map<String, String> expectedAttributeMap) {
+        final GATKPath pathWithTags = getGATKPathWithTags(uriString, tagName, attributeMap);
+        Assert.assertEquals(pathWithTags.getTag(), expectedTagName);
+        Assert.assertEquals(pathWithTags.getTagAttributes(), expectedAttributeMap);
+    }
+
+    @Test(dataProvider = "tagTestCases")
+    public void testEquals(
+            final String uriString,
+            final String tagName,
+            final Map<String, String> attributeMap,
+            final String expectedTagName,
+            final Map<String, String> expectedAttributeMap) {
+        final GATKPath pathWithTags = getGATKPathWithTags(uriString, tagName, attributeMap);
+        final GATKPath pathCopy = new GATKPath(pathWithTags);
+
+        Assert.assertEquals(pathWithTags.getRawInputString(), pathCopy.getRawInputString());
+        Assert.assertEquals(pathWithTags.getTag(), pathCopy.getTag());
+        Assert.assertEquals(pathWithTags.getTagAttributes(), pathCopy.getTagAttributes());
+    }
+
+    @Test(dataProvider = "tagTestCases")
+    public void testCopyConstructor(
+            final String uriString,
+            final String tagName,
+            final Map<String, String> attributeMap,
+            final String unusedExpectedTagName,
+            final Map<String, String> unusedExpectedAttributeMap) {
+        final GATKPath pathWithTags = getGATKPathWithTags(uriString, tagName, attributeMap);
+        final GATKPath pathCopy = new GATKPath(pathWithTags);
+        Assert.assertEquals(pathWithTags, pathCopy);
     }
 
     /**

@@ -83,28 +83,43 @@ public class PathSpecifier implements PathURI, Serializable {
     public PathSpecifier(final String rawInputString) {
         Utils.nonNull(rawInputString);
         this.rawInputString = rawInputString;
+        this.uri = getURIForString(rawInputString);
+    }
 
+    /**
+     * Create a PathSpecifier from an existing PathSpecifier.
+     * @param pathSpec an existing PathSpecifier. May not be null.
+     */
+    public PathSpecifier(final PathSpecifier pathSpec) {
+        Utils.nonNull(pathSpec);
+        this.rawInputString = pathSpec.getRawInputString();
+        this.uri = getURIForString(rawInputString);
+    }
+
+    // Called during PathSpecifier construction to construct and return a URI for the provided input string.
+    // Has a side-effect of caching a Path object for this PathSpecifier.
+    private URI getURIForString(final String pathString) {
         URI tempURI;
         try {
-            tempURI = new URI(rawInputString);
+            tempURI = new URI(pathString);
             if (!tempURI.isAbsolute()) {
                 // if the URI has no scheme, assume its a local (non-URI) file reference, and resolve
                 // it to a Path and retrieve the URI from the Path to ensure proper escape/encoding
-                setCachedPath(Paths.get(rawInputString));
+                setCachedPath(Paths.get(pathString));
                 tempURI = getCachedPath().toUri();
             }
         } catch (URISyntaxException uriException) {
             // the input string isn't a valid URI; assume its a local (non-URI) file reference, and
             // use the URI resulting from the corresponding Path
             try {
-                setCachedPath(Paths.get(rawInputString));
+                setCachedPath(Paths.get(pathString));
                 tempURI = getCachedPath().toUri();
             } catch (InvalidPathException | UnsupportedOperationException | SecurityException pathException) {
                 // we have two exceptions, each of which might be relevant since we can't tell whether
                 // the user intended to provide a local file reference or a URI, so preserve both
                 final String errorMessage = String.format(
                         "%s can't be interpreted as a local file (%s) or as a URI (%s).",
-                        rawInputString,
+                        pathString,
                         pathException.getMessage(),
                         uriException.getMessage());
                 throw new IllegalArgumentException(errorMessage, pathException);
@@ -115,7 +130,7 @@ public class PathSpecifier implements PathURI, Serializable {
             throw new UserException("URI has no scheme");
         }
 
-        uri = tempURI;
+        return tempURI;
     }
 
     @Override
