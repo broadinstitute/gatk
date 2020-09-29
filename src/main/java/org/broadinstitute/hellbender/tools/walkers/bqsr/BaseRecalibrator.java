@@ -24,8 +24,6 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
-import java.io.File;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -216,7 +214,10 @@ public final class BaseRecalibrator extends ReadWalker {
     }
 
     private void generateReport() {
-        try ( PrintStream recalTableStream = new PrintStream(recalTableFile.getOutputStream()) ) {
+        try ( final PrintStream recalTableStream = new PrintStream(recalTableFile.getOutputStream()) ) {
+            if (recalTableStream.checkError()) {
+                throw new UserException.CouldNotCreateOutputFile(recalTableFile, "I/O stream error writing to output");
+            }
             RecalUtils.outputRecalibrationReport(recalTableStream, recalArgs, quantizationInfo, recalibrationEngine.getFinalRecalibrationTables(), recalibrationEngine.getCovariates());
         }
     }

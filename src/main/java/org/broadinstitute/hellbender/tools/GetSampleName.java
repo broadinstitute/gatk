@@ -11,7 +11,8 @@ import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
-import java.io.PrintWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -93,10 +94,12 @@ final public class GetSampleName extends GATKTool {
             throw new UserException.BadInput("The given bam input has no sample names.");
         }
 
-        try (final PrintWriter fileWriter = new PrintWriter(outputSampleNameFile.getOutputStream(), false)) {
+        try (final OutputStreamWriter fileWriter = new OutputStreamWriter(outputSampleNameFile.getOutputStream())) {
             final String rawSample = sampleNames.get(0);
             final String outputSample = urlEncode ? IOUtils.urlEncode(rawSample) : rawSample;
             fileWriter.write(outputSample);
+        } catch (final IOException ioe) {
+            throw new UserException(String.format("Could not write to output file %s.", outputSampleNameFile), ioe);
         }
     }
 

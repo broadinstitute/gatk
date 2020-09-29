@@ -656,6 +656,9 @@ public class VariantRecalibrator extends MultiVariantWalker {
                         if (outputModel != null) {
                             final GATKReport report = writeModelReport(goodModel, null, USE_ANNOTATIONS);
                             try (final PrintStream modelReportStream = new PrintStream(outputModel.getOutputStream())) {
+                                if (modelReportStream.checkError()) {
+                                    throw new UserException.CouldNotCreateOutputFile(outputModel, "I/O stream error writing to report output");
+                                }
                                 report.print(modelReportStream);
                             }
                         }
@@ -681,6 +684,9 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 if (outputModel != null) {
                     final GATKReport report = writeModelReport(goodModel, badModel, USE_ANNOTATIONS);
                     try (final PrintStream modelReportStream = new PrintStream(outputModel.getOutputStream())) {
+                        if (modelReportStream.checkError()) {
+                            throw new UserException.CouldNotCreateOutputFile(outputModel, "I/O stream error writing to report output");
+                        }
                         report.print(modelReportStream);
                     }
                 }

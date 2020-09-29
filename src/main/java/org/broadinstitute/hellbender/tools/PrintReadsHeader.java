@@ -8,9 +8,11 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
-import java.io.PrintWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 
 @CommandLineProgramProperties(
         summary = "Prints the header from the input SAM/BAM/CRAM file to a textual output file",
@@ -32,9 +34,11 @@ public class PrintReadsHeader extends GATKTool {
     public void traverse() {
         final SAMFileHeader bamHeader = getHeaderForReads();
 
-        try ( final PrintWriter outputWriter = new PrintWriter(outputFile.getOutputStream()) ) {
+        try ( final OutputStreamWriter outputWriter = new OutputStreamWriter(outputFile.getOutputStream()) ) {
             final SAMTextHeaderCodec codec = new SAMTextHeaderCodec();
             codec.encode(outputWriter, bamHeader);
+        } catch (IOException e ) {
+            throw new UserException.CouldNotCreateOutputFile("Error writing reads header to " + outputFile, e);
         }
 
         logger.info("Successfully wrote reads header to destination: " + outputFile);
