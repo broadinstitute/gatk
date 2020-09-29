@@ -10,12 +10,16 @@ workflow ImportArrayManifest {
     String? table_name
  
     Int? preemptible_tries
+    String? docker
   }
+
+  String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
  
   call CreateManifestCsv {
     input:
       extended_manifest_csv = extended_manifest_csv,
-      preemptible_tries = preemptible_tries
+      preemptible_tries = preemptible_tries,
+      docker = docker_final
   }
 
   call LoadManifest {
@@ -25,7 +29,8 @@ workflow ImportArrayManifest {
       table_name = table_name,
       manifest_schema_json = manifest_schema_json,
       manifest_csv = CreateManifestCsv.manifest_csv,
-      preemptible_tries = preemptible_tries
+      preemptible_tries = preemptible_tries,
+      docker = docker_final
   }
   output {
     File manifest_csv = CreateManifestCsv.manifest_csv
@@ -44,6 +49,9 @@ task LoadManifest {
     File manifest_schema_json
     # runtime
     Int? preemptible_tries
+    String docker
+    # String to add command for testing only. Can be ignored otherwise.
+    String? for_testing_only
   }
 
   String ingest_table = dataset_name + "." + select_first([table_name, "probe_info"])
@@ -56,6 +64,7 @@ task LoadManifest {
    
     command <<<
       set +e
+      ~{for_testing_only}
       bq ls --project_id ~{project_id} ~{dataset_name} > /dev/null
       if [ $? -ne 0 ]; then
         echo "making dataset ~{project_id}.~{dataset_name}"
@@ -72,7 +81,7 @@ task LoadManifest {
       bq load --location=US --project_id=~{project_id} --null_marker "null" --source_format=CSV ~{ingest_table} ~{manifest_csv} ~{manifest_schema_json}
     >>>
     runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.7.0"
+      docker: docker
       memory: "4 GB"
       disks: "local-disk " + 20 + " HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -87,6 +96,7 @@ task CreateManifestCsv {
 
     # runtime
     Int? preemptible_tries
+    String docker
   }
 
   Int disk_size = ceil(size(extended_manifest_csv, "GB") * 2.5) + 20
@@ -124,7 +134,7 @@ task CreateManifestCsv {
     echo "created file for ingest $TMP"
   >>>
   runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.7.0"
+      docker: docker
       memory: "4 GB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])

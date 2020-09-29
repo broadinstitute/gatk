@@ -1,0 +1,18 @@
+Illumina, Inc.
+[Heading],
+Descriptor File Name,name.bpm
+Assay Format,Infinium LCG
+Date Manufactured,09/28/2020
+CreateExtendedIlluminaManifest.version,1.5
+Target Build,37
+Target Reference File,/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta
+Cluster File,/files/ClusterFile.egt
+dbSNP File,/seq/references/Homo_sapiens_assembly19/v1/variant_calling/vqsr_resources/WGS/v2/dbsnp_138.b37.vcf.gz
+Supported Build,36
+Supported Reference File,/seq/references/Homo_sapiens_assembly19/v1/arrays/human_b36_both.fasta
+Supported Chain File,/seq/references/Homo_sapiens_assembly19/v1/arrays/b36ToHg19.broad.over.chain
+Loci Count ,2
+[Assay],
+IlmnID,Name,IlmnStrand,SNP,AddressA_ID,AlleleA_ProbeSeq,AddressB_ID,AlleleB_ProbeSeq,GenomeBuild,Chr,MapInfo,Ploidy,Species,Source,SourceVersion,SourceStrand,SourceSeq,TopGenomicSeq,BeadSetID,Exp_Clusters,RefStrand,Intensity_Only,build37Chr,build37Pos,build37RefAllele,build37AlleleA,build37AlleleB,build37Rsid,build37Flag
+1:5700115-A-T-0_T_R_0000000000,1:5700115-A-T,TOP,[T/A],000000000,TCAATCTATATTACCCACCACAGAGCAGAAGGCATACCACATGATTTCTG,,,37,1,5700115,diploid,Homo sapiens,PAGE,0,BOT,tcaatctatattacccaccacagagcagaaggcataccacatgatttctgatttctgct[T/A]tcaatctatattacccaccacagagcagaaggcataccacatgatttctgatttctgct,tcaatctatattacccaccacagagcagaaggcataccacatgatttctgatttctgct[A/T]tcaatctatattacccaccacagagcagaaggcataccacatgatttctgatttctgct,0000,3,-,0,1,5700115,A,A,T,,PASS
+1:5700116-C-G-0_T_R_0000000000,1:5700116-C-G,TOP,[C/G],000000000,TCAATCTATATTACCCACCACAGAGCAGAAGGCATACCACATGATTTCTG,,,37,1,5700116,diploid,Homo sapiens,PAGE,0,BOT,tcaatctatattacccaccacagagcagaaggcataccacatgatttctgatttctgct[G/C]tcaatctatattacccaccacagagcagaaggcataccacatgatttctgatttctgct,tcaatctatattacccaccacagagcagaaggcataccacatgatttctgatttctgct[C/G]tcaatctatattacccaccacagagcagaaggcataccacatgatttctgatttctgct,0000,3,-,0,1,5700116,C,C,G,,PASS
