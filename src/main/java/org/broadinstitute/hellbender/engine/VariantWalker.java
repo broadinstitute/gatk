@@ -50,8 +50,7 @@ public abstract class VariantWalker extends VariantWalkerBase {
 
     @Override
     protected void initializeDrivingVariants() {
-        // use getRawInputString() on the original GATKPath here to ensure that we propagate any argument tags
-        drivingVariantsFeatureInput = new FeatureInput<>(drivingVariantFile.getRawInputString(), "drivingVariantFile");
+        drivingVariantsFeatureInput = new FeatureInput<>(drivingVariantFile, "drivingVariantFile");
 
         // Create a FeatureDataSource for the driving variants FeatureInput, using the
         // cache lookahead value from getDrivingVariantCacheLookAheadBases()

@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.engine;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
@@ -37,6 +39,7 @@ import java.util.*;
  * @param <T> the type of Feature that this FeatureInput file contains (eg., VariantContext, BEDFeature, etc.)
  */
 public final class FeatureInput<T extends Feature> extends GATKPath implements Serializable {
+    final protected static Logger logger = LogManager.getLogger(FeatureInput.class);
 
     private static final long serialVersionUID = 1L;
 
@@ -68,6 +71,39 @@ public final class FeatureInput<T extends Feature> extends GATKPath implements S
     FeatureInput(final String rawArgumentValue) {
         super(rawArgumentValue);
         Utils.nonNull(rawArgumentValue, "rawArgumentValue");
+    }
+
+    /**
+     * Construct a FeatureInput from a GATKPath argument value.
+     *
+     * @param gatkPath an existing GATKPath object
+     *
+     * This constructor is meant to be called only by the engine and test classes,
+     * which is why it has package access.
+     */
+    public FeatureInput(final GATKPath gatkPath) {
+        super(gatkPath);
+    }
+
+    /**
+     * Construct a FeatureInput from a GATKPath argument value.
+     *
+     * @param gatkPath an existing GATKPath object
+     *
+     * This constructor is meant to be called only by the engine and test classes,
+     * which is why it has package access.
+     */
+    public FeatureInput(final GATKPath gatkPath, final String name) {
+        super(gatkPath);
+        Utils.nonNull(name, "name");
+        if (gatkPath.getTag() != null) {
+            logger.warn(String.format(
+                    "FeatureInput: user-provided tag name %s will be replaced with %s",
+                    gatkPath.getTag(),
+                    name));
+        }
+
+        setTag(name);
     }
 
     /**

@@ -63,8 +63,7 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
     protected void initializeDrivingVariants() {
         multiVariantInputArgumentCollection.getDrivingVariantPaths().stream().forEach(
                 f -> {
-                    // use getRawInputString() on the original GATKPath here to ensure that we propagate any argument tags
-                    FeatureInput<VariantContext> featureInput = new FeatureInput<>(f.getRawInputString());
+                    FeatureInput<VariantContext> featureInput = new FeatureInput<>(f);
                     if (drivingVariantsFeatureInputs.contains(featureInput)) {
                         throw new UserException.BadInput("Feature inputs must be unique: " + featureInput.toString());
                     }

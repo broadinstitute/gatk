@@ -15,6 +15,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
+import java.util.Collections;
 
 public final class FeatureInputUnitTest extends GATKBaseTest {
     private static final String FEATURE_INPUT_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
@@ -158,6 +159,11 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(featureInput.getFeaturePath(), "myFile", "Wrong File in FeatureInput");
         Assert.assertEquals(featureInput.getName(), "myName", "Wrong name in FeatureInput");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testRejectNullFile() {
+        new FeatureInput<>((GATKPath) null, "sourceName1");
     }
 
     @Test
