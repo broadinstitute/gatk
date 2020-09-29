@@ -2,9 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import java.util.*;
 import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.Files;
 import java.io.IOException;
 import java.util.stream.Collectors;
 import java.io.UnsupportedEncodingException;
@@ -219,7 +216,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     private int windowStart = windowSize / 2;
     private boolean waitforBatchCompletion = false;
 
-    private File scoreFile; // use java.nio.File here because python code needs to write to this
+    private File scoreFile; // use java.io.File here because python code needs to write to this
     private String scoreKey;
     private Scanner scoreScan;
     private VariantContextWriter vcfWriter;
