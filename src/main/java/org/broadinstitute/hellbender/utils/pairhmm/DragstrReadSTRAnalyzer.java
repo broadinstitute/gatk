@@ -54,11 +54,11 @@ public class DragstrReadSTRAnalyzer {
 
 
 
-    private DragstrReadSTRAnalyzer(final int[][] repeatsByPeriodAndPosition, final int[] periodWithMostRepeats, final int maxPeriod) {
+    private DragstrReadSTRAnalyzer(final int seqLength, final int[][] repeatsByPeriodAndPosition, final int[] periodWithMostRepeats, final int maxPeriod) {
         this.repeatsByPeriodAndPosition = repeatsByPeriodAndPosition;
         this.periodWithMostRepeats = periodWithMostRepeats;
         this.maxPeriod = maxPeriod;
-        this.seqLength = repeatsByPeriodAndPosition.length;
+        this.seqLength = seqLength;
     }
 
     /**
@@ -80,7 +80,7 @@ public class DragstrReadSTRAnalyzer {
         final int[][] repeatsByPeriodAndPosition = new int[maxPeriod][seqLength];
         final int[] periodWithMostRepeats = new int[seqLength];
         analyzeBases(bases, seqLength, repeatsByPeriodAndPosition, periodWithMostRepeats, maxPeriod);
-        return new DragstrReadSTRAnalyzer(repeatsByPeriodAndPosition, periodWithMostRepeats, maxPeriod);
+        return new DragstrReadSTRAnalyzer(seqLength, repeatsByPeriodAndPosition, periodWithMostRepeats, maxPeriod);
     }
 
     /**
