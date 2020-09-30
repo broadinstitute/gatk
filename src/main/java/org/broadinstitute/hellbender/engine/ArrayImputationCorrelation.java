@@ -176,14 +176,13 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
         }
     }
 
-    private static final class PearsonCorrelationAggregator {
+    static final class PearsonCorrelationAggregator {
         double sum_xy;
         double sum_x;
         double sum_y;
         double sum_x2;
         double sum_y2;
         int n;
-       // int count[][] = new int[3][3];
         void addEntry(final double x, final double y) {
             sum_xy += x*y;
             sum_x += x;
