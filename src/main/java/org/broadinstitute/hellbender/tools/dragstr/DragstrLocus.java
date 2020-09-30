@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * Holds information about a locus on the reference that might be used to estimate the DRAGstr model parameters.
  */
-public class DragstrLocus {
+public class DragstrLocus implements Comparable<DragstrLocus> {
 
     private final int chromosomeIndex;
     private final long start;
@@ -67,6 +67,37 @@ public class DragstrLocus {
 
     public int getRepeats() {
         return period == 0 ? 0 : length / period;
+    }
+
+    @Override
+    public int compareTo(final DragstrLocus other) {
+        if (other == this) {
+            return 0;
+        } else if (other == null) {
+            return 1;
+        } else {
+            int cmp;
+            if ((cmp = Integer.compare(this.chromosomeIndex, other.chromosomeIndex)) != 0) {
+                return cmp;
+            } else if ((cmp = Long.compare(this.start, other.start)) != 0) {
+                return cmp;
+            } else if ((cmp = Integer.compare(this.length, other.length)) != 0) {
+                return cmp;
+            } else {
+                return Integer.compare(this.period, other.period);
+            }
+        }
+    }
+
+    @Override
+    public boolean equals(final Object other) {
+        return other instanceof DragstrLocus && compareTo((DragstrLocus) other) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        // in practice chridx and start position are enough as there should be rare to have collisions with only those two.
+        return ((chromosomeIndex * 31) + (int) start) * 47;
     }
 
     @FunctionalInterface
@@ -122,11 +153,11 @@ public class DragstrLocus {
                 wa.write(record, output);
             }
 
-            private void outputIndexWhenApplies(DragstrLocus record) throws IOException {
+            private void outputIndexWhenApplies(final DragstrLocus record) throws IOException {
                 final long offset = offset();
                 if (lastChromosomeIndex != record.chromosomeIndex) {
                     if (chromosomeOffsets.containsKey(record.chromosomeIndex)) {
-                        throw new IllegalStateException("cannot index the output when not sorted; chromosome idex " + record.chromosomeIndex + " apears in more than one piece ");
+                        throw new IllegalStateException("cannot index the output when not sorted; chromosome index " + record.chromosomeIndex + " appears in more than one piece ");
                     }
                     dataOut.flush();
                     chromosomeOffsets.put(lastChromosomeIndex = record.chromosomeIndex, offset);
@@ -276,21 +307,6 @@ public class DragstrLocus {
                 return new DragstrLocus(chridx, start, period, length, mask);
             }
         };
-    }
-
-    @Override
-    public boolean equals(final Object other) {
-        return (other instanceof DragstrLocus) && equals((DragstrLocus)other);
-    }
-
-    @Override
-    public int hashCode() {
-        return ((((((chromosomeIndex * 31) + length) * 31) + (int) start) * 31 + period));
-    }
-
-    public boolean equals(final DragstrLocus other) {
-        return other == this || (other.chromosomeIndex == this.chromosomeIndex &&
-                other.length == length && other.start == this.start && this.period == other.period);
     }
 
     public SimpleInterval getStartInterval(final SAMSequenceDictionary dictionary, final int margin) {

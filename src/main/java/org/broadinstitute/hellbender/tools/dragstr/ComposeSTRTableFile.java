@@ -58,7 +58,8 @@ public class ComposeSTRTableFile extends GATKTool {
     public static final String REFERENCE_SEQUENCE_BUFFER_SIZE_FULL_NAME = "reference-sequence-buffer-size";
     @SuppressWarnings("WeakerAccess")
     public static final String GENERATE_SITES_TEXT_OUTPUT_FULL_NAME = "generate-sites-text-output";
-    @SuppressWarnings("WeakerAccess")
+    public static final int MINIMUM_REFERENCE_SEQUENCE_BUFFER_SIZE = 1024;
+    public static final int MAXIMUM_REFERENCE_SEQUENCE_BUFFER_SIZE = 100_000_000;
     public static final int DEFAULT_REFERENCE_SEQUENCE_BUFFER_SIZE = 100_000;
 
     @Argument(fullName="decimation", doc="decimation per period and repeat. It can be \"DEFAULT\" to use the default values (default), " +
@@ -82,7 +83,8 @@ public class ComposeSTRTableFile extends GATKTool {
     @Argument(fullName = DragstrHyperParameters.MAX_REPEATS_ARGUMENT_FULL_NAME, doc="maximum STR repeat sampled", optional = true, minValue = 1, maxValue = 100)
     private int maxRepeat = DragstrHyperParameters.DEFAULT_MAX_REPEAT_LENGTH;
 
-    @Argument(fullName= REFERENCE_SEQUENCE_BUFFER_SIZE_FULL_NAME, doc="size of the look ahead reference sequence buffer", optional = true, minValue = 100, maxValue = 1_000_000_000)
+    @Argument(fullName= REFERENCE_SEQUENCE_BUFFER_SIZE_FULL_NAME, doc="size of the look ahead reference sequence buffer",
+            optional = true, minValue = MINIMUM_REFERENCE_SEQUENCE_BUFFER_SIZE, maxValue = MAXIMUM_REFERENCE_SEQUENCE_BUFFER_SIZE)
     @Hidden
     private int referenceSequenceBufferSize = DEFAULT_REFERENCE_SEQUENCE_BUFFER_SIZE;
 

@@ -25,13 +25,11 @@ final class BufferedReferenceBases {
     private long bufferStart;
     private long bufferEnd;
 
-    private static final int MIN_BUFFER_SIZE = 1024;
-
     private BufferedReferenceBases(final ReferenceDataSource dataSource, final String id, final long length, final int bufferSize) {
         this.dataSource = dataSource;
         this.id = id;
         this.length = length;
-        this.bufferSize = Math.max(MIN_BUFFER_SIZE, (int) Math.min(bufferSize , length));
+        this.bufferSize = (int) Math.min(bufferSize , length);
         this.buffer = null;
         this.previousBuffer = null;
         this.bufferStart = -1;

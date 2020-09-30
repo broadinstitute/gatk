@@ -1463,57 +1463,6 @@ public final class Utils {
     }
 
     /**
-     * Removes the last portion of a list so that it has a new size of at
-     * most a given number of elements.
-     * @param list the list to modify.
-     * @param maxLength the intended maximum length for the list.
-     */
-    public static void truncate(final List<?> list, final int maxLength) {
-        Utils.nonNull(list);
-        ParamUtils.isPositiveOrZero(maxLength, "new maximum length");
-        if (maxLength == 0) { // special quicker case when ml == 0.
-            list.clear();
-        } else {
-            final int length = list.size();
-            if (maxLength < length) {  // if not we are done.
-                list.subList(maxLength, length).clear();
-            }
-        }
-    }
-
-    public static void flip(final byte[] array, final int from, final int to) {
-        for (int i = from, j = to -1; i < j; i++, j--) {
-            final byte b = array[i];
-            array[i] = array[j];
-            array[j] = b;
-        }
-    }
-
-    public static boolean deleteFileTree(final File base) {
-        if (base.isFile()) { // quick return if ordinary file.
-            return base.delete();
-        }
-        final Deque<File> toDelete = new ArrayDeque<>();
-        final Deque<File> toVisit = new ArrayDeque<>();
-        toVisit.push(base);
-        while (!toVisit.isEmpty()) {
-            final File next = toVisit.pop();
-            toDelete.push(next);
-            final File[] subFiles = next.listFiles();
-            if (subFiles != null) {
-                for (final File sub : subFiles) {
-                    toVisit.push(sub);
-                }
-            }
-        }
-        boolean result = true;
-        while (!toDelete.isEmpty()) {
-            result = result & toDelete.pop().delete();
-        }
-        return result;
-    }
-
-    /**
      * Runs a task in parallel returning it returned result.
      * <p> This call will wait until such task is completed.</p>
      * @param threads number of threads requested. 0 would result in using a system default,
@@ -1540,18 +1489,5 @@ public final class Utils {
                 throw new GATKException("exception when executing parallel task ", cause);
             }
         }
-    }
-
-    /**
-     * Runs a task without a return value in parallel.
-     * <p> This call will wait until such task is completed.</p>
-     * @param threads number of threads requested. 0 would result in using a system default,
-     *                usually the host number of CPU cores.
-     * @param run the task to run.
-     * @throws GATKException if the run was interrupted or resulted in a checked exception.
-     *        Unchecked exception and Error propagate as they are.
-     */
-    public static void runInParallel(final int threads, final Runnable run) {
-        runInParallel(threads, () -> {run.run(); return null;});
     }
 }

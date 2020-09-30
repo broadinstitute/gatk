@@ -45,16 +45,15 @@ import java.util.Arrays;
  *     This behavior is exhibit by DRAGEN, so here we copied it.
  * </p>
  */
-public class DragstrReadSTRAnalyzer {
+public final class DragstrReadSTRAnalyzer {
 
     private final int[][] repeatsByPeriodAndPosition;
     private final int[] periodWithMostRepeats;
     private final int maxPeriod;
     private final int seqLength;
 
-
-
-    private DragstrReadSTRAnalyzer(final int seqLength, final int[][] repeatsByPeriodAndPosition, final int[] periodWithMostRepeats, final int maxPeriod) {
+    private DragstrReadSTRAnalyzer(final int seqLength, final int[][] repeatsByPeriodAndPosition,
+                                   final int[] periodWithMostRepeats, final int maxPeriod) {
         this.repeatsByPeriodAndPosition = repeatsByPeriodAndPosition;
         this.periodWithMostRepeats = periodWithMostRepeats;
         this.maxPeriod = maxPeriod;

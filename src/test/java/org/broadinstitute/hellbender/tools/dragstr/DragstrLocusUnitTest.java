@@ -7,22 +7,20 @@ import org.broadinstitute.hellbender.utils.BinaryTableReader;
 import org.broadinstitute.hellbender.utils.BinaryTableWriter;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class DragstrLocusUnitTest {
-
+/**
+ * Unit test for {@code DragstrLocus}.
+ */
+public final class DragstrLocusUnitTest {
 
     private static final int SEED_1 = 13;
     private static final int SEED_2 = 31;
@@ -31,16 +29,15 @@ public class DragstrLocusUnitTest {
 
     private static final SAMSequenceDictionary testDictionary = createTestDictionary();
 
-
-    @Test()
+    @Test
     private void testWriteRead() throws IOException {
         final File binaryFile = File.createTempFile("test-dl", ".bin");
         final File textFile = File.createTempFile("test-dl", ".tab");
-        //binaryFile.deleteOnExit();
-        //textFile.deleteOnExit();
+        binaryFile.deleteOnExit();
+        textFile.deleteOnExit();
         final BinaryTableWriter<DragstrLocus> binaryWriter = DragstrLocus.binaryWriter(binaryFile);
         final TableWriter<DragstrLocus> textWriter = DragstrLocus.textWriter(new FileOutputStream(textFile), testDictionary);
-        final List<DragstrLocus> loci = Arrays.stream(randomLoci()).map(oo -> (DragstrLocus) oo[0]).collect(Collectors.toList());
+        final List<DragstrLocus> loci = randomLoci();
         binaryWriter.writeAll(loci);
         binaryWriter.close();
         textWriter.writeAllRecords(loci);
@@ -51,23 +48,20 @@ public class DragstrLocusUnitTest {
         Assert.assertEquals(loci, loci2);
     }
 
-
-    @DataProvider(name="randomLoci")
-    public Object[][] randomLoci() {
+    private List<DragstrLocus> randomLoci() {
         final Random rdn = new Random(SEED_2);
         final RandomDNA randomDNA = new RandomDNA(rdn);
         final List<DragstrLocus> result = new ArrayList<>(TEST_INTERVAL_COUNT);
         for (int i = 0; i < TEST_INTERVAL_COUNT; i++) {
             final int chrIdx = rdn.nextInt(TEST_DICTIONARY_CHR_COUNT);
             final int unitLength = rdn.nextInt(10) + 1;
-            final byte[] unit = randomDNA.nextBases(unitLength);
             final int repeatCount = rdn.nextInt(40) + 1;
             final long start = rdn.nextInt(testDictionary.getSequence(chrIdx).getSequenceLength()) + 1;
             final DragstrLocus locus = DragstrLocus.make(chrIdx, start, (byte) unitLength, (short)(repeatCount * unitLength), i);
             result.add(locus);
-
         }
-        return result.stream().map(dl -> new Object[] { dl }).toArray(Object[][]::new);
+        Collections.sort(result);
+        return result;
     }
 
     private static SAMSequenceDictionary createTestDictionary() {

@@ -480,22 +480,7 @@ public final class DragstrParams {
         return maxPeriod * maxRepeats;
     }
 
-    /**
-     * Return an AFC based on this DRAGstr parameters and context information on the targeted STR.
-     *
-     * @param period the target STR period length.
-     * @param repeat the target STR repeat length.
-     * @param ploidy the ploidy at that STR site.
-     * @param snpHet the snp Heterozygosity at that site.
-     * @param scale the scale, the weight of the prior.
-     * @return never {@code null}.
-     */
-    public AlleleFrequencyCalculator getAFCalculator(final int period, final int repeat, final int ploidy, final double snpHet, final double scale) {
-        final String keyString = "" + period + '/' + repeat + '/' + ploidy + '/' + snpHet + '/' + scale;
-        return afcs.computeIfAbsent(keyString, k -> AlleleFrequencyCalculator.makeCalculator(this, period, repeat, ploidy, snpHet, scale));
-    }
-
-    @Override
+        @Override
     public String toString() {
         return path;
     }
