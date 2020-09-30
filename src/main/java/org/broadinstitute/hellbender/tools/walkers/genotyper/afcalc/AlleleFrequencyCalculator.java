@@ -162,7 +162,7 @@ public final class AlleleFrequencyCalculator {
             }
 
             // if the VC is biallelic the allele-specific qual equals the variant qual
-            if (numAlleles == 2) {
+            if (numAlleles == 2 && !spanningDeletionPresent) {
                 continue;
             }
 
@@ -183,7 +183,7 @@ public final class AlleleFrequencyCalculator {
         }
 
         // for biallelic the allele-specific qual equals the variant qual, and we short-circuited the calculation above
-        if (numAlleles == 2) {
+        if (numAlleles == 2 && !spanningDeletionPresent) {
             log10POfZeroCountsByAllele[1] = log10PNoVariant;
         }
 

@@ -400,6 +400,7 @@ public class GenotypeGVCFsEngine
         if ( dbsnp.dbsnp != null  ) {
             VCFStandardHeaderLines.addStandardInfoLines(headerLines, true, VCFConstants.DBSNP_KEY);
         }
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
         final Set<String> sampleNameSet = samples.asSetOfSamples();
         outputHeader = new VCFHeader(headerLines, new TreeSet<>(sampleNameSet));
