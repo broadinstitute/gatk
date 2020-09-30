@@ -157,7 +157,7 @@ public final class DragstrReadSTRAnalyzer {
         final int[] runLengthBuffer = new int[seqLength + 1];
         final int[] heap = new int[maxPeriod + 1];
         for (int period = 2; period <= maxPeriod; period++) {
-            calculateRepeatsForPeriodTwoAndAbove(bases, period, seqLength, runLengthBuffer, heap, repeatsByPeriodAndPosition[period - 1]);
+            calculateRepeatsForPeriodTwoAndAbove(bases, seqLength, period, runLengthBuffer, heap, repeatsByPeriodAndPosition[period - 1]);
         }
 
         // finally we update the periodWithMostRepeats array
