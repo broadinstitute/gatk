@@ -110,15 +110,6 @@ public final class GnarlyGenotyper extends VariantWalker {
     @Argument(fullName = "keep-all-sites", doc="Retain low quality and non-variant sites, applying appropriate filters", optional=true)
     private boolean keepAllSites = false;
 
-    /**
-     * This option can only be activated if intervals are specified.
-     */
-    @Advanced
-    @Argument(fullName = GenotypeGVCFs.ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME,
-            doc="Restrict variant output to sites that start within provided intervals",
-            optional=true)
-    private boolean onlyOutputCallsStartingInIntervals = false;
-
     @Argument(fullName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
             shortName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
             doc = "Boolean flag to read in all data in between intervals.  Improves performance reading from GenomicsDB " +
@@ -145,9 +136,6 @@ public final class GnarlyGenotyper extends VariantWalker {
     private GnarlyGenotyperEngine genotyperEngine;
     private final RMSMappingQuality mqCalculator = RMSMappingQuality.getInstance();
     private final Set<Class<? extends InfoFieldAnnotation>> allAlleleSpecificAnnotations = new HashSet<>();
-
-    /** these are used when {@link #onlyOutputCallsStartingInIntervals) is true */
-    private List<SimpleInterval> intervals;
 
     @Override
     public boolean requiresReference() {
@@ -182,14 +170,6 @@ public final class GnarlyGenotyper extends VariantWalker {
     @Override
     public void onTraversalStart() {
         final VCFHeader inputVCFHeader = getHeaderForVariants();
-
-        if(onlyOutputCallsStartingInIntervals) {
-            if( !intervalArgumentCollection.intervalsSpecified()) {
-                throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + GenotypeGVCFs.ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " was specified.");
-            }
-        }
-        intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
-                Collections.emptyList();
 
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples());
 
@@ -266,11 +246,11 @@ public final class GnarlyGenotyper extends VariantWalker {
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
-        SimpleInterval variantStart = new SimpleInterval(variant.getContig(), variant.getStart(), variant.getStart());
         //return early if there's no non-symbolic ALT since GDB already did the merging
         if ( !variant.isVariant() || !GATKVariantContextUtils.isProperlyPolymorphic(variant)
-                || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0
-                || (onlyOutputCallsStartingInIntervals && !intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
+                || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0 )
+                // todo this changes is a slight de-optimization since we will now process some sites whihc were previously ignored
+            {
             if (keepAllSites) {
                 VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));  //don't fill in QUAL here because there's no alt data
                 builder.filter(GATKVCFConstants.LOW_QUAL_FILTER_NAME);
@@ -297,7 +277,7 @@ public final class GnarlyGenotyper extends VariantWalker {
             finalizedVC = genotyperEngine.finalizeGenotype(variant);
         }
         //could return null if the variant didn't pass the genotyping arg calling/emission threshold
-        if (finalizedVC != null && (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
+        if (finalizedVC != null) {
             vcfWriter.add(finalizedVC);
         }
     }

@@ -22,7 +22,7 @@ public class SomaticGVCFWriterUnitTest {
 
     @Test
     public void testValueBinning() {
-        final GVCFWriterUnitTest.MockWriter mockWriter = new GVCFWriterUnitTest.MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         SomaticGVCFWriter writer = new SomaticGVCFWriter(mockWriter, standardPartition);
         //derives partitionPrecision 1 from standardPartition values
         Assert.assertTrue(writer.convertLODtoInt(2.3) == 23);
@@ -46,7 +46,7 @@ public class SomaticGVCFWriterUnitTest {
 
     @Test
     public void testAddingAndMerging() {
-        final GVCFWriterUnitTest.MockWriter mockWriter = new GVCFWriterUnitTest.MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         final SomaticGVCFWriter writer = new SomaticGVCFWriter(mockWriter, standardPartition);
         final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF, REF));
         int pos = 1;
@@ -89,7 +89,7 @@ public class SomaticGVCFWriterUnitTest {
 
     @Test
     public void testPrecision() {
-        final GVCFWriterUnitTest.MockWriter mockWriter = new GVCFWriterUnitTest.MockWriter();
+        final MockVcfWriter mockWriter = new MockVcfWriter();
         SomaticGVCFWriter writer = new SomaticGVCFWriter(mockWriter, precisionTwoPartition);
         Assert.assertTrue(((SomaticGVCFBlockCombiner)writer.gvcfBlockCombiner).partitionPrecision == 2);
 

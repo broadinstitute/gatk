@@ -7,12 +7,16 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
-import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantLocusWalker;
@@ -24,11 +28,22 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
+import org.broadinstitute.hellbender.utils.IntervalMergingRule;
+import org.broadinstitute.hellbender.utils.IntervalSetRule;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Perform joint genotyping on one or more samples pre-called with HaplotypeCaller
@@ -108,7 +123,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     /**
      * Import all data between specified intervals.   Improves performance using large lists of intervals, as in exome
      * sequencing, especially if GVCF data only exists for specified intervals.  Use with
-     * --only-output-calls-starting-in-intervals if input GVCFs contain calls outside the specified intervals.
+     * --{@value GATKTool#VARIANT_OUTPUT_INTERVAL_FILTERING_MODE} if input GVCFs contain calls outside the specified intervals.
      */
     @Argument(fullName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
             shortName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
@@ -149,16 +164,6 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @ArgumentCollection
     private GenomicsDBArgumentCollection genomicsdbArgs = new GenomicsDBArgumentCollection();
 
-    /**
-     * This option can only be activated if intervals are specified.
-     */
-    @Advanced
-    @Argument(fullName= ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME,
-            doc="Restrict variant output to sites that start within provided intervals",
-            optional=true)
-    private boolean onlyOutputCallsStartingInIntervals = false;
-
-
     @Argument(fullName = FORCE_OUTPUT_INTERVALS_NAME,
             suppressFileExpansion = true, doc = "sites at which to output genotypes even if non-variant in samples", optional = true)
     protected final List<String> forceOutputIntervalStrings = new ArrayList<>();
@@ -177,14 +182,13 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
     private VariantContextWriter vcfWriter;
 
-    /** these are used when {@link #onlyOutputCallsStartingInIntervals) is true */
-    private List<SimpleInterval> intervals;
-
     private OverlapDetector<GenomeLoc> forceOutputIntervals;
 
     private boolean forceOutputIntervalsPresent;
 
     private GenotypeGVCFsEngine gvcfEngine;
+
+
 
     /**
      * Get the largest interval per contig that contains the intervals specified on the command line.
@@ -248,21 +252,12 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         final VCFHeader inputVCFHeader = getHeaderForVariants();
 
-        if(onlyOutputCallsStartingInIntervals) {
-            if( !hasUserSuppliedIntervals()) {
-                throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " was specified.");
-            }
-        }
-
-        intervals = hasUserSuppliedIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
-                Collections.emptyList();
-
         annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false, keepCombined);
 
         merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput);
 
         //methods that cannot be called in engine bc its protected
-        Set<VCFHeaderLine> defaultToolVCFHeaderLines = getDefaultToolVCFHeaderLines();
+        final Set<VCFHeaderLine> defaultToolVCFHeaderLines = getDefaultToolVCFHeaderLines();
         vcfWriter = createVCFWriter(outputFile);
 
         //create engine object
@@ -270,7 +265,6 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         //call initialize method in engine class that creates VCFWriter object and writes a header to it
         vcfWriter = gvcfEngine.setupVCFWriter(defaultToolVCFHeaderLines, keepCombined, dbsnp, vcfWriter);
-
     }
 
     @Override
@@ -281,9 +275,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         final VariantContext regenotypedVC = gvcfEngine.callRegion(loc, variants, ref, features, merger, somaticInput, tlodThreshold, afTolerance, forceOutput);
 
         if (regenotypedVC != null) {
-            final SimpleInterval variantStart = new SimpleInterval(regenotypedVC.getContig(), regenotypedVC.getStart(), regenotypedVC.getStart());
-            if ((inForceOutputIntervals || !GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC)) &&
-                    (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains (variantStart)))) {
+            if ((inForceOutputIntervals || !GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC))) {
                 vcfWriter.add(regenotypedVC);
             }
         }
