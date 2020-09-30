@@ -41,7 +41,7 @@
 ##INFO=<ID=AF_Orig,Number=A,Type=Float,Description="Original AF">
 ##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
 ##INFO=<ID=AN_Orig,Number=1,Type=Integer,Description="Original AN">
-##INFO=<ID=AS_FilterStatus,Number=A,Type=String,Description="Filter status for each allele, as assessed by ApplyRecalibration. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles.">
+##INFO=<ID=AS_FilterStatus,Number=1,Type=String,Description="Filter status for each allele, as assessed by ApplyRecalibration. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles.">
 ##INFO=<ID=AS_SB_TABLE,Number=1,Type=String,Description="Allele-specific forward/reverse read counts for strand bias tests">
 ##INFO=<ID=AS_UNIQ_ALT_READ_COUNT,Number=1,Type=Integer,Description="Number of reads with unique start and mate end positions for each alt at a variant site">
 ##INFO=<ID=CONTQ,Number=1,Type=Float,Description="Phred-scaled qualities that alt allele are not due to contamination">
