@@ -66,7 +66,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
         this.computeFRD = useFRDModel;
         this.allelePadding = allelePadding;
         this.maxEffectiveDepthAdjustment = maxEffectiveDepthAdjustment;
-        this.dragstrParams = Utils.nonNull(dragstrParams, "no null dragstrParams allowed");
+        this.dragstrParams = dragstrParams;
 
         if (!(computeBQD || computeFRD)) {
             throw new GATKException("DRAGENGenotypesModel is intended for computing BQD/FRD adjustments but both BQD and FRD are disabled, use IndependentSamplesGenotypesModel instead");
