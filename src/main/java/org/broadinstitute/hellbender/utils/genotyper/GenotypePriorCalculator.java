@@ -171,7 +171,7 @@ public final class GenotypePriorCalculator {
                 .map(allele -> {
                     if (allele.isReference()) {
                         return AlleleType.REF;
-                    } else if (allele.isCalled() && allele.isSymbolic()) {
+                    } else if (allele.isCalled() && !allele.isSymbolic()) {
                         return allele.length() == referenceLength ? AlleleType.SNP : AlleleType.INDEL;
                     } else if (allele.equals(Allele.SV_SIMPLE_INS) || allele.equals(Allele.SV_SIMPLE_DEL)) {
                         throw new IllegalArgumentException("cannot handle symbolic indels: " + allele);

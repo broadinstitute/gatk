@@ -189,7 +189,9 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     private double phredNoVariantPosteriorProbability(final GenotypesContext gc) {
         return gc.stream()
                 .map(gt -> VariantContextGetters.getAttributeAsDoubleArray(gt, VCFConstants.GENOTYPE_POSTERIORS_KEY, () -> new double[]{Double.NaN}, Double.NaN))
-                .mapToDouble(probs -> probs[0] - QualityUtils.phredSum(probs))
+                //TODO reverting the following a change during refactoring, more sound but different to what it was:
+                //        .mapToDouble(probs -> probs[0] - QualityUtils.phredSum(probs))
+                .mapToDouble(probs -> probs[0])
                 .filter(d -> !Double.isNaN(d))
                 // We do not want to return 0 if empty but NaN,
                 // so rather than simply call .sum() we have a custom reduce

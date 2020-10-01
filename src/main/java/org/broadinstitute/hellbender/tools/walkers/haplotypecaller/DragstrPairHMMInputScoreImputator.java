@@ -66,8 +66,12 @@ public class DragstrPairHMMInputScoreImputator implements PairHMMInputScoreImput
         for (int i = 0; i < length - 1; i++) {
             final int period = analyzer.mostRepeatedPeriod(i);
             final int repeats = analyzer.numberOfMostRepeats(i);
-            gop[i] = (byte) Math.round(Math.min(MAX_GOP_IN_READ, params.gop(period, repeats)));
-            gcp[i] = (byte) Math.round(params.gcp(period, repeats));
+            gop[i] = (byte) params.gop(period, repeats);
+            gcp[i] = (byte) params.gcp(period, repeats);
+            //TODO it makes sense to round the probs to the nearest integer?
+            //TODO cap GOP by MAX_GOP_IN_READ (40) as in practice this happen in DRAGEN:
+            //gop[i] = (byte) Math.round(Math.min(MAX_GOP_IN_READ, params.gop(period, repeats)));
+            //gcp[i] = (byte) Math.round(params.gcp(period, repeats));
         }
 
         gop[length - 1] = GOP_AT_THE_END_OF_READ;

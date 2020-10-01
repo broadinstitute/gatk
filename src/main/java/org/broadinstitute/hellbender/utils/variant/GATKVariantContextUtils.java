@@ -320,18 +320,18 @@ public final class GATKVariantContextUtils {
                 final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, allelesToUse.size());
                 final double[] log10Priors = gpc.getLog10Priors(glCalc, allelesToUse);
                 final double[] log10Posteriors = MathUtils.ebeAdd(log10Priors, genotypeLikelihoods);
-                final double[] normaizedLog10Posteriors = MathUtils.scaleLogSpaceArrayForNumericalStability(log10Posteriors);
+                final double[] normalizedLog10Posteriors = MathUtils.scaleLogSpaceArrayForNumericalStability(log10Posteriors);
                 // Update GP and PG annotations:
-                gb.attribute(VCFConstants.GENOTYPE_POSTERIORS_KEY, Arrays.stream(normaizedLog10Posteriors)
+                gb.attribute(VCFConstants.GENOTYPE_POSTERIORS_KEY, Arrays.stream(normalizedLog10Posteriors)
                         .map(v -> v == 0.0 ? 0.0 : v * -10) // the reason for the == 0.0 is to avoid a signed 0 output "-0.0"
                         .mapToObj(GATKVariantContextUtils::formatGP).toArray());
-                gb.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, Arrays.stream(normaizedLog10Posteriors)
+                gb.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, Arrays.stream(log10Priors)
                         .map(v -> v == 0.0 ? 0.0 : v * -10)
                         .mapToObj(GATKVariantContextUtils::formatGP).toArray());
                 // Set the GQ accordingly
                 final int maxPosteriorIndex = MathUtils.maxElementIndex(log10Posteriors);
                 if ( allelesToUse.size() > 0 ) {
-                    gb.log10PError(getGQLog10FromPosteriors(maxPosteriorIndex, log10Posteriors));
+                    gb.log10PError(getGQLog10FromPosteriors(maxPosteriorIndex, normalizedLog10Posteriors));
                 }
                 // Finally we update the genotype alleles.
                 gb.alleles(glCalc.genotypeAlleleCountsAt(maxPosteriorIndex).asAlleleList(allelesToUse));
@@ -339,7 +339,7 @@ public final class GATKVariantContextUtils {
         }
     }
 
-    private static double getGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] log10Posteriors) {
+    private static double getGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] /**/log10Posteriors) {
         if (bestGenotypeIndex < 0) {
             return CommonInfo.NO_LOG10_PERROR;
         } else {

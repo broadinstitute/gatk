@@ -86,8 +86,8 @@ public class DragstrParamsUnitTest extends BaseTest {
             Assert.assertEquals(params.gop(i, params.maximumRepeats()), params.gop(i, params.maximumRepeats() * 31 + 11)); // any large repeat-length would do.
             Assert.assertEquals(params.gcp(i, params.maximumRepeats()), params.gcp(i, params.maximumRepeats() + 1));
             Assert.assertEquals(params.gcp(i, params.maximumRepeats()), params.gcp(i, params.maximumRepeats() * 131 + 911));  // any large repeat-length would do.
-            Assert.assertEquals(params.gcp(i, params.maximumRepeats()), params.api(i, params.maximumRepeats() + 1));
-            Assert.assertEquals(params.gcp(i, params.maximumRepeats()), params.api(i, params.maximumRepeats() * 311 + 1193));  // any large repeat-length would do.
+            Assert.assertEquals(params.api(i, params.maximumRepeats()), params.api(i, params.maximumRepeats() + 1));
+            Assert.assertEquals(params.api(i, params.maximumRepeats()), params.api(i, params.maximumRepeats() * 311 + 1193));  // any large repeat-length would do.
         }
     }
 
