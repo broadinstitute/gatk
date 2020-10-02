@@ -201,6 +201,35 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
      * Test that the this version of DRAGEN-GATK has not changed relative to the last version with the recommended arguments enabled
      */
     @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testDRAGENDefaultArgIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testDragenSimpleModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk4.DRAGEN.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--dragen-mode",
+                // STRE arguments
+                "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+        };
+
+        runCommandLine(args);
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
+    /*
+     * Test that the this version of DRAGEN-GATK has not changed relative to the last version with the recommended arguments enabled
+     */
+    @Test(dataProvider="HaplotypeCallerTestInputs")
     public void testDRAGENGATKModeIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
