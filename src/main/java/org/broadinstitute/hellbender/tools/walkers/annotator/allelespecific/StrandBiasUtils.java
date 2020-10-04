@@ -25,8 +25,7 @@ public class StrandBiasUtils {
         final Map<String, Object> annotations = new HashMap<>();
         final ReducibleAnnotationData<List<Integer>> myData = new AlleleSpecificAnnotationData<>(vc.getAlleles(),null);
         getStrandCountsFromLikelihoodMap(vc, likelihoods, myData, MIN_COUNT);
-        Map<Allele, List<Integer>> perAlleleValues = new LinkedHashMap<>(myData.getAttributeMap());
-        perAlleleValues.values().removeIf(Objects::isNull);
+        final Map<Allele, List<Integer>> perAlleleValues = myData.getAttributeMap();
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), perAlleleValues);
         annotations.put(key, annotationString);
         return annotations;

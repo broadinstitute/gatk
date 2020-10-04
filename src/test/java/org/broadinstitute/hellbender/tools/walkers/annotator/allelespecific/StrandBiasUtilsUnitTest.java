@@ -28,7 +28,7 @@ public class StrandBiasUtilsUnitTest extends GATKBaseTest {
      * Test for issue #6766
      */
     @Test
-    public void testMakeRawAnnotationStrings() {
+    public void testMakeRawAnnotationStringsNullPointerExceptionIssue6766() {
         VariantContext vc = makeVC(1);
         Map<Allele, List<Integer>> perAlleleValues = new LinkedHashMap<>();
         perAlleleValues.put(REF, Arrays.asList(2, 5));

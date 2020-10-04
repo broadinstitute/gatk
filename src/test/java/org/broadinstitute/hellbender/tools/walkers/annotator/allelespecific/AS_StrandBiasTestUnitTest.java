@@ -19,7 +19,7 @@ public class AS_StrandBiasTestUnitTest extends GATKBaseTest {
      * Test for issue #6766
      */
     @Test
-    public void testCombineRawData() {
+    public void testCombineRawDataNullPointerExceptionIssue6766() {
         final List<Allele> vcAlleles = Arrays.asList(REF, ALT);
         final List<ReducibleAnnotationData<?>> combinedVCdata = new ArrayList<>();
         // The commented out code would be a normal way to create the combinedVCdata, but this did not reproduce the null pointer exception
