@@ -15,7 +15,7 @@ gcloud compute instances create ${NAME} \
 --project broad-ml4cvd \
 --zone us-central1-a \
 --image-project broad-ml4cvd \
---image-family ml4h-image \
+--image-family ml4cvd-image \
 --boot-disk-type=pd-ssd \
 --boot-disk-size=${DISK_SIZE} \
 --service-account 783282864357-compute@developer.gserviceaccount.com \
