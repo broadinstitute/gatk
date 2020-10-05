@@ -102,31 +102,16 @@ public class ReferenceBlockConcordance extends AbstractConcordanceWalker {
         return variantContext.getGenotypes().get(0).isHomRef();
     }
 
-    private void evaluateNewContig(TruthVersusEval truthVersusEval) {
-        currentTruthVariantContext = null;
-        currentEvalVariantContext = null;
-
-        currentContig = truthVersusEval.getTruthIfPresentElseEval().getContig();
-    }
-
     private Pair<Integer, Integer> extractLengthAndGQ(VariantContext variant) {
-        final SimpleInterval interval = new SimpleInterval(variant);
-
         if (variant.getGenotypes().size() != 1) {
             throw new IllegalStateException(String.format("A multisample GVCF file was provided, however, only single sample GVCFs are currently supported. This occurred when reading \"%s\".", variant.toStringDecodeGenotypes()));
         }
         final Genotype genotype = variant.getGenotype(0);
-        final int gq = genotype.getGQ();
-        return new Pair<>(interval.getLengthOnReference(), gq);
+        return new Pair<>(variant.getLengthOnReference(), genotype.getGQ());
     }
 
     @Override
     protected void apply(TruthVersusEval truthVersusEval, ReadsContext readsContext, ReferenceContext refContext) {
-        // New contig or beginning of file
-        if (!truthVersusEval.getTruthIfPresentElseEval().getContig().equals(currentContig)) {
-            evaluateNewContig(truthVersusEval);
-        }
-
         // Truth
         if (truthVersusEval.hasTruth()) {
             currentTruthVariantContext = truthVersusEval.getTruth();
@@ -142,10 +127,10 @@ public class ReferenceBlockConcordance extends AbstractConcordanceWalker {
         }
 
         final int currentPosition = truthVersusEval.getTruthIfPresentElseEval().getStart();
-        if (currentTruthVariantContext != null && currentPosition > currentTruthVariantContext.getEnd()) {
+        if (currentTruthVariantContext != null && !currentTruthVariantContext.overlaps(truthVersusEval)) {
             currentTruthVariantContext = null;
         }
-        if (currentEvalVariantContext != null && currentPosition > currentEvalVariantContext.getEnd()) {
+        if (currentEvalVariantContext != null && !currentEvalVariantContext.overlaps(truthVersusEval)) {
             currentEvalVariantContext = null;
         }
 

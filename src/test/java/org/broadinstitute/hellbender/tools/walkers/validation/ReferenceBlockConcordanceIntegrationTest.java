@@ -1,12 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -77,6 +78,69 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
         });
     }
 
+    @Test
+    public void testMultipleContigs() throws Exception {
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "multiple-contigs-truth.gvcf");
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "multiple-contigs-eval.gvcf");
+        final Path truthBlockHistogramFile = createTempPath("truth_block_histogram", ".tsv");
+        final Path evalBlockHistogramFile = createTempPath("eval_block_histogram", ".tsv");
+        final Path confidenceConcordanceHistogramFile = createTempPath("confidence_concordance_histogram", ".tsv");
+
+        final Histogram<String> expectedTruthBlockHistogram = new Histogram<>();
+        final Histogram<String> expectedEvalBlockHistogram = new Histogram<>();
+        final Histogram<String> expectedConfidenceConcordanceHistogram = new Histogram<>();
+
+        // Expected values
+        // Truth block histogram
+        Stream.of(new Object[][] {
+                { "1,99", 1},
+                { "1,98", 1},
+                { "2,99", 1},
+                { "5,99", 3},
+        }).collect(Collectors.toMap(data -> (String) data[0], data -> (Integer) data[1]))
+          .forEach(expectedTruthBlockHistogram::increment);
+        // Eval block histogram
+        Stream.of(new Object[][] {
+                { "2,99", 2},
+                { "3,99", 1},
+                { "1,99", 1},
+        }).collect(Collectors.toMap(data -> (String) data[0], data -> (Integer) data[1]))
+          .forEach(expectedEvalBlockHistogram::increment);
+        // Confidence concordance
+        Stream.of(new Object[][] {
+                { "99,99", 5},
+                { "98,99", 1},
+        }).collect(Collectors.toMap(data -> (String) data[0], data -> (Integer) data[1]))
+          .forEach(expectedConfidenceConcordanceHistogram::increment);
+
+        final String[] args = {
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.toString(),
+                "--" + ReferenceBlockConcordance.TRUTH_BLOCK_HISTOGRAM_LONG_NAME, truthBlockHistogramFile.toString(),
+                "--" + ReferenceBlockConcordance.EVAL_BLOCK_HISTOGRAM_LONG_NAME, evalBlockHistogramFile.toString(),
+                "--" + ReferenceBlockConcordance.CONFIDENCE_CONCORDANCE_HISTOGRAM_LONG_NAME, confidenceConcordanceHistogramFile.toString(),
+        };
+        runCommandLine(args);
+
+        final MetricsFile<?, String> truthBlockMetrics = new MetricsFile<>();
+        truthBlockMetrics.read(new FileReader(truthBlockHistogramFile.toFile()));
+        Assert.assertEquals(truthBlockMetrics.getNumHistograms(), 1);
+        final Histogram<String> truthBlockHistogram = truthBlockMetrics.getHistogram();
+        Assert.assertEquals(truthBlockHistogram, expectedTruthBlockHistogram);
+
+        final MetricsFile<?, String> evalBlockMetrics = new MetricsFile<>();
+        evalBlockMetrics.read(new FileReader(evalBlockHistogramFile.toFile()));
+        Assert.assertEquals(evalBlockMetrics.getNumHistograms(), 1);
+        final Histogram<String> evalBlockHistogram = evalBlockMetrics.getHistogram();
+        Assert.assertEquals(evalBlockHistogram, expectedEvalBlockHistogram);
+
+        final MetricsFile<?, String> confidenceConcordanceMetrics = new MetricsFile<>();
+        confidenceConcordanceMetrics.read(new FileReader(confidenceConcordanceHistogramFile.toFile()));
+        Assert.assertEquals(confidenceConcordanceMetrics.getNumHistograms(), 1);
+        final Histogram<String> confidenceConcordanceHistogram = confidenceConcordanceMetrics.getHistogram();
+        Assert.assertEquals(confidenceConcordanceHistogram, expectedConfidenceConcordanceHistogram);
+    }
+
     private Pair<File, File> writeTestGVCFs(List<VariantContext> truthVariants, List<VariantContext> evalVariants) {
         final File truthFile = createTempFile("truth", ".gvcf");
         final GVCFWriter truthWriter = new GVCFWriter(
@@ -85,10 +149,9 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 2,
                 true
                 );
-        truthWriter.writeHeader(new VCFHeader(new HashSet<>(Arrays.asList(
-                new VCFHeaderLine("fileformat", "VCFv4.2"),
-                new VCFHeaderLine("contig", "<ID=test_contig,length=1000>")
-            )), Collections.singletonList("TESTSAMPLE")));
+        final VCFHeader header = new VCFHeader(new HashSet<>(), Collections.singletonList("TESTSAMPLE"));
+        header.setSequenceDictionary(new SAMSequenceDictionary(Collections.singletonList(new SAMSequenceRecord("test_contig", 1000))));
+        truthWriter.writeHeader(header);
 
         truthVariants.forEach(truthWriter::add);
         truthWriter.close();
@@ -100,10 +163,7 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 2,
                 true
         );
-        evalWriter.writeHeader(new VCFHeader(new HashSet<>(Arrays.asList(
-                new VCFHeaderLine("fileformat", "VCFv4.2"),
-                new VCFHeaderLine("contig", "<ID=test_contig,length=1000>")
-        )), Collections.singletonList("TESTSAMPLE")));
+        evalWriter.writeHeader(header);
 
         evalVariants.forEach(evalWriter::add);
         evalWriter.close();
@@ -111,16 +171,12 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
         return new Pair<>(truthFile, evalFile);
     }
 
-    private static VariantContext constructTestVariantContext(final String altAllele, final int start, final int stop, final int confidence) {
-        final boolean isNonRef = altAllele.equals("<NON_REF>");
-        final Allele refAllele = Allele.create("A", true);
-        final List<Allele> alleles = Arrays.asList(
-                refAllele,
-                isNonRef ? Allele.NON_REF_ALLELE : Allele.create(altAllele)
-        );
+    private static VariantContext constructTestVariantContext(final Allele altAllele, final int start, final int stop, final int confidence) {
+        final Allele refAllele = Allele.REF_A;
+        final List<Allele> alleles = Arrays.asList(refAllele, altAllele);
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder("TEST", "test_contig", start, stop, alleles);
-        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder("TESTSAMPLE", isNonRef ? GATKVariantContextUtils.homozygousAlleleList(refAllele, 2) : alleles);
-        if (isNonRef) {
+        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder("TESTSAMPLE", altAllele.isNonRefAllele() ? GATKVariantContextUtils.homozygousAlleleList(refAllele, 2) : alleles);
+        if (altAllele.isNonRefAllele()) {
             genotypeBuilder.GQ(confidence);
             genotypeBuilder.PL(new int[] { 0, 0, 0 });
             variantContextBuilder.attribute(VCFConstants.END_KEY, stop);
@@ -137,11 +193,11 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("C", 1, 1, 99)
+                                constructTestVariantContext(Allele.ALT_C, 1, 1, 99)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 1, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 1, 99)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
@@ -160,11 +216,11 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 1, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 1, 99)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 1, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 1, 99)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
@@ -183,12 +239,12 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 10, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 10, 99)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("C", 5, 5, 99),
-                                constructTestVariantContext("<NON_REF>", 6, 10, 99)
+                                constructTestVariantContext(Allele.ALT_C, 5, 5, 99),
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 6, 10, 99)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
@@ -207,11 +263,11 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 10, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 10, 99)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 6, 10, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 6, 10, 99)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
@@ -230,12 +286,12 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 11, 20, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 11, 20, 99)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 3, 6, 98),
-                                constructTestVariantContext("<NON_REF>", 11, 20, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 3, 6, 98),
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 11, 20, 99)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
@@ -255,11 +311,11 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 11, 20, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 11, 20, 99)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 3, 6, 98)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 3, 6, 98)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
@@ -277,12 +333,12 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 10, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 10, 99)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 9, 99),
-                                constructTestVariantContext("C", 10, 10, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 9, 99),
+                                constructTestVariantContext(Allele.ALT_C, 10, 10, 99)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
@@ -301,12 +357,12 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 10, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 10, 99)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 7, 99),
-                                constructTestVariantContext("C", 8, 8, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 7, 99),
+                                constructTestVariantContext(Allele.ALT_C, 8, 8, 99)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
@@ -325,12 +381,12 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 10, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 10, 99)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 7, 99),
-                                constructTestVariantContext("C", 10, 10, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 7, 99),
+                                constructTestVariantContext(Allele.ALT_C, 10, 10, 99)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
@@ -349,13 +405,13 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 10, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 10, 99)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 3, 99),
-                                constructTestVariantContext("<NON_REF>", 4, 6, 98),
-                                constructTestVariantContext("<NON_REF>", 7, 10, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 3, 99),
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 4, 6, 98),
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 7, 10, 99)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
@@ -377,14 +433,14 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 3, 99),
-                                constructTestVariantContext("<NON_REF>", 7, 10, 98)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 3, 99),
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 7, 10, 98)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 3, 99),
-                                constructTestVariantContext("<NON_REF>", 4, 6, 98),
-                                constructTestVariantContext("<NON_REF>", 7, 10, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 3, 99),
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 4, 6, 98),
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 7, 10, 99)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
@@ -407,14 +463,14 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 4, 99),
-                                constructTestVariantContext("<NON_REF>", 7, 10, 98)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 4, 99),
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 7, 10, 98)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 3, 99),
-                                constructTestVariantContext("<NON_REF>", 4, 6, 98),
-                                constructTestVariantContext("<NON_REF>", 7, 10, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 3, 99),
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 4, 6, 98),
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 7, 10, 99)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
@@ -438,13 +494,13 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 {
                         // Truth variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 3, 99)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 3, 99)
                         ),
                         // Eval variants
                         Arrays.asList(
-                                constructTestVariantContext("<NON_REF>", 1, 1, 99),
-                                constructTestVariantContext("<NON_REF>", 2, 2, 98),
-                                constructTestVariantContext("<NON_REF>", 3, 3, 97)
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 1, 1, 99),
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 2, 2, 98),
+                                constructTestVariantContext(Allele.NON_REF_ALLELE, 3, 3, 97)
                         ),
                         // Truth block histogram
                         Stream.of(new Object[][] {
