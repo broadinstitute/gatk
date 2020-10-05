@@ -18,6 +18,7 @@ env:
   - SCALA_VERSION=2.11 RUN_CNV_SOMATIC_WDL=true TESTS_REQUIRE_GCLOUD=true
   - SCALA_VERSION=2.11 RUN_M2_WDL=true TESTS_REQUIRE_GCLOUD=true
   - SCALA_VERSION=2.11 RUN_CNN_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - SCALA_VERSION=2.11 RUN_VARIANTSTORE_WDL=true TESTS_REQUIRE_GCLOUD=true
   - SCALA_VERSION=2.11 TEST_TYPE=wdlGen
   global:
   #gradle needs this
@@ -91,7 +92,7 @@ before_install:
     echo "Done testing github authentication";
   fi;
 # Download Cromwell jar -- if you change the version, please change the CROMWELL_JAR env variable above, too.
-- if [[ $TEST_TYPE == wdlGen || $RUN_CNV_GERMLINE_COHORT_WDL == true || $RUN_CNV_GERMLINE_CASE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true ]]; then
+- if [[ $TEST_TYPE == wdlGen || $RUN_CNV_GERMLINE_COHORT_WDL == true || $RUN_CNV_GERMLINE_CASE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true || $RUN_VARIANTSTORE_WDL == true ]]; then
     wget -O $CROMWELL_JAR https://github.com/broadinstitute/cromwell/releases/download/51/cromwell-51.jar;
     wget -O $WOMTOOL_JAR https://github.com/broadinstitute/cromwell/releases/download/51/womtool-51.jar;
   fi;
@@ -112,7 +113,7 @@ install:
   else
     ./gradlew assemble;
     ./gradlew installDist;
-    if [[ $RUN_CNV_GERMLINE_COHORT_WDL == true || $RUN_CNV_GERMLINE_CASE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true ]]; then
+    if [[ $RUN_CNV_GERMLINE_COHORT_WDL == true || $RUN_CNV_GERMLINE_CASE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true || $RUN_VARIANTSTORE_WDL == true ]]; then
       echo "building a shadow jar for the wdl";
       ./gradlew shadowJar;
     elif [[ $TEST_TYPE == cloud ]]; then
@@ -147,6 +148,9 @@ script:
   elif [[ $RUN_CNN_WDL == true ]]; then
     echo "Running CNN WDL";
     travis_wait 60 sudo bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
+  elif [[ $RUN_VARIANTSTORE_WDL == true ]]; then
+    echo "Running variantstore WDL";
+    travis_wait 60 sudo bash scripts/variantstore_cromwell_tests/run_variantstore_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image and running appropriate tests..." ;
     if [ ${TRAVIS_PULL_REQUEST} != false ]; then
