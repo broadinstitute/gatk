@@ -478,7 +478,7 @@ public final class FuncotatorEngine implements AutoCloseable {
         }
         else if ( funcotatorArgs.referenceVersion.equals(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersionHg19) &&
                         FuncotatorUtils.isSequenceDictionaryUsingB37Reference(sequenceDictionaryForDrivingVariants) ) {
-            logger.info("VCF sequence dictionary detected as B37 in HG19 annotation mode.  Conversion required.");
+            logger.info("VCF sequence dictionary detected as B37 in HG19 annotation mode.  Performing conversion.");
             mustConvertInputContigsToHg19 = true;
         }
         else {
