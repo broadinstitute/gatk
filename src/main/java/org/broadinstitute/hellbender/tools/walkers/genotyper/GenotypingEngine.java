@@ -208,7 +208,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             // here we need to get indices of genotypes composed of REF and * alleles
             final int ploidy = gt.getPloidy();
             final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, alleles.size());
-git st            final int spanDelIndex = alleles.indexOf(Allele.SPAN_DEL);
+            final int spanDelIndex = alleles.indexOf(Allele.SPAN_DEL);
             // allele counts are in the GenotypeLikelihoodCalculator format of {ref index, ref count, span del index, span del count}
             final double[] nonVariantLog10Posteriors = IntStream.rangeClosed(0, ploidy)
                     .map(n -> glCalc.alleleCountsToIndex(0, ploidy - n, spanDelIndex, n))
