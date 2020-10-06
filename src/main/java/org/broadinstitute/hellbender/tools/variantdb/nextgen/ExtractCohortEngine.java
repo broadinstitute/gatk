@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
+import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import com.google.common.collect.Sets;
@@ -117,12 +118,12 @@ public class ExtractCohortEngine {
                 // create the query string
                 String q = "SELECT " + StringUtils.join(SchemaUtils.ARRAY_COHORT_FIELDS,",") + " FROM " + cohortTableRef.getFQTableName() + " ORDER BY " + SchemaUtils.LOCATION_FIELD_NAME;
                 TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), cohortTableRef.tableProject, cohortTableRef.tableDataset, q);
-                createVariantsFromSortedTableResults(new QueryAPIRowReader(tr));
+                createVariantsFromSortedTableResults(tr);
                 break;
         }
     }
 
-    private void createVariantsFromSortedTableResults(final QueryAPIRowReader reader) {
+    private void createVariantsFromSortedTableResults(final TableResult tr) {
 
 //        final Set<String> columnNames = new HashSet<>();
 //        if ( schema.getField(POSITION_FIELD_NAME) == null || schema.getField(VALUES_ARRAY_FIELD_NAME) == null ) {
@@ -130,6 +131,8 @@ public class ExtractCohortEngine {
 //        }
 //        schema.getField(VALUES_ARRAY_FIELD_NAME).schema().getElementType().getFields().forEach(field -> columnNames.add(field.name()));
 //        validateSchema(columnNames);
+
+        Iterator<FieldValueList> reader = tr.iterateAll().iterator();
 
         List<GenericRecord> sampleRecords = new ArrayList<>();
         long currentLocation = -1;

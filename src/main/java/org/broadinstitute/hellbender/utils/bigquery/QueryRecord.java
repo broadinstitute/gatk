@@ -24,7 +24,6 @@ public class QueryRecord implements GenericRecord {
     @Override
     public void put(int i, Object v) {
         throw new RuntimeException("Not implemented");
-
     }
 
     @Override
