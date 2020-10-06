@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -195,8 +196,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     private double extractPNoAlt(final List<Allele> alleles, final Genotype gt) {
         final double[] gpArray = VariantContextGetters.getAttributeAsDoubleArray(gt, VCFConstants.GENOTYPE_POSTERIORS_KEY, () -> new double[]{Double.NaN}, Double.NaN);
-        final double pNoAlt = extractPNoAlt(alleles, gt, gpArray);
-        return pNoAlt;
+        return extractPNoAlt(alleles, gt, gpArray);
     }
 
     private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
@@ -208,11 +208,12 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             // here we need to get indices of genotypes composed of REF and * alleles
             final int ploidy = gt.getPloidy();
             final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, alleles.size());
-            final int spanDelIndex = alleles.indexOf(Allele.SPAN_DEL);
+git st            final int spanDelIndex = alleles.indexOf(Allele.SPAN_DEL);
             // allele counts are in the GenotypeLikelihoodCalculator format of {ref index, ref count, span del index, span del count}
-            final int[] nonVariantIndices = new IndexRange(0, ploidy+1).mapToInteger(n -> glCalc.alleleCountsToIndex(0, ploidy - n, spanDelIndex, n));
-
-            final double[] nonVariantLog10Posteriors = MathUtils.applyToArray(nonVariantIndices, n -> posteriors[n]);
+            final double[] nonVariantLog10Posteriors = IntStream.rangeClosed(0, ploidy)
+                    .map(n -> glCalc.alleleCountsToIndex(0, ploidy - n, spanDelIndex, n))
+                    .mapToDouble(n -> posteriors[n])
+                    .toArray();
 
             // when the only alt allele is the spanning deletion the probability that the site is non-variant
             // may be so close to 1 that finite precision error in log10SumLog10 (called by phredSum) yields a positive value,
