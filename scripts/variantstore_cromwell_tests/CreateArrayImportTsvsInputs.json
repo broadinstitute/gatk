@@ -1,0 +1,8 @@
+{
+"CreateArrayImportTsvs.gatk_override":"gs://broad-dsp-spec-ops/scratch/andrea/gatk-array-preprod.jar",
+"CreateArrayImportTsvs.output_directory":"gs://spec-ops-aou/andrea",
+"CreateArrayImportTsvs.input_vcf":"gs://spec-ops-aou/andrea/AoU/arrays/204126160095_R01C01.vcf.gz",
+"CreateArrayImportTsvs.input_metrics":"",
+"CreateArrayImportTsvs.probe_info_file":"gs://broad-andrea-private/AoU/arrays/GDA-8v1-0_A1.csv",
+"CreateArrayImportTsvs.sampleMap":"gs://broad-andrea-private/arrays/sampleMap.txt"
+}
