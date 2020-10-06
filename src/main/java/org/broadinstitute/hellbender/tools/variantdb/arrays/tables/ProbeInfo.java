@@ -3,15 +3,16 @@ package org.broadinstitute.hellbender.tools.variantdb.arrays.tables;
 import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 
+import com.google.cloud.bigquery.TableResult;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.bigquery.QueryAPIRowReader;
 import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 public class ProbeInfo {
@@ -58,7 +59,9 @@ public class ProbeInfo {
         this.flag = null;
     }
 
-    public static Map<String, ProbeInfo> createProbeDataForIngest(final QueryAPIRowReader reader) {
+    public static Map<String, ProbeInfo> createProbeDataForIngest(final TableResult tr) {
+        final Iterator<FieldValueList> reader = tr.iterateAll().iterator();
+
         final Map<String, ProbeInfo> data = new HashMap<>();
 
         while (reader.hasNext()) {
