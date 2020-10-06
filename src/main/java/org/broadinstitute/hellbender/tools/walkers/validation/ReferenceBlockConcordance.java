@@ -77,24 +77,23 @@ public class ReferenceBlockConcordance extends AbstractConcordanceWalker {
     protected GATKPath confidenceConcordanceHistogramFile;
 
     // TODO this should be a Histogram<Pair<Integer, Integer>>, however, the MetricsFile class cannot read
-    // arbitrary types, therefore, it must be converted to a String, which is may be slower
+    // arbitrary types, therefore, it must be converted to a String, which may be slower
     private final Histogram<String> truthBlockHistogram = new Histogram<>();
     private final Histogram<String> evalBlockHistogram = new Histogram<>();
     private final Histogram<String> confidenceConcordanceHistogram = new Histogram<>();
 
     private VariantContext currentTruthVariantContext = null;
     private VariantContext currentEvalVariantContext = null;
-    private String currentContig = null;
 
     @Override
     protected Predicate<VariantContext> makeTruthVariantFilter() {
-        // Explicitly allow symbolic variants
+        // Only allow HomRef sites
         return this::isHomRef;
     }
 
     @Override
     protected Predicate<VariantContext> makeEvalVariantFilter() {
-        // Explicitly allow symbolic variants
+        // Only allow HomRef sites
         return this::isHomRef;
     }
 
@@ -126,7 +125,6 @@ public class ReferenceBlockConcordance extends AbstractConcordanceWalker {
             evalBlockHistogram.increment(extractLengthAndGQ(truthVersusEval.getEval()).toString());
         }
 
-        final int currentPosition = truthVersusEval.getTruthIfPresentElseEval().getStart();
         if (currentTruthVariantContext != null && !currentTruthVariantContext.overlaps(truthVersusEval)) {
             currentTruthVariantContext = null;
         }
