@@ -55,6 +55,9 @@ workflow CNVSomaticPanelWorkflow {
       File? gatk4_jar_override
       Int? preemptible_attempts
 
+      # Required if BAM/CRAM is in a requester pays bucket
+      String? gcs_project_for_requester_pays
+
       ####################################################
       #### optional arguments for PreprocessIntervals ####
       ####################################################

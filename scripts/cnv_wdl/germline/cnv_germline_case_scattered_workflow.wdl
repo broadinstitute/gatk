@@ -40,6 +40,9 @@ workflow CNVGermlineCaseScatteredWorkflow {
       File? gatk4_jar_override
       Int? preemptible_attempts
 
+      # Required if BAM/CRAM is in a requester pays bucket
+      String? gcs_project_for_requester_pays
+
       ####################################################
       #### optional arguments for PreprocessIntervals ####
       ####################################################
@@ -148,6 +151,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
                 gatk_docker = gatk_docker,
                 gatk4_jar_override = gatk4_jar_override,
                 preemptible_attempts = preemptible_attempts,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays,
                 padding = padding,
                 bin_length = bin_length,
                 disabled_read_filters_for_collect_counts = disabled_read_filters_for_collect_counts,
