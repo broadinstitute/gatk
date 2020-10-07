@@ -104,6 +104,10 @@ import java.util.stream.IntStream;
  *          -O filtered_intervals.interval_list
  * </pre>
  *
+ * <h3>Caveats</h3>
+ * <p>Note that a minimum mappability greater than zero and/or a maximum segmental duplication content less than one
+ * both have the potential to exclude real variant calls by excluding their intervals due to these criteria.</p>
+ *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
@@ -172,7 +176,7 @@ public final class FilterIntervals extends CommandLineProgram {
     private double maximumGCContent = 0.9;
 
     @Argument(
-            doc = "Minimum allowed value for mappability annotation (inclusive).  Note that values greater than 0.0 may exclude real variants in poor mappability regions.",
+            doc = "Minimum allowed value for mappability annotation (inclusive).",
             fullName = MINIMUM_MAPPABILITY_LONG_NAME,
             minValue = 0.,
             maxValue = 1.,
@@ -199,7 +203,7 @@ public final class FilterIntervals extends CommandLineProgram {
     private double minimumSegmentalDuplicationContent = 0.;
 
     @Argument(
-            doc = "Maximum allowed value for segmental-duplication-content annotation (inclusive).  Note that values less than 1.0 may exclude real variants in segmental duplications.",
+            doc = "Maximum allowed value for segmental-duplication-content annotation (inclusive).",
             fullName = MAXIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME,
             minValue = 0.,
             maxValue = 1.,
