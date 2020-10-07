@@ -124,7 +124,7 @@ public final class BaseUtils {
             if ( baseIndex == Base.N.ordinal() ) {
                 bases[i] = 'N';
             } else if ( errorOnBadReferenceBase && baseIndex == -1 ) {
-                throw new UserException.BadInput("We encountered a non-standard non-IUPAC base in the provided reference: '" + bases[i] + "'");
+                throw new UserException.BadInput("We encountered a non-standard non-IUPAC base in the provided input sequence: '" + bases[i] + "'");
             }
         }
         return bases;

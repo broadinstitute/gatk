@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.util.FileExtensions;
+import htsjdk.samtools.util.Log;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -1423,6 +1424,34 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertTrue(VariantContextTestUtils.streamVcf(output)
                 .allMatch(vc -> vc.isBiallelic() && (vc.getReference().length() == 1 || vc.getAlternateAllele(0).length() == 1)));
+    }
+
+    /*
+    Prior to IUPAC ReadTransformer fix, this test yields
+    java.lang.IllegalArgumentException: Unexpected base in allele bases 'ATTCATTTCACAAGGGTAAAGCTTTCTTTGGATTCAGCAGGTTGGAAAATCTGTTTTTCACCTTTCTGTGAATGGACGTTTGGGAGCTCATTGAGGCCAGTGRCAATAAAGGAGATATCTCAGGGTGAAAAATAAAAGACAGGAATGTGAGAATTGGCTTTGTGATGTGAGCATTCATTTCACAAAGTTAAACCTTTCTTTTCATTCAGCAGTTAGAAATCACTGGTTTTGTAGAATCTG'
+    where there's an R in that big long string representing the assembled haplotype.  The R is in the hg38 reference and
+    gets propagated into cram reads.
+     */
+    @Test
+    public void testAdjacentIUPACBasesinReads() {
+        final File bam = new File(TEST_FILES_DIR, "cramWithR.cram");
+        final String interval = "chr10:39239400-39239523";
+
+        final File output = createTempFile("output", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(bam)
+                .addReference(hg38Reference)
+                .addInterval(interval)
+                .addOutput(output)
+                //We can check the warning in the test log provided we're explicit about the logging level
+                .add(StandardArgumentDefinitions.VERBOSITY_NAME, Log.LogLevel.WARNING.name());
+        runCommandLine(args);
+
+        final List<VariantContext> outputVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+        Assert.assertEquals(outputVCs.size(), 1);
+        Assert.assertEquals(outputVCs.get(0).getStart(), 39239403);
+        Assert.assertEquals(outputVCs.get(0).getAlternateAllele(0).getBaseString(), "A");
     }
 
     // this test has a reference with 8 repeats of a 28-mer and an alt with 7 repeats.  This deletion left-aligns to the

@@ -173,6 +173,9 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     }
 
     @Override
+    public ReadTransformer makePreReadFilterTransformer() { return HaplotypeCallerEngine.makeStandardHCReadTransformer(); }
+
+    @Override
     public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() { return HaplotypeCallerEngine.getStandardHaplotypeCallerAnnotationGroups();}
 
     @Override
