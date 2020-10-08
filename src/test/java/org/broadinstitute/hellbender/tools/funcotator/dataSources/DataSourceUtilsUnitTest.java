@@ -8,6 +8,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -310,7 +311,13 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
                         DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
                         DataSourceUtils.MAX_DATE,
                         "v1.7.20200521"
-                }
+                },
+                {
+                        52,
+                        13,
+                        LocalDate.of(71999, Month.DECEMBER, 7),
+                        "v52.13.719991207"
+                },
         };
     }
 

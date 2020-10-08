@@ -152,8 +152,8 @@ final public class DataSourceUtils {
      */
     public static String getDataSourceVersionString(final int major, final int minor, final LocalDate date) {
         return String.format("v%d.%d.%d%02d%02d",
-                MIN_MAJOR_VERSION_NUMBER,
-                MIN_MINOR_VERSION_NUMBER,
+                major,
+                minor,
                 date.getYear(),
                 date.getMonthValue(),
                 date.getDayOfMonth()
