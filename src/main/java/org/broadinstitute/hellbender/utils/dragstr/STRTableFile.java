@@ -8,6 +8,7 @@ import htsjdk.samtools.util.Lazy;
 import htsjdk.samtools.util.LineReader;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.NullWriter;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.dragstr.DragstrLocus;
 import org.broadinstitute.hellbender.tools.dragstr.DragstrLocusUtils;
@@ -87,7 +88,7 @@ public final class STRTableFile implements AutoCloseable {
      * @param path path to the table zip file.
      * @return never {@code null}.
      */
-    public static STRTableFile open(final String path) {
+    public static STRTableFile open(final GATKPath path) {
         final File dir = Files.createTempDir();
         try {
             ZipUtils.unzip(path, dir, ESSENTIAL_FILES);

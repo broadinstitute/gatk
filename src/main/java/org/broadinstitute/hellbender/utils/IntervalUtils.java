@@ -1574,7 +1574,7 @@ public final class IntervalUtils {
      * @param <L> the locatable type.
      * @throws IllegalArgumentException if input is {@code null}.
      * @return never {@code null}, but perhaps an empty map. It is guarantee that no value in the map is an empty list upon return.
-     */ 
+     */
     public static <L extends Locatable> Map<String, List<SimpleInterval>> sortAndMergeIntervals(final Collection<SimpleInterval> input,
                                                                                                 final SAMSequenceDictionary dictionary, final IntervalMergingRule rule) {
         final GenomeLocParser parser = new GenomeLocParser(dictionary);

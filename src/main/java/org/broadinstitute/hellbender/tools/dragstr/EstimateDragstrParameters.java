@@ -66,7 +66,7 @@ public class EstimateDragstrParameters extends GATKTool {
     private DragstrHyperParameters hyperParameters = new DragstrHyperParameters();
 
     @Argument(shortName=STR_TABLE_PATH_SHORT_NAME, fullName=STR_TABLE_PATH_FULL_NAME, doc="location of the zip that contains the sampling sites for the reference")
-    private String strTablePath = null;
+    private GATKPath strTablePath = null;
 
     @Argument(fullName=PARALLEL_FULL_NAME, doc="run alignment data collection and  estimation in parallel")
     private boolean runInParallel = false;

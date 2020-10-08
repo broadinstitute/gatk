@@ -4,7 +4,6 @@ import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -65,6 +64,8 @@ public class STRDecimationTable {
      */
     public static final STRDecimationTable NONE = new STRDecimationTable(NO_DECIMATION_STR);
 
+    private final String description;
+
     private final int[][] decimationMatrix;
     private final long[][] decimationMask;
 
@@ -83,27 +84,9 @@ public class STRDecimationTable {
         } else {
             decimationMatrix = parseDecimationMatrixFromPath(spec);
         }
+        description = spec;
         decimationMask = calculateDecimationMask(decimationMatrix);
         counts = composeDecimationCounts(decimationMask);
-    }
-
-    /**
-     * Returns the decimation mask for a given period and repeat length.
-     * <p>
-     *     If the mask of a STR locus and this mask have any bit in common, the locus should be decimated/filtered out.
-     * </p>
-     * @param period
-     * @param repeats
-     * @return
-     */
-    public long decimationMask(final int period, final int repeats) {
-        ParamUtils.isPositive(period, "period must be positive");
-        ParamUtils.isPositive(repeats, "repeat length must be positive");
-
-        return (period < decimationMask.length &&
-                  repeats < decimationMatrix[period].length)
-                ? decimationMatrix[period][repeats]
-                : 0;
     }
 
     private long[][] composeDecimationCounts(final long[][] decimationMask) {
@@ -231,5 +214,10 @@ public class STRDecimationTable {
         } else {
             return decimationMatrix[period][repeatCount];
         }
+    }
+
+    @Override
+    public String toString() {
+        return description;
     }
 }

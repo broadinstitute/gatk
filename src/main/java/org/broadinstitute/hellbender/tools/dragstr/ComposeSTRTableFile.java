@@ -133,7 +133,8 @@ public final class ComposeSTRTableFile extends GATKTool {
     public void traverse() {
         final SAMSequenceDictionary dictionary = getBestAvailableSequenceDictionary();
         initializeMasks(dictionary);
-        try (final STRTableFileBuilder output = STRTableFileBuilder.newInstance(dictionary, decimationTable, generateSitesTextOutput, maxPeriod, maxRepeat)) {
+        try (final STRTableFileBuilder output = STRTableFileBuilder.newInstance(dictionary, decimationTable,
+                generateSitesTextOutput, maxPeriod, maxRepeat)) {
             output.annotate(COMMAND_LINE_ANNOTATION_NAME, getCommandLine());
             final Map<String, List<SimpleInterval>> intervalsByContig = composeAndGroupTraversalIntervalsByContig(dictionary);
             for (final Map.Entry<String, List<SimpleInterval>> contigEntry : intervalsByContig.entrySet()) {

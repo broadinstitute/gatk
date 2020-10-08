@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.dragstr.DragstrLocus;
 import org.broadinstitute.hellbender.tools.dragstr.DragstrLocusUtils;
 import org.broadinstitute.hellbender.utils.BinaryTableWriter;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.ZipUtils;
 import org.broadinstitute.hellbender.tools.dragstr.STRDecimationTable;
@@ -174,7 +175,7 @@ public final class STRTableFileBuilder implements AutoCloseable {
                     final long total = totalCounts[period][repeatLength];
                     final long emitted = emittedCounts[period][repeatLength];
                     final int decimation = decimationTable.decimationBit(period, repeatLength);
-                    final double actualDecimation = total > 0 ? (Math.log10(total) - Math.log10(emitted)): 0;
+                    final double actualDecimation = total > 0 ? (MathUtils.INV_LOG_2 * (Math.log(total) - Math.log(emitted))): 0;
                     writer.println(Utils.join("\t", period, repeatLength, total, emitted, decimation, Math.round(actualDecimation * 100) / 100.0));
                 }
             }
