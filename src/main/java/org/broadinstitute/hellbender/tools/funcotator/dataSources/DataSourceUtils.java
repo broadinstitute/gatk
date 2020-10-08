@@ -23,6 +23,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.*;
+import java.time.LocalDate;
+import java.time.Month;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,11 +59,11 @@ final public class DataSourceUtils {
 
     // Track our minimum version number here:
     @VisibleForTesting
-    static final int MIN_MAJOR_VERSION_NUMBER = 1;
+    static final int       MIN_MAJOR_VERSION_NUMBER = 1;
     @VisibleForTesting
-    static final int MIN_MINOR_VERSION_NUMBER = 6;
+    static final int       MIN_MINOR_VERSION_NUMBER = 6;
     @VisibleForTesting
-    static final Calendar MIN_DATE                = new GregorianCalendar(2019, Calendar.JANUARY, 24);
+    static final LocalDate MIN_DATE                 = LocalDate.of(2019, Month.JANUARY, 24);
 
     // Track out maximum version number here:
     @VisibleForTesting
@@ -69,16 +71,25 @@ final public class DataSourceUtils {
     @VisibleForTesting
     static final int MAX_MINOR_VERSION_NUMBER = 7;
     @VisibleForTesting
-    static final Calendar MAX_DATE            = new GregorianCalendar(2020, Calendar.MAY, 21);
+    static final LocalDate MAX_DATE            = LocalDate.of(2020, Month.MAY, 21);
 
     //==================================================================================================================
     // Public Static Members:
 
     /** The minimum version of the data sources required for funcotator to run.  */
-    public static final String CURRENT_MINIMUM_DATA_SOURCE_VERSION         = String.format("v%d.%d.%d%02d%02d", MIN_MAJOR_VERSION_NUMBER, MIN_MINOR_VERSION_NUMBER, MIN_DATE.get(Calendar.YEAR), MIN_DATE.get(Calendar.MONTH)+1, MIN_DATE.get(Calendar.DAY_OF_MONTH));
+    public static final String CURRENT_MINIMUM_DATA_SOURCE_VERSION         = getDataSourceMinVersionString();
+
+    /** The maximum supported version of the data sources for funcotator to run.  */
+    public static final String CURRENT_MAXIMUM_DATA_SOURCE_VERSION         = getDataSourceMaxVersionString();
+
     public static final String MANIFEST_FILE_NAME                          = "MANIFEST.txt";
     public static final String DATA_SOURCES_FTP_PATH                       = "ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/";
     public static final String DATA_SOURCES_BUCKET_PATH                    = "gs://broad-public-datasets/funcotator/";
+    public static final String DATA_SOURCES_NAME_PREFIX                    = "funcotator_dataSources";
+    public static final String DS_SOMATIC_NAME_MODIFIER                    = "s";
+    public static final String DS_GERMLINE_NAME_MODIFIER                   = "g";
+    public static final String DS_EXTENSION                                = ".tar.gz";
+    public static final String DS_CHECKSUM_EXTENSION                       = ".sha256";
 
     // TODO: Turn these into an enum (Issue #5465 - https://github.com/broadinstitute/gatk/issues/5465):
     public static final String CONFIG_FILE_FIELD_NAME_NAME                 = "name";
@@ -103,6 +114,51 @@ final public class DataSourceUtils {
 
     //==================================================================================================================
     // Public Static Methods:
+
+    /**
+     * Get the string representing the Min version information for funcotator as it would be written in the data sources
+     * release files.
+     * Max version info is specified in the following variables:
+     *    {@link #MIN_MAJOR_VERSION_NUMBER}
+     *    {@link #MIN_MINOR_VERSION_NUMBER}
+     *    {@link #MIN_DATE}
+     * @return A {@link String} representing the Min version information as it would appear in the data sources file name.
+     */
+    public static String getDataSourceMinVersionString() {
+        return getDataSourceVersionString(MIN_MAJOR_VERSION_NUMBER, MIN_MINOR_VERSION_NUMBER, MIN_DATE);
+    }
+
+    /**
+     * Get the string representing the Max version information for funcotator as it would be written in the data sources
+     * release files.
+     * Max version info is specified in the following variables:
+     *    {@link #MAX_MAJOR_VERSION_NUMBER}
+     *    {@link #MAX_MINOR_VERSION_NUMBER}
+     *    {@link #MAX_DATE}
+     * @return A {@link String} representing the Max version information as it would appear in the data sources file name.
+     */
+    public static String getDataSourceMaxVersionString() {
+        return getDataSourceVersionString(MAX_MAJOR_VERSION_NUMBER, MAX_MINOR_VERSION_NUMBER, MAX_DATE);
+    }
+
+
+    /**
+     * Get the string representing the given version information for funcotator as it would be written in the data sources
+     * release files.
+     * @param major {@code int} representing the major version of the data sources to use.
+     * @param minor {@code int} representing the minor version of the data sources to use.
+     * @param date {@link Calendar} representing the date of the data sources to use.
+     * @return A {@link String} representing the given version information as it would appear in the data sources file name.
+     */
+    public static String getDataSourceVersionString(final int major, final int minor, final LocalDate date) {
+        return String.format("v%d.%d.%d%02d%02d",
+                MIN_MAJOR_VERSION_NUMBER,
+                MIN_MINOR_VERSION_NUMBER,
+                date.getYear(),
+                date.getMonthValue(),
+                date.getDayOfMonth()
+        );
+    }
 
     /**
      * Initializes the data sources for {@link Funcotator}.
@@ -726,34 +782,37 @@ final public class DataSourceUtils {
         return dataSourcesPathIsAcceptable;
     }
 
-    @VisibleForTesting
     /**
+     * Checks that the version information given is within the valid range for data source versions.
      *
+     * @param major int containing the major version number to be checked.
+     * @param minor int containing the minor version number to be checked.
+     * @param year int containing the year version number to be checked.RecQ DNA helicase WRN
+     * @param month int containing the month version number to be checked.
+     * @param day int containing the day version number to be checked.
+     *
+     * @return {@code true} iff the given version information is valid for the current data source ranges.  {@code false} otherwise.
      */
+    @VisibleForTesting
     static boolean validateVersionInformation(final int major, final int minor, final int year, final int month, final int day) {
 
-        // Compare from largest to smallest differences for Min version:
-        if ( major < MIN_MAJOR_VERSION_NUMBER ) {
-            return false;
-        }
-        if ( minor <  MIN_MINOR_VERSION_NUMBER ) {
+        // Compare Major Version:
+        if ((major < MIN_MAJOR_VERSION_NUMBER) || (major > MAX_MAJOR_VERSION_NUMBER)) {
             return false;
         }
 
-        // Compare from largest to smallest differences for Max version:
-        if ( major > MAX_MAJOR_VERSION_NUMBER ) {
-            return false;
-        }
-        if ( minor >  MAX_MINOR_VERSION_NUMBER ) {
-            return false;
+        // Compare minor version if we're on the edge of versions:
+        if ( (major == MIN_MAJOR_VERSION_NUMBER) || (major == MAX_MAJOR_VERSION_NUMBER) ) {
+            if ((minor < MIN_MINOR_VERSION_NUMBER) || (minor > MAX_MINOR_VERSION_NUMBER)) {
+                return false;
+            }
         }
 
         // Now make sure the date is between or equal to the min and max date:
-        // Note: we have to convert the month as parsed into a Calendar.MONTH constant.
-        final Calendar versionCal = new GregorianCalendar(year, Utils.getCalendarMonth(month), day);
+        final LocalDate versionDate = LocalDate.of(year, month, day);
 
         // A valid date is between min and max date inclusive.
-        return (!versionCal.before(MIN_DATE)) && (!versionCal.after(MAX_DATE));
+        return (!versionDate.isBefore(MIN_DATE)) && (!versionDate.isAfter(MAX_DATE));
     }
 
     // ========================================================================================================

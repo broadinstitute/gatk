@@ -153,6 +153,7 @@ public final class SequenceDictionaryUtils {
 
         switch ( type ) {
             case IDENTICAL:
+                return;
             case SUPERSET:
                 return;
             case COMMON_SUBSET:

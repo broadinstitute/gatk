@@ -1,16 +1,15 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources;
 
-import org.aeonbits.owner.util.Collections;
 import org.apache.commons.lang.RandomStringUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -34,166 +33,223 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
 
         final ArrayList<Object[]> testArgs = new ArrayList<>();
 
-        final ArrayList<Integer> baseArgs = new ArrayList<>();
-        baseArgs.add(DataSourceUtils.MIN_MAJOR_VERSION_NUMBER);
-        baseArgs.add(DataSourceUtils.MIN_MINOR_VERSION_NUMBER);
-        baseArgs.add(DataSourceUtils.MIN_DATE.get(Calendar.YEAR));
-        baseArgs.add(DataSourceUtils.MIN_DATE.get(Calendar.MONTH));
-        baseArgs.add(DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH));
+        // =============================================================
+        // First do tests that check the major / minor version numbers:
+        // -------------------------------------------------------------
 
-        final ArrayList<Integer> goodRange = new ArrayList<>();
-        goodRange.add(DataSourceUtils.MAX_MAJOR_VERSION_NUMBER - DataSourceUtils.MIN_MAJOR_VERSION_NUMBER);
-        goodRange.add(DataSourceUtils.MAX_MINOR_VERSION_NUMBER - DataSourceUtils.MIN_MINOR_VERSION_NUMBER);
-        goodRange.add(
-                DataSourceUtils.MAX_DATE.get(Calendar.YEAR) - DataSourceUtils.MIN_DATE.get(Calendar.YEAR)
-        );
-        goodRange.add(
-                DataSourceUtils.MAX_DATE.get(Calendar.MONTH) - DataSourceUtils.MIN_DATE.get(Calendar.MONTH)
-        );
-        goodRange.add(
-                DataSourceUtils.MAX_DATE.get(Calendar.DAY_OF_MONTH) - DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH)
-        );
+        final int MINOR_IT_MAX_VAL = 20;
 
-        final int MAX_OFFSET = 5;
-
-        for ( int i = 0; i < baseArgs.size(); ++i ) {
-            for ( int offset = -MAX_OFFSET; offset < goodRange.get(i) + MAX_OFFSET; ++offset){
-
-                final ArrayList<Object> argList = new ArrayList<>(baseArgs.subList(0, i));
-                argList.add(baseArgs.get(i) + offset);
-
-                if ( i < baseArgs.size() - 1 ) {
-                    argList.addAll(baseArgs.subList(i + 1, baseArgs.size()));
-                }
-
-                try {
-                    final Calendar releaseDate = new GregorianCalendar(
-                            (int) argList.get(2), Utils.getCalendarMonth((int) argList.get(3)), (int) argList.get(4)
-                    );
-
-                    boolean passes = ((Integer) argList.get(0) >= DataSourceUtils.MIN_MAJOR_VERSION_NUMBER) && ((Integer) argList.get(0) <= DataSourceUtils.MAX_MAJOR_VERSION_NUMBER);
-                    passes = passes && ((Integer) argList.get(1) >= DataSourceUtils.MIN_MINOR_VERSION_NUMBER) && ((Integer) argList.get(1) <= DataSourceUtils.MAX_MINOR_VERSION_NUMBER);
-                    passes = passes &&
-                            (!releaseDate.before(DataSourceUtils.MIN_DATE)) &&
-                            (!releaseDate.after(DataSourceUtils.MAX_DATE));
-
-                    testArgs.add(
-                            Collections.list(
-                                    argList.get(0),
-                                    argList.get(1),
-                                    releaseDate,
-                                    passes
-                            ).toArray()
-                    );
-                }
-                catch (final IllegalArgumentException ex) {
-                    // If this happened we gave the code an invalid month.  We should ignore this case.
-                }
-            }
+        // major < MIN_MAJOR (minor shouldn't matter)
+        for (int minor = 0; minor < MINOR_IT_MAX_VAL; ++minor) {
+            testArgs.add(
+                    new Object[]{
+                            DataSourceUtils.MIN_MAJOR_VERSION_NUMBER - 1, minor, DataSourceUtils.MIN_DATE, false
+                    }
+            );
         }
 
-        // Tests for the min version:
-        final ArrayList<Integer> minArgs = new ArrayList<>();
-        minArgs.add(DataSourceUtils.MIN_MAJOR_VERSION_NUMBER);
-        minArgs.add(DataSourceUtils.MIN_MINOR_VERSION_NUMBER);
-        minArgs.add(DataSourceUtils.MIN_DATE.get(Calendar.YEAR));
-        minArgs.add(DataSourceUtils.MIN_DATE.get(Calendar.MONTH));
-        minArgs.add(DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH));
-
-        for ( int offset = -2 ; offset < -1; ++offset ) {
-            for ( int i = 0; i < minArgs.size(); ++i ) {
-
-                final ArrayList<Object> argList = new ArrayList<>(minArgs.subList(0, i));
-                argList.add(minArgs.get(i) + offset);
-
-                if ( i < minArgs.size() - 1) {
-                    argList.addAll(minArgs.subList(i + 1, minArgs.size()));
-                }
-
-                try {
-                    testArgs.add(
-                            Collections.list(
-                                    argList.get(0),
-                                    argList.get(1),
-                                    new GregorianCalendar(
-                                            (int) argList.get(2), (int) argList.get(3), (int) argList.get(4)
-                                    ),
-                                    false
-                            ).toArray()
-                    );
-                }
-                catch (final IllegalArgumentException ex) {
-                    // If this happened we gave the code an invalid month.  We should ignore this case.
-                }
-            }
+        // major == MIN_MAJOR (minor does matter)
+        for (int minor = 0; minor < MINOR_IT_MAX_VAL; ++minor) {
+            testArgs.add(
+                    new Object[]{
+                            DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, minor, DataSourceUtils.MIN_DATE,
+                            (minor == DataSourceUtils.MIN_MINOR_VERSION_NUMBER || minor == DataSourceUtils.MAX_MINOR_VERSION_NUMBER)
+                    }
+            );
         }
 
-        // Tests for max version:
-        final ArrayList<Integer> maxArgs = new ArrayList<>();
-        maxArgs.add(DataSourceUtils.MAX_MAJOR_VERSION_NUMBER);
-        maxArgs.add(DataSourceUtils.MAX_MINOR_VERSION_NUMBER);
-        maxArgs.add(DataSourceUtils.MAX_DATE.get(Calendar.YEAR));
-        maxArgs.add(DataSourceUtils.MAX_DATE.get(Calendar.MONTH));
-        maxArgs.add(DataSourceUtils.MAX_DATE.get(Calendar.DAY_OF_MONTH));
+        // major > MIN_MAJOR and < MAX_MAJOR (minor shouldn't matter)
+        // Can't currently test here - version numbers use integer values and right now
+        // MIN_MAJOR_VERSION_NUMBER == MAX_MAJOR_VERSION_NUMBER
+        // TODO: Add in test when possible.
 
-        for ( int offset = 1 ; offset < 3; ++offset ) {
-            for ( int i = 0; i < maxArgs.size(); ++i ) {
+        // major == MAX_MAJOR (minor does matter)
+        for (int minor = 0; minor < MINOR_IT_MAX_VAL; ++minor) {
+            testArgs.add(
+                    new Object[]{
+                            DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, minor, DataSourceUtils.MAX_DATE,
+                            (minor == DataSourceUtils.MIN_MINOR_VERSION_NUMBER || minor == DataSourceUtils.MAX_MINOR_VERSION_NUMBER)
+                    }
+            );
+        }
 
-                final ArrayList<Object> argList = new ArrayList<>(maxArgs.subList(0, i));
-                argList.add(maxArgs.get(i) + offset);
+        // major > MAX_MAJOR (minor shouldn't matter)
+        for (int minor = 0; minor < MINOR_IT_MAX_VAL; ++minor) {
+            testArgs.add(
+                    new Object[]{
+                            DataSourceUtils.MAX_MAJOR_VERSION_NUMBER + 1, minor, DataSourceUtils.MAX_DATE, false
+                    }
+            );
+        }
 
-                if ( i < maxArgs.size() - 1) {
-                    argList.addAll(maxArgs.subList(i + 1, maxArgs.size()));
+        // =============================================================
+        // Next do tests that check the dates themselves:
+        // -------------------------------------------------------------
+
+        // ----------------------------------------
+        // Dates in range:
+        // ----------------------------------------
+
+        // Min version with minimally / maximally acceptable dates:
+        testArgs.add(
+                new Object[]{
+                        DataSourceUtils.MIN_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MIN_MINOR_VERSION_NUMBER,
+                        DataSourceUtils.MIN_DATE,
+                        true
                 }
+        );
+        testArgs.add(
+                new Object[]{
+                        DataSourceUtils.MIN_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MIN_MINOR_VERSION_NUMBER,
+                        DataSourceUtils.MAX_DATE,
+                        true
+                }
+        );
 
-                try {
-                    testArgs.add(
-                        Collections.list(
-                            argList.get(0),
-                            argList.get(1),
-                            new GregorianCalendar(
-                                    (int)argList.get(2), (int) argList.get(3), (int)argList.get(4)
-                            ),
+        // Max version with minimally / maximally acceptable dates:
+        testArgs.add(
+                new Object[]{
+                        DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
+                        DataSourceUtils.MIN_DATE,
+                        true
+                }
+        );
+        testArgs.add(
+                new Object[]{
+                        DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
+                        DataSourceUtils.MAX_DATE,
+                        true
+                }
+        );
+
+        // Year / Month inside acceptable dates with any valid day:
+        for (int day = 1; day < 30; ++day) {
+            testArgs.add(
+                    new Object[]{
+                            DataSourceUtils.MIN_MAJOR_VERSION_NUMBER,
+                            DataSourceUtils.MIN_MINOR_VERSION_NUMBER,
+                            LocalDate.of(2020, 4, day),
+                            true
+                    }
+            );
+        }
+
+        // 1 day inside the acceptable release window:
+        testArgs.add(
+                new Object[]{
+                        DataSourceUtils.MIN_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MIN_MINOR_VERSION_NUMBER,
+                        LocalDate.of(
+                                DataSourceUtils.MIN_DATE.getYear(),
+                                DataSourceUtils.MIN_DATE.getMonth(),
+                                DataSourceUtils.MIN_DATE.getDayOfMonth() + 1
+                        ),
+                        true
+                }
+        );
+        testArgs.add(
+                new Object[]{
+                        DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
+                        LocalDate.of(
+                                DataSourceUtils.MAX_DATE.getYear(),
+                                DataSourceUtils.MAX_DATE.getMonth(),
+                                DataSourceUtils.MAX_DATE.getDayOfMonth() - 1
+                        ),
+                        true
+                }
+        );
+
+        // ----------------------------------------
+        // Dates out of range:
+        // ----------------------------------------
+
+        // 1 day outside the acceptable release window:
+        testArgs.add(
+                new Object[]{
+                        DataSourceUtils.MIN_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MIN_MINOR_VERSION_NUMBER,
+                        LocalDate.of(
+                                DataSourceUtils.MIN_DATE.getYear(),
+                                DataSourceUtils.MIN_DATE.getMonth(),
+                                DataSourceUtils.MIN_DATE.getDayOfMonth() - 1
+                        ),
+                        false
+                }
+        );
+        testArgs.add(
+                new Object[]{
+                        DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
+                        LocalDate.of(
+                                DataSourceUtils.MAX_DATE.getYear(),
+                                DataSourceUtils.MAX_DATE.getMonth(),
+                                DataSourceUtils.MAX_DATE.getDayOfMonth() + 1
+                        ),
+                        false
+                }
+        );
+
+        // 1 month outside the acceptable release window:
+
+        // Note: Min date month is January, so cannot test one month before it -
+        //       that test case is covered by the year being below the minimum.
+        // TODO: Add in test when possible.
+
+        testArgs.add(
+                new Object[]{
+                        DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
+                        LocalDate.of(
+                                DataSourceUtils.MAX_DATE.getYear(),
+                                DataSourceUtils.MAX_DATE.getMonthValue() + 1,
+                                DataSourceUtils.MAX_DATE.getDayOfMonth()
+                        ),
+                        false
+                }
+        );
+
+        // 1 year outside the acceptable release window:
+        testArgs.add(
+                new Object[]{
+                        DataSourceUtils.MIN_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MIN_MINOR_VERSION_NUMBER,
+                        LocalDate.of(
+                                DataSourceUtils.MIN_DATE.getYear() - 1,
+                                DataSourceUtils.MIN_DATE.getMonth(),
+                                DataSourceUtils.MIN_DATE.getDayOfMonth()
+                        ),
+                        false
+                }
+        );
+        testArgs.add(
+                new Object[]{
+                        DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
+                        LocalDate.of(
+                                DataSourceUtils.MAX_DATE.getYear() + 1,
+                                DataSourceUtils.MAX_DATE.getMonth(),
+                                DataSourceUtils.MAX_DATE.getDayOfMonth()
+                        ),
+                        false
+                }
+        );
+
+        // Valid Year, month outside bounds, all day values:
+        for (int day = 1; day < 30; ++day) {
+            testArgs.add(
+                    new Object[]{
+                            DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
+                            DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
+                            LocalDate.of(2020, 9, day),
                             false
-                        ).toArray()
-                    );
-                }
-                catch (final IllegalArgumentException ex) {
-                    // If this happened we gave the code an invalid month.  We should ignore this case.
-                }
-            }
+                    }
+            );
         }
-
-        // Some specific test cases to prevent regression of version checks:
-        // 1 Month after OK release date, but 1 day before OK release date (should pass):
-        final Calendar c1 = new GregorianCalendar(DataSourceUtils.MIN_DATE.get(Calendar.YEAR), DataSourceUtils.MIN_DATE.get(Calendar.MONTH) + 1, DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH) - 1);
-        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, c1, true } );
-        // 1 Year after OK release date, but 1 day before OK release date (should pass):
-        final Calendar c2 = new GregorianCalendar(DataSourceUtils.MIN_DATE.get(Calendar.YEAR)+1, DataSourceUtils.MIN_DATE.get(Calendar.MONTH) , DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH) - 1);
-        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, c2, true } );
-        // 1 Year after OK release date, but 1 month before OK release date (should pass):
-        final Calendar c3 = new GregorianCalendar(DataSourceUtils.MIN_DATE.get(Calendar.YEAR)+1, DataSourceUtils.MIN_DATE.get(Calendar.MONTH) - 1, DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH));
-        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, c3, true } );
-        // 1 Year after OK release date, but 1 month and 1 day before OK release date (should pass):
-        final Calendar c4 = new GregorianCalendar(DataSourceUtils.MIN_DATE.get(Calendar.YEAR)+1, DataSourceUtils.MIN_DATE.get(Calendar.MONTH) - 1, DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH) - 1);
-        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, c4, true } );
-
-        // A value in the middle:
-        final Calendar c5 = new GregorianCalendar(DataSourceUtils.MIN_DATE.get(Calendar.YEAR)+1, DataSourceUtils.MIN_DATE.get(Calendar.MONTH), DataSourceUtils.MIN_DATE.get(Calendar.DAY_OF_MONTH));
-        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, c5, true } );
-
-        // 1 Month before OK max date, but 1 day before OK max release date (should pass):
-        final Calendar c6 = new GregorianCalendar(DataSourceUtils.MAX_DATE.get(Calendar.YEAR), DataSourceUtils.MAX_DATE.get(Calendar.MONTH) - 1, DataSourceUtils.MAX_DATE.get(Calendar.DAY_OF_MONTH) + 1);
-        testArgs.add( new Object[] { DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, c6, true } );
-        // 1 Year before OK max release date, but 1 day before OK max release date (should pass):
-        final Calendar c7 = new GregorianCalendar(DataSourceUtils.MAX_DATE.get(Calendar.YEAR) - 1  , DataSourceUtils.MAX_DATE.get(Calendar.MONTH), DataSourceUtils.MAX_DATE.get(Calendar.DAY_OF_MONTH) + 1);
-        testArgs.add( new Object[] { DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, c7, true } );
-        // 1 Year before OK max release date, but 1 month before OK max release date (should pass):
-        final Calendar c8 = new GregorianCalendar(DataSourceUtils.MAX_DATE.get(Calendar.YEAR) - 1, DataSourceUtils.MAX_DATE.get(Calendar.MONTH) - 1, DataSourceUtils.MAX_DATE.get(Calendar.DAY_OF_MONTH));
-        testArgs.add( new Object[] { DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, c8, true } );
-        // 1 Year before OK max release date, but 1 month and 1 day before OK max release date (should pass):
-        final Calendar c9 = new GregorianCalendar(DataSourceUtils.MAX_DATE.get(Calendar.YEAR)-1, DataSourceUtils.MAX_DATE.get(Calendar.MONTH) - 1, DataSourceUtils.MAX_DATE.get(Calendar.DAY_OF_MONTH) + 1);
-        testArgs.add( new Object[] { DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, c9, true } );
 
         return testArgs;
     }
@@ -240,29 +296,83 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
 
     }
 
+    @DataProvider
+    private Object[][] provideForGetDataSourceVersionString() {
+        return new Object[][] {
+                {
+                        DataSourceUtils.MIN_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MIN_MINOR_VERSION_NUMBER,
+                        DataSourceUtils.MIN_DATE,
+                        "v1.6.20190124"
+                },
+                {
+                        DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
+                        DataSourceUtils.MAX_DATE,
+                        "v1.7.20200521"
+                }
+        };
+    }
+
     //==================================================================================================================
     // Tests:
+
+    @Test(dataProvider = "provideForGetDataSourceVersionString")
+    public void testGetDataSourceVersionString(final int major,
+                                               final int minor,
+                                               final LocalDate date,
+                                               final String expected) {
+        Assert.assertEquals(
+                DataSourceUtils.getDataSourceVersionString(major, minor, date),
+                expected
+        );
+    }
 
     @Test(dataProvider = "provideForValidateVersionInformation")
     public void testValidateVersionInformation(final Integer major,
                                                final Integer minor,
-                                               final Calendar releaseDate,
+                                               final LocalDate releaseDate,
                                                final Boolean expected) {
         Assert.assertEquals(
                 DataSourceUtils.validateVersionInformation(
                     major,
                     minor,
-                    releaseDate.get(Calendar.YEAR),
-                    releaseDate.get(Calendar.MONTH)+1,
-                    releaseDate.get(Calendar.DAY_OF_MONTH)),
+                    releaseDate.getYear(),
+                    releaseDate.getMonthValue(),
+                    releaseDate.getDayOfMonth()
+                ),
             expected.booleanValue()
+        );
+    }
+
+    @Test
+    public void testGetDataSourceMaxVersionString() {
+        Assert.assertEquals(
+                DataSourceUtils.getDataSourceMaxVersionString(),
+                DataSourceUtils.getDataSourceVersionString(
+                        DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
+                        DataSourceUtils.MAX_DATE
+                )
+        );
+    }
+
+    @Test
+    public void testGetDataSourceMinVersionString() {
+        Assert.assertEquals(
+                DataSourceUtils.getDataSourceMinVersionString(),
+                DataSourceUtils.getDataSourceVersionString(
+                        DataSourceUtils.MIN_MAJOR_VERSION_NUMBER,
+                        DataSourceUtils.MIN_MINOR_VERSION_NUMBER,
+                        DataSourceUtils.MIN_DATE
+                )
         );
     }
 
     @Test(dataProvider = "provideForTestVersionRegex")
     public void testVersionRegex(final Integer major,
                                  final Integer minor,
-                                 final Calendar releaseDate,
+                                 final LocalDate releaseDate,
                                  final String decorator,
                                  final String leadingWhitespace ) {
 
@@ -273,9 +383,9 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
                 leadingWhitespace,
                 major,
                 minor,
-                releaseDate.get(Calendar.YEAR),
-                releaseDate.get(Calendar.MONTH) + 1,
-                releaseDate.get(Calendar.DAY_OF_MONTH),
+                releaseDate.getYear(),
+                releaseDate.getMonthValue(),
+                releaseDate.getDayOfMonth(),
                 decorator
         );
 
@@ -292,10 +402,41 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
 
         Assert.assertEquals( versionMajor, major );
         Assert.assertEquals( versionMinor, minor );
-        Assert.assertEquals( versionYear.intValue(), releaseDate.get(Calendar.YEAR) );
-        Assert.assertEquals( versionMonth.intValue(), releaseDate.get(Calendar.MONTH) + 1 );
-        Assert.assertEquals( versionDay.intValue(), releaseDate.get(Calendar.DAY_OF_MONTH) );
+        Assert.assertEquals( versionYear.intValue(), releaseDate.getYear() );
+        Assert.assertEquals( versionMonth.intValue(), releaseDate.getMonthValue() );
+        Assert.assertEquals( versionDay.intValue(), releaseDate.getDayOfMonth() );
         Assert.assertEquals( versionDecorator, decorator );
+    }
+
+    @Test(groups = {"bucket", "cloud"})
+    public void testCurrentDataSourcesAvailable() {
+
+        // Make sure that we can actually access the current min and max versions of the data sources.
+        final List<String> dataSourcesBasePaths = Arrays.asList(
+                DataSourceUtils.DATA_SOURCES_BUCKET_PATH +
+                        DataSourceUtils.DATA_SOURCES_NAME_PREFIX +
+                        "." + DataSourceUtils.getDataSourceMinVersionString(),
+                DataSourceUtils.DATA_SOURCES_BUCKET_PATH +
+                        DataSourceUtils.DATA_SOURCES_NAME_PREFIX +
+                        "." + DataSourceUtils.getDataSourceMaxVersionString()
+        );
+        for (final String basePath : dataSourcesBasePaths) {
+            for (final String useCaseModifier : Arrays.asList(DataSourceUtils.DS_SOMATIC_NAME_MODIFIER, DataSourceUtils.DS_GERMLINE_NAME_MODIFIER)) {
+                // Data Sources File:
+                IOUtils.assertFileIsReadable(
+                        IOUtils.getPath(
+                            basePath + useCaseModifier + DataSourceUtils.DS_EXTENSION
+                        )
+                );
+
+                // Checksum for file:
+                IOUtils.assertFileIsReadable(
+                        IOUtils.getPath(
+                                basePath + useCaseModifier + DataSourceUtils.DS_CHECKSUM_EXTENSION
+                        )
+                );
+            }
+        }
     }
 
 }

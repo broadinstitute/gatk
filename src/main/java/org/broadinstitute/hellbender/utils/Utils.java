@@ -15,11 +15,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import javax.annotation.Nullable;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -29,24 +25,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
-import java.util.AbstractList;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -1423,56 +1402,6 @@ public final class Utils {
             if (maxLength < length) {  // if not we are done.
                 list.subList(maxLength, length).clear();
             }
-        }
-    }
-
-    /**
-     * Convert a logical month of the year into the Calendar constant for that month.
-     *
-     * Will throw an {@link IllegalArgumentException} if the given month value falls outside
-     * the expected range - [1-12] inclusive.
-     *
-     * @param month The logical month to convert in the range [1-12] inclusive.
-     * @return The Calendar constant for the given month.  One of:
-     *         {@link java.util.Calendar.JANUARY}, {@link java.util.Calendar.FEBRUARY},
-     *         {@link java.util.Calendar.MARCH}, {@link java.util.Calendar.APRIL}, {@link java.util.Calendar.MAY},
-     *         {@link java.util.Calendar.JUNE}, {@link java.util.Calendar.JULY}, {@link java.util.Calendar.AUGUST},
-     *         {@link java.util.Calendar.SEPTEMBER}, {@link java.util.Calendar.OCTOBER},
-     *         {@link java.util.Calendar.NOVEMBER}, {@link java.util.Calendar.DECEMBER}
-     */
-    public static int getCalendarMonth(final int month) {
-
-        final String baseMessage = "Given month falls outside the acceptable range [1-12]: ";
-
-        Utils.validateArg((1 <= month) && (month <= 12), baseMessage + month);
-
-        switch (month) {
-            case 1:
-                return Calendar.JANUARY;
-            case 2:
-                return Calendar.FEBRUARY;
-            case 3:
-                return Calendar.MARCH;
-            case 4:
-                return Calendar.APRIL;
-            case 5:
-                return Calendar.MAY;
-            case 6:
-                return Calendar.JUNE;
-            case 7:
-                return Calendar.JULY;
-            case 8:
-                return Calendar.AUGUST;
-            case 9:
-                return Calendar.SEPTEMBER;
-            case 10:
-                return Calendar.OCTOBER;
-            case 11:
-                return Calendar.NOVEMBER;
-            case 12:
-                return Calendar.DECEMBER;
-            default:
-                throw new IllegalArgumentException(baseMessage + month);
         }
     }
 }
