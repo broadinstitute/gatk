@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
 import com.google.api.gax.rpc.ServerStream;
+import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.storage.v1beta1.*;
 import com.google.cloud.bigquery.storage.v1beta1.ReadOptions.TableReadOptions.Builder;
 import com.google.common.base.Preconditions;
@@ -50,7 +51,7 @@ public class StorageAPIAvroReader implements GATKAvroReader {
         try {
             this.client = BigQueryStorageClient.create();
 
-            final String parent = String.format("projects/%s", tableRef.tableProject);
+            final String parent = String.format("projects/%s", BigQueryOptions.getDefaultInstance().getProjectId());
 
             final TableReferenceProto.TableReference tableReference = TableReferenceProto.TableReference.newBuilder()
                     .setProjectId(tableRef.tableProject)

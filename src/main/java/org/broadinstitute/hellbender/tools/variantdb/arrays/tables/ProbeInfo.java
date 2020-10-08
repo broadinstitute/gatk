@@ -101,10 +101,11 @@ public class ProbeInfo {
 
                 probeIdMap.put(p.probeId, p);
             }
+
             return probeIdMap;
         } catch (final Exception e) {
             throw new GATKException("Error processing probe CSV file", e);
-        }        
+        }
     }
 
     public static Map<Long, ProbeInfo> getProbeIdMapWithStorageAPI(String fqProbeTableName, boolean printDebugInformation) {
