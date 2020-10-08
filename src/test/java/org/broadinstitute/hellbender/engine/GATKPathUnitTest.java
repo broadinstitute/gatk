@@ -557,12 +557,14 @@ public class GATKPathUnitTest extends GATKBaseTest {
 
     private Map<String, String> getMapWithOneTag() {
         return new HashMap<String, String>() {
+            public static final long serialVersionUID = 1L;
             { this.put("tag1", "value1"); }
         };
     }
 
     private Map<String, String> getMapWithTwoTags() {
         return new HashMap<String, String>() {
+            public static final long serialVersionUID = 1L;
             { this.put("tag1", "value1"); }
             { this.put("tag2", "value2"); }
         };
