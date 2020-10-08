@@ -9,10 +9,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * A class to test the functionality of {@link BigQueryUtils}.
@@ -76,13 +73,26 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
 
         final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT);
 
+        int rowCount = 0;
+        final Set<String> retrievedNames = new HashSet<>();
+
         while( result.hasNext() ) {
             GenericRecord row = result.next();
             String name = row.get("name").toString();
+            retrievedNames.add(name);
+            rowCount++;
 
             Assert.assertTrue(expectedNamesAndAges.containsKey(name), "Unexpected name " + name + " returned from query " + query);
             Assert.assertNull(row.get("age"), "Age was unexpectedly retrieved.");
         }
+
+        final Set<String> expectedNames = new HashSet<>();
+        expectedNames.add("Fred");
+        expectedNames.add("Matilda");
+        expectedNames.add("Harry");
+
+        Assert.assertEquals(retrievedNames, expectedNames, "Retrieved names did not match.");
+        Assert.assertEquals(rowCount, expectedNamesAndAges.size(), "Size of returned results does not match expected.");
     }
 
     private Map<String, String> getAllExpectedNamesAndAges() {
