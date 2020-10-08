@@ -96,8 +96,10 @@ public class Main {
 
     /**
      * The packages we wish to include in our command line.
+     *
+     * List of packages that may contain tools.
      */
-    protected List<String> getPackageList() {
+    public static List<String> getPackageList() {
         final List<String> packageList = new ArrayList<>();
         packageList.addAll(Arrays.asList("org.broadinstitute.hellbender"));
         packageList.addAll(Arrays.asList("picard"));
@@ -301,38 +303,7 @@ public class Main {
                                                           final List<Class<? extends CommandLineProgram>> classList,
                                                           final String commandLineName ) {
         /** Get the set of classes that are our command line programs **/
-        final ClassFinder classFinder = new ClassFinder();
-        for (final String pkg : packageList) {
-            classFinder.find(pkg, picard.cmdline.CommandLineProgram.class);
-            classFinder.find(pkg, CommandLineProgram.class);
-        }
-        String missingAnnotationClasses = "";
-        final Set<Class<?>> toCheck = classFinder.getClasses();
-        toCheck.addAll(classList);
-        final Map<String, Class<?>> simpleNameToClass = new LinkedHashMap<>();
-        for (final Class<?> clazz : toCheck) {
-            if (clazz.equals(PicardCommandLineProgramExecutor.class) ||
-                    clazz.equals(CommandLineArgumentValidator.class)) {
-                continue;
-            }
-            // No interfaces, synthetic, primitive, local, or abstract classes.
-            if (ClassUtils.canMakeInstances(clazz)) {
-                final CommandLineProgramProperties property = getProgramProperty(clazz);
-                // Check for missing annotations
-                if (null == property) {
-                    if (missingAnnotationClasses.isEmpty()) missingAnnotationClasses += clazz.getSimpleName();
-                    else missingAnnotationClasses += ", " + clazz.getSimpleName();
-                } else { /** We should check for missing annotations later **/
-                    if (simpleNameToClass.containsKey(clazz.getSimpleName())) {
-                        throw new RuntimeException("Simple class name collision: " + clazz.getName());
-                    }
-                    simpleNameToClass.put(clazz.getSimpleName(), clazz);
-                }
-            }
-        }
-        if (!missingAnnotationClasses.isEmpty()) {
-            throw new RuntimeException("The following classes are missing the required CommandLineProgramProperties annotation: " + missingAnnotationClasses);
-        }
+        final Map<String, Class<?>> simpleNameToClass = findCommandLineProgramClasses(packageList, classList);
 
         final Set<Class<?>> classes = new LinkedHashSet<>();
         classes.addAll(simpleNameToClass.values());
@@ -358,6 +329,53 @@ public class Main {
             throw new UserException(getUnknownCommandMessage(classes, args[0]));
         }
         return null;
+    }
+
+    /**
+     * Composes a map from the cannonic tool/command name to the class that implement such command.
+     * @param packageList list of root packages to look for tools.
+     * @param classList list of additional classes to consider.
+     * @return never {@code null}, perhaps empty.
+     * @throws RuntimeException if there are some classes that are supposed to be programs but lack the proper annotation.
+     */
+    public static Map<String, Class<?>> findCommandLineProgramClasses(final List<String> packageList,
+                                                                      final List<Class<? extends CommandLineProgram>> classList) {
+        Utils.nonNull(packageList, "the package list cannot be null nor contain nulls");
+        Utils.nonNull(classList, "the class list cannot be null");
+        final ClassFinder classFinder = new ClassFinder();
+        for (final String pkg : packageList) {
+            classFinder.find(Utils.nonNull(pkg, "the package list cannot contain nulls"), picard.cmdline.CommandLineProgram.class);
+            classFinder.find(pkg, CommandLineProgram.class);
+        }
+        String missingAnnotationClasses = "";
+        final Set<Class<?>> toCheck = classFinder.getClasses();
+        toCheck.addAll(classList);
+        final Map<String, Class<?>> simpleNameToClass = new LinkedHashMap<>();
+        for (final Class<?> clazz : toCheck) {
+            Utils.nonNull(clazz, "the class list cannot contain nulls");
+            if (clazz.equals(PicardCommandLineProgramExecutor.class) ||
+                    clazz.equals(CommandLineArgumentValidator.class)) {
+                continue;
+            }
+            // No interfaces, synthetic, primitive, local, or abstract classes.
+            if (ClassUtils.canMakeInstances(clazz)) {
+                final CommandLineProgramProperties property = getProgramProperty(clazz);
+                // Check for missing annotations
+                if (null == property) {
+                    if (missingAnnotationClasses.isEmpty()) missingAnnotationClasses += clazz.getSimpleName();
+                    else missingAnnotationClasses += ", " + clazz.getSimpleName();
+                } else { /** We should check for missing annotations later **/
+                    if (simpleNameToClass.containsKey(clazz.getSimpleName())) {
+                        throw new RuntimeException("Simple class name collision: " + clazz.getName());
+                    }
+                    simpleNameToClass.put(clazz.getSimpleName(), clazz);
+                }
+            }
+        }
+        if (!missingAnnotationClasses.isEmpty()) {
+            throw new RuntimeException("The following classes are missing the required CommandLineProgramProperties annotation: " + missingAnnotationClasses);
+        }
+        return simpleNameToClass;
     }
 
     public static CommandLineProgramProperties getProgramProperty(Class<?> clazz) {
@@ -473,7 +491,7 @@ public class Main {
      * @param toolName command specified by the user
      * @return deprecation message string, or null if none
      */
-    public String getToolDeprecationMessage(final String toolName) {
+    public static String getToolDeprecationMessage(final String toolName) {
         return DeprecatedToolsRegistry.getToolDeprecationInfo(toolName);
     }
 
@@ -482,7 +500,7 @@ public class Main {
      * commands.
      * @return returns an error message including the closes match if relevant.
      */
-    public String getUnknownCommandMessage(final Set<Class<?>> classes, final String command) {
+    public static String getUnknownCommandMessage(final Set<Class<?>> classes, final String command) {
         final String deprecationMessage = getToolDeprecationMessage(command);
         if (deprecationMessage != null) {
             return deprecationMessage;
@@ -500,7 +518,7 @@ public class Main {
      * When a command does not match any known command, searches for similar commands, using the same method as GIT *
      * @return returns an error message including the closes match if relevant.
      */
-    public String getSuggestedAlternateCommand(final Set<Class<?>> classes, final String command) {
+    public static String getSuggestedAlternateCommand(final Set<Class<?>> classes, final String command) {
         final Map<Class<?>, Integer> distances = new LinkedHashMap<>();
 
         int bestDistance = Integer.MAX_VALUE;
