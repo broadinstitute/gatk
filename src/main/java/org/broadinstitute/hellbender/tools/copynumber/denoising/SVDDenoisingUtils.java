@@ -207,9 +207,10 @@ public final class SVDDenoisingUtils {
             logger.info(String.format("A value of 0 was provided for argument %s, so the corresponding filtering step will be skipped...",
                     CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME));
         } else {
-            logger.info(String.format("Filtering intervals with median (across samples) less than or equal to the %.2f percentile...", minimumIntervalMedianPercentile));
             //calculate percentile
             final double minimumIntervalMedianThreshold = new Percentile(minimumIntervalMedianPercentile).evaluate(originalIntervalMedians);
+            logger.info(String.format("Filtering intervals with median (across samples) less than or equal to the %.2f percentile (%.2f)...",
+                    minimumIntervalMedianPercentile, minimumIntervalMedianThreshold));
             //filter intervals
             IntStream.range(0, numOriginalIntervals)
                     .filter(intervalIndex -> originalIntervalMedians[intervalIndex] <= minimumIntervalMedianThreshold)
@@ -222,7 +223,7 @@ public final class SVDDenoisingUtils {
                 .filter(intervalIndex -> !filterIntervals[intervalIndex])
                 .forEach(intervalIndex -> IntStream.range(0, numOriginalSamples).filter(sampleIndex -> !filterSamples[sampleIndex]).forEach(sampleIndex -> {
                     final double value = readCounts.getEntry(sampleIndex, intervalIndex);
-                    readCounts.setEntry(sampleIndex, intervalIndex,value / originalIntervalMedians[intervalIndex]);
+                    readCounts.setEntry(sampleIndex, intervalIndex, value / originalIntervalMedians[intervalIndex]); //TODO check effect of NaNs here: https://github.com/broadinstitute/gatk/issues/6878
                 }));
 
         //filter samples by percentage of zero-coverage intervals not already filtered
@@ -270,8 +271,6 @@ public final class SVDDenoisingUtils {
             logger.info(String.format("A value of 0 was provided for argument %s, so the corresponding filtering step will be skipped...",
                     CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME));
         } else {
-            logger.info(String.format("Filtering samples with a median (across intervals) strictly below the %.2f percentile or strictly above the %.2f percentile...",
-                    extremeSampleMedianPercentile, 100. - extremeSampleMedianPercentile));
             //calculate the medians for all samples (which, although unnecessary, makes bookkeeping easier) across intervals not already filtered
             final double[] sampleMedians = IntStream.range(0, numOriginalSamples)
                     .mapToDouble(sampleIndex -> new Median().evaluate(IntStream.range(0, numOriginalIntervals)
@@ -282,6 +281,8 @@ public final class SVDDenoisingUtils {
             //calculate percentiles
             final double minimumSampleMedianThreshold = new Percentile(extremeSampleMedianPercentile).evaluate(sampleMedians);
             final double maximumSampleMedianThreshold = new Percentile(100. - extremeSampleMedianPercentile).evaluate(sampleMedians);
+            logger.info(String.format("Filtering samples with a median (across intervals) strictly below the %.2f percentile (%.2f) or strictly above the %.2f percentile (%.2f)...",
+                    extremeSampleMedianPercentile, minimumSampleMedianThreshold, 100. - extremeSampleMedianPercentile, maximumSampleMedianThreshold));
             //filter samples
             IntStream.range(0, numOriginalSamples)
                     .filter(sampleIndex -> sampleMedians[sampleIndex] < minimumSampleMedianThreshold || sampleMedians[sampleIndex] > maximumSampleMedianThreshold)
@@ -352,8 +353,8 @@ public final class SVDDenoisingUtils {
                     return value;
                 }
             });
-            logger.info(String.format("%d values strictly below the %.2f percentile or strictly above the %.2f percentile were truncated to the corresponding value...",
-                    numTruncated[0], extremeOutlierTruncationPercentile, 100. - extremeOutlierTruncationPercentile));
+            logger.info(String.format("%d values strictly below the %.2f percentile (%.2f) or strictly above the %.2f percentile (%.2f) were truncated to the corresponding value...",
+                    numTruncated[0], extremeOutlierTruncationPercentile, minimumOutlierTruncationThreshold, 100. - extremeOutlierTruncationPercentile, maximumOutlierTruncationThreshold));
         }
         return new PreprocessedStandardizedResult(
                 preprocessedReadCounts, panelIntervalFractionalMedians, filterSamples, filterIntervals);
