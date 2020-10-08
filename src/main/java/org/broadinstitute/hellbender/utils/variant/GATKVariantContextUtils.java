@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
 import java.io.Serializable;
 import java.nio.file.Path;
@@ -1331,14 +1332,26 @@ public final class GATKVariantContextUtils {
     public static VariantContext trimAlleles(final VariantContext inputVC, final boolean trimForward, final boolean trimReverse) {
         Utils.nonNull(inputVC);
 
-        if ( inputVC.getNAlleles() <= 1 || inputVC.isSNP() )
+        if ( inputVC.getNAlleles() <= 1 || inputVC.getAlleles().stream().anyMatch(a -> a.length() == 1) ) {
             return inputVC;
+        }
 
-        // see whether we need to trim common reference base from all alleles
-        final int revTrim = trimReverse ? computeReverseClipping(inputVC.getAlleles(), inputVC.getReference().getDisplayString().getBytes()) : 0;
-        final VariantContext revTrimVC = trimAlleles(inputVC, -1, revTrim);
-        final int fwdTrim = trimForward ? computeForwardClipping(revTrimVC.getAlleles()) : -1;
-        return trimAlleles(revTrimVC, fwdTrim, 0);
+        final List<byte[]> sequences = inputVC.getAlleles().stream().filter(a -> !a.isSymbolic()).map(Allele::getBases).collect(Collectors.toList());
+        final List<IndexRange> ranges = inputVC.getAlleles().stream().filter(a -> !a.isSymbolic()).map(a -> new IndexRange(0, a.length())).collect(Collectors.toList());
+
+        final Pair<Integer, Integer> shifts = AlignmentUtils.normalizeAlleles(sequences, ranges, 0, true);
+        final int endTrim = shifts.getRight();
+        final int startTrim = -shifts.getLeft();
+
+        final boolean emptyAllele = ranges.stream().anyMatch(r -> r.size() == 0);
+        final boolean restoreOneBaseAtEnd = emptyAllele && startTrim == 0;
+        final boolean restoreOneBaseAtStart = emptyAllele && startTrim > 0;
+
+        // if the end trimming consumed all the bases, leave one base
+        final int endBasesToClip = restoreOneBaseAtEnd ? endTrim - 1 : endTrim;
+        final int startBasesToClip = restoreOneBaseAtStart ? startTrim - 1 : startTrim;
+
+        return trimAlleles(inputVC, (trimForward ? startBasesToClip : 0) - 1, trimReverse ? endBasesToClip : 0);
     }
 
     /**
@@ -1394,89 +1407,6 @@ public final class GATKVariantContextUtils {
         }
 
         return updatedGenotypes;
-    }
-
-    public static int computeReverseClipping(final List<Allele> unclippedAlleles, final byte[] ref) {
-        int clipping = 0;
-        boolean stillClipping = true;
-
-        while ( stillClipping ) {
-            for ( final Allele a : unclippedAlleles ) {
-                if ( a.isSymbolic() )
-                    continue;
-
-                // we need to ensure that we don't reverse clip out all of the bases from an allele because we then will have the wrong
-                // position set for the VariantContext (although it's okay to forward clip it all out, because the position will be fine).
-                if ( a.length() - clipping == 0 )
-                    return clipping - 1;
-
-                if ( a.length() - clipping <= 0 || a.length() == 0 ) {
-                    stillClipping = false;
-                }
-                else if ( ref.length == clipping ) {
-                    return -1;
-                }
-                else if ( a.getBases()[a.length()-clipping-1] != ref[ref.length-clipping-1] ) {
-                    stillClipping = false;
-                }
-            }
-            if ( stillClipping )
-                clipping++;
-        }
-
-        return clipping;
-    }
-
-    /**
-     * Clip out any unnecessary bases off the front of the alleles
-     *
-     * The VCF spec represents alleles as block substitutions, replacing AC with A for a
-     * 1 bp deletion of the C.  However, it's possible that we'd end up with alleles that
-     * contain extra bases on the left, such as GAC/GA to represent the same 1 bp deletion.
-     * This routine finds an offset among all alleles that can be safely trimmed
-     * off the left of each allele and still represent the same block substitution.
-     *
-     * A/C => A/C
-     * AC/A => AC/A
-     * ACC/AC => CC/C
-     * AGT/CAT => AGT/CAT
-     * <DEL>/C => <DEL>/C
-     *
-     * @param unclippedAlleles a non-null list of alleles that we want to clip
-     * @return the offset into the alleles where we can safely clip, inclusive, or
-     *   -1 if no clipping is tolerated.  So, if the result is 0, then we can remove
-     *   the first base of every allele.  If the result is 1, we can remove the
-     *   second base.
-     */
-    public static int computeForwardClipping(final List<Allele> unclippedAlleles) {
-        // cannot clip unless there's at least 1 alt allele
-        if ( unclippedAlleles.size() <= 1 )
-            return -1;
-
-        // we cannot forward clip any set of alleles containing a symbolic allele
-        int minAlleleLength = Integer.MAX_VALUE;
-        for ( final Allele a : unclippedAlleles ) {
-            if ( a.isSymbolic() )
-                return -1;
-            minAlleleLength = Math.min(minAlleleLength, a.length());
-        }
-
-        final byte[] firstAlleleBases = unclippedAlleles.get(0).getBases();
-        int indexOflastSharedBase = -1;
-
-        // the -1 to the stop is that we can never clip off the right most base
-        for ( int i = 0; i < minAlleleLength - 1; i++) {
-            final byte base = firstAlleleBases[i];
-
-            for ( final Allele allele : unclippedAlleles ) {
-                if ( allele.getBases()[i] != base )
-                    return indexOflastSharedBase;
-            }
-
-            indexOflastSharedBase = i;
-        }
-
-        return indexOflastSharedBase;
     }
 
     protected static class AlleleMapper {
