@@ -380,11 +380,11 @@ task ${name} {
     <#if outputs?size == 0>
     File ${name}results = ${name}.${name}_results
     <#else>
-        <#list outputs as outputName, outputType>
-            <#if requiredOutputs[outputName]??>
-    ${outputType} ${name}${outputName?substring(2)} = ${name}.${name}_${outputName?substring(2)}
+        <#list outputs?keys as key>
+            <#if requiredOutputs[key]??>
+    ${outputs[key]} ${name}${key?substring(2)} = ${name}.${name}_${key?substring(2)}
             <#else>
-    ${outputType}? ${name}${outputName?substring(2)} = ${name}.${name}_${outputName?substring(2)}
+    ${outputs[key]}? ${name}${key?substring(2)} = ${name}.${name}_${key?substring(2)}
             </#if>
         </#list>
     </#if>
@@ -395,11 +395,11 @@ task ${name} {
     <#if outputs?size == 0>
     File ${name}_results = stdout()
     <#else>
-        <#list outputs as outputName, outputType>
-            <#if requiredOutputs[outputName]??>
-    ${outputType} ${name}_${outputName?substring(2)} = ${outputName?substring(2)}
+        <#list outputs?keys as key>
+            <#if requiredOutputs[key]??>
+    ${outputs[key]} ${name}_${key?substring(2)} = ${key?substring(2)}
             <#else>
-    ${outputType}? ${name}_${outputName?substring(2)} = ${outputName?substring(2)}
+    ${outputs[key]}? ${name}_${key?substring(2)} = ${key?substring(2)}
             </#if>
         </#list>
     </#if>
