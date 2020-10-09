@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.dragstr;
 
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -20,7 +21,7 @@ public class DragstrParamsUnitTest extends BaseTest {
     @Test
     public void testToString() throws IOException {
         final String inputParamsFile = ("src/test/resources/" +  TEST_PARAMS_FILE);
-        final DragstrParams subject = new DragstrParams(inputParamsFile);
+        final DragstrParams subject = DragstrParamUtils.parse(new GATKPath(inputParamsFile));
         Assert.assertNotNull(subject.toString());
         final File pathFile = new File(subject.toString());
         Assert.assertEquals(pathFile.getCanonicalFile(), new File(inputParamsFile).getCanonicalFile());
@@ -31,14 +32,15 @@ public class DragstrParamsUnitTest extends BaseTest {
         final String inputParamsFile = ("src/test/resources/" +  TEST_PARAMS_FILE);
         final File outputParamsFile = File.createTempFile("dragst-params-test", ".txt");
         outputParamsFile.deleteOnExit();
-        final DragstrParams subject = new DragstrParams(inputParamsFile);
-        subject.print(outputParamsFile.toPath().toString());
+        final DragstrParams subject = DragstrParamUtils.parse(new GATKPath(inputParamsFile));
+        DragstrParamUtils.print(subject, new GATKPath(outputParamsFile.toPath().toString()));
         try (final BufferedReader r1 = new BufferedReader(new FileReader(inputParamsFile));
              final BufferedReader r2 = new BufferedReader(new FileReader(outputParamsFile))) {
             String l1, l2;
             Query query = null;
             int row = 0;
-            while ((l1 = r1.readLine()) != null & (l2 = r2.readLine()) != null) {
+            while ((l1 = readRelevantLine(r1)) != null & (l2 = readRelevantLine(r2)) != null) {
+
                 // We test the read-and-write checking that the content of the new copied params file is the same as the original (except from some irrelevant white-spaces.)
                 Assert.assertEquals(l1.trim(), l2.trim());
 
@@ -72,10 +74,20 @@ public class DragstrParamsUnitTest extends BaseTest {
         }
     }
 
+    private String readRelevantLine(final BufferedReader reader) throws IOException {
+        String line;
+        while ((line = reader.readLine()) != null) {
+            if (!line.startsWith("#") && !line.trim().isEmpty()) {
+                return line;
+            }
+        }
+        return null;
+    }
+    
     @Test(dependsOnMethods = "testReadWriteAndQuery")
     public void additionalSelfConsistencyTests() {
         final String filePath = ("src/test/resources/" +  TEST_PARAMS_FILE);
-        final DragstrParams params = new DragstrParams(filePath);
+        final DragstrParams params = DragstrParamUtils.parse(new GATKPath(filePath));
         Assert.assertEquals(params.maximumPeriod(), 8); // we know this for a fact.
         Assert.assertEquals(params.maximumRepeats(), 20); // we know this for a fact.
         Assert.assertEquals(params.maximumLengthInBasePairs(), params.maximumRepeats() * params.maximumPeriod());

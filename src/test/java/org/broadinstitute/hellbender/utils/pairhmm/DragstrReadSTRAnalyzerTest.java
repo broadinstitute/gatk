@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
-import org.apache.commons.math.MathException;
-import org.apache.commons.math.distribution.ExponentialDistribution;
-import org.apache.commons.math.distribution.ExponentialDistributionImpl;
-import org.apache.commons.math.distribution.PoissonDistribution;
-import org.apache.commons.math.distribution.PoissonDistributionImpl;
+import org.apache.commons.math3.distribution.ExponentialDistribution;
+import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.RandomDNA;
@@ -214,20 +211,20 @@ public final class DragstrReadSTRAnalyzerTest extends BaseTest {
     /**
      * App main program to generate the input file to be used with DRAGEN matlab script to generate the truth.
      */
-    public static void main(final String[] args) throws IOException, MathException {
+    public static void main(final String[] args) throws IOException {
         final File outfile = File.createTempFile("input", ".txt");
         System.err.println("output file is: " + outfile);
         final int seed = args.length == 0 ? 13 : Integer.parseInt(args[0]);
         final int count = args.length < 2 ? GENERATED_TEST_CASES : Integer.parseInt(args[1]);
         final Random rdn = new Random(seed);
         final RandomDNA rdnDNA = new RandomDNA(rdn);
-        final ExponentialDistribution repeatLenDist = new ExponentialDistributionImpl(REPEAT_LENGTH_MEAN);
+        final ExponentialDistribution repeatLenDist = new ExponentialDistribution(REPEAT_LENGTH_MEAN);
         try (final BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outfile)))) {
             for (int i = 0; i < count; i++) {
                 if (i > 0) writer.write('\n');
                 final int length = (int) Math.max(MIN_LENGTH, (rdn.nextGaussian() * GENERATED_SD_SEQ_LENGTH + 1) * GENERATED_AVG_SEQ_LENGTH);
                 final byte[] seq = rdnDNA.nextBases(length);
-                final PoissonDistribution repeatsDist = new PoissonDistributionImpl(AVERAGE_NUMBER_OF_REPEATS_FOR_100_BPS  * seq.length / 100.0);
+                final PoissonDistribution repeatsDist = new PoissonDistribution(AVERAGE_NUMBER_OF_REPEATS_FOR_100_BPS  * seq.length / 100.0);
                 final int numRepeats = Math.round(repeatsDist.inverseCumulativeProbability(rdn.nextDouble()));
                 for (int j = 0; j < numRepeats; j++) {
                     final int start = rdn.nextInt(seq.length);

@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.dragstr;
 
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrParamUtils;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -25,7 +27,7 @@ public class DragstrParametersEstimatorTest {
         final StratifiedDragstrLocusCases cases = composeInputCases();
         final DragstrParametersEstimator subject = new DragstrParametersEstimator(HYPER_PARAMETERS);
         final DragstrParams actual = Utils.runInParallel(0, () -> subject.estimate(cases));
-        final DragstrParams expected = new DragstrParams(DRAGEN_ESPECTED_RESULT.toString());
+        final DragstrParams expected = DragstrParamUtils.parse(new GATKPath(DRAGEN_ESPECTED_RESULT.toString()));
         Assert.assertEquals(actual.maximumPeriod(), expected.maximumPeriod());
         Assert.assertEquals(actual.maximumRepeats(), expected.maximumRepeats());
         for (int i = 1; i <= actual.maximumPeriod(); i++) {

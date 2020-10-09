@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.utils.BinaryTableReader;
@@ -72,7 +73,7 @@ public final class ComposeSTRTableFileIntegrationTest extends CommandLineProgram
     }
 
     private void assertMatchesExpected(final File actualFile, final TestCase testCase) throws IOException {
-        final STRTableFile actualTable = STRTableFile.open(actualFile.toString());
+        final STRTableFile actualTable = STRTableFile.open(new GATKPath(actualFile.toString()));
         final SAMSequenceDictionary actualDictionary = actualTable.dictionary();
         final SAMSequenceDictionary expectedDictionary = ReferenceUtils.loadFastaDictionary(testCase.dict);
         Assert.assertSame(SequenceDictionaryUtils.compareDictionaries(actualDictionary, expectedDictionary, true),

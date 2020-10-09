@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils;
 
 import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -26,12 +27,12 @@ public final class ZipUtilsTest {
         final File zipFile = File.createTempFile("test", ".zip");
         zipFile.delete();
         Assert.assertFalse(zipFile.exists());
-        ZipUtils.zip(aBin, zipFile.toString());
+        ZipUtils.zip(aBin, new GATKPath(zipFile.toString()));
         Assert.assertTrue(zipFile.isFile());
         final File unzipRoot = Files.createTempDir();
         unzipRoot.delete();
         Assert.assertFalse(unzipRoot.exists());
-        ZipUtils.unzip(zipFile.toString(), unzipRoot);
+        ZipUtils.unzip(new GATKPath(zipFile.toString()), unzipRoot);
         Assert.assertTrue(unzipRoot.isDirectory());
         final File[] subFiles = unzipRoot.listFiles();
         Assert.assertEquals(subFiles.length, 1);
@@ -45,7 +46,7 @@ public final class ZipUtilsTest {
         final File zipFile = File.createTempFile("test", ".zip");
         Assert.assertTrue(zipFile.delete());
         Assert.assertFalse(zipFile.exists());
-        ZipUtils.zip(root, zipFile.toString());
+        ZipUtils.zip(root, new GATKPath(zipFile.toString()));
         zipFile.deleteOnExit();
         Assert.assertTrue(zipFile.exists());
         Assert.assertTrue(zipFile.isFile());
@@ -53,7 +54,7 @@ public final class ZipUtilsTest {
         final File unzipRoot = Files.createTempDir();
         FileUtils.deleteDirectory(unzipRoot);
         Assert.assertFalse(unzipRoot.exists());
-        ZipUtils.unzip(zipFile.toString(), unzipRoot);
+        ZipUtils.unzip(new GATKPath(zipFile.toString()), unzipRoot);
         Assert.assertTrue(unzipRoot.exists());
         // now we compare the unzipped content with the original input content.
         for (final String inFileName : files) {
@@ -69,7 +70,7 @@ public final class ZipUtilsTest {
         zipFile.delete();
         zipFile.deleteOnExit();
         Assert.assertFalse(zipFile.exists());
-        ZipUtils.zip(root, zipFile.toString());
+        ZipUtils.zip(root, new GATKPath(zipFile.toString()));
         Assert.assertTrue(zipFile.exists());
         Assert.assertTrue(zipFile.isFile());
         // now unzip.
@@ -82,7 +83,7 @@ public final class ZipUtilsTest {
            .mapToObj(i -> files[i])
            .toArray(String[]::new);
 
-        ZipUtils.unzip(zipFile.toString(), unzipRoot, only);
+        ZipUtils.unzip(new GATKPath(zipFile.toString()), unzipRoot, only);
         Assert.assertTrue(unzipRoot.exists());
         // now we compare the unzipped content with the original input content.
         for (final String inFileName : files) {
@@ -108,7 +109,7 @@ public final class ZipUtilsTest {
                 .mapToObj(i -> files[i])
                 .toArray(String[]::new);
 
-        ZipUtils.zip(root, zipFile.toString(), only);
+        ZipUtils.zip(root, new GATKPath(zipFile.toString()), only);
         Assert.assertTrue(zipFile.exists());
         Assert.assertTrue(zipFile.isFile());
         // now unzip.
@@ -116,7 +117,7 @@ public final class ZipUtilsTest {
         FileUtils.deleteDirectory(unzipRoot);
         Assert.assertFalse(unzipRoot.exists());
 
-        ZipUtils.unzip(zipFile.toString(), unzipRoot);
+        ZipUtils.unzip(new GATKPath(zipFile.toString()), unzipRoot);
         Assert.assertTrue(unzipRoot.exists());
         // now we compare the unzipped content with the original input content.
         for (final String inFileName : files) {

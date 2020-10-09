@@ -2,15 +2,12 @@ package org.broadinstitute.hellbender.utils.reference;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import org.apache.avro.generic.GenericData;
-import org.apache.commons.math.MathException;
-import org.apache.commons.math.distribution.IntegerDistribution;
-import org.apache.commons.math.distribution.PoissonDistribution;
-import org.apache.commons.math.distribution.PoissonDistributionImpl;
+import org.apache.commons.math3.distribution.AbstractIntegerDistribution;
+import org.apache.commons.math3.distribution.IntegerDistribution;
+import org.apache.commons.math3.distribution.PoissonDistribution;
+import org.apache.commons.math3.random.JDKRandomGenerator;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.reference.AbsoluteCoordinates;
-import org.ojalgo.random.Poisson;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -115,13 +112,13 @@ public final class AbsoluteCoordinatesTest extends BaseTest {
     }
 
     @DataProvider
-    public Object[][] randomDictionaries() throws MathException {
+    public Object[][] randomDictionaries() {
         final List<Object[]> result = new ArrayList<>(100);
         final Random rdn = new Random(13);
         final IntegerDistribution seqLengthDistr = new BoundedDicreteParetoDistribution(1000, 100_000_000, 0.1);
         final SAMSequenceDictionary oneSeqDictionary =randomDictionary(rdn, 1, seqLengthDistr, true);
         result.add(new Object[] {oneSeqDictionary});
-        final IntegerDistribution numberSeqDist = new PoissonDistributionImpl(100);
+        final IntegerDistribution numberSeqDist = new PoissonDistribution(100);
         while (result.size() < 100) {
             final int numberSeq = 1 + numberSeqDist.inverseCumulativeProbability(rdn.nextDouble());
             final SAMSequenceDictionary randomDictionary = randomDictionary(rdn, numberSeq, seqLengthDistr, true);
@@ -130,7 +127,7 @@ public final class AbsoluteCoordinatesTest extends BaseTest {
         return result.stream().toArray(Object[][]::new);
     }
 
-    public SAMSequenceDictionary randomDictionary(final Random rdn, final int seqNum, final IntegerDistribution lengthDistribution, final boolean sortBySize) throws MathException {
+    public SAMSequenceDictionary randomDictionary(final Random rdn, final int seqNum, final IntegerDistribution lengthDistribution, final boolean sortBySize) {
         final List<SAMSequenceRecord> contigs = new ArrayList<>(seqNum);
         for (int i = 0; i < seqNum; i++) {
             final SAMSequenceRecord contig = new SAMSequenceRecord("seq" + (i + 1), lengthDistribution.inverseCumulativeProbability(rdn.nextDouble()));
@@ -146,12 +143,15 @@ public final class AbsoluteCoordinatesTest extends BaseTest {
     }
 
 
-    private static class BoundedDicreteParetoDistribution implements IntegerDistribution {
+    private static class BoundedDicreteParetoDistribution extends AbstractIntegerDistribution {
+
+        private static final long serialVersionUID = -1;
 
         private final int L, H;
         private final double alpha;
 
         private BoundedDicreteParetoDistribution(final int L, final int H, final double alpha) {
+            super(new JDKRandomGenerator());
             this.L = L;
             this.H = H;
             this.alpha = alpha;
@@ -164,17 +164,17 @@ public final class AbsoluteCoordinatesTest extends BaseTest {
         }
 
         @Override
-        public double cumulativeProbability(int x) throws MathException {
+        public double cumulativeProbability(int x) {
             return (1- Math.pow(L, alpha)*Math.pow(x, -alpha)) / (1 - Math.pow(L/(double)H, alpha));
         }
 
         @Override
-        public double cumulativeProbability(int x0, int x1) throws MathException {
+        public double cumulativeProbability(int x0, int x1) {
             return cumulativeProbability(x1) - cumulativeProbability(x0);
         }
 
         @Override
-        public int inverseCumulativeProbability(final double p) throws MathException {
+        public int inverseCumulativeProbability(final double p) {
             final double result = L / Math.pow((1 - p * (1 - Math.pow(L/(double)H,alpha))), 1/alpha);
 
             //final int result =  (int) Math.round(Math.pow(- (p * Math.pow(H, alpha) - p * Math.pow(L, alpha) - Math.pow(H * L, alpha))
@@ -187,20 +187,34 @@ public final class AbsoluteCoordinatesTest extends BaseTest {
         }
 
         @Override
-        public double probability(double x) {
-            return (alpha * Math.pow(L, alpha) * Math.pow(x, -alpha -1))
-                    / (1 - Math.pow((L/(double)H), alpha));
+        public double getNumericalMean() {
+            return alpha != 1.0
+                    ? ((Math.pow(L, alpha) * alpha) / ((1 - Math.pow(L / (double) H, alpha)) * (alpha - 1))) * ( Math.pow(L, - alpha + 1) - Math.pow(H, -alpha + 1) )
+                    : ((H * L) / ((double) H - L)) * (Math.log(H) - Math.log(L));
         }
 
         @Override
-        public double cumulativeProbability(double x) throws MathException {
-            return (1- Math.pow(L, alpha)*Math.pow(x, -alpha)) / (1 - Math.pow(L/(double)H, alpha));
+        public double getNumericalVariance() {
+            return alpha != 2.0
+                    ? ((Math.pow(L, alpha) * alpha) / ((1 - Math.pow(L / (double) H, alpha)) * (alpha - 2))) * ( Math.pow(L, - alpha + 2) - Math.pow(H, -alpha + 2) )
+                    : ((2 * H * H * L * L) / ((double) H * H - L * L)) * (Math.log(H) - Math.log(L));
         }
 
         @Override
-        public double cumulativeProbability(double x0, double x1) throws MathException {
-            return cumulativeProbability(x1) - cumulativeProbability(x0);
+        public int getSupportLowerBound() {
+            return L;
         }
+
+        @Override
+        public int getSupportUpperBound() {
+            return H;
+        }
+
+        @Override
+        public boolean isSupportConnected() {
+            return true;
+        }
+
     }
 
 
