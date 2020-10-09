@@ -1,0 +1,119 @@
+Notice of Third Party Code Dependencies
+
+ML4H is distributed, in part, under and subject to the provisions of respective licenses for the following dependencies: 
+
+1. altair
+Copyright (c) 2015 Brian E. Granger and Jake Vanderplas. All rights reserved.
+https://github.com/altair-viz/altair/blob/master/LICENSE
+
+2. anaconda
+Copyright (c) 2020 Anaconda, Inc. All rights reserved. 
+https://www.anaconda.com
+
+3. beautifulsoup4
+Copyright (c) 2004 - 2020 Leonard Richardson. All rights reserved.
+https://www.crummy.com/software/BeautifulSoup/
+
+4. bokeh
+Copyright (c) 2012 - 2020 Anaconda, Inc. and Bokeh Contributors. All rights reserved.
+https://github.com/bokeh/bokeh/blob/master/LICENSE.txt
+
+5. Docker 
+Copyright (c) 2014 Docker, Inc. All rights reserved.
+https://github.com/docker/compose/blob/master/LICENSE
+
+6. h5py==2.10.0
+Copyright (c) 2008 - 2013 Andrew Collette and contributors (http://www.h5py.org). All rights reserved.
+https://github.com/h5py/h5py/blob/master/licenses/license.txt
+
+7. imageio==2.6.1
+Copyright (c) 2014-2020 imageio developers. All rights reserved.
+https://github.com/imageio/imageio/blob/master/LICENSE
+
+8. Jupyter
+Copyright (c) 2001 - 2015 IPython Development Team. 
+Copyright (c) 2015 - 2020 Jupyter Development Team. 
+All rights reserved.
+https://github.com/jupyter/notebook/blob/master/LICENSE
+
+9. Keras
+Copyright (c) 2015 - 2019 François Chollet. All rights reserved.
+https://github.com/keras-team/keras/blob/master/LICENSE
+
+10. lxml
+Copyright (c) 2004 Infrae. All rights reserved.
+https://github.com/lxml/lxml/blob/master/LICENSE.txt
+
+11. nibabel==2.5.0
+Copyright (c) 2009 - 2019 Matthew Brett <matthew.brett@gmail.com>. Copyright (c) 2010 - 2013 Stephan Gerhard <git@unidesign.ch>.
+Copyright (c) 2006 - 2014 Michael Hanke <michael.hanke@gmail.com>.
+Copyright (c) 2011 Christian Haselgrove <christian.haselgrove@umassmed.edu>.
+Copyright (c) 2010 - 2011 Jarrod Millman <jarrod.millman@gmail.com>.
+Copyright (c) 2011 - 2019 Yaroslav Halchenko <debian@onerussian.com>.
+Copyright (c) 2015 - 2019 Chris Markiewicz <effigies@gmail.com>. 
+All rights reserved.
+https://github.com/nipy/nibabel/blob/master/COPYING
+
+12. numcodecs
+Copyright (c) 2015 - 2018 Zarr Developers <https://github.com/zarr-developers>. All rights reserved.
+https://github.com/zarr-developers/numcodecs/blob/master/LICENSE
+
+13. numexpr
+Copyright (c) 2007, 2008  David M. Cooke <david.m.cooke@gmail.com>.
+Copyright (c) 2009, 2010  Francesc Alted <faltet@pytables.org>.
+Copyright (c) 2011 - 2020. David M. Cooke and other contributors <https://github.com/pydata/numexpr/blob/master/AUTHORS.txt>.
+All rights reserved.
+https://github.com/pydata/numexpr/blob/master/LICENSE.txt
+
+14. numpy
+Copyright (c) 2005 - 2020 NumPy Developers. All rights reserved.
+https://github.com/numpy/numpy/blob/master/LICENSE.txt
+
+15. Pip
+Copyright (c) 2008-2020 The pip developers (https://github.com/pypa/pip/blob/master/AUTHORS.txt). All rights reserved.
+https://github.com/pypa/pip/blob/master/LICENSE.txt
+
+16. Plotnine
+Copyright (c) 2017 - 2020 Plotnine contributors. All rights reserved.
+https://github.com/has2k1/plotnine/blob/master/LICENSE
+
+17. pydot==1.2.4
+Copyright (c) 2014 Carlos Jenkins.
+Copyright (c) 2014 Lance Helper.
+Copyright (c) 2004 Ero Carrera.
+All rights reserved.
+https://github.com/pydot/pydot/blob/master/LICENSE
+
+18. pytest
+Copyright (c) 2004 - 2020 Holger Krekel and other contributors. All rights reserved.
+https://github.com/pytest-dev/pytest/blob/master/LICENSE
+
+19. pytest-cov
+Copyright (c) 2010 Meme Dough. All rights reserved.
+https://github.com/pytest-dev/pytest-cov/blob/master/LICENSE
+
+20. Python
+Copyright (c) 2001 - 2020 Python Software Foundation. All rights reserved.
+https://docs.python.org/3/license.html
+
+21. scikit-image
+Copyright (c) 2019, the scikit-image team. All rights reserved.
+https://github.com/scikit-image/scikit-image/blob/master/LICENSE.txt
+
+22. scikit-learn<0.23,>=0.22.0
+Copyright (c) 2007 - 2020 The scikit-learn developers. All rights reserved.
+https://github.com/scikit-learn/scikit-learn/blob/master/COPYING
+
+23. Ubuntu
+Copyright (c) 2014 - 2020 Ubuntu Developers. All rights reserved.
+https://github.com/ubuntu/ubuntu-make/blob/master/COPYING
+
+24. Vega
+Copyright (c) 2015 - 2018 University of Washington Interactive Data Lab. All rights reserved.
+https://github.com/vega/vega/blob/master/LICENSE
+
+25. Xmltodict
+Copyright (c) 2012 Martin Blech and individual contributors. All rights reserved.
+https://github.com/martinblech/xmltodict/blob/master/LICENSE
+
+
