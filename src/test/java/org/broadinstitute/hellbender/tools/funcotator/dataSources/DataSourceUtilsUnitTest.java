@@ -357,7 +357,7 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
                 {
                         1,
                         6,
-                        LocalDate.of(2020, Month.JANUARY, 24),
+                        LocalDate.of(2019, Month.JANUARY, 24),
                         "v1.6.20190124"
                 },
                 {
