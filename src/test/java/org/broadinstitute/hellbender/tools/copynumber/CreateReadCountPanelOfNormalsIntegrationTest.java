@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
@@ -171,7 +172,7 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
             //to NUM_ZEROS_IN_BAD_SAMPLE_FOR_SIMULATION randomly chosen good intervals
             for (int sampleIndex = 0; sampleIndex < NUM_BAD_SAMPLES_WITH_TOO_MANY_ZEROS; sampleIndex++) {
                 final List<Integer> intervalIndicesToZero = IntStream.range(NUM_BAD_INTERVALS_WITH_TOO_MANY_ZEROS, NUM_INTERVALS).boxed().collect(Collectors.toList());
-                Collections.shuffle(intervalIndicesToZero);
+                Collections.shuffle(intervalIndicesToZero, new Random(sampleIndex));
                 final int si = sampleIndex;
                 intervalIndicesToZero.subList(0, NUM_ZEROS_IN_BAD_SAMPLE_FOR_SIMULATION)
                         .forEach(intervalIndex -> counts.setEntry(si, intervalIndex, 0.));
@@ -181,7 +182,7 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
             //to NUM_ADDITIONAL_ZEROS_IN_BAD_INTERVAL_FOR_SIMULATION randomly chosen from remaining good samples
             for (int intervalIndex = 0; intervalIndex < NUM_BAD_INTERVALS_WITH_TOO_MANY_ZEROS; intervalIndex++) {
                 final List<Integer> sampleIndicesToZero = IntStream.range(NUM_BAD_SAMPLES_WITH_TOO_MANY_ZEROS, NUM_SAMPLES).boxed().collect(Collectors.toList()); //choose only from good samples
-                Collections.shuffle(sampleIndicesToZero);
+                Collections.shuffle(sampleIndicesToZero, new Random(intervalIndex));
                 final int ii = intervalIndex;
                 sampleIndicesToZero.subList(0, NUM_ADDITIONAL_ZEROS_IN_BAD_INTERVAL_FOR_SIMULATION)
                         .forEach(sampleIndex -> counts.setEntry(sampleIndex, ii, 0.));
