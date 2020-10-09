@@ -1,11 +1,10 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.walkers.validation.ArrayImputationCorrelation;
 
 import java.util.Iterator;
 import java.util.List;
-
-import static org.testng.Assert.*;
 
 public class ArrayImputationCorrelationUnitTest extends GATKBaseTest {
 

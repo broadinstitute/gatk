@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine;
+package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -7,6 +7,12 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -43,9 +49,18 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     )
     private GATKPath outputFile = null;
 
+    @Argument(
+            doc = "Output file for accuracy.",
+            fullName = "output-accuracy",
+            shortName = "OA"
+    )
+    private GATKPath outputAccuracyFile = null;
+
     final int nBins = 14;
     final double firstBinRightEdge = 0.0005;
     final List<AFCorrelationAggregator> aggregators = new ArrayList<>();
+    final AccuracyMetrics snpMetrics = new AccuracyMetrics(VariantContext.Type.SNP);
+    final AccuracyMetrics indelMetrics = new AccuracyMetrics(VariantContext.Type.INDEL);
     private VariantContext currentReferenceBlockVC;
 
     @Override
@@ -127,7 +142,13 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
             final int bin = getBin(af);
             final double evalAltCount = 2 - evalVC.getGenotype(0).countAllele(evalVC.getReference());
             final double truthAltCount = 2 - truthVC.getGenotype(0).countAllele(truthVC.getReference());
-            aggregators.get(bin).pearsonCorrelationAggregator.addEntry(evalAltCount, truthAltCount);
+            if (evalVC.isSNP()) {
+                aggregators.get(bin).snp_pearsonCorrelationAggregator.addEntry(evalAltCount, truthAltCount);
+                snpMetrics.incrementMetrics((int)evalAltCount, (int)truthAltCount);
+            } else if (evalVC.isIndel()){
+                aggregators.get(bin).indel_pearsonCorrelationAggregator.addEntry(evalAltCount, truthAltCount);
+                indelMetrics.incrementMetrics((int)evalAltCount, (int)truthAltCount);
+            }
         }
     }
 
@@ -135,6 +156,13 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     public Object onTraversalSuccess() {
         try (final AFCorrelationWriter writer = new AFCorrelationWriter(outputFile.toPath())) {
             writer.writeAllRecords(aggregators);
+        } catch (final IOException ex) {
+            throw new GATKException("error writing output", ex);
+        }
+
+        try (final AccuracyWriter writer = new AccuracyWriter(outputAccuracyFile.toPath())) {
+            writer.writeRecord(snpMetrics);
+            writer.writeRecord(indelMetrics);
         } catch (final IOException ex) {
             throw new GATKException("error writing output", ex);
         }
@@ -157,7 +185,8 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 
     private static final class AFCorrelationAggregator {
         final double binCenter;
-        final PearsonCorrelationAggregator pearsonCorrelationAggregator = new PearsonCorrelationAggregator();
+        final PearsonCorrelationAggregator snp_pearsonCorrelationAggregator = new PearsonCorrelationAggregator();
+        final PearsonCorrelationAggregator indel_pearsonCorrelationAggregator = new PearsonCorrelationAggregator();
 
         AFCorrelationAggregator(final double binCenter) {
             this.binCenter = binCenter;
@@ -166,13 +195,15 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 
     private static class AFCorrelationWriter extends TableWriter<AFCorrelationAggregator> {
         AFCorrelationWriter(final Path file) throws IOException {
-            super(file, new TableColumnCollection("bin_center", "correlation", "n_sites"));
+            super(file, new TableColumnCollection("bin_center", "snp_correlation", "snp_n_sites", "non_snp_correlation", "non_snp_n_sites"));
         }
 
         protected void composeLine(final AFCorrelationAggregator afCorrelationAggregator, final DataLine dataLine) {
             dataLine.set("bin_center", afCorrelationAggregator.binCenter)
-                    .set("correlation", afCorrelationAggregator.pearsonCorrelationAggregator.getCorrelation())
-                    .set("n_sites", afCorrelationAggregator.pearsonCorrelationAggregator.n);
+                    .set("snp_correlation", afCorrelationAggregator.snp_pearsonCorrelationAggregator.getCorrelation())
+                    .set("snp_n_sites", afCorrelationAggregator.snp_pearsonCorrelationAggregator.n)
+                    .set("indel_correlation", afCorrelationAggregator.indel_pearsonCorrelationAggregator.getCorrelation())
+                    .set("indel_n_sites", afCorrelationAggregator.indel_pearsonCorrelationAggregator.n);
         }
     }
 
@@ -202,6 +233,62 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 
             final double r = (e_xy - e_x * e_y)/(Math.sqrt(e_x2 - e_x*e_x)* Math.sqrt(e_y2 - e_y*e_y));
             return r;
+        }
+    }
+
+    private static class AccuracyWriter extends TableWriter<AccuracyMetrics> {
+        AccuracyWriter(final Path file) throws IOException {
+            super(file, new TableColumnCollection("type", "true_positives", "true_negatives", "false_positives", "false_negatives", "recall", "precision", "accuracy"));
+        }
+
+        protected void composeLine(final AccuracyMetrics metrics, final DataLine dataLine) {
+            dataLine.set("type", metrics.type.toString())
+                    .set("true_positives", metrics.true_positives)
+                    .set("true_negatives", metrics.true_negatives)
+                    .set("false_positives", metrics.false_positives)
+                    .set("false_negatives", metrics.true_negatives)
+                    .set("recall", metrics.getRecall())
+                    .set("precision", metrics.getPrecision())
+                    .set("accuracy", metrics.getAccuracy());
+        }
+    }
+
+    static final class AccuracyMetrics {
+        int true_positives;
+        int true_negatives;
+        int false_positives;
+        int false_negatives;
+        final VariantContext.Type type;
+
+        AccuracyMetrics(final VariantContext.Type type) {
+            this.type = type;
+        }
+        double getRecall() {
+            return (double)true_positives/((double)true_positives + (double) false_negatives);
+        }
+
+        double getPrecision() {
+            return (double)true_positives/((double)true_positives + (double) false_positives);
+        }
+
+        double getAccuracy() {
+            return (double)(true_positives + true_negatives)/(double)(true_positives + false_positives + true_negatives + false_negatives);
+        }
+
+        void incrementMetrics(final int evalAltCount, final int truthAltCount) {
+            if (evalAltCount == truthAltCount) {
+                if (evalAltCount > 0) {
+                    true_positives++;
+                } else {
+                    true_negatives++;
+                }
+            } else {
+                if (evalAltCount > 0) {
+                    false_positives++;
+                } else {
+                    true_negatives++;
+                }
+            }
         }
     }
 }
