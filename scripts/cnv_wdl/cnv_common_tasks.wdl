@@ -192,6 +192,7 @@ task CollectCounts {
       Boolean? enable_indexing
       String? format
       File? gatk4_jar_override
+      String? gcs_project_for_requester_pays
 
       # Runtime parameters
       String gatk_docker
@@ -270,6 +271,7 @@ task CollectCounts {
             --format ~{default="HDF5" hdf5_or_tsv_or_null_format} \
             --interval-merging-rule OVERLAPPING_ONLY \
             --output ~{counts_filename_for_collect_read_counts} \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays} \
             ~{sep=' ' disabled_read_filters_arr}
 
         if [ ~{do_block_compression} = "true" ]; then
@@ -306,6 +308,7 @@ task CollectAllelicCounts {
       File ref_fasta_dict
       Int? minimum_base_quality
       File? gatk4_jar_override
+      String? gcs_project_for_requester_pays
 
       # Runtime parameters
       String gatk_docker
@@ -342,7 +345,8 @@ task CollectAllelicCounts {
             --input ~{bam} \
             --reference ~{ref_fasta} \
             --minimum-base-quality ~{default="20" minimum_base_quality} \
-            --output ~{allelic_counts_filename}
+            --output ~{allelic_counts_filename} \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
     >>>
 
     runtime {
