@@ -154,6 +154,8 @@ public final class SequenceDictionaryUtils {
         switch ( type ) {
             case IDENTICAL:
                 return;
+            case SUPERSET:
+                return;
             case COMMON_SUBSET:
                 if ( requireSuperset ) {
                     final Set<String> contigs1 = dict1.getSequences().stream().map(SAMSequenceRecord::getSequenceName).collect(Collectors.toSet());
@@ -164,27 +166,25 @@ public final class SequenceDictionaryUtils {
                     throw new UserException.IncompatibleSequenceDictionaries(String.format("Dictionary %s is missing contigs found in dictionary %s.  Missing contigs: \n %s \n", name1, name2, String.join(", ", missingContigs)), name1, dict1, name2, dict2);
                 }
                 return;
-            case SUPERSET:
-                return;
             case NO_COMMON_CONTIGS:
                 throw new UserException.IncompatibleSequenceDictionaries("No overlapping contigs found", name1, dict1, name2, dict2);
 
             case UNEQUAL_COMMON_CONTIGS: {
-                List<SAMSequenceRecord> x = findDisequalCommonContigs(getCommonContigsByName(dict1, dict2), dict1, dict2);
-                SAMSequenceRecord elt1 = x.get(0);
-                SAMSequenceRecord elt2 = x.get(1);
-                UserException ex = new UserException.IncompatibleSequenceDictionaries(String.format("Found contigs with the same name but different lengths:\n  contig %s = %s / %d\n  contig %s = %s / %d",
+                final List<SAMSequenceRecord> x = findDisequalCommonContigs(getCommonContigsByName(dict1, dict2), dict1, dict2);
+                final SAMSequenceRecord elt1 = x.get(0);
+                final SAMSequenceRecord elt2 = x.get(1);
+                throw new UserException.IncompatibleSequenceDictionaries(
+                        String.format("Found contigs with the same name but different lengths:\n  contig %s = %s / %d\n  contig %s = %s / %d",
                         name1, elt1.getSequenceName(), elt1.getSequenceLength(),
                         name2, elt2.getSequenceName(), elt2.getSequenceLength()),
-                        name1, dict1, name2, dict2);
-
-                throw ex;
+                        name1, dict1, name2, dict2
+                );
             }
 
             case NON_CANONICAL_HUMAN_ORDER: {
                 // We only get NON_CANONICAL_HUMAN_ORDER if the caller explicitly requested that we check contig ordering,
                 // so we should always throw when we see it.
-                UserException ex;
+                final UserException ex;
                 if ( nonCanonicalHumanContigOrder(dict1) ) {
                     ex = new UserException.LexicographicallySortedSequenceDictionary(name1, dict1);
                 }
@@ -198,13 +198,12 @@ public final class SequenceDictionaryUtils {
             case OUT_OF_ORDER: {
                 // We only get OUT_OF_ORDER if the caller explicitly requested that we check contig ordering,
                 // so we should always throw when we see it.
-                UserException ex = new UserException.IncompatibleSequenceDictionaries(
+                throw new UserException.IncompatibleSequenceDictionaries(
                                 "The relative ordering of the common contigs in " + name1 + " and " + name2 +
                                 " is not the same; to fix this please see: "
                                 + "(https://www.broadinstitute.org/gatk/guide/article?id=1328), "
                                 + " which describes reordering contigs in BAM and VCF files.",
                                 name1, dict1, name2, dict2);
-                throw ex;
             }
 
             case DIFFERENT_INDICES: {
@@ -215,8 +214,7 @@ public final class SequenceDictionaryUtils {
                         "that is sensitive to contig ordering can fail when this is the case. " +
                         "You should fix the sequence dictionaries so that all shared contigs " +
                         "occur at the same absolute positions in both dictionaries.";
-                final UserException ex = new UserException.IncompatibleSequenceDictionaries(msg, name1, dict1, name2, dict2);
-                throw ex;
+                throw new UserException.IncompatibleSequenceDictionaries(msg, name1, dict1, name2, dict2);
             }
             default:
                 throw new GATKException("Unexpected SequenceDictionaryComparison type: " + type);

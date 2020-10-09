@@ -103,7 +103,10 @@ public class DbSnpIntegrationTest extends CommandLineProgramTest {
         };
     }
 
-    @Test(groups={"cloud"}, dataProvider = "provideFortestDbSnpDataSourceParsing")
+    @Test(
+            groups={"cloud"},
+            dataProvider = "provideFortestDbSnpDataSourceParsing"
+    )
     public void testDbSnpDataSourceParsing( final String refVersion,
                                             final Locatable interval,
                                             final String expectedID,
