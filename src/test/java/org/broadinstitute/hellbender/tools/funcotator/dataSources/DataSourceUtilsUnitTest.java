@@ -52,8 +52,8 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
                         (
                             (maj >= DataSourceUtils.MIN_MAJOR_VERSION_NUMBER) &&
                             (maj <= DataSourceUtils.MAX_MAJOR_VERSION_NUMBER) &&
-                            (min >= DataSourceUtils.MIN_MINOR_VERSION_NUMBER) &&
-                            (min <= DataSourceUtils.MAX_MINOR_VERSION_NUMBER)
+                            (maj != DataSourceUtils.MIN_MAJOR_VERSION_NUMBER || min >= DataSourceUtils.MIN_MINOR_VERSION_NUMBER) &&
+                            (maj != DataSourceUtils.MAX_MAJOR_VERSION_NUMBER || min <= DataSourceUtils.MAX_MINOR_VERSION_NUMBER)
                         )
                         &&
                         (
