@@ -271,7 +271,7 @@ task CollectCounts {
             --format ~{default="HDF5" hdf5_or_tsv_or_null_format} \
             --interval-merging-rule OVERLAPPING_ONLY \
             --output ~{counts_filename_for_collect_read_counts} \
-            ~{"--gcs-project-for-requester-pays" + gcs_project_for_requester_pays} \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays} \
             ~{sep=' ' disabled_read_filters_arr}
 
         if [ ~{do_block_compression} = "true" ]; then
@@ -346,7 +346,7 @@ task CollectAllelicCounts {
             --reference ~{ref_fasta} \
             --minimum-base-quality ~{default="20" minimum_base_quality} \
             --output ~{allelic_counts_filename} \
-            ~{"--gcs-project-for-requester-pays" + gcs_project_for_requester_pays}
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
     >>>
 
     runtime {

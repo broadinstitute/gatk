@@ -354,7 +354,8 @@ workflow CNVSomaticPairWorkflow {
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_collect_counts,
                 disk_space_gb = collect_counts_normal_disk,
-                preemptible_attempts = preemptible_attempts
+                preemptible_attempts = preemptible_attempts,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
 
         Int collect_allelic_counts_normal_disk = normal_bam_size + ref_size + disk_pad
@@ -371,7 +372,8 @@ workflow CNVSomaticPairWorkflow {
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_collect_allelic_counts,
                 disk_space_gb = collect_allelic_counts_normal_disk,
-                preemptible_attempts = preemptible_attempts
+                preemptible_attempts = preemptible_attempts,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
 
         Int denoise_read_counts_normal_disk = read_count_pon_size + ceil(size(CollectCountsNormal.counts, "GB")) + disk_pad
