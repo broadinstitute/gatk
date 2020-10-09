@@ -31,6 +31,8 @@ workflow Mutect2_Panel {
     Int? min_contig_size
     Int? create_panel_scatter_count
 
+    String? gcs_project_for_requester_pays
+
     # runtime
     String gatk_docker
     File? gatk_override
@@ -70,7 +72,8 @@ workflow Mutect2_Panel {
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 preemptible = preemptible,
-                max_retries = max_retries
+                max_retries = max_retries,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
     }
 
@@ -128,6 +131,7 @@ task CreatePanel {
       File gnomad
       File gnomad_idx
       String? create_pon_extra_args
+      String? gcs_project_for_requester_pays
 
       # runtime
       Runtime runtime_params
