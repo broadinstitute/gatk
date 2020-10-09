@@ -40,7 +40,7 @@ echo "Updated local_backend.conf with service account"
 
 echo "Running ImportArrayManifest WDL through cromwell"
 ln -fs $WORKING_DIR/gatk/scripts/variantstore_wdl/ImportArrayManifest.wdl
-#sudo java -Dconfig.file=$WORKING_DIR/set_up.conf -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/variantstore_wdl/ImportArrayManifest.wdl -i $WORKING_DIR/import_array_manifest_test_mod.json -m $WORKING_DIR/test_import_manifest_wdl.metadata
+sudo java -Dconfig.file=$WORKING_DIR/set_up.conf -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/variantstore_wdl/ImportArrayManifest.wdl -i $WORKING_DIR/import_array_manifest_test_mod.json -m $WORKING_DIR/test_import_manifest_wdl.metadata
 
 echo "Running ImportArrays WDL through cromwell"
 ln -fs $WORKING_DIR/gatk/scripts/variantstore_wdl/ImportArrays.wdl
