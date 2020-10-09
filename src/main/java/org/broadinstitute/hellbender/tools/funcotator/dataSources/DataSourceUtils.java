@@ -804,10 +804,11 @@ final public class DataSourceUtils {
         }
 
         // Compare minor version if we're on the edge of versions:
-        if ( (major == MIN_MAJOR_VERSION_NUMBER) || (major == MAX_MAJOR_VERSION_NUMBER) ) {
-            if ((minor < MIN_MINOR_VERSION_NUMBER) || (minor > MAX_MINOR_VERSION_NUMBER)) {
-                return false;
-            }
+        if ( major == MIN_MAJOR_VERSION_NUMBER && minor < MIN_MINOR_VERSION_NUMBER ) {
+            return false;
+        }
+        if ( major == MAX_MAJOR_VERSION_NUMBER && minor > MAX_MINOR_VERSION_NUMBER ) {
+            return false;
         }
 
         // Now make sure the date is between or equal to the min and max date:
