@@ -9,7 +9,7 @@ version 1.0
 #  scatter_count: number of parallel jobs when scattering over intervals
 #  pon_name: the resulting panel of normals is {pon_name}.vcf
 #  m2_extra_args: additional command line parameters for Mutect2.  This should not involve --max-mnp-distance,
-#  which the wdl hard-codes to 0 because GenpmicsDBImport can't handle MNPs
+#  which the wdl hard-codes to 0 because GenomicsDBImport can't handle MNPs
 
 import "mutect2.wdl" as m2
 workflow Mutect2_Panel {
@@ -131,7 +131,6 @@ task CreatePanel {
       File gnomad
       File gnomad_idx
       String? create_pon_extra_args
-      String? gcs_project_for_requester_pays
 
       # runtime
       Runtime runtime_params
