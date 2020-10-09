@@ -147,7 +147,7 @@ final public class DataSourceUtils {
      * release files.
      * @param major {@code int} representing the major version of the data sources to use.
      * @param minor {@code int} representing the minor version of the data sources to use.
-     * @param date {@link Calendar} representing the date of the data sources to use.
+     * @param date {@link LocalDate} representing the date of the data sources to use.
      * @return A {@link String} representing the given version information as it would appear in the data sources file name.
      */
     public static String getDataSourceVersionString(final int major, final int minor, final LocalDate date) {
@@ -771,10 +771,12 @@ final public class DataSourceUtils {
 
         // Warn the user if they need newer stuff.
         if ( !dataSourcesPathIsAcceptable ) {
-
             String message = "";
-            message = message + "ERROR: Given data source path is too old!  Minimum required version is: " + CURRENT_MINIMUM_DATA_SOURCE_VERSION + " (yours: " + version + ")\n";
-            message = message + "       You must download a newer version of the data sources from the Broad Institute FTP site: " + DATA_SOURCES_FTP_PATH + "\n";
+            message = message + "ERROR: Given data source path is too old or too new!  \n";
+            message = message + "       Minimum required version is: " + CURRENT_MINIMUM_DATA_SOURCE_VERSION + "\n";
+            message = message + "       Maximum allowed version is:  " + CURRENT_MAXIMUM_DATA_SOURCE_VERSION + "\n";
+            message = message + "       Yours:                       " + version + "\n";
+            message = message + "       You must download a compatible version of the data sources from the Broad Institute FTP site: " + DATA_SOURCES_FTP_PATH + "\n";
             message = message + "       or the Broad Institute Google Bucket: " + DATA_SOURCES_BUCKET_PATH + "\n";
             throw new UserException( message );
         }

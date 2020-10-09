@@ -9,6 +9,7 @@ import org.testng.annotations.Test;
 
 import java.time.LocalDate;
 import java.time.Month;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -30,6 +31,55 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Helper Methods:
 
+    /**
+     * Add a test case to the given {@code testArgs} for version-based tests.
+     *
+     * Calculates the expected value based on the validity of the input arguments and the valid data ranges in
+     * {@link DataSourceUtils}.
+     *
+     * @param testArgs {@code List<Object[]>} test arguments list to which to add the test case.
+     * @param maj {@code int} representing the major version to test.
+     * @param min {@code int} representing the minor version to test.
+     * @param date {@link LocalDate} represeting the date of the version to test.
+     */
+    private void addVersionTestCase(final List<Object[]> testArgs,
+                                    final int maj,
+                                    final int min,
+                                    final LocalDate date) {
+        testArgs.add(
+                new Object[]{
+                        maj, min, date,
+                        (
+                            (maj >= DataSourceUtils.MIN_MAJOR_VERSION_NUMBER) &&
+                            (maj <= DataSourceUtils.MAX_MAJOR_VERSION_NUMBER) &&
+                            (min >= DataSourceUtils.MIN_MINOR_VERSION_NUMBER) &&
+                            (min <= DataSourceUtils.MAX_MINOR_VERSION_NUMBER)
+                        )
+                        &&
+                        (
+                            (date.isAfter(DataSourceUtils.MIN_DATE) || date.isEqual(DataSourceUtils.MIN_DATE)) &&
+                            (date.isBefore(DataSourceUtils.MAX_DATE) || date.isEqual(DataSourceUtils.MAX_DATE))
+                        )
+                }
+        );
+    }
+
+    /**
+     * Add a test case to the given {@code testArgs} for version-based tests.
+     * @param testArgs {@code List<Object[]>} test arguments list to which to add the test case.
+     * @param maj {@code int} representing the major version to test.
+     * @param min {@code int} representing the minor version to test.
+     * @param date {@link LocalDate} represeting the date of the version to test.
+     * @param expected The expected {@code boolean} value for the test case given the input version data.
+     */
+    private void addVersionTestCase(final List<Object[]> testArgs,
+                                    final int maj,
+                                    final int min,
+                                    final LocalDate date,
+                                    final boolean expected) {
+        testArgs.add(new Object[]{maj, min, date, expected});
+    }
+
     private List<Object[]>  createBaseTestVersionData() {
 
         final ArrayList<Object[]> testArgs = new ArrayList<>();
@@ -38,50 +88,54 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
         // First do tests that check the major / minor version numbers:
         // -------------------------------------------------------------
 
-        final int MINOR_IT_MAX_VAL = 20;
-
         // major < MIN_MAJOR (minor shouldn't matter)
-        for (int minor = 0; minor < MINOR_IT_MAX_VAL; ++minor) {
-            testArgs.add(
-                    new Object[]{
-                            DataSourceUtils.MIN_MAJOR_VERSION_NUMBER - 1, minor, DataSourceUtils.MIN_DATE, false
-                    }
-            );
-        }
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER - 1, 0, DataSourceUtils.MIN_DATE, false);
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER - 1, DataSourceUtils.MIN_MINOR_VERSION_NUMBER - 1, DataSourceUtils.MIN_DATE, false);
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER - 1, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_DATE, false);
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER - 1, DataSourceUtils.MIN_MINOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_DATE, false);
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER - 1, DataSourceUtils.MAX_MINOR_VERSION_NUMBER - 1, DataSourceUtils.MIN_DATE, false);
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER - 1, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_DATE, false);
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER - 1, DataSourceUtils.MAX_MINOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_DATE, false);
 
         // major == MIN_MAJOR (minor does matter)
-        for (int minor = 0; minor < MINOR_IT_MAX_VAL; ++minor) {
-            testArgs.add(
-                    new Object[]{
-                            DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, minor, DataSourceUtils.MIN_DATE,
-                            (minor == DataSourceUtils.MIN_MINOR_VERSION_NUMBER || minor == DataSourceUtils.MAX_MINOR_VERSION_NUMBER)
-                    }
-            );
-        }
+        // Truth computed in `addVersionTestCase` method:
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, 0, DataSourceUtils.MIN_DATE);
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER - 1, DataSourceUtils.MIN_DATE);
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_DATE);
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_DATE);
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER - 1, DataSourceUtils.MIN_DATE);
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_DATE);
+        addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_DATE);
 
-        // major > MIN_MAJOR and < MAX_MAJOR (minor shouldn't matter)
-        // Can't currently test here - version numbers use integer values and right now
-        // MIN_MAJOR_VERSION_NUMBER == MAX_MAJOR_VERSION_NUMBER
-        // TODO: Add in test when possible.
+        // major > MIN_MAJOR and major < MAX_MAJOR (minor shouldn't matter)
+        if ( DataSourceUtils.MAX_MAJOR_VERSION_NUMBER - DataSourceUtils.MIN_MAJOR_VERSION_NUMBER > 1 ) {
+            addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER + 1, 0, DataSourceUtils.MIN_DATE, true);
+            addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_MINOR_VERSION_NUMBER - 1, DataSourceUtils.MIN_DATE, true);
+            addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_DATE, true);
+            addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_MINOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_DATE, true);
+            addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER + 1, DataSourceUtils.MAX_MINOR_VERSION_NUMBER - 1, DataSourceUtils.MIN_DATE, true);
+            addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER + 1, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_DATE, true);
+            addVersionTestCase(testArgs, DataSourceUtils.MIN_MAJOR_VERSION_NUMBER + 1, DataSourceUtils.MAX_MINOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_DATE, true);
+        }
 
         // major == MAX_MAJOR (minor does matter)
-        for (int minor = 0; minor < MINOR_IT_MAX_VAL; ++minor) {
-            testArgs.add(
-                    new Object[]{
-                            DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, minor, DataSourceUtils.MAX_DATE,
-                            (minor == DataSourceUtils.MIN_MINOR_VERSION_NUMBER || minor == DataSourceUtils.MAX_MINOR_VERSION_NUMBER)
-                    }
-            );
-        }
+        // Truth computed in `addVersionTestCase` method:
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, 0, DataSourceUtils.MIN_DATE);
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER - 1, DataSourceUtils.MIN_DATE);
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_DATE);
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_DATE);
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER - 1, DataSourceUtils.MIN_DATE);
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_DATE);
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER, DataSourceUtils.MAX_MINOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_DATE);
 
         // major > MAX_MAJOR (minor shouldn't matter)
-        for (int minor = 0; minor < MINOR_IT_MAX_VAL; ++minor) {
-            testArgs.add(
-                    new Object[]{
-                            DataSourceUtils.MAX_MAJOR_VERSION_NUMBER + 1, minor, DataSourceUtils.MAX_DATE, false
-                    }
-            );
-        }
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER + 1, 0, DataSourceUtils.MAX_DATE, false);
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_MINOR_VERSION_NUMBER - 1, DataSourceUtils.MAX_DATE, false);
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MAX_DATE, false);
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER + 1, DataSourceUtils.MIN_MINOR_VERSION_NUMBER + 1, DataSourceUtils.MAX_DATE, false);
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER + 1, DataSourceUtils.MAX_MINOR_VERSION_NUMBER - 1, DataSourceUtils.MAX_DATE, false);
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER + 1, DataSourceUtils.MAX_MINOR_VERSION_NUMBER, DataSourceUtils.MAX_DATE, false);
+        addVersionTestCase(testArgs, DataSourceUtils.MAX_MAJOR_VERSION_NUMBER + 1, DataSourceUtils.MAX_MINOR_VERSION_NUMBER + 1, DataSourceUtils.MAX_DATE, false);
 
         // =============================================================
         // Next do tests that check the dates themselves:
@@ -128,12 +182,14 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
         );
 
         // Year / Month inside acceptable dates with any valid day:
-        for (int day = 1; day < 30; ++day) {
+        final int validYear = DataSourceUtils.MIN_DATE.getMonthValue() == 12 ? DataSourceUtils.MIN_DATE.getYear() + 1 : DataSourceUtils.MIN_DATE.getYear();
+        final int validMonth = DataSourceUtils.MIN_DATE.getMonthValue() == 12 ? 1 : DataSourceUtils.MIN_DATE.getMonthValue() + 1;
+        for (int day = 1; day < YearMonth.of(validYear, validMonth).lengthOfMonth() + 1; ++day) {
             testArgs.add(
                     new Object[]{
                             DataSourceUtils.MIN_MAJOR_VERSION_NUMBER,
                             DataSourceUtils.MIN_MINOR_VERSION_NUMBER,
-                            LocalDate.of(2020, 4, day),
+                            LocalDate.of(validYear, validMonth, day),
                             true
                     }
             );
@@ -196,23 +252,33 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
         );
 
         // 1 month outside the acceptable release window:
+        final int yearForPrevMonth = DataSourceUtils.MIN_DATE.getMonthValue() == 1 ? DataSourceUtils.MIN_DATE.getYear() - 1 : DataSourceUtils.MIN_DATE.getYear();
+        final int invalidMonthTooEarly = DataSourceUtils.MIN_DATE.getMonthValue() == 12 ? 1 : DataSourceUtils.MIN_DATE.getMonthValue() + 1;
 
-        // Note: Min date month is January, so cannot test one month before it -
-        //       that test case is covered by the year being below the minimum.
-        // TODO: Add in test when possible.
+        final int yearForNextMonth = DataSourceUtils.MAX_DATE.getMonthValue() == 12 ? DataSourceUtils.MAX_DATE.getYear() + 1 : DataSourceUtils.MAX_DATE.getYear();
+        final int invalidMonthTooLate = DataSourceUtils.MAX_DATE.getMonthValue() == 12 ? 1 : DataSourceUtils.MAX_DATE.getMonthValue() + 1;
 
-        testArgs.add(
-                new Object[]{
-                        DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
-                        DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
-                        LocalDate.of(
-                                DataSourceUtils.MAX_DATE.getYear(),
-                                DataSourceUtils.MAX_DATE.getMonthValue() + 1,
-                                DataSourceUtils.MAX_DATE.getDayOfMonth()
-                        ),
-                        false
-                }
-        );
+        for (int day = 1; day < YearMonth.of(yearForPrevMonth, invalidMonthTooEarly).lengthOfMonth() + 1; ++day) {
+            testArgs.add(
+                    new Object[]{
+                            DataSourceUtils.MIN_MAJOR_VERSION_NUMBER,
+                            DataSourceUtils.MIN_MINOR_VERSION_NUMBER,
+                            LocalDate.of(yearForNextMonth, invalidMonthTooLate, day),
+                            false
+                    }
+            );
+        }
+
+        for (int day = 1; day < YearMonth.of(yearForNextMonth, invalidMonthTooLate).lengthOfMonth() + 1; ++day) {
+            testArgs.add(
+                    new Object[]{
+                            DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
+                            DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
+                            LocalDate.of(yearForNextMonth, invalidMonthTooLate, day),
+                            false
+                    }
+            );
+        }
 
         // 1 year outside the acceptable release window:
         testArgs.add(
@@ -239,18 +305,6 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
                         false
                 }
         );
-
-        // Valid Year, month outside bounds, all day values:
-        for (int day = 1; day < 30; ++day) {
-            testArgs.add(
-                    new Object[]{
-                            DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
-                            DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
-                            LocalDate.of(2020, 9, day),
-                            false
-                    }
-            );
-        }
 
         return testArgs;
     }
@@ -301,15 +355,15 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
     private Object[][] provideForGetDataSourceVersionString() {
         return new Object[][] {
                 {
-                        DataSourceUtils.MIN_MAJOR_VERSION_NUMBER,
-                        DataSourceUtils.MIN_MINOR_VERSION_NUMBER,
-                        DataSourceUtils.MIN_DATE,
+                        1,
+                        6,
+                        LocalDate.of(2020, Month.JANUARY, 24),
                         "v1.6.20190124"
                 },
                 {
-                        DataSourceUtils.MAX_MAJOR_VERSION_NUMBER,
-                        DataSourceUtils.MAX_MINOR_VERSION_NUMBER,
-                        DataSourceUtils.MAX_DATE,
+                        1,
+                        7,
+                        LocalDate.of(2020, Month.MAY, 21),
                         "v1.7.20200521"
                 },
                 {
