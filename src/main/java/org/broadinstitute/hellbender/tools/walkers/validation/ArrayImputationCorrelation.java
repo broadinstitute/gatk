@@ -195,7 +195,7 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 
     private static class AFCorrelationWriter extends TableWriter<AFCorrelationAggregator> {
         AFCorrelationWriter(final Path file) throws IOException {
-            super(file, new TableColumnCollection("bin_center", "snp_correlation", "snp_n_sites", "non_snp_correlation", "non_snp_n_sites"));
+            super(file, new TableColumnCollection("bin_center", "snp_correlation", "snp_n_sites", "indel_correlation", "indel_n_sites"));
         }
 
         protected void composeLine(final AFCorrelationAggregator afCorrelationAggregator, final DataLine dataLine) {
