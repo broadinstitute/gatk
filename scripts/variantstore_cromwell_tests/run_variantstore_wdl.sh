@@ -28,7 +28,7 @@ echo "Putting the newly built docker image into the json parameters"
 CROMWELL_TEST_DIR="${WORKING_DIR}/gatk/scripts/variantstore_cromwell_tests"
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_DIR/import_array_manifest_test.json >$WORKING_DIR/import_array_manifest_test_tmp.json
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_DIR/import_arrays_test.json >$WORKING_DIR/import_arrays_test_tmp.json
-sed -r "s/__TABLE_NAME__/$UUID_probe_id/g" $WORKING_DIR/import_array_manifest_test_tmp.json > $WORKING_DIR/import_array_manifest_test_mod.json
+sed -r "s/__TABLE_NAME__/$UUID/g" $WORKING_DIR/import_array_manifest_test_tmp.json > $WORKING_DIR/import_array_manifest_test_mod.json
 sed -r "s/__UUID__/$UUID/g" $WORKING_DIR/import_arrays_test_tmp.json > $WORKING_DIR/import_arrays_test_mod.json
 echo "MANIFEST JSON FILE (modified) ======="
 cat $WORKING_DIR/import_array_manifest_test_mod.json
