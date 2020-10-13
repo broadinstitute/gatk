@@ -195,7 +195,7 @@ public final class AssemblyBasedCallerUtils {
      *
      * @return never {@code null}.
      */
-    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs) {
+    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs, final boolean handleSoftclips) {
         //AlleleLikelihoods::normalizeLikelihoods uses Double.NEGATIVE_INFINITY as a flag to disable capping
         final double log10GlobalReadMismappingRate = likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? Double.NEGATIVE_INFINITY
                 : QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
@@ -203,7 +203,7 @@ public final class AssemblyBasedCallerUtils {
         return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(likelihoodArgs.dragstrParams),
                 likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, likelihoodArgs.pcrErrorModel,
                 likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD, likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant,
-                likelihoodArgs.expectedErrorRatePerBase, !likelihoodArgs.disableSymmetricallyNormalizeAllelesToReference, likelihoodArgs.disableCapReadQualitiesToMapQ);
+                likelihoodArgs.expectedErrorRatePerBase, !likelihoodArgs.disableSymmetricallyNormalizeAllelesToReference, likelihoodArgs.disableCapReadQualitiesToMapQ, handleSoftclips);
     }
 
     public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args,

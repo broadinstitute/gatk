@@ -50,6 +50,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     private final double expectedErrorRatePerBase;
     private final boolean disableCapReadQualitiesToMapQ;
     private final boolean symmetricallyNormalizeAllelesToReference;
+    private final boolean modifySoftclippedBases;
 
     public enum PCRErrorModel {
         /** no specialized PCR error model will be applied; if base insertion/deletion qualities are present they will be used */
@@ -103,7 +104,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final PairHMM.Implementation hmmType,
                                               final double log10globalReadMismappingRate,
                                               final PCRErrorModel pcrErrorModel) {
-        this( constantGCP, dragstrParams, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, DEFAULT_EXPECTED_ERROR_RATE_PER_BASE, true, false);
+        this( constantGCP, dragstrParams, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, DEFAULT_EXPECTED_ERROR_RATE_PER_BASE, true, false, true);
     }
 
     /**
@@ -134,7 +135,8 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final double readDisqualificationScale,
                                               final double expectedErrorRatePerBase,
                                               final boolean symmetricallyNormalizeAllelesToReference,
-                                              final boolean disableCapReadQualitiesToMapQ) {
+                                              final boolean disableCapReadQualitiesToMapQ,
+                                              final boolean modifySoftclippedBases) {
         Utils.nonNull(hmmType, "hmmType is null");
         Utils.nonNull(pcrErrorModel, "pcrErrorModel is null");
         if (constantGCP < 0){
@@ -153,6 +155,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         this.symmetricallyNormalizeAllelesToReference = symmetricallyNormalizeAllelesToReference;
         this.expectedErrorRatePerBase = expectedErrorRatePerBase;
         this.disableCapReadQualitiesToMapQ = disableCapReadQualitiesToMapQ;
+        this.modifySoftclippedBases = modifySoftclippedBases;
 
         initializePCRErrorModel();
 
@@ -348,22 +351,22 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         final List<GATKRead> result = new ArrayList<>(reads.size());
 
         for (final GATKRead read : reads) {
-            final GATKRead unclipped = ReadClipper.hardClipSoftClippedBases(read);    //Clip the bases here to remove hap
-            final byte[] readBases = unclipped.getBases();
+            final GATKRead maybeUnclipped = modifySoftclippedBases ? read : ReadClipper.hardClipSoftClippedBases(read);    //Clip the bases here to remove hap
+            final byte[] readBases = maybeUnclipped.getBases();
 
             // NOTE -- must clone anything that gets modified here so we don't screw up future uses of the read
             //Using close here is justified - it's an array of primitives.
-            final byte[] readQuals = unclipped.getBaseQualities().clone();
-            final byte[] readInsQuals = ReadUtils.getBaseInsertionQualities(unclipped).clone();
-            final byte[] readDelQuals = ReadUtils.getBaseDeletionQualities(unclipped).clone();
+            final byte[] readQuals = maybeUnclipped.getBaseQualities().clone();
+            final byte[] readInsQuals = ReadUtils.getBaseInsertionQualities(maybeUnclipped).clone();
+            final byte[] readDelQuals = ReadUtils.getBaseDeletionQualities(maybeUnclipped).clone();
 
             applyPCRErrorModel(readBases, readInsQuals, readDelQuals);
-            capMinimumReadQualities(unclipped, readQuals, readInsQuals, readDelQuals, baseQualityScoreThreshold, disableCapReadQualitiesToMapQ);
+            capMinimumReadQualities(maybeUnclipped, readQuals, readInsQuals, readDelQuals, baseQualityScoreThreshold, disableCapReadQualitiesToMapQ);
 
             // Store the actual qualities
             read.setTransientAttribute(HMM_BASE_QUALITIES_TAG, readQuals);
             // Create a new copy of the read and sets its base qualities to the modified versions.
-            result.add(createQualityModifiedRead(unclipped, readBases, readQuals, readInsQuals, readDelQuals));
+            result.add(createQualityModifiedRead(maybeUnclipped, readBases, readQuals, readInsQuals, readDelQuals));
         }
         return result;
     }
