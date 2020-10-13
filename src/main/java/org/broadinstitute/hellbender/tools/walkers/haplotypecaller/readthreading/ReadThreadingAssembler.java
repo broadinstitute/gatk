@@ -8,6 +8,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResult;
@@ -122,6 +123,7 @@ public final class ReadThreadingAssembler {
      * @param refLoc                    GenomeLoc object corresponding to the reference sequence with padding
      * @param readErrorCorrector        a ReadErrorCorrector object, if read are to be corrected before assembly. Can be null if no error corrector is to be used.
      * @param aligner                   {@link SmithWatermanAligner} used to align dangling ends in assembly graphs to the reference sequence
+     * @param haplotypeToReferenceSWParameters  {@link SWParameters} used to align haplotypes to the reference sequence
      * @return                          the resulting assembly-result-set
      */
     public AssemblyResultSet runLocalAssembly(final AssemblyRegion assemblyRegion,
@@ -130,7 +132,8 @@ public final class ReadThreadingAssembler {
                                               final SimpleInterval refLoc,
                                               final ReadErrorCorrector readErrorCorrector,
                                               final SAMFileHeader header,
-                                              final SmithWatermanAligner aligner) {
+                                              final SmithWatermanAligner aligner,
+                                              final SWParameters haplotypeToReferenceSWParameters) {
         Utils.nonNull(assemblyRegion, "Assembly engine cannot be used with a null AssemblyRegion.");
         Utils.nonNull(assemblyRegion.getPaddedSpan(), "Active region must have an extended location.");
         Utils.nonNull(refHaplotype, "Reference haplotype cannot be null.");
@@ -157,10 +160,10 @@ public final class ReadThreadingAssembler {
         resultSet.add(refHaplotype);
         // either follow the old method for building graphs and then assembling or assemble and haplotype call before expanding kmers
         if (generateSeqGraph) {
-            assembleKmerGraphsAndHaplotypeCall(refHaplotype, refLoc, header, aligner,
+            assembleKmerGraphsAndHaplotypeCall(refHaplotype, refLoc, header, aligner, haplotypeToReferenceSWParameters,
                     correctedReads, nonRefSeqGraphs, resultSet, activeRegionExtendedLocation);
         } else {
-            assembleGraphsAndExpandKmersGivenHaplotypes(refHaplotype, refLoc, header, aligner,
+            assembleGraphsAndExpandKmersGivenHaplotypes(refHaplotype, refLoc, header, aligner, haplotypeToReferenceSWParameters,
                     correctedReads, nonRefRTGraphs, resultSet, activeRegionExtendedLocation);
         }
 
@@ -187,7 +190,7 @@ public final class ReadThreadingAssembler {
      * is acceptable for haplotype discovery then detect haplotypes.
      */
     private void assembleKmerGraphsAndHaplotypeCall(final Haplotype refHaplotype, final SimpleInterval refLoc, final SAMFileHeader header,
-                                                    final SmithWatermanAligner aligner, final List<GATKRead> correctedReads,
+                                                    final SmithWatermanAligner aligner, final SWParameters haplotypeToReferenceSWParameters, final List<GATKRead> correctedReads,
                                                     final List<SeqGraph> nonRefSeqGraphs, final AssemblyResultSet resultSet,
                                                     final SimpleInterval activeRegionExtendedLocation) {
         final Map<SeqGraph,AssemblyResult> assemblyResultBySeqGraph = new HashMap<>();
@@ -207,7 +210,7 @@ public final class ReadThreadingAssembler {
         }
 
         // add assembled alt haplotypes to the {@code resultSet}
-        findBestPaths(nonRefSeqGraphs, assemblyResultBySeqGraph, refHaplotype, refLoc, activeRegionExtendedLocation, resultSet, aligner);
+        findBestPaths(nonRefSeqGraphs, assemblyResultBySeqGraph, refHaplotype, refLoc, activeRegionExtendedLocation, resultSet, aligner, haplotypeToReferenceSWParameters);
     }
 
     /**
@@ -215,7 +218,7 @@ public final class ReadThreadingAssembler {
      * attempt to recover haplotypes from the kmer graph and use them to assess whether to expand the kmer size.
      */
     private void assembleGraphsAndExpandKmersGivenHaplotypes(final Haplotype refHaplotype, final SimpleInterval refLoc, final SAMFileHeader header,
-                                                             final SmithWatermanAligner aligner, final List<GATKRead> correctedReads,
+                                                             final SmithWatermanAligner aligner, final SWParameters haplotypeToReferenceSWParameters, final List<GATKRead> correctedReads,
                                                              final List<AbstractReadThreadingGraph> nonRefRTGraphs, final AssemblyResultSet resultSet,
                                                              final SimpleInterval activeRegionExtendedLocation) {
         final Map<AbstractReadThreadingGraph,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
@@ -245,7 +248,7 @@ public final class ReadThreadingAssembler {
 
                     AbstractReadThreadingGraph graph = assembledResult.getThreadingGraph();
                     findBestPaths(Collections.singletonList(graph), Collections.singletonMap(graph, assembledResult),
-                            refHaplotype, refLoc, activeRegionExtendedLocation, null, aligner);
+                            refHaplotype, refLoc, activeRegionExtendedLocation, null, aligner, haplotypeToReferenceSWParameters);
 
                     savedAssemblyResults.add(assembledResult);
 
@@ -300,13 +303,14 @@ public final class ReadThreadingAssembler {
      * @param activeRegionWindow    window of the active region (without padding)
      * @param resultSet             (can be null) the results set into which to deposit discovered haplotypes
      * @param aligner               SmithWaterman aligner to use for aligning the discovered haplotype to the reference haplotype
+     * @param haplotypeToReferenceSWParameters SmithWaterman parameters to use for aligning the discovered haplotype to the reference haplotype
      * @return A list of discovered haplotyes (note that this is not currently used for anything)
      */
     @SuppressWarnings({"unchecked"})
     private <V extends  BaseVertex, E extends BaseEdge, T extends BaseGraph<V, E>>
     List<Haplotype> findBestPaths(final Collection<T> graphs, final Map<T, AssemblyResult> assemblyResultByGraph,
                                   final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow,
-                                  final AssemblyResultSet resultSet, final SmithWatermanAligner aligner) {
+                                  final AssemblyResultSet resultSet, final SmithWatermanAligner aligner, final SWParameters haplotypeToReferenceSWParameters) {
         // add the reference haplotype separately from all the others to ensure that it is present in the list of haplotypes
         final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
 
@@ -337,7 +341,7 @@ public final class ReadThreadingAssembler {
                     if (kBestHaplotype.isReference()) {
                         refHaplotype.setScore(kBestHaplotype.score());
                     }
-                    final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, SWOverhangStrategy.SOFTCLIP);
+                    final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, haplotypeToReferenceSWParameters, SWOverhangStrategy.SOFTCLIP);
 
                     if (cigar == null) {
                         failedCigars++; // couldn't produce a meaningful alignment of haplotype to reference, fail quietly
@@ -349,7 +353,7 @@ public final class ReadThreadingAssembler {
                         // N cigar elements means that a bubble was too divergent from the reference so skip over this path
                         continue;
                     } else if (cigar.getReferenceLength() != refHaplotype.getCigar().getReferenceLength()) { // SW failure
-                        final Cigar cigarWithIndelStrategy = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, SWOverhangStrategy.INDEL);
+                        final Cigar cigarWithIndelStrategy = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, haplotypeToReferenceSWParameters, SWOverhangStrategy.INDEL);
                         // the SOFTCLIP strategy can produce a haplotype cigar that matches the beginning of the reference and
                         // skips the latter part of the reference.  For example, when padded haplotype = NNNNNNNNNN[sequence 1]NNNNNNNNNN
                         // and padded ref = NNNNNNNNNN[sequence 1][sequence 2]NNNNNNNNNN, the alignment may choose to align only sequence 1.

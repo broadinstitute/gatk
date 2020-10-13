@@ -25,6 +25,7 @@ import java.util.List;
 public abstract class SmithWatermanAlignerAbstractUnitTest extends GATKBaseTest {
 
     private static final SWParameters ORIGINAL_DEFAULT = SmithWatermanAlignmentUtils.ORIGINAL_DEFAULT;
+    private static final SWParameters HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS = SmithWatermanAlignmentUtils.NEW_SW_PARAMETERS;
 
     /**
      * @return an aligner to be tested
@@ -212,8 +213,8 @@ public abstract class SmithWatermanAlignerAbstractUnitTest extends GATKBaseTest 
         final SmithWatermanAlignment paddedAlignment;
         final SmithWatermanAlignment notPaddedAlignment;
         try (final SmithWatermanAligner aligner = getAligner()) {
-            paddedAlignment = aligner.align(paddedsRef.getBytes(), paddedsHap.getBytes(), CigarUtils.NEW_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
-            notPaddedAlignment = aligner.align(notPaddedsRef.getBytes(), notpaddedsHap.getBytes(), CigarUtils.NEW_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
+            paddedAlignment = aligner.align(paddedsRef.getBytes(), paddedsHap.getBytes(), HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
+            notPaddedAlignment = aligner.align(notPaddedsRef.getBytes(), notpaddedsHap.getBytes(), HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
         }
         //Now verify that the two sequences have the same alignment and not match positions.
         final Cigar rawPadded = paddedAlignment.getCigar();
