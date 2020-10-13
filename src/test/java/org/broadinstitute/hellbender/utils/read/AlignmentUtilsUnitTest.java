@@ -22,6 +22,8 @@ import java.util.*;
 
 public final class AlignmentUtilsUnitTest {
     private final static boolean DEBUG = false;
+
+    private static final SWParameters ORIGINAL_DEFAULT = SmithWatermanAlignmentUtils.ORIGINAL_DEFAULT;
     private static final SWParameters READ_TO_HAPLOTYPE_SW_PARAMETERS = SmithWatermanAlignmentUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS;
 
     private SAMFileHeader header;
@@ -302,7 +304,7 @@ public final class AlignmentUtilsUnitTest {
             final MutatedSequence hap = mutateSequence(referenceBases, mutations);
             final Haplotype haplotype = new Haplotype(hap.seq.getBytes());
             final SmithWatermanAlignment align = SmithWatermanJavaAligner.getInstance()
-                    .align(paddedReference.getBytes(), hap.seq.getBytes(), SmithWatermanAligner.ORIGINAL_DEFAULT, SWOverhangStrategy.SOFTCLIP);
+                    .align(paddedReference.getBytes(), hap.seq.getBytes(), ORIGINAL_DEFAULT, SWOverhangStrategy.SOFTCLIP);
             haplotype.setAlignmentStartHapwrtRef(align.getAlignmentOffset());
             haplotype.setCigar(align.getCigar());
 
