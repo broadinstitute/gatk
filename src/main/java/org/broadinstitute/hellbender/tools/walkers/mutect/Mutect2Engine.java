@@ -17,6 +17,7 @@ import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
@@ -47,7 +48,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
@@ -230,7 +230,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final List<VariantContext> givenAlleles = featureContext.getValues(MTAC.alleles).stream()
                 .filter(vc -> MTAC.forceCallFiltered || vc.isNotFiltered()).collect(Collectors.toList());
 
-        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, SmithWatermanAlignmentUtils.STANDARD_NGS , SmithWatermanAlignmentUtils.NEW_SW_PARAMETERS, false);
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false);
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(MTAC.maxMnpDistance);
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion, allVariationEvents, referenceContext);
@@ -252,8 +252,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads);
         readLikelihoods.switchToNaturalLog();
-
-        final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner, SmithWatermanAlignmentUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS);
+        final SWParameters readToHaplotypeSWParameters = MTAC.getReadToHaplotypeSWParameters();
+        final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner, readToHaplotypeSWParameters);
         readLikelihoods.changeEvidence(readRealignments);
 
         final CalledHaplotypes calledHaplotypes = genotypingEngine.callMutations(

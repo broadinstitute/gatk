@@ -1,19 +1,26 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentUtils;
 
 /**
  * Set of arguments for Assembly Based Callers
  */
 public abstract class AssemblyBasedCallerArgumentCollection {
+    private static final Logger logger = LogManager.getLogger(AssemblyBasedCallerArgumentCollection.class);
+
     private static final long serialVersionUID = 1L;
     public static final String USE_FILTERED_READS_FOR_ANNOTATIONS_LONG_NAME = "use-filtered-reads-for-annotations";
     public static final String BAM_OUTPUT_LONG_NAME = "bam-output";
@@ -33,7 +40,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public static final String EMIT_REF_CONFIDENCE_SHORT_NAME = "ERC";
     public static final String ALLELE_EXTENSION_LONG_NAME = "allele-informative-reads-overlap-margin";
 
-    public static final String DANGLING_ENDS_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME = "dangling-ends-smith-waterman-parameters-table";
+    public static final String DANGLING_END_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME = "dangling-end-smith-waterman-parameters-table";
     public static final String HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME = "haplotype-to-reference-smith-waterman-parameters-table";
     public static final String READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME = "read-to-haplotype-smith-waterman-parameters-table";
 
@@ -155,11 +162,11 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public int informativeReadOverlapMargin = 2;
 
     @Advanced
-    @Argument(fullName = DANGLING_ENDS_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME,
+    @Argument(fullName = DANGLING_END_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME,
             //TODO
             doc = "",
             optional = true)
-    public GATKPath danglingEndsSmithWatermanParametersTablePath;
+    public GATKPath danglingEndSmithWatermanParametersTablePath;
 
     @Advanced
     @Argument(fullName = HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME,
@@ -174,4 +181,54 @@ public abstract class AssemblyBasedCallerArgumentCollection {
             doc = "",
             optional = true)
     public GATKPath readToHaplotypeSmithWatermanParametersTablePath;
+
+    private SWParameters danglingEndSWParameters;
+    private SWParameters haplotypeToReferenceSWParameters;
+    private SWParameters readToHaplotypeSWParameters;
+
+    public SWParameters getDanglingEndSWParameters() {
+        if (danglingEndSWParameters == null) {
+            danglingEndSWParameters = readAndLogSWParameters(
+                    danglingEndSmithWatermanParametersTablePath,
+                    SmithWatermanAlignmentUtils.STANDARD_NGS,
+                    "dangling-end recovery");
+        }
+        return danglingEndSWParameters;
+    }
+
+    public SWParameters getHaplotypeToReferenceSWParameters() {
+        if (haplotypeToReferenceSWParameters == null) {
+            haplotypeToReferenceSWParameters = readAndLogSWParameters(
+                    haplotypeToReferenceSmithWatermanParametersTablePath,
+                    SmithWatermanAlignmentUtils.NEW_SW_PARAMETERS,
+                    "haplotype-to-reference alignment");
+        }
+        return haplotypeToReferenceSWParameters;
+    }
+
+    public SWParameters getReadToHaplotypeSWParameters() {
+        if (readToHaplotypeSWParameters == null) {
+            readToHaplotypeSWParameters = readAndLogSWParameters(
+                    readToHaplotypeSmithWatermanParametersTablePath,
+                    SmithWatermanAlignmentUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS,
+                    "read-to-haplotype alignment");
+        }
+        return readToHaplotypeSWParameters;
+    }
+
+    private static SWParameters readAndLogSWParameters(final GATKPath path,
+                                                       final SWParameters defaultSWParameters,
+                                                       final String swParametersDescription) {
+        Utils.nonNull(defaultSWParameters);
+        Utils.nonEmpty(swParametersDescription);
+        final SWParameters swParameters = path == null
+                ? defaultSWParameters
+                : SmithWatermanAlignmentUtils.readSmithWatermanParametersFromTSV(path);
+        final String swParametersString = SmithWatermanAlignmentUtils.swParametersToString(swParameters);
+        final String logMessage = path == null
+                ? String.format("Using default Smith-Waterman parameters for %s: %s", swParametersDescription, swParametersString)
+                : String.format("Using input Smith-Waterman parameters for %s from %s: %s", swParametersDescription, path.toString(), swParametersString);
+        logger.info(logMessage);
+        return swParameters;
+    }
 }

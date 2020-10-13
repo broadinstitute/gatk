@@ -267,8 +267,6 @@ public final class AssemblyBasedCallerUtils {
                                                   final ReferenceSequenceFile referenceReader,
                                                   final ReadThreadingAssembler assemblyEngine,
                                                   final SmithWatermanAligner aligner,
-                                                  final SWParameters danglingEndSWParameters,
-                                                  final SWParameters haplotypeToReferenceSWParameters,
                                                   final boolean correctOverlappingBaseQualities){
         finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, correctOverlappingBaseQualities, argumentCollection.softClipLowQualityEnds);
         if( argumentCollection.assemblerArgs.debugAssembly) {
@@ -288,6 +286,8 @@ public final class AssemblyBasedCallerUtils {
                                 fullReferenceWithPadding) :
                         null)
                 : new PileupReadErrorCorrector(argumentCollection.assemblerArgs.pileupErrorCorrectionLogOdds, header);
+        final SWParameters danglingEndSWParameters = argumentCollection.getDanglingEndSWParameters();
+        final SWParameters haplotypeToReferenceSWParameters = argumentCollection.getHaplotypeToReferenceSWParameters();
         try {
             final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, refHaplotype, fullReferenceWithPadding,
                     paddedReferenceLoc, readErrorCorrector, header, aligner, danglingEndSWParameters, haplotypeToReferenceSWParameters);

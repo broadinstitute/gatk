@@ -132,4 +132,10 @@ public final class SmithWatermanAlignmentUtils {
             throw new UserException.BadInput(String.format("Could not read Smith-Waterman parameters from TSV file: %s", path.toPath()));
         }
     }
+
+    public static String swParametersToString(final SWParameters swParameters) {
+        Utils.nonNull(swParameters);
+        return String.format("match value %d, mismatch penalty %d, gap open penalty %d, gap extend penalty %d",
+                swParameters.getMatchValue(), swParameters.getMismatchPenalty(), swParameters.getGapOpenPenalty(), swParameters.getGapExtendPenalty());
+    }
 }

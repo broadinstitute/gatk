@@ -15,6 +15,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.engine.GATKPath;
@@ -51,7 +52,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
@@ -211,14 +211,15 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
 
 
             // TODO: give this tool M2 Assembler args to allow override default M2ArgumentCollection?
-            final AssemblyResultSet assemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyRegion, Collections.emptyList(), MTAC, bamHeader, samplesList, logger, referenceReader, assemblyEngine, ALIGNER, SmithWatermanAlignmentUtils.STANDARD_NGS, SmithWatermanAlignmentUtils.NEW_SW_PARAMETERS, false);
+            final AssemblyResultSet assemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyRegion, Collections.emptyList(), MTAC, bamHeader, samplesList, logger, referenceReader, assemblyEngine, ALIGNER, false);
             final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
 
             final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, bamHeader, regionForGenotyping.getReads());
 
             final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads);
             readLikelihoods.switchToNaturalLog();
-            final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), ALIGNER, SmithWatermanAlignmentUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS);
+            final SWParameters readToHaplotypeSWParameters = MTAC.getReadToHaplotypeSWParameters();
+            final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), ALIGNER, readToHaplotypeSWParameters);
             readLikelihoods.changeEvidence(readRealignments);
             writeBamOutput(assemblyResult, readLikelihoods, new HashSet<>(readLikelihoods.alleles()), regionForGenotyping.getSpan());
 
