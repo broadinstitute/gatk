@@ -21,14 +21,6 @@ public final class CigarUtils {
     // these values were chosen via optimization against the NA12878 knowledge base
     public static final SWParameters NEW_SW_PARAMETERS = new SWParameters(200, -150, -260, -11);
 
-    // In Mutect2 and HaplotypeCaller reads are realigned to their *best* haplotypes, which is very different from a generic alignment.
-    // The {@code NEW_SW_PARAMETERS} penalize a substitution error more than an indel up to a length of 9 bases!
-    // Suppose, for example, that a read has a single substitution error, say C -> T, on its last base.  Those parameters
-    // would prefer to extend a deletion until the next T on the reference is found in order to avoid the substitution, which is absurd.
-    // Since these parameters are for aligning a read to the biological sequence we believe it comes from, the parameters
-    // we choose should correspond to sequencer error.  They *do not* have anything to do with the prevalence of true variation!
-    public static final SWParameters ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS = new SWParameters(10, -15, -30, -5);
-
     private static final String SW_PAD = "NNNNNNNNNN";
 
     private CigarUtils(){}
