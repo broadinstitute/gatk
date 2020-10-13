@@ -570,7 +570,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         // run the local assembler, getting back a collection of information on how we should proceed
-        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, SmithWatermanAlignmentUtils.NEW_SW_PARAMETERS, !hcArgs.doNotCorrectOverlappingBaseQualities);
+        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, SmithWatermanAlignmentUtils.STANDARD_NGS, SmithWatermanAlignmentUtils.NEW_SW_PARAMETERS, !hcArgs.doNotCorrectOverlappingBaseQualities);
 
         if (assemblyDebugOutStream != null) {
             try {

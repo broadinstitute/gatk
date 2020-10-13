@@ -33,6 +33,7 @@ import java.nio.file.Paths;
 import java.util.*;
 
 public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
+    private static final SWParameters DANGLING_END_SW_PARAMETERS = SmithWatermanAlignmentUtils.STANDARD_NGS;
     private static final SWParameters HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS = SmithWatermanAlignmentUtils.NEW_SW_PARAMETERS;
 
     private static final boolean DEBUG = false;
@@ -190,7 +191,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         activeRegion.addAll(reads);
 //        logger.warn("Assembling " + activeRegion + " with " + engine);
         final AssemblyResultSet assemblyResultSet =  assembler.runLocalAssembly(activeRegion, refHaplotype, refBases, loc, null, header,
-                                                                                SmithWatermanJavaAligner.getInstance(), HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS);
+                                                                                SmithWatermanJavaAligner.getInstance(), DANGLING_END_SW_PARAMETERS, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS);
         return assemblyResultSet.getHaplotypeList();
     }
 
@@ -272,7 +273,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
             assembler.setDebugGraphTransformations(true);
             assembler.setDebugGraphOutputPath(createTempDir("debugGraphs"));
             final SeqGraph graph = assembler.assemble(reads, refHaplotype, header, SmithWatermanJavaAligner
-                    .getInstance()).get(0).getSeqGraph();
+                    .getInstance(), DANGLING_END_SW_PARAMETERS).get(0).getSeqGraph();
             if ( DEBUG ) graph.printGraph(new File("test.dot"), 0);
             return graph;
         }

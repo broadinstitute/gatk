@@ -25,6 +25,7 @@ import java.util.List;
 public abstract class SmithWatermanAlignerAbstractUnitTest extends GATKBaseTest {
 
     private static final SWParameters ORIGINAL_DEFAULT = SmithWatermanAlignmentUtils.ORIGINAL_DEFAULT;
+    private static final SWParameters DANGLING_END_SW_PARAMETERS = SmithWatermanAlignmentUtils.STANDARD_NGS;
     private static final SWParameters HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS = SmithWatermanAlignmentUtils.NEW_SW_PARAMETERS;
 
     /**
@@ -183,7 +184,7 @@ public abstract class SmithWatermanAlignerAbstractUnitTest extends GATKBaseTest 
         final String alt =               "ACAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGA";
         final int expectedStart = 14;
         final String expectedCigar = "31M20S";
-        assertAlignmentMatchesExpected(ref, alt, expectedStart, expectedCigar, SmithWatermanAligner.STANDARD_NGS, SWOverhangStrategy.SOFTCLIP);
+        assertAlignmentMatchesExpected(ref, alt, expectedStart, expectedCigar, DANGLING_END_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
     }
 
     @Test

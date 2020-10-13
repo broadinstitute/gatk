@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
+    private static final SWParameters DANGLING_END_SW_PARAMETERS = SmithWatermanAlignmentUtils.STANDARD_NGS;
     private static final SWParameters PATH_TO_REFERENCE_SW_PARAMETERS = SmithWatermanAlignmentUtils.NEW_SW_PARAMETERS;
 
     public static byte[] getBytes(final String alignment) {
@@ -982,8 +983,8 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         graph.addSequence("anonymous", getBytes(ref), false);
         graph.addSequence("anonymous", getBytes(alt), false);
         graph.buildGraphIfNecessary();
-        graph.recoverDanglingHeads(0, 0,  true, SmithWatermanJavaAligner.getInstance());
-        graph.recoverDanglingTails(0, 0,  true, SmithWatermanJavaAligner.getInstance());
+        graph.recoverDanglingHeads(0, 0,  true, SmithWatermanJavaAligner.getInstance(), DANGLING_END_SW_PARAMETERS);
+        graph.recoverDanglingTails(0, 0,  true, SmithWatermanJavaAligner.getInstance(), DANGLING_END_SW_PARAMETERS);
         graph.generateJunctionTrees();
 
         @SuppressWarnings("all")
@@ -1070,7 +1071,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         graph.addSequence("anonymous", getBytes(ref), false);
         graph.addSequence("anonymous", getBytes(alt), false);
         graph.buildGraphIfNecessary();
-        graph.recoverDanglingHeads(0, 2, true, SmithWatermanJavaAligner.getInstance());
+        graph.recoverDanglingHeads(0, 2, true, SmithWatermanJavaAligner.getInstance(), DANGLING_END_SW_PARAMETERS);
         graph.generateJunctionTrees();
 
         @SuppressWarnings("all")
