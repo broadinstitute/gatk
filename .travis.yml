@@ -148,7 +148,7 @@ script:
   elif [[ $RUN_CNN_WDL == true ]]; then
     echo "Running CNN WDL";
     travis_wait 60 sudo bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
-  elif [[ $RUN_VARIANTSTORE_WDL == true ]]; then
+  elif [[ $RUN_VARIANTSTORE_WDL == true && $TRAVIS_SECURE_ENV_VARS == true ]]; then
     echo "Running variantstore WDL";
     travis_wait 60 sudo bash scripts/variantstore_cromwell_tests/run_variantstore_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
