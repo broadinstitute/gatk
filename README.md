@@ -1,9 +1,12 @@
 # ml4h
-`ml4h` is a project aimed at using machine learning to model multi-modal cardiovascular
-time series and imaging data. `ml4h` began as a set of tools to make it easy to work
-with the UK Biobank on Google Cloud Platform and has since expanded to include other data sources
-and functionality.   
+`ml4h` is a set of tools to simplify the process of training machine learning (ML) models on multi-modal clinical data including genetics, labs, imaging, clinical notes, and more. Our tools are ideally suited for clinical researchers and data scientists to help ensure that ML models meet clinical research standards. Our project grew out of efforts at the Broad Institute to make it easy to work with the UK Biobank on Google Cloud Platform and has since expanded to include proprietary data from academic medical centers. We’re building open-source tools and a diverse set of interdisciplinary collaborations to make sure that the cutting edge of AI and ML are directed at making the world healthier.    
 
+`ml4h` is best described with Five Verbs: Ingest, Tensorize, TensorMap, Model, Evaluate
+* Ingest: collect files onto one system
+* Tensorize: write raw files (XML, DICOM, NIFTI, PNG) into HD5 files
+* TensorMap: tag data (typically from an HD5) with an interpretation and a method for generation
+* Model: connect TensorMaps with trainable architectures
+* Evaluate: generate plots, enables domain-driven inspection of results 
 
 Getting Started
 * [Setting up your local environment](#setting-up-your-local-environment)
