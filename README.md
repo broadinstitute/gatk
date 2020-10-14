@@ -8,7 +8,7 @@
 * Model: connect TensorMaps with trainable architectures
 * Evaluate: generate plots, enables domain-driven inspection of results 
 
-Getting Started
+# Getting Started
 * [Setting up your local environment](#setting-up-your-local-environment)
 * [Setting up a remote VM](#setting-up-a-remote-vm)
 * Modeling/Data Sources/Tests [(`ml4h/DATA_MODELING_TESTS.md`)](ml4h/DATA_MODELING_TESTS.md)
@@ -23,15 +23,14 @@ Clone the repo
 ```
 git clone git@github.com:broadinstitute/ml.git
 ```
+
+## Setting up your cloud environment (optional; currently only GCP is supported) 
 Make sure you have installed the [Google Cloud SDK (gcloud)](https://cloud.google.com/sdk/docs/downloads-interactive). With [Homebrew](https://brew.sh/), you can use
 ```
 brew cask install google-cloud-sdk
 ```
 
-If you don't have your gcloud already configured -- set the project to broad-ml4cvd (This step is optional, scripts will also set projects directly when you run them.)
-
-```gcloud config set project broad-ml4cvd```
-
+```gcloud config set project your-gcp-project```
 
 ### Conda (Python package manager)
 * Download onto your laptop the Miniconda `bash` or `.pkg` installer for `Python 3.7` and `Mac OS X`
@@ -94,11 +93,11 @@ With GPU (not recommended unless you need something beefy and expensive)
 ```
 ./scripts/vm_launch/launch_dl_instance.sh ${USER}-gpu
 ```
-This will take a few moments to run, after which you will have a VM in the cloud.  Remember to shut it off from the command line or [console](https://console.cloud.google.com/compute/instances?project=broad-ml4cvd) when you are not using it!  
+This will take a few moments to run, after which you will have a VM in the cloud.  Remember to shut it off from the command line or console when you are not using it!  
 
 Now ssh onto your instance (replace with proper machine name, note that you can also use regular old ssh if you have the external IP provided by the script or if you login from the GCP console)
 ```
-gcloud --project broad-ml4cvd compute ssh ${USER}-gpu --zone us-central1-a
+gcloud --project your-gcp-project compute ssh ${USER}-gpu --zone us-central1-a
 ```
 
 Next, clone this repo on your instance (you should copy your github key over to the VM, and/or if you have Two-Factor authentication setup you need to generate an SSH key on your VM and add it to your github settings as described [here](https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/#platform-linux)):
