@@ -30,7 +30,8 @@ public class AS_StrandBiasMutectAnnotation extends InfoFieldAnnotation implement
         Utils.nonNull(vc);
 
         if ( likelihoods == null ) {
-            logger.warn("Annotation will not be calculated, alleleLikelihoodMap is null");
+            logger.warn(String.format("Annotation will not be calculated at site %s:%d because the AlleleLikelihoods map is null",
+                    vc.getContig(), vc.getStart()));
             return null;
         }
 
