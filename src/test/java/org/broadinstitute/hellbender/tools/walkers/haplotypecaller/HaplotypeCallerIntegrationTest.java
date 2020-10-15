@@ -98,26 +98,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             IntegrationTestSpec.assertEqualTextFiles(output, expected);
         }
     }
-
-    @Test()
-    public void testTHing() throws Exception {
-        final File output = createTempFile("testLinkedDebruijnModeIsConsistentWithPastResults", ".vcf");
-        final File expected = new File(TEST_FILES_DIR, "expected.testLinkedDebruijnMode.gatk4.vcf");
-        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
-
-
-        final String[] args = {
-                "--input","gs://broad-dsde-methods-dragen/reprocessed_data/CHMI_CHMI3_WGS1/CHMI_CHMI3_WGS1.bam",
-                "--reference", "/Users/emeryj/hellbender/references/Homo_sapiens_assembly38.fasta",
-                "--annotation-group","StandardAnnotation","--annotation-group","StandardHCAnnotation","-L","chr1:7290456","-ip","1000",
-                "-O", outputPath
-        };
-
-        runCommandLine(args);
-
-        IntegrationTestSpec.assertEqualTextFiles(output, expected);
-    }
-
+    
     /*
      * Test that in JunctionTree mode we're consistent with past JunctionTree results (over non-complicated data)
      */
