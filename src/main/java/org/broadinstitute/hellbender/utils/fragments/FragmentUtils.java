@@ -62,13 +62,12 @@ public final class FragmentUtils {
         // TODO: a cheaper solution would be to cap all quals in the overlap region by half of the PCR qual.
         final int firstReadStop = offset;
         final int secondOffset = ReadUtils.getReadIndexForReferenceCoordinate(secondRead, secondRead.getStart()).getLeft(); //This operation handles softclipped bases in the qual/base array
-        final int numOverlappingBases = Math.min(firstReadEndBase + 1 - firstReadStop, secondReadEndBase + 1 - secondOffset); // Add 1 here because if R1 ends on the same base that R2 starts then there is 1 base of overlap not 0
+        final int numOverlappingBases = Math.min(firstReadEndBase - firstReadStop, secondReadEndBase - secondOffset) + 1; // Add 1 here because if R1 ends on the same base that R2 starts then there is 1 base of overlap not 0
 
         final byte[] firstReadBases = firstRead.getBases();
         final byte[] firstReadQuals = firstRead.getBaseQualities();
         final byte[] secondReadBases = secondRead.getBases();
         final byte[] secondReadQuals = secondRead.getBaseQualities();
-        // adjustments to make to handle softclipping bases
 
         final int halfOfPcrErrorQual = halfOfPcrSnvQual.orElse(HALF_OF_DEFAULT_PCR_SNV_ERROR_QUAL);
 
