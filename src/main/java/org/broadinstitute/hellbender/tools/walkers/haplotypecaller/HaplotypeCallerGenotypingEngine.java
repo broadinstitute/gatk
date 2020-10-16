@@ -152,7 +152,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         // null if there is no potential uses of DRAGstr in this region.
         final DragstrReferenceAnalyzer dragstrs = constructDragstrReferenceSTRAnalyzerIfNecessary(haplotypes, ref, refLoc, startPosKeySet);
 
-        final BiPredicate<GATKRead, Locatable> readQualifiesForGenotypingPredicate = composeReadQualifiesForGenotypingPredicate(hcArgs);
+        final BiPredicate<GATKRead, SimpleInterval> readQualifiesForGenotypingPredicate = composeReadQualifiesForGenotypingPredicate(hcArgs);
 
         for( final int loc : startPosKeySet ) {
             if( loc < activeRegionWindow.getStart() || loc > activeRegionWindow.getEnd() ) {
@@ -178,17 +178,13 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());
             }
 
-            //TODO this might need to be revisited given the extra genotyping code that will possibly exist in the future...
             mergedVC = removeAltAllelesIfTooManyGenotypes(ploidy, alleleMapper, mergedVC);
 
             AlleleLikelihoods<GATKRead, Allele> readAlleleLikelihoods = readLikelihoods.marginalize(alleleMapper);
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
-            //TODO evaluate this very very very bad deletions behavior
             final SimpleInterval variantCallingRelevantOverlap = new SimpleInterval(mergedVC).expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
-//            final SimpleInterval variantCallingRelevantOverlap = new SimpleInterval(mergedVC.getContig(), mergedVC.getStart(), mergedVC.getStart()).expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
 
             // We want to retain evidence that overlaps within its softclipping edges.
-            //TODO this will need to be parameterized in the future.
             readAlleleLikelihoods.retainEvidence(read -> readQualifiesForGenotypingPredicate.test(read, variantCallingRelevantOverlap));
 
             readAlleleLikelihoods.setVariantCallingSubsetUsed(variantCallingRelevantOverlap);
@@ -277,11 +273,13 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @param hcArgs configuration that may affect the criteria use to retain or filter-out reads.
      * @return never {@code null}.
      */
-    private BiPredicate<GATKRead, Locatable> composeReadQualifiesForGenotypingPredicate(final HaplotypeCallerArgumentCollection hcArgs) {
+    private BiPredicate<GATKRead, SimpleInterval> composeReadQualifiesForGenotypingPredicate(final HaplotypeCallerArgumentCollection hcArgs) {
         if (hcArgs.applyBQD || hcArgs.applyFRD) {
                 return (read, target) -> softUnclippedReadOverlapsInterval(read, target);
         } else {
-            return (read, target) -> read.overlaps(target);
+            // NOTE: we must make this comparison in target -> read order because occasionally realignment/assembly produces
+            // reads that consume no reference bases and this can cause them to overlap adjacent
+            return (read, target) -> target.overlaps(read);
         }
     }
 
