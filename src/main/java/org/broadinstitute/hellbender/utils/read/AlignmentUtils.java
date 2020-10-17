@@ -866,11 +866,13 @@ public final class AlignmentUtils {
             refBasesConsumedBeforeReadStart += lengthOnReference(element);
             haplotypeBasesConsumed += lengthOnRead(element);
 
-            if (haplotypeBasesConsumed >= readStartOnHaplotype) {
+            if (haplotypeBasesConsumed > readStartOnHaplotype) {
                 final int excess = element.getOperator().consumesReferenceBases() ? haplotypeBasesConsumed - readStartOnHaplotype : 0;
                 return refBasesConsumedBeforeReadStart - excess;
             }
         }
+        if (haplotypeBasesConsumed == readStartOnHaplotype) //the start is right at the end of the hap cigar
+            return refBasesConsumedBeforeReadStart;
 
         throw new IllegalArgumentException("Cigar doesn't reach the read start");
     }
