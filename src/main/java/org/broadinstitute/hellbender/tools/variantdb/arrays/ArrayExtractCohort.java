@@ -52,11 +52,11 @@ public class ArrayExtractCohort extends GATKTool {
     private String outputVcfPathString = null;
 
     @Argument(
-            fullName = "project-id",
-            doc = "ID of the Google Cloud project to use when executing queries",
+            fullName = "read-project-id",
+            doc = "ID of the Google Cloud project to use (bill) when reading the microarray data tables",
             optional = false
     )
-    private String projectID = null;
+    private String readProjectID = null;
 
     @Argument(
             fullName = "cohort-sample-table",
@@ -212,7 +212,7 @@ public class ArrayExtractCohort extends GATKTool {
 
         Map<Long, ProbeInfo> probeIdMap;
         if (probeCsvExportFile == null) {
-            probeIdMap = ProbeInfo.getProbeIdMapWithStorageAPI(probeTableName, printDebugInformation);
+            probeIdMap = ProbeInfo.getProbeIdMapWithStorageAPI(probeTableName, printDebugInformation, readProjectID);
         } else {
             probeIdMap = ProbeInfo.getProbeIdMapFromExport(probeCsvExportFile);
         }
@@ -220,13 +220,13 @@ public class ArrayExtractCohort extends GATKTool {
         // if we have a qcMetrics table, augment the probeInfo map with that information
         Map<Long, ProbeQcMetrics> probeQcMetricsMap = null;
         if (qcMetricsTableName != null) {
-            probeQcMetricsMap = ProbeQcMetrics.getProbeQcMetricsWithStorageAPI(qcMetricsTableName);
+            probeQcMetricsMap = ProbeQcMetrics.getProbeQcMetricsWithStorageAPI(qcMetricsTableName, readProjectID);
         }
 
         //ChromosomeEnum.setRefVersion(refVersion);
 
         engine = new ArrayExtractCohortEngine(
-                projectID,
+            readProjectID,
                 vcfWriter,
                 header,
                 annotationEngine,
