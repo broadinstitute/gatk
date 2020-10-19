@@ -54,7 +54,7 @@ public class ArrayExtractCohort extends GATKTool {
     @Argument(
             fullName = "read-project-id",
             doc = "ID of the Google Cloud project to use (bill) when reading the microarray data tables",
-            optional = false
+            optional = true
     )
     private String readProjectID = null;
 
