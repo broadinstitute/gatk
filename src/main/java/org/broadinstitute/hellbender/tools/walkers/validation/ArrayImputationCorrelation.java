@@ -246,7 +246,7 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
                     .set("true_positives", metrics.true_positives)
                     .set("true_negatives", metrics.true_negatives)
                     .set("false_positives", metrics.false_positives)
-                    .set("false_negatives", metrics.true_negatives)
+                    .set("false_negatives", metrics.false_negatives)
                     .set("recall", metrics.getRecall())
                     .set("precision", metrics.getPrecision())
                     .set("accuracy", metrics.getAccuracy());
@@ -286,7 +286,7 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
                 if (evalAltCount > 0) {
                     false_positives++;
                 } else {
-                    true_negatives++;
+                    false_negatives++;
                 }
             }
         }
