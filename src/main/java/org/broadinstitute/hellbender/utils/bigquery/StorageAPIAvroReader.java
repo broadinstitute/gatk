@@ -42,7 +42,7 @@ public class StorageAPIAvroReader implements GATKAvroReader {
     private GenericRecord nextRow = null;
 
     public StorageAPIAvroReader(final TableReference tableRef) {
-        this(tableRef, null, "");
+        this(tableRef, null, null);
     }
 
     public StorageAPIAvroReader(final TableReference tableRef, String parentProjectId) {
