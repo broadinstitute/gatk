@@ -535,6 +535,9 @@ task M2 {
       File? gatk_override
 
       String? gcs_project_for_requester_pays
+      
+      # allows users to set localization to false for drs:// objects
+      Boolean bam_bai_localization = "true"
 
       # runtime
       String gatk_docker
@@ -560,10 +563,10 @@ task M2 {
       ref_fasta: {localization_optional: true}
       ref_fai: {localization_optional: true}
       ref_dict: {localization_optional: true}
-      tumor_bam: {localization_optional: true}
-      tumor_bai: {localization_optional: true}
-      normal_bam: {localization_optional: true}
-      normal_bai: {localization_optional: true}
+      tumor_bam: {localization_optional: bam_bai_localization}
+      tumor_bai: {localization_optional: bam_bai_localization}
+      normal_bam: {localization_optional: bam_bai_localization}
+      normal_bai: {localization_optional: bam_bai_localization}
       pon: {localization_optional: true}
       pon_idx: {localization_optional: true}
       gnomad: {localization_optional: true}
@@ -949,6 +952,9 @@ task FilterAlignmentArtifacts {
       String? gcs_project_for_requester_pays
       Runtime runtime_params
       Int mem
+
+      # allows users to set localization to false for drs:// objects
+      Boolean bam_bai_localization = "true"
     }
 
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
@@ -963,8 +969,8 @@ task FilterAlignmentArtifacts {
       ref_dict: {localization_optional: true}
       input_vcf: {localization_optional: true}
       input_vcf_idx: {localization_optional: true}
-      bam: {localization_optional: true}
-      bai: {localization_optional: true}
+      bam: {localization_optional: bam_bai_localization}
+      bai: {localization_optional: bam_bai_localization}
     }
 
     command {
