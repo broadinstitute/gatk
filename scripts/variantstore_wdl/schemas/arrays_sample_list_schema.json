@@ -1,0 +1,105 @@
+[
+  {
+    "description": "[DESCRIPTION]",
+    "name": "sample_id",
+    "type": "Integer",
+    "mode": "Required"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "sample_name",
+    "type": "String",
+    "mode": "Required"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "NUM_ASSAYS",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "NUM_NON_FILTERED_ASSAYS",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "NUM_FILTERED_ASSAYS",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "NUM_ZEROED_OUT_ASSAYS",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "NUM_SNPS",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "NUM_INDELS",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "NUM_CALLS",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "NUM_AUTOCALL_CALLS",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "NUM_NO_CALLS",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "NUM_IN_DB_SNP",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "NOVEL_SNPS",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "PCT_DBSNP",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "CALL_RATE",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "AUTOCALL_CALL_RATE",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "NUM_SINGLETONS",
+    "type": "Integer",
+    "mode": "Nullable"
+  }
+]
+
