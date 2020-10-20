@@ -1,0 +1,16 @@
+{
+  "ImportArrays.output_directory":"gs://variantstore-test/__UUID__",
+  "ImportArrays.input_vcfs":["/home/travis/build/broadinstitute/gatk/src/test/resources/org/broadinstitute/hellbender/tools/variantdb/arrays/array.vcf"],
+  "ImportArrays.probe_info_file":"/home/travis/build/broadinstitute/gatk/src/test/resources/org/broadinstitute/hellbender/tools/variantdb/arrays/expected_probe_info.csv",
+  "ImportArrays.sample_map":"/home/travis/build/broadinstitute/gatk/src/test/resources/org/broadinstitute/hellbender/tools/variantdb/arrays/sampleMap.csv",
+  "ImportArrays.sample_list_schema": "/home/travis/build/broadinstitute/gatk/scripts/variantstore_wdl/schemas/arrays_sample_list_schema.json",
+  "ImportArrays.raw_schema": "/home/travis/build/broadinstitute/gatk/scripts/variantstore_wdl/schemas/raw_array_schema.json",
+  "ImportArrays.table_id": 1,
+  "ImportArrays.project_id": "broad-dsde-dev",
+  "ImportArrays.dataset_name": "temp_tables",
+  "ImportArrays.docker": "__GATK_DOCKER__",
+  "ImportArrays.CreateImportTsvs.for_testing_only": "gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS",
+  "ImportArrays.LoadArrays.for_testing_only": "gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS",
+  "ImportArrays.LoadArrays.load": "true",
+  "ImportArrays.LoadArrays.uuid": "__UUID__"
+}
