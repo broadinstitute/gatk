@@ -2,8 +2,7 @@ package org.broadinstitute.hellbender.tools.dragstr;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.IntervalTree;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.ints.*;
 import org.apache.commons.io.output.NullOutputStream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -167,9 +166,9 @@ public class EstimateDragstrParameters extends GATKTool {
     private void printOutput(final StratifiedDragstrLocusCases finalSites, final String sampleName, final List<String> readGroups) {
         final boolean usingDefaults = !isThereEnoughCases(finalSites);
         final Object[] annotations = {
-                "sample", sampleName == null ? "<unspecified>" : sampleName,
+                "sample", (sampleName == null ? "<unspecified>" : sampleName),
                 "readGroups", (readGroups.isEmpty() ? "<unspecified>" : Utils.join(", ", readGroups)),
-                "estimatedOrDefaults", usingDefaults ? "defaults" : "estimated",
+                "estimatedOrDefaults", (usingDefaults ? "defaults" : "estimated"),
                 "commandLine", getCommandLine()
         };
         if (!usingDefaults) {
@@ -180,7 +179,7 @@ public class EstimateDragstrParameters extends GATKTool {
 
         } else {
             logger.warn("Not enough cases to estimate parameters, using defaults");
-            DragstrParamUtils.print(DragstrParams.DEFAULT, output);
+            DragstrParamUtils.print(DragstrParams.DEFAULT, output, annotations);
         }
     }
 
@@ -615,7 +614,7 @@ public class EstimateDragstrParameters extends GATKTool {
     /**
      * Stream collector class define to coalese several stratified locus case collections.
      */
-    private static class DragstrLocusCaseCollector implements Collector<org.broadinstitute.hellbender.utils.read.GATKRead, DragstrLocusCaseCollector, DragstrLocusCase> {
+    private static class DragstrLocusCaseCollector implements Collector<EquivalentReadSet, DragstrLocusCaseCollector, DragstrLocusCase> {
 
         private final DragstrLocus locus;
         private final long strStart;
@@ -658,7 +657,7 @@ public class EstimateDragstrParameters extends GATKTool {
         }
 
         @Override
-        public BiConsumer<DragstrLocusCaseCollector, org.broadinstitute.hellbender.utils.read.GATKRead> accumulator() {
+        public BiConsumer<DragstrLocusCaseCollector, EquivalentReadSet> accumulator() {
             return DragstrLocusCaseCollector::collect;
         }
 
@@ -668,26 +667,27 @@ public class EstimateDragstrParameters extends GATKTool {
          *
          * Assumes that the read is mapped to the same contig as the locus, se we don't test
          * for that.
-         * @param read the read to collect.
+         * @param eset the read to collect.
          */
-        private void collect(final org.broadinstitute.hellbender.utils.read.GATKRead read) {
-            final int readStart = read.getStart();
-            final int readEnd = read.getEnd();
+        private void collect(final EquivalentReadSet eset) {
+            final int readStart = eset.getStart();
+            final int readEnd = eset.getEnd();
+            final int size = eset.size();
             if (readStart <= paddedStrStart && readEnd >= paddedStrEnd) {
-                if (read.isSupplementaryAlignment()) {
-                    nSup++;
+                if (eset.isSupplementaryAlignment()) {
+                    nSup += size;
                 }
-                minMQ = Math.min(minMQ, read.getMappingQuality());
+                minMQ = Math.min(minMQ, eset.getMappingQuality());
                 int refPos = readStart;
                 // int lengthDiff = 0;
-                for (final CigarElement ce : read.getCigar()) {
+                for (final CigarElement ce : eset.getCigar()) {
                         final CigarOperator op = ce.getOperator();
                         final int length = ce.getLength();
                         if (op == CigarOperator.I && refPos >= strStart && refPos <= strEndPlusOne) {
-                            k++;
+                            k += size;
                             //lengthDiff += length;
                         } else if (op == CigarOperator.D && refPos + length - 1 >= strStart && refPos <= strEnd) {
-                            k++;
+                            k += size;
                             //lengthDiff -= length;
                         }
                         // update refPos and quick end if we have gone beyond the end of the STR.
@@ -695,10 +695,7 @@ public class EstimateDragstrParameters extends GATKTool {
                             break;
                         }
                     }
-                    //if (lengthDiff != 0) {
-                    //    k++;
-                    //}
-                    n++;
+                    n += size;
                 }
         }
 
@@ -787,7 +784,6 @@ public class EstimateDragstrParameters extends GATKTool {
             @Override
             public boolean tryAdvance(final Consumer<? super DragstrLocusCase> action) {
                 if (advanceLocus()) { // if true, sets 'locus' to the next in the stream.
-
                     readBuffer.removeUpstreamFrom((int) locus.getStart()); // flush the buffer from up-stream reads that we won't need again.
                     // We keep reading reads into the buffer until we reach the first downstream
                     // from the current subject.
@@ -798,7 +794,7 @@ public class EstimateDragstrParameters extends GATKTool {
                         }
                     }
                     // Now we compose the case given the locus and all overlapping reads.
-                    final List<GATKRead> reads = readBuffer.overlapping((int) locus.getStart(), (int) locus.getEnd());
+                    final List<EquivalentReadSet> reads = readBuffer.overlapping((int) locus.getStart(), (int) locus.getEnd());
                     final DragstrLocusCase newCase = composeDragstrLocusCase(locus, reads, contigLength);
                     action.accept(newCase);
                     return true;
@@ -847,62 +843,127 @@ public class EstimateDragstrParameters extends GATKTool {
             SAMFlag.READ_UNMAPPED, SAMFlag.SECONDARY_ALIGNMENT, SAMFlag.READ_FAILS_VENDOR_QUALITY_CHECK);
     private static final int DISCARD_FLAG_VALUE = DISCARD_FLAGS.stream().mapToInt(SAMFlag::intValue).sum();
 
-    private DragstrLocusCase composeDragstrLocusCase(final DragstrLocus locus, final List<GATKRead> rawReads, final long contigLength) {
+    private DragstrLocusCase composeDragstrLocusCase(final DragstrLocus locus, final List<EquivalentReadSet> rawReads, final long contigLength) {
         return rawReads.stream()
                 .collect(DragstrLocusCaseCollector.create(locus, hyperParameters.strPadding, contigLength));
     }
 
     /**
+     * Sets of reads that for the intent and proposes of this model are equivalent assuming that they are mapped on the same
+     * location; we don't check for that.
+     */
+    private static class EquivalentReadSet {
+        private GATKRead example;
+        private int size;
+
+        public boolean belongs(final GATKRead read) {
+            return (read.isSupplementaryAlignment() == example.isSupplementaryAlignment()
+                    && read.getMappingQuality() == example.getMappingQuality()
+                    && read.getCigar().equals(example.getCigar()));
+        }
+
+        public static int hashCode(final GATKRead read) {
+            return (((Boolean.hashCode(read.isSupplementaryAlignment()) * 31) + read.getMappingQuality() * 31) + read.getCigar().hashCode());
+        }
+
+        public int hashCode() {
+            return hashCode(example);
+        }
+
+        private EquivalentReadSet(final GATKRead read) {
+            example = read;
+            size  = 1;
+        }
+
+        public static EquivalentReadSet of(final GATKRead read) {
+            Utils.nonNull(read);
+            return new EquivalentReadSet(read);
+        }
+
+        public void increase(final int inc) {
+            size += inc;
+        }
+        public int getStart() {
+            return example.getStart();
+        }
+
+        public int getEnd() {
+            return example.getEnd();
+        }
+
+        public boolean isSupplementaryAlignment() {
+            return example.isSupplementaryAlignment();
+        }
+
+        public int size() {
+            return size;
+        }
+
+        public int getMappingQuality() {
+            return example.getMappingQuality();
+        }
+
+        public Iterable<? extends CigarElement> getCigar() {
+            return example.getCigar();
+        }
+    }
+
+    /**
      * Simple read-buffer implementation.
      */
-    private static class ShardReadBuffer extends IntervalTree<List<GATKRead>> {
+    private static class ShardReadBuffer extends IntervalTree<Int2ObjectMap<EquivalentReadSet>> {
 
-        private static List<GATKRead> mergeLists(final List<GATKRead> l1, final List<GATKRead> l2) {
-            if (l1 instanceof ArrayList) {
-                l1.addAll(l2);
-                return l1;
-            } else if (l2 instanceof ArrayList) {
-                l2.addAll(l1);
-                return l2;
+        private static Int2ObjectMap<EquivalentReadSet> mergeEquivalentReadSets(final Int2ObjectMap<EquivalentReadSet> left,
+                                                                                final Int2ObjectMap<EquivalentReadSet> right) {
+            // receiver is the map that will collect the output, perhaps one of the inputs.
+            // donor is the other map.
+            // 1 size maps are unmodifiable singletons so they only can be donors.
+            final Int2ObjectMap<EquivalentReadSet> receiver, donor;
+            if (left.size() > 1) { //
+                receiver = left; donor = right;
+            } else if (right.size() > 1) {
+                receiver = right; donor = left;
             } else {
-                final List<GATKRead> l3 = new ArrayList<>(l1.size() + l2.size());
-                l3.addAll(l1);
-                l3.addAll(l2);
-                return l3;
+                receiver = new Int2ObjectOpenHashMap<>(left);
+                donor = right;
             }
+            for (final EquivalentReadSet e2 : donor.values()) {
+                final EquivalentReadSet e1 = receiver.get(e2.hashCode());
+                if (e1 == null) { // if not in the receiver we simply copy it over.
+                    receiver.put(e2.hashCode(), e2);
+                } else { // if present we increase the count.
+                    e1.increase(e2.size());
+                }
+            }
+            return receiver;
         }
 
         public void add(final int start, final int end, final GATKRead elem) {
-            merge(start, end, Collections.singletonList(elem), ShardReadBuffer::mergeLists);
+            merge(start, end, Int2ObjectMaps.singleton(EquivalentReadSet.hashCode(elem), EquivalentReadSet.of(elem)),
+                    ShardReadBuffer::mergeEquivalentReadSets);
         }
 
         void removeUpstreamFrom(final int start) {
-            final Iterator<Node<List<GATKRead>>> it = iterator();
-            List<GATKRead> result = null;
+            final Iterator<Node<Int2ObjectMap<EquivalentReadSet>>> it = iterator();
             while (it.hasNext()) {
-                final Node<List<GATKRead>> node = it.next();
+                final Node<Int2ObjectMap<EquivalentReadSet>> node = it.next();
                 if (node.getStart() >= start) {
                     break;
                 } else if (node.getEnd() < start) {
-                    final List<GATKRead> values = node.getValue();
-                    if (result == null) {
-                        result = new ArrayList<>(values.size() + 10);
-                    }
-                    result.addAll(values);
                     it.remove();
                 }
             }
         }
 
-        public List<GATKRead> overlapping(final int start, final int end) {
-            Iterator<Node<List<GATKRead>>> it = this.overlappers(start, end);
+        public List<EquivalentReadSet> overlapping(final int start, final int end) {
+            Iterator<Node<Int2ObjectMap<EquivalentReadSet>>> it = this.overlappers(start, end);
             if (!it.hasNext()) {
                 return Collections.emptyList();
             } else {
-                final List<GATKRead> result = new ArrayList<>(100);
+                final List<EquivalentReadSet> result = new ArrayList<>();
                 do {
-                    final Node<List<GATKRead>> node = it.next();
-                    result.addAll(node.getValue());
+                    final Node<Int2ObjectMap<EquivalentReadSet>> node = it.next();
+                    result.addAll(node.getValue().values());
                 } while (it.hasNext());
                 return result;
             }

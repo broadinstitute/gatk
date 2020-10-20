@@ -99,12 +99,11 @@ public final class DragstrParamUtils {
         writer.println("# -------------------------");
         for (int i = 0; i < annotations.length;) {
             final Object name = annotations[i++];
-            final Object value = i < annotations.length ? annotations[i] : null;
+            final Object value = i < annotations.length ? annotations[i++] : null;
             writer.println("# " + name + (value != null ? (" = " + value) : ""));
         }
         writer.println("############################################################################################");
         printTables(params, writer);
-
     }
 
     private static BufferedReader openBufferedReader(final String path) {
