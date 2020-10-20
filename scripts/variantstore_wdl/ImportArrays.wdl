@@ -44,7 +44,7 @@ workflow ImportArrays {
 
   call LoadArrays {
     input:
-      metadata_tsvs = CreateImportTsvs.metadata_tsv,
+      sample_tsvs = CreateImportTsvs.sample_tsv,
       project_id = project_id,
       dataset_name = dataset_name,
       storage_location = output_directory,
@@ -89,6 +89,7 @@ task CreateImportTsvs {
 
       #workaround for https://github.com/broadinstitute/cromwell/issues/3647
       export TMPDIR=/tmp
+
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
       ~{for_testing_only}
 
@@ -111,7 +112,7 @@ task CreateImportTsvs {
       cpu: 2
   }
   output {
-      File metadata_tsv = glob("sample_*.tsv")[0]
+      File sample_tsv = glob("sample_*.tsv")[0]
       File arraydata_tsv = glob("raw_*.tsv")[0] 
   }
 }
@@ -124,11 +125,11 @@ task LoadArrays {
     Int table_id
     File raw_schema
     File sample_list_schema
-    String load = "false"
+    String load = "true"
     String uuid = ""
 
     #input from previous task needed to delay task from running until the other is complete
-    Array[String] metadata_tsvs
+    Array[String] sample_tsvs
 
     # runtime
     Int? preemptible_tries
@@ -179,6 +180,7 @@ task LoadArrays {
         bq --location=US mk --project_id=~{project_id} $SAMPLE_LIST_TABLE ~{sample_list_schema}
         #TODO: add a Google Storage Transfer for the table when we make it.
       fi
+      #load should be false if using Google Storage Transfer so that the tables will be created by this script, but no data will be uploaded.
       if [ ~{load} = true ]; then
         bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --null_marker="null" --source_format=CSV -F "\t" $SAMPLE_LIST_TABLE $SAMPLE_DIR$METADATA_FILES ~{sample_list_schema}
         echo "ingested ${METADATA_FILES} file from $SAMPLE_DIR into table $SAMPLE_LIST_TABLE"
