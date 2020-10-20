@@ -161,7 +161,7 @@ script:
     fi;
     sudo docker images;
     echo ${TEST_TYPE};
-    ./gradlew clean shadowTestClassJar shadowTestJar;
+    sudo ./gradlew clean shadowTestClassJar shadowTestJar;
     mkdir ./testJars;
     echo $( find ./build/libs/ -name "gatk*test.jar");
     cp -r $( find ./build/libs/ -name "gatk*test.jar" ) ./testJars;
