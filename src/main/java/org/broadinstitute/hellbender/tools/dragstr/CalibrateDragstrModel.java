@@ -45,7 +45,7 @@ import java.util.stream.*;
         oneLineSummary = "summary",
         programGroup = ExampleProgramGroup.class
 )
-public class EstimateDragstrParameters extends GATKTool {
+public class CalibrateDragstrModel extends GATKTool {
 
     public static final String STR_TABLE_PATH_SHORT_NAME = "str";
     public static final String STR_TABLE_PATH_FULL_NAME = "str-table-path";

@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 
 /**
  * This tools look for STR sequences in the reference that will used later to estimate the Dragstr parameters values
- * using {@link EstimateDragstrParameters}.
+ * using {@link CalibrateDragstrModel}.
  * <h3>Inputs</h3>
  * <p>
  *     This command takes as input the reference (possibly traversal intervals) and a {@link STRDecimationTable decimation table} herein
