@@ -529,7 +529,6 @@ task Filter {
 
     String? m2_extra_filtering_args
     Int max_alt_allele_count
-    Float? autosomal_coverage
     Float? vaf_filter_threshold
     Float? f_score_beta
 
