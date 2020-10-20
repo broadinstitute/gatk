@@ -105,7 +105,7 @@ task RunHC4 {
         HaplotypeCaller \
         -R ${reference_fasta} \
         -I ${input_bam} \
-        --read_index {bam_file_index} \
+        --read_index ${bam_file_index} \
         -O ${output_prefix}_hc4.vcf.gz \
         -L ${interval_list} \
         -bamout ${output_prefix}_bamout.bam \
