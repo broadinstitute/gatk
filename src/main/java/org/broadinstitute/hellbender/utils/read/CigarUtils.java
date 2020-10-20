@@ -12,22 +12,11 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public final class CigarUtils {
-
-    // used in the bubble state machine to apply Smith-Waterman to the bubble sequence
-    // these values were chosen via optimization against the NA12878 knowledge base
-    public static final SWParameters NEW_SW_PARAMETERS = new SWParameters(200, -150, -260, -11);
-
-    // In Mutect2 and HaplotypeCaller reads are realigned to their *best* haplotypes, which is very different from a generic alignment.
-    // The {@code NEW_SW_PARAMETERS} penalize a substitution error more than an indel up to a length of 9 bases!
-    // Suppose, for example, that a read has a single substitution error, say C -> T, on its last base.  Those parameters
-    // would prefer to extend a deletion until the next T on the reference is found in order to avoid the substitution, which is absurd.
-    // Since these parameters are for aligning a read to the biological sequence we believe it comes from, the parameters
-    // we choose should correspond to sequencer error.  They *do not* have anything to do with the prevalence of true variation!
-    public static final SWParameters ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS = new SWParameters(10, -15, -30, -5);
 
     private static final String SW_PAD = "NNNNNNNNNN";
 
@@ -161,11 +150,10 @@ public final class CigarUtils {
      * or trailing deletion in order to maintain the original reference span of the alt haplotype.  This can occur, for example, when the ref
      * haplotype starts with N repeats of a long sequence and the alt haplotype starts with N-1 repeats.
      *
-     * @param aligner
      * @param refSeq the reference sequence that all of the bases in this path should align to
      * @return a Cigar mapping this path to refSeq, or null if no reasonable alignment could be found
      */
-    public static Cigar calculateCigar(final byte[] refSeq, final byte[] altSeq, final SmithWatermanAligner aligner, final SWOverhangStrategy strategy) {
+    public static Cigar calculateCigar(final byte[] refSeq, final byte[] altSeq, final SmithWatermanAligner aligner, final SWParameters haplotypeToReferenceSWParameters, final SWOverhangStrategy strategy) {
         Utils.nonNull(refSeq, "refSeq");
         Utils.nonNull(altSeq, "altSeq");
         if ( altSeq.length == 0 ) {
@@ -175,26 +163,21 @@ public final class CigarUtils {
 
         //Note: this is a performance optimization.
         // If two strings are equal (a O(n) check) then it's trivial to get CIGAR for them.
-        // Furthermore, if their lengths are equal and their element-by-element comparison yields two or fewer mismatches
-        // it's also a trivial M-only CIGAR, because in order to have equal length one would need at least one insertion and
-        // one deletion, in which case two substitutions is a better alignment.
-        if (altSeq.length == refSeq.length){
-            int mismatchCount = 0;
-            for (int n = 0; n < refSeq.length && mismatchCount <= 2; n++) {
-                mismatchCount += (altSeq[n] == refSeq[n] ? 0 : 1);
-            }
-            if (mismatchCount <= 2) {
-                final Cigar matching = new Cigar();
-                matching.add(new CigarElement(refSeq.length, CigarOperator.MATCH_OR_MISMATCH));
-                return matching;
-            }
+        //TODO: in addressing http://github.com/broadinstitute/gatk/issues/6863,
+        // an optimization for strings with <= 2 mismatches (introduced in https://github.com/broadinstitute/gatk/pull/5466)
+        // was reverted, as it assumes SW parameters that prefer 2 substitutions over 1 insertion + 1 deletion;
+        // we could restore the optimization if appropriate checks on the SW parameters are performed
+        if (Arrays.equals(refSeq, altSeq)) {
+            final Cigar matching = new Cigar();
+            matching.add(new CigarElement(refSeq.length, CigarOperator.MATCH_OR_MISMATCH));
+            return matching;
         }
 
         final Cigar nonStandard;
 
         final String paddedRef = SW_PAD + new String(refSeq) + SW_PAD;
         final String paddedPath = SW_PAD + new String(altSeq) + SW_PAD;
-        final SmithWatermanAlignment alignment = aligner.align(paddedRef.getBytes(), paddedPath.getBytes(), NEW_SW_PARAMETERS, strategy);
+        final SmithWatermanAlignment alignment = aligner.align(paddedRef.getBytes(), paddedPath.getBytes(), haplotypeToReferenceSWParameters, strategy);
 
         if ( isSWFailure(alignment) ) {
             return null;
