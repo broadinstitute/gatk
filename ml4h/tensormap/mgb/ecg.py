@@ -316,8 +316,8 @@ partners_ecg_read_md = TensorMap(
 )
 
 
-partners_ecg_read_md = TensorMap(
-    "partners_ecg_read_md",
+partners_ecg_read_pc = TensorMap(
+    "partners_ecg_read_pc",
     #annotation_units=128,
     #channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
@@ -827,6 +827,27 @@ partners_ecg_taxis_md = TensorMap(
     shape=(None, 1),
     time_series_limit=0,
     validator=make_range_validator(-180, 180),
+)
+
+
+partners_ecg_measuredamplitudepeak_r = TensorMap(
+    "partners_ecg_measuredamplitudepeak_r",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="measuredamplitudepeak_IE_R", fill=np.nan),
+    shape=(None, 12),
+    time_series_limit=0,
+)
+
+
+partners_ecg_acquisitiondevice = TensorMap(
+    "partners_ecg_acquisitiondevice",
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="acquisitiondevice", fill=999),
+    shape=(None, 1),
+    time_series_limit=0,
 )
 
 
