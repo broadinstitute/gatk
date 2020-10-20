@@ -53,7 +53,7 @@ workflow RawArrayCohortExtract {
                 max_probe_id          = (i+1) * probes_per_partition,
                 fq_cohort_mapping_table     = fq_cohort_mapping_table,
                 cohort_extract_table  = CreateExtractTable.cohort_extract_table,
-                project_id            = query_project,
+                read_project_id       = query_project,
                 output_file           = "${output_file_base_name}_${i}.vcf.gz"
         }
     }
@@ -155,7 +155,7 @@ task ExtractTask {
         Int max_probe_id
         String fq_cohort_mapping_table
         String cohort_extract_table
-        String project_id
+        String read_project_id
         String output_file
         
         # Runtime Options:
@@ -176,7 +176,7 @@ task ExtractTask {
                 -R "~{reference}" \
                 -O "~{output_file}" \
                 ~{probe_info_clause} \
-                --project-id "~{project_id}" \
+                --read-project-id "~{read_project_id}" \
                 --cohort-sample-table "~{fq_cohort_mapping_table}" \
                 --use-compressed-data "false" \
                 --cohort-extract-table "~{cohort_extract_table}" \
