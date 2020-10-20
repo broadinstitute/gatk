@@ -13,6 +13,7 @@
 * [Setting up a remote VM](#setting-up-a-remote-vm)
 * Modeling/Data Sources/Tests [(`ml4h/DATA_MODELING_TESTS.md`)](ml4h/DATA_MODELING_TESTS.md)
 * [Contributing Code](#contributing-code)
+* [Command line interface](#command-line-interface)
 
 Advanced Topics:
 * Tensorizing Data (going from raw data to arrays suitable for modeling, in `ml4h/tensorize/README.md, TENSORIZE.md` )
@@ -151,3 +152,7 @@ Now open a browser on your laptop and go to the URL `http://localhost:8888`
 ## Contributing code
 
 Want to contribute code to this project? Please see [CONTRIBUTING](./CONTRIBUTING.md) for developer setup and other details.
+
+## Command line interface
+The ml4h package is designed to be accessable through the command line using "recipes".
+To get started, please see [RECIPE_EXAMPLES](./RECIPE_EXAMPLES.md).
