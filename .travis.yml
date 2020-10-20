@@ -150,7 +150,9 @@ script:
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image and running appropriate tests..." ;
     if [ ${TRAVIS_PULL_REQUEST} != false ]; then
+      df;
       sudo bash build_docker.sh  -e FETCH_HEAD -s -u -t ${TRAVIS_PULL_REQUEST};
+      df;
       DOCKER_TAG=FETCH_HEAD;
     else
       echo ${TRAVIS_COMMIT};
