@@ -20,7 +20,7 @@ public class ProbeQcMetrics {
         this.invariant = invariant;
     }
 
-    public static Map<Long, ProbeQcMetrics> getProbeQcMetricsWithStorageAPI(String fqProbeTableName) {
+    public static Map<Long, ProbeQcMetrics> getProbeQcMetricsWithStorageAPI(String fqProbeTableName, String readProjectId) {
         Map<Long, ProbeQcMetrics> results = new HashMap<>();
 
         TableReference tableRef = new TableReference(fqProbeTableName, ProbeQcMetricsSchema.PROBE_QC_METRIC_FIELDS);
@@ -28,7 +28,7 @@ public class ProbeQcMetrics {
         System.out.println("Beginning probe QC metrics retrieval...");
         long start = System.currentTimeMillis();
 
-        try (final StorageAPIAvroReader reader = new StorageAPIAvroReader(tableRef)) {
+        try (final StorageAPIAvroReader reader = new StorageAPIAvroReader(tableRef, readProjectId)) {
             for ( final GenericRecord row : reader ) {                
                 ProbeQcMetrics p = new ProbeQcMetrics(
                     (Long) row.get(ProbeQcMetricsSchema.PROBE_ID),
