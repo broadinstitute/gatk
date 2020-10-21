@@ -2,6 +2,11 @@ package org.broadinstitute.hellbender.tools.variantdb.arrays.tables;
 
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.stream.Collectors;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -47,6 +52,16 @@ public class SampleList {
             results.put((int) row.get(0).getLongValue(), row.get(1).getStringValue());
         }
         return results;
+    }
+
+    public static Map<Integer, String> getSampleIdMap(File cohortSampleFile) {
+        try {
+            return Files.readAllLines(cohortSampleFile.toPath(), StandardCharsets.US_ASCII).stream()
+                .map(s -> s.split(","))
+                .collect(Collectors.toMap(tokens -> Integer.parseInt(tokens[0]), tokens -> tokens[1]));
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Could not parse --cohort-sample-file", e);
+        }
     }
 
     private static TableResult querySampleTable(String fqSampleTableName, String whereClause, boolean printDebugInformation) {

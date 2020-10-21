@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEng
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.*;
 import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.text.DecimalFormat;
 import java.util.*;
@@ -44,7 +43,7 @@ public class ArrayExtractCohortEngine {
     private final ReferenceDataSource refSource;
 
     private final ProgressMeter progressMeter;
-    private final String projectID;
+    private final String readProjectId;
 
     /** List of sample names seen in the variant data from BigQuery. */
     private final Map<Integer, String> sampleIdMap;
@@ -65,7 +64,7 @@ public class ArrayExtractCohortEngine {
     final float callRateThreshold;
     final boolean filterInvariants;
 
-    public ArrayExtractCohortEngine(final String projectID,
+    public ArrayExtractCohortEngine(final String readProjectId,
                                     final VariantContextWriter vcfWriter,
                                     final VCFHeader vcfHeader,
                                     final VariantAnnotatorEngine annotationEngine,
@@ -92,7 +91,7 @@ public class ArrayExtractCohortEngine {
                                 
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
-        this.projectID = projectID;
+        this.readProjectId = readProjectId;
         this.vcfWriter = vcfWriter;
         this.refSource = refSource;
         this.sampleIdMap = sampleIdMap;
@@ -133,7 +132,7 @@ public class ArrayExtractCohortEngine {
             rowRestriction = "probe_id >= " + minProbeId + " AND probe_id <= " + maxProbeId;
         }
 
-        final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction);
+        final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, readProjectId);
         createVariantsFromUngroupedTableResult(storageAPIAvroReader);
     }
 

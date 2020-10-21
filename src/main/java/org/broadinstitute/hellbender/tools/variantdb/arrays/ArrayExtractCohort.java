@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
+import java.io.File;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -51,11 +52,11 @@ public class ArrayExtractCohort extends GATKTool {
     private String outputVcfPathString = null;
 
     @Argument(
-            fullName = "project-id",
-            doc = "ID of the Google Cloud project to use when executing queries",
-            optional = false
+            fullName = "read-project-id",
+            doc = "ID of the Google Cloud project to use (bill) when reading the microarray data tables",
+            optional = true
     )
-    private String projectID = null;
+    private String readProjectID = null;
 
     @Argument(
             fullName = "cohort-sample-table",
@@ -63,6 +64,13 @@ public class ArrayExtractCohort extends GATKTool {
             optional = true
     )
     private String sampleTableName = null;
+
+   @Argument(
+       fullName = "cohort-sample-file",
+       doc = "CSV of sample_id,sample_name map in the cohort",
+       optional = true
+   )
+    private File cohortSampleFile = null;
 
     @Argument(
             fullName = "probe-info-table",
@@ -191,14 +199,20 @@ public class ArrayExtractCohort extends GATKTool {
 
         vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
 
-        Map<Integer, String> sampleIdMap = SampleList.getSampleIdMap(new TableReference(sampleTableName, SampleList.SAMPLE_LIST_FIELDS), printDebugInformation);
+        Map<Integer, String> sampleIdMap;
+        if (sampleTableName != null) {
+            sampleIdMap = SampleList.getSampleIdMap(new TableReference(sampleTableName, SampleList.SAMPLE_LIST_FIELDS), printDebugInformation);
+        } else if (cohortSampleFile != null) {
+          sampleIdMap = SampleList.getSampleIdMap(cohortSampleFile);
+        } else {
+          throw new IllegalArgumentException("--cohort-sample-names or --cohort-sample-table must be provided.");
+        }
 
-        Collection<String> sampleNames = sampleIdMap.values();
-        VCFHeader header = CommonCode.generateRawArrayVcfHeader(new HashSet<>(sampleNames), reference.getSequenceDictionary());
+        VCFHeader header = CommonCode.generateRawArrayVcfHeader(new HashSet<>(sampleIdMap.values()), reference.getSequenceDictionary());
 
         Map<Long, ProbeInfo> probeIdMap;
         if (probeCsvExportFile == null) {
-            probeIdMap = ProbeInfo.getProbeIdMapWithStorageAPI(probeTableName, printDebugInformation);
+            probeIdMap = ProbeInfo.getProbeIdMapWithStorageAPI(probeTableName, printDebugInformation, readProjectID);
         } else {
             probeIdMap = ProbeInfo.getProbeIdMapFromExport(probeCsvExportFile);
         }
@@ -206,13 +220,13 @@ public class ArrayExtractCohort extends GATKTool {
         // if we have a qcMetrics table, augment the probeInfo map with that information
         Map<Long, ProbeQcMetrics> probeQcMetricsMap = null;
         if (qcMetricsTableName != null) {
-            probeQcMetricsMap = ProbeQcMetrics.getProbeQcMetricsWithStorageAPI(qcMetricsTableName);
+            probeQcMetricsMap = ProbeQcMetrics.getProbeQcMetricsWithStorageAPI(qcMetricsTableName, readProjectID);
         }
 
         //ChromosomeEnum.setRefVersion(refVersion);
 
         engine = new ArrayExtractCohortEngine(
-                projectID,
+            readProjectID,
                 vcfWriter,
                 header,
                 annotationEngine,
