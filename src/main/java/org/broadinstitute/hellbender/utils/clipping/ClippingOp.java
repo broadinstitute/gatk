@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Represents a clip on a read.  It has a type (see the enum) along with a start and stop in the bases
@@ -217,6 +218,15 @@ public final class ClippingOp {
             System.arraycopy(ReadUtils.getBaseDeletionQualities(read), copyStart, newBaseDeletionQuals, 0, newLength);
             ReadUtils.setInsertionBaseQualities(hardClippedRead, newBaseInsertionQuals);
             ReadUtils.setDeletionBaseQualities(hardClippedRead, newBaseDeletionQuals);
+        }
+
+        if (read.hasAttribute("ti")) {
+            final byte[] originalTi = read.getAttributeAsByteArray("ti");
+
+            final byte[] newTi = new byte[newLength];            
+            System.arraycopy(originalTi, copyStart, newTi, 0, newLength);
+            
+            hardClippedRead.setAttribute("ti", newTi);
         }
 
         return hardClippedRead;
