@@ -13,6 +13,10 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
+import org.broadinstitute.hellbender.engine.filters.VariantFilter;
+import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.VariantIDsVariantFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -23,7 +27,9 @@ import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @CommandLineProgramProperties(
         summary = ArrayImputationCorrelation.USAGE_SUMMARY,
@@ -41,6 +47,14 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 
     @Argument(fullName= StandardArgumentDefinitions.RESOURCE_LONG_NAME, doc="External resource VCF file", optional=true)
     public FeatureInput<VariantContext> af_resource;
+
+    /**
+     * List of IDs (or a .list file containing ids) to select. The tool will only select variants whose ID
+     * field is present in this list of IDs. The matching is done by exact string matching. If a file, the file
+     * name must end in ".list", and the expected file format is simply plain text with one ID per line.
+     */
+    @Argument(fullName="keep-ids", shortName="ids", doc="List of variant rsIDs to select", optional=true)
+    private Set<String> rsIDsToKeep = new HashSet<>();
 
     @Argument(
             doc = "Output file for correlation.",
@@ -76,12 +90,19 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 
     @Override
     protected Predicate<VariantContext> makeTruthVariantFilter() {
-        return vc -> !vc.isFiltered();
+        final VariantFilter filter = new VariantFilterLibrary.PassesFiltersVariantFilter();
+        return filter::test;
     }
 
     @Override
     protected Predicate<VariantContext> makeEvalVariantFilter() {
-        return vc -> !vc.isFiltered();
+        final VariantFilter filter;
+        if (rsIDsToKeep != null) {
+            filter = new VariantFilterLibrary.PassesFiltersVariantFilter().and(new VariantIDsVariantFilter(rsIDsToKeep));
+        } else {
+            filter = new VariantFilterLibrary.PassesFiltersVariantFilter();
+        }
+        return filter::test;
     }
 
     @Override
@@ -140,14 +161,16 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
             }
 
             final int bin = getBin(af);
-            final double evalAltCount = 2 - evalVC.getGenotype(0).countAllele(evalVC.getReference());
-            final double truthAltCount = 2 - truthVC.getGenotype(0).countAllele(truthVC.getReference());
+            final double evalRefFrac = (double)evalVC.getGenotype(0).countAllele(evalVC.getReference())/(double)evalVC.getGenotype(0).getPloidy();
+            final double truthRefFrac = (double)truthVC.getGenotype(0).countAllele(truthVC.getReference())/(double)truthVC.getGenotype(0).getPloidy();
+            final int truthAltCount = truthVC.getGenotype(0).getPloidy() - truthVC.getGenotype(0).countAllele(truthVC.getReference());
+            final int evalAltCount = evalVC.getGenotype(0).getPloidy() - evalVC.getGenotype(0).countAllele(evalVC.getReference());
             if (evalVC.isSNP()) {
-                aggregators.get(bin).snp_pearsonCorrelationAggregator.addEntry(evalAltCount, truthAltCount);
-                snpMetrics.incrementMetrics((int)evalAltCount, (int)truthAltCount);
+                aggregators.get(bin).snp_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
+                snpMetrics.incrementMetrics(evalAltCount, truthAltCount);
             } else if (evalVC.isIndel()){
-                aggregators.get(bin).indel_pearsonCorrelationAggregator.addEntry(evalAltCount, truthAltCount);
-                indelMetrics.incrementMetrics((int)evalAltCount, (int)truthAltCount);
+                aggregators.get(bin).indel_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
+                indelMetrics.incrementMetrics(evalAltCount, truthAltCount);
             }
         }
     }
