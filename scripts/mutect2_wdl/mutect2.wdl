@@ -536,6 +536,7 @@ task M2 {
 
       String? gcs_project_for_requester_pays
 
+
       # runtime
       String gatk_docker
       Int? mem
@@ -560,10 +561,10 @@ task M2 {
       ref_fasta: {localization_optional: true}
       ref_fai: {localization_optional: true}
       ref_dict: {localization_optional: true}
-      tumor_bam: {localization_optional: true}
-      tumor_bai: {localization_optional: true}
-      normal_bam: {localization_optional: true}
-      normal_bai: {localization_optional: true}
+      tumor_bam: {localization_optional: false}
+      tumor_bai: {localization_optional: false}
+      normal_bam: {localization_optional: false}
+      normal_bai: {localization_optional: false}
       pon: {localization_optional: true}
       pon_idx: {localization_optional: true}
       gnomad: {localization_optional: true}
@@ -949,6 +950,7 @@ task FilterAlignmentArtifacts {
       String? gcs_project_for_requester_pays
       Runtime runtime_params
       Int mem
+
     }
 
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
@@ -963,8 +965,8 @@ task FilterAlignmentArtifacts {
       ref_dict: {localization_optional: true}
       input_vcf: {localization_optional: true}
       input_vcf_idx: {localization_optional: true}
-      bam: {localization_optional: true}
-      bai: {localization_optional: true}
+      bam: {localization_optional: false}
+      bai: {localization_optional: false}
     }
 
     command {
