@@ -537,7 +537,7 @@ task M2 {
       String? gcs_project_for_requester_pays
       
       # allows users to set localization to false for drs:// objects
-      Boolean bam_bai_localization = "true"
+      Boolean bam_bai_localization = true
 
       # runtime
       String gatk_docker
@@ -954,7 +954,7 @@ task FilterAlignmentArtifacts {
       Int mem
 
       # allows users to set localization to false for drs:// objects
-      Boolean bam_bai_localization = "true"
+      Boolean bam_bai_localization = true
     }
 
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
