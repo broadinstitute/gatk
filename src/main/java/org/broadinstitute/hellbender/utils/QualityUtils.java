@@ -187,7 +187,7 @@ public final class QualityUtils {
      */
     public static double qualToErrorProbLog10(final double qual) {
         Utils.validateArg( qual >= 0.0, () -> "qual must be >= 0.0 but got " + qual);
-        return qual * -.1;
+        return qual * -0.1;
     }
 
     // ----------------------------------------------------------------------

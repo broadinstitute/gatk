@@ -503,6 +503,7 @@ public final class AssemblyBasedCallerUtils {
         return results;
     }
 
+
     /**
      * Returns the list of events discovered in assembled haplotypes that are active at this location. The results will
      * include events that span the current location if includeSpanningEvents is set to true; otherwise it will only
