@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
 import com.google.api.gax.rpc.ServerStream;
+import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.storage.v1beta1.*;
 import com.google.cloud.bigquery.storage.v1beta1.ReadOptions.TableReadOptions.Builder;
 import com.google.common.base.Preconditions;
@@ -15,7 +16,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.List;
 import java.util.NoSuchElementException;
 
 public class StorageAPIAvroReader implements GATKAvroReader {
@@ -42,15 +42,19 @@ public class StorageAPIAvroReader implements GATKAvroReader {
     private GenericRecord nextRow = null;
 
     public StorageAPIAvroReader(final TableReference tableRef) {
-        this(tableRef, null);
+        this(tableRef, null, null);
     }
 
-    public StorageAPIAvroReader(final TableReference tableRef, final String rowRestriction) {
+    public StorageAPIAvroReader(final TableReference tableRef, String parentProjectId) {
+        this(tableRef, null, parentProjectId);
+    }
+
+    public StorageAPIAvroReader(final TableReference tableRef, final String rowRestriction, String parentProjectId) {
 
         try {
             this.client = BigQueryStorageClient.create();
 
-            final String parent = String.format("projects/%s", tableRef.tableProject);
+            final String parent = String.format("projects/%s", parentProjectId == null || parentProjectId.isEmpty() ? tableRef.tableProject : parentProjectId);
 
             final TableReferenceProto.TableReference tableReference = TableReferenceProto.TableReference.newBuilder()
                     .setProjectId(tableRef.tableProject)

@@ -101,13 +101,14 @@ public class ProbeInfo {
 
                 probeIdMap.put(p.probeId, p);
             }
+
             return probeIdMap;
         } catch (final Exception e) {
             throw new GATKException("Error processing probe CSV file", e);
-        }        
+        }
     }
 
-    public static Map<Long, ProbeInfo> getProbeIdMapWithStorageAPI(String fqProbeTableName, boolean printDebugInformation) {
+    public static Map<Long, ProbeInfo> getProbeIdMapWithStorageAPI(String fqProbeTableName, boolean printDebugInformation, String readProjectId) {
         Map<Long, ProbeInfo> results = new HashMap<>();
 
         TableReference tableRef = new TableReference(fqProbeTableName, ProbeInfoSchema.PROBE_INFO_FIELDS);
@@ -115,7 +116,7 @@ public class ProbeInfo {
         System.out.println("Beginning probe retrieval...");
         long start = System.currentTimeMillis();
 
-        try (final StorageAPIAvroReader reader = new StorageAPIAvroReader(tableRef)) {
+        try (final StorageAPIAvroReader reader = new StorageAPIAvroReader(tableRef, readProjectId)) {
             for ( final GenericRecord row : reader ) {                
                 ProbeInfo p = new ProbeInfo(
                     (Long) row.get(ProbeInfoSchema.PROBE_ID),

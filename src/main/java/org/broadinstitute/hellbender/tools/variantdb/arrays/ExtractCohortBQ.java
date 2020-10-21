@@ -28,7 +28,7 @@ public class ExtractCohortBQ {
 
     public static Map<String, ProbeInfo> getProbeNameMap(String fqProbeTableName, boolean printDebugInformation) {
         Map<String, ProbeInfo> results = new HashMap<>();
-        for (final ProbeInfo pi : ProbeInfo.getProbeIdMapWithStorageAPI(fqProbeTableName, printDebugInformation).values()) {
+        for (final ProbeInfo pi : ProbeInfo.getProbeIdMapWithStorageAPI(fqProbeTableName, printDebugInformation, null).values()) {
             results.put(pi.name, pi);
         }
         return results;
