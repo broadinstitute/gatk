@@ -1,3 +1,4 @@
+version: 1.2
 workflows:
    - name: cnv_germline_case_workflow
      subclass: WDL
