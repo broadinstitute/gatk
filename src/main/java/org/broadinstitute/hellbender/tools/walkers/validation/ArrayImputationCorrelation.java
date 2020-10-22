@@ -97,7 +97,7 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     @Override
     protected Predicate<VariantContext> makeEvalVariantFilter() {
         final VariantFilter filter;
-        if (rsIDsToKeep != null) {
+        if (rsIDsToKeep != null && !rsIDsToKeep.isEmpty()) {
             filter = new VariantFilterLibrary.PassesFiltersVariantFilter().and(new VariantIDsVariantFilter(rsIDsToKeep));
         } else {
             filter = new VariantFilterLibrary.PassesFiltersVariantFilter();
