@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.lang.math.IntRange;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
@@ -261,7 +262,10 @@ public final class ReblockGVCF extends MultiVariantWalker {
     }
 
     private boolean isHomRefBlock(final VariantContext result) {
-        return result.getLog10PError() == VariantContext.NO_LOG10_PERROR;
+        if (result.getGenotype(0).hasPL()) {
+            return result.getGenotype(0).getPL()[0] == 0;
+        }
+         return result.getLog10PError() == VariantContext.NO_LOG10_PERROR;
     }
 
     /**
@@ -294,7 +298,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @VisibleForTesting
     protected boolean shouldBeReblocked(final VariantContext result) {
         final Genotype genotype = result.getGenotype(0);
-        return !genotype.isCalled() || (genotype.hasPL() && genotype.getPL()[0] < rgqThreshold) || genotype.isHomRef();
+        return (genotype.hasPL() && genotype.getPL()[0] < rgqThreshold) || genotype.isHomRef();
     }
 
     /**
@@ -552,7 +556,18 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 }
             }
         }
-        attrMap.put(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, g.getAlleles().stream().anyMatch(Allele::isReference) ? Arrays.asList(0,1,0) : Arrays.asList(0,0,1)); //ExcessHet currently uses rounded/integer genotype counts, so do the same here
+        List<Integer> gtCount;
+        if (g.hasPL()) {
+            int minPL = MathUtils.minElementIndex(g.getPL());
+            if (minPL == 1 || minPL == 3 || minPL == 6) { //these are the ref/alt indexes; we shouldn't have more than three alleles
+                gtCount = Arrays.asList(0,1,0);
+            } else {
+                gtCount = Arrays.asList(0,0,1);
+            }
+        } else {
+            gtCount = g.getAlleles().stream().anyMatch(Allele::isReference) ? Arrays.asList(0,1,0) : Arrays.asList(0,0,1); //ExcessHet currently uses rounded/integer genotype counts, so do the same here
+        }
+        attrMap.put(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, gtCount);
         builder.attributes(attrMap);
 
         if (allelesNeedSubsetting) {
