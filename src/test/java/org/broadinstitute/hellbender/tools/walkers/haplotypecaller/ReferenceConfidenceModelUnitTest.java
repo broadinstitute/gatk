@@ -9,6 +9,7 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingModel;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.HomogeneousPloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.IndependentSampleGenotypesModel;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel;
@@ -506,7 +507,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         final AlleleLikelihoods<GATKRead, Haplotype> likelihoods = createDummyStratifiedReadMap(data.getRefHap(), samples, data.getActiveRegion());
 
         final PloidyModel ploidyModel = new HomogeneousPloidyModel(samples,2);
-        final IndependentSampleGenotypesModel genotypingModel = new IndependentSampleGenotypesModel();
+        final GenotypingModel genotypingModel = new IndependentSampleGenotypesModel();
         final List<Integer> expectedDPs = Collections.nCopies(data.getActiveRegion().getSpan().size(), nReads);
         final List<VariantContext> contexts = model.calculateRefConfidence(data.getRefHap(), haplotypes, data.getPaddedRefLoc(), data.getActiveRegion(), likelihoods, ploidyModel, calls, false, Collections.emptyList());
         // Asserting that none of the reads after calculateRefConfidence have indel informativeness caching values attached.
@@ -520,7 +521,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
     public void testRefConfidencePartialReads() {
 
         final PloidyModel ploidyModel = new HomogeneousPloidyModel(samples,2);
-        final IndependentSampleGenotypesModel genotypingModel = new IndependentSampleGenotypesModel();
+        final GenotypingModel genotypingModel = new IndependentSampleGenotypesModel();
         final String ref = "ACGTAACCGGTT";
         for ( int readLen = 3; readLen < ref.length(); readLen++ ) {
             for ( int start = 0; start < ref.length() - readLen; start++ ) {
@@ -550,7 +551,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         final int stop = xxxdata.getEnd();
 
         final PloidyModel ploidyModel = new HomogeneousPloidyModel(samples,2);
-        final IndependentSampleGenotypesModel genotypingModel = new IndependentSampleGenotypesModel();
+        final GenotypingModel genotypingModel = new IndependentSampleGenotypesModel();
 
         for ( int nReads = 0; nReads < 2; nReads++ ) {
 

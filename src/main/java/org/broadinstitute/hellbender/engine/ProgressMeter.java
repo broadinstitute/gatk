@@ -223,6 +223,29 @@ public final class ProgressMeter {
     }
 
     /**
+     * Signal to the progress meter that several additional records hav been processed. Will output
+     * statistics to the logger roughly every {@link #secondsBetweenUpdates} seconds.
+     * @param currentLocus the genomic location of the last record just processed or null if the most recent
+     *                     record had no location.
+     * @param recordCountIncrease number of new records processed.
+     * @throws IllegalStateException if the meter has not been started yet or has been stopped already
+     */
+    public void update( final Locatable currentLocus, final long recordCountIncrease ) {
+        Utils.validate(started, "the progress meter has not been started yet");
+        Utils.validate( !stopped, "the progress meter has been stopped already");
+        final long previousNumRecordsProcessed = numRecordsProcessed;
+        numRecordsProcessed += recordCountIncrease;
+        if ( previousNumRecordsProcessed / recordsBetweenTimeChecks != (numRecordsProcessed / recordsBetweenTimeChecks) ) {
+            currentTimeMs = timeFunction.getAsLong();
+            this.currentLocus = currentLocus;
+            if ( secondsSinceLastPrint() >= secondsBetweenUpdates ) {
+                printProgress();
+                lastPrintTimeMs = currentTimeMs;
+            }
+        }
+    }
+
+    /**
      * Stop the progress meter and output summary statistics to the logger
      * @throws IllegalStateException if the meter has not been started yet or has been stopped already
      */

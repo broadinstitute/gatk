@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
+import org.apache.commons.lang.ArrayUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -36,6 +37,10 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         cachedSoftEnd = null;
         cachedAdaptorBoundary = null;
         cachedCigarLength = null;
+    }
+
+    public int getFlags() {
+        return samRecord.getFlags();
     }
 
     public SAMRecordToGATKReadAdapter( final SAMRecord samRecord ) {
@@ -249,13 +254,13 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         final byte[] bases = samRecord.getReadBases();
 
         // Make a defensive copy to protect against direct modification of the returned array
-        return bases != null ? Arrays.copyOf(bases, bases.length) : new byte[0];
+        return bases != null && bases.length > 0 ? Arrays.copyOf(bases, bases.length) : ArrayUtils.EMPTY_BYTE_ARRAY;
     }
 
     @Override
     public byte[] getBasesNoCopy() {
         final byte[] bases = samRecord.getReadBases();
-        return bases != null ? bases : new byte[0];
+        return bases != null ? bases : ArrayUtils.EMPTY_BYTE_ARRAY;
     }
 
     //Overridden default method to avoid a call to getBases which makes a copy of data
@@ -283,13 +288,13 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         final byte[] baseQualities = samRecord.getBaseQualities();
 
         // Make a defensive copy to protect against direct modification of the returned array
-        return baseQualities != null ? Arrays.copyOf(baseQualities, baseQualities.length) : new byte[0];
+        return baseQualities != null && baseQualities.length > 0 ? Arrays.copyOf(baseQualities, baseQualities.length) : ArrayUtils.EMPTY_BYTE_ARRAY;
     }
 
     @Override
     public byte[] getBaseQualitiesNoCopy() {
         final byte[] baseQualities = samRecord.getBaseQualities();
-        return baseQualities != null ? baseQualities : new byte[0];
+        return baseQualities != null ? baseQualities : ArrayUtils.EMPTY_BYTE_ARRAY;
     }
 
     @Override
@@ -301,7 +306,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     //Overridden default method to avoid a call to getBaseQualities which makes a copy of data
     //Bounds checking is the caller's responsibility, as it's too expensive in this hotspot method
     @Override
-    public byte getBaseQuality(final int i){
+    public byte getBaseQuality(final int i)  {
         final byte[] baseQualities = samRecord.getBaseQualities();
         return baseQualities[i];
     }

@@ -108,6 +108,13 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     @Argument(fullName= STR_PADDING_LONG_NAME, doc = "Include at least this many bases around an event for calling STR indels", optional = true)
     public int strPaddingForGenotyping = 75;
 
+    /**
+     * The maximum extent into the full active region extension that we're willing to go in genotyping our events
+     * NOTE: this is only applicable to the legacy assembly region trimming currently
+     */
+    @Hidden
+    @Argument(fullName="max-extension-into-assembly-region-padding-legacy", doc = "the maximum extent into the full active region extension that we're willing to go in genotyping (-1 to disable). NOTE this only applies for --enable-legacy-assembly-region-trimming mode", optional = true)
+    public int maxExtensionIntoRegionPadding = 25;
 
     /**
      * Other parameters
@@ -115,6 +122,10 @@ public class AssemblyRegionArgumentCollection implements Serializable {
 
     @Argument(fullName = MAX_STARTS_LONG_NAME, doc = "Maximum number of reads to retain per alignment start position. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
     public int maxReadsPerAlignmentStart = defaultMaxReadsPerAlignmentStart();
+
+    @Hidden
+    @Argument(fullName = "enable-legacy-assembly-region-trimming", doc = "Revert changes to the assembly region windows, this will result in less consistent results for assembly window boundaries", optional = true)
+    public boolean enableLegacyAssemblyRegionTrimming = false;
 
     /**
      * @return Default value for the {@link #minAssemblyRegionSize} parameter, if none is provided on the command line

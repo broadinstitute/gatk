@@ -27,6 +27,9 @@ import java.util.NoSuchElementException;
  * to htsjdk query format.
  */
 public class SamReaderQueryingIterator implements CloseableIterator<SAMRecord>, Iterable<SAMRecord> {
+
+    private static int NUMBER_OF_TRAVESAL_INTERVALS_WORTH_LOGGING_A_DEBUG_MESSAGE_OF_THEIR_PREPARATION = 1000;
+
     protected static final Logger logger = LogManager.getLogger(SamReaderQueryingIterator.class);
 
     private final SamReader reader;
@@ -90,7 +93,9 @@ public class SamReaderQueryingIterator implements CloseableIterator<SAMRecord>, 
         }
 
         // This might take a while with large interval lists, so log a status message
-        logger.debug("Preparing intervals for traversal");
+        if (rawIntervals.size() >= NUMBER_OF_TRAVESAL_INTERVALS_WORTH_LOGGING_A_DEBUG_MESSAGE_OF_THEIR_PREPARATION) {
+            logger.debug("Preparing intervals for traversal");
+        }
 
         // Convert each SimpleInterval to a QueryInterval
         final QueryInterval[] convertedIntervals =

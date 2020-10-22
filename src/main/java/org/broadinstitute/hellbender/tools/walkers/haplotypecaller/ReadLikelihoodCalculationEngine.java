@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.PrintStream;
 import java.util.List;
 import java.util.Map;
 

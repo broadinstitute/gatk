@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -119,8 +118,7 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
      */
     @Override
     public void computeLog10Likelihoods(final LikelihoodMatrix<GATKRead, Haplotype> logLikelihoods,
-                                        final List<GATKRead> processedReads,
-                                        final Map<GATKRead, byte[]> gcp) {
+                                        final List<GATKRead> processedReads, final PairHMMInputScoreImputator inputScoreImputator) {
         if (processedReads.isEmpty()) {
             return;
         }
@@ -132,12 +130,13 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
         ReadDataHolder[] readDataArray = new ReadDataHolder[readListSize];
         int idx = 0;
         for (GATKRead read : processedReads) {
+            final PairHMMInputScoreImputation inputScoreImputation = inputScoreImputator.impute(read);
             readDataArray[idx] = new ReadDataHolder();
             readDataArray[idx].readBases = read.getBases();
             readDataArray[idx].readQuals = read.getBaseQualities();
-            readDataArray[idx].insertionGOP = ReadUtils.getBaseInsertionQualities(read);
-            readDataArray[idx].deletionGOP = ReadUtils.getBaseDeletionQualities(read);
-            readDataArray[idx].overallGCP = gcp.get(read);
+            readDataArray[idx].insertionGOP = inputScoreImputation.insOpenPenalties();
+            readDataArray[idx].deletionGOP = inputScoreImputation.delOpenPenalties();
+            readDataArray[idx].overallGCP = inputScoreImputation.gapContinuationPenalties();
             ++idx;
         }
 

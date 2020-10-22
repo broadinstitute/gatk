@@ -430,7 +430,7 @@ public final class GenomicsDBImport extends GATKTool {
                 getIntervalsFromExistingWorkspace = true;
             }
         }
-        
+
     }
 
     private void assertOverwriteWorkspaceAndIncrementalImportMutuallyExclusive() {

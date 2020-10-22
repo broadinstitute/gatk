@@ -184,7 +184,7 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
-        return HaplotypeCallerEngine.makeStandardHCReadFilters();
+        return HaplotypeCallerEngine.makeStandardHCReadFilters(hcArgs.mappingQualityThreshold);
     }
 
     @Override

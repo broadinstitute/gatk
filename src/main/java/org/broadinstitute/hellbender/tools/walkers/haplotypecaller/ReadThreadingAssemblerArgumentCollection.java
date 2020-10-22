@@ -152,6 +152,15 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName="disable-artificial-haplotype-recovery", doc = "If in 'linked-de-bruijn-graph' mode, disable recovery of haplotypes based on graph edges that are not in junction trees", optional = true)
     public boolean disableArtificialHaplotypeRecovery = false;
 
+    /**
+     * This option exists purely to support concordance with DRAGEN-GATK, it is not recommended to enable this in most use cases.
+     * Use this toggle to re-enable the GATK3 behavior of checking for graph cycles (and consequently throwing away the graph) before
+     * purning low weight chains.
+     */
+    @Hidden
+    @Argument(fullName="enable-legacy-graph-cycle-detection", doc = "Use to revert the change to assembly graph code that moved pruning to before cycle detection")
+    public boolean enableLegacyGraphCycleDetection = false;
+
     @Advanced
     @Argument(fullName="debug-assembly", shortName="debug", doc="Print out verbose debug information about each assembly region", optional = true)
     public boolean debugAssembly;
