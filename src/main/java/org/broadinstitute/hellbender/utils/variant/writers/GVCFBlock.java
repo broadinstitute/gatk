@@ -83,8 +83,13 @@ public abstract class GVCFBlock implements Locatable {
         return minGQ;
     }
 
+    /**
+     * Allow overlapping input blocks, as in the case where shards are split with duplicate boundary events
+     * @param vc
+     * @return
+     */
     public boolean isContiguous(final VariantContext vc) {
-        return (vc.getStart() == getEnd() + 1) && startingVC.getContig().equals(vc.getContig());
+        return (vc.getStart() <= getEnd() + 1) && startingVC.getContig().equals(vc.getContig());
     }
 
     public VariantContext getStartingVC() {

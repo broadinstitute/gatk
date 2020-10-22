@@ -10,6 +10,8 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
@@ -184,5 +186,43 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 Assert.assertTrue(line.getDescription().contains("deprecated"));
             }
         }
+    }
+
+    @Test
+    public void testMultipleInputs() {
+        //run with multiple inputs split from chr20:19995000-19998999 of prod.chr20snippet.withRawMQ.g.vcf
+        //note that an event is duplicated in shard1 and shard2 because it spans the boundary
+        final File output = createTempFile("multi-input", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", getToolTestDataDir() + "chr20.shard3.g.vcf")
+                .add("V", getToolTestDataDir() + "chr20.shard2.g.vcf")
+                .add("V", getToolTestDataDir() + "chr20.shard1.g.vcf")
+                .add("V", getToolTestDataDir() + "chr20.shard0.g.vcf")
+                .addOutput(output);
+        runCommandLine(args);
+
+        final File output2 = createTempFile("single-input",".vcf");
+        final ArgumentsBuilder args2 = new ArgumentsBuilder();
+        args2.add("V", getToolTestDataDir() + "prod.chr20snippet.withRawMQ.g.vcf")
+                .add("L", "chr20:19995000-19998999")
+                .addOutput(output2);
+        runCommandLine(args2);
+
+        try (final FeatureDataSource<VariantContext> actualVcs = new FeatureDataSource<>(output);
+             final FeatureDataSource<VariantContext> expectedVcs = new FeatureDataSource<>(output2)) {
+            GATKBaseTest.assertCondition(actualVcs, expectedVcs,
+                    (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e,
+                            Collections.emptyList(), Collections.emptyList()));
+        }
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testMixedSamples() {
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", getToolTestDataDir() + "justHeader.g.vcf") //sample "Sample"
+        .add("V", getToolTestDataDir() + "nonRefAD.g.vcf") //sample "HK017-0046"
+                .addOutput(output);
+        runCommandLine(args);
     }
 }

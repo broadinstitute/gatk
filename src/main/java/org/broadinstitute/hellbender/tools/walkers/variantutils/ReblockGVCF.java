@@ -82,7 +82,7 @@ import java.util.stream.Collectors;
         programGroup = OtherProgramGroup.class,
         omitFromCommandLine = true)
 @DocumentedFeature
-public final class ReblockGVCF extends VariantWalker {
+public final class ReblockGVCF extends MultiVariantWalker {
 
     private final static int PLOIDY_TWO = 2;  //assume diploid genotypes
 
@@ -147,7 +147,12 @@ public final class ReblockGVCF extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        VCFHeader inputHeader = getHeaderForVariants();
+        if (getSamplesForVariants().size() != 1) {
+            throw new UserException.BadInput("ReblockGVCF can take multiple input GVCFs, but they must be "
+                    + "non-overlapping shards from the same sample.  Found samples " + getSamplesForVariants());
+        }
+
+        final VCFHeader inputHeader = getHeaderForVariants();
         if (inputHeader.getGenotypeSamples().size() > 1) {
             throw new UserException.BadInput("ReblockGVCF is a single sample tool, but the input GVCF has more than 1 sample.");
         }
@@ -188,7 +193,7 @@ public final class ReblockGVCF extends VariantWalker {
         } catch ( IllegalArgumentException e ) {
             throw new IllegalArgumentException("GQBands are malformed: " + e.getMessage(), e);
         }
-        vcfWriter.writeHeader(new VCFHeader(headerLines, inputHeader.getGenotypeSamples()));
+        vcfWriter.writeHeader(new VCFHeader(headerLines, getSamplesForVariants()));  //don't get samples from header -- multi-variant inputHeader doens't have sample names
 
         logger.info("Notice that the -ploidy parameter is ignored in " + getClass().getSimpleName() + " tool as this is tool assumes a diploid sample");
     }
