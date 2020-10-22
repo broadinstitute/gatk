@@ -38,10 +38,11 @@ cat $WORKING_DIR/import_arrays_test_mod.json
 sed -r "s|__SERVICE_ACCOUNT__|$GOOGLE_APPLICATION_CREDENTIALS|g" $CROMWELL_TEST_DIR/local-with-gcs.conf >$WORKING_DIR/set_up.conf
 echo "Updated local_backend.conf with service account"
 
-echo "Running ImportArrayManifest WDL through cromwell"
-ln -fs $WORKING_DIR/gatk/scripts/variantstore_wdl/ImportArrayManifest.wdl
-sudo java -Dconfig.file=$WORKING_DIR/set_up.conf -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/variantstore_wdl/ImportArrayManifest.wdl -i $WORKING_DIR/import_array_manifest_test_mod.json -m $WORKING_DIR/test_import_manifest_wdl.metadata
+#TURN OFF TESTING FOR NOW
+#echo "Running ImportArrayManifest WDL through cromwell"
+#ln -fs $WORKING_DIR/gatk/scripts/variantstore_wdl/ImportArrayManifest.wdl
+#sudo java -Dconfig.file=$WORKING_DIR/set_up.conf -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/variantstore_wdl/ImportArrayManifest.wdl -i $WORKING_DIR/import_array_manifest_test_mod.json -m $WORKING_DIR/test_import_manifest_wdl.metadata
 
-echo "Running ImportArrays WDL through cromwell"
-ln -fs $WORKING_DIR/gatk/scripts/variantstore_wdl/ImportArrays.wdl
-sudo java -Dconfig.file=$WORKING_DIR/set_up.conf -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/variantstore_wdl/ImportArrays.wdl -i $WORKING_DIR/import_arrays_test_mod.json
+#echo "Running ImportArrays WDL through cromwell"
+#ln -fs $WORKING_DIR/gatk/scripts/variantstore_wdl/ImportArrays.wdl
+#sudo java -Dconfig.file=$WORKING_DIR/set_up.conf -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/variantstore_wdl/ImportArrays.wdl -i $WORKING_DIR/import_arrays_test_mod.json
