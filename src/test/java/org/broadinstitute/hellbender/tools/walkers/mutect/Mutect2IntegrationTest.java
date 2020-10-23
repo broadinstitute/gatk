@@ -395,6 +395,12 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<VariantContext> indelsWithoutSoftClips = VariantContextTestUtils.streamVcf(calls2).filter(VariantContext::isIndel).collect(Collectors.toList());
 
         Assert.assertTrue(indelsWithoutSoftClips.size() < indelsWithSoftClips.size());
+
+        final int startOfDroppedVariant = 10068160;
+        final int endOfDroppedVariant = 10068174;
+        Assert.assertTrue(indelsWithSoftClips.stream().anyMatch(vc -> vc.getStart() == startOfDroppedVariant && vc.getEnd() == endOfDroppedVariant));
+        Assert.assertFalse(indelsWithoutSoftClips.stream().anyMatch(vc -> vc.getStart() == startOfDroppedVariant && vc.getEnd() == endOfDroppedVariant));
+
     }
 
 
