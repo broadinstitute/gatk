@@ -267,7 +267,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         if (result.getGenotype(0).hasPL() && (result.getAttributes().size() == 1) && result.hasAttribute(VCFConstants.END_KEY)) {
             return result.getGenotype(0).getPL()[0] == 0;
         }
-         return result.getLog10PError() == VariantContext.NO_LOG10_PERROR;
+        return result.getLog10PError() == VariantContext.NO_LOG10_PERROR;
     }
 
     /**
@@ -300,7 +300,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @VisibleForTesting
     protected boolean shouldBeReblocked(final VariantContext result) {
         final Genotype genotype = result.getGenotype(0);
-        return (genotype.hasPL() && genotype.getPL()[0] < rgqThreshold) || genotype.isHomRef();
+        return !genotype.hasPL() || (genotype.hasPL() && genotype.getPL()[0] < rgqThreshold) || genotype.isHomRef();
     }
 
     /**
