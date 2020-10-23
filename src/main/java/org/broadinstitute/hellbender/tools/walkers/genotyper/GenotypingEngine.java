@@ -33,8 +33,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     protected Logger logger;
 
-    protected final int numberOfGenomes;
-
     protected final SampleList samples;
 
     // the top of the queue is the upstream deletion that ends first
@@ -52,16 +50,17 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      *                    sample set will be used instead.
      * @param doAlleleSpecificCalcs Whether the AS_QUAL key should be calculated and added to newly genotyped variants.
      *
-     * @throws IllegalArgumentException if any of {@code samples}, {@code configuration} is {@code null}.
+     * @throws IllegalArgumentException if any of {@code samples}, {@code configuration} is {@code null} or if {@code samples} is empty.
      */
     protected GenotypingEngine(final Config configuration,
                                final SampleList samples,
                                final boolean doAlleleSpecificCalcs) {
         this.configuration = Utils.nonNull(configuration, "the configuration cannot be null");
-        this.samples = Utils.nonNull(samples, "the sample list cannot be null");
+        Utils.nonNull(samples, "the sample list cannot be null");
+        Utils.nonEmpty(samples.asListOfSamples(), "the sample list cannot be empty");
+        this.samples = samples;
         this.doAlleleSpecificCalcs = doAlleleSpecificCalcs;
         logger = LogManager.getLogger(getClass());
-        numberOfGenomes = this.samples.numberOfSamples() * configuration.genotypeArgs.samplePloidy;
         alleleFrequencyCalculator = AlleleFrequencyCalculator.makeCalculator(configuration.genotypeArgs);
     }
 

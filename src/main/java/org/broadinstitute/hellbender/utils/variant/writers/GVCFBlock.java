@@ -28,7 +28,7 @@ public abstract class GVCFBlock implements Locatable {
         this.minGQ = lowerGQBound;
         this.maxGQ = upperGQBound;
         this.ref = startingVC.getReference();
-        this.end = getStart() - 1;
+        this.end = getStart();
     }
 
     public void add(int pos, Genotype genotype) {add(pos, pos, genotype);}
@@ -89,7 +89,7 @@ public abstract class GVCFBlock implements Locatable {
      * @return
      */
     public boolean isContiguous(final VariantContext vc) {
-        return (vc.getStart() <= getEnd() + 1) && startingVC.getContig().equals(vc.getContig());
+        return (vc.getStart() >= getStart()) && (vc.getStart() <= getEnd() + 1) && startingVC.getContig().equals(vc.getContig());
     }
 
     public VariantContext getStartingVC() {

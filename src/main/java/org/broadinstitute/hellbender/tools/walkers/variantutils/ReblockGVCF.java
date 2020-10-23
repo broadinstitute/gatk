@@ -154,9 +154,6 @@ public final class ReblockGVCF extends MultiVariantWalker {
         }
 
         final VCFHeader inputHeader = getHeaderForVariants();
-        if (inputHeader.getGenotypeSamples().size() > 1) {
-            throw new UserException.BadInput("ReblockGVCF is a single sample tool, but the input GVCF has more than 1 sample.");
-        }
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
 
         final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeaders);
@@ -261,8 +258,13 @@ public final class ReblockGVCF extends MultiVariantWalker {
         }
     }
 
+    /**
+     * determine if a VC is a homRef block, i.e. has an end key and does not have filtering annotations
+     * @param result VariantContext to process
+     * @return true if VC is a homRef block and not a "call" with annotations
+     */
     private boolean isHomRefBlock(final VariantContext result) {
-        if (result.getGenotype(0).hasPL()) {
+        if (result.getGenotype(0).hasPL() && (result.getAttributes().size() == 1) && result.hasAttribute(VCFConstants.END_KEY)) {
             return result.getGenotype(0).getPL()[0] == 0;
         }
          return result.getLog10PError() == VariantContext.NO_LOG10_PERROR;
@@ -285,10 +287,10 @@ public final class ReblockGVCF extends MultiVariantWalker {
             return null;
         }
         else if (genotype.isCalled() && genotype.isHomRef()) {
-            return result;
+            return result;  //don't need to remove infoFieldAnnotationKeyNamesToRemove because these are just ref blocks
         }
         else if (!genotype.isCalled() && genotype.hasPL() && genotype.getPL()[0] == 0) {
-            return result;
+            return result;  //don't need to remove infoFieldAnnotationKeyNamesToRemove because these are just ref blocks
         }
         else {
             return null;
@@ -392,6 +394,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 }
             }
         }
+        //MLEAC and MLEAF get added by genotyper, not annotation engine, so do one last cleanup
+        removeAnnotations(attrMap);
+
         final Genotype genotype = result.getGenotype(0);
         if (doQualApprox && genotype.hasPL()) {
             attrMap.put(GATKVCFConstants.RAW_QUAL_APPROX_KEY, genotype.getPL()[0]);
@@ -575,6 +580,16 @@ public final class ReblockGVCF extends MultiVariantWalker {
             return GATKVariantContextUtils.reverseTrimAlleles(builder.attributes(attrMap).unfiltered().make());
         }
         return builder.attributes(attrMap).genotypes(newGenotypes).unfiltered().make();
+    }
+
+    /**
+     * @param annotationMap  mutated by removing {@code infoFieldAnnotationKeyNamesToRemove}
+     *
+     */
+    private void removeAnnotations(final Map<String, Object> annotationMap) {
+        for (final String key : infoFieldAnnotationKeyNamesToRemove) {
+            annotationMap.remove(key);
+        }
     }
 
     @Override

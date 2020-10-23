@@ -249,10 +249,15 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
                 .map(ds -> getHeaderWithUpdatedSequenceDictionary(ds))
                 .collect(Collectors.toList());
 
+        final Set<String> allSamples = new LinkedHashSet<>();  //use a set to uniquify samples
+        for (final VCFHeader h : headers) {
+            allSamples.addAll(h.getGenotypeSamples());
+        }
+
         // Now merge the headers using htsjdk, which is pretty promiscuous, and which only works properly
         // because of the cross-dictionary validation done in validateAllSequenceDictionaries.
         return headers.size() > 1 ?
-                new VCFHeader(VCFUtils.smartMergeHeaders(headers, true)) :
+                new VCFHeader(VCFUtils.smartMergeHeaders(headers, true), allSamples) :
                 headers.get(0);
     }
 

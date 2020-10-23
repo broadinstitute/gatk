@@ -195,7 +195,8 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
         }
 
         final Genotype g = vc.getGenotype(0);
-        if ((g.isHomRef() || (g.isNoCall() && g.getPL()[0] == 0)) && vc.hasAlternateAllele(Allele.NON_REF_ALLELE) && vc.isBiallelic()) {
+        if ((g.isHomRef()
+                || (g.isNoCall() && g.hasPL() && g.getPL()[0] == 0)) && vc.hasAlternateAllele(Allele.NON_REF_ALLELE) && vc.isBiallelic()) {
             // create bands
             final VariantContext maybeCompletedBand = addHomRefSite(vc, g);
             if (maybeCompletedBand != null) {
