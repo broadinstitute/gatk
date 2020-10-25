@@ -268,7 +268,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference);
 
         VariantContextTestUtils.streamVcf(unfilteredVcf).flatMap(vc -> vc.getGenotypes().stream()).forEach(g -> Assert.assertTrue(g.hasAD()));
-        final long numVariants = VariantContextTestUtils.streamVcf(unfilteredVcf).count();
+        final long numVariants = VariantContextTestUtils.streamVcf(filteredVcf)
+                .filter(VariantContext::isNotFiltered)
+                .count();
         Assert.assertTrue(numVariants < 4);
     }
 
@@ -372,6 +374,34 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 vc.getAlternateAlleles().stream().filter(a-> a.length() > 0 && BaseUtils.isNucleotide(a.getBases()[0])).forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
             }
         }
+    }
+
+    // test that the dont-use-soft-clips option actually does something
+    @Test
+    public void testDontUseSoftClips() {
+        Utils.resetRandomGenerator();
+        final File tumor = new File(NA12878_20_21_WGS_bam);
+        final int start = 10050000;
+
+        final SimpleInterval interval = new SimpleInterval("20", start, start + 25000);
+
+        final File calls1 = createTempFile("unfiltered", ".vcf");
+        runMutect2(tumor, calls1, interval.toString(), b37Reference, Optional.of(GNOMAD));
+
+        final File calls2 = createTempFile("unfiltered", ".vcf");
+        runMutect2(tumor, calls2, interval.toString(), b37Reference, Optional.of(GNOMAD),
+                args -> args.addFlag(AssemblyBasedCallerArgumentCollection.DONT_USE_SOFT_CLIPPED_BASES_LONG_NAME));
+
+        final List<VariantContext> indelsWithSoftClips = VariantContextTestUtils.streamVcf(calls1).filter(VariantContext::isIndel).collect(Collectors.toList());
+        final List<VariantContext> indelsWithoutSoftClips = VariantContextTestUtils.streamVcf(calls2).filter(VariantContext::isIndel).collect(Collectors.toList());
+
+        Assert.assertTrue(indelsWithoutSoftClips.size() < indelsWithSoftClips.size());
+
+        final int startOfDroppedVariant = 10068160;
+        final int endOfDroppedVariant = 10068174;
+        Assert.assertTrue(indelsWithSoftClips.stream().anyMatch(vc -> vc.getStart() == startOfDroppedVariant && vc.getEnd() == endOfDroppedVariant));
+        Assert.assertFalse(indelsWithoutSoftClips.stream().anyMatch(vc -> vc.getStart() == startOfDroppedVariant && vc.getEnd() == endOfDroppedVariant));
+
     }
 
 
@@ -503,12 +533,12 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<String> expectedKeys = Arrays.asList(
                 "chrM:152-152 T*, [C]",
                 "chrM:263-263 A*, [G]",
-                "chrM:302-302 A*, [AC, ACC, C]",
+                "chrM:302-302 A*, [AC, ACC, ACCCCCCCCCCCCC, C]",
                 "chrM:310-310 T*, [C, TC]",
                 "chrM:750-750 A*, [G]");
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
 
-        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1709);
+        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1741);
     }
 
     @DataProvider(name = "vcfsForFiltering")
