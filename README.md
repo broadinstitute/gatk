@@ -415,9 +415,7 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
     * Setting the environment variable `TEST_VERBOSITY=minimal` will produce much less output from the test suite 
 
 * To run a subset of tests, use gradle's test filtering (see [gradle doc](https://docs.gradle.org/current/userguide/java_plugin.html)):
-    * You can use `test.single` when you just want to run a specific test class:
-        * `./gradlew test -Dtest.single=SomeSpecificTestClass`
-    * You can also use `--tests` with a wildcard to run a specific test class, method, or to select multiple test classes:
+    * You can use `--tests` with a wildcard to run a specific test class, method, or to select multiple test classes:
         * `./gradlew test --tests *SomeSpecificTestClass`
         * `./gradlew test --tests *SomeTest.someSpecificTestMethod`
         * `./gradlew test --tests all.in.specific.package*`
