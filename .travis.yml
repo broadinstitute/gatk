@@ -110,14 +110,14 @@ install:
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Skip the install because we're doing a docker build";
   else
-    ./gradlew assemble;
-    ./gradlew installDist;
+    sudo ./gradlew assemble;
+    sudo ./gradlew installDist;
     if [[ $RUN_CNV_GERMLINE_COHORT_WDL == true || $RUN_CNV_GERMLINE_CASE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true ]]; then
       echo "building a shadow jar for the wdl";
-      ./gradlew shadowJar;
+      sudo ./gradlew shadowJar;
     elif [[ $TEST_TYPE == cloud ]]; then
       echo "building a spark jar for the dataproc tests";
-      ./gradlew sparkjar;
+      sudo ./gradlew sparkjar;
     fi;
   fi;
 script:
