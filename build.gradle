@@ -361,7 +361,6 @@ dependencies {
 
     compile 'org.broadinstitute:gatk-bwamem-jni:1.0.4'
     compile 'org.broadinstitute:gatk-fermilite-jni:1.2.0'
-    compile 'org.broadinstitute:gatk-minimap2-jni:1.0.2'
 
     compile 'org.broadinstitute:http-nio:0.1.0-rc1'
 
