@@ -264,8 +264,12 @@ public final class ReblockGVCF extends MultiVariantWalker {
      * @return true if VC is a homRef block and not a "call" with annotations
      */
     private boolean isHomRefBlock(final VariantContext result) {
-        if (result.getGenotype(0).hasPL() && (result.getAttributes().size() == 1) && result.hasAttribute(VCFConstants.END_KEY)) {
-            return result.getGenotype(0).getPL()[0] == 0;
+        if (result.getGenotype(0).hasPL()) {
+            if (result.getGenotype(0).getPL()[0] != 0) {
+                return false;
+            }
+        } else {
+            return (result.getAttributes().size() == 1) && result.hasAttribute(VCFConstants.END_KEY);
         }
         return result.getLog10PError() == VariantContext.NO_LOG10_PERROR;
     }
@@ -299,6 +303,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     @VisibleForTesting
     protected boolean shouldBeReblocked(final VariantContext result) {
+        if (!result.hasGenotypes()) {
+            throw new IllegalStateException("Variant contexts must contain genotypes to be reblocked.");
+        }
         final Genotype genotype = result.getGenotype(0);
         return !genotype.hasPL() || (genotype.hasPL() && genotype.getPL()[0] < rgqThreshold) || genotype.isHomRef();
     }

@@ -803,7 +803,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(bamout.exists());
     }
 
-    private static String keyForVariant(final VariantContext variant) {
+    public static String keyForVariant(final VariantContext variant) {
         return String.format("%s:%d-%d %s, %s", variant.getContig(), variant.getStart(), variant.getEnd(), variant.getReference(),
                 variant.getAlternateAlleles().stream().map(Allele::getDisplayString).sorted().collect(Collectors.toList()));
     }

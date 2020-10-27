@@ -84,7 +84,7 @@ final class TLODBlock extends GVCFBlock {
     @Override
     public void add(final int pos, final int newEnd, final Genotype genotype) {
         Utils.nonNull(genotype, "genotype cannot be null");
-        Utils.validateArg( pos == end + 1,"adding genotype at pos " + pos + " isn't contiguous with previous end " + end);
+        if ( pos > end + 1 ) { throw new IllegalArgumentException("adding genotype at pos " + pos + " isn't contiguous with previous end " + end); }
         // Make sure the LOD is within the bounds of this band
         final double currentLOD = Double.parseDouble(genotype.getExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY).toString());
         if ( !withinBounds(currentLOD)) {

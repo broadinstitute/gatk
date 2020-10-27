@@ -16,15 +16,15 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2IntegrationTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
 
@@ -224,5 +224,40 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         .add("V", getToolTestDataDir() + "nonRefAD.g.vcf") //sample "HK017-0046"
                 .addOutput(output);
         runCommandLine(args);
+    }
+
+    @Test
+    //we had some external GVCFs that each went through CombineGVCFs for some reason, so GTs all went to ./.
+    public void testNoCallGenotypes() {
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", getToolTestDataDir() + "noCallGTs.g.vcf")
+                .addOutput(output);
+        runCommandLine(args);
+
+        Pair<VCFHeader, List<VariantContext>> actual = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        final List<VariantContext> variants = actual.getRight();
+        final List<String> variantKeys = variants.stream().map(Mutect2IntegrationTest::keyForVariant).collect(Collectors.toList());
+        final Map<String, VariantContext> resultMap = new LinkedHashMap<>();
+        for (int i = 0; i < variants.size(); i++) {
+            resultMap.put(variantKeys.get(i), variants.get(i));
+        }
+
+        final List<String> expectedHomVarKeys = Arrays.asList(
+                "chr22:10514994-10514994 G*, [<NON_REF>, A]",
+                "chr22:10515170-10515170 C*, [<NON_REF>, T]",
+                "chr22:10515223-10515223 G*, [<NON_REF>, C]");
+
+        final List<String> expectedHetKeys = Arrays.asList(
+                "chr22:10515120-10515120 A*, [<NON_REF>, AAAGC]",
+                "chr22:10515223-10515223 G*, [<NON_REF>, C]");
+
+        final List<String> expectedHomRefKeys = Arrays.asList(
+                "chr22:10515118-10515118 G*, [<NON_REF>, GGAAA]");
+
+        Assert.assertTrue(variantKeys.containsAll(expectedHomVarKeys));
+        Assert.assertTrue(variantKeys.containsAll(expectedHetKeys));
+        Assert.assertTrue(variantKeys.containsAll(expectedHomRefKeys));
+        Assert.assertTrue(variants.size() == 22);
     }
 }
