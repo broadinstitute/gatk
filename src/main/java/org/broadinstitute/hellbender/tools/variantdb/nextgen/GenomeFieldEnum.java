@@ -15,9 +15,10 @@ import java.util.stream.Collectors;
 
 /**
  * Expected headers for the Variant Table (VET) for Exomes
- *     start_position, // req
- *     reference_bases, // req
- *     alternate_bases_alt, // req
+ *     location, // req
+ *     sample, // req
+ *     ref, // req
+ *     alt, // req
  *     alternate_bases_AS_RAW_MQ, // req
  *     alternate_bases_AS_RAW_MQRankSum,
  *     alternate_bases_AS_QUALapprox, // req

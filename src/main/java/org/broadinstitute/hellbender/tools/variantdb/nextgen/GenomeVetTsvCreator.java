@@ -3,9 +3,8 @@ package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 
-import java.nio.file.Path;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -15,19 +14,22 @@ import java.util.stream.Collectors;
 public class GenomeVetTsvCreator extends VetTsvCreator {
     static final Logger logger = LogManager.getLogger(GenomeVetTsvCreator.class);
 
-    public GenomeVetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix) {
-        super(sampleName, sampleId, tableNumberPrefix);
+    public GenomeVetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, final File outputDirectory) {
+        super(sampleName, sampleId, tableNumberPrefix, outputDirectory, getHeaders());
     }
 
     @Override
-    public List<String> createRow(final long start, final VariantContext variant, final String sampleId) {
+    public List<String> createRow(final long location, final VariantContext variant, final String sampleId) {
         List<String> row = new ArrayList<>();
-        row.add(String.valueOf(SchemaUtils.encodeLocation(variant.getContig(), variant.getStart())));
-        row.add(sampleId);
         for ( final GenomeFieldEnum fieldEnum : GenomeFieldEnum.values() ) {
-            if (!fieldEnum.equals(GenomeFieldEnum.location) && !fieldEnum.equals(GenomeFieldEnum.sample)) {
+            if (fieldEnum.equals(GenomeFieldEnum.location)) {
+                row.add(String.valueOf(location));
+            } else if (fieldEnum.equals(GenomeFieldEnum.sample)) {
+                row.add(sampleId);
+            } else {
                 row.add(fieldEnum.getColumnValue(variant));
-            }        }
+            }
+        }
         return row;
     }
 

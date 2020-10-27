@@ -12,8 +12,6 @@ import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,16 +28,16 @@ public final class PetTsvCreator {
     private GenomeLocSortedSet coverageLocSortedSet;
     private static String PET_FILETYPE_PREFIX = "pet_";
 
-    public PetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore) {
+    public PetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final File outputDirectory) {
         this.sampleId = sampleId;
         this.seqDictionary = seqDictionary;
         this.gqStateToIgnore = gqStateToIgnore;
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
        try {
-            final String petOutputName = PET_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + IngestConstants.FILETYPE;
+           final File petOutputFile = new File(outputDirectory, PET_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + IngestConstants.FILETYPE);
             List<String> petHeader = PetTsvCreator.getHeaders();
-            petWriter = new SimpleXSVWriter(Paths.get(petOutputName), IngestConstants.SEPARATOR);
+            petWriter = new SimpleXSVWriter(petOutputFile.toPath(), IngestConstants.SEPARATOR);
             petWriter.setHeaderLine(petHeader);
         } catch (final IOException e) {
             throw new UserException("Could not create pet outputs", e);
