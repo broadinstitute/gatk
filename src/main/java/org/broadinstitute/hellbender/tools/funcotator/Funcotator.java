@@ -32,7 +32,7 @@ import java.util.*;
  * <h3>Detailed Information and Tutorial</h3>
  * <p>Detailed information and a tutorial can be found here:
  *     <ul>
- *         <li><a href="https://gatkforums.broadinstitute.org/dsde/discussion/11193/funcotator-information-and-tutorial">https://gatkforums.broadinstitute.org/dsde/discussion/11193/funcotator-information-and-tutorial</a></li>
+ *         <li><a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035889931-Funcotator-Information-and-Tutorial">https://gatk.broadinstitute.org/hc/en-us/articles/360035889931-Funcotator-Information-and-Tutorial</a></li>
  *     </ul>
  * </p>
  *
