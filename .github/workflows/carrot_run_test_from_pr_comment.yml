@@ -1,0 +1,15 @@
+name: carrot-test-run-from-pr-comment
+on:
+  issue_comment:
+    types: [created]
+jobs:
+  publish-test:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Parse comment
+        uses: broadinstitute/carrot-publish-github-action@v0.3.0-beta
+        with:
+          software-name: gatk
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          topic-name: ${{ secrets.CARROT_TOPIC_NAME }}
+          sa-key: ${{ secrets.CARROT_SA_KEY }}
