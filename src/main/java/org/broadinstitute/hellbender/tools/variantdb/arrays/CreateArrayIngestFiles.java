@@ -91,14 +91,14 @@ public final class CreateArrayIngestFiles extends VariantWalker {
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
         sampleName = IngestUtils.getSampleName(inputVCFHeader);
-	if (sampleIdParam == null && sampleMap == null) {
-            throw new IllegalArgumentException("One of sample-id or sample-name-mapping must be specified");
-        }
-	if (sampleIdParam != null) {
-            sampleId = String.valueOf(sampleIdParam);
-        } else {
-            sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
-        }
+        if (sampleIdParam == null && sampleMap == null) {
+                throw new IllegalArgumentException("One of sample-id or sample-name-mapping must be specified");
+            }
+        if (sampleIdParam != null) {
+                sampleId = String.valueOf(sampleIdParam);
+            } else {
+                sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
+            }
 
         // Mod the sample directories
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);

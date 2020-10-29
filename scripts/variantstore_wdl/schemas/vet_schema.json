@@ -1,0 +1,98 @@
+[
+ {
+   "description": "[DESCRIPTION]",
+   "name": "location",
+   "type": "Integer",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "sample_id",
+   "type": "Integer",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "ref",
+   "type": "String",
+   "mode": "Required"
+ },
+  {
+   "description": "[DESCRIPTION]",
+   "name": "alt",
+   "type": "String",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "AS_RAW_MQ",
+   "type": "String",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "AS_RAW_MQRankSum",
+   "type": "String",
+   "mode": "Nullable"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "AS_QUALapprox",
+   "type": "String",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "AS_RAW_ReadPosRankSum",
+   "type": "String",
+   "mode": "Nullable"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "AS_SB_TABLE",
+   "type": "String",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "AS_VarDP",
+   "type": "String",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "call_GT",
+   "type": "String",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "call_AD",
+   "type": "String",
+   "mode": "Nullable"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "call_GQ",
+   "type": "Integer",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "call_PGT",
+   "type": "String",
+   "mode": "Nullable"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "call_PID",
+   "type": "String",
+   "mode": "Nullable"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "call_PL",
+   "type": "String",
+   "mode": "Required"
+ }
+]
