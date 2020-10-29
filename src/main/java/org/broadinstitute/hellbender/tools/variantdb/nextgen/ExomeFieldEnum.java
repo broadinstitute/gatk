@@ -18,8 +18,8 @@ import java.util.stream.Collectors;
 
 /**
  * Expected headers for the Variant Table (VET)
+ *     sample_id, // req
  *     location, // req
- *     sample, // req
  *     reference_bases, // req
  *     alternate_bases_alt, // req
  *     alternate_bases_AS_RAW_MQ, // req
@@ -41,8 +41,8 @@ public enum ExomeFieldEnum {
     // This where the validation step (required vs not) lives  -- fail if there is missing data for a required field
     // and just leave it empty if not required
 
+    sample_id, // Required-- sample Id for sample
     location, // Required-- encoded chromosome and position
-    sample, // Required-- sample Id for sample
 
     ref { // Required
         public String getColumnValue(final VariantContext variant) {
