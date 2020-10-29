@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
  *     call_PL // req
  *
  */
-public enum ExomeFieldEnum {
+public enum VetFieldEnum {
     // This where the validation step (required vs not) lives  -- fail if there is missing data for a required field
     // and just leave it empty if not required
 
