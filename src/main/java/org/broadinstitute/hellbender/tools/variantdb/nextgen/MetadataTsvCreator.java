@@ -30,7 +30,7 @@ public class MetadataTsvCreator {
 
     public MetadataTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, final File outputDirectory) {
         try {
-            final File sampleMetadataFile = new File(outputDirectory, IngestConstants.sampleMetadataFilePrefix + tableNumberPrefix + sampleName + IngestConstants.FILETYPE);
+            final File sampleMetadataFile = new File(outputDirectory, IngestConstants.metadataFilePrefix + tableNumberPrefix + sampleName + IngestConstants.FILETYPE);
             // write header to it
             List<String> sampleListHeader = MetadataTsvCreator.getHeaders();
             sampleMetadataWriter = new SimpleXSVWriter(sampleMetadataFile.toPath(), IngestConstants.SEPARATOR);
