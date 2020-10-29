@@ -21,6 +21,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
+import org.broadinstitute.hellbender.transformers.IUPACReadTransformer;
+import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -345,6 +347,13 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         filters.add(new WellformedReadFilter());
 
         return filters;
+    }
+
+    /**
+     * @return the default read transformer to apply to HaplotypeCaller input
+     */
+    public static ReadTransformer makeStandardHCReadTransformer() {
+        return new IUPACReadTransformer(true);
     }
 
     /**
