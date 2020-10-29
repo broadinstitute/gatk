@@ -1,7 +1,7 @@
 {
   "ImportGenomes.output_directory":"gs://broad-dsp-spec-ops/scratch/andrea/genomes/import",
-  "ImportGenomes.input_vcfs":["gs://broad-dsp-spec-ops/scratch/andrea/genomes/BI_NA03949_1_99000142037_SM-GXZUN_1.reblocked.chr20.g.vcf.gz"],
-  "ImportGenomes.interval_list":"gs://broad-dsp-spec-ops/scratch/andrea/genomes/wgs_calling_regions.hg38.chr20.interval_list",
+  "ImportGenomes.input_vcfs":["gs://broad-dsp-spec-ops/aou-acmg59-data/BI_NA03949_1_99000142037_SM-GXZUN_1.reblocked.chr20.g.vcf.gz"]
+  "ImportGenomes.interval_list":"gs://broad-dsp-spec-ops/aou-acmg59-data/wgs_calling_regions.hg38.chr20.interval_list", 
   "ImportGenomes.sample_map":"gs://broad-dsp-spec-ops/scratch/andrea/genomes/sampleMap.csv",
   "ImportGenomes.metadata_schema": "gs://broad-dsp-spec-ops/scratch/andrea/schemas/sample_list_schema.json",
   "ImportGenomes.pet_schema": "gs://broad-dsp-spec-ops/scratch/andrea/schemas/pet_schema.json",
