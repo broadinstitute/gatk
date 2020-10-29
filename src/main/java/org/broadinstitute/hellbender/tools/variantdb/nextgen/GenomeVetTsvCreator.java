@@ -24,7 +24,7 @@ public class GenomeVetTsvCreator extends VetTsvCreator {
         for ( final GenomeFieldEnum fieldEnum : GenomeFieldEnum.values() ) {
             if (fieldEnum.equals(GenomeFieldEnum.location)) {
                 row.add(String.valueOf(location));
-            } else if (fieldEnum.equals(GenomeFieldEnum.sample)) {
+            } else if (fieldEnum.equals(GenomeFieldEnum.sample_id)) {
                 row.add(sampleId);
             } else {
                 row.add(fieldEnum.getColumnValue(variant));

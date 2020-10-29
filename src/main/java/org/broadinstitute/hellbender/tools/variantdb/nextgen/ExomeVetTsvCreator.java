@@ -23,7 +23,7 @@ public final class ExomeVetTsvCreator extends VetTsvCreator {
         for ( final ExomeFieldEnum fieldEnum : ExomeFieldEnum.values() ) {
             if (fieldEnum.equals(ExomeFieldEnum.location)) {
                 row.add(String.valueOf(location));
-            } else if (fieldEnum.equals(ExomeFieldEnum.sample)) {
+            } else if (fieldEnum.equals(ExomeFieldEnum.sample_id)) {
                 row.add(sampleId);
             } else {
                 row.add(fieldEnum.getColumnValue(variant));
