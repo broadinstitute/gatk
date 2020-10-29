@@ -15,16 +15,16 @@ import java.util.stream.Collectors;
 
 /**
  * Expected headers for the Variant Table (VET) for Exomes
- *     start_position, // req
- *     reference_bases, // req
- *     alternate_bases_alt, // req
+ *     sample_id, // req
+ *     location, // req
+ *     ref, // req
+ *     alt, // req
  *     alternate_bases_AS_RAW_MQ, // req
  *     alternate_bases_AS_RAW_MQRankSum,
  *     alternate_bases_AS_QUALapprox, // req
  *     alternate_bases_AS_RAW_ReadPosRankSum,
  *     alternate_bases_AS_SB_TABLE, // req
  *     alternate_bases_AS_VarDP, // req
- *     call_name, // req
  *     call_genotype, // req
  *     call_AD,
  *     call_DP, // Laura says consider removing for now-- so similar to AS_VarDP
@@ -40,8 +40,8 @@ public enum GenomeFieldEnum {
     // This where the validation step (required vs not) lives  -- fail if there is missing data for a required field
     // and just leave it empty if not required
 
+    sample_id, // Required-- sample Id for sample
     location, // Required-- start position for sample
-    sample, // Required-- sample Id for sample
 
 
     ref { // Required

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -65,6 +66,12 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public File sampleMap;
 
+    @Argument(fullName = "sample-id",
+            shortName = "SID",
+            doc = "Sample id",
+            optional = true)
+    public Long sampleIdParam;
+
     @Argument(fullName = "mode",
             shortName = "MO",
             doc = "Type of sample. Default is EXOMES. Valid options are EXOMES, GENOMES",
@@ -77,6 +84,12 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     private String refVersion = "37";
 
+    @Argument(
+            fullName = "output-directory",
+            doc = "directory for output tsv files",
+            optional = true)
+    private File outputDir = new File(".");
+
 
     @Override
     public boolean requiresIntervals() {
@@ -85,6 +98,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
+        //set up output directory
+        if (!outputDir.exists() && !outputDir.mkdir()) {
+            throw new RuntimeIOException("Unable to create directory: " + outputDir.getAbsolutePath());
+        }
 
         // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
         ChromosomeEnum.setRefVersion(refVersion);
@@ -92,7 +109,15 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
         sampleName = IngestUtils.getSampleName(inputVCFHeader);
-        sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
+        if (sampleIdParam == null && sampleMap == null) {
+            throw new IllegalArgumentException("One of sample-id or sample-name-mapping must be specified");
+        }
+        if (sampleIdParam != null) {
+            sampleId = String.valueOf(sampleIdParam);
+        } else {
+            sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
+        }
+
 
         // Mod the sample directories
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
@@ -100,8 +125,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
 //        parentDirectory = parentOutputDirectory.toPath(); // TODO do we need this? More efficient way to do this?
 //        final Path sampleDirectoryPath = IngestUtils.createSampleDirectory(parentDirectory, sampleDirectoryNumber);
-        metadataTsvCreator = new MetadataTsvCreator();
-        metadataTsvCreator.createRow(sampleName, sampleId, tableNumberPrefix, userIntervals, gqStateToIgnore);
+        metadataTsvCreator = new MetadataTsvCreator(sampleName, sampleId, tableNumberPrefix, outputDir);
+        metadataTsvCreator.createRow(sampleName, sampleId, userIntervals, gqStateToIgnore);
 
         // To set up the missing positions
         SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
@@ -110,16 +135,16 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        petTsvCreator = new PetTsvCreator(sampleName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore);
+        petTsvCreator = new PetTsvCreator(sampleName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, outputDir);
         switch (mode) {
             case EXOMES:
-                vetTsvCreator = new ExomeVetTsvCreator(sampleName, sampleId, tableNumberPrefix);
+                vetTsvCreator = new ExomeVetTsvCreator(sampleName, sampleId, tableNumberPrefix, outputDir);
                 break;
             case GENOMES:
-                vetTsvCreator = new GenomeVetTsvCreator(sampleName, sampleId, tableNumberPrefix);
+                vetTsvCreator = new GenomeVetTsvCreator(sampleName, sampleId, tableNumberPrefix, outputDir);
                 break;
             case ARRAYS:
-                throw new UserException.BadInput("To ingest Array data, use ArrayIngester tool.");
+                throw new UserException.BadInput("To ingest Array data, use CreateArrayIngestFiles tool.");
         }
 
 
