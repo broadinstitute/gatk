@@ -282,7 +282,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         if (regenotypedVC != null) {
             final SimpleInterval variantStart = new SimpleInterval(regenotypedVC.getContig(), regenotypedVC.getStart(), regenotypedVC.getStart());
-            if ((inForceOutputIntervals || !GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC)) &&
+            if ((forceOutput || !GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC)) &&
                     (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains (variantStart)))) {
                 vcfWriter.add(regenotypedVC);
             }

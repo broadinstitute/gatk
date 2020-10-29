@@ -86,7 +86,7 @@ public final class AlleleFrequencyCalculator {
         } else {
             final int spanDelIndex = alleles.indexOf(Allele.SPAN_DEL);
             // allele counts are in the GenotypeLikelihoodCalculator format of {ref index, ref count, span del index, span del count}
-            return new IndexRange(0, ploidy).mapToInteger(n -> glCalc.alleleCountsToIndex(new int[]{0, ploidy - n, spanDelIndex, n}));
+            return new IndexRange(0, ploidy + 1).mapToInteger(n -> glCalc.alleleCountsToIndex(new int[]{0, ploidy - n, spanDelIndex, n}));
         }
     }
 
@@ -162,7 +162,7 @@ public final class AlleleFrequencyCalculator {
             }
 
             // if the VC is biallelic the allele-specific qual equals the variant qual
-            if (numAlleles == 2) {
+            if (numAlleles == 2 && !spanningDeletionPresent) {
                 continue;
             }
 
@@ -183,7 +183,7 @@ public final class AlleleFrequencyCalculator {
         }
 
         // for biallelic the allele-specific qual equals the variant qual, and we short-circuited the calculation above
-        if (numAlleles == 2) {
+        if (numAlleles == 2 && !spanningDeletionPresent) {
             log10POfZeroCountsByAllele[1] = log10PNoVariant;
         }
 
