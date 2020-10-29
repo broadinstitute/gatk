@@ -192,7 +192,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
         final ArgumentsBuilder args = new ArgumentsBuilder()
             .addOutput(out)
             .addVCF(getTestFile("testFamilyPriors_chr20.vcf")) //contig 20, b37 ref
-            .addArgument(CalculateGenotypePosteriors.SUPPORTING_CALLSETS_SHORT_NAME, toolsTestDir + "/walkers/GnarlyGenotyper/sample1.vcf");  //contig chr20, hg38 ref
+            .add(CalculateGenotypePosteriors.SUPPORTING_CALLSETS_SHORT_NAME, toolsTestDir + "/walkers/GnarlyGenotyper/sample1.vcf");  //contig chr20, hg38 ref
 
         runCommandLine(args);
     }
