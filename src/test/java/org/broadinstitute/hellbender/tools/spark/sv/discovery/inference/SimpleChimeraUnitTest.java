@@ -39,27 +39,27 @@ public class SimpleChimeraUnitTest extends AssemblyBasedSVDiscoveryBaseTest {
 
         AlignmentInterval alignmentOne = fromSAMRecordString(alignmentOneSAMString, true);
         AlignmentInterval alignmentTwo = fromSAMRecordString(alignmentTwoSAMString, true);
-        data.add(new Object[]{alignmentOne, alignmentTwo, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_MQ, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_LENGTH, true});
+        data.add(new Object[]{alignmentOne, alignmentTwo, true});
 
         alignmentOneSAMString = "asm018495:tig00014\t16\tchr20\t29851171\t19\t72S582M\t*\t0\t0\tATCTGTAAGTGGATATTTGGAGCCCTTTGTGGCCTATGGTGGAAAAGGAAATATCTTCAAATAAAAAGTATGCAGAAGCATTCTGAGAAACTTTTTTGTGCTGTGTGCATTCATCTCACAGGGTTGAACCTATCTTATGATTGAGCAGTTTTGAATCACTCTTTATGTAGAATCTGCAAGTGGATATTTGGAGCGTTTTGAGACCTACCGTGGAAAAGCAATTATCTTCAGATAAAAACTACACAGAAGCATTCTGAGAAACTGCTTTATGATGTGTGCATTCATCTCACAGAGTTGAACCTTTCTTTTGATTGAGCAGCTTTGAAACACTCTTTTTGTAGAATCTGCAAGTGGATATTTCGTGTGCTTTGAGTCCTACCATGGAAAAGGAAATATCTTCACATAAAAAATACTCAGAGGAATTCTGAGAAACTTCTTTGTGATGTGTGCATTCAACTCACAGAATTGAACCTATCTTTAGATTGAGCAGTTTAGAATCTCTCTTTTTGCAGTATCTGCAAGTGGATATTTGGAGCCCTTTGCAGCCTGTGGTGGAAAAGAAAATATCTTCACACAAAAACTACTCGGAAGCATTCTTAGAAACTTCTTTTTGATGTGTGCATTCAAATCACAGAGTTGAACCTATATTTTCAT\t*\tSA:Z:chr20,28843254,-,141M513S,60,15;\tMD:Z:5T15C6A553\tRG:Z:GATKSVContigAlignments\tNM:i:3\tAS:i:567\tXS:i:282";
         alignmentTwoSAMString = "asm018495:tig00014\t2064\tchr20\t28843254\t60\t141M513H\t*\t0\t0\tATCTGTAAGTGGATATTTGGAGCCCTTTGTGGCCTATGGTGGAAAAGGAAATATCTTCAAATAAAAAGTATGCAGAAGCATTCTGAGAAACTTTTTTGTGCTGTGTGCATTCATCTCACAGGGTTGAACCTATCTTATGAT\t*\tSA:Z:chr20,29851171,-,72S582M,60,3;\tMD:Z:5C7A0G52C2C0A2A2A11G2A0C6A4G14A13A6\tRG:Z:GATKSVContigAlignments\tNM:i:15\tAS:i:66\tXS:i:0";
         alignmentOne = fromSAMRecordString(alignmentOneSAMString, true);
         alignmentTwo = fromSAMRecordString(alignmentTwoSAMString, true);
-        data.add(new Object[]{alignmentOne, alignmentTwo, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_MQ, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_LENGTH, false});
+        data.add(new Object[]{alignmentOne, alignmentTwo, false});
 
         alignmentOneSAMString = "asm018495:tig00014\t16\tchr20\t29851171\t60\t72S582M\t*\t0\t0\tATCTGTAAGTGGATATTTGGAGCCCTTTGTGGCCTATGGTGGAAAAGGAAATATCTTCAAATAAAAAGTATGCAGAAGCATTCTGAGAAACTTTTTTGTGCTGTGTGCATTCATCTCACAGGGTTGAACCTATCTTATGATTGAGCAGTTTTGAATCACTCTTTATGTAGAATCTGCAAGTGGATATTTGGAGCGTTTTGAGACCTACCGTGGAAAAGCAATTATCTTCAGATAAAAACTACACAGAAGCATTCTGAGAAACTGCTTTATGATGTGTGCATTCATCTCACAGAGTTGAACCTTTCTTTTGATTGAGCAGCTTTGAAACACTCTTTTTGTAGAATCTGCAAGTGGATATTTCGTGTGCTTTGAGTCCTACCATGGAAAAGGAAATATCTTCACATAAAAAATACTCAGAGGAATTCTGAGAAACTTCTTTGTGATGTGTGCATTCAACTCACAGAATTGAACCTATCTTTAGATTGAGCAGTTTAGAATCTCTCTTTTTGCAGTATCTGCAAGTGGATATTTGGAGCCCTTTGCAGCCTGTGGTGGAAAAGAAAATATCTTCACACAAAAACTACTCGGAAGCATTCTTAGAAACTTCTTTTTGATGTGTGCATTCAAATCACAGAGTTGAACCTATATTTTCAT\t*\tSA:Z:chr20,28843254,-,141M513S,60,15;\tMD:Z:5T15C6A553\tRG:Z:GATKSVContigAlignments\tNM:i:3\tAS:i:567\tXS:i:282";
         alignmentTwoSAMString = "asm018495:tig00014\t2064\tchr20\t28843254\t19\t141M513H\t*\t0\t0\tATCTGTAAGTGGATATTTGGAGCCCTTTGTGGCCTATGGTGGAAAAGGAAATATCTTCAAATAAAAAGTATGCAGAAGCATTCTGAGAAACTTTTTTGTGCTGTGTGCATTCATCTCACAGGGTTGAACCTATCTTATGAT\t*\tSA:Z:chr20,29851171,-,72S582M,60,3;\tMD:Z:5C7A0G52C2C0A2A2A11G2A0C6A4G14A13A6\tRG:Z:GATKSVContigAlignments\tNM:i:15\tAS:i:66\tXS:i:0";
         alignmentOne = fromSAMRecordString(alignmentOneSAMString, true);
         alignmentTwo = fromSAMRecordString(alignmentTwoSAMString, true);
-        data.add(new Object[]{alignmentOne, alignmentTwo, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_MQ, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_LENGTH, false});
+        data.add(new Object[]{alignmentOne, alignmentTwo, false});
 
         alignmentOne = new AlignmentInterval(new SimpleInterval("chr1:10000-10028"), 1, 29, TextCigarCodec.decode("29M"), true, 60, 0, 29, ContigAlignmentsModifier.AlnModType.NONE);
         alignmentTwo = new AlignmentInterval(new SimpleInterval("chr1:10201-10501"), 30, 330, TextCigarCodec.decode("301M"), true, 60, 6, 295, ContigAlignmentsModifier.AlnModType.NONE);
-        data.add(new Object[]{alignmentOne, alignmentTwo, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_MQ, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_LENGTH, false});
+        data.add(new Object[]{alignmentOne, alignmentTwo, false});
 
         alignmentOne = new AlignmentInterval(new SimpleInterval("chr1:10201-10501"), 30, 330, TextCigarCodec.decode("301M"), false, 60, 6, 295, ContigAlignmentsModifier.AlnModType.NONE);
         alignmentTwo = new AlignmentInterval(new SimpleInterval("chr1:10000-10028"), 1, 29, TextCigarCodec.decode("29M"), false, 60, 0, 29, ContigAlignmentsModifier.AlnModType.NONE);
-        data.add(new Object[]{alignmentOne, alignmentTwo, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_MQ, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_LENGTH, false});
+        data.add(new Object[]{alignmentOne, alignmentTwo, false});
 
 
         return data.toArray(new Object[data.size()][]);
@@ -67,10 +67,8 @@ public class SimpleChimeraUnitTest extends AssemblyBasedSVDiscoveryBaseTest {
     @Test(dataProvider = "forSplitPairStrongEnoughEvidenceForCA", groups = "sv")
     public void testSplitPairStrongEnoughEvidenceForCA(final AlignmentInterval intervalOne,
                                                        final AlignmentInterval intervalTwo,
-                                                       final int mapQThresholdInclusive,
-                                                       final int alignmentLengthThresholdInclusive,
                                                        final boolean expected) {
-        Assert.assertEquals(SimpleChimera.splitPairStrongEnoughEvidenceForCA(intervalOne, intervalTwo, mapQThresholdInclusive, alignmentLengthThresholdInclusive),
+        Assert.assertEquals(SimpleChimera.splitPairStrongEnoughEvidenceForCA(intervalOne, intervalTwo),
                 expected);
     }
 

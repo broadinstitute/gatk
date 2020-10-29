@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigAlignmentsRDDProcessor;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ContigChimericAlignmentIterativeInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
@@ -30,7 +31,7 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsArgumentCollection;
 
 /**
  * (Internal) Examines aligned contigs from local assemblies and calls structural variants
@@ -93,8 +94,8 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     private final Logger localLogger = LogManager.getLogger(DiscoverVariantsFromContigAlignmentsSAMSpark.class);
 
     @ArgumentCollection
-    private final DiscoverVariantsFromContigAlignmentsSparkArgumentCollection discoverStageArgs =
-            new DiscoverVariantsFromContigAlignmentsSparkArgumentCollection();
+    private final DiscoverVariantsFromContigAlignmentsArgumentCollection discoverStageArgs =
+            new DiscoverVariantsFromContigAlignmentsArgumentCollection();
 
     @Argument(doc = "prefix for discovery (non-genotyped) VCF; sample name will be appended after the provided argument, followed by \"_inv_del_ins.vcf\"",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -135,8 +136,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                         getHeaderForReads(), getReference(), getDefaultToolVCFHeaderLines(), localLogger);
 
         final JavaRDD<AlignedContig> parsedContigAlignments =
-                new SvDiscoverFromLocalAssemblyContigAlignmentsSpark
-                        .SAMFormattedContigAlignmentParser(getReads(),
+                new AssemblyContigAlignmentsRDDProcessor.SAMFormattedContigAlignmentParser(getReads(),
                                                            svDiscoveryInputMetaData.getSampleSpecificData().getHeaderBroadcast().getValue(), true)
                         .getAlignedContigs();
 

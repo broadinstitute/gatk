@@ -221,7 +221,14 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     optionalField = new OptionalField<>(fieldName, fieldValue);
                     break;
                 case "remap_original_location":
-                    optionalField = new OptionalField<>(fieldName, Long.valueOf(fieldValue));
+                    try {
+                        optionalField = new OptionalField<>(fieldName, Long.valueOf(fieldValue));
+                    }
+                    catch (final NumberFormatException nfe) {
+                        // We must have gotten a field that has a different format.
+                        // For now, just copy it over:
+                        optionalField = new OptionalField<>(fieldName, fieldValue);
+                    }
                     break;
                 case "remap_num_mappings":
                     optionalField = new OptionalField<>(fieldName, Long.valueOf(fieldValue));
@@ -1007,6 +1014,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         // Long, intervening noncoding (linc) RNA that can be found in evolutionarily conserved, intergenic regions.
         LINCRNA("lincRNA"),
+        LNCRNA("lncRNA"),
 
         // Unspliced lncRNA that is several kb in size.
         MACRO_LNCRNA("macro_lncRNA"),
@@ -1132,6 +1140,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * For more information, see:
      *     https://www.gencodegenes.org/data_format.html
      *     https://en.wikipedia.org/wiki/General_feature_format
+     *     https://www.gencodegenes.org/pages/tags.html
      */
     public enum FeatureTag {
         /** 3' end extended based on RNA-seq data. */
@@ -1245,6 +1254,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** the mRNA start could not be confirmed. */
         MRNA_START_NF("mRNA_start_NF"),
 
+        /** the transcript belongs to the MANE Select data set. The Matched Annotation from NCBI and EMBL-EBI project (MANE) is a collaboration between Ensembl-GENCODE and RefSeq to select a default transcript per human protein coding locus that is representative of biology, well-supported, expressed and conserved. This transcript set matches GRCh38 and is 100% identical between RefSeq and Ensembl-GENCODE for 5' UTR, CDS, splicing and 3' UTR. */
+        MANE_SELECT("MANE_Select"),
+
         /** in-frame type of variation where, at the acceptor site, some variants splice after the first AG and others after the */
         NAGNAG_SPLICE_SITE("NAGNAG_splice_site"),
 
@@ -1340,6 +1352,12 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         /** Transcript contains at least 1 non-canonical splice junction that is associated with a known or novel genome sequence */
         SEQUENCE_ERROR("sequence_error"),
+
+        /** Transcript whose coding sequence contains an internal stop codon that does not cause the translation termination. */
+        STOP_CODON_READTHROUGH("stop_codon_readthrough"),
+
+        /** Transcript created or extended using assembled RNA-seq long reads. */
+        TAGENE("TAGENE"),
 
         /** an upstream ATG exists when a downstream ATG is better supported. */
         UPSTREAM_ATG("upstream_ATG"),

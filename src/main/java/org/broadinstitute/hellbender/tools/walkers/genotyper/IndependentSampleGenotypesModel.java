@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
@@ -15,7 +16,7 @@ import java.util.List;
  * This class delegates genotyping to allele count- and ploidy-dependent {@link GenotypeLikelihoodCalculator}s
  * under the assumption that sample genotypes are independent conditional on their population frequencies.
  */
-public final class IndependentSampleGenotypesModel {
+public final class IndependentSampleGenotypesModel implements GenotypingModel {
     private static final int DEFAULT_CACHE_PLOIDY_CAPACITY = 10;
     private static final int DEFAULT_CACHE_ALLELE_CAPACITY = 50;
 
@@ -36,13 +37,12 @@ public final class IndependentSampleGenotypesModel {
         calculators = new GenotypeLikelihoodCalculators();
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data) {
+    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceAnalyzer dragstrs) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 
         final AlleleListPermutation<A> permutation = data.permutation(genotypingAlleles);
-        final AlleleLikelihoodMatrixMapper<A> alleleLikelihoodMatrixMapper = new AlleleLikelihoodMatrixMapper(permutation);
+        final AlleleLikelihoodMatrixMapper<A> alleleLikelihoodMatrixMapper = new AlleleLikelihoodMatrixMapper<>(permutation);
 
         final int sampleCount = data.numberOfSamples();
         final PloidyModel ploidyModel = data.ploidyModel();

@@ -5,6 +5,8 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -34,6 +36,9 @@ public interface GATKRead extends Locatable {
      */
     String getName();
 
+
+    int getFlags();
+
     /**
      * Set the name of the read (equivalent to QNAME in SAM), or set to {@code null} if the read has no name.
      *
@@ -47,6 +52,7 @@ public interface GATKRead extends Locatable {
      * Note: This is not necessarily the same as the number of reference bases the read is aligned to.
      */
     int getLength();
+
 
     /**
      * @return True if the read has no bases, otherwise false
@@ -268,6 +274,93 @@ public interface GATKRead extends Locatable {
         // By default we delegate to the copying version. If implementations are able to avoid a copy,
         // they can override with a no-copy implementation.
         return getBases();
+    }
+
+    /**
+     * Copy the base into an existent byte array.
+     *
+     * @param offset the first base in the read to copy
+     * @param destination the destination array.
+     * @param destinationOffset the first base in the array to copy to.
+     * @param maxLength the maximum number of bases to copy.
+     *
+     * @throws IllegalArgumentException if any of:
+     * <ul>
+     *     <li>{@code destination} is {@code null},</li>
+     *     <li>any of the offsets is negative or goes beyond the maximum respective valid
+     *         index ({@code offset} for the read bases and {@code destinationOffset} for {@code destination}).</li>
+     *     <li>if there is not enough space in {@code destination} to hold to all the bases copied
+     *     (NOTE: a large {@code maxLength} value won't result in an exception if the read does not have enough bases to overflow {@code destination})</li>
+     * </ul>
+     * @return the number of bases copied, always 0 or greater.
+     */
+    default int copyBases(final int offset, final byte[] destination, final int destinationOffset, final int maxLength) {
+        Utils.nonNull(destination);
+        ParamUtils.isPositiveOrZero(offset, "read base offset must be 0 or greater");
+        ParamUtils.isPositiveOrZero(destinationOffset, "destination array offset must be 0 or greater");
+        ParamUtils.isPositiveOrZero(maxLength, "the requested max-length cannot be negative");
+        if (maxLength == 0 || !hasBases()) { // short-cut for trival non-copy cases:
+            return 0;
+        } else {
+            final byte[] bases = getBasesNoCopy();
+            final int basesLength = bases.length;
+            Utils.validIndex(offset, basesLength);
+            final int copyLength = basesLength - offset < maxLength ? basesLength - offset : maxLength;
+            System.arraycopy(bases, offset, destination, destinationOffset, copyLength);
+            return copyLength;
+        }
+    }
+
+    /**
+     * Copy base qualities into an existent byte array.
+     *
+     * @param offset the first base-quality in the read to copy
+     * @param destination the destination array.
+     * @param destinationOffset the first base-quality in the array to copy to.
+     * @param maxLength the maximum number of base-qualities to copy.
+     *
+     * @throws IllegalArgumentException if any of:
+     * <ul>
+     *     <li>{@code destination} is {@code null},</li>
+     *     <li>any of the offsets is negative or goes beyond the maximum respective valid
+     *         index ({@code offset} for the read base-qualities and {@code destinationOffset} for {@code destination}).</li>
+     *     <li>if there is not enough space in {@code destination} to hold to all the base-qualities copied
+     *     (NOTE: a large {@code maxLength} value won't result in an exception if the read does not have enough base-qualities to overflow {@code destination})</li>
+     * </ul>
+     * @return the number of base-qualities copied, always 0 or greater.
+     */
+    default int copyBaseQualities(final int offset, final byte[] destination, final int destinationOffset, final int maxLength) {
+        Utils.nonNull(destination);
+        ParamUtils.isPositiveOrZero(offset, "read base offset must be 0 or greater");
+        ParamUtils.isPositiveOrZero(destinationOffset, "destination array offset must be 0 or greater");
+        ParamUtils.isPositiveOrZero(maxLength, "the requested max-length cannot be negative");
+        if (maxLength == 0 || !hasBaseQualities()) { // short-cut for trival non-copy cases:
+            return 0;
+        } else {
+            final byte[] quals = getBaseQualitiesNoCopy();
+            final int qualsLength = quals.length;
+            Utils.validIndex(offset, qualsLength);
+            final int copyLength = qualsLength - offset < maxLength ? qualsLength - offset : maxLength;
+            System.arraycopy(quals, offset, destination, destinationOffset, copyLength);
+            return copyLength;
+        }
+    }
+
+    /**
+     * Indicates whether there are any bases.
+     */
+    default boolean hasBases() {
+        final byte[] bases = getBasesNoCopy();
+        return bases != null && bases.length > 0;
+    }
+
+    /**
+     * Indicates whether there is any base-qualities.
+     * @return {@code true} iff there is at least one base-quality.
+     */
+    default boolean hasBaseQualities() {
+        final byte[] quals = getBaseQualitiesNoCopy();
+        return quals != null && quals.length > 0;
     }
 
     /**
@@ -699,6 +792,30 @@ public interface GATKRead extends Locatable {
      * @param key key whose value is to be stored
      */
     Object getTransientAttribute(final Object key);
+
+
+    /**
+     * Returns a transient attribute value as an {@link Optional}.
+     *
+     * @param key the key to the attribute.
+     * @param clazz the expected clazz of the attribute value.
+     * @param <T> the parametric type of the attribute value.
+     * @return never {@code null} but a not-present optional instead.
+     */
+    default <T> Optional<T> getOptionalTransientAttribute(final Object key, final Class<T> clazz) {
+        final Object value = getTransientAttribute(key);
+        if (value != null) {
+            if (clazz.isAssignableFrom(value.getClass())) {
+                return Optional.of(clazz.cast(value));
+            } else {
+                throw new IllegalArgumentException("transient attribute value type (" +
+                        value.getClass().getName() + ") is not assignable to does not match the input class (" +
+                        clazz.getName() + ")");
+            }
+        } else {
+            return Optional.empty();
+        }
+    }
 
     /**
      * Set an integer-valued attribute on the read.

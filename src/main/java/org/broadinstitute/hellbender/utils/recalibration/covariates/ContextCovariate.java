@@ -182,14 +182,14 @@ public final class ContextCovariate implements Covariate {
         int currentKey = keyFromContext(bases, 0, contextSize);
         keys.add(currentKey);
 
-        // if the first key was -1 then there was an N in the context; figure out how many more consecutive contexts it affects
+        // if the first key was -1 then there was an non-ACGT in the context; figure out how many more consecutive contexts it affects
         int currentNPenalty = 0;
         if (currentKey == -1) {
             currentKey = 0;
             currentNPenalty = contextSize - 1;
             int offset = newBaseOffset;
-            while (bases[currentNPenalty] != 'N') {
-                final int baseIndex = BaseUtils.simpleBaseToBaseIndex(bases[currentNPenalty]);
+            int baseIndex;
+            while ((baseIndex = BaseUtils.simpleBaseToBaseIndex(bases[currentNPenalty])) != -1) {
                 currentKey |= (baseIndex << offset);
                 offset -= 2;
                 currentNPenalty--;

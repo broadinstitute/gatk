@@ -102,11 +102,13 @@ workflow Mutect2 {
       Boolean? run_orientation_bias_mixture_model_filter
       String? m2_extra_args
       String? m2_extra_filtering_args
+      String? getpileupsummaries_extra_args
       String? split_intervals_extra_args
       Boolean? make_bamout
       Boolean? compress_vcfs
       File? gga_vcf
       File? gga_vcf_idx
+      String? gcs_project_for_requester_pays
 
       # Funcotator inputs
       Boolean? run_funcotator
@@ -260,6 +262,7 @@ workflow Mutect2 {
                 preemptible = preemptible,
                 max_retries = max_retries,
                 m2_extra_args = m2_extra_args,
+                getpileupsummaries_extra_args = getpileupsummaries_extra_args,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_idx = variants_for_contamination_idx,
                 make_bamout = make_bamout_or_default,
@@ -269,7 +272,8 @@ workflow Mutect2 {
                 gga_vcf_idx = gga_vcf_idx,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                disk_space = m2_per_scatter_size
+                disk_space = m2_per_scatter_size,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
     }
 
@@ -370,7 +374,8 @@ workflow Mutect2 {
                 input_vcf = Filter.filtered_vcf,
                 input_vcf_idx = Filter.filtered_vcf_idx,
                 runtime_params = standard_runtime,
-                mem = filter_alignment_artifacts_mem
+                mem = filter_alignment_artifacts_mem,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
     }
 
@@ -518,6 +523,7 @@ task M2 {
       File? gnomad
       File? gnomad_idx
       String? m2_extra_args
+      String? getpileupsummaries_extra_args
       Boolean? make_bamout
       Boolean? run_ob_filter
       Boolean compress
@@ -527,6 +533,8 @@ task M2 {
       File? variants_for_contamination_idx
 
       File? gatk_override
+
+      String? gcs_project_for_requester_pays
 
       # runtime
       String gatk_docker
@@ -576,11 +584,13 @@ task M2 {
         touch f1r2.tar.gz
         echo "" > normal_name.txt
 
-        gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_bam} -O tumor_name.txt -encode
+        gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_bam} -O tumor_name.txt -encode \
+        ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
         tumor_command_line="-I ~{tumor_bam} -tumor `cat tumor_name.txt`"
 
         if [[ ! -z "~{normal_bam}" ]]; then
-            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_bam} -O normal_name.txt -encode
+            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_bam} -O normal_name.txt -encode \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
             normal_command_line="-I ~{normal_bam} -normal `cat normal_name.txt`"
         fi
 
@@ -595,7 +605,8 @@ task M2 {
             -O "~{output_vcf}" \
             ~{true='--bam-output bamout.bam' false='' make_bamout} \
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
-            ~{m2_extra_args}
+            ~{m2_extra_args} \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
 
         m2_exit_code=$?
 
@@ -609,11 +620,14 @@ task M2 {
 
         if [[ ! -z "~{variants_for_contamination}" ]]; then
             gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
-                -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table
+                -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table ~{getpileupsummaries_extra_args} \
+                ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
+
 
             if [[ ! -z "~{normal_bam}" ]]; then
                 gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{normal_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
-                    -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table
+                    -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table ~{getpileupsummaries_extra_args} \
+                    ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
             fi
         fi
 
@@ -932,6 +946,7 @@ task FilterAlignmentArtifacts {
       Boolean compress
       File realignment_index_bundle
       String? realignment_extra_args
+      String? gcs_project_for_requester_pays
       Runtime runtime_params
       Int mem
     }
@@ -963,7 +978,8 @@ task FilterAlignmentArtifacts {
             -I ~{bam} \
             --bwa-mem-index-image ~{realignment_index_bundle} \
             ~{realignment_extra_args} \
-            -O ~{output_vcf}
+            -O ~{output_vcf} \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
     }
 
     runtime {
@@ -996,7 +1012,7 @@ task Funcotate {
        Boolean use_gnomad
        # This should be updated when a new version of the data sources is released
        # TODO: Make this dynamically chosen in the command.
-       File? data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
+       File? data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.7.20200521s.tar.gz"
        String? control_id
        String? case_id
        String? sequencing_center
@@ -1010,6 +1026,7 @@ task Funcotate {
        File? interval_list
 
        String? extra_args
+       String? gcs_project_for_requester_pays
 
        # ==============
        Runtime runtime_params
@@ -1091,7 +1108,8 @@ task Funcotate {
              ~{annotation_over_arg}~{default="" sep=" --annotation-override " annotation_overrides} \
              ~{excluded_fields_args}~{default="" sep=" --exclude-field " funcotator_excluded_fields} \
              ~{filter_funcotations_args} \
-             ~{extra_args_arg}
+             ~{extra_args_arg} \
+             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
          # Make sure we have a placeholder index for MAF files so this workflow doesn't fail:
          if [[ "~{output_format}" == "MAF" ]] ; then
             touch ~{output_maf_index}

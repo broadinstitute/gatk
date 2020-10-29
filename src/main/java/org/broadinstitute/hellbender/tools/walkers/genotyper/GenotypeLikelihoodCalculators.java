@@ -259,16 +259,42 @@ public final class GenotypeLikelihoodCalculators {
      * @return never {@code null}.
      */
     public synchronized GenotypeLikelihoodCalculator getInstance(final int ploidy, final int alleleCount) {
+        calculateGenotypeCountsUsingTablesAndValidate(ploidy, alleleCount);
+
+        // At this point the tables must have at least the requested capacity, likely to be much more.
+        return new GenotypeLikelihoodCalculator(ploidy, alleleCount, alleleFirstGenotypeOffsetByPloidy, genotypeTableByPloidy);
+    }
+
+    /**
+     * Calculate genotype counts using the tables and validate that there is no overflow
+     */
+    private synchronized void calculateGenotypeCountsUsingTablesAndValidate(final int ploidy, final int alleleCount) {
         checkPloidyAndMaximumAllele(ploidy, alleleCount);
 
         if (calculateGenotypeCountUsingTables(ploidy, alleleCount) == GENOTYPE_COUNT_OVERFLOW) {
             final double largeGenotypeCount = Math.pow(10, MathUtils.log10BinomialCoefficient(ploidy + alleleCount - 1, alleleCount - 1));
             throw new IllegalArgumentException(String.format("the number of genotypes is too large for ploidy %d and allele %d: approx. %.0f", ploidy, alleleCount, largeGenotypeCount));
         }
+    }
+
+    /**
+     * Returns an instance of the DRAGEN genotypeLikelihoodCalculator given its ploidy and the number of alleles.
+     *
+     * @param alleleCount the required allele-count.
+     * @param ploidy the required ploidy-count.
+     *
+     * @throws IllegalArgumentException if either {@code ploidy} or {@code alleleCount} is negative, or the resulting number of genotypes is too large.
+     *
+     * @return never {@code null}.
+     */
+    public synchronized GenotypeLikelihoodCalculatorDRAGEN getInstanceDRAGEN(final int ploidy, final int alleleCount) {
+        Utils.validate(ploidy == 2, "DRAGEN genotyping mode currently only supports diploid samples");
+        calculateGenotypeCountsUsingTablesAndValidate(ploidy, alleleCount);
 
         // At this point the tables must have at least the requested capacity, likely to be much more.
-        return new GenotypeLikelihoodCalculator(ploidy, alleleCount, alleleFirstGenotypeOffsetByPloidy, genotypeTableByPloidy);
+        return new GenotypeLikelihoodCalculatorDRAGEN(ploidy, alleleCount, alleleFirstGenotypeOffsetByPloidy, genotypeTableByPloidy);
     }
+
 
     /**
      * Update of shared tables.

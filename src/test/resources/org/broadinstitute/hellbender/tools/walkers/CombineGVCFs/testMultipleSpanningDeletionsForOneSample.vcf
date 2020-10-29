@@ -8,7 +8,6 @@
 ##FORMAT=<ID=MIN_GQ,Number=1,Type=Integer,Description="Minimum GQ observed within the GVCF block">
 ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
 ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
-##GATKCommandLine=<ID=CombineGVCFs,CommandLine="CombineGVCFs  --output /Users/davidben/broad/gatk/src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/testMultipleSpanningDeletionsForOneSample.vcf --variant /Users/davidben/broad/gatk/src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/spanningDel.many.g.vcf --reference /Users/davidben/broad/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta --verbosity ERROR  --convert-to-base-pair-resolution false --break-bands-at-multiples-of 0 --input-is-somatic false --drop-somatic-filtering-annotations false --ignore-variants-starting-outside-interval false --combine-variants-distance 0 --max-distance 2147483647 --ref-padding 1 --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false --disable-tool-default-annotations false --enable-all-annotations false --allow-old-rms-mapping-quality-annotation-data false",Version="Unavailable",Date="March 17, 2020 1:36:01 AM EDT">
 ##GVCFBlock=minGQ=0(inclusive),maxGQ=5(exclusive)
 ##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
@@ -25,7 +24,6 @@
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
 ##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
 ##contig=<ID=20,length=0>
-##source=CombineGVCFs
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA1
 20	3944040	.	A	<NON_REF>	.	.	END=3944042	GT:DP:GQ:MIN_DP:PL	./.:81:60:76:0,60,900
 20	3944043	.	ATTT	A,AT,ATT,<NON_REF>	.	.	DP=63	GT:AD:DP:GQ:PL:SB	./.:7,4,16,36,0:63:99:1169,1026,1642,629,917,839,278,269,0,257,1020,1140,771,337,1103:5,2,49,7

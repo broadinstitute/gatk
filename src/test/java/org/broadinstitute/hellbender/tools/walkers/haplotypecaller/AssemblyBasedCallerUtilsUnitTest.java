@@ -64,7 +64,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         activeRegion.addAll(reads);
         SampleList sampleList = SampleList.singletonSampleList("tumor");
         Byte minbq = 9;
-        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, false);
+        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, false, false);
 
         // make sure reads are not changed due to finalizeRegion()
         Assert.assertTrue(reads.get(0).convertToSAMRecord(header).equals(orgRead0));
@@ -691,7 +691,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                    final int loc,
                                    final List<Haplotype> haplotypes,
                                    final Map<Allele, List<Haplotype>> expectedEventMap) {
-        final Map<Allele, List<Haplotype>> actualEventMap = AssemblyBasedCallerUtils.createAlleleMapper(mergedVc, loc, haplotypes);
+        final Map<Allele, List<Haplotype>> actualEventMap = AssemblyBasedCallerUtils.createAlleleMapper(mergedVc, loc, haplotypes, true);
         Assert.assertEquals(actualEventMap.size(), expectedEventMap.size());
         for (final Allele key : actualEventMap.keySet()) {
             Assert.assertTrue(expectedEventMap.containsKey(key), "Got unexpected allele " + key + " with values " + actualEventMap.get(key));

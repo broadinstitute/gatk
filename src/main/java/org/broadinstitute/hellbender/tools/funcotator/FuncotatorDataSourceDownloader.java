@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.NioFileCopierWithProgressMeter;
 import org.broadinstitute.hellbender.utils.nio.NioFileCopierWithProgressMeterResults;
@@ -25,7 +26,7 @@ import java.nio.file.Path;
  * <h3>General Information</h3>
  * <p>
  * This tool can download pre-packaged data sources for both the <strong>somatic</strong> and <strong>germline</strong> use cases.
- * The data sources downloaded by this tool correspond to the current minimum of the data sources supported as defined in <b><i>{@link org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils#CURRENT_MINIMUM_DATA_SOURCE_VERSION}</i></b>.
+ * The data sources downloaded by this tool correspond to the latest / current maximum of the data sources supported as defined in <b><i>{@link org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils#CURRENT_MAXIMUM_DATA_SOURCE_VERSION}</i></b>.
  * </p>
  *
  * <p>
@@ -71,19 +72,19 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
     //==================================================================================================================
     // Private Static Members:
 
-    private static String BASE_URL = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124";
+    // Set to always get the latest version of the data sources:
+    private static final String BASE_URL = DataSourceUtils.DATA_SOURCES_BUCKET_PATH +
+            DataSourceUtils.DATA_SOURCES_NAME_PREFIX + "." + DataSourceUtils.getDataSourceMaxVersionString();
 
-    private static String GERMLINE_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + "g";
+    private static final String GERMLINE_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + DataSourceUtils.DS_GERMLINE_NAME_MODIFIER;
     @VisibleForTesting
-    static Path   GERMLINE_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + ".tar.gz");
-    @VisibleForTesting
-    static Path   GERMLINE_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + ".sha256");
+    static final Path   GERMLINE_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + DataSourceUtils.DS_EXTENSION);
+    private static final Path   GERMLINE_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + DataSourceUtils.DS_CHECKSUM_EXTENSION);
 
-    private static String SOMATIC_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + "s";
-    @VisibleForTesting
-    static Path   SOMATIC_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + ".tar.gz");
-    @VisibleForTesting
-    static Path   SOMATIC_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + ".sha256");
+    public static final String SOMATIC_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + DataSourceUtils.DS_SOMATIC_NAME_MODIFIER;;
+
+    public static final Path   SOMATIC_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + DataSourceUtils.DS_EXTENSION);
+    private static final Path   SOMATIC_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + DataSourceUtils.DS_CHECKSUM_EXTENSION);
 
     //==================================================================================================================
     // Private Members:

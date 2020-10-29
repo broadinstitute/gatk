@@ -263,6 +263,10 @@ public class ReadClipper {
         return (new ReadClipper(read)).hardClipLowQualEnds(lowQual);
     }
 
+    public static GATKRead softClipLowQualEnds(final GATKRead read, final byte lowQual) {
+        return (new ReadClipper(read)).clipLowQualEnds(ClippingRepresentation.SOFTCLIP_BASES, lowQual);
+    }
+
     /**
      * Will hard clip every soft clipped bases in the read.
      *
@@ -363,7 +367,7 @@ public class ReadClipper {
 
     /**
      * Turns soft clipped bases into matches
-     * @return a new read with every soft clip turned into a match
+     * @return a new read with every soft clip turned into a match, or the same read if no softclip bases were found
      */
     private GATKRead revertSoftClippedBases() {
         if (read.isEmpty()) {

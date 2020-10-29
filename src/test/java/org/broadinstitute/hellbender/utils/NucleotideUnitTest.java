@@ -5,6 +5,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Unit tests for {@link Nucleotide}.
@@ -66,31 +67,53 @@ public class NucleotideUnitTest {
         Assert.assertEquals(nuc.encodeAsString(false).length(), 1);
     }
 
+    /**
+     * Check the integrity of list returned by {@link Nucleotide#STANDARD_BASES}.
+     */
     @Test
     public void testStandardNucleotidesList() {
-        Assert.assertEquals(Nucleotide.STANDARD_BASES.size(), 4);
-        for (final Nucleotide value : Nucleotide.values()) {
-            switch (value) {
-                case A:
-                case C:
-                case G:
-                case T:
-                    Assert.assertTrue(Nucleotide.STANDARD_BASES.contains(value));
-                    break;
-                default:
-                    Assert.assertFalse(Nucleotide.STANDARD_BASES.contains(value));
+        Assert.assertEquals(Nucleotide.STANDARD_BASES.size(), 4, "The standard nucleotides are 4: A, C, G, U/T");
+        final List<Nucleotide> asList = new ArrayList<>(Nucleotide.STANDARD_BASES);
+        int idx;
+        Assert.assertEquals(asList.get(idx = 0), Nucleotide.A);
+        Assert.assertEquals(asList.get(++idx), Nucleotide.C);
+        Assert.assertEquals(asList.get(++idx), Nucleotide.G);
+        Assert.assertEquals(asList.get(++idx), Nucleotide.T);
+        // Is difficult to make certain a collection is immutable but let's test simple additions/removes and "all"
+        // operations:
+        for (final Nucleotide nucleotide : Nucleotide.values()) {
+            if (!nucleotide.isStandard()) {
+                // we don't try with standard ones since adding them actually does not result in a modification of the
+                // set, so arguably is not invalid not to fail.
+                try {
+                    Nucleotide.STANDARD_BASES.add(nucleotide);
+                    Assert.fail("didn't complain trying to add non standard base to STANDARD_BASES set");
+                } catch (final RuntimeException ex) {
+                    // nothing to do, an unknown RE exception is expected.
+                }
+            } else {
+                try {
+                    Nucleotide.STANDARD_BASES.remove(nucleotide);
+                    Assert.fail("didn't complain trying to remove a standard base from STANDARD_BASES set");
+                } catch (final RuntimeException ex) {
+                    // nothing to do a RE exception is expected.
+                }
             }
         }
-    }
+        try {
+            Nucleotide.STANDARD_BASES.clear();
+            Assert.fail("didn't complain trying to remove all contents from STANDARD_BASES set");
+        } catch (final RuntimeException ex) {
+            // nothing to do a RE exception is expected.
+        }
 
-    @Test(expectedExceptions = RuntimeException.class)
-    public void testStandardNucleotideListIsUnmodifiable1() {
-        Nucleotide.STANDARD_BASES.clear();
-    }
+        try {
+            Nucleotide.STANDARD_BASES.addAll(Arrays.asList(Nucleotide.values()));
+            Assert.fail("didn't complain trying to add all nucs to STANDARD_BASES set");
+        } catch (final RuntimeException ex) {
+            // nothing to do a RE exception is expected.
+        }
 
-    @Test(expectedExceptions = RuntimeException.class)
-    public void testStandardNucleotideListIsUnmodifiable2() {
-        Nucleotide.STANDARD_BASES.set(0, Nucleotide.N);
     }
 
     @Test(dataProvider = "values")
@@ -557,7 +580,7 @@ public class NucleotideUnitTest {
         } catch (final IllegalAccessException e) {
             Assert.fail("Long name constant " + name + " is not accessible");
         } catch (final NoSuchFieldException e) {
-            Assert.fail("Long name constant " + name + " does not exists");
+            Assert.fail("Long name constant " + name + " does not exist");
         } catch (final ClassCastException e) {
             Assert.fail("Long name constant " + name + " so not typed as " + Nucleotide.class.getName());
         }

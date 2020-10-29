@@ -18,9 +18,9 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMap;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Tail;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
@@ -1623,8 +1623,8 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
             final List<CigarElement> elements = cigar.getCigarElements();
             final int nElements = elements.size();
             if ( nElements < 2 ) return cigar;
-            final int initialClipLength = CigarUtils.countClippedBases(cigar, ClippingTail.LEFT_TAIL);
-            final int finalClipLength = CigarUtils.countClippedBases(cigar, ClippingTail.RIGHT_TAIL);
+            final int initialClipLength = CigarUtils.countClippedBases(cigar, Tail.LEFT);
+            final int finalClipLength = CigarUtils.countClippedBases(cigar, Tail.RIGHT);
             if ( initialClipLength >= minAltLength || finalClipLength >= minAltLength ) {
                 final String saTag = read.getAttributeAsString("SA");
                 if ( saTag == null ) return cigar;
@@ -1653,8 +1653,8 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                     final List<CigarElement> altElements = altCigar.getCigarElements();
                     final int nAltElements = altElements.size();
                     if ( nAltElements < 2 ) continue;
-                    final int initialAltClipLength = CigarUtils.countClippedBases(altCigar, ClippingTail.LEFT_TAIL);
-                    final int finalAltClipLength = CigarUtils.countClippedBases(altCigar, ClippingTail.RIGHT_TAIL);
+                    final int initialAltClipLength = CigarUtils.countClippedBases(altCigar, Tail.LEFT);
+                    final int finalAltClipLength = CigarUtils.countClippedBases(altCigar, Tail.RIGHT);
                     final Interval altReadInterval =
                             new Interval(initialAltClipLength, readLength - finalAltClipLength);
                     final int overlapLength = primaryReadInterval.overlapLength(altReadInterval);

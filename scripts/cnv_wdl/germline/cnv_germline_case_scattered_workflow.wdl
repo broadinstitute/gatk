@@ -40,6 +40,9 @@ workflow CNVGermlineCaseScatteredWorkflow {
       File? gatk4_jar_override
       Int? preemptible_attempts
 
+      # Required if BAM/CRAM is in a requester pays bucket
+      String? gcs_project_for_requester_pays
+
       ####################################################
       #### optional arguments for PreprocessIntervals ####
       ####################################################
@@ -49,6 +52,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
       ##############################################
       #### optional arguments for CollectCounts ####
       ##############################################
+      Array[String]? disabled_read_filters_for_collect_counts
       String? collect_counts_format
       Boolean? collect_counts_enable_indexing
       Int? mem_gb_for_collect_counts
@@ -147,8 +151,10 @@ workflow CNVGermlineCaseScatteredWorkflow {
                 gatk_docker = gatk_docker,
                 gatk4_jar_override = gatk4_jar_override,
                 preemptible_attempts = preemptible_attempts,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays,
                 padding = padding,
                 bin_length = bin_length,
+                disabled_read_filters_for_collect_counts = disabled_read_filters_for_collect_counts,
                 collect_counts_format = collect_counts_format,
                 collect_counts_enable_indexing = collect_counts_enable_indexing,
                 mem_gb_for_collect_counts = mem_gb_for_collect_counts,
@@ -196,16 +202,16 @@ workflow CNVGermlineCaseScatteredWorkflow {
 
     output {
         Array[File] preprocessed_intervals = CNVGermlineCaseWorkflow.preprocessed_intervals
-        Array[Array[File]] read_counts_entity_id = CNVGermlineCaseWorkflow.read_counts_entity_id
-        Array[Array[File]] read_counts = CNVGermlineCaseWorkflow.read_counts
-        Array[File] contig_ploidy_calls_tars = CNVGermlineCaseWorkflow.contig_ploidy_calls_tar
+        Array[File] read_counts_entity_id = flatten(CNVGermlineCaseWorkflow.read_counts_entity_id)
+        Array[File] read_counts = flatten(CNVGermlineCaseWorkflow.read_counts)
+        Array[File] sample_contig_ploidy_calls_tars = flatten(CNVGermlineCaseWorkflow.sample_contig_ploidy_calls_tars)
         Array[Array[Array[File]]] gcnv_calls_tars = CNVGermlineCaseWorkflow.gcnv_calls_tars
         Array[Array[File]] gcnv_tracking_tars = CNVGermlineCaseWorkflow.gcnv_tracking_tars
-        Array[Array[File]] genotyped_intervals_vcf = CNVGermlineCaseWorkflow.genotyped_intervals_vcf
-        Array[Array[File]] genotyped_segments_vcf = CNVGermlineCaseWorkflow.genotyped_segments_vcf
-        Array[Array[File]] qc_status_files = CNVGermlineCaseWorkflow.qc_status_files
-        Array[Array[String]] qc_status_strings = CNVGermlineCaseWorkflow.qc_status_strings
-        Array[Array[File]] denoised_copy_ratios = CNVGermlineCaseWorkflow.denoised_copy_ratios
+        Array[File] genotyped_intervals_vcf = flatten(CNVGermlineCaseWorkflow.genotyped_intervals_vcf)
+        Array[File] genotyped_segments_vcf = flatten(CNVGermlineCaseWorkflow.genotyped_segments_vcf)
+        Array[File] denoised_copy_ratios = flatten(CNVGermlineCaseWorkflow.denoised_copy_ratios)
+        Array[File] qc_status_files = flatten(CNVGermlineCaseWorkflow.qc_status_files)
+        Array[String] qc_status_strings = flatten(CNVGermlineCaseWorkflow.qc_status_strings)
     }
 }
 

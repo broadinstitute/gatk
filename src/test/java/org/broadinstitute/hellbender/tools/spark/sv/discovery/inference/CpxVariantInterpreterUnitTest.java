@@ -26,7 +26,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery.*;
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
 
 
 public class CpxVariantInterpreterUnitTest extends GATKBaseTest {
@@ -293,7 +293,7 @@ public class CpxVariantInterpreterUnitTest extends GATKBaseTest {
         baseVariantContextBuilder.attribute(GATKSVVCFConstants.ALIGN_LENGTHS, Arrays.asList("54", "54"));
         baseVariantContextBuilder.attribute(GATKSVVCFConstants.MAX_ALIGN_LENGTH, "54");
 
-        final VariantContext variantContext = CpxVariantInterpreter.turnIntoVariantContext(tuple2, b38_reference_chr20_chr21);
+        final VariantContext variantContext = CpxVariantInterpreter.toVariantContext(tuple2._1, tuple2._2, b38_reference_chr20_chr21);
         VariantContextTestUtils.assertVariantContextsAreEqual(variantContext, baseVariantContextBuilder.make(), Collections.emptyList(), Collections.emptyList());
     }
 }

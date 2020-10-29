@@ -24,6 +24,7 @@ releases of the toolkit.
     * [Passing JVM options to gatk](#jvmoptions)
     * [Passing a configuration file to gatk](#configFileOptions)
     * [Running GATK4 with inputs on Google Cloud Storage](#gcs)
+    * [Running GATK4 Spark tools locally](#sparklocal)
     * [Running GATK4 Spark tools on a Spark cluster](#sparkcluster)
     * [Running GATK4 Spark tools on Google Cloud Dataproc](#dataproc)
     * [Using R to generate plots](#R)
@@ -40,6 +41,7 @@ releases of the toolkit.
     * [Building GATK4 Docker images](#docker_building)
     * [Releasing GATK4](#releasing_gatk)
     * [Generating GATK4 documentation](#gatkdocs)
+    * [Generating GATK4 WDL Wrappers](#gatkwdlgen)
     * [Using Zenhub to track github issues](#zenhub)
 * [Further Reading on Spark](#spark_further_reading)
 * [How to contribute to GATK](#contribute)
@@ -80,6 +82,8 @@ releases of the toolkit.
       includes the R dependencies used for plotting in some of the tools. The ```gatk``` environment 
       requires hardware with AVX support for tools that depend on TensorFlow (e.g. CNNScoreVariant). The GATK Docker image 
       comes with the ```gatk``` environment pre-configured.
+      	* At this time, the only supported platforms are 64-bit Linux distributions. The required Conda environment is not
+	  currently supported on OS X/macOS. 
     * To establish the environment when not using the Docker image, a conda environment must first be "created", and
       then "activated":
         * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed (Miniconda is sufficient).
@@ -232,6 +236,29 @@ You can download and run pre-built versions of GATK4 from the following places:
         export GOOGLE_APPLICATION_CREDENTIALS="$PATH_TO_THE_KEY_FILE"
         ```
         * Done! GATK will pick up the service account. You can also do this in a VM if you'd like to override the default credentials.
+
+#### <a name="sparklocal">Running GATK4 Spark tools locally:</a>
+
+* GATK4 Spark tools can be run in local mode (without a cluster). In this mode, Spark will run the tool
+  in multiple parallel execution threads using the cores in your CPU. You can control how many threads
+  Spark will use via the `--spark-master` argument.
+  
+* Examples:
+
+  Run `PrintReadsSpark` with 4 threads on your local machine:
+  ``` 
+    ./gatk PrintReadsSpark -I src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -O output.bam \
+        -- \
+        --spark-runner LOCAL --spark-master 'local[4]'
+  ```
+  Run `PrintReadsSpark` with as many worker threads as there are logical cores on your local machine:
+  ``` 
+    ./gatk PrintReadsSpark -I src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -O output.bam \
+        -- \
+        --spark-runner LOCAL --spark-master 'local[*]'
+  ```   
+  
+* Note that the Spark-specific arguments are separated from the tool-specific arguments by a `--`.
 
 #### <a name="sparkcluster">Running GATK4 Spark tools on a Spark cluster:</a>
 
@@ -388,9 +415,7 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
     * Setting the environment variable `TEST_VERBOSITY=minimal` will produce much less output from the test suite 
 
 * To run a subset of tests, use gradle's test filtering (see [gradle doc](https://docs.gradle.org/current/userguide/java_plugin.html)):
-    * You can use `test.single` when you just want to run a specific test class:
-        * `./gradlew test -Dtest.single=SomeSpecificTestClass`
-    * You can also use `--tests` with a wildcard to run a specific test class, method, or to select multiple test classes:
+    * You can use `--tests` with a wildcard to run a specific test class, method, or to select multiple test classes:
         * `./gradlew test --tests *SomeSpecificTestClass`
         * `./gradlew test --tests *SomeTest.someSpecificTestMethod`
         * `./gradlew test --tests all.in.specific.package*`
@@ -530,6 +555,20 @@ Please see the [How to release GATK4](https://github.com/broadinstitute/gatk/wik
 To generate GATK documentation, run `./gradlew gatkDoc`
 
 * Generated docs will be in the `build/docs/gatkdoc` directory.
+
+#### <a name="gatkwdlgen">Generating GATK4 WDL Wrappers</a>
+
+* A WDL wrapper can be generated for any GATK4 tool that is annotated for WDL generation (see the wiki article
+[How to Prepare a GATK tool for WDL Auto Generation](https://github.com/broadinstitute/gatk/wiki/How-to-Prepare-a-GATK-tool-for-WDL-Auto-Generation))
+to learn more about WDL annotations.
+
+* To generate the WDL Wrappers, run `./gradlew gatkWDLGen`. The generated WDLs and accompanying JSON input files can
+be found in the `build/docs/wdlGen` folder.
+
+* To generate WDL Wrappers and validate the resulting outputs, run `./gradlew gatkWDLGenValidation`.
+Running this task requires a local [cromwell](https://github.com/broadinstitute/cromwell) installation, and environment
+variables `CROMWELL_JAR` and `WOMTOOL_JAR` to be set to the full pathnames of the `cromwell` and `womtool` jar files.
+If no local install is available, this task will run automatically on travis in a separate job whenever a PR is submitted.
 
 #### <a name="zenhub">Using Zenhub to track github issues</a>
 

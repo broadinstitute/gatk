@@ -23,6 +23,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.*;
+import java.time.LocalDate;
+import java.time.Month;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,24 +59,37 @@ final public class DataSourceUtils {
 
     // Track our minimum version number here:
     @VisibleForTesting
-    static final int MIN_MAJOR_VERSION_NUMBER = 1;
+    static final int       MIN_MAJOR_VERSION_NUMBER = 1;
     @VisibleForTesting
-    static final int MIN_MINOR_VERSION_NUMBER = 6;
+    static final int       MIN_MINOR_VERSION_NUMBER = 6;
     @VisibleForTesting
-    static final int MIN_YEAR_RELEASED        = 2019;
+    static final LocalDate MIN_DATE                 = LocalDate.of(2019, Month.JANUARY, 24);
+
+    // Track out maximum version number here:
     @VisibleForTesting
-    static final int MIN_MONTH_RELEASED       = 1;
+    static final int MAX_MAJOR_VERSION_NUMBER = 1;
     @VisibleForTesting
-    static final int MIN_DAY_RELEASED         = 24;
+    static final int MAX_MINOR_VERSION_NUMBER = 7;
+    @VisibleForTesting
+    static final LocalDate MAX_DATE            = LocalDate.of(2020, Month.MAY, 21);
 
     //==================================================================================================================
     // Public Static Members:
 
     /** The minimum version of the data sources required for funcotator to run.  */
-    public static final String CURRENT_MINIMUM_DATA_SOURCE_VERSION         = String.format("v%d.%d.%d%02d%02d", MIN_MAJOR_VERSION_NUMBER, MIN_MINOR_VERSION_NUMBER, MIN_YEAR_RELEASED, MIN_MONTH_RELEASED, MIN_DAY_RELEASED);
+    public static final String CURRENT_MINIMUM_DATA_SOURCE_VERSION         = getDataSourceMinVersionString();
+
+    /** The maximum supported version of the data sources for funcotator to run.  */
+    public static final String CURRENT_MAXIMUM_DATA_SOURCE_VERSION         = getDataSourceMaxVersionString();
+
     public static final String MANIFEST_FILE_NAME                          = "MANIFEST.txt";
     public static final String DATA_SOURCES_FTP_PATH                       = "ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/";
     public static final String DATA_SOURCES_BUCKET_PATH                    = "gs://broad-public-datasets/funcotator/";
+    public static final String DATA_SOURCES_NAME_PREFIX                    = "funcotator_dataSources";
+    public static final String DS_SOMATIC_NAME_MODIFIER                    = "s";
+    public static final String DS_GERMLINE_NAME_MODIFIER                   = "g";
+    public static final String DS_EXTENSION                                = ".tar.gz";
+    public static final String DS_CHECKSUM_EXTENSION                       = ".sha256";
 
     // TODO: Turn these into an enum (Issue #5465 - https://github.com/broadinstitute/gatk/issues/5465):
     public static final String CONFIG_FILE_FIELD_NAME_NAME                 = "name";
@@ -99,6 +114,51 @@ final public class DataSourceUtils {
 
     //==================================================================================================================
     // Public Static Methods:
+
+    /**
+     * Get the string representing the Min version information for funcotator as it would be written in the data sources
+     * release files.
+     * Max version info is specified in the following variables:
+     *    {@link #MIN_MAJOR_VERSION_NUMBER}
+     *    {@link #MIN_MINOR_VERSION_NUMBER}
+     *    {@link #MIN_DATE}
+     * @return A {@link String} representing the Min version information as it would appear in the data sources file name.
+     */
+    public static String getDataSourceMinVersionString() {
+        return getDataSourceVersionString(MIN_MAJOR_VERSION_NUMBER, MIN_MINOR_VERSION_NUMBER, MIN_DATE);
+    }
+
+    /**
+     * Get the string representing the Max version information for funcotator as it would be written in the data sources
+     * release files.
+     * Max version info is specified in the following variables:
+     *    {@link #MAX_MAJOR_VERSION_NUMBER}
+     *    {@link #MAX_MINOR_VERSION_NUMBER}
+     *    {@link #MAX_DATE}
+     * @return A {@link String} representing the Max version information as it would appear in the data sources file name.
+     */
+    public static String getDataSourceMaxVersionString() {
+        return getDataSourceVersionString(MAX_MAJOR_VERSION_NUMBER, MAX_MINOR_VERSION_NUMBER, MAX_DATE);
+    }
+
+
+    /**
+     * Get the string representing the given version information for funcotator as it would be written in the data sources
+     * release files.
+     * @param major {@code int} representing the major version of the data sources to use.
+     * @param minor {@code int} representing the minor version of the data sources to use.
+     * @param date {@link LocalDate} representing the date of the data sources to use.
+     * @return A {@link String} representing the given version information as it would appear in the data sources file name.
+     */
+    public static String getDataSourceVersionString(final int major, final int minor, final LocalDate date) {
+        return String.format("v%d.%d.%d%02d%02d",
+                major,
+                minor,
+                date.getYear(),
+                date.getMonthValue(),
+                date.getDayOfMonth()
+        );
+    }
 
     /**
      * Initializes the data sources for {@link Funcotator}.
@@ -196,7 +256,7 @@ final public class DataSourceUtils {
      * @param directory The {@link Path} of the directory in which to search for a config file.  Must not be {@code null}.
      * @return The {@link Path} to the config file found in the given {@code directory}.
      */
-    public static Path getConfigfile(final Path directory) {
+    private static Path getConfigfile(final Path directory) {
 
         Utils.nonNull(directory);
 
@@ -225,7 +285,7 @@ final public class DataSourceUtils {
     }
 
     /** @return {@code true} if the given {@link Path} exists, is readable, and is a directory; {@code false} otherwise. */
-    public static boolean isValidDirectory(final Path p) {
+    private static boolean isValidDirectory(final Path p) {
         Utils.nonNull(p);
         return Files.exists(p) && Files.isReadable(p) && Files.isDirectory(p);
     }
@@ -628,7 +688,7 @@ final public class DataSourceUtils {
                 Integer versionYear      = null;
                 Integer versionMonth     = null;
                 Integer versionDay       = null;
-                String  versionDecorator = null;
+                String  versionDecorator;
                 String  source           = null;
                 String  alternateSource  = null;
 
@@ -711,10 +771,12 @@ final public class DataSourceUtils {
 
         // Warn the user if they need newer stuff.
         if ( !dataSourcesPathIsAcceptable ) {
-
             String message = "";
-            message = message + "ERROR: Given data source path is too old!  Minimum required version is: " + CURRENT_MINIMUM_DATA_SOURCE_VERSION + " (yours: " + version + ")\n";
-            message = message + "       You must download a newer version of the data sources from the Broad Institute FTP site: " + DATA_SOURCES_FTP_PATH + "\n";
+            message = message + "ERROR: Given data source path is too old or too new!  \n";
+            message = message + "       Minimum required version is: " + CURRENT_MINIMUM_DATA_SOURCE_VERSION + "\n";
+            message = message + "       Maximum allowed version is:  " + CURRENT_MAXIMUM_DATA_SOURCE_VERSION + "\n";
+            message = message + "       Yours:                       " + version + "\n";
+            message = message + "       You must download a compatible version of the data sources from the Broad Institute FTP site: " + DATA_SOURCES_FTP_PATH + "\n";
             message = message + "       or the Broad Institute Google Bucket: " + DATA_SOURCES_BUCKET_PATH + "\n";
             throw new UserException( message );
         }
@@ -722,35 +784,38 @@ final public class DataSourceUtils {
         return dataSourcesPathIsAcceptable;
     }
 
+    /**
+     * Checks that the version information given is within the valid range for data source versions.
+     *
+     * @param major int containing the major version number to be checked.
+     * @param minor int containing the minor version number to be checked.
+     * @param year int containing the year version number to be checked.RecQ DNA helicase WRN
+     * @param month int containing the month version number to be checked.
+     * @param day int containing the day version number to be checked.
+     *
+     * @return {@code true} iff the given version information is valid for the current data source ranges.  {@code false} otherwise.
+     */
     @VisibleForTesting
     static boolean validateVersionInformation(final int major, final int minor, final int year, final int month, final int day) {
 
-        // Compare from largest to smallest differences:
-
-        if ( major < MIN_MAJOR_VERSION_NUMBER ) {
+        // Compare Major Version:
+        if ((major < MIN_MAJOR_VERSION_NUMBER) || (major > MAX_MAJOR_VERSION_NUMBER)) {
             return false;
         }
 
-        if ( minor <  MIN_MINOR_VERSION_NUMBER ) {
+        // Compare minor version if we're on the edge of versions:
+        if ( major == MIN_MAJOR_VERSION_NUMBER && minor < MIN_MINOR_VERSION_NUMBER ) {
+            return false;
+        }
+        if ( major == MAX_MAJOR_VERSION_NUMBER && minor > MAX_MINOR_VERSION_NUMBER ) {
             return false;
         }
 
-        if ( year < MIN_YEAR_RELEASED ) {
-            return false;
-        }
+        // Now make sure the date is between or equal to the min and max date:
+        final LocalDate versionDate = LocalDate.of(year, month, day);
 
-        else if ( year == MIN_YEAR_RELEASED ) {
-            if ( month < MIN_MONTH_RELEASED ) {
-                return false;
-            }
-            else if ( month == MIN_MONTH_RELEASED ) {
-                if ( day < MIN_DAY_RELEASED ) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        // A valid date is between min and max date inclusive.
+        return (!versionDate.isBefore(MIN_DATE)) && (!versionDate.isAfter(MAX_DATE));
     }
 
     // ========================================================================================================

@@ -10,7 +10,7 @@
 
   "Funcotator.compress": "false",
   "Funcotator.use_gnomad": "false",
-  "Funcotator.data_sources_tar_gz": "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz",
+  "Funcotator.data_sources_tar_gz": "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.7.20200521s.tar.gz",
 
   "Funcotator.interval_list": "gs://gatk-best-practices/funcotator/chr1_13313-187210.intervals.list",
 

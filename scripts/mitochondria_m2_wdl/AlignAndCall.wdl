@@ -310,11 +310,11 @@ task GetContamination {
   fi
 
   grep -v "SampleID" output-noquotes > output-data
-  awk '{print $2}' output-data > contamination.txt
-  awk '{print $6}' output-data > major_hg.txt
-  awk '{print $8}' output-data > minor_hg.txt
-  awk '{print $14}' output-data > mean_het_major.txt
-  awk '{print $15}' output-data > mean_het_minor.txt
+  awk -F "\t" '{print $2}' output-data > contamination.txt
+  awk -F "\t" '{print $6}' output-data > major_hg.txt
+  awk -F "\t" '{print $8}' output-data > minor_hg.txt
+  awk -F "\t" '{print $14}' output-data > mean_het_major.txt
+  awk -F "\t" '{print $15}' output-data > mean_het_minor.txt
   >>>
   runtime {
     preemptible: select_first([preemptible_tries, 5])
@@ -452,6 +452,7 @@ task M2 {
     File ref_dict
     File input_bam
     File input_bai
+    Int max_reads_per_alignment_start = 75
     String? m2_extra_args
     Boolean? make_bamout
     Boolean compress
@@ -495,7 +496,7 @@ task M2 {
         ~{m2_extra_args} \
         --annotation StrandBiasBySample \
         --mitochondria-mode \
-        --max-reads-per-alignment-start 75 \
+        --max-reads-per-alignment-start ~{max_reads_per_alignment_start} \
         --max-mnp-distance 0
   >>>
   runtime {
@@ -527,7 +528,6 @@ task Filter {
 
     String? m2_extra_filtering_args
     Int max_alt_allele_count
-    Float? autosomal_coverage
     Float? vaf_filter_threshold
     Float? f_score_beta
 

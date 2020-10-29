@@ -2,12 +2,13 @@ version 1.0
 
 import "AlignAndCall.wdl" as AlignAndCall
 
-#import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignAndCall/versions/24/plain-WDL/descriptor" as AlignAndCall
+#import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignAndCall/versions/23/plain-WDL/descriptor" as AlignAndCall
 
 workflow MitochondriaPipeline {
 
   meta {
     description: "Takes in an hg38 bam or cram and outputs VCF of SNP/Indel calls on the mitochondria."
+    allowNestedInputs: true
   }
 
   input {

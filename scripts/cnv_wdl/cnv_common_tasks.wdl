@@ -188,9 +188,11 @@ task CollectCounts {
       File ref_fasta
       File ref_fasta_fai
       File ref_fasta_dict
+      Array[String]? disabled_read_filters
       Boolean? enable_indexing
       String? format
       File? gatk4_jar_override
+      String? gcs_project_for_requester_pays
 
       # Runtime parameters
       String gatk_docker
@@ -201,10 +203,21 @@ task CollectCounts {
       Int? preemptible_attempts
     }
 
+    parameter_meta {
+      bam: {
+        localization_optional: true
+      }
+      bam_idx: {
+        localization_optional: true
+      }
+    }
+
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
     Boolean enable_indexing_ = select_first([enable_indexing, false])
+
+    Array[String] disabled_read_filters_arr = if defined(disabled_read_filters) then prefix("--disable-read-filter ", select_first([disabled_read_filters])) else []
 
     # Sample name is derived from the bam filename
     String base_filename = basename(bam, ".bam")
@@ -257,7 +270,9 @@ task CollectCounts {
             --reference ~{ref_fasta} \
             --format ~{default="HDF5" hdf5_or_tsv_or_null_format} \
             --interval-merging-rule OVERLAPPING_ONLY \
-            --output ~{counts_filename_for_collect_read_counts}
+            --output ~{counts_filename_for_collect_read_counts} \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays} \
+            ~{sep=' ' disabled_read_filters_arr}
 
         if [ ~{do_block_compression} = "true" ]; then
             bgzip ~{counts_filename_for_collect_read_counts}
@@ -293,6 +308,7 @@ task CollectAllelicCounts {
       File ref_fasta_dict
       Int? minimum_base_quality
       File? gatk4_jar_override
+      String? gcs_project_for_requester_pays
 
       # Runtime parameters
       String gatk_docker
@@ -301,6 +317,15 @@ task CollectAllelicCounts {
       Boolean use_ssd = false
       Int? cpu
       Int? preemptible_attempts
+    }
+
+    parameter_meta {
+      bam: {
+        localization_optional: true
+      }
+      bam_idx: {
+        localization_optional: true
+      }
     }
 
     Int machine_mem_mb = select_first([mem_gb, 13]) * 1000
@@ -320,7 +345,8 @@ task CollectAllelicCounts {
             --input ~{bam} \
             --reference ~{ref_fasta} \
             --minimum-base-quality ~{default="20" minimum_base_quality} \
-            --output ~{allelic_counts_filename}
+            --output ~{allelic_counts_filename} \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
     >>>
 
     runtime {
@@ -603,5 +629,54 @@ task CollectModelQualityMetrics {
     output {
         File qc_status_file = "qcStatus.txt"
         String qc_status_string = read_string("qcStatus.txt")
+    }
+}
+
+task ScatterPloidyCallsBySample {
+    input {
+      File contig_ploidy_calls_tar
+      Array[String] samples
+
+      # Runtime parameters
+      String docker
+      Int? mem_gb
+      Int? disk_space_gb
+      Boolean use_ssd = false
+      Int? cpu
+      Int? preemptible_attempts
+    }
+
+    Int num_samples = length(samples)
+    String out_dir = "calls_renamed"
+
+    command <<<
+      set -eu
+
+      # Extract ploidy calls
+      mkdir calls
+      tar xzf ~{contig_ploidy_calls_tar} -C calls/
+
+      # Archive call files by sample, renaming so they will be glob'd in order
+      sample_ids=(~{sep=" " samples})
+      num_samples=~{num_samples}
+      num_digits=${#num_samples}
+      for (( i=0; i<~{num_samples}; i++ ))
+      do
+        sample_id=${sample_ids[$i]}
+        padded_sample_index=$(printf "%0${num_digits}d" $i)
+        tar -czf sample_${padded_sample_index}.${sample_id}.contig_ploidy_calls.tar.gz -C calls/SAMPLE_${i} .
+      done
+    >>>
+    
+    runtime {
+        docker: docker
+        memory: select_first([mem_gb, 2]) + " GiB"
+        disks: "local-disk " + select_first([disk_space_gb, 10]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        Array[File] sample_contig_ploidy_calls_tar = glob("sample_*.contig_ploidy_calls.tar.gz")
     }
 }

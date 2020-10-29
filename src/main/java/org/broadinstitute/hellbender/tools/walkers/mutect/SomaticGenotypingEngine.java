@@ -96,7 +96,7 @@ public class SomaticGenotypingEngine {
         }
 
         if (MTAC.likelihoodArgs.phredScaledGlobalReadMismappingRate > 0) {
-            logReadLikelihoods.normalizeLikelihoods(NaturalLogUtils.qualToLogErrorProb(MTAC.likelihoodArgs.phredScaledGlobalReadMismappingRate));
+            logReadLikelihoods.normalizeLikelihoods(NaturalLogUtils.qualToLogErrorProb(MTAC.likelihoodArgs.phredScaledGlobalReadMismappingRate), true);
         }
         final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods = logReadLikelihoods.groupEvidence(MTAC.independentMates ? read -> read : GATKRead::getName, Fragment::createAndAvoidFailure);
 
@@ -108,7 +108,7 @@ public class SomaticGenotypingEngine {
             }
 
             // converting haplotype likelihoods to allele likelihoods
-            final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes);
+            final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, true);
             final AlleleLikelihoods<Fragment, Allele> logLikelihoods = logFragmentLikelihoods.marginalize(alleleMapper);
             final SimpleInterval variantCallingRelevantFragmentOverlap = new SimpleInterval(mergedVC).expandWithinContig(MTAC.informativeReadOverlapMargin, header.getSequenceDictionary());
             logLikelihoods.retainEvidence(variantCallingRelevantFragmentOverlap::overlaps);

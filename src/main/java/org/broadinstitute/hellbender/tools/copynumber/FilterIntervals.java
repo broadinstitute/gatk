@@ -104,6 +104,10 @@ import java.util.stream.IntStream;
  *          -O filtered_intervals.interval_list
  * </pre>
  *
+ * <h3>Caveats</h3>
+ * <p>Note that a minimum mappability greater than zero and/or a maximum segmental duplication content less than one
+ * both have the potential to exclude real variant calls by excluding their intervals due to these criteria.</p>
+ *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(

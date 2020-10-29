@@ -1,15 +1,20 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -77,7 +82,11 @@ public final class AssemblyRegion implements Locatable {
 
     private static SimpleInterval makePaddedSpan(final SimpleInterval activeSpan, final int padding, final SAMFileHeader header) {
         final String contig = activeSpan.getContig();
-        return IntervalUtils.trimIntervalToContig(contig, activeSpan.getStart() - padding, activeSpan.getEnd() + padding, header.getSequence(contig).getSequenceLength());
+        final SAMSequenceRecord sequence = header.getSequence(contig);
+        if( sequence == null) {
+            throw new UserException.MissingContigInSequenceDictionary(contig, header.getSequenceDictionary());
+        }
+        return IntervalUtils.trimIntervalToContig(contig, activeSpan.getStart() - padding, activeSpan.getEnd() + padding, sequence.getSequenceLength());
     }
 
     /**
@@ -221,7 +230,8 @@ public final class AssemblyRegion implements Locatable {
         final AssemblyRegion result = new AssemblyRegion( newActiveSpan, newPaddedSpan, isActive, header );
 
         final List<GATKRead> trimmedReads = reads.stream()
-                .map(read -> ReadClipper.hardClipToRegion(read, newPaddedSpan.getStart(), newPaddedSpan.getEnd()))
+                .map(read -> {GATKRead clipped = ReadClipper.hardClipToRegion(read, newPaddedSpan.getStart(), newPaddedSpan.getEnd());
+                              return clipped;})
                 .filter(read -> !read.isEmpty() && read.overlaps(result.paddedSpan))
                 .sorted(new ReadCoordinateComparator(header))
                 .collect(Collectors.toList());
@@ -230,6 +240,7 @@ public final class AssemblyRegion implements Locatable {
         result.addAll(trimmedReads);
         return result;
     }
+
 
     /**
      * Add read to this region
@@ -304,9 +315,17 @@ public final class AssemblyRegion implements Locatable {
         Utils.validateArg( padding >= 0, () -> "padding must be a positive integer but got " + padding);
         Utils.validateArg( genomeLoc.size() > 0, () -> "GenomeLoc must have size > 0 but got " + genomeLoc);
 
-        return referenceReader.getSubsequenceAt( genomeLoc.getContig(),
+        final String contig = genomeLoc.getContig();
+        final SAMSequenceDictionary sequenceDictionary = referenceReader.getSequenceDictionary();
+        final SAMSequenceRecord sequence = sequenceDictionary.getSequence(contig);
+        if ( sequence == null ) {
+            throw new UserException.MissingContigInSequenceDictionary("Contig: " + contig + " not found in reference dictionary." +
+                    "\nPlease check that you are using a compatible reference for your data." +
+                    "\nReference Contigs: " + ReadUtils.prettyPrintSequenceRecords(sequenceDictionary));
+        }
+        return referenceReader.getSubsequenceAt(contig,
                 Math.max(1, genomeLoc.getStart() - padding),
-                Math.min(referenceReader.getSequenceDictionary().getSequence(genomeLoc.getContig()).getSequenceLength(), genomeLoc.getEnd() + padding) ).getBases();
+                Math.min(sequence.getSequenceLength(), genomeLoc.getEnd() + padding)).getBases();
     }
 
     /**

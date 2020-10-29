@@ -259,7 +259,7 @@ public final class KernelSegmenter<DATA> {
         //do not all appear at only a single window size)
         for (final int windowSize : windowSizes) {
             logger.debug(String.format("Calculating local changepoints costs for window size %d...", windowSize));
-            if (windowSize > data.size()) {
+            if (2 * windowSize > data.size()) {
                 logger.warn(String.format("Number of points needed to calculate local changepoint costs (2 * window size = %d) " +
                         "exceeds number of data points (%d).  Local changepoint costs will not be calculated for this window size.",
                         2 * windowSize, data.size()));

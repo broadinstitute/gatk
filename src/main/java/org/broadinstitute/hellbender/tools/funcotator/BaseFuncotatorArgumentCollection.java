@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
@@ -12,19 +13,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-abstract class BaseFuncotatorArgumentCollection implements Serializable {
+public abstract class BaseFuncotatorArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /** String representing the b37 version of the homo sapiens reference. */
-    protected static String FuncotatorReferenceVersionB37 = "b37";
+    protected static final String FuncotatorReferenceVersionB37 = "b37";
     /**
      * String representing the hg19 version of the homo sapiens reference.
      * This variable is necessary to resolve the differences between b37 and hg19 when
      * dealing with Homo Sapiens samples.
      */
-    protected static String FuncotatorReferenceVersionHg19 = "hg19";
+    @VisibleForTesting
+    public static final String FuncotatorReferenceVersionHg19 = "hg19";
     /** String representing the hg38 version of the homo sapiens reference. */
-    protected static String FuncotatorReferenceVersionHg38 = "hg38";
+    @VisibleForTesting
+    public static final String FuncotatorReferenceVersionHg38 = "hg38";
 
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

@@ -73,6 +73,9 @@ workflow CNVSomaticPairWorkflow {
       # Use as a last resort to increase the disk given to every task in case of ill behaving data
       Int? emergency_extra_disk
 
+      # Required if BAM/CRAM is in a requester pays bucket
+      String? gcs_project_for_requester_pays
+
       ####################################################
       #### optional arguments for PreprocessIntervals ####
       ####################################################
@@ -212,7 +215,8 @@ workflow CNVSomaticPairWorkflow {
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_collect_counts,
             disk_space_gb = collect_counts_tumor_disk,
-            preemptible_attempts = preemptible_attempts
+            preemptible_attempts = preemptible_attempts,
+            gcs_project_for_requester_pays = gcs_project_for_requester_pays
     }
 
     Int collect_allelic_counts_tumor_disk = tumor_bam_size + ref_size + disk_pad
@@ -229,7 +233,8 @@ workflow CNVSomaticPairWorkflow {
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_collect_allelic_counts,
             disk_space_gb = collect_allelic_counts_tumor_disk,
-            preemptible_attempts = preemptible_attempts
+            preemptible_attempts = preemptible_attempts,
+            gcs_project_for_requester_pays = gcs_project_for_requester_pays
     }
 
     Int denoise_read_counts_tumor_disk = read_count_pon_size + ceil(size(CollectCountsTumor.counts, "GB")) + disk_pad
@@ -349,7 +354,8 @@ workflow CNVSomaticPairWorkflow {
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_collect_counts,
                 disk_space_gb = collect_counts_normal_disk,
-                preemptible_attempts = preemptible_attempts
+                preemptible_attempts = preemptible_attempts,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
 
         Int collect_allelic_counts_normal_disk = normal_bam_size + ref_size + disk_pad
@@ -366,7 +372,8 @@ workflow CNVSomaticPairWorkflow {
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_collect_allelic_counts,
                 disk_space_gb = collect_allelic_counts_normal_disk,
-                preemptible_attempts = preemptible_attempts
+                preemptible_attempts = preemptible_attempts,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
 
         Int denoise_read_counts_normal_disk = read_count_pon_size + ceil(size(CollectCountsNormal.counts, "GB")) + disk_pad

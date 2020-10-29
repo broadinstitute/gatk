@@ -32,6 +32,9 @@ public final class Haplotype extends Allele {
     private int alignmentStartHapwrtRef;
     private double score = Double.NaN;
 
+    // debug information for tracking kmer sizes used in graph construction for debug output
+    private int kmerSize = 0;
+
     /**
      * Main constructor
      *
@@ -120,6 +123,7 @@ public final class Haplotype extends Allele {
         ret.setCigar(leadingIndelTrimmedNewCigar);
         ret.setGenomeLocation(loc);
         ret.setScore(score);
+        ret.setKmerSize(kmerSize);
         ret.setAlignmentStartHapwrtRef(newStart + getAlignmentStartHapwrtRef());
         return ret;
     }
@@ -259,4 +263,11 @@ public final class Haplotype extends Allele {
     }
 
 
+    public int getKmerSize() {
+        return kmerSize;
+    }
+
+    public void setKmerSize(int kmerSize) {
+        this.kmerSize = kmerSize;
+    }
 }

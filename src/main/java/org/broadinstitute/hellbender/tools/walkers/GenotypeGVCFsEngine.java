@@ -9,6 +9,7 @@ import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
@@ -41,8 +42,8 @@ public class GenotypeGVCFsEngine
     private VariantAnnotatorEngine annotationEngine = null;
 
     //the genotyping engine
-    private GenotypingEngine<?> genotypingEngine = null;
     private GenotypingEngine<?> forceOutputGenotypingEngine = null;
+    private MinimalGenotypingEngine genotypingEngine = null;
 
     // the INFO field annotation key names to remove
     private final List<String> infoFieldAnnotationKeyNamesToRemove = new ArrayList<>();
@@ -57,6 +58,8 @@ public class GenotypeGVCFsEngine
     private VCFHeader outputHeader;
 
     private SampleList samples;
+
+    private DragstrParams dragStrParams;
 
     final VCFHeader inputVCFHeader;
 
@@ -96,7 +99,7 @@ public class GenotypeGVCFsEngine
 
         // We only want the engine to generate the AS_QUAL key if we are using AlleleSpecific annotations.
         genotypingEngine = new MinimalGenotypingEngine(createMinimalArgs(false), samples,
-                annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific));
+                annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific), this.dragStrParams);
         forceOutputGenotypingEngine = new MinimalGenotypingEngine(createMinimalArgs(true), samples,
                 annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific));
 
@@ -118,7 +121,12 @@ public class GenotypeGVCFsEngine
     {
         final List<VariantContext> variantsToProcess = getVariantSubsetToProcess(loc, variants);
 
-        ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
+        if (dragStrParams == null || genotypeArgs.dontUseDragstrPriors) {
+            ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
+        } else {
+            ref.setWindow(dragStrParams.maximumLengthInBasePairs(), dragStrParams.maximumLengthInBasePairs());
+        }
+        genotypingEngine.setReferenceContext(ref);
         final VariantContext mergedVC = merger.merge(variantsToProcess, loc, ref.getBase(), true, false);
         final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, outputNonVariants, tlodThreshold, afTolerance) :
                 regenotypeVC(mergedVC, ref, features, outputNonVariants);
@@ -226,8 +234,8 @@ public class GenotypeGVCFsEngine
         return new VariantContextBuilder(newVC).attributes(attrs).make();
     }
 
-    private VariantContext calculateGenotypes(VariantContext vc, final boolean forceOutput){
-        return (forceOutput ? forceOutputGenotypingEngine : genotypingEngine).calculateGenotypes(vc);
+    private VariantContext calculateGenotypes(VariantContext vc, final boolean forceOutput) {
+        return (forceOutput ? forceOutputGenotypingEngine : genotypingEngine).calculateGenotypes(vc, null, Collections.emptyList());
     }
 
     /**
@@ -354,7 +362,7 @@ public class GenotypeGVCFsEngine
      */
     private StandardCallerArgumentCollection createMinimalArgs(final boolean forceOutput) {
         final StandardCallerArgumentCollection args = new StandardCallerArgumentCollection();
-        args.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
+        args.genotypeArgs = genotypeArgs.clone();
 
         //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to args separately
         //Note: GATK3 uses OutputMode.EMIT_ALL_CONFIDENT_SITES when includeNonVariants is requested
@@ -392,6 +400,7 @@ public class GenotypeGVCFsEngine
         if ( dbsnp.dbsnp != null  ) {
             VCFStandardHeaderLines.addStandardInfoLines(headerLines, true, VCFConstants.DBSNP_KEY);
         }
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
         final Set<String> sampleNameSet = samples.asSetOfSamples();
         outputHeader = new VCFHeader(headerLines, new TreeSet<>(sampleNameSet));

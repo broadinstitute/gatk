@@ -2,7 +2,9 @@ package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
@@ -83,11 +85,13 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
         programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
+@WorkflowProperties
 public final class PrintReads extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="Write output to this file")
+    @WorkflowOutput(optionalCompanions={StandardArgumentDefinitions.OUTPUT_INDEX_COMPANION})
     public GATKPath output;
     private SAMFileGATKReadWriter outputWriter;
 

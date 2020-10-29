@@ -7,7 +7,6 @@ import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -24,7 +23,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.AssemblyBasedSVDiscoveryTestDataProviderForInversionBreakpoints.LONG_CONTIG1;
 import static org.testng.Assert.assertEquals;
 
@@ -67,7 +66,8 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
 
         final List<SAMRecord> reads = Stream.of(read1, read2, read3).map(read -> read.convertToSAMRecord(null)).collect(Collectors.toList());
 
-        final AlignedContig alignedContig = SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser.parseReadsAndOptionallySplitGappedAlignments(reads, GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, true);
+        final AlignedContig alignedContig =
+                AlignedContig.parseReadsAndOptionallySplitGappedAlignments(reads, GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, true);
         assertEquals(alignedContig.getContigSequence(), read2.getBases());
 
         assertEquals(alignedContig.getAlignments().size(), 3);
@@ -95,7 +95,8 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
 
         final List<SAMRecord> reads2 = Stream.of(read4, read5).map(read -> read.convertToSAMRecord(null)).collect(Collectors.toList());
 
-        final AlignedContig alignedContig2 = SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser.parseReadsAndOptionallySplitGappedAlignments(reads2, GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, true);
+        final AlignedContig alignedContig2 =
+                AlignedContig.parseReadsAndOptionallySplitGappedAlignments(reads2, GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, true);
         // these should be the reverse complements of each other
         assertEquals(alignedContig2.getContigSequence().length, read4.getBases().length);
 
@@ -189,8 +190,7 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         final SAMRecord unmappedSam = ArtificialReadUtils.createArtificialUnmappedRead(header, new byte[]{}, new byte[]{}).convertToSAMRecord(header);
         AlignedContig unmappedContig =
-                SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser.
-                        parseReadsAndOptionallySplitGappedAlignments(Collections.singletonList(unmappedSam),
+                AlignedContig.parseReadsAndOptionallySplitGappedAlignments(Collections.singletonList(unmappedSam),
                                 GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, true);
         Assert.assertTrue(unmappedContig.isUnmapped());
     }

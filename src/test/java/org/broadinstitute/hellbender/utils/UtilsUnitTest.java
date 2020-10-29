@@ -40,7 +40,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         Utils.forceJVMLocaleToUSEnglish();
 
         // Get the current locale
-        Locale l = Locale.getDefault();
+        final Locale l = Locale.getDefault();
 
         Assert.assertEquals(l, Locale.US);
     }

@@ -44,6 +44,12 @@ import java.util.stream.Stream;
 
 public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
+    // If true, update the expected outputs in tests that assert an exact match vs. prior output,
+    // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=GenotypeGVCFsIntegrationTest"
+    // to update all of the exact-match tests at once. After you do this, you should look at the
+    // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+
     private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
      private static final String BASE_PAIR_EXPECTED = "gvcf.basepairResolution.gatk3.7_30_ga4f720357.output.vcf";
     private static final String b38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
@@ -161,6 +167,14 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 {NA12878_HG37, getTestFile("newMQcalc.singleSample.genotyped.vcf"), new SimpleInterval("20", 1, 11_000_000), b37_reference_20_21},
                 {new File(getTestDataDir() + "/walkers/CombineGVCFs/newMQcalc.combined.g.vcf"), getTestFile("newMQcalc.combined.genotyped.vcf"), new SimpleInterval("20", 1, 11_000_000), b37_reference_20_21}
         };
+    }
+
+    /*
+     * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on
+     */
+    @Test
+    public void assertThatExpectedOutputUpdateToggleIsDisabled() {
+        Assert.assertFalse(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS, "The toggle to update expected outputs should not be left enabled");
     }
 
     /*
@@ -354,12 +368,13 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     private void runGenotypeGVCFSAndAssertSomething(String input, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
-        final File output = createTempFile("genotypegvcf", ".vcf");
+        final File output = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected : createTempFile("genotypegvcf", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
                 .add("V", input)
                 .addFlag(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false)
                 .addOutput(output);
 
         additionalArguments.forEach(args::addRaw);
@@ -367,12 +382,14 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
         runCommandLine(args);
 
-        final List<VariantContext> expectedVC = VariantContextTestUtils.getVariantContexts(expected);
-        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
-        try {
-            assertForEachElementInLists(actualVC, expectedVC, assertion);
-        } catch (final AssertionError error) {
-            throw error;
+        if (! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
+            final List<VariantContext> expectedVC = VariantContextTestUtils.getVariantContexts(expected);
+            final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
+            try {
+                assertForEachElementInLists(actualVC, expectedVC, assertion);
+            } catch (final AssertionError error) {
+                throw error;
+            }
         }
     }
 

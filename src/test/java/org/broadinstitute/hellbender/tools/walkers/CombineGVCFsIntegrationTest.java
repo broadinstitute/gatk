@@ -9,6 +9,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.collections.IteratorUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -179,6 +180,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         for (File input: inputs) {
             args.add("V", input.getAbsolutePath());
         }
+        args.add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
 
         // Handling a difference in syntax between GATK3 and GATK4 wrt. annotation groups
         additionalArguments = additionalArguments.stream().map(a -> a.contains("Standard") ? a + "Annotation" : a).collect(Collectors.toList());

@@ -745,10 +745,13 @@ public class Funcotator extends VariantWalker {
     @Override
     public void onTraversalStart() {
 
-        logger.info("Validating Sequence Dictionaries...");
         if (seqValidationArguments.performSequenceDictionaryValidation()) {
+            logger.info("Validating sequence dictionaries...");
             // Ensure that the reference dictionary is a superset of the variant dictionary:
             checkReferenceDictionaryIsSupersetOfVariantDictionary();
+        }
+        else {
+            logger.info("Skipping sequence dictionary validation.");
         }
 
         logger.info("Processing user transcripts/defaults/overrides...");
