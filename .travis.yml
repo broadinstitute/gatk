@@ -182,12 +182,12 @@ script:
   docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_PASS;
   $GCLOUD_HOME/gcloud components -q update gsutil;
   gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
-  sudo ./gradlew bundle;
+  ./gradlew bundle;
   ZIP_FILE="$(ls build/ | grep '^gatk.*.zip$' | grep -iv python)";
   echo "Uploading zip to gs://gatk-nightly-builds/";
   $GCLOUD_HOME/gsutil -m cp build/$ZIP_FILE gs://gatk-nightly-builds/"$(date +%Y-%m-%d)"-$ZIP_FILE;
 
-  sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u;
+  bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u;
   DOCKER_TAG=$(docker images -q | head -n 1);
   DATE=$(date +%Y-%m-%d);
   DOCKER_NIGHTLY_TAG=broadinstitute/gatk-nightly:$DATE-$(git describe)-NIGHTLY-SNAPSHOT;
