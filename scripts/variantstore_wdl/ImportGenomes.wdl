@@ -213,7 +213,7 @@ task LoadData {
       fi
       #load should be false if using Google Storage Transfer so that the tables will be created by this script, but no data will be uploaded.
       if [ ~{load} = true ]; then
-        bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --null_marker="null" --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema}
+        bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema}
         echo "ingested ${FILES} file from $DIR into table $TABLE"
       else
         echo "${FILES} will be ingested from $DIR by Google Storage Transfer"

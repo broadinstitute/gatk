@@ -138,10 +138,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         petTsvCreator = new PetTsvCreator(sampleName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, outputDir);
         switch (mode) {
             case EXOMES:
-                vetTsvCreator = new ExomeVetTsvCreator(sampleName, sampleId, tableNumberPrefix, outputDir);
-                break;
             case GENOMES:
-                vetTsvCreator = new GenomeVetTsvCreator(sampleName, sampleId, tableNumberPrefix, outputDir);
+                vetTsvCreator = new VetTsvCreator(sampleName, sampleId, tableNumberPrefix, outputDir);
                 break;
             case ARRAYS:
                 throw new UserException.BadInput("To ingest Array data, use CreateArrayIngestFiles tool.");
