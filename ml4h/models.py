@@ -985,9 +985,10 @@ def make_multimodal_multitask_model(
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
         m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
-        m.compile(optimizer=opt, loss=custom_dict['loss'])
+        m.compile(optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
+                  metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out})
         m.summary()
-        logging.info("Loaded model file from: {}".format(kwargs['model_file']))
+        logging.info(f"Loaded model file from: {kwargs['model_file']}")
         return m
 
     # list of filter dimensions should match the number of convolutional layers = len(dense_blocks) + [ + len(conv_layers) if convolving input tensors]
@@ -1212,7 +1213,9 @@ def train_model_from_generators(
     generate_valid.kill_workers()
 
     logging.info('Model weights saved at: %s' % model_file)
-    model = load_model(model_file, custom_objects=_get_custom_objects(generate_train.output_maps))
+    custom_dict = _get_custom_objects(generate_train.output_maps)
+    model = load_model(model_file, custom_objects=custom_dict, compile=False)
+    model.compile(optimizer='adam', loss=custom_dict['loss'])
     if plot:
         plot_metric_history(history, training_steps, run_id, os.path.dirname(model_file))
     if return_history:
