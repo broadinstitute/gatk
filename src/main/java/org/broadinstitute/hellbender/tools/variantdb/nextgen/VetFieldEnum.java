@@ -4,6 +4,8 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
@@ -76,16 +78,19 @@ public enum VetFieldEnum {
             if (out == null) {
                 throw new UserException("Cannot be missing required value for alternate_bases.AS_RAW_MQ");
             }
-            if (out.endsWith("|0.00")) {
-                out = out.substring(0, out.length() - 5);
+            if (!out.endsWith("|0.00")) {
+                logger.warn("Expected AS_RAW_MQ value to end in |0.00. value is: " + out + " for variant " + variant.toString());
+            }
+            //if (out.endsWith("|0.00")) {
+                out = out.substring(0, out.lastIndexOf("|"));
                 String[] outValues = out.split("\\|");
                 out = Arrays
                         .stream(outValues)
                         .map(val -> val.endsWith(".00") ? val.substring(0, val.length() - 3) : val)
                         .collect(Collectors.joining(VCFConstants.PHASED));
-            } else {
-                throw new UserException("Expected AS_RAW_MQ value to end in |0.00");
-            }
+//            } else {
+//                throw new UserException("Expected AS_RAW_MQ value to end in |0.00. value is: " + out +" for variant " + variant.toString());
+//            }
             return out;
         }
     },
@@ -105,7 +110,9 @@ public enum VetFieldEnum {
             if (out.endsWith("|NaN")) {
                 out = out.substring(0, out.length() - 4);
             } else {
-                throw new UserException("Expected AS_RAW_MQRankSum value to be ||, ||| or to end in |NaN");
+                // for now remove the last value even if not NaN
+                out = out.substring(0, out.lastIndexOf("|"));
+                //throw new UserException("Expected AS_RAW_MQRankSum value to be ||, ||| or to end in |NaN");
             }
             return out;
 
@@ -154,7 +161,9 @@ public enum VetFieldEnum {
             if (out.endsWith("|NaN")) {
                 out = out.substring(0, out.length() - 4);
             } else {
-                throw new UserException("Expected AS_RAW_ReadPosRankSum value to be ||, ||| or to end in |NaN");
+                // for now remove the last value even if not NaN
+                out = out.substring(0, out.lastIndexOf("|"));
+                //throw new UserException("Expected AS_RAW_ReadPosRankSum value to be ||, ||| or to end in |NaN");
             }
             return out;
         }
@@ -169,7 +178,9 @@ public enum VetFieldEnum {
             if (out.endsWith("|0,0")) {
                 out = out.substring(0, out.length() - 4);
             } else {
-                throw new UserException("Expected AS_SB_TABLE value to end in |0,0");
+                // for now remove the last value even if not NaN
+                out = out.substring(0, out.lastIndexOf("|"));
+                //throw new UserException("Expected AS_SB_TABLE value to end in |0,0");
             }
             return out;
         }
@@ -185,7 +196,9 @@ public enum VetFieldEnum {
             if (out.endsWith("|0")) {
                 out = out.substring(0, out.length() - 2);
             } else {
-                throw new UserException("Expected AS_VarDP value to end in |0");
+                // for now remove the last value even if not NaN
+                out = out.substring(0, out.lastIndexOf("|"));
+                //throw new UserException("Expected AS_VarDP value to end in |0");
             }
             return out;
         }
@@ -206,7 +219,9 @@ public enum VetFieldEnum {
             if (out.endsWith(",0")) {
                 out = out.substring(0, out.length() - 2);
             } else {
-                throw new UserException("Expected call_AD to have a final value of 0");
+                // for now remove the last value even if not NaN
+                out = out.substring(0, out.lastIndexOf("|"));
+                //throw new UserException("Expected call_AD to have a final value of 0");
             }
             return out;
         }
@@ -248,9 +263,12 @@ public enum VetFieldEnum {
         }
     };
 
+
     public String getColumnValue(final VariantContext variant) {
         throw new IllegalArgumentException("Not implemented");
     }
+
+    static final Logger logger = LogManager.getLogger(CreateVariantIngestFiles.class);
 
     private static String getAttribute(VariantContext vc, String key, String defaultValue){
         Object attr = vc.getAttribute(key);

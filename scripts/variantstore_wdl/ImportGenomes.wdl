@@ -104,7 +104,8 @@ task CreateImportTsvs {
     String? for_testing_only
   }
 
-  Int disk_size = ceil(size(input_vcf, "GB") * 2.5) + 20
+  Int multiplier = if defined(drop_state) then 4 else 10
+  Int disk_size = ceil(size(input_vcf, "GB") * multiplier) + 20
 
   meta {
     description: "Creates a tsv file for imort into BigQuery"
@@ -126,7 +127,7 @@ task CreateImportTsvs {
       gatk --java-options "-Xmx2500m" CreateVariantIngestFiles \
         -V ~{input_vcf} \
         -L ~{interval_list} \
-        ~{"-IG" + drop_state} \
+        ~{"-IG " + drop_state} \
         ~{"-QCF " + input_metrics} \
         --mode GENOMES \
         -SNM ~{sample_map} \
@@ -138,7 +139,7 @@ task CreateImportTsvs {
   >>>
   runtime {
       docker: docker
-      memory: "4 GB"
+      memory: "10 GB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
       cpu: 2
