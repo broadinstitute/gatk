@@ -66,7 +66,7 @@ releases of the toolkit.
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater. Required to download the large files used to build GATK, and
       test files required to run the test suite. Run `git lfs install` after downloading, followed by `git lfs pull` from
       the root of your git clone to download all of the large files, including those required to run the test suite. The
-      full download is approximately 2 gigabytes. Alternatively, if you are just building GATK and not running the test
+      full download is approximately 5 gigabytes. Alternatively, if you are just building GATK and not running the test
       suite, you can skip this step since the build itself will use git-lfs to download the minimal set of large `lfs`
       resource files required to complete the build. The test resources will not be downloaded, but this greatly reduces
       the size of the download.
@@ -444,7 +444,7 @@ We use [git-lfs](https://git-lfs.github.com/) to version and distribute test dat
     * This adds hooks to your git configuration that will cause git-lfs files to be checked out for you automatically in the future.
     
 * To manually retrieve the large test data, run `git lfs pull` from the root of your GATK git clone.
-    * The download is several hundred megabytes.
+    * The download size is approximately 5 gigabytes.
     
 * To add a new large file to be tracked by git-lfs, simply:
     * Put the new file(s) in `src/test/resources/large` (or a subdirectory)
