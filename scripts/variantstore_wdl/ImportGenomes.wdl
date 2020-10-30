@@ -13,6 +13,7 @@ workflow ImportGenomes {
     File pet_schema
     File vet_schema
     File metadata_schema
+    String? drop_state
     #TODO: determine table_id from input sample_map (including looping over multiple table_ids)
     Int table_id
 
@@ -34,6 +35,7 @@ workflow ImportGenomes {
         interval_list = interval_list,
         input_metrics = input_metric,
         sample_map = sample_map,
+        drop_state = drop_state,
         output_directory = output_directory,
         gatk_override = gatk_override,
         docker = docker_final,
@@ -92,6 +94,7 @@ task CreateImportTsvs {
     File interval_list
     String output_directory
     File sample_map
+    String? drop_state
 
     # runtime
     Int? preemptible_tries
@@ -123,6 +126,7 @@ task CreateImportTsvs {
       gatk --java-options "-Xmx2500m" CreateVariantIngestFiles \
         -V ~{input_vcf} \
         -L ~{interval_list} \
+        ~{"-IG" + drop_state} \
         ~{"-QCF " + input_metrics} \
         --mode GENOMES \
         -SNM ~{sample_map} \

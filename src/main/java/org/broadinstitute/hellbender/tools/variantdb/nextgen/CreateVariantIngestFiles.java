@@ -58,7 +58,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             shortName = "IG",
             doc = "Ref Block GQ band to ignore, bands of 10 e.g 0-9 get combined to 0, 20-29 get combined to 20",
             optional = true)
-    public PetTsvCreator.GQStateEnum gqStateToIgnore = PetTsvCreator.GQStateEnum.SIXTY;
+    public PetTsvCreator.GQStateEnum gqStateToIgnore = null;
 
     @Argument(fullName = "sample-name-mapping",
             shortName = "SNM",
