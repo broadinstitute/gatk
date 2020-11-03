@@ -75,6 +75,8 @@ _EPILOG = _epilog_regex.match(globals()['__doc__']).groups(0)[0].replace('%prog'
 _description_regex = re.compile(r'.*DESCRIPTION(\s+.*?)EXAMPLES.*', re.MULTILINE | re.DOTALL)
 _DESCRIPTION = _description_regex.match(globals()['__doc__']).groups(0)[0]
 
+CONTIG_PCT_POS_CHECK = 30
+
 LOGGER = logging.getLogger(__name__)
 
 ########################################
@@ -108,6 +110,14 @@ def _setup_argument_parser():
     _parser.add_argument("-v", "--verbosity", action='store', nargs=1, dest="log_level",
                          choices=log_levels, default=['INFO'], required=False,
                          help="Set the logging level.")
+
+    _parser.add_argument('-d', "--detailed", action='store_true',
+                         help="Perform detailed all-to-all base-level analysis on all contigs that are not identical by"
+                              " sequence dictionary md5sum."
+                              "This will check lengths of all contigs.  Then for all equal length contigs a portion of"
+                              " the contig will be examined approxmiately 30% of the way into the contig.  If these "
+                              "subsequences are identical or nearly identical then the contigs will be processed and "
+                              "exact differences will be emitted as variants.")
 
     _parser.add_argument('ref_files', metavar='REFERENCE_FASTA', type=str, nargs='+',
                          help="Reference FASTA file to compare.")
@@ -361,6 +371,57 @@ def print_contig_table(unique_contig_map, identical_contig_map, seq_dict_map):
                     fields_to_print.append("----")
             print(row_format_string.format(*fields_to_print))
 
+
+def perform_detailed_analysis(_args, identical_contig_map, seq_dict_map):
+    """Perform detailed all-to-all base-level analysis on all contigs that are not identical by
+    sequence dictionary md5sum.
+
+    This will check lengths of all contigs.  Then for all equal length contigs a portion of
+    the contig will be examined approxmiately 30% of the way into the contig.  If these
+    subsequences are identical or nearly identical then the contigs will be processed and
+    exact differences will be emitted as variants."""
+
+    num_refs = len(seq_dict_map.keys())
+    LOGGER.info("Performing detailed analysis of %d references...", num_refs)
+
+    # First get a list of contigs that might be equal:
+    contig_lengths_dict = dict()
+    for ref in seq_dict_map.keys():
+        for contig in seq_dict_map[ref]:
+            contig_length = seq_dict_map[ref][contig].length
+            if contig_length not in contig_lengths_dict:
+                contig_lengths_dict[contig_length] = {ref: contig}
+            else:
+                contig_lengths_dict[contig_length][ref] = contig
+
+    # Remove any contigs that have unique lengths that are
+    # represented across all references so we do less work:
+    contig_lengths = list(contig_lengths_dict.keys())
+    lengths_to_remove = set()
+    for l in contig_lengths:
+        if len(contig_lengths_dict[l]) == 1:
+            lengths_to_remove.add(l)
+            continue
+        for ref, contig_name in contig_lengths_dict[l].items():
+            if contig_name in identical_contig_map[ref]:
+                if len(identical_contig_map[ref][contig_name]) == (num_refs - 1):
+                    lengths_to_remove.add(l)
+
+    for l in lengths_to_remove:
+        del contig_lengths_dict[l]
+
+    if LOGGER.isEnabledFor(logging.INFO):
+        LOGGER.info("Possibly identical seqs: ")
+        for l in contig_lengths_dict.keys():
+            LOGGER.info("    Length: %d: %s", l,
+                        ", ".join([f"{ref}[{contig_name}]" for ref, contig_name in contig_lengths_dict[l].items()]))
+
+    LOGGER.info("Sampling bases from %d%% through contigs to determine if full check should be performed.",
+                CONTIG_PCT_POS_CHECK)
+
+    for l in contig_lengths_dict.keys():
+        bases = ""
+
 ########################################
 # Main function:
 ####################
@@ -372,6 +433,10 @@ def _main(_args):
     # Do a dictionary comparison:
     unique_contig_map, identical_contig_map, seq_dict_map = analyze_sequence_dictionaries(_args)
     print_contig_table(unique_contig_map, identical_contig_map, seq_dict_map)
+
+    # Do an in-depth comparison of the non-identical contigs if requested:
+    if _args.detailed:
+        variants = perform_detailed_analysis(_args, identical_contig_map, seq_dict_map)
 
 
 ################################################################################
@@ -412,3 +477,4 @@ if __name__ == '__main__':
         LOGGER.critical(str(e))
         traceback.print_exc()
         sys.exit(1)
+
