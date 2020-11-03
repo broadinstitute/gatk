@@ -2,7 +2,7 @@ from distutils.core import setup
 import re
 import sys
 
-assert sys.version_info >= (3, 4), "gcnvkernel requires Python 3.4.x or later"
+assert sys.version_info >= (3, 6, 10), "gcnvkernel requires Python 3.6.10 or later"
 
 def get_version_string():
     version_file = "gcnvkernel/_version.py"
@@ -33,8 +33,8 @@ setup(
     long_description=open('gcnvkernel/README.txt').read(),
     install_requires=[
         "theano == 1.0.4",
-        "pymc3 == 3.1",
-        "numpy >= 1.13.1",
-        "scipy >= 0.19.1",
+        "pymc3 == 3.9.2",
+        "numpy == 1.19.2",
+        "scipy == 1.5.3",
         "tqdm >= 4.15.0"
     ])

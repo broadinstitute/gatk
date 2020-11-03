@@ -48,7 +48,9 @@ dependencies:
 - conda-forge::pandas=1.1.4
 - conda-forge::opt-einsum=3.0.0     # this is only included to prevent weird semi-clobbering by pip install pyro-ppl
                                     #   might need more investigation to understand this, but see https://github.com/biocore/songbird/issues/126 for possible context
-- defaults::future=0.18.2
+- defaults::future=0.18.2           # needed for pyro-ppl
+- conda-forge::contextvars=2.4      # needed for gcnvkernel
+- conda-forge::immutables=0.14      # needed for gcnvkernel
 
 # core R dependencies; these should only be used for plotting and do not take precedence over core python dependencies!
 - r-base=3.6.2

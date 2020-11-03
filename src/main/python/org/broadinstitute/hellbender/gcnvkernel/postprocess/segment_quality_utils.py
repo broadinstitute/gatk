@@ -5,7 +5,7 @@ import numpy as np
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
-from scipy.misc import logsumexp
+from scipy.special import logsumexp
 
 from ..utils.math import logsumexp_double_complement, logp_to_phred
 
