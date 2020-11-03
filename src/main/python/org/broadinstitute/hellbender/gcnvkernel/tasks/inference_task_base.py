@@ -270,7 +270,7 @@ class HybridInferenceTask(InferenceTask):
                                        tt.maximum(1.0, self.temperature - temperature_drop_per_iter))]
 
             self.continuous_model_advi = ADVIDeterministicAnnealing(
-                random_seed=self.hybrid_inference_params.random_seed,
+                #random_seed=self.hybrid_inference_params.random_seed,
                 temperature=self.temperature)
             self.continuous_model_approx: pm.MeanField = self.continuous_model_advi.approx
 
