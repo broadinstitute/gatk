@@ -329,10 +329,15 @@ def print_contig_table(unique_contig_map, identical_contig_map, seq_dict_map):
 
     # We sort first by the order in sorted_ref_names, then by alphabetical order of the contigs of the first reference
     # in sorted_ref_names:
+    printed_md5s = set()
     for ref_name in sorted_ref_names:
         identical_contig_list = sorted(identical_contig_map[ref_name].keys(), key=natural_keys)
         for contig_name in identical_contig_list:
-            fields_to_print = [seq_dict_map[ref_name][contig_name].md5sum]
+            contig_md5 = seq_dict_map[ref_name][contig_name].md5sum
+            if contig_md5 in printed_md5s:
+                continue
+
+            fields_to_print = [contig_md5]
             for ref in sorted_ref_names:
                 if ref == ref_name:
                     fields_to_print.append(contig_name)
@@ -340,7 +345,9 @@ def print_contig_table(unique_contig_map, identical_contig_map, seq_dict_map):
                     fields_to_print.append(identical_contig_map[ref_name][contig_name][ref])
                 else:
                     fields_to_print.append("----")
+
             print(row_format_string.format(*fields_to_print))
+            printed_md5s.add(contig_md5)
 
     # Now we print out the unique contigs from each ref in the same order:
     for ref_name in sorted_ref_names:
