@@ -19,7 +19,7 @@ channels:
 dependencies:
 
 # core python dependencies
-- defaults::conda=4.9.1             # TODO update version of miniconda in the base when 4.9.1 is available
+- defaults::conda=4.9.1             # TODO update version of miniconda in the gatkbase Docker image when 4.9.1 is available
 - conda-forge::python=3.6.10        # update only if absolutely necessary, as this may cause conflicts with other core dependencies
 - pip=20.0.2                        # specifying channel may cause a warning to be emitted by conda
 - defaults::blas=1.0=mkl            # MKL typically provides dramatic performance increases for core dependencies; must include build string "=mkl" at end (do not include build strings elsewhere)
