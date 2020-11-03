@@ -82,12 +82,12 @@ public enum VetFieldEnum {
                 if(!out.endsWith("|0.00")) {
                     logger.warn("Expected AS_RAW_MQ value to end in |0.00. value is: " + out + " for variant " + variant.toString());
                 }
-                    out = out.substring(0, out.lastIndexOf("|"));
-                    String[] outValues = out.split("\\|");
-                    out = Arrays
-                            .stream(outValues)
-                            .map(val -> val.endsWith(".00") ? val.substring(0, val.length() - 3) : val)
-                            .collect(Collectors.joining(VCFConstants.PHASED));
+                out = out.substring(0, out.lastIndexOf("|"));
+                String[] outValues = out.split("\\|");
+                out = Arrays
+                        .stream(outValues)
+                        .map(val -> val.endsWith(".00") ? val.substring(0, val.length() - 3) : val)
+                        .collect(Collectors.joining(VCFConstants.PHASED));
                 return out;
             // If we have gvcfs that are not allele specific from GATK4 we'll get RAW_MQandDP.
             // We can drop DP here and use AS_VarDP when finalizing RMS Mapping Quality
