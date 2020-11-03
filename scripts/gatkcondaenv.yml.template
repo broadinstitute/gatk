@@ -13,33 +13,40 @@
 name: $condaEnvName
 channels:
 # if channels other than conda-forge are added and the channel order is changed (note that conda channel_priority is currently set to flexible),
-# verify that key dependencies are installed from the correct channel and compiled against MKL
+# verify that core dependencies are installed from the correct channel and compiled against MKL
 - conda-forge
 - defaults
 dependencies:
 
 # core python dependencies
-- conda-forge::python=3.6.10        # do not update
+- defaults::conda=4.9.1             # TODO update version of miniconda in the base when 4.9.1 is available
+- conda-forge::python=3.6.10        # update only if absolutely necessary, as this may cause conflicts with other core dependencies
 - pip=20.0.2                        # specifying channel may cause a warning to be emitted by conda
-- conda-forge::mkl=2019.5           # MKL typically provides dramatic performance increases for theano, tensorflow, and other key dependencies
-- conda-forge::mkl-service=2.3.0
-- conda-forge::numpy=1.17.5         # do not update, this will break scipy=0.19.1
+- defaults::blas=1.0=mkl            # MKL typically provides dramatic performance increases for core dependencies; must include build string "=mkl" at end (do not include build strings elsewhere)
+- defaults::mkl=2020.2
+- defaults::mkl-service=2.3.0
+- defaults::intel-openmp=2020.2
+- defaults::numpy=1.19.2            # update only if absolutely necessary, as this may cause conflicts with other core dependencies
                                     #   verify that numpy is compiled against MKL (e.g., by checking *_mkl_info using numpy.show_config())
-                                    #   and that it is used in tensorflow, theano, and other key dependencies
-- conda-forge::theano=1.0.4         # it is unlikely that new versions of theano will be released
+                                    #   and that it is used in tensorflow, theano, and other core dependencies
+- defaults::theano=1.0.4            # update only if absolutely necessary, as this may cause conflicts with other core dependencies
                                     #   verify that this is using numpy compiled against MKL (e.g., by the presence of -lmkl_rt in theano.config.blas.ldflags)
 - defaults::tensorflow=1.15.0       # update only if absolutely necessary, as this may cause conflicts with other core dependencies
                                     #   verify that this is using numpy compiled against MKL (e.g., by checking tensorflow.pywrap_tensorflow.IsMklEnabled())
-- conda-forge::scipy=1.0.0          # do not update, this will break a scipy.misc.logsumexp import (deprecated in scipy=1.0.0) in pymc3=3.1
-- conda-forge::pymc3=3.1            # do not update, this will break gcnvkernel
-- conda-forge::keras=2.2.4          # updated from pip-installed 2.2.0, which caused various conflicts/clobbers of conda-installed packages
+- conda-forge::scipy=1.5.3          # update only if absolutely necessary, as this may break pymc3/gcnvkernel
+- conda-forge::pymc3=3.9.2          # update only if absolutely necessary, as this may break gcnvkernel
+- defaults::keras=2.2.4             # updated from pip-installed 2.2.0, which caused various conflicts/clobbers of conda-installed packages
+                                    #   verify that this is using the tensorflow backend (e.g., by checking keras.backend.backend())
                                     #   conda-installed 2.2.4 appears to be the most recent version with a consistent API and without conflicts/clobbers
                                     #   if you wish to update, note that versions of conda-forge::keras after 2.2.5
                                     #   undesirably set the environment variable KERAS_BACKEND = theano by default
-- defaults::intel-openmp=2019.4
-- conda-forge::scikit-learn=0.22.2
-- conda-forge::matplotlib=3.2.1
-- conda-forge::pandas=1.0.3
+- pytorch::pytorch=1.7.0            # update only if absolutely necessary, as this may cause conflicts with other core dependencies
+                                    #   verify that this is compiled against MKL (e.g., by checking torch.__config__.show())
+- conda-forge::scikit-learn=0.23.2
+- conda-forge::matplotlib=3.3.2
+- conda-forge::pandas=1.1.4
+- conda-forge::opt-einsum=3.0.0
+- defaults::future=0.18.2
 
 # core R dependencies; these should only be used for plotting and do not take precedence over core python dependencies!
 - r-base=3.6.2
@@ -56,6 +63,8 @@ dependencies:
 - pyvcf=0.6.8
 - bioconda::pysam=0.15.3            # using older conda-installed versions may result in libcrypto / openssl bugs
 
-# pip installs should be avoided, as pip may not respect the dependencies found by the conda solver
+# pip installs should be avoided, as pip will not respect the dependencies found by the conda solver and will clobber conda-installed packages
+# if you must pip install a package, try to install as many of its dependencies via conda as possible
 - pip:
+  - pyro-ppl==1.5.0                 # this should only pip install pyro-api-0.1.2 and pyro-ppl-1.5.0
   - gatkPythonPackageArchive.zip
