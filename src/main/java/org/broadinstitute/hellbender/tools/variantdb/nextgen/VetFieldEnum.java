@@ -82,7 +82,7 @@ public enum VetFieldEnum {
                 if(!out.endsWith("|0.00")) {
                     logger.warn("Expected AS_RAW_MQ value to end in |0.00. value is: " + out + " for variant " + variant.toString());
                 }
-                    out = out.substring(0, out.length() - 5);
+                    out = out.substring(0, out.lastIndexOf("|"));
                     String[] outValues = out.split("\\|");
                     out = Arrays
                             .stream(outValues)
@@ -122,7 +122,7 @@ public enum VetFieldEnum {
         public String getColumnValue(final VariantContext variant) {
             String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY, null);
             if ( out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
-                out = " "; //  TODO is this better than null?
+                out = "";
                 return out;
             }
             if (out.startsWith("|")) {
@@ -173,7 +173,7 @@ public enum VetFieldEnum {
         public String getColumnValue(final VariantContext variant) {
             String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY, null);
             if (out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
-                out = " "; // TODO is this better than null?
+                out = "";
                 return out;
             }
             if (out.startsWith("|")) {
