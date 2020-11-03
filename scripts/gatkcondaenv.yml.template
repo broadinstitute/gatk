@@ -22,7 +22,8 @@ dependencies:
 - defaults::conda=4.9.1             # TODO update version of miniconda in the gatkbase Docker image when 4.9.1 is available
 - conda-forge::python=3.6.10        # update only if absolutely necessary, as this may cause conflicts with other core dependencies
 - pip=20.0.2                        # specifying channel may cause a warning to be emitted by conda
-- defaults::blas=1.0=mkl            # MKL typically provides dramatic performance increases for core dependencies; must include build string "=mkl" at end (do not include build strings elsewhere)
+- defaults::blas=1.0=mkl            # MKL typically provides dramatic performance increases for core dependencies
+                                    #   must include build string "=mkl" at end (do not include build strings elsewhere)
 - defaults::mkl=2020.2
 - defaults::mkl-service=2.3.0
 - defaults::intel-openmp=2020.2
@@ -45,7 +46,8 @@ dependencies:
 - conda-forge::scikit-learn=0.23.2
 - conda-forge::matplotlib=3.3.2
 - conda-forge::pandas=1.1.4
-- conda-forge::opt-einsum=3.0.0
+- conda-forge::opt-einsum=3.0.0     # this is only included to prevent weird semi-clobbering by pip install pyro-ppl
+                                    #   might need more investigation to understand this, but see https://github.com/biocore/songbird/issues/126 for possible context
 - defaults::future=0.18.2
 
 # core R dependencies; these should only be used for plotting and do not take precedence over core python dependencies!
