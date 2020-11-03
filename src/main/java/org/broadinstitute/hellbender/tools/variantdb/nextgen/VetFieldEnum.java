@@ -8,8 +8,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
-import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.ArrayList;
@@ -75,31 +73,56 @@ public enum VetFieldEnum {
         // TODO sci notation?
         public String getColumnValue(final VariantContext variant) {
             String out = getAttribute(variant, GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, null);
-            if (out == null) {
-                throw new UserException("Cannot be missing required value for alternate_bases.AS_RAW_MQ");
+            String outNotAlleleSpecific = getAttribute(variant, GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, null);
+            String outNotAlleleSpecificAndOld = getAttribute(variant, GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED, null);
+            if (out == null && outNotAlleleSpecific == null && outNotAlleleSpecificAndOld == null) {
+                throw new UserException("Cannot be missing required value for alternate_bases.AS_RAW_MQ, RAW_MQandDP or RAW_MQ.");
             }
-            if (!out.endsWith("|0.00")) {
-                logger.warn("Expected AS_RAW_MQ value to end in |0.00. value is: " + out + " for variant " + variant.toString());
-            }
-            //if (out.endsWith("|0.00")) {
+            if (out != null) {
+                if(!out.endsWith("|0.00")) {
+                    logger.warn("Expected AS_RAW_MQ value to end in |0.00. value is: " + out + " for variant " + variant.toString());
+                }
                 out = out.substring(0, out.lastIndexOf("|"));
                 String[] outValues = out.split("\\|");
                 out = Arrays
                         .stream(outValues)
                         .map(val -> val.endsWith(".00") ? val.substring(0, val.length() - 3) : val)
                         .collect(Collectors.joining(VCFConstants.PHASED));
-//            } else {
-//                throw new UserException("Expected AS_RAW_MQ value to end in |0.00. value is: " + out +" for variant " + variant.toString());
-//            }
-            return out;
+                return out;
+            // If we have gvcfs that are not allele specific from GATK4 we'll get RAW_MQandDP.
+            // We can drop DP here and use AS_VarDP when finalizing RMS Mapping Quality
+            } else {
+                String outValue;
+                if (outNotAlleleSpecific != null) {
+                    String[] outValues = outNotAlleleSpecific.split(",");
+                    if (outValues.length !=2) {
+                        throw new UserException("Expected RAW_MQandDP to be two values separated by a comma.");
+                    }
+                    // First value is MQ the second is DP. Use the only MQ value we have for all alleles since we're faking allele specific annotations.
+                    outValue = outValues[0];
+                } else {
+                    outValue = outNotAlleleSpecificAndOld;
+                }
+                // Spread MQ accross multiple alleles.
+                //TODO: check how hail does this and change this to do the same thing
+                double mq = Double.parseDouble(outValue);
+                if (variant.getAlleles().size() == 3) {
+                    outNotAlleleSpecific = (int) mq / 2 + VCFConstants.PHASED + (int) mq / 2;
+                } else if (variant.getAlleles().size() == 4) {
+                    outNotAlleleSpecific = (int) mq / 3 + VCFConstants.PHASED + (int) mq / 3 + VCFConstants.PHASED + (int) mq / 3;
+                } else {
+                    throw new UserException("Expected diploid sample to either have 3 alleles (ref, alt, non-ref) or 4 alleles (ref, alt 1, alt 2, non-ref)");
+                }
+                return outNotAlleleSpecific;
+            }
         }
     },
 
     AS_RAW_MQRankSum { // TODO -- maybe rely on 1/1 for call_GT, also get rid of the | at the beginning
         public String getColumnValue(final VariantContext variant) {
-            String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY, "");
-            if (out.contentEquals("||") || out.contentEquals("|||") ) {
-                out = " "; //  TODO is this better than null?
+            String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY, null);
+            if ( out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
+                out = "";
                 return out;
             }
             if (out.startsWith("|")) {
@@ -148,9 +171,9 @@ public enum VetFieldEnum {
 
     AS_RAW_ReadPosRankSum {  // TODO -- maybe rely on 1/1 for call_GT
         public String getColumnValue(final VariantContext variant) {
-            String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY, "");
-            if (out.contentEquals("||") || out.contentEquals("|||") ) {
-                out = " "; // TODO is this better than null?
+            String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY, null);
+            if (out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
+                out = "";
                 return out;
             }
             if (out.startsWith("|")) {
@@ -172,8 +195,19 @@ public enum VetFieldEnum {
     AS_SB_TABLE { // Required
         public String getColumnValue(final VariantContext variant) {
             String out = getAttribute(variant, GATKVCFConstants.AS_SB_TABLE_KEY, null);
+            String outNotAlleleSpecific = variant.getGenotype(0).getExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, null).toString();
             if (out == null) {
-                throw new UserException("Cannot be missing required value for alternate_bases.AS_SB_TABLE");
+                String[] outValues = outNotAlleleSpecific.split(",");
+                if (variant.getAlleles().size() == 3) {
+                    outNotAlleleSpecific = outValues[0] + "," + outValues[1] + "|" + outValues[2] + "," + outValues[3];
+                } else if (variant.getAlleles().size() == 4) {
+                    int sbPosSpread = Integer.parseInt(outValues[2]) / 2;
+                    int sbNegSpread = Integer.parseInt(outValues[3]) / 2;
+                    outNotAlleleSpecific = outValues[0] + "," + outValues[1] + "|" + sbPosSpread + "," + sbNegSpread + "|" + sbPosSpread + "," + sbNegSpread;
+                } else {
+                    throw new UserException("Expected diploid sample to either have 3 alleles (ref, alt, non-ref) or 4 alleles (ref, alt 1, alt 2, non-ref)");
+                }
+                return outNotAlleleSpecific;
             }
             if (out.endsWith("|0,0")) {
                 out = out.substring(0, out.length() - 4);
