@@ -70,12 +70,21 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     )
     private GATKPath outputAccuracyFile = null;
 
+    @Argument(
+            doc = "Output file for incorrectly genotyped sites",
+            fullName = "output-incorrect-sites",
+            shortName = "OI",
+            optional = true
+    )
+    private GATKPath outputIncorrectSitesFile = null;
+
     final int nBins = 14;
     final double firstBinRightEdge = 0.0005;
     final List<AFCorrelationAggregator> aggregators = new ArrayList<>();
     final AccuracyMetrics snpMetrics = new AccuracyMetrics(VariantContext.Type.SNP);
     final AccuracyMetrics indelMetrics = new AccuracyMetrics(VariantContext.Type.INDEL);
     private VariantContext currentReferenceBlockVC;
+    private IncorrectlyGenotypedSitesWriter incorrectlyGenotypedSitesWriter;
 
     @Override
     public void onTraversalStart() {
@@ -85,6 +94,15 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
             final double logBinCenter = Math.log10(firstBinRightEdge) + (i - 0.5) * log10_bin_width;
             final double binCenter = Math.pow(10, logBinCenter);
             aggregators.add(new AFCorrelationAggregator(binCenter));
+        }
+
+        if (outputIncorrectSitesFile != null) {
+            try {
+                incorrectlyGenotypedSitesWriter = new IncorrectlyGenotypedSitesWriter(outputIncorrectSitesFile.toPath());
+            }
+            catch (final IOException ex) {
+                throw new GATKException("Error writing out to file " + outputIncorrectSitesFile, ex);
+            }
         }
     }
 
@@ -172,6 +190,17 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
                 aggregators.get(bin).indel_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
                 indelMetrics.incrementMetrics(evalAltCount, truthAltCount);
             }
+
+            if (incorrectlyGenotypedSitesWriter != null && truthAltCount != evalAltCount) {
+                if (evalVC.getStart()==13116) {
+                    System.out.println("hi");
+                }
+                try {
+                    incorrectlyGenotypedSitesWriter.writeRecord(evalVC);
+                } catch (final IOException ex) {
+                    throw new GATKException("error writing to incorrectly genotyped sites file", ex);
+                }
+            }
         }
     }
 
@@ -213,6 +242,17 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 
         AFCorrelationAggregator(final double binCenter) {
             this.binCenter = binCenter;
+        }
+    }
+
+    private static class IncorrectlyGenotypedSitesWriter extends TableWriter<VariantContext> {
+        IncorrectlyGenotypedSitesWriter(final Path file) throws IOException {
+            super(file, new TableColumnCollection("chrom", "pos"));
+        }
+
+        protected void composeLine(final VariantContext vc, final DataLine dataLine) {
+            dataLine.set("chrom", vc.getContig())
+                    .set("pos", vc.getStart());
         }
     }
 

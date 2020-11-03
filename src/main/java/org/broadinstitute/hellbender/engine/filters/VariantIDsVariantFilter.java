@@ -17,7 +17,7 @@ public final class VariantIDsVariantFilter implements VariantFilter {
 
     private final Set<String> includeIDs = new LinkedHashSet<>();
 
-    public VariantIDsVariantFilter(Set<String> keepIDs) {
+    public  VariantIDsVariantFilter(Set<String> keepIDs) {
         Utils.nonNull(keepIDs);
         includeIDs.addAll(keepIDs);
     }
