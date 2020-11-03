@@ -42,7 +42,7 @@ public class PythonEnvironmentIntegrationTest {
                 { "theano",         "'-lmkl_rt' in theano.config.blas.ldflags" },
                 { "tensorflow",     "tensorflow.pywrap_tensorflow.IsMklEnabled()" },
                 { "keras",          "keras.backend.backend() == 'tensorflow'" },
-                { "torch",          "all([x in torch.__config__.show() for x in ['BLAS=MKL', 'USE_MKL=ON', 'USE_MKLDNN=ON', 'USE_MKLDNN=ON', 'USE_OPENMP=ON']])" }
+                { "torch",          "all([x in torch.__config__.show() for x in ['BLAS=MKL', 'USE_MKL=ON', 'USE_MKLDNN=ON', 'USE_MKLDNN=ON']])" }
         };
     }
 
