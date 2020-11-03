@@ -10,6 +10,9 @@ DESCRIPTION
     For instance this will allow you to see what contigs are different between HG19 and b37 (if any)
     with base-level detail where applicable.
 
+    Each reference file must have a sequence dictionary (.dict) file with the same base name in the same
+    directory as the FASTA file itself.
+
 EXAMPLES
 
     %prog ucsc.hg19.fasta Homo_sapiens_assembly19.fasta
@@ -53,6 +56,7 @@ import os
 import pysam
 import csv
 from collections import namedtuple
+import re
 
 ################################################################################
 # Built-in Module Vars:
@@ -105,11 +109,6 @@ def _setup_argument_parser():
                          choices=log_levels, default=['INFO'], required=False,
                          help="Set the logging level.")
 
-    _parser.add_argument("-d", "--use_dictionaries", action='store_false',
-                         help="Attempt to read in and parse sequence dictionary files for each given FASTA file.  "
-                              "Dictionaries are assumed to be located in the same directory as the given FASTA files "
-                              "with the same base name and the '.dict' extension.")
-
     _parser.add_argument('ref_files', metavar='REFERENCE_FASTA', type=str, nargs='+',
                          help="Reference FASTA file to compare.")
 
@@ -138,15 +137,14 @@ def _validate_options_and_args(_args):
             file_valid = False
 
         # Check the sequence dictionary:
-        if file_valid and _args.use_dictionaries:
-            base_path, _ = os.path.splitext(fasta_path)
-            dict_path = base_path + ".dict"
-            if not os.path.exists(dict_path):
-                LOGGER.error("FASTA sequence dictionary file does not exist: %s", dict_path)
-                file_valid = False
-            elif os.path.isdir(dict_path):
-                LOGGER.error("FASTA sequence dictionary is actually a directory: %s", dict_path)
-                file_valid = False
+        base_path, _ = os.path.splitext(fasta_path)
+        dict_path = base_path + ".dict"
+        if not os.path.exists(dict_path):
+            LOGGER.error("FASTA sequence dictionary file does not exist: %s", dict_path)
+            file_valid = False
+        elif os.path.isdir(dict_path):
+            LOGGER.error("FASTA sequence dictionary is actually a directory: %s", dict_path)
+            file_valid = False
 
         valid = valid and file_valid
 
@@ -157,12 +155,27 @@ def _validate_options_and_args(_args):
 ####################
 
 
-SeqDictEntry = namedtuple("SeqDictEntry", ['name', 'length', 'md5sum', 'url'])
+SeqDictEntry = namedtuple("SeqDictEntry", ['name', 'length', 'md5sum', 'url', 'species'])
 
 
 ########################################
 # Helper functions:
 ####################
+
+
+def atoi(text):
+    """Taken from: https://stackoverflow.com/a/5967539"""
+    return int(text) if text.isdigit() else text
+
+
+def natural_keys(text):
+    """
+    alist.sort(key=natural_keys) sorts in human order
+    http://nedbatchelder.com/blog/200712/human_sorting.html
+    ---
+    Taken from: https://stackoverflow.com/a/5967539
+    """
+    return [atoi(c) for c in re.split(r'(\d+)', text)]
 
 
 def get_sequence_dict(dict_path):
@@ -184,6 +197,7 @@ def get_sequence_dict(dict_path):
                 length = 0
                 md5 = ""
                 url = ""
+                species = ""
 
                 # Not clear that the fields occur in the same order each time:
                 for field in row[1:]:
@@ -195,20 +209,24 @@ def get_sequence_dict(dict_path):
                         md5 = field[3:]
                     elif field.startswith("UR"):
                         url = field[3:]
+                    elif field.startswith("SP"):
+                        species = field[3:]
 
-                seq_dict[name] = SeqDictEntry(name, length, md5, url)
+                seq_dict[name] = SeqDictEntry(name, length, md5, url, species)
 
     return seq_dict
 
 
 def analyze_sequence_dictionaries(_args):
-    """Compares the sequence dictionaries of the user-specified FASTA files and returns a two dictionaries.
+    """Compares the sequence dictionaries of the user-specified FASTA files and returns three dictionaries.
     The first is created such that each item is the base name of the FASTA file and the unique contigs in that FASTA
         FASTA_BASE_NAME -> list( UNIQUE_CONTIG_NAME_1, UNIQUE_CONTIG_NAME_2, UNIQUE_CONTIG_NAME_3, ... )
 
     The second dictionary will contain a mapping for all contigs that are the same across all given FASTA files:
 
         FASTA_BASE_NAME -> dict( CONTIG_NAME -> dict( FASTA_BASE_NAME -> IDENTICAL_CONTIG_NAME ) )
+
+    The third dictionary will be a dict of the sequence dictionaries for each given FASTA file.
     """
 
     seq_dict_map = dict()
@@ -242,11 +260,11 @@ def analyze_sequence_dictionaries(_args):
     for fasta_base in seq_md5sum_set_map.keys():
 
         LOGGER.debug("Analyzing %s", fasta_base)
-
         unique_seq_md5s = set()
-        identical_contig_map = dict()
 
         for md5 in seq_md5sum_set_map[fasta_base]:
+
+            identical_contig_map = dict()
 
             LOGGER.debug("    Contig: %s - %s", seq_md5sum_name_map_map[fasta_base][md5], md5)
 
@@ -257,7 +275,9 @@ def analyze_sequence_dictionaries(_args):
 
                 if md5 in seq_md5sum_set_map[other_fasta_base]:
                     is_unique = False
-                    identical_contig_map[other_fasta_base] = md5
+                    identical_contig_map[other_fasta_base] = seq_md5sum_name_map_map[other_fasta_base][md5]
+                    LOGGER.debug("        Found identical contigs: %s\t%s", seq_md5sum_name_map_map[fasta_base][md5],
+                                 seq_md5sum_name_map_map[other_fasta_base][md5])
 
             if is_unique:
                 unique_seq_md5s.add(md5)
@@ -267,15 +287,72 @@ def analyze_sequence_dictionaries(_args):
                     identical_map[fasta_base] = dict()
 
                 contig_name = seq_md5sum_name_map_map[fasta_base][md5]
-
-                identical_map[fasta_base][contig_name] = {k: seq_md5sum_name_map_map[k][identical_contig_map[k]]
-                                                          for k in identical_contig_map.keys()}
+                identical_map[fasta_base][contig_name] = identical_contig_map
 
         unique_seqs = [s.name for s in seq_dict_map[fasta_base].values() if s.md5sum in unique_seq_md5s]
         unique_map[fasta_base] = unique_seqs
 
-    return unique_map, identical_map
+    return unique_map, identical_map, seq_dict_map
 
+
+def print_contig_table(unique_contig_map, identical_contig_map, seq_dict_map):
+    """Prints a table of the contigs in the given maps according to which are identical or unique
+    in each user-supplied reference fasta."""
+
+    col_spacer = '\t'
+
+    # Output should be like this:
+    # MD5sum    REF_1    REF_2    [REF_3    REF_4...]
+
+    # Create our format for the output:
+    # Maybe someday replace this with an F-string:
+    row_format_string = "{:<" + str(32) + "}" + col_spacer
+
+    sorted_ref_names = sorted(seq_dict_map.keys())
+
+    for ref in sorted_ref_names:
+        longest_field = len(ref)
+        longest_contig_len = max([len(contig_name) for contig_name in seq_dict_map[ref]])
+        if longest_field < longest_contig_len:
+            longest_field = longest_contig_len
+
+        row_format_string = row_format_string + "{:<" + str(longest_field) + "}" + col_spacer
+
+    # Remove the last spacer:
+    row_format_string = row_format_string[:-len(col_spacer)]
+
+    # Print the header:
+    header_fields = ["md5sum"] + [name for name in sorted_ref_names]
+    print(row_format_string.format(*header_fields))
+
+    # Now print out the identical rows first:
+
+    # We sort first by the order in sorted_ref_names, then by alphabetical order of the contigs of the first reference
+    # in sorted_ref_names:
+    for ref_name in sorted_ref_names:
+        identical_contig_list = sorted(identical_contig_map[ref_name].keys(), key=natural_keys)
+        for contig_name in identical_contig_list:
+            fields_to_print = [seq_dict_map[ref_name][contig_name].md5sum]
+            for ref in sorted_ref_names:
+                if ref == ref_name:
+                    fields_to_print.append(contig_name)
+                elif ref in identical_contig_map[ref_name][contig_name]:
+                    fields_to_print.append(identical_contig_map[ref_name][contig_name][ref])
+                else:
+                    fields_to_print.append("----")
+            print(row_format_string.format(*fields_to_print))
+
+    # Now we print out the unique contigs from each ref in the same order:
+    for ref_name in sorted_ref_names:
+        unique_contig_list = sorted(unique_contig_map[ref_name], key=natural_keys)
+        for contig_name in unique_contig_list:
+            fields_to_print = [seq_dict_map[ref_name][contig_name].md5sum]
+            for ref in sorted_ref_names:
+                if ref == ref_name:
+                    fields_to_print.append(contig_name)
+                else:
+                    fields_to_print.append("----")
+            print(row_format_string.format(*fields_to_print))
 
 ########################################
 # Main function:
@@ -285,15 +362,9 @@ def analyze_sequence_dictionaries(_args):
 def _main(_args):
     """Default main implementation."""
 
-    if _args.use_dictionaries:
-        unique_contig_map, identical_contig_map = analyze_sequence_dictionaries(_args)
-
-        if LOGGER.isEnabledFor(logging.DEBUG):
-            for reference in  unique_contig_map.keys():
-                LOGGER.info("Num unique contigs in %s: %d", reference, len(unique_contig_map[reference]))
-
-            for reference in identical_contig_map.keys():
-                LOGGER.info("Identical contigs: %s", identical_contig_map[reference])
+    # Do a dictionary comparison:
+    unique_contig_map, identical_contig_map, seq_dict_map = analyze_sequence_dictionaries(_args)
+    print_contig_table(unique_contig_map, identical_contig_map, seq_dict_map)
 
 
 ################################################################################
@@ -308,8 +379,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     _LOG_LEVEL = getattr(logging, args.log_level[0])
-    format_string = f"%(asctime)s %(name)s %(levelname)-8s %(message)s"
-    logging.basicConfig(level=_LOG_LEVEL, format=format_string)
+    log_format_string = f"%(asctime)s %(name)s %(levelname)-8s %(message)s"
+    logging.basicConfig(level=_LOG_LEVEL, format=log_format_string)
 
     try:
         LOGGER.info('Invoked with arguments: %s', str(args))
