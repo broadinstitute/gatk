@@ -55,6 +55,7 @@ import os
 # Custom imports for script:
 import pysam
 import csv
+import itertools
 from collections import namedtuple
 from tqdm import tqdm
 
@@ -170,6 +171,7 @@ def _validate_options_and_args(_args):
 
 
 SeqDictEntry = namedtuple("SeqDictEntry", ['name', 'length', 'md5sum', 'url', 'species'])
+ContigBaseInfo = namedtuple("ContigBaseInfo", ['ref', 'contig', 'pos', 'base'])
 
 
 ########################################
@@ -381,9 +383,10 @@ def print_contig_table(unique_contig_map, identical_contig_map, seq_dict_map):
             print(row_format_string.format(*fields_to_print))
 
 
-def sample_and_check_contig_seqs(ref_files, ref_contig_dict, contig_length, num_bases_to_sample=50, ignore_case=True):
+def sample_and_check_contig_seqs(ref_files, ref_contig_dict, contig_length, num_bases_to_sample=50):
     """Samples a number of bases on each given reference / contig pair.
     Bases are sampled at +/- CONTIG_PCT_POS_CHECK % of the length of the contig.
+    The comparison here is always case INSENSITIVE.
     If either the "Front" or "Back" bases are the same between all given ref/contig pairs, then this function returns
     True.  Otherwise returns false."""
 
@@ -398,19 +401,13 @@ def sample_and_check_contig_seqs(ref_files, ref_contig_dict, contig_length, num_
         contig = ref_contig_dict[base_name]
 
         with pysam.FastaFile(fasta_path) as f:
-            if ignore_case:
-                front_base_samples.add(f.fetch(contig, sample_start, sample_start + num_bases_to_sample).upper())
-                back_base_samples.add(
-                    f.fetch(contig, sample_start_back, sample_start_back + num_bases_to_sample).upper()
-                )
-            else:
-                front_base_samples.add(f.fetch(contig, sample_start, sample_start + num_bases_to_sample))
-                back_base_samples.add(f.fetch(contig, sample_start_back, sample_start_back + num_bases_to_sample))
+            front_base_samples.add(f.fetch(contig, sample_start, sample_start + num_bases_to_sample).upper())
+            back_base_samples.add(f.fetch(contig, sample_start_back, sample_start_back + num_bases_to_sample).upper())
 
     return len(front_base_samples) == 1 or len(back_base_samples) == 1
 
 
-def scrutinize_contig(ref_files, ref_contig_dict, contig_length, large_diff_thresh=50, ignore_case=True):
+def scrutinize_contig(ref_files, ref_contig_dict, contig_length, large_diff_thresh=None, ignore_case=True):
     """Iterates over all bases in the given contigs tabulating differences between them.
     If large differences are discovered, will stop comparison."""
 
@@ -465,7 +462,10 @@ def scrutinize_contig(ref_files, ref_contig_dict, contig_length, large_diff_thre
 
                             b_set.add(b)
                             b_description_list.append(
-                                f"{base_names[ref_num]}:{contig_names[ref_num]}:{pos}:{bases_list[ref_num][base_num]}"
+                                ContigBaseInfo(base_names[ref_num],
+                                               contig_names[ref_num],
+                                               pos,
+                                               bases_list[ref_num][base_num])
                             )
                         if len(b_set) != 1:
                             differences[pos] = b_description_list
@@ -474,7 +474,7 @@ def scrutinize_contig(ref_files, ref_contig_dict, contig_length, large_diff_thre
                         # Update our progress bar by 1 base:
                         pbar.update(1)
 
-                        if num_differences > large_diff_thresh:
+                        if large_diff_thresh and num_differences > large_diff_thresh:
                             LOGGER.warning("Found a lot of differences.  Halting comparison.")
                             return differences
                 else:
@@ -495,6 +495,65 @@ def scrutinize_contig(ref_files, ref_contig_dict, contig_length, large_diff_thre
                 f.close()
 
     return differences
+
+
+def get_scrutinized_row_format_string(differences, ref_names, col_spacer='\t'):
+    """Get the format string for each row in the given scrutinized differences."""
+
+    # Output should be like this:
+    # REF_1.contig_name REF_1.pos REF_1.base REF_2.contig_name REF_2.pos REF_2.base [REF_3.contig_name ...]
+
+    ref_col_max_sizes = dict()
+    for ref in ref_names:
+        ref_col_max_sizes[ref] = {'contig': 6, "pos": 3}
+
+    for contig_diffs in differences:
+        for ref_diff in contig_diffs.values():
+            for row in ref_diff:
+                ref = row.ref
+                if len(row.contig) > ref_col_max_sizes[ref]['contig']:
+                    ref_col_max_sizes[ref]['contig'] = len(row.contig)
+                if len(str(row.pos)) > ref_col_max_sizes[ref]['pos']:
+                    ref_col_max_sizes[ref]['pos'] = len(str(row.pos))
+
+    row_format_string = ""
+    for ref in ref_names:
+        row_format_string = row_format_string + \
+                            "{:<" + str(ref_col_max_sizes[ref]['contig'] + len(ref) + 1) + "}" + col_spacer + \
+                            "{:<" + str(ref_col_max_sizes[ref]['pos'] + len(ref) + 1) + "}" + col_spacer + \
+                            "{:<" + str(4 + len(ref) + 1) + "}" + col_spacer
+
+    # Remove the last spacer:
+    row_format_string = row_format_string[:-len(col_spacer)]
+
+    return row_format_string
+
+
+def print_scrutinized_table_header(differences, ref_names, col_spacer='\t'):
+    """Prints the header for a master scrutinized contig table."""
+    format_string = get_scrutinized_row_format_string(differences, ref_names, col_spacer)
+
+    row = list(itertools.chain(*[[f"{ref}.contig", f"{ref}.pos", f"{ref}.base"] for ref in ref_names]))
+    print(format_string.format(*row))
+
+
+def print_scrutinized_table(differences, ref_names, col_spacer='\t'):
+    """Prints a table of the scrutinized contig diff information."""
+    print_scrutinized_table_header(differences, ref_names, col_spacer)
+
+    format_string = get_scrutinized_row_format_string(differences, ref_names, col_spacer)
+
+    for contig_diffs in differences:
+        for ref_diff in contig_diffs.values():
+            ordered_row_fields = []
+            for ref in ref_names:
+                for row in ref_diff:
+                    if ref != row.ref:
+                        continue
+                    ordered_row_fields.append(row.contig)
+                    ordered_row_fields.append(row.pos)
+                    ordered_row_fields.append(row.base)
+            print(format_string.format(*ordered_row_fields))
 
 
 def perform_detailed_analysis(_args, identical_contig_map, seq_dict_map):
@@ -548,16 +607,20 @@ def perform_detailed_analysis(_args, identical_contig_map, seq_dict_map):
 
     # Now process the remaining contigs:
     for l in contig_lengths_dict.keys():
-        if not sample_and_check_contig_seqs(_args.ref_files, contig_lengths_dict[l], l,
-                                            ignore_case=not _args.case_sensitive):
-            LOGGER.info("Failed filtering: %d - %s", l, contig_lengths_dict[l])
+        if not sample_and_check_contig_seqs(_args.ref_files, contig_lengths_dict[l], l):
+            LOGGER.info("Failed filtering: %d - %s", l, [f"{k}[{v}]" for k, v in contig_lengths_dict[l].items()])
         else:
-            LOGGER.info("Passed filtering: %d - %s", l, contig_lengths_dict[l])
+            LOGGER.info("Passed filtering:  %d - %s", l, [f"{k}[{v}]" for k, v in contig_lengths_dict[l].items()])
             differences = scrutinize_contig(_args.ref_files, contig_lengths_dict[l], l,
                                             ignore_case=not _args.case_sensitive)
-            print(f"Found {len(differences)} differences on contig: {' / '.join(contig_lengths_dict[l].values())}")
-            for d in differences.values():
-                print("    " + " | ".join(d))
+            LOGGER.info(f"Found {len(differences)} differences on contig: "
+                        f"{' / '.join(contig_lengths_dict[l].values())}")
+
+            for ref_differences in differences.values():
+                fields_to_print = [ref_differences[0].contig, str(ref_differences[0].pos)]
+                for d in ref_differences:
+                    fields_to_print.append(d.base)
+
             contig_diff_lists.append(differences)
 
     return contig_diff_lists
@@ -576,7 +639,12 @@ def _main(_args):
 
     # Do an in-depth comparison of the non-identical contigs if requested:
     if _args.detailed:
+        print("=" * 80)
+        print("=" * 80)
+        print("=" * 80)
+
         differences = perform_detailed_analysis(_args, identical_contig_map, seq_dict_map)
+        print_scrutinized_table(differences, [get_ref_base_name(f) for f in _args.ref_files])
 
 
 ################################################################################
