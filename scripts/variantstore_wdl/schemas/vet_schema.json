@@ -1,13 +1,13 @@
 [
  {
    "description": "[DESCRIPTION]",
-   "name": "location",
+   "name": "sample_id",
    "type": "Integer",
    "mode": "Required"
  },
  {
    "description": "[DESCRIPTION]",
-   "name": "sample_id",
+   "name": "location",
    "type": "Integer",
    "mode": "Required"
  },
