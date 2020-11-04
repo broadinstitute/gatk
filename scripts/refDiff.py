@@ -56,7 +56,7 @@ import os
 import pysam
 import csv
 from collections import namedtuple
-import re
+from tqdm import tqdm
 
 ################################################################################
 # Built-in Module Vars:
@@ -118,6 +118,10 @@ def _setup_argument_parser():
                               " the contig will be examined approxmiately 30% of the way into the contig.  If these "
                               "subsequences are identical or nearly identical then the contigs will be processed and "
                               "exact differences will be emitted as variants.")
+
+    _parser.add_argument('--case_sensitive', action='store_true',
+                         help="Set the comparisons between bases between references to be case-sensitive.  "
+                              "(default: case insensitive)")
 
     _parser.add_argument('ref_files', metavar='REFERENCE_FASTA', type=str, nargs='+',
                          help="Reference FASTA file to compare.")
@@ -227,6 +231,12 @@ def get_sequence_dict(dict_path):
     return seq_dict
 
 
+def get_ref_base_name(ref_fasta_path):
+    """Get the base name to be used to represent the given reference FASTA file."""
+    base_path, _ = os.path.splitext(ref_fasta_path)
+    return os.path.basename(base_path)
+
+
 def analyze_sequence_dictionaries(_args):
     """Compares the sequence dictionaries of the user-specified FASTA files and returns three dictionaries.
     The first is created such that each item is the base name of the FASTA file and the unique contigs in that FASTA
@@ -248,10 +258,9 @@ def analyze_sequence_dictionaries(_args):
     # Get the sequence dictionaries:
     for fasta_path in _args.ref_files:
         base_path, _ = os.path.splitext(fasta_path)
-        base_name = os.path.basename(base_path)
-
         seq_dict = get_sequence_dict(base_path + ".dict")
 
+        base_name = get_ref_base_name(fasta_path)
         seq_dict_map[base_name] = seq_dict
 
         # Now get a set of the MD5sums of the sequences so we can find them quickly:
@@ -372,6 +381,122 @@ def print_contig_table(unique_contig_map, identical_contig_map, seq_dict_map):
             print(row_format_string.format(*fields_to_print))
 
 
+def sample_and_check_contig_seqs(ref_files, ref_contig_dict, contig_length, num_bases_to_sample=50, ignore_case=True):
+    """Samples a number of bases on each given reference / contig pair.
+    Bases are sampled at +/- CONTIG_PCT_POS_CHECK % of the length of the contig.
+    If either the "Front" or "Back" bases are the same between all given ref/contig pairs, then this function returns
+    True.  Otherwise returns false."""
+
+    front_base_samples = set()
+    back_base_samples = set()
+
+    for fasta_path in ref_files:
+        base_name = get_ref_base_name(fasta_path)
+        sample_start = int((CONTIG_PCT_POS_CHECK/100.0) * contig_length)
+        sample_start_back = contig_length - sample_start
+
+        contig = ref_contig_dict[base_name]
+
+        with pysam.FastaFile(fasta_path) as f:
+            if ignore_case:
+                front_base_samples.add(f.fetch(contig, sample_start, sample_start + num_bases_to_sample).upper())
+                back_base_samples.add(
+                    f.fetch(contig, sample_start_back, sample_start_back + num_bases_to_sample).upper()
+                )
+            else:
+                front_base_samples.add(f.fetch(contig, sample_start, sample_start + num_bases_to_sample))
+                back_base_samples.add(f.fetch(contig, sample_start_back, sample_start_back + num_bases_to_sample))
+
+    return len(front_base_samples) == 1 or len(back_base_samples) == 1
+
+
+def scrutinize_contig(ref_files, ref_contig_dict, contig_length, large_diff_thresh=50, ignore_case=True):
+    """Iterates over all bases in the given contigs tabulating differences between them.
+    If large differences are discovered, will stop comparison."""
+
+    differences = dict()
+    open_fasta_files = []
+
+    try:
+        num_differences = 0
+
+        base_names = []
+        contig_names = []
+        for fasta_path in ref_files:
+            open_fasta_files.append(pysam.FastaFile(fasta_path))
+
+            base_name = get_ref_base_name(fasta_path)
+            base_names.append(base_name)
+            contig_names.append(ref_contig_dict[base_name])
+
+        step_size = 1024
+
+        start = 0
+        end = start + step_size
+        if end > contig_length - 1:
+            end = contig_length
+
+        # NOTE: Interval conventions for pysam are 0-based, half-open
+        with tqdm(total=contig_length, desc="Contig: " + contig_names[0], unit=" bases") as pbar:
+            while True:
+                bases_list = []
+                bases_hash_set = set()
+                for i, f in enumerate(open_fasta_files):
+                    if ignore_case:
+                        b = f.fetch(contig_names[i], start, end).upper()
+                    else:
+                        b = f.fetch(contig_names[i], start, end)
+                    bases_list.append(b)
+                    bases_hash_set.add(hash(b))
+
+                # Do we have any differences in our large chunk?
+                if len(bases_hash_set) > 1:
+                    for base_num in range(len(bases_list[0])):
+                        # Get the bases that could be different:
+                        b_set = set()
+                        b_description_list = []
+                        pos = base_num + start
+                        for ref_num in range(len(bases_list)):
+
+                            if ignore_case:
+                                b = bases_list[ref_num][base_num].upper()
+                            else:
+                                b = bases_list[ref_num][base_num]
+
+                            b_set.add(b)
+                            b_description_list.append(
+                                f"{base_names[ref_num]}:{contig_names[ref_num]}:{pos}:{bases_list[ref_num][base_num]}"
+                            )
+                        if len(b_set) != 1:
+                            differences[pos] = b_description_list
+                            num_differences += 1
+
+                        # Update our progress bar by 1 base:
+                        pbar.update(1)
+
+                        if num_differences > large_diff_thresh:
+                            LOGGER.warning("Found a lot of differences.  Halting comparison.")
+                            return differences
+                else:
+                    # Update our progress bar by our chunk size:
+                    pbar.update(step_size)
+
+                # Update our position and exit if necessary:
+                if end == contig_length:
+                    break
+
+                start = end
+                end = start + step_size
+                if end > contig_length - 1:
+                    end = contig_length
+    finally:
+        for f in open_fasta_files:
+            if not f.closed:
+                f.close()
+
+    return differences
+
+
 def perform_detailed_analysis(_args, identical_contig_map, seq_dict_map):
     """Perform detailed all-to-all base-level analysis on all contigs that are not identical by
     sequence dictionary md5sum.
@@ -383,6 +508,8 @@ def perform_detailed_analysis(_args, identical_contig_map, seq_dict_map):
 
     num_refs = len(seq_dict_map.keys())
     LOGGER.info("Performing detailed analysis of %d references...", num_refs)
+
+    contig_diff_lists = []
 
     # First get a list of contigs that might be equal:
     contig_lengths_dict = dict()
@@ -419,8 +546,21 @@ def perform_detailed_analysis(_args, identical_contig_map, seq_dict_map):
     LOGGER.info("Sampling bases from %d%% through contigs to determine if full check should be performed.",
                 CONTIG_PCT_POS_CHECK)
 
+    # Now process the remaining contigs:
     for l in contig_lengths_dict.keys():
-        bases = ""
+        if not sample_and_check_contig_seqs(_args.ref_files, contig_lengths_dict[l], l,
+                                            ignore_case=not _args.case_sensitive):
+            LOGGER.info("Failed filtering: %d - %s", l, contig_lengths_dict[l])
+        else:
+            LOGGER.info("Passed filtering: %d - %s", l, contig_lengths_dict[l])
+            differences = scrutinize_contig(_args.ref_files, contig_lengths_dict[l], l,
+                                            ignore_case=not _args.case_sensitive)
+            print(f"Found {len(differences)} differences on contig: {' / '.join(contig_lengths_dict[l].values())}")
+            for d in differences.values():
+                print("    " + " | ".join(d))
+            contig_diff_lists.append(differences)
+
+    return contig_diff_lists
 
 ########################################
 # Main function:
@@ -436,7 +576,7 @@ def _main(_args):
 
     # Do an in-depth comparison of the non-identical contigs if requested:
     if _args.detailed:
-        variants = perform_detailed_analysis(_args, identical_contig_map, seq_dict_map)
+        differences = perform_detailed_analysis(_args, identical_contig_map, seq_dict_map)
 
 
 ################################################################################
