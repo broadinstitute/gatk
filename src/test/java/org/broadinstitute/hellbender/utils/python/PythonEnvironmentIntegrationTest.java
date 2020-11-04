@@ -17,16 +17,16 @@ public class PythonEnvironmentIntegrationTest {
         return new Object[][] {
                 // names of base packages that we should be able to import from within the GATK conda environment
                 // NOTE: these must be kept in sync with the versions in gatkcondaenv.yml.template
-                { "mkl",            "2.3.0" },
-                { "numpy",          "1.17.5" },
-                { "theano",         "1.0.4" },
-                { "tensorflow",     "1.15.0" },
-                { "scipy",          "1.0.0" },
-                { "pymc3",          "3.1" },
-                { "keras",          "2.2.4" },
-                { "sklearn",        "0.22.2.post1" },
-                { "matplotlib",     "3.2.1" },
-                { "pandas",         "1.0.3" },
+                { "mkl",            null },
+                { "numpy",          null },
+                { "theano",         null },
+                { "tensorflow",     null },
+                { "scipy",          null },
+                { "pymc3",          null },
+                { "keras",          null },
+                { "sklearn",        null },
+                { "matplotlib",     null },
+                { "pandas",         null },
                 { "argparse",       null },
                 { "gcnvkernel",     null }
         };
