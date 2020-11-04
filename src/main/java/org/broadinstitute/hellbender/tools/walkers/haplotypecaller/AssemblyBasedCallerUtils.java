@@ -65,7 +65,8 @@ public final class AssemblyBasedCallerUtils {
     // get realigned incorrectly.  See https://github.com/broadinstitute/gatk/issues/5060
     public static final int MINIMUM_READ_LENGTH_AFTER_TRIMMING = 10;
 
-    // this notation now means: "0": REF or '*'; "1": site-specific alt allele
+    // this notation can be interpreted as a representation of the alleles present on the two phased haplotypes at the site:
+    // "0": REF or '*'; "1": site-specific alt allele
     private static final String phase01 = "0|1";
     private static final String phase10 = "1|0";
 
@@ -663,6 +664,10 @@ public final class AssemblyBasedCallerUtils {
         return haplotypeMap;
     }
 
+    /**
+     * If at least one exists, returns a concrete (not NONREF) site-specific (starting at the current POS) alternate allele
+     * from within the current variant context.
+     */
     private static Allele getSiteSpecificAlternateAllele(final VariantContext call) {
         final Allele allele = call.getAlternateAlleles().stream().filter(a -> isSiteSpecificAltAllele(a)).findFirst().orElse(null);
         return allele;
@@ -817,7 +822,7 @@ public final class AssemblyBasedCallerUtils {
      * Is this variant bi-allelic?  This implementation is very much specific to this class so shouldn't be pulled out into a generalized place.
      *
      * @param vc the variant context
-     * @return true if this variant context is bi-allelic, ignoring the NON-REF symbolic allele, false otherwise
+     * @return true if this variant context is bi-allelic, ignoring the NON-REF symbolic allele and '*' symbolic allele, false otherwise
      */
     private static boolean isBiallelic(final VariantContext vc) {
         if (vc.isBiallelic()) return true;
@@ -825,6 +830,10 @@ public final class AssemblyBasedCallerUtils {
         return siteSpecificAltAlleles == 1L;
     }
 
+    /**
+     * A site-specific alternate allele is one that represents concrete (i.e. not NONREF) variation that begins at the
+     * site (i.e. not '*', which represents a concrete alternate allele that begins upstream of the current site).
+     */
     private static boolean isSiteSpecificAltAllele(final Allele a) {
         if(a.isReference()) return false;
         if (Allele.NON_REF_ALLELE.equals(a)) return false;
