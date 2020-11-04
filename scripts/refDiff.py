@@ -539,6 +539,9 @@ def print_scrutinized_table_header(differences, ref_names, col_spacer='\t'):
 
 def print_scrutinized_table(differences, ref_names, col_spacer='\t'):
     """Prints a table of the scrutinized contig diff information."""
+
+    LOGGER.info("Printing base-level differences table...")
+
     print_scrutinized_table_header(differences, ref_names, col_spacer)
 
     format_string = get_scrutinized_row_format_string(differences, ref_names, col_spacer)
@@ -674,7 +677,7 @@ if __name__ == '__main__':
         _main(args)
 
         # Log the time here:
-        LOGGER.info('Elapsed time: %2.2f', time.time() - _START_TIME)
+        LOGGER.info('Elapsed time: %2.2fs', time.time() - _START_TIME)
 
         # We're done, exit gracefully:
         sys.exit(0)
