@@ -174,8 +174,9 @@ task LoadArrays {
       fi
       set +e
       bq show --project_id ~{project_id} $SAMPLE_LIST_TABLE > /dev/null
+      BQ_SHOW_RC=$?
       set -e
-      if [ $? -ne 0 ]; then
+      if [ $BQ_SHOW_RC -ne 0 ]; then
         echo "making table $SAMPLE_LIST_TABLE"
         bq --location=US mk --project_id=~{project_id} $SAMPLE_LIST_TABLE ~{sample_list_schema}
         #TODO: add a Google Storage Transfer for the table when we make it.
