@@ -90,6 +90,12 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     private File outputDir = new File(".");
 
+    @Argument(
+            fullName = "missing-are-gq0",
+            shortName = "missing",
+            doc = "When set to true, missing sites are output as GQ0 state. Only useful for genomes where GQ0 sites were removed from the GVCF.",
+            optional = true)
+    private Boolean missingAsGq0 = false;
 
     @Override
     public boolean requiresIntervals() {
@@ -180,7 +186,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        petTsvCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
+        petTsvCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet, missingAsGq0);
         return 0;
     }
 

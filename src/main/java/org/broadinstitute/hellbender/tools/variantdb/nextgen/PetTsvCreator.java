@@ -130,7 +130,7 @@ public final class PetTsvCreator {
 
     }
 
-    public void writeMissingIntervals(GenomeLocSortedSet intervalArgumentGenomeLocSortedSet) {
+    public void writeMissingIntervals(GenomeLocSortedSet intervalArgumentGenomeLocSortedSet, final boolean missingSetToGq0) {
         GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(coverageLocSortedSet);
         logger.info("MISSING_GREP_HERE:" + uncoveredIntervals.coveredSize());
         logger.info("MISSING_PERCENTAGE_GREP_HERE:" + (1.0 * uncoveredIntervals.coveredSize()) / intervalArgumentGenomeLocSortedSet.coveredSize());
@@ -140,7 +140,8 @@ public final class PetTsvCreator {
             for (List<String> TSVLineToCreatePet : PetTsvCreator.createMissingTSV(
                     SchemaUtils.encodeLocation(contig, genomeLoc.getStart()),
                     SchemaUtils.encodeLocation(contig, genomeLoc.getEnd()),
-                    sampleId
+                    sampleId,
+                    missingSetToGq0
             )) {
                 petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
             }
@@ -220,14 +221,16 @@ public final class PetTsvCreator {
         return rows;
     }
 
-    public static List<List<String>> createMissingTSV(long start, long end, String sampleName) {
+    public static List<List<String>> createMissingTSV(long start, long end, String sampleName, final boolean missingSetToGq0) {
         List<List<String>> rows = new ArrayList<>();
+
+        GQStateEnum missing = missingSetToGq0 ? GQStateEnum.ZERO : GQStateEnum.MISSING;
 
         for (long position = start; position <= end; position ++){
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(position));
             row.add(sampleName);
-            row.add(GQStateEnum.MISSING.value);
+            row.add(missing.value);
             rows.add(row);
         }
 
