@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
@@ -313,6 +314,21 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(inputVCF)
                 .addOutput(outputVCF)
+                .add(StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, true)
+                .addInterval(new SimpleInterval("20", 1, 1));
+
+        runCommandLine(args.getArgsList());
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testValidationReadsDontMatch() {
+        final File inputVCF = BASIC_INPUT;
+        final File outputVCF = createTempFile("output", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(inputVCF)
+                .addOutput(outputVCF)
+                .addInput(new File(largeFileTestDir + "mutect/dream_synthetic_bams/", "tumor_4.bam")) // This bam corresponds to a sample that is not in the input VCF
                 .add(StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, true)
                 .addInterval(new SimpleInterval("20", 1, 1));
 
