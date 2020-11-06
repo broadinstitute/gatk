@@ -64,7 +64,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         activeRegion.addAll(reads);
         SampleList sampleList = SampleList.singletonSampleList("tumor");
         Byte minbq = 9;
-        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, false, false);
+        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, true, false);
 
         // make sure reads are not changed due to finalizeRegion()
         Assert.assertTrue(reads.get(0).convertToSAMRecord(header).equals(orgRead0));

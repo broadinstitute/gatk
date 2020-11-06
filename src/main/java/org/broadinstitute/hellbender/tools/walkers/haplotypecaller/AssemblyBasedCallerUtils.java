@@ -105,6 +105,10 @@ public final class AssemblyBasedCallerUtils {
         final List<GATKRead> readsToUse = region.getReads().stream()
                 // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
                 // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
+                // NOTE: this flag is used to indicate if the read in question was modified by the following clipping operations, which
+                // themselves make copies of the reads only if they actually adjust anything. For safety sake we want to ensure that every
+                // read being handed to the overlapping pair code and caller are copied so subsequent regions don't see altered reads.
+                .map(read -> {read.setTransientAttribute("Original",read); return read;})
                 .map(read -> dontUseSoftClippedBases || ! ReadUtils.hasWellDefinedFragmentSize(read) ?
                     ReadClipper.hardClipSoftClippedBases(read) : ReadClipper.revertSoftClippedBases(read))
                 .map(read -> softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(read, minTailQualityToUse) :
@@ -114,6 +118,9 @@ public final class AssemblyBasedCallerUtils {
                 .filter(read ->  !read.isEmpty() && read.getCigar().getReadLength() > 0)
                 .map(read -> ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() ))
                 .filter(read -> read.getStart() <= read.getEnd() && read.getLength() > 0 && read.overlaps(region.getPaddedSpan()))
+                // The transient attribute is preserved across copy operations and all of the previous alterations make copies, this simple ensures
+                // that any reads that have not been copied along the way are copied here for safety.
+                .map(read -> (read.getTransientAttribute("Original") != read? read : read.copy()))
                 .sorted(new ReadCoordinateComparator(readsHeader)) // TODO: sort may be unnecessary here
                 .collect(Collectors.toList());
 
