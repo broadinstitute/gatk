@@ -102,27 +102,31 @@ public final class AssemblyBasedCallerUtils {
         }
 
         final byte minTailQualityToUse = errorCorrectReads ? HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION : minTailQuality;
-        final List<GATKRead> readsToUse = region.getReads().stream()
-                // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
-                // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
-                // NOTE: this flag is used to indicate if the read in question was modified by the following clipping operations, which
-                // themselves make copies of the reads only if they actually adjust anything. For safety sake we want to ensure that every
-                // read being handed to the overlapping pair code and caller are copied so subsequent regions don't see altered reads.
-                .map(read -> {read.setTransientAttribute("Original",read); return read;})
-                .map(read -> dontUseSoftClippedBases || ! ReadUtils.hasWellDefinedFragmentSize(read) ?
-                    ReadClipper.hardClipSoftClippedBases(read) : ReadClipper.revertSoftClippedBases(read))
-                .map(read -> softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(read, minTailQualityToUse) :
-                        ReadClipper.hardClipLowQualEnds(read, minTailQualityToUse))
-                .filter(read -> read.getStart() <= read.getEnd())
-                .map(read -> read.isUnmapped() ? read : ReadClipper.hardClipAdaptorSequence(read))
-                .filter(read ->  !read.isEmpty() && read.getCigar().getReadLength() > 0)
-                .map(read -> ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() ))
-                .filter(read -> read.getStart() <= read.getEnd() && read.getLength() > 0 && read.overlaps(region.getPaddedSpan()))
-                // The transient attribute is preserved across copy operations and all of the previous alterations make copies, this simple ensures
-                // that any reads that have not been copied along the way are copied here for safety.
-                .map(read -> (read.getTransientAttribute("Original") != read? read : read.copy()))
-                .sorted(new ReadCoordinateComparator(readsHeader)) // TODO: sort may be unnecessary here
-                .collect(Collectors.toList());
+
+        final List<GATKRead> readsToUse = new ArrayList<>();
+        for (GATKRead originalRead : region.getReads()) {
+            // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
+            // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
+            GATKRead read = (dontUseSoftClippedBases || ! ReadUtils.hasWellDefinedFragmentSize(originalRead) ?
+                    ReadClipper.hardClipSoftClippedBases(originalRead) : ReadClipper.revertSoftClippedBases(originalRead));
+            read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(read, minTailQualityToUse) :
+                    ReadClipper.hardClipLowQualEnds(read, minTailQualityToUse));
+
+            if (read.getStart() <= read.getEnd()) {
+                read = (read.isUnmapped() ? read : ReadClipper.hardClipAdaptorSequence(read));
+
+                if (!read.isEmpty() && read.getCigar().getReadLength() > 0) {
+                    read = ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() );
+
+                    if (read.getStart() <= read.getEnd() && read.getLength() > 0 && read.overlaps(region.getPaddedSpan())) {
+                        // NOTE: here we make a defensive copy of the read if it has not been modified by the above operations
+                        // which might only make copies in the case that the read is actually clipped
+                        readsToUse.add(read == originalRead? read.copy() : read);
+                    }
+                }
+            }
+        }
+        readsToUse.sort(new ReadCoordinateComparator(readsHeader));
 
         // handle overlapping read pairs from the same fragment
         if (correctOverlappingBaseQualities) {
