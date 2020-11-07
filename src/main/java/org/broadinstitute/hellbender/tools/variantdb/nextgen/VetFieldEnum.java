@@ -147,7 +147,11 @@ public enum VetFieldEnum {
             //TODO find a constant for "AS_QUALapprox"
             String out = getAttribute(variant, "AS_QUALapprox", null);
             if (out == null) {
-                throw new UserException("Cannot be missing required value for alternate_bases.AS_QUALapprox");
+                String outNotAlleleSpecific = getAttribute(variant, "QUALapprox", null);
+                if (outNotAlleleSpecific == null) {
+                    throw new UserException("Cannot be missing required value for AS_QUALapprox or QUALapprox at site: " + variant.toString());
+                }
+                return outNotAlleleSpecific;
             }
             if (out.startsWith("|")) {
                 out = out.substring(1);
@@ -225,7 +229,13 @@ public enum VetFieldEnum {
             //TODO find a constant for "AS_VarDP"
             String out = getAttribute(variant, "AS_VarDP", null);
             if (out == null) {
-                throw new UserException("Cannot be missing required value for alternate_bases.AS_VarDP");
+                String varDP = getAttribute(variant, "VarDP", null);
+                String dP = getAttribute(variant, "DP", null);
+                if (varDP == null || dP == null) {
+                    throw new UserException("Cannot be missing required value for AS_VarDP, or VarDP and DP, at site:" + variant.toString());
+                }
+                int refDP = Integer.parseInt(dP) - Integer.parseInt(varDP);
+                out = refDP + "|" + varDP + "|";
             }
             if (out.endsWith("|0")) {
                 out = out.substring(0, out.length() - 2);
@@ -250,6 +260,9 @@ public enum VetFieldEnum {
             String out = variant.getGenotype(0).hasAD() ? Arrays.stream(variant.getGenotype(0).getAD())
                     .mapToObj(String::valueOf)
                     .collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)) : "";
+            if (out.equals("")) {
+                return out;
+            }
             if (out.endsWith(",0")) {
                 out = out.substring(0, out.length() - 2);
             } else {
@@ -271,7 +284,8 @@ public enum VetFieldEnum {
     call_GQ { // Required
         public String getColumnValue(final VariantContext variant) {
             if (!variant.getGenotype(0).hasGQ()) {
-                throw new UserException("Cannot be missing required value for call.GQ");
+                //throw new UserException("Cannot be missing required value for call.GQ");
+                return "";
             }
             return  String.valueOf(variant.getGenotype(0).getGQ());
         }
