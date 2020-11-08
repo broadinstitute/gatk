@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 //TODO rename this or get rid of it. a place holder for now
 public class CommonCode {
@@ -30,10 +31,16 @@ public class CommonCode {
         if (allele_indices.size() != 2){
             throw new IllegalArgumentException("GT doesnt have two alleles");
         }
+        List<String> gsStrings = allele_indices.stream().map(index -> index == -1 ? "." : index.toString()).collect(Collectors.toList());
         String separator = variant.getGenotype(0).isPhased() ? VCFConstants.PHASED : VCFConstants.UNPHASED;
-        return StringUtils.join(allele_indices, separator);
+        return StringUtils.join(gsStrings, separator);
     }
 
+    /**
+     * If the alleles are "missing", -1 will be returned as the index
+     * @param variant
+     * @return
+     */
     public static List<Integer> getGTAlleleIndexes(final VariantContext variant) {
         IndexedAlleleList<Allele> alleleList = new IndexedAlleleList<>(variant.getAlleles());
         ArrayList<Integer> allele_indices = new ArrayList<Integer>();
