@@ -73,15 +73,14 @@ public class IngestUtils {
     // Since tables have a limited number of samples (default is 4k)
     public static int getTableNumber(String sampleId, int sampleMod) { // this is based on sample id
         // sample ids 1-4000 will go in directory 001
-        int sampleIdInt = Integer.valueOf(sampleId); // TODO--should sampleId just get refactored as a long?
+        long sampleIdInt = Long.valueOf(sampleId); // TODO--should sampleId just get refactored as a long?
         return getTableNumber(sampleIdInt, sampleMod);
     }
 
-    public static int getTableNumber(int sampleId, int sampleMod) { // this is based on sample id
+    public static int getTableNumber(long sampleId, int sampleMod) { // this is based on sample id
         // sample ids 1-4000 will go in directory 001
-        int sampleIdInt = Integer.valueOf(sampleId); // TODO--should sampleId just get refactored as a long?
         // subtract 1 from the sample id to make it 1-index (or do we want to 0-index?) and add 1 to the dir
-        int directoryNumber = Math.floorDiv((sampleIdInt - 1), sampleMod) + 1; // TODO omg write some unit tests
+        int directoryNumber = new Long(Math.floorDiv((sampleId - 1), sampleMod) + 1).intValue(); // TODO omg write some unit tests
         return directoryNumber;
     }
 
