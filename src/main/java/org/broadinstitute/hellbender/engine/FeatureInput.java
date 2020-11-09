@@ -77,9 +77,6 @@ public final class FeatureInput<T extends Feature> extends GATKPath implements S
      * Construct a FeatureInput from a GATKPath argument value.
      *
      * @param gatkPath an existing GATKPath object
-     *
-     * This constructor is meant to be called only by the engine and test classes,
-     * which is why it has package access.
      */
     public FeatureInput(final GATKPath gatkPath) {
         super(gatkPath);
@@ -89,9 +86,7 @@ public final class FeatureInput<T extends Feature> extends GATKPath implements S
      * Construct a FeatureInput from a GATKPath argument value.
      *
      * @param gatkPath an existing GATKPath object
-     *
-     * This constructor is meant to be called only by the engine and test classes,
-     * which is why it has package access.
+     * @param name the tag name for this feature input
      */
     public FeatureInput(final GATKPath gatkPath, final String name) {
         super(gatkPath);

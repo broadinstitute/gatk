@@ -6,6 +6,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 
@@ -24,7 +25,6 @@ import java.io.PrintStream;
         omitFromCommandLine = true
 )
 public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
-
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
     private GATKPath outputFile = null;
 
@@ -42,7 +42,11 @@ public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
 
     @Override
     public void onTraversalStart() {
-        outputStream = outputFile != null ? new PrintStream(outputFile.getOutputStream()) : System.out;
+        try {
+            outputStream = outputFile != null ? new PrintStream(outputFile.getOutputStream()) : System.out;
+        } catch ( final Exception e ) {
+            throw new UserException.CouldNotCreateOutputFile(outputFile, "Failed attempting to create an output stream", e);
+        }
     }
 
     @Override

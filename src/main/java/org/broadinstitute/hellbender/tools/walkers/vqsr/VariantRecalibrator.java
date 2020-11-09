@@ -655,12 +655,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
                     if (goodModel.failedToConverge) {
                         if (outputModel != null) {
                             final GATKReport report = writeModelReport(goodModel, null, USE_ANNOTATIONS);
-                            try (final PrintStream modelReportStream = new PrintStream(outputModel.getOutputStream())) {
-                                if (modelReportStream.checkError()) {
-                                    throw new UserException.CouldNotCreateOutputFile(outputModel, "I/O stream error writing to report output");
-                                }
-                                report.print(modelReportStream);
-                            }
+                            saveModelReport(report, outputModel);
                         }
                         throw new UserException.VQSRPositiveModelFailure("Positive training model failed to converge.  One or more annotations " +
                                 "(usually MQ) may have insufficient variance.  Please consider lowering the maximum number" +
@@ -683,12 +678,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
 
                 if (outputModel != null) {
                     final GATKReport report = writeModelReport(goodModel, badModel, USE_ANNOTATIONS);
-                    try (final PrintStream modelReportStream = new PrintStream(outputModel.getOutputStream())) {
-                        if (modelReportStream.checkError()) {
-                            throw new UserException.CouldNotCreateOutputFile(outputModel, "I/O stream error writing to report output");
-                        }
-                        report.print(modelReportStream);
-                    }
+                    saveModelReport(report, outputModel);
                 }
 
                 engine.calculateWorstPerformingAnnotation(dataManager.getData(), goodModel, badModel);
@@ -925,6 +915,20 @@ public class VariantRecalibrator extends MultiVariantWalker {
         }
 
         return report;
+    }
+
+    private static void saveModelReport(final GATKReport report, final GATKPath modelPath) {
+        try (final PrintStream modelReportStream = new PrintStream(modelPath.getOutputStream())) {
+            if (modelReportStream.checkError()) {
+                throw new IOException("checkError failure condition in PrintStream constructor");
+            }
+            report.print(modelReportStream);
+            if (modelReportStream.checkError()) {
+                throw new IOException("checkError failure condition in output writing");
+            }
+        } catch (final Exception e) {
+            throw new UserException.CouldNotCreateOutputFile(modelPath, "Exception writing to report output. ", e);
+        }
     }
 
     protected GATKReportTable makeVectorTable(final String tableName,

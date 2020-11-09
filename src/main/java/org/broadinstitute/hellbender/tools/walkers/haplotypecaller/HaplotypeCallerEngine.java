@@ -169,7 +169,11 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // Add necessary debug streams to the output
         if (hcArgs.assemblyStateOutput != null) {
-            assemblyDebugOutStream = new OutputStreamWriter(hcArgs.assemblyStateOutput.getOutputStream());
+            try {
+                assemblyDebugOutStream = new OutputStreamWriter(hcArgs.assemblyStateOutput.getOutputStream());
+            } catch (final Exception e) {
+                throw new UserException.CouldNotCreateOutputFile(hcArgs.assemblyStateOutput, "Provided argument for assembly debug graph location could not be created", e);
+            }
         } else {
             assemblyDebugOutStream = null;
         }
@@ -556,24 +560,24 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         if (assemblyDebugOutStream != null) {
             try {
-                assemblyDebugOutStream.write("\n\n\n\n" + region.getSpan() + "\nNumber of reads in region: " + region.getReads().size() + "     they are:");
+                assemblyDebugOutStream.write("\n\n\n\n" + region.getSpan() + "\nNumber of reads in region: " + region.getReads().size() + "     they are:\n");
                 for (GATKRead read : region.getReads()) {
-                    assemblyDebugOutStream.write(read.getName() + "   " + read.convertToSAMRecord(region.getHeader()).getFlags());
+                    assemblyDebugOutStream.write(read.getName() + "   " + read.convertToSAMRecord(region.getHeader()).getFlags() + "\n");
                 }
             } catch (IOException e) {
                 throw new UserException("Error writing to debug output stream", e);
             }
-    }
+        }
 
-
-    // run the local assembler, getting back a collection of information on how we should proceed
+        // run the local assembler, getting back a collection of information on how we should proceed
         final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
 
         if (assemblyDebugOutStream != null) {
             try {
-                assemblyDebugOutStream.write("\nThere were " + untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:");
+                assemblyDebugOutStream.write("\nThere were " + untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:\n");
                 for (String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(haplotype -> haplotype.toString()).sorted().collect(Collectors.toList())) {
                     assemblyDebugOutStream.write(haplotype);
+                    assemblyDebugOutStream.append('\n');
                 }
             } catch (IOException e) {
                 throw new UserException("Error writing to debug output stream", e);
@@ -783,7 +787,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             try {
                 assemblyDebugOutStream.close();
             } catch (IOException e) {
-                throw new UserException("Error closingdebug output stream", e);
+                throw new UserException("Error closing debug output stream", e);
             }
         }
         HaplotypeCallerGenotypingDebugger.close();
