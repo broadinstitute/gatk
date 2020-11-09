@@ -18,6 +18,15 @@ from ml4h.tensorize.tensor_writer_ukbb import disease_prevalence_status, get_dis
 LESS_THAN_CODES = "('Less than a year', 'Less than once a week', 'Less than one mile', 'Less than an hour a day', 'Less than one a day', 'Less than one', 'Less than once a year', 'Less than 1 year ago', 'Less than a year ago', 'Less than one year', 'Less than one cigarette per day')"
 
 
+def make_test_tensor_maps(desired_map_name: str) -> TensorMap:
+    for n in range(1, 6):
+        if desired_map_name == f'{n}d_cont':
+            return TensorMap(f'{n}d_cont', shape=tuple(range(2, n + 2)), interpretation=Interpretation.CONTINUOUS)
+        if desired_map_name == f'{n}d_cat':
+            return TensorMap(f'{n}d_cat', shape=tuple(range(2, n + 2)), interpretation=Interpretation.CATEGORICAL,
+                             channel_map={f'c_{i}': i for i in range(n + 1)},)
+
+
 def write_tensor_maps(args) -> None:
     logging.info("Making tensor maps...")
 
@@ -258,3 +267,4 @@ def generate_random_text_tensor_maps(text_file: str, window_size: int, one_hot: 
         cacheable=False,
     )
     return input_map, burn_in, output_map
+

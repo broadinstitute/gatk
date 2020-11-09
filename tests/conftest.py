@@ -1,5 +1,4 @@
 import sys
-import mock
 import pytest
 
 from ml4h.arguments import parse_args
@@ -7,11 +6,11 @@ from ml4h.test_utils import TMAPS as MOCK_TMAPS
 from ml4h.test_utils import build_hdf5s
 
 
-def pytest_configure():
+def pytest_configure(config):
     pytest.N_TENSORS = 50
+    config.addinivalue_line("markers", "slow: mark tests as slow")
 
 
-#@mock.patch.dict(TMAPS, MOCK_TMAPS)
 @pytest.fixture(scope='class')
 def default_arguments(tmpdir_factory):
     temp_dir = tmpdir_factory.mktemp('data')

@@ -29,7 +29,7 @@ from ml4h.models import parent_sort, BottleneckType, check_no_bottleneck
 from ml4h.models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
+from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps, make_test_tensor_maps
 
 
 BOTTLENECK_STR_TO_ENUM = {
@@ -337,6 +337,14 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4h.tensormap"):
         return tm
 
     tm = _build_mgb_time_series_tensor_maps(module_string)
+    if isinstance(tm, TensorMap) == True:
+        return tm
+
+    tm = _build_mgb_time_series_tensor_maps(module_string)
+    if isinstance(tm, TensorMap) == True:
+        return tm
+
+    tm = make_test_tensor_maps(module_string)
     if isinstance(tm, TensorMap) == True:
         return tm
 

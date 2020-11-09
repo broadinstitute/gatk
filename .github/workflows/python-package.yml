@@ -1,0 +1,41 @@
+# This workflow will install the ml4h Python package and run its tests.
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Test ml4h Python package
+
+on:
+  workflow_dispatch:
+    # Allows manually triggering workflow in GitHub UI on selected branch.
+    # GitHub doc: https://docs.github.com/en/free-pro-team@latest/actions/reference/events-that-trigger-workflows#workflow_dispatch.
+    # GitHub blog demo: https://github.blog/changelog/2020-07-06-github-actions-manual-triggers-with-workflow_dispatch/.
+
+  push:
+    branches: [ master ]
+
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        # Install the ml4h Python package.
+        pip install .
+    - name: Test with pytest
+      run: |
+        pytest tests -m "not slow"
+
