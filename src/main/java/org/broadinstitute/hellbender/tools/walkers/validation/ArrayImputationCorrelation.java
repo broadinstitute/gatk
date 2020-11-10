@@ -192,9 +192,6 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
             }
 
             if (incorrectlyGenotypedSitesWriter != null && truthAltCount != evalAltCount) {
-                if (evalVC.getStart()==13116) {
-                    System.out.println("hi");
-                }
                 try {
                     incorrectlyGenotypedSitesWriter.writeRecord(evalVC);
                 } catch (final IOException ex) {
@@ -247,12 +244,13 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 
     private static class IncorrectlyGenotypedSitesWriter extends TableWriter<VariantContext> {
         IncorrectlyGenotypedSitesWriter(final Path file) throws IOException {
-            super(file, new TableColumnCollection("chrom", "pos"));
+            super(file, new TableColumnCollection("chrom", "start", "end"));
         }
 
         protected void composeLine(final VariantContext vc, final DataLine dataLine) {
             dataLine.set("chrom", vc.getContig())
-                    .set("pos", vc.getStart());
+                    .set("start", vc.getStart())
+                    .set("end", vc.getEnd());
         }
     }
 
