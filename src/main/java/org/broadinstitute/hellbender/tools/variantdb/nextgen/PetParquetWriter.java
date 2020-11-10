@@ -19,12 +19,6 @@ public class PetParquetWriter implements Closeable {
     private Schema schema;
 
     public PetParquetWriter(String outputFile) throws IOException{
-        // if we already have a writer, close it and create a new one
-        if (this.writer != null) {
-            this.writer.close();
-            this.writer = null;
-        }
-
         this.schema = SchemaBuilder.record("pet")
                                     .namespace("org.broadinstitute.dsp")
                                     .fields().requiredInt("location").requiredInt("sample_id").requiredString("state")

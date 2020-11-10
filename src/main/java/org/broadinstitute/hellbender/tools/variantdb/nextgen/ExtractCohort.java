@@ -45,9 +45,9 @@ public class ExtractCohort extends ExtractTool {
     private Long minLocation = null;
 
     @Argument(
-        fullName = "max-location",
-        doc = "When extracting data, only include locations <= this value",
-        optional = true
+            fullName = "max-location",
+            doc = "When extracting data, only include locations <= this value",
+            optional = true
     )
     private Long maxLocation = null;
 
