@@ -12,15 +12,14 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
+import org.broadinstitute.hellbender.tools.variantdb.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeInfo;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeQcMetrics;
-import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.nextgen.ExtractCohort;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
-import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.util.*;
@@ -199,16 +198,9 @@ public class ArrayExtractCohort extends GATKTool {
 
         vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
 
-        Map<Integer, String> sampleIdMap;
-        if (sampleTableName != null) {
-            sampleIdMap = SampleList.getSampleIdMap(new TableReference(sampleTableName, SampleList.SAMPLE_LIST_FIELDS), printDebugInformation);
-        } else if (cohortSampleFile != null) {
-          sampleIdMap = SampleList.getSampleIdMap(cohortSampleFile);
-        } else {
-          throw new IllegalArgumentException("--cohort-sample-names or --cohort-sample-table must be provided.");
-        }
-
-        VCFHeader header = CommonCode.generateRawArrayVcfHeader(new HashSet<>(sampleIdMap.values()), reference.getSequenceDictionary());
+        SampleList sampleIdMap = new SampleList(sampleTableName, cohortSampleFile, printDebugInformation);
+//        Map<Integer, String> sampleIdMap;
+        VCFHeader header = CommonCode.generateRawArrayVcfHeader(new HashSet<>(sampleIdMap.getSampleNames()), reference.getSequenceDictionary());
 
         Map<Long, ProbeInfo> probeIdMap;
         if (probeCsvExportFile == null) {

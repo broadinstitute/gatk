@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.tools.variantdb.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.BasicArrayData.ArrayGenotype;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
@@ -17,6 +18,7 @@ import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantCon
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.*;
+import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollection;
 import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
 
 import java.text.DecimalFormat;
@@ -46,7 +48,7 @@ public class ArrayExtractCohortEngine {
     private final String readProjectId;
 
     /** List of sample names seen in the variant data from BigQuery. */
-    private final Map<Integer, String> sampleIdMap;
+    private final SampleList sampleIdMap;
     private final Set<String> sampleNames;
 
     private final Map<Long, ProbeInfo> probeIdMap;
@@ -69,7 +71,7 @@ public class ArrayExtractCohortEngine {
                                     final VCFHeader vcfHeader,
                                     final VariantAnnotatorEngine annotationEngine,
                                     final ReferenceDataSource refSource,
-                                    final Map<Integer, String> sampleIdMap,
+                                    final SampleList sampleIdMap,
                                     final Map<Long, ProbeInfo> probeIdMap,
                                     final Map<Long, ProbeQcMetrics> probeQcMetricsMap,
                                     final String cohortTableName,
@@ -95,13 +97,13 @@ public class ArrayExtractCohortEngine {
         this.vcfWriter = vcfWriter;
         this.refSource = refSource;
         this.sampleIdMap = sampleIdMap;
-        this.sampleNames = new HashSet<>(sampleIdMap.values());
+        this.sampleNames = new HashSet<>(sampleIdMap.getSampleNames());
         this.gtDataOnly = gtDataOnly;
 
         this.probeIdMap = probeIdMap;
         this.probeQcMetricsMap = probeQcMetricsMap;
 
-        this.cohortTableRef = new TableReference(cohortTableName, useCompressedData? SchemaUtils.RAW_ARRAY_COHORT_FIELDS_COMPRESSED:SchemaUtils.RAW_ARRAY_COHORT_FIELDS_UNCOMPRESSED);
+        this.cohortTableRef = new TableReference(cohortTableName, SchemaUtils.RAW_ARRAY_COHORT_FIELDS_UNCOMPRESSED);
         this.minProbeId = minProbeId;
         this.maxProbeId = maxProbeId;
 //        this.useCompressedData = useCompressedData;
@@ -146,7 +148,7 @@ public class ArrayExtractCohortEngine {
 
         Comparator<GenericRecord> comparator = UNCOMPRESSED_PROBE_ID_COMPARATOR;
 
-        SortingCollection<GenericRecord> sortingCollection =  getAvroProbeIdSortingCollection(schema, localSortMaxRecordsInRam, comparator);
+        SortingCollection<GenericRecord> sortingCollection = AvroSortingCollection.getAvroSortingCollection(schema, localSortMaxRecordsInRam, comparator);
         for ( final GenericRecord queryRow : avroReader ) {
             sortingCollection.add(queryRow);
         }
@@ -213,7 +215,7 @@ public class ArrayExtractCohortEngine {
 //            }
 
             // TODO: handle missing values
-            String sampleName = sampleIdMap.get((int) sampleId);            
+            String sampleName = sampleIdMap.getSampleName((int) sampleId);
             currentPositionSamplesSeen.add(sampleName);
 
             ++numRecordsAtPosition;

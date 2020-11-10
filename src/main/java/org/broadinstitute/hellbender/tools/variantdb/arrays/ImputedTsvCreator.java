@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
+import org.broadinstitute.hellbender.tools.variantdb.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.ProbeInfo;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
@@ -27,10 +28,10 @@ public final class ImputedTsvCreator {
     private final boolean useCompressedData;
     private static String IMPUTED_FILETYPE_PREFIX = "imputed_";
     private final Set<String> sampleNames;
-    private final Map<String, Integer> sampleNameMap;
+    private final SampleList sampleNameMap;
 
 
-    public ImputedTsvCreator(final String tableNumberPrefix, final String runId, final Set<String> sampleNames, final Map<String, Integer> sampleNameMap, final boolean useCompressedData) {
+    public ImputedTsvCreator(final String tableNumberPrefix, final String runId, final Set<String> sampleNames, final SampleList sampleNameMap, final boolean useCompressedData) {
         this.useCompressedData = useCompressedData;
         this.runId = runId;
         this.sampleNames = sampleNames;
@@ -54,7 +55,7 @@ public final class ImputedTsvCreator {
 //            fields = ImputedFieldEnum.getCompressedRawArrayFieldEnums();
 //        }
         for (final ImputedFieldEnum fieldEnum : fields) {
-            row.add(fieldEnum.getColumnValue(variant, sampleNameMap.get(gt.getSampleName()).toString()));
+            row.add(fieldEnum.getColumnValue(variant, String.valueOf(sampleNameMap.getSampleId(gt.getSampleName()))));
         }
         return row;
     }

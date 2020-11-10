@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.tools.variantdb.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
+import org.broadinstitute.hellbender.tools.variantdb.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.variantdb.arrays.ExtractCohortBQ;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
@@ -30,41 +31,11 @@ import java.util.*;
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
-public class ExtractCohort extends GATKTool {
+public class ExtractCohort extends ExtractTool {
     private static final Logger logger = LogManager.getLogger(ExtractCohort.class);
-    public static final int DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM = 1000000;
-    private VariantContextWriter vcfWriter = null;
     private ExtractCohortEngine engine;
 
-    public enum QueryMode {
-        LOCAL_SORT,
-        QUERY
-    }
-
-    @Argument(
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "Output VCF file to which annotated variants should be written.",
-            optional = false
-    )
-    private String outputVcfPathString = null;
-
-    @Argument(
-            fullName = "project-id",
-            doc = "ID of the Google Cloud project to use when executing queries",
-            optional = false
-    )
-    private String projectID = null;
-
-    @Argument(
-            fullName = "sample-table",
-            doc = "Fully qualified name of a bigquery table containing a single column `sample` that describes the full list of samples to evoque",
-            optional = true
-    )
-    private String sampleTableName = null;
-
-
-    @Argument(
+   @Argument(
             fullName = "variant-filter-table",
             doc = "Fully qualified name of the filtering table to use for cohort extraction",
             optional = true
@@ -78,82 +49,15 @@ public class ExtractCohort extends GATKTool {
     )
     private String cohortTable = null;
 
-    @Argument(
-            fullName = "print-debug-information",
-            doc = "If true, print extra debugging output",
-            optional = true)
-    private boolean printDebugInformation = false;
-
-    @Argument(
-            fullName = "vqslog-SNP-threshold",
-            doc = "The minimum value required for a SNP to pass.",
-            optional = true)
-    private double vqsLodSNPThreshold = 99.95;
-
-    @Argument(
-            fullName = "vqslog-INDEL-threshold",
-            doc = "The minimum value required for an INDEL to pass.",
-            optional = true)
-    private double vqsLodINDELThreshold = 99.4;
-
-    @Argument(
-            fullName = "local-sort-max-records-in-ram",
-            doc = "When doing local sort, store at most this many records in memory at once",
-            optional = true
-    )
-    private int localSortMaxRecordsInRam = DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM;
-
-    @Argument(
-            fullName = "mode",
-            doc = "Source of genomic data. Valid options are one of ARRAYS, EXOMES, GENOMES",
-            optional = false
-    )
-    private CommonCode.ModeEnum mode = CommonCode.ModeEnum.EXOMES;
-
-    @Argument(
-            fullName = "query-mode",
-            doc = "Source of genomic data. Valid options are one of GROUP_BY, LOCAL_SORT, QUERY",
-            optional = false
-    )
-    private QueryMode queryMode = QueryMode.QUERY;
-
-    @Argument(
-            fullName = "ref-version",
-            doc = "Remove this option!!!! only for ease of testing. Valid options are 37 or 38",
-            optional = true
-    )
-    private String refVersion = "37";
-
-    @Override
-    public boolean requiresReference() {
-        return true;
-    }
-
-    @Override
-    public boolean useVariantAnnotations() { return true; }
-
-    @Override
-    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
-        return Arrays.asList(
-                StandardAnnotation.class, AS_StandardAnnotation.class
-        );
-    }
 
     @Override
     protected void onStartup() {
         super.onStartup();
 
-        //TODO verify what we really need here
-        final VariantAnnotatorEngine annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
-
-        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
-
-        TableReference sampleTableRef = new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS);
-        Set<String> sampleNames = ExtractCohortBQ.populateSampleNames(sampleTableRef, printDebugInformation);
+        SampleList sampleList = new SampleList(sampleTableName, null, printDebugInformation);
+        Set<String> sampleNames = new HashSet<>(sampleList.getSampleNames());
 
         VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary());
-
-        ChromosomeEnum.setRefVersion(refVersion);
 
         engine = new ExtractCohortEngine(
                 projectID,

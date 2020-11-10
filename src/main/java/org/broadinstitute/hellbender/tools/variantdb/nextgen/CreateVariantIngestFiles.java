@@ -106,6 +106,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
         ChromosomeEnum.setRefVersion(refVersion);
 
+        // TODO should we reuse the SampleList class or move these methods there?
+        // TODO if you change here, also change in CreateArrayIngestFiles
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
         sampleName = IngestUtils.getSampleName(inputVCFHeader);
