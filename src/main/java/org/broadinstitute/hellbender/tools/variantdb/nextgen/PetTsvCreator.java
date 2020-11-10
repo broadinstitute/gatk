@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
+import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
@@ -20,7 +21,12 @@ import java.util.stream.Collectors;
 public final class PetTsvCreator {
     private static final Logger logger = LogManager.getLogger(PetTsvCreator.class);
 
-    private SimpleXSVWriter petWriter = null;
+    private CommonCode.OutputType outputType;
+
+    private SimpleXSVWriter petTsvWriter = null;
+    private PetOrcWriter petOrcWriter = null;
+    private PetParquetWriter petParquetWriter = null;
+
     private final String sampleId;
     private SimpleInterval previousInterval;
     private final SAMSequenceDictionary seqDictionary;
@@ -28,17 +34,28 @@ public final class PetTsvCreator {
     private GenomeLocSortedSet coverageLocSortedSet;
     private static String PET_FILETYPE_PREFIX = "pet_";
 
-    public PetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final File outputDirectory) {
+    public PetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final File outputDirectory, final CommonCode.OutputType outputType) {
         this.sampleId = sampleId;
         this.seqDictionary = seqDictionary;
         this.gqStateToIgnore = gqStateToIgnore;
+        this.outputType = outputType;
+
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
        try {
-           final File petOutputFile = new File(outputDirectory, PET_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + IngestConstants.FILETYPE);
-            List<String> petHeader = PetTsvCreator.getHeaders();
-            petWriter = new SimpleXSVWriter(petOutputFile.toPath(), IngestConstants.SEPARATOR);
-            petWriter.setHeaderLine(petHeader);
+            final File petOutputFile = new File(outputDirectory, PET_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + "." + outputType.toString().toLowerCase());
+            switch (outputType) {
+                case TSV:                
+                    List<String> petHeader = PetTsvCreator.getHeaders();
+                    petTsvWriter = new SimpleXSVWriter(petOutputFile.toPath(), IngestConstants.SEPARATOR);
+                    petTsvWriter.setHeaderLine(petHeader);
+                    break;
+                case ORC:
+                    petOrcWriter = new PetOrcWriter(petOutputFile.getCanonicalPath());
+                    break;
+                case PARQUET:
+                    petParquetWriter = new PetParquetWriter(petOutputFile.getCanonicalPath());
+            }
         } catch (final IOException e) {
             throw new UserException("Could not create pet outputs", e);
         }
@@ -79,7 +96,7 @@ public final class PetTsvCreator {
 
     }
 
-    public void apply(VariantContext variant, List<GenomeLoc> intervalsToWrite) {
+    public void apply(VariantContext variant, List<GenomeLoc> intervalsToWrite) throws IOException {
         boolean firstInterval = true;
         final String variantChr = variant.getContig();
 
@@ -122,7 +139,21 @@ public final class PetTsvCreator {
 
                 // write the position to the XSV
                 for (List<String> TSVLineToCreatePet : TSVLinesToCreatePet) {
-                    petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
+                    long location = Long.parseLong(TSVLineToCreatePet.get(0));
+                    long sampleId = Long.parseLong(TSVLineToCreatePet.get(1));
+                    String state = TSVLineToCreatePet.get(2);
+
+                    switch (outputType) {
+                        case TSV:                
+                            petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
+                            break;
+                        case ORC:
+                            petOrcWriter.addRow(location, sampleId, state);        
+                            break;
+                        case PARQUET:
+                            petParquetWriter.addRow(location, sampleId, state);        
+                            break;                            
+                    }
                 }
             }
             firstInterval = false;
@@ -130,7 +161,7 @@ public final class PetTsvCreator {
 
     }
 
-    public void writeMissingIntervals(GenomeLocSortedSet intervalArgumentGenomeLocSortedSet) {
+    public void writeMissingIntervals(GenomeLocSortedSet intervalArgumentGenomeLocSortedSet) throws IOException {
         GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(coverageLocSortedSet);
         logger.info("MISSING_GREP_HERE:" + uncoveredIntervals.coveredSize());
         logger.info("MISSING_PERCENTAGE_GREP_HERE:" + (1.0 * uncoveredIntervals.coveredSize()) / intervalArgumentGenomeLocSortedSet.coveredSize());
@@ -142,7 +173,21 @@ public final class PetTsvCreator {
                     SchemaUtils.encodeLocation(contig, genomeLoc.getEnd()),
                     sampleId
             )) {
-                petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
+                long location = Long.parseLong(TSVLineToCreatePet.get(0));
+                long sampleId = Long.parseLong(TSVLineToCreatePet.get(1));
+                String state = TSVLineToCreatePet.get(2);
+
+                switch (outputType) {
+                    case TSV:                
+                        petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
+                        break;
+                    case ORC:
+                        petOrcWriter.addRow(location, sampleId, state);        
+                        break;
+                    case PARQUET:
+                        petParquetWriter.addRow(location, sampleId, state);        
+                        break;                            
+                }
             }
         }
     }
@@ -258,13 +303,20 @@ public final class PetTsvCreator {
     }
 
     public void closeTool() {
-        if (petWriter != null) {
-            try {
-                petWriter.close();
-            } catch (final Exception e) {
-                throw new IllegalArgumentException("Couldn't close VET writer", e);
+        try {
+            switch (outputType) {
+                case TSV:   
+                    if (petTsvWriter != null) petTsvWriter.close();
+                    break;
+                case ORC:
+                    if (petOrcWriter != null) petOrcWriter.close();
+                    break;
+                case PARQUET:
+                    if (petParquetWriter != null) petParquetWriter.close();
+                    break;
             }
+        } catch (final Exception e) {
+            throw new IllegalArgumentException("Couldn't close PET writer", e);
         }
-
     }
 }

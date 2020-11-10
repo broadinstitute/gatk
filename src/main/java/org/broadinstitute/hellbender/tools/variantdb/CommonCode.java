@@ -197,4 +197,10 @@ public class CommonCode {
         GENOMES,
         ARRAYS
     }
+
+    public enum OutputType {
+        TSV,
+        ORC,
+        PARQUET
+    }
 }

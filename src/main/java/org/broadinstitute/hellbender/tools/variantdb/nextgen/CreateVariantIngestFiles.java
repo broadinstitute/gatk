@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.*;
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
@@ -22,6 +23,7 @@ import org.broadinstitute.hellbender.utils.*;
 
 import java.util.*;
 import java.io.File;
+import java.io.IOException;
 
 /**
  * Ingest variant walker
@@ -77,6 +79,12 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             doc = "Type of sample. Default is EXOMES. Valid options are EXOMES, GENOMES",
             optional = true)
     public CommonCode.ModeEnum mode = CommonCode.ModeEnum.EXOMES;
+
+    @Argument(fullName = "output-type", 
+            shortName = "ot", 
+            doc = "[Experimental] Output file format: TSV, ORC or PARQUET [default=TSV].", 
+            optional = true)
+    public CommonCode.OutputType outputType = CommonCode.OutputType.TSV;
 
     @Argument(
             fullName = "ref-version",
@@ -137,7 +145,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        petTsvCreator = new PetTsvCreator(sampleName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, outputDir);
+        petTsvCreator = new PetTsvCreator(sampleName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, outputDir, outputType);
         switch (mode) {
             case EXOMES:
             case GENOMES:
@@ -177,12 +185,21 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (!variant.isReferenceBlock()) {
             vetTsvCreator.apply(variant, readsContext, referenceContext, featureContext);
         }
-        petTsvCreator.apply(variant, intervalsToWrite);
+        try {
+            petTsvCreator.apply(variant, intervalsToWrite);
+        } catch (IOException ioe) {
+            throw new GATKException("Error writing PET", ioe);
+        }
+
     }
 
     @Override
     public Object onTraversalSuccess() {
-        petTsvCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
+        try {
+            petTsvCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
+        } catch (IOException ioe) {
+            throw new GATKException("Error writing missing intervals", ioe);
+        }
         return 0;
     }
 
