@@ -461,12 +461,17 @@ public class ExtractCohortEngine {
                 final String genotypeAttributeName = columnName.substring(SchemaUtils.GENOTYPE_FIELD_PREFIX.length());
 
                 if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_KEY) ) {
-                    final List<Allele> genotypeAlleles =
+                    if ("./.".equals(columnValueString)) {
+                        genotypeBuilder.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
+
+                    } else {
+                        final List<Allele> genotypeAlleles =
                             Arrays.stream(columnValueString.split("[/|]"))
                                     .map(Integer::parseInt)
                                     .map(alleleIndex -> alleles.get(alleleIndex))
                                     .collect(Collectors.toList());
-                    genotypeBuilder.alleles(genotypeAlleles);
+                        genotypeBuilder.alleles(genotypeAlleles);
+                    }
                 } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_QUALITY_KEY) ) {
                     genotypeBuilder.GQ(Integer.parseInt(columnValueString));
                 } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_PL_KEY) ) {
