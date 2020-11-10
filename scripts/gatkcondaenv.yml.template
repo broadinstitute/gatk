@@ -51,6 +51,7 @@ dependencies:
 - r-gplots=3.0.3
 - r-gsalib=2.1
 - r-optparse=1.6.4
+- r-backports=1.1.10
 
 # other python dependencies; these should be removed after functionality is moved into Java code
 - biopython=1.76
