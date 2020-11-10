@@ -54,6 +54,12 @@ public class ExtractFeatures extends ExtractTool {
     )
     protected boolean trainingSitesOnly = false;
 
+    @Argument(
+        fullName = "use-batch-queries",
+        doc = "If true, use batch (rather than interactive) priority queries in BigQuery",
+        optional = true)
+    protected boolean useBatchQueries = true;
+
     @Override
     public boolean requiresIntervals() {
         return true; // TODO -- do I need to check the boolean flag on this?
@@ -64,10 +70,8 @@ public class ExtractFeatures extends ExtractTool {
         super.onStartup();
 
         TableReference sampleTableRef = new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS);
-        SampleList sampleList = new SampleList(sampleTableName, null, printDebugInformation);
-        Set<String> sampleNames = new HashSet<>(sampleList.getSampleNames());
 
-        VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary());
+        VCFHeader header = CommonCode.generateVcfHeader(new HashSet<>(), reference.getSequenceDictionary());
 
         engine = new ExtractFeaturesEngine(
             projectID,
@@ -82,6 +86,7 @@ public class ExtractFeatures extends ExtractTool {
             intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()),
             localSortMaxRecordsInRam,
             printDebugInformation,
+            useBatchQueries,
             progressMeter);
         vcfWriter.writeHeader(header);
 }

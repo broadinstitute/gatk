@@ -11,7 +11,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.FisherStrand;
@@ -52,6 +51,7 @@ public class ExtractFeaturesEngine {
     private final TableReference sampleListTable;
     private final ProgressMeter progressMeter;
     private List<SimpleInterval> userIntervals;
+    private final boolean useBatchQueries;
 
 //    /** Set of sample names seen in the variant data from BigQuery. */
 //    private final Set<String> sampleNames = new HashSet<>();
@@ -68,6 +68,7 @@ public class ExtractFeaturesEngine {
                                final List<SimpleInterval> userIntervals,
                                final int localSortMaxRecordsInRam,
                                final boolean printDebugInformation,
+                               final boolean useBatchQueries,
                                final ProgressMeter progressMeter) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
@@ -79,6 +80,7 @@ public class ExtractFeaturesEngine {
         this.vetTable = new TableReference(fqVetTable, SchemaUtils.VET_FIELDS);
         this.sampleListTable = sampleListTable;
         this.printDebugInformation = printDebugInformation;
+        this.useBatchQueries = useBatchQueries;
         this.progressMeter = progressMeter;
         this.userIntervals = userIntervals;
 
@@ -89,7 +91,7 @@ public class ExtractFeaturesEngine {
         userIntervals.forEach(interval -> {
             final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(vetTable, altAlleleTable, sampleListTable, interval, trainingSitesOnly);
             logger.info(featureQueryString);
-            final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, SchemaUtils.FEATURE_EXTRACT_FIELDS, projectID, true);
+            final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, SchemaUtils.FEATURE_EXTRACT_FIELDS, projectID, useBatchQueries);
 
             createVQSRInputFromTableResult(storageAPIAvroReader, interval.getContig());
         });
