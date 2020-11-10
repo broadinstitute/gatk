@@ -115,9 +115,9 @@ public class SchemaUtils {
     public final static Comparator<GenericRecord> LOCATION_COMPARATOR = new Comparator<GenericRecord>() {
         @Override
         public int compare( GenericRecord o1, GenericRecord o2 ) {
-            final long firstProbeId = (Long) o1.get(SchemaUtils.LOCATION_FIELD_NAME);
-            final long secondProbeId = (Long) o2.get(SchemaUtils.LOCATION_FIELD_NAME);
-            return Long.compare(firstProbeId, secondProbeId);
+            final long firstLocation = (Long) o1.get(SchemaUtils.LOCATION_FIELD_NAME);
+            final long secondLocation = (Long) o2.get(SchemaUtils.LOCATION_FIELD_NAME);
+            return Long.compare(firstLocation, secondLocation);
         }
     };
 

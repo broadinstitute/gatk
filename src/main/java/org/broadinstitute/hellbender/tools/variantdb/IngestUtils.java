@@ -49,8 +49,8 @@ public class IngestUtils {
             }
             br.close();
             if (sampleId == null) {
-                // sampleName not found
-                throw new UserException("Sample " + sampleName + " could not be found in sample mapping file");
+                // sampleId not found
+                throw new UserException("Sample " + sampleId + " could not be found in sample mapping file");
             }
         } catch (final IOException ioe) { // FileNotFoundException e,
             throw new UserException("Could not find sample mapping file");
@@ -58,22 +58,11 @@ public class IngestUtils {
         return sampleId;
     }
 
-//    public static Path createSampleDirectory(Path parentDirectory, int sampleDirectoryNumber) {
-//        // If this sample set directory doesn't exist yet -- create it
-//        final String sampleDirectoryName = String.valueOf(sampleDirectoryNumber);
-//        final Path sampleDirectoryPath = parentDirectory.resolve(sampleDirectoryName);
-//        final File sampleDirectory = new File(sampleDirectoryPath.toString());
-//        if (!sampleDirectory.exists()) {
-//            sampleDirectory.mkdir();
-//        }
-//        return sampleDirectoryPath;
-//    }
-
-    // To determine which directory (and ultimately table) the sample's data will go into
+    // To determine which table the sample's data will go into
     // Since tables have a limited number of samples (default is 4k)
     public static int getTableNumber(String sampleId, int sampleMod) { // this is based on sample id
         // sample ids 1-4000 will go in directory 001
-        long sampleIdInt = Long.valueOf(sampleId); // TODO--should sampleId just get refactored as a long?
+        long sampleIdInt = Long.valueOf(sampleId);
         return getTableNumber(sampleIdInt, sampleMod);
     }
 
