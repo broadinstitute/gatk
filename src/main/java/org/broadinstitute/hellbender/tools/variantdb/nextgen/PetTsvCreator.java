@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
+import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
@@ -20,8 +21,11 @@ import java.util.stream.Collectors;
 public final class PetTsvCreator {
     private static final Logger logger = LogManager.getLogger(PetTsvCreator.class);
 
-    //private SimpleXSVWriter petWriter = null;
-    private PetOrcWriter petWriter = null;
+    private CommonCode.OutputType outputType;
+
+    private SimpleXSVWriter petTsvWriter = null;
+    private PetOrcWriter petOrcWriter = null;
+    private PetParquetWriter petParquetWriter = null;
 
     private final String sampleId;
     private SimpleInterval previousInterval;
@@ -30,20 +34,28 @@ public final class PetTsvCreator {
     private GenomeLocSortedSet coverageLocSortedSet;
     private static String PET_FILETYPE_PREFIX = "pet_";
 
-    public PetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final File outputDirectory) {
+    public PetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final File outputDirectory, final CommonCode.OutputType outputType) {
         this.sampleId = sampleId;
         this.seqDictionary = seqDictionary;
         this.gqStateToIgnore = gqStateToIgnore;
+        this.outputType = outputType;
+
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
        try {
-           final File petOutputFile = new File(outputDirectory, PET_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + IngestConstants.FILETYPE);
-
-           petWriter = new PetOrcWriter(petOutputFile.getCanonicalPath());
-
-            // List<String> petHeader = PetTsvCreator.getHeaders();
-            // petWriter = new SimpleXSVWriter(petOutputFile.toPath(), IngestConstants.SEPARATOR);
-            // petWriter.setHeaderLine(petHeader);
+            final File petOutputFile = new File(outputDirectory, PET_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + "." + outputType.toString().toLowerCase());
+            switch (outputType) {
+                case TSV:                
+                    List<String> petHeader = PetTsvCreator.getHeaders();
+                    petTsvWriter = new SimpleXSVWriter(petOutputFile.toPath(), IngestConstants.SEPARATOR);
+                    petTsvWriter.setHeaderLine(petHeader);
+                    break;
+                case ORC:
+                    petOrcWriter = new PetOrcWriter(petOutputFile.getCanonicalPath());
+                    break;
+                case PARQUET:
+                    petParquetWriter = new PetParquetWriter(petOutputFile.getCanonicalPath());
+            }
         } catch (final IOException e) {
             throw new UserException("Could not create pet outputs", e);
         }
@@ -131,8 +143,17 @@ public final class PetTsvCreator {
                     long sampleId = Long.parseLong(TSVLineToCreatePet.get(1));
                     String state = TSVLineToCreatePet.get(2);
 
-                    petWriter.addRow(location, sampleId, state);
-                    //petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
+                    switch (outputType) {
+                        case TSV:                
+                            petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
+                            break;
+                        case ORC:
+                            petOrcWriter.addRow(location, sampleId, state);        
+                            break;
+                        case PARQUET:
+                            petParquetWriter.addRow(location, sampleId, state);        
+                            break;                            
+                    }
                 }
             }
             firstInterval = false;
@@ -153,12 +174,20 @@ public final class PetTsvCreator {
                     sampleId
             )) {
                 long location = Long.parseLong(TSVLineToCreatePet.get(0));
-                  long sampleId = Long.parseLong(TSVLineToCreatePet.get(1));
-                  String state = TSVLineToCreatePet.get(2);
+                long sampleId = Long.parseLong(TSVLineToCreatePet.get(1));
+                String state = TSVLineToCreatePet.get(2);
 
-                  petWriter.addRow(location, sampleId, state);
-
-//                petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
+                switch (outputType) {
+                    case TSV:                
+                        petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
+                        break;
+                    case ORC:
+                        petOrcWriter.addRow(location, sampleId, state);        
+                        break;
+                    case PARQUET:
+                        petParquetWriter.addRow(location, sampleId, state);        
+                        break;                            
+                }
             }
         }
     }
@@ -274,13 +303,20 @@ public final class PetTsvCreator {
     }
 
     public void closeTool() {
-        if (petWriter != null) {
-            try {
-                petWriter.close();
-            } catch (final Exception e) {
-                throw new IllegalArgumentException("Couldn't close VET writer", e);
+        try {
+            switch (outputType) {
+                case TSV:   
+                    if (petTsvWriter != null) petTsvWriter.close();
+                    break;
+                case ORC:
+                    if (petOrcWriter != null) petOrcWriter.close();
+                    break;
+                case PARQUET:
+                    if (petParquetWriter != null) petParquetWriter.close();
+                    break;
             }
+        } catch (final Exception e) {
+            throw new IllegalArgumentException("Couldn't close PET writer", e);
         }
-
     }
 }

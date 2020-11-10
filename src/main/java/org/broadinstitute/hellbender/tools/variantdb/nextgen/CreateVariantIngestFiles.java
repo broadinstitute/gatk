@@ -66,6 +66,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     @Argument(fullName = "mode", shortName = "MO", doc = "Type of sample. Default is EXOMES. Valid options are EXOMES, GENOMES", optional = true)
     public CommonCode.ModeEnum mode = CommonCode.ModeEnum.EXOMES;
 
+    @Argument(fullName = "output-type", shortName = "ot", doc = "[Experimental] Output file format: TSV, ORC or PARQUET [default=TSV].", optional = true)
+    public CommonCode.OutputType outputType = CommonCode.OutputType.TSV;
+
     @Argument(fullName = "ref-version", doc = "Remove this option!!!! only for ease of testing. Valid options are 37 or 38", optional = true)
     private String refVersion = "37";
 
@@ -124,7 +127,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                         intervalArgumentCollection.getIntervals(seqDictionary)));
 
         petTsvCreator = new PetTsvCreator(sampleName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore,
-                outputDir);
+                outputDir, outputType);
         switch (mode) {
             case EXOMES:
             case GENOMES:

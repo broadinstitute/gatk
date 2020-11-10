@@ -80,7 +80,8 @@ public enum VetFieldEnum {
             }
             if (out != null) {
                 if(!out.endsWith("|0.00")) {
-                    logger.warn("Expected AS_RAW_MQ value to end in |0.00. value is: " + out + " for variant " + variant.toString());
+// KC: we are seeing a TON of these!                    
+//                    logger.warn("Expected AS_RAW_MQ value to end in |0.00. value is: " + out + " for variant " + variant.toString());
                 }
                 out = out.substring(0, out.lastIndexOf("|"));
                 String[] outValues = out.split("\\|");
