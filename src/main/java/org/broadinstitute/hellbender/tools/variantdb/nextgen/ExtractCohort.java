@@ -1,26 +1,14 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.engine.GATKTool;
-import org.broadinstitute.hellbender.tools.variantdb.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SampleList;
-import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
-import org.broadinstitute.hellbender.tools.variantdb.arrays.ExtractCohortBQ;
-import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
-import org.broadinstitute.hellbender.utils.bigquery.TableReference;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.util.*;
 
@@ -49,6 +37,19 @@ public class ExtractCohort extends ExtractTool {
     )
     private String cohortTable = null;
 
+    @Argument(
+            fullName = "min-location",
+            doc = "When extracting data, only include locations >= this value",
+            optional = true
+    )
+    private Long minLocation = null;
+
+    @Argument(
+            fullName = "max-location",
+            doc = "When extracting data, only include locations <= this value",
+            optional = true
+    )
+    private Long maxLocation = null;
 
     @Override
     protected void onStartup() {
@@ -68,6 +69,8 @@ public class ExtractCohort extends ExtractTool {
                 sampleNames,
                 mode,
                 cohortTable,
+                minLocation,
+                maxLocation,
                 filteringFQTableName,
                 localSortMaxRecordsInRam,
                 printDebugInformation,
