@@ -42,6 +42,8 @@ public class ExtractCohortEngine {
     private final boolean printDebugInformation;
     private final int localSortMaxRecordsInRam;
     private final TableReference cohortTableRef;
+    private final Long minLocation;
+    private final Long maxLocation;
     private final TableReference filteringTableRef;
     private final ReferenceDataSource refSource;
     private double vqsLodSNPThreshold = 0;
@@ -75,6 +77,8 @@ public class ExtractCohortEngine {
                                final Set<String> sampleNames,
                                final CommonCode.ModeEnum mode,
                                final String cohortTableName,
+                               final Long minLocation,
+                               final Long maxLocation,
                                final String filteringTableName,
                                final int localSortMaxRecordsInRam,
                                final boolean printDebugInformation,
@@ -89,8 +93,12 @@ public class ExtractCohortEngine {
         this.refSource = refSource;
         this.sampleNames = sampleNames;
         this.mode = mode;
+
         this.cohortTableRef = new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
-        this.filteringTableRef = new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
+        this.minLocation = minLocation;
+        this.maxLocation = maxLocation;
+        this.filteringTableRef = filteringTableName == null || "".equals(filteringTableName) ? null : new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
+
         this.printDebugInformation = printDebugInformation;
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
@@ -110,7 +118,13 @@ public class ExtractCohortEngine {
                 if (printDebugInformation) {
                     logger.debug("using storage api with local sort");
                 }
-                final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef);
+
+                String rowRestriction = null;
+                if (minLocation != null && maxLocation != null) {
+                    rowRestriction = "location >= " + minLocation + " AND location <= " + maxLocation;
+                }
+        
+                final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);        
                 createVariantsFromUngroupedTableResult(storageAPIAvroReader);
                 break;
             case QUERY:
@@ -447,12 +461,17 @@ public class ExtractCohortEngine {
                 final String genotypeAttributeName = columnName.substring(SchemaUtils.GENOTYPE_FIELD_PREFIX.length());
 
                 if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_KEY) ) {
-                    final List<Allele> genotypeAlleles =
+                    if ("./.".equals(columnValueString)) {
+                        genotypeBuilder.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
+
+                    } else {
+                        final List<Allele> genotypeAlleles =
                             Arrays.stream(columnValueString.split("[/|]"))
                                     .map(Integer::parseInt)
                                     .map(alleleIndex -> alleles.get(alleleIndex))
                                     .collect(Collectors.toList());
-                    genotypeBuilder.alleles(genotypeAlleles);
+                        genotypeBuilder.alleles(genotypeAlleles);
+                    }
                 } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_QUALITY_KEY) ) {
                     genotypeBuilder.GQ(Integer.parseInt(columnValueString));
                 } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_PL_KEY) ) {
