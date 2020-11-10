@@ -25,8 +25,10 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEng
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.*;
+import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollectionCodec;
 import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -87,8 +89,8 @@ public class ExtractCohortEngine {
         this.refSource = refSource;
         this.sampleNames = sampleNames;
         this.mode = mode;
-        this.cohortTableRef = mode.equals(CommonCode.ModeEnum.ARRAYS) ? new TableReference(cohortTableName, SchemaUtils.ARRAY_COHORT_FIELDS) : new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
-        this.filteringTableRef = mode.equals(CommonCode.ModeEnum.ARRAYS) ? null : new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
+        this.cohortTableRef = new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
+        this.filteringTableRef = new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
         this.printDebugInformation = printDebugInformation;
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
@@ -116,7 +118,7 @@ public class ExtractCohortEngine {
                     logger.debug("using query api with order by");
                 }
                 // create the query string
-                String q = "SELECT " + StringUtils.join(SchemaUtils.ARRAY_COHORT_FIELDS,",") + " FROM " + cohortTableRef.getFQTableName() + " ORDER BY " + SchemaUtils.LOCATION_FIELD_NAME;
+                String q = "SELECT " + StringUtils.join(SchemaUtils.COHORT_FIELDS,",") + " FROM " + cohortTableRef.getFQTableName() + " ORDER BY " + SchemaUtils.LOCATION_FIELD_NAME;
                 TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), cohortTableRef.tableProject, cohortTableRef.tableDataset, q);
                 createVariantsFromSortedTableResults(tr);
                 break;
@@ -163,8 +165,20 @@ public class ExtractCohortEngine {
 
     }
 
-   
 
+    public SortingCollection<GenericRecord> getAvroSortingCollection(org.apache.avro.Schema schema, int localSortMaxRecordsInRam) {
+        final SortingCollection.Codec<GenericRecord> sortingCollectionCodec = new AvroSortingCollectionCodec(schema);
+        final Comparator<GenericRecord> sortingCollectionComparator = new Comparator<GenericRecord>() {
+            @Override
+            public int compare( GenericRecord o1, GenericRecord o2 ) {
+                final long firstPosition = Long.parseLong(o1.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
+                final long secondPosition = Long.parseLong(o2.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
+
+                return Long.compare(firstPosition, secondPosition);
+            }
+        };
+        return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam);
+    }
 
 
     private void createVariantsFromUngroupedTableResult(final GATKAvroReader avroReader) {
@@ -311,7 +325,7 @@ public class ExtractCohortEngine {
 //        if ( annotatedVC != null ) {
 //            vcfWriter.add(annotatedVC);
 //            progressMeter.update(annotatedVC);
-//        }
+//        } else
 
 
         if ( finalVC != null ) {
@@ -363,6 +377,35 @@ public class ExtractCohortEngine {
 //
 //            final VariantContext filteredVC = builder.make();
         }
+
+    private <T> LinkedHashMap<Allele, T> remapAllelesInMap(VariantContext vc, HashMap<Allele, HashMap<Allele, T>> datamap, T emptyVal) {
+        // get the extended reference
+        Allele ref = vc.getReference();
+
+        // create ordered results map
+        LinkedHashMap<Allele, T> results = new LinkedHashMap<>();
+        vc.getAlternateAlleles().stream().forEachOrdered(allele -> results.put(allele, emptyVal));
+
+        datamap.entrySet().stream().forEachOrdered(entry -> {
+            if (entry.getKey() == ref) {
+                // reorder
+                entry.getValue().entrySet().stream().forEach(altMapEntry -> results.put(altMapEntry.getKey(), altMapEntry.getValue()));
+            } else {
+                // remap
+                int refLength = entry.getKey().length();
+                List<Allele> allAlleles = new ArrayList<>();
+                allAlleles.add(entry.getKey());
+                allAlleles.addAll(entry.getValue().keySet());
+                VariantContextBuilder vcb = new VariantContextBuilder(vc.getSource(), vc.getContig(), vc.getStart(), vc.getStart()+refLength-1, allAlleles);
+                VariantContext newvc = vcb.make();
+
+                Map<Allele, Allele> alleleMapping = GATKVariantContextUtils.createAlleleMapping(ref, newvc);
+                alleleMapping.entrySet().stream().forEach(mapped -> results.put(mapped.getValue(), entry.getValue().get(mapped.getKey())));
+            }
+        });
+        return results;
+    }
+
 
     // vqsLogMap and yngMap are in/out parameters for this method. i.e. they are modified by this method
     private VariantContext createVariantContextFromSampleRecord(final GenericRecord sampleRecord, final Set<String> columnNames, final String contig, final long startPosition, final String sample, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {

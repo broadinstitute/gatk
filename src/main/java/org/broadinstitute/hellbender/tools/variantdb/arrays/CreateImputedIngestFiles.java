@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.variantdb.arrays;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
-import org.apache.commons.collections.map.HashedMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -12,10 +11,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
-import org.broadinstitute.hellbender.tools.variantdb.ChromosomeEnum;
-import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
-import org.broadinstitute.hellbender.tools.variantdb.IngestUtils;
-import org.broadinstitute.hellbender.tools.variantdb.arrays.tables.SampleList;
+import org.broadinstitute.hellbender.tools.variantdb.*;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
 import java.time.LocalDateTime;
@@ -35,7 +31,7 @@ public final class CreateImputedIngestFiles extends VariantWalker {
     static final Logger logger = LogManager.getLogger(CreateImputedIngestFiles.class);
 
     private Map<Integer, ImputedTsvCreator> tableToCreatorMap;
-    private Map<String, Integer> sampleNameMap;
+    private SampleList sampleNameMap;
 
     @Argument(fullName = "sample-list-table",
             shortName = "SLT",
@@ -67,14 +63,14 @@ public final class CreateImputedIngestFiles extends VariantWalker {
 
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
-        TableReference sampleTable = new TableReference(sampleListFQTablename, SampleList.SAMPLE_LIST_FIELDS);
-        sampleNameMap = SampleList.getSampleNameMap(sampleTable, inputVCFHeader.getGenotypeSamples(), printDebugInformation);
+        TableReference sampleTable = new TableReference(sampleListFQTablename, SchemaUtils.SAMPLE_FIELDS);
+        sampleNameMap = new SampleList(sampleListFQTablename, null, printDebugInformation);
         tableToCreatorMap = new HashMap<>();
 
         Map<Integer, Set<String>> tableNumberToSampleList = new HashMap<>();
 
         // create the list of samples for each table number
-        sampleNameMap.forEach((name, id) -> {
+        sampleNameMap.getMap().forEach((id, name) -> {
             int sampleTableNumber = IngestUtils.getTableNumber(id, IngestConstants.partitionPerTable);
             if (!tableNumberToSampleList.containsKey(sampleTableNumber)) {
                 tableNumberToSampleList.put(sampleTableNumber, new HashSet<>());
