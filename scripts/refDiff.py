@@ -407,7 +407,7 @@ def sample_and_check_contig_seqs(ref_files, ref_contig_dict, contig_length, num_
     return len(front_base_samples) == 1 or len(back_base_samples) == 1
 
 
-def scrutinize_contig(ref_files, ref_contig_dict, contig_length, large_diff_thresh=None, ignore_case=True):
+def scrutinize_contig(ref_files, seq_dict_map, ref_contig_dict, contig_length, large_diff_thresh=None, ignore_case=True):
     """Iterates over all bases in the given contigs tabulating differences between them.
     If large differences are discovered, will stop comparison."""
 
@@ -464,7 +464,7 @@ def scrutinize_contig(ref_files, ref_contig_dict, contig_length, large_diff_thre
                             b_description_list.append(
                                 ContigBaseInfo(base_names[ref_num],
                                                contig_names[ref_num],
-                                               pos,
+                                               pos + 1, # Add 1 to the pos because genomic coordinates start at 1, not 0
                                                bases_list[ref_num][base_num])
                             )
                         if len(b_set) != 1:
@@ -555,7 +555,7 @@ def print_scrutinized_table(differences, ref_names, col_spacer='\t'):
                         continue
                     ordered_row_fields.append(row.contig)
                     ordered_row_fields.append(row.pos)
-                    ordered_row_fields.append(row.base)
+                    ordered_row_fields.append(row.base + 1)
             print(format_string.format(*ordered_row_fields))
 
 
@@ -614,7 +614,7 @@ def perform_detailed_analysis(_args, identical_contig_map, seq_dict_map):
             LOGGER.info("Failed filtering: %d - %s", l, [f"{k}[{v}]" for k, v in contig_lengths_dict[l].items()])
         else:
             LOGGER.info("Passed filtering:  %d - %s", l, [f"{k}[{v}]" for k, v in contig_lengths_dict[l].items()])
-            differences = scrutinize_contig(_args.ref_files, contig_lengths_dict[l], l,
+            differences = scrutinize_contig(_args.ref_files, seq_dict_map, contig_lengths_dict[l], l,
                                             ignore_case=not _args.case_sensitive)
             LOGGER.info(f"Found {len(differences)} differences on contig: "
                         f"{' / '.join(contig_lengths_dict[l].values())}")
