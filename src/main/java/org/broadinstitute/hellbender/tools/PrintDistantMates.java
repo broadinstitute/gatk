@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
@@ -23,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 @CommandLineProgramProperties(
-        summary = "Prints reads that have distant mates using the mate's alignment information.  Yes, this is weird.",
+        summary = "Prints reads that have distant mates using the mate's alignment information.  Yes, this is weird, but it helps in processing pairs together (see PairWalker).",
         oneLineSummary = "Print reads with distant mates using the mate's alignment.",
         programGroup = ReadDataManipulationProgramGroup.class
 )
@@ -49,9 +48,6 @@ public class PrintDistantMates extends ReadWalker {
     }
 
     @Override
-    public boolean requiresIntervals() { return true; }
-
-    @Override
     public boolean requiresReads() { return true; }
 
     @Override
@@ -61,25 +57,22 @@ public class PrintDistantMates extends ReadWalker {
     }
 
     @Override
-    public void apply( final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
+    public void apply( final GATKRead read,
+                       final ReferenceContext referenceContext,
+                       final FeatureContext featureContext ) {
         final String mateCigarString = read.getAttributeAsString(MATE_CIGAR_TAG);
-        if ( mateCigarString == null ) {
-            pendingReads.compute(read.getName(), (name, mate) -> mate == null ? mate : exchangeLocs(read, mate));
-        } else {
-            final GATKRead copy = read.copy();
-            copy.setPosition(read.getMateContig(), read.getMateStart());
-            copy.setMatePosition(read.getContig(), read.getStart());
+        if ( mateCigarString != null ) {
             final Cigar mateCigar = TextCigarCodec.decode(mateCigarString);
-            final int mateReadLength = mateCigar.getReadLength();
-            final int readLength = read.getLength();
-            if ( mateReadLength == readLength ) {
-                copy.setCigar(mateCigar);
-            } else {
-                final int mateAlignLength = mateCigar.getReferenceLength();
-                copy.setCigar(bogusCigar(mateAlignLength, readLength));
-            }
-            copy.setAttribute(ORIGINAL_CIGAR, read.getCigar().toString());
-            outputWriter.addRead(copy);
+            outputWriter.addRead(doDistantMateAlterations(read, mateCigar));
+        } else {
+            pendingReads.compute(read.getName(), (name, mate) -> {
+                if ( mate == null ) {
+                    return read;
+                }
+                outputWriter.addRead(doDistantMateAlterations(read, mate.getCigar()));
+                outputWriter.addRead(doDistantMateAlterations(mate, read.getCigar()));
+                return null;
+            });
         }
     }
 
@@ -90,7 +83,27 @@ public class PrintDistantMates extends ReadWalker {
         }
     }
 
-    public static GATKRead untangleRead( final GATKRead read ) {
+    public static GATKRead doDistantMateAlterations( final GATKRead read, final Cigar mateCigar ) {
+        final GATKRead copy = read.copy();
+        copy.setPosition(read.getMateContig(), read.getMateStart());
+        copy.setMatePosition(read.getContig(), read.getStart());
+        final int mateReadLength = mateCigar.getReadLength();
+        final int readLength = read.getLength();
+        if ( mateReadLength == readLength ) {
+            copy.setCigar(mateCigar);
+        } else {
+            final int mateAlignLength = mateCigar.getReferenceLength();
+            copy.setCigar(bogusCigar(mateAlignLength, readLength));
+        }
+        copy.setAttribute(ORIGINAL_CIGAR, read.getCigar().toString());
+        return copy;
+    }
+
+    public static boolean isDistantMate( final GATKRead read ) {
+        return read.hasAttribute(ORIGINAL_CIGAR);
+    }
+
+    public static GATKRead undoDistantMateAlterations( final GATKRead read ) {
         final String originalCigar = read.getAttributeAsString(ORIGINAL_CIGAR);
         if ( originalCigar == null ) return read;
         final GATKRead copy = read.copy();
@@ -110,26 +123,5 @@ public class PrintDistantMates extends ReadWalker {
             return "1M" + lengthDiff + "D" + (readLength - 1) + "M";
         }
         return "1M" + -lengthDiff + "I" + (alignLength - 1) + "M";
-    }
-
-    private GATKRead exchangeLocs( final GATKRead read, final GATKRead mate ) {
-        final GATKRead readCopy = read.copy();
-        final GATKRead mateCopy = mate.copy();
-        readCopy.setPosition(mate);
-        readCopy.setMatePosition(read);
-        mateCopy.setPosition(read);
-        mateCopy.setMatePosition(mate);
-        if ( read.getLength() == mate.getLength() ) {
-            readCopy.setCigar(mate.getCigar());
-            mateCopy.setCigar(read.getCigar());
-        } else {
-            readCopy.setCigar(bogusCigar(mate.getCigar().getReferenceLength(), read.getLength()));
-            mateCopy.setCigar(bogusCigar(read.getCigar().getReferenceLength(), mate.getLength()));
-        }
-        readCopy.setAttribute(ORIGINAL_CIGAR, read.getCigar().toString());
-        mateCopy.setAttribute(ORIGINAL_CIGAR, mate.getCigar().toString());
-        outputWriter.addRead(readCopy);
-        outputWriter.addRead(mateCopy);
-        return null;
     }
 }

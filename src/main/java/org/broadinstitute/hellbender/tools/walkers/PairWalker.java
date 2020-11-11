@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -21,8 +22,8 @@ import java.util.Iterator;
 import java.util.List;
 
 @CommandLineProgramProperties(
-        summary = "Prints read pairs within a region, along with their mates.",
-        oneLineSummary = "Print read pairs within a region and their mates.",
+        summary = "A walker that presents read pairs as pairs.",
+        oneLineSummary = "A walker that presents read pairs as pairs",
         programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
@@ -33,7 +34,8 @@ public abstract class PairWalker extends ReadWalker {
     protected int intervalPadding = 1000;
 
     private RegionChecker regionChecker = null;
-    private final HopscotchSet<PairBuffer> pairBufferSet = new HopscotchSet<>(1000000);
+    private final HopscotchSet<PairBufferEntry> pairBufferSet = new HopscotchSet<>(1000000);
+    private final HopscotchSet<String> distantPairsProcessed = new HopscotchSet<>(1000000);
 
     @Override public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> readFilters = new ArrayList<>(super.getDefaultReadFilters());
@@ -75,29 +77,39 @@ public abstract class PairWalker extends ReadWalker {
     public void apply( final GATKRead read,
                        final ReferenceContext referenceContext,
                        final FeatureContext featureContext ) {
-        final boolean inInterval = regionChecker == null || regionChecker.isInInterval(read);
-        if ( read.isPaired() ) {
-            final PairBuffer pb = pairBufferSet.findOrAdd(new PairBuffer(read.getName()), k -> (PairBuffer)k);
-            pb.add(read, inInterval);
-            if ( pb.isComplete() ) {
-                if ( pb.isApplicable(regionChecker) ) {
-                    apply(pb.getRead1(), pb.getRead2());
-                }
-                pairBufferSet.remove(pb);
-            }
-        } else if ( inInterval ) {
+        if ( !read.isPaired() || read.isSecondaryAlignment() || read.isSupplementaryAlignment() ) {
             applyUnpaired(read);
+            return;
+        }
+        final boolean inInterval = regionChecker == null || regionChecker.isInInterval(read);
+        final PairBufferEntry pb = new PairBufferEntry(read, inInterval);
+        final PairBufferEntry pbMate = pairBufferSet.find(pb);
+        if ( pbMate == null ) {
+            pairBufferSet.add(pb);
+        } else {
+            if ( pb.isInInterval() || pbMate.isInInterval() ) {
+                if ( !pb.isDistantMate() && !pbMate.isDistantMate() ) {
+                    apply(pbMate.getRead(), pb.getRead());
+                } else {
+                    final String readName = pb.getRead().getName();
+                    if ( distantPairsProcessed.contains(readName) ) {
+                        distantPairsProcessed.remove(readName);
+                    } else {
+                        distantPairsProcessed.add(readName);
+                        apply(pbMate.getRead(), pb.getRead());
+                    }
+                }
+            }
+            pairBufferSet.remove(pbMate);
         }
     }
 
     @Override
     public Object onTraversalSuccess() {
         int nUnpaired = 0;
-        for ( final PairBuffer pb : pairBufferSet ) {
+        for ( final PairBufferEntry pb : pairBufferSet ) {
             if ( pb.isInInterval() ) {
-                final GATKRead read = pb.getRead1();
-                if ( read != null ) applyUnpaired(read);
-                else applyUnpaired(pb.getRead2());
+                applyUnpaired(pb.getRead());
                 nUnpaired += 1;
             }
         }
@@ -107,11 +119,24 @@ public abstract class PairWalker extends ReadWalker {
         return null;
     }
 
+    /**
+     * This method is called once for each pair of reads.
+     * The pairs will NOT be in strict coordinate order.
+     * The reads supplied will be the primary lines for each pair.
+     **/
     public abstract void apply( final GATKRead read, final GATKRead mate );
 
+    /**
+     * Unpaired reads, secondary and supplemental alignments, and other detritus comes through here.
+     */
     public abstract void applyUnpaired( final GATKRead read );
 
-    private static final class RegionChecker {
+    // Maintains an iterator over a set of coordinate-sorted, disjoint intervals.
+    // It allows you to ask whether a read overlaps any of the intervals by calling isInInterval.
+    // With each call, it advances the iterator as appropriate, and checks for overlap.
+    // The sequence of reads passed to isInInterval must also be coordinate-sorted.
+    @VisibleForTesting
+    static final class RegionChecker {
         private final List<SimpleInterval> intervals;
         private final SAMSequenceDictionary dictionary;
         private Iterator<SimpleInterval> intervalIterator;
@@ -123,42 +148,40 @@ public abstract class PairWalker extends ReadWalker {
             reset();
         }
 
-        public boolean isInCurrentInterval( final GATKRead read ) {
-            return currentInterval.overlaps(read);
-        }
-
         public boolean isInInterval( final GATKRead read ) {
             if ( currentInterval == null || read.isUnmapped() ) return false;
             final String readContig = read.getContig();
             if ( !currentInterval.getContig().equals(readContig) ) {
                 final int readContigId = dictionary.getSequenceIndex(readContig);
                 int currentContigId;
-                while ( (currentContigId = dictionary.getSequenceIndex(currentInterval.getContig())) < readContigId ) {
-                    if ( intervalIterator.hasNext() ) {
-                        currentInterval = intervalIterator.next();
-                    } else {
+                while ( (currentContigId =
+                        dictionary.getSequenceIndex(currentInterval.getContig())) < readContigId ) {
+                    if ( !intervalIterator.hasNext() ) {
                         currentInterval = null;
                         return false;
                     }
+                    currentInterval = intervalIterator.next();
                 }
                 if ( currentContigId > readContigId ) {
                     return false;
                 }
             }
+
+            // we've advanced the iterator so that the current contig is the same as the read's contig
             final int readStart = read.getStart();
-            do {
-                if ( currentInterval.getEnd() < readStart ) {
-                    if ( intervalIterator.hasNext() ) {
-                        currentInterval = intervalIterator.next();
-                    } else {
-                        currentInterval = null;
-                        return false;
-                    }
-                } else {
-                    return currentInterval.overlaps(read);
+            while ( currentInterval.getEnd() < readStart ) {
+                if ( !intervalIterator.hasNext() ) {
+                    currentInterval = null;
+                    return false;
                 }
-            } while ( currentInterval.getContig().equals(readContig) );
-            return false;
+                currentInterval = intervalIterator.next();
+                if ( !currentInterval.getContig().equals(readContig) ) {
+                    return false;
+                }
+            }
+
+            // we've advanced the iterator so that the current end is no smaller than the read start
+            return currentInterval.overlaps(read);
         }
 
         public void reset() {
@@ -167,57 +190,34 @@ public abstract class PairWalker extends ReadWalker {
         }
     }
 
-    private static final class PairBuffer {
-        private final String qName;
-        private GATKRead read1;
-        private GATKRead read2;
-        private boolean inInterval;
-        private boolean distantMate1;
-        private boolean distantMate2;
+    // Tracks the first read of a pair we observe, while we're waiting for the mate to show up.
+    // Note that it's "keyed" on read name:  Two PairBufferEntries are equal if they point to reads
+    // with the same name.
+    private static final class PairBufferEntry {
+        private final GATKRead read;
+        private final boolean inInterval;
+        private final boolean distantMate;
 
-        public PairBuffer( final String qName ) {
-            this.qName = qName;
-            read1 = null;
-            read2 = null;
-            inInterval = false;
-            distantMate1 = false;
-            distantMate2 = false;
+        public PairBufferEntry( final GATKRead read, final boolean inInterval ) {
+            this.distantMate = PrintDistantMates.isDistantMate(read);
+            this.read = this.distantMate ? PrintDistantMates.undoDistantMateAlterations(read) : read;
+            this.inInterval = inInterval;
         }
 
-        public boolean isComplete() { return read1 != null && read2 != null; }
+        public GATKRead getRead() { return read; }
         public boolean isInInterval() { return inInterval; }
-        public GATKRead getRead1() { return read1; }
-        public GATKRead getRead2() { return read2; }
+        public boolean isDistantMate() { return distantMate; }
 
-        public void add( final GATKRead readArg, final boolean inInterval ) {
-            final GATKRead read = PrintDistantMates.untangleRead(readArg);
-            if ( read.isFirstOfPair() ) {
-                read1 = read;
-                if ( read != readArg ) distantMate1 = true;
-            }
-            else {
-                read2 = read;
-                if ( read != readArg ) distantMate2 = true;
-            }
-            this.inInterval |= inInterval;
+        @Override
+        public boolean equals( final Object obj ) {
+            return this == obj ||
+                    (obj instanceof PairBufferEntry &&
+                            ((PairBufferEntry)obj).read.getName().equals(read.getName()));
         }
 
-        public boolean isApplicable( final RegionChecker regionChecker ) {
-            return inInterval && (!(distantMate1 || distantMate2) || !isDuplicative(regionChecker));
+        @Override
+        public int hashCode() {
+            return read.getName().hashCode();
         }
-
-        private boolean isDuplicative( final RegionChecker regionChecker ) {
-            if ( regionChecker == null ||
-                    (regionChecker.isInCurrentInterval(read1) && regionChecker.isInCurrentInterval(read2)) ) {
-                return read1.getStart() < read2.getStart() ? distantMate1 : distantMate2;
-            }
-            return false;
-        }
-
-        @Override public boolean equals( final Object obj ) {
-            return this == obj || obj instanceof PairBuffer && qName.equals(((PairBuffer)obj).qName);
-        }
-
-        @Override public int hashCode() { return qName.hashCode(); }
     }
 }
