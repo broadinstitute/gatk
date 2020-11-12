@@ -1,15 +1,17 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.SelectVariants;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.variant.writers.ShardingVCFWriter;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -17,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.List;
@@ -63,5 +66,26 @@ public class GatkToolIntegrationTest extends CommandLineProgramTest {
         };
 
         runCommandLine(Arrays.asList(args), Mutect2.class.getSimpleName());
+    }
+
+    @Test
+    public void testSharding() {
+        final String outDir = createTempDir("GTShardedOutput").getAbsolutePath();
+        final String fileBase = "test";
+        final String out = Paths.get(outDir, fileBase + FileExtensions.COMPRESSED_VCF).toString();
+        final String[] args = new String[] {
+                "-V",  TEST_DIRECTORY + "example_variants_withSequenceDict.vcf",
+                "-R", hg19MiniReference,
+                "--" + StandardArgumentDefinitions.MAX_VARIANTS_PER_SHARD_LONG_NAME, "10",
+                "-O", out};
+        runCommandLine(Arrays.asList(args), SelectVariants.class.getSimpleName());
+
+        // 11 total records in the test input should create 2 vcf shards with 10 and 1 records
+        final String firstShard = Paths.get(outDir, fileBase + ShardingVCFWriter.SHARD_INDEX_PREFIX + "0" + ShardingVCFWriter.SHARD_INDEX_SUFFIX).toString();
+        final String secondShard = Paths.get(outDir, fileBase + ShardingVCFWriter.SHARD_INDEX_PREFIX + "1" + ShardingVCFWriter.SHARD_INDEX_SUFFIX).toString();
+        final Pair<VCFHeader, List<VariantContext>> firstResults = VariantContextTestUtils.readEntireVCFIntoMemory(firstShard);
+        final Pair<VCFHeader, List<VariantContext>> secondResults = VariantContextTestUtils.readEntireVCFIntoMemory(secondShard);
+        Assert.assertEquals(firstResults.getValue().size(), 10, "First shard has wrong number of records");
+        Assert.assertEquals(secondResults.getValue().size(), 2, "Second shard has wrong number of records");
     }
 }

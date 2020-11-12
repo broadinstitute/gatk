@@ -1054,4 +1054,24 @@ public final class IOUtils {
     public static Path fileToPath(File toConvert) {
         return (null == toConvert ? null : toConvert.toPath());
     }
+
+
+    /**
+     * Strips extension from the given path, if it has one. Note it will use the first matching extension in the list.
+     *
+     * @param path Path to modify. May not be null.
+     * @param extensions Possible extensions to remove, in order of priority
+     * @return Resulting path
+     */
+    public static Path removeExtension(final Path path, final List<String> extensions) {
+        Utils.nonNull(path);
+        Utils.nonNull(extensions);
+        final String pathString = path.toString();
+        for (final String testExtension : extensions) {
+            if (pathString.endsWith(testExtension)) {
+                return Paths.get(pathString.substring(0, pathString.length() - testExtension.length()));
+            }
+        }
+        return path;
+    }
 }
