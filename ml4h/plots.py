@@ -22,6 +22,9 @@ import pandas as pd
 from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 
 import matplotlib
+
+from ml4h.tensor_generators import _sample_csv_to_set
+
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from matplotlib.ticker import NullFormatter
@@ -29,6 +32,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 
 from sklearn import manifold
+from sklearn.decomposition import PCA
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.calibration import calibration_curve
@@ -42,7 +46,6 @@ from scipy import stats
 import ml4h.tensormap.ukb.ecg
 import ml4h.tensormap.mgb.ecg
 from ml4h.tensormap.mgb.dynamic import make_waveform_maps
-
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import concordance_index, coefficient_of_determination
 from ml4h.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, PARTNERS_DATETIME_FORMAT, PARTNERS_DATE_FORMAT, HD5_GROUP_CHAR
@@ -165,7 +168,7 @@ def evaluate_predictions(
         if tm.sentinel is not None:
             y_predictions = y_predictions[y_truth != tm.sentinel]
             y_truth = y_truth[y_truth != tm.sentinel]
-        _plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
+        plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
         if prediction_flat.shape[0] == truth_flat.shape[0]:
             performance_metrics.update(subplot_pearson_per_class(prediction_flat, truth_flat, tm.channel_map, protected, title, prefix=folder))
     elif tm.is_continuous():
@@ -190,6 +193,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix='./figu
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     f, axes = plt.subplots(rows, cols, figsize=(int(cols*SUBPLOT_SIZE), int(rows*SUBPLOT_SIZE)))
+    logging.info(f'all keys {list(sorted(history.history.keys()))}')
     for k in sorted(history.history.keys()):
         if not k.startswith('val_'):
             if isinstance(history.history[k][0], LearningRateSchedule):
@@ -464,7 +468,7 @@ def subplot_pearson_per_class(
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path, bbox_inches='tight')
     plt.clf()
-    logging.info(f"Saved Pearson correlations at: {figure_path} with {len(protected)} protected TensorMaps.")
+    logging.info(f"{label_text} saved at: {figure_path}{f' with {len(protected)} protected TensorMaps.' if len(protected) else '.'}")
     return labels_to_areas
 
 
@@ -1226,11 +1230,11 @@ def _plot_partners_figure(
 def plot_partners_ecgs(args):
     plot_tensors = [
         ml4h.tensormap.mgb.ecg.partners_ecg_patientid, ml4h.tensormap.mgb.ecg.partners_ecg_firstname, ml4h.tensormap.mgb.ecg.partners_ecg_lastname,
-        ml4h.tensormap.mgb.ecg.partners_ecg_sex,       ml4h.tensormap.mgb.ecg.partners_ecg_dob,       ml4h.tensormap.mgb.ecg.partners_ecg_age,
-        ml4h.tensormap.mgb.ecg.partners_ecg_datetime,  ml4h.tensormap.mgb.ecg.partners_ecg_sitename,  ml4h.tensormap.mgb.ecg.partners_ecg_location,
-        ml4h.tensormap.mgb.ecg.partners_ecg_read_md,   ml4h.tensormap.mgb.ecg.partners_ecg_taxis_md,  ml4h.tensormap.mgb.ecg.partners_ecg_rate_md,
-        ml4h.tensormap.mgb.ecg.partners_ecg_pr_md,     ml4h.tensormap.mgb.ecg.partners_ecg_qrs_md,    ml4h.tensormap.mgb.ecg.partners_ecg_qt_md,
-        ml4h.tensormap.mgb.ecg.partners_ecg_paxis_md,  ml4h.tensormap.mgb.ecg.partners_ecg_raxis_md,  ml4h.tensormap.mgb.ecg.partners_ecg_qtc_md,
+        ml4h.tensormap.mgb.ecg.partners_ecg_sex, ml4h.tensormap.mgb.ecg.partners_ecg_dob, ml4h.tensormap.mgb.ecg.partners_ecg_age,
+        ml4h.tensormap.mgb.ecg.partners_ecg_datetime, ml4h.tensormap.mgb.ecg.partners_ecg_sitename, ml4h.tensormap.mgb.ecg.partners_ecg_location,
+        ml4h.tensormap.mgb.ecg.partners_ecg_read_md, ml4h.tensormap.mgb.ecg.partners_ecg_taxis_md, ml4h.tensormap.mgb.ecg.partners_ecg_rate_md,
+        ml4h.tensormap.mgb.ecg.partners_ecg_pr_md, ml4h.tensormap.mgb.ecg.partners_ecg_qrs_md, ml4h.tensormap.mgb.ecg.partners_ecg_qt_md,
+        ml4h.tensormap.mgb.ecg.partners_ecg_paxis_md, ml4h.tensormap.mgb.ecg.partners_ecg_raxis_md, ml4h.tensormap.mgb.ecg.partners_ecg_qtc_md,
     ]
     voltage_tensor = make_waveform_maps('partners_ecg_2500_raw')
     tensor_maps_in = plot_tensors + [voltage_tensor]
@@ -1500,12 +1504,13 @@ def plot_ecg_rest(
     :param is_blind: if True, the plot gets blinded (helpful for review and annotation)
     """
     map_fields_to_tmaps = {
-        'ramp': ml4h.tensormap.ukb.ecg.ecg_rest_ramplitude_raw,
-        'samp': ml4h.tensormap.ukb.ecg.ecg_rest_samplitude_raw,
-        'aVL': ml4h.tensormap.ukb.ecg.ecg_rest_lvh_avl,
-        'Sokolow_Lyon': ml4h.tensormap.ukb.ecg.ecg_rest_lvh_sokolow_lyon,
-        'Cornell': ml4h.tensormap.ukb.ecg.ecg_rest_lvh_cornell,
-    }    
+            'ramp': ml4h.tensormap.ukb.ecg.ecg_rest_ramplitude_raw,
+         'samp': ml4h.tensormap.ukb.ecg.ecg_rest_samplitude_raw,
+         'aVL': ml4h.tensormap.ukb.ecg.ecg_rest_lvh_avl,
+         'Sokolow_Lyon': ml4h.tensormap.ukb.ecg.ecg_rest_lvh_sokolow_lyon,
+         'Cornell': ml4h.tensormap.ukb.ecg.ecg_rest_lvh_cornell,
+     }
+
     raw_scale = 0.005 # Conversion from raw to mV
     default_yrange = ECG_REST_PLOT_DEFAULT_YRANGE # mV
     time_interval = 2.5 # time-interval per plot in seconds. ts_Reference data is in s, voltage measurement is 5 uv per lsb
@@ -2076,32 +2081,154 @@ def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
     t.set_bbox({'facecolor': background, 'alpha': alpha, 'edgecolor': background})
 
 
-def _plot_reconstruction(
+def plot_reconstruction(
         tm: TensorMap, y_true: np.ndarray, y_pred: np.ndarray,
-        folder: str, paths: List[str],
+        folder: str, paths: List[str], num_samples: int = 4,
 ):
-    num_samples = 3
     logging.info(f'Plotting {num_samples} reconstructions of {tm}.')
     if None in tm.shape:  # can't handle dynamic shapes
         return
+    os.makedirs(os.path.dirname(folder), exist_ok=True)
     for i in range(num_samples):
-        title = f'{tm.name}_{os.path.basename(paths[i]).replace(TENSOR_EXT, "")}_reconstruction'
-        y = y_true[i].reshape(tm.shape)
-        yp = y_pred[i].reshape(tm.shape)
+        sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+        title = f'{tm.name}_{sample_id}_reconstruction'
+        y = y_true[i]
+        yp = y_pred[i]
         if tm.axes() == 2:
-            fig = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE * num_samples))
+            index2channel = {v: k for k, v in tm.channel_map.items()}
+            fig, axes = plt.subplots(tm.shape[1], 2, figsize=(2 * SUBPLOT_SIZE, 6*SUBPLOT_SIZE)) #, sharey=True)
             for j in range(tm.shape[1]):
-                plt.subplot(tm.shape[1], 1, j + 1)
-                plt.plot(y[:, j], c='k', linestyle='--', label='original')
-                plt.plot(yp[:, j], c='b', label='reconstruction')
-                if j == 0:
-                    plt.title(title)
-                    plt.legend()
+                axes[j, 0].plot(y[:, j], c='k', label='original')
+                axes[j, 1].plot(yp[:, j], c='b', label='reconstruction')
+                axes[j, 0].set_title(f'Lead: {index2channel[j]}')
+                axes[j, 0].legend()
+                axes[j, 1].legend()
             plt.tight_layout()
-        # TODO: implement 3d, 4d
-        plt.savefig(os.path.join(folder, title + IMAGE_EXT))
+            plt.savefig(os.path.join(folder, title + IMAGE_EXT))
+        elif tm.axes() == 3:
+            if tm.is_categorical():
+                plt.imsave(f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}", np.argmax(y, axis=-1), cmap='plasma')
+                plt.imsave(f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(yp, axis=-1), cmap='plasma')
+            else:
+                plt.imsave(f'{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}', y[:, :, 0], cmap='gray')
+                plt.imsave(f'{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}', yp[:, :, 0], cmap='gray')
+        elif tm.axes() == 4:
+            for j in range(y.shape[3]):
+                image_path_base = f'{folder}{sample_id}_{tm.name}_{i:03d}_{j:03d}'
+                if tm.is_categorical():
+                    truth = np.argmax(yp[:, :, j, :], axis=-1)
+                    prediction = np.argmax(y[:, :, j, :], axis=-1)
+                    plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', truth, cmap='plasma')
+                    plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', prediction, cmap='plasma')
+                else:
+                    plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', y[:, :, j, 0], cmap='gray')
+                    plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', yp[:, :, j, 0], cmap='gray')
         plt.clf()
 
 
-if __name__ == '__main__':
-    plot_noisy()
+def pca_on_matrix(matrix, pca_components, prefix='./figures/'):
+    pca = PCA()
+    pca.fit(matrix)
+    print(f'PCA explains {100 * np.sum(pca.explained_variance_ratio_[:pca_components]):0.1f}% of variance with {pca_components} top PCA components.')
+    matrix_reduced = pca.transform(matrix)[:, :pca_components]
+    print(f'PCA reduces matrix shape:{matrix_reduced.shape} from matrix shape: {matrix.shape}')
+    plot_scree(pca_components, 100 * pca.explained_variance_ratio_, prefix)
+    return pca, matrix_reduced
+
+
+def plot_scree(pca_components, percent_explained, prefix='./figures/'):
+    _ = plt.figure(figsize=(6, 4))
+    plt.plot(range(len(percent_explained)), percent_explained, 'g.-', linewidth=1)
+    plt.axvline(x=pca_components, c='r', linewidth=3)
+    label = f'{np.sum(percent_explained[:pca_components]):0.1f}% of variance explained by top {pca_components} of {len(percent_explained)} components'
+    plt.text(pca_components + 0.02 * len(percent_explained), percent_explained[1], label)
+    plt.title('Scree Plot')
+    plt.xlabel('Principal Components')
+    plt.ylabel('% of Variance Explained by Each Component')
+    figure_path = f'{prefix}pca_{pca_components}_of_{len(percent_explained)}.png'
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+
+
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
+
+
+def angle_between(v1, v2):
+    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+            angle_between((1, 0, 0), (0, 1, 0))
+            90
+            angle_between((1, 0, 0), (1, 0, 0))
+            0.0
+            angle_between((1, 0, 0), (-1, 0, 0))
+            180
+    """
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)) * 180 / 3.141592
+
+
+def stratify_latent_space(stratify_column, stratify_thresh, latent_cols, latent_df):
+    hit = latent_df.loc[latent_df[stratify_column] >= stratify_thresh][latent_cols].to_numpy()
+    miss = latent_df.loc[latent_df[stratify_column] < stratify_thresh][latent_cols].to_numpy()
+    miss_mean_vector = np.mean(miss, axis=0)
+    hit_mean_vector = np.mean(hit, axis=0)
+    angle = angle_between(miss_mean_vector, hit_mean_vector)
+    print(f'Angle between {stratify_column} and all others: {angle}, \n'
+          f'Hit shape {hit.shape}, miss:{miss.shape} threshold:{stratify_thresh}\n'
+          f'Distance: {np.linalg.norm(hit_mean_vector - miss_mean_vector):.3f}, '
+          f'Hit std {np.std(hit, axis=1).mean():.3f}, miss std:{np.std(miss, axis=1).mean():.3f}\n')
+    return hit_mean_vector, miss_mean_vector
+
+
+def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', prefix='./figures/',
+                                thresh=1.0, latent_dimension=256, samples=16, scalar=3.0, cmap='plasma', test_csv=None):
+    latent_cols = [f'latent_{i}' for i in range(latent_dimension)]
+    female, male = stratify_latent_space(feature, thresh, latent_cols, latent_df)
+    sex_vector = female - male
+    if test_csv is not None:
+        sample_ids = [int(s) for s in _sample_csv_to_set(test_csv) if len(s) > 4 and int(s) in latent_df.index]
+        latent_df = latent_df.loc[sample_ids]
+        latent_df.info()
+        logging.info(f'Subset to test set with {len(sample_ids)} samples')
+
+    samples = min(len(latent_df.index), samples)
+    embeddings = latent_df.iloc[:samples][latent_cols].to_numpy()
+    sexes = latent_df.iloc[:samples][feature].to_numpy()
+    logging.info(f'Embedding shape: {embeddings.shape} sexes  shape: {sexes.shape}')
+
+    sex_vectors = np.tile(sex_vector, (samples, 1))
+    male_to_female = embeddings + (scalar * sex_vectors)
+    female_to_male = embeddings - (scalar * sex_vectors)
+    for dtm in decoders:
+        predictions = decoders[dtm].predict(embeddings)
+        m2f = decoders[dtm].predict(male_to_female)
+        f2m = decoders[dtm].predict(female_to_male)
+        if dtm.axes() == 3:
+            fig, axes = plt.subplots(max(2, samples), 2, figsize=(18, samples * 4))
+            for i in range(samples):
+                axes[i, 0].set_title(f"{feature}: {sexes[i]} ?>=<? {thresh}")
+                axes[i, 0].axis('off')
+                axes[i, 1].axis('off')
+                if dtm.is_categorical():
+                    axes[i, 0].imshow(np.argmax(predictions[i, ...], axis=-1), cmap=cmap)
+                    if sexes[i] >= thresh:
+                        axes[i, 1].imshow(np.argmax(f2m[i, ...], axis=-1), cmap=cmap)
+                        axes[i, 1].set_title(f'{feature} to less than {thresh}')
+                    else:
+                        axes[i, 1].imshow(np.argmax(m2f[i, ...], axis=-1), cmap=cmap)
+                        axes[i, 1].set_title(f'{feature} to more than or equal to {thresh}')
+                else:
+                    axes[i, 0].imshow(predictions[i, ..., 0], cmap='gray')
+                    if sexes[i] >= thresh:
+                        axes[i, 1].imshow(f2m[i, ..., 0], cmap='gray')
+                        axes[i, 1].set_title(f'{feature} to less than {thresh}')
+                    else:
+                        axes[i, 1].imshow(m2f[i, ..., 0], cmap='gray')
+                        axes[i, 1].set_title(f'{feature} to more than or equal to {thresh}')
+            figure_path = f'{prefix}/{dtm.name}_{feature}_transform_scalar_{scalar}.png'
+            if not os.path.exists(os.path.dirname(figure_path)):
+                os.makedirs(os.path.dirname(figure_path))
+            plt.savefig(figure_path)

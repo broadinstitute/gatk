@@ -215,7 +215,7 @@ def _slice_tensor(tensor_key, slice_index):
 def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri', step=1, total_slices=50):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        if path_prefix == 'ukb_liver_mri':
+        if tm.axes() == 3 or path_prefix == 'ukb_liver_mri':
             categorical_index_slice = get_tensor_at_first_date(hd5, path_prefix, f'{dicom_key_prefix}1')
             categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
             tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
@@ -896,8 +896,9 @@ lax_4ch_diastole_slice0_3d = TensorMap(
     ),
 )
 lax_4ch_diastole_slice0_224_3d = TensorMap(
-    'lax_4ch_diastole_slice0_224_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1),
-    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0),
+    'lax_4ch_diastole_slice0_224_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1), loss='logcosh',
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0),
 )
 lax_4ch_diastole_slice0_256_3d = TensorMap(
     'lax_4ch_diastole_slice0_256_3d', Interpretation.CONTINUOUS, shape=(192, 256, 1),
@@ -953,8 +954,8 @@ cine_segmented_ao_dist_slice0 = TensorMap(
         'ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0,
     ),
 )
-cine_segmented_ao_dist_slice0_3d = TensorMap(
-    'cine_segmented_ao_dist_slice0_3d', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
+aorta_diastole_slice0_3d = TensorMap(
+    'aorta_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(192, 256, 1), loss='logcosh',
     normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0),
 )
 cine_segmented_lvot_slice0_3d = TensorMap(
@@ -1179,6 +1180,10 @@ sax_segmented_b6_192 = TensorMap(
     channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
 )
 
+segmented_aorta_diastole = TensorMap(
+    'segmented_aorta_diastole', Interpretation.CATEGORICAL, shape=(192, 256, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP,
+)
 cine_segmented_ao_dist = TensorMap(
     'cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(160, 192, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP,
@@ -1251,14 +1256,30 @@ sax_all_diastole_segmented_weighted = TensorMap(
         [1.0, 40.0, 40.0], 'sax_all_diastole_segmented',
     ),
 )
+sax_all_diastole_192_segmented_weighted = TensorMap(
+    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 13, 3),
+    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
+    loss=weighted_crossentropy(
+        [1.0, 40.0, 40.0], 'sax_all_diastole_segmented',
+    ),
+)
 
 sax_all_diastole = TensorMap(
     'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
-    dependent_map=sax_all_diastole_segmented,
+    path_prefix='ukb_cardiac_mri',
 )
 sax_all_diastole_weighted = TensorMap(
     'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
-    dependent_map=sax_all_diastole_segmented_weighted,
+    dependent_map=sax_all_diastole_segmented_weighted, path_prefix='ukb_cardiac_mri',
+)
+
+sax_all_diastole_192 = TensorMap(
+    'sax_all_diastole', shape=(192, 192, 13, 1), tensor_from_file=sax_tensor('diastole'),
+    dependent_map=sax_all_diastole_segmented, path_prefix='ukb_cardiac_mri',
+)
+sax_all_diastole_192_weighted = TensorMap(
+    'sax_all_diastole', shape=(192, 192, 13, 1), tensor_from_file=sax_tensor('diastole'),
+    dependent_map=sax_all_diastole_segmented_weighted, path_prefix='ukb_cardiac_mri',
 )
 
 sax_all_systole_segmented = TensorMap(
@@ -1270,6 +1291,7 @@ sax_all_systole_segmented_weighted = TensorMap(
     channel_map=MRI_SEGMENTED_CHANNEL_MAP,
     loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_systole_segmented'),
 )
+
 
 sax_all_systole = TensorMap(
     'sax_all_systole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'),
@@ -1351,6 +1373,14 @@ aorta_slice_nekoui = TensorMap(
     'aorta_slice_nekoui', shape=(200, 240, 1), normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_ao_dist/instance_0', 'cine_segmented_ao_dist_nekoui_annotated_'),
 )
+lvot_slice_jamesp = TensorMap(
+    'lvot_slice_jamesp', shape=(200, 240, 1), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_lvot/instance_0', 'cine_segmented_lvot_jamesp_annotated_'),
+)
+lvot_slice_nekoui = TensorMap(
+    'lvot_slice_nekoui', shape=(200, 240, 1), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_lvot/instance_0', 'cine_segmented_lvot_nekoui_annotated_'),
+)
 lax_2ch_slice_jamesp = TensorMap(
     'lax_2ch_slice_jamesp', shape=(192, 160, 1), normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_lax_2ch/instance_0', 'cine_segmented_lax_2ch_jamesp_annotated_'),
@@ -1386,6 +1416,14 @@ cine_segmented_ao_dist_jamesp = TensorMap(
 cine_segmented_ao_dist_nekoui = TensorMap(
     'cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(200, 240, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slice('cine_segmented_ao_dist_nekoui_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_lvot_jamesp = TensorMap(
+    'cine_segmented_lvot', Interpretation.CATEGORICAL, shape=(200, 240, len(MRI_LVOT_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_lvot_jamesp_annotated_'), channel_map=MRI_LVOT_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_lvot_nekoui = TensorMap(
+    'cine_segmented_lvot', Interpretation.CATEGORICAL, shape=(200, 240, len(MRI_LVOT_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_lvot_nekoui_annotated_'), channel_map=MRI_LVOT_SEGMENTED_CHANNEL_MAP,
 )
 cine_segmented_lax_2ch_jamesp = TensorMap(
     'cine_segmented_lax_2ch_slice', Interpretation.CATEGORICAL, shape=(192, 160, len(MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP)),

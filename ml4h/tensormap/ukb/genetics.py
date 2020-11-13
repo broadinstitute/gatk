@@ -1,4 +1,5 @@
 from ml4h.TensorMap import TensorMap, Interpretation
+from ml4h.defines import StorageType
 from ml4h.metrics import weighted_crossentropy
 
 
@@ -77,8 +78,11 @@ genetic_pca_all5 = TensorMap(
     },
 )
 
-genetic_caucasian = TensorMap('Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map={'no_caucasian': 0, 'caucasian': 1})
+genetic_caucasian = TensorMap(
+    'Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
+    channel_map={'no_caucasian': 0, 'Genetic-ethnic-grouping_Caucasian_0_0': 1})
+
 genetic_caucasian_weighted = TensorMap(
-    'Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL, path_prefix='categorical',
-    channel_map={'no_caucasian': 0, 'caucasian': 1}, loss=weighted_crossentropy([10.0, 1.0], 'caucasian_loss'),
+    'Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
+    channel_map={'no_caucasian': 0, 'Genetic-ethnic-grouping_Caucasian_0_0': 1}, loss=weighted_crossentropy([10.0, 1.0], 'caucasian_loss'),
 )

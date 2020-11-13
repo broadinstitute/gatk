@@ -54,7 +54,7 @@ while getopts ":ip:ch" opt ; do
             ;;
         c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
-            GPU_DEVICE=""
+	    GPU_DEVICE=""
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -99,7 +99,6 @@ ${DOCKER_COMMAND} run -it \
 ${GPU_DEVICE} \
 --rm \
 --ipc=host \
---hostname=$(hostname) \
 -v /home/${USER}/:/home/${USER}/ \
 -v /mnt/:/mnt/ \
 -p 0.0.0.0:${PORT}:${PORT} \

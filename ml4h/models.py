@@ -25,7 +25,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
-from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
+from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
 import tensorflow_probability as tfp
@@ -525,30 +525,20 @@ def l2_norm(x, axis=None):
     """
     takes an input tensor and returns the l2 norm along specified axis
     """
-
     square_sum = K.sum(K.square(x), axis=axis, keepdims=True)
     norm = K.sqrt(K.maximum(square_sum, K.epsilon()))
-
     return norm
 
 
 def pairwise_cosine_difference(t1, t2):
-    """
-    A [batch x n x d] tensor of n rows with d dimensions
-    B [batch x m x d] tensor of n rows with d dimensions
-
-    returns:
-    D [batch x n x m] tensor of cosine similarity scores between each point i<n, j<m
-    """
     t1_norm = t1 / l2_norm(t1, axis=-1)
     t2_norm = t2 / l2_norm(t2, axis=-1)
-    dot = K.clip(K.batch_dot(t1, t2), -1, 1)
-    return tf.acos(dot)
+    dot = K.clip(K.batch_dot(t1_norm, t2_norm), -1, 1)
+    return K.mean(tf.acos(dot))
 
 
 class CosineLossLayer(Layer):
     """Layer that creates an Cosine loss."""
-
     def __init__(self, weight, **kwargs):
         super(CosineLossLayer, self).__init__(**kwargs)
         self.weight = weight
@@ -559,15 +549,13 @@ class CosineLossLayer(Layer):
         return config
 
     def call(self, inputs):
-        # We use `add_loss` to create a regularization loss
-        # that depends on the inputs.
+        # We use `add_loss` to create a regularization loss that depends on the inputs.
         self.add_loss(self.weight * pairwise_cosine_difference(inputs[0], inputs[1]))
         return inputs
 
 
 class L2LossLayer(Layer):
     """Layer that creates an L2 loss."""
-
     def __init__(self, weight, **kwargs):
         super(L2LossLayer, self).__init__(**kwargs)
         self.weight = weight
@@ -579,6 +567,7 @@ class L2LossLayer(Layer):
 
     def call(self, inputs):
         self.add_loss(self.weight * tf.reduce_sum(tf.square(inputs[0] - inputs[1])))
+        return inputs
         return inputs
 
 
@@ -1156,6 +1145,134 @@ def _make_multimodal_multitask_model(
     return Model(inputs=list(inputs.values()), outputs=list(decoder_outputs.values()))
 
 
+def make_paired_autoencoder_model(
+        pairs: List[Tuple[TensorMap, TensorMap]],
+        pair_loss: str = 'cosine',
+        pair_loss_weight: float = 1.0,
+        multimodal_merge: str = 'average',
+        **kwargs
+) -> Model:
+    opt = get_optimizer(
+        kwargs['optimizer'], kwargs['learning_rate'], steps_per_epoch=kwargs['training_steps'],
+        learning_rate_schedule=kwargs['learning_rate_schedule'], optimizer_kwargs=kwargs.get('optimizer_kwargs'),
+    )
+    if 'model_file' in kwargs and kwargs['model_file'] is not None:
+        custom_dict = _get_custom_objects(kwargs['tensor_maps_out'])
+        encoders = {}
+        for tm in kwargs['tensor_maps_in']:
+            encoders[tm] = load_model(f"{os.path.dirname(kwargs['model_file'])}/encoder_{tm.name}.h5", custom_objects=custom_dict, compile=False)
+        decoders = {}
+        for tm in kwargs['tensor_maps_out']:
+            decoders[tm] = load_model(f"{os.path.dirname(kwargs['model_file'])}/decoder_{tm.name}.h5", custom_objects=custom_dict, compile=False)
+        logging.info(f"Attempting to load model file from: {kwargs['model_file']}")
+        m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
+        m.compile(optimizer=opt, loss=custom_dict['loss'])
+        m.summary()
+        logging.info(f"Loaded model file from: {kwargs['model_file']}")
+        return m, encoders, decoders
+
+    inputs = {tm: Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
+    real_serial_layers = kwargs['model_layers']
+    kwargs['model_layers'] = None
+    multimodal_activations = []
+    encoders = {}
+    decoders = {}
+    outputs = {}
+    losses = []
+    for left, right in pairs:
+        if left in encoders:
+            encode_left = encoders[left]
+        else:
+            kwargs['tensor_maps_in'] = [left]
+            left_model = make_multimodal_multitask_model(**kwargs)
+            encode_left = make_hidden_layer_model(left_model, [left], kwargs['hidden_layer'])
+        h_left = encode_left(inputs[left])
+
+        if right in encoders:
+            encode_right = encoders[right]
+        else:
+            kwargs['tensor_maps_in'] = [right]
+            right_model = make_multimodal_multitask_model(**kwargs)
+            encode_right = make_hidden_layer_model(right_model, [right], kwargs['hidden_layer'])
+        h_right = encode_right(inputs[right])
+
+        if pair_loss == 'cosine':
+            loss_layer = CosineLossLayer(pair_loss_weight)
+        elif pair_loss == 'euclid':
+            loss_layer = L2LossLayer(pair_loss_weight)
+
+        multimodal_activations.extend(loss_layer([h_left, h_right]))
+        encoders[left] = encode_left
+        encoders[right] = encode_right
+
+    kwargs['tensor_maps_in'] = list(inputs.keys())
+    if multimodal_merge == 'average':
+        multimodal_activation = Average()(multimodal_activations)
+    elif multimodal_merge == 'concatenate':
+        multimodal_activation = Concatenate()(multimodal_activations)
+        multimodal_activation = Dense(units=kwargs['dense_layers'][0], use_bias=False)(multimodal_activation)
+        multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
+    else:
+        raise NotImplementedError(f'No merge architecture for method: {multimodal_merge}')
+    latent_inputs = Input(shape=(kwargs['dense_layers'][-1]), name='input_concept_space')
+
+    # build decoder models
+    for tm in kwargs['tensor_maps_out']:
+        if tm.axes() > 1:
+            shape = _calc_start_shape(num_upsamples=len(kwargs['dense_blocks']), output_shape=tm.shape,
+                                      upsample_rates=[kwargs['pool_x'], kwargs['pool_y'], kwargs['pool_z']],
+                                      channels=kwargs['dense_blocks'][-1])
+
+            restructure = FlatToStructure(output_shape=shape, activation=kwargs['activation'],
+                                          normalization=kwargs['dense_normalize'])
+
+            decode = ConvDecoder(
+                tensor_map_out=tm,
+                filters_per_dense_block=kwargs['dense_blocks'][::-1],
+                conv_layer_type=kwargs['conv_type'],
+                conv_x=kwargs['conv_x'] if tm.axes() > 2 else kwargs['conv_width'],
+                conv_y=kwargs['conv_y'],
+                conv_z=kwargs['conv_z'],
+                block_size=kwargs['block_size'],
+                activation=kwargs['activation'],
+                normalization=kwargs['conv_normalize'],
+                regularization=kwargs['conv_regularize'],
+                regularization_rate=kwargs['conv_regularize_rate'],
+                upsample_x=kwargs['pool_x'],
+                upsample_y=kwargs['pool_y'],
+                upsample_z=kwargs['pool_z'],
+                u_connect_parents=[tm_in for tm_in in kwargs['tensor_maps_in'] if tm in kwargs['u_connect'][tm_in]],
+            )
+            reconstruction = decode(restructure(latent_inputs), {}, {})
+        else:
+            dense_block = FullyConnectedBlock(
+                widths=kwargs['dense_layers'],
+                activation=kwargs['activation'],
+                normalization=kwargs['dense_normalize'],
+                regularization=kwargs['dense_regularize'],
+                regularization_rate=kwargs['dense_regularize_rate'],
+                is_encoder=False,
+            )
+            decode = DenseDecoder(tensor_map_out=tm, parents=tm.parents, activation=kwargs['activation'])
+            reconstruction = decode(dense_block(latent_inputs), {}, {})
+
+        decoder = Model(latent_inputs, reconstruction, name=tm.output_name())
+        decoders[tm] = decoder
+        outputs[tm.output_name()] = decoder(multimodal_activation)
+        losses.append(tm.loss)
+
+    m = Model(inputs=list(inputs.values()), outputs=list(outputs.values()))
+    my_metrics = {tm.output_name(): tm.metrics for tm in kwargs['tensor_maps_out']}
+    m.compile(optimizer=opt, loss=losses, metrics=my_metrics)
+    m.summary()
+
+    if real_serial_layers is not None:
+        m.load_weights(real_serial_layers, by_name=True)
+        logging.info(f"Loaded model weights from:{real_serial_layers}")
+
+    return m, encoders, decoders
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Training ~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1174,13 +1291,13 @@ def train_model_from_generators(
     inspect_show_labels: bool,
     return_history: bool = False,
     plot: bool = True,
+    save_last_model: bool = False,
 ) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
     Training data lives on disk, it will be loaded by generator functions.
     Plots the metric history after training. Creates a directory to save weights, if necessary.
     Measures runtime and plots architecture diagram if inspect_model is True.
-
     :param model: The model to optimize
     :param generate_train: Generator function that yields mini-batches of training data.
     :param generate_valid: Generator function that yields mini-batches of validation data.
@@ -1194,6 +1311,9 @@ def train_model_from_generators(
     :param inspect_model: If True, measure training and inference runtime of the model and generate architecture plot.
     :param inspect_show_labels: If True, show labels on the architecture plot.
     :param return_history: If true return history from training and don't plot the training history
+    :param plot: If true, plots the metrics for train and validation set at the end of each epoch
+    :param save_last_model: If true saves the model weights from last epoch otherwise saves model with best validation loss
+
     :return: The optimized model.
     """
     model_file = os.path.join(output_folder, run_id, run_id + MODEL_EXT)
@@ -1207,7 +1327,7 @@ def train_model_from_generators(
     history = model.fit(
         generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
         validation_steps=validation_steps, validation_data=generate_valid,
-        callbacks=_get_callbacks(patience, model_file),
+        callbacks=_get_callbacks(patience, model_file, save_last_model),
     )
     generate_train.kill_workers()
     generate_valid.kill_workers()
@@ -1224,10 +1344,10 @@ def train_model_from_generators(
 
 
 def _get_callbacks(
-    patience: int, model_file: str,
+    patience: int, model_file: str, save_last_model: bool
 ) -> List[Callback]:
     callbacks = [
-        ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True),
+        ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=not save_last_model),
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
     ]

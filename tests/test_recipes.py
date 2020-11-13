@@ -3,7 +3,7 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from ml4h.recipes import inference_file_name, hidden_inference_file_name
+from ml4h.recipes import inference_file_name, _hidden_file_name
 from ml4h.recipes import train_multimodal_multitask, compare_multimodal_multitask_models
 from ml4h.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
 from ml4h.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
@@ -42,7 +42,7 @@ class TestRecipes:
 
     def test_infer_hidden(self, default_arguments):
         infer_hidden_layer_multimodal_multitask(default_arguments)
-        tsv = hidden_inference_file_name(default_arguments.output_folder, default_arguments.id)
+        tsv = _hidden_file_name(default_arguments.output_folder, default_arguments.id)
         inferred = pd.read_csv(tsv, sep='\t')
         assert len(set(inferred['sample_id'])) == pytest.N_TENSORS
 
@@ -50,7 +50,7 @@ class TestRecipes:
         default_arguments.tsv_style = 'genetics'
         infer_hidden_layer_multimodal_multitask(default_arguments)
         default_arguments.tsv_style = 'standard'
-        tsv = hidden_inference_file_name(default_arguments.output_folder, default_arguments.id)
+        tsv = _hidden_file_name(default_arguments.output_folder, default_arguments.id)
         inferred = pd.read_csv(tsv, sep='\t')
         assert len(set(inferred['FID'])) == pytest.N_TENSORS
 

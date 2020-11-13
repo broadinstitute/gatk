@@ -35,19 +35,7 @@ done
 export GROUP_NAMES GROUP_IDS
 
 # Create string to be called in Docker's bash shell via eval;
-# this creates a user, adds groups, adds user to groups, then calls the Python script
-CALL_DOCKER_AS_USER="
-    apt-get -y install sudo;
-    useradd -u $(id -u) ${USER};
-    GROUP_NAMES_ARR=( \${GROUP_NAMES} );
-    GROUP_IDS_ARR=( \${GROUP_IDS} );
-    for (( i=0; i<\${#GROUP_NAMES_ARR[@]}; ++i )); do
-        echo \"Creating group\" \${GROUP_NAMES_ARR[i]} \"with gid\" \${GROUP_IDS_ARR[i]};
-        groupadd -f -g \${GROUP_IDS_ARR[i]} \${GROUP_NAMES_ARR[i]};
-        echo \"Adding user ${USER} to group\" \${GROUP_NAMES_ARR[i]}
-        usermod -aG \${GROUP_NAMES_ARR[i]} ${USER}
-    done;
-    sudo -u ${USER}"
+CALL_DOCKER_AS_USER=
 
 ################### HELP TEXT ############################################
 
@@ -85,7 +73,7 @@ USAGE_MESSAGE
 
 ################### OPTION PARSING #######################################
 
-while getopts ":i:d:m:ctjrhT" opt ; do
+while getopts ":i:d:m:ctjuhT" opt ; do
     case ${opt} in
         h)
             usage
@@ -113,8 +101,19 @@ while getopts ":i:d:m:ctjrhT" opt ; do
             mkdir -p /home/${USER}/jupyter/root/
             mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
             ;;
-        r) # Output owned by root
-            CALL_DOCKER_AS_USER=""
+        u) # this creates a user, adds groups, adds user to groups, then calls the Python script
+            CALL_DOCKER_AS_USER="
+    apt-get -y install sudo;
+    useradd -u $(id -u) ${USER};
+    GROUP_NAMES_ARR=( \${GROUP_NAMES} );
+    GROUP_IDS_ARR=( \${GROUP_IDS} );
+    for (( i=0; i<\${#GROUP_NAMES_ARR[@]}; ++i )); do
+        echo \"Creating group\" \${GROUP_NAMES_ARR[i]} \"with gid\" \${GROUP_IDS_ARR[i]};
+        groupadd -f -g \${GROUP_IDS_ARR[i]} \${GROUP_NAMES_ARR[i]};
+        echo \"Adding user ${USER} to group\" \${GROUP_NAMES_ARR[i]}
+        usermod -aG \${GROUP_NAMES_ARR[i]} ${USER}
+    done;
+    sudo -u ${USER}"
             ;;
         T)
             PYTHON_COMMAND=${TEST_COMMAND}
