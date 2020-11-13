@@ -62,7 +62,7 @@ public class ExtractFeatures extends ExtractTool {
 
     @Override
     public boolean requiresIntervals() {
-        return true; // TODO -- do I need to check the boolean flag on this?
+        return false;
     }
 
     @Override
@@ -83,7 +83,8 @@ public class ExtractFeatures extends ExtractTool {
             fqAltAlleleTable,
             fqVetTable,
             sampleTableRef,
-            intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()),
+            minLocation,
+            maxLocation,
             localSortMaxRecordsInRam,
             printDebugInformation,
             useBatchQueries,

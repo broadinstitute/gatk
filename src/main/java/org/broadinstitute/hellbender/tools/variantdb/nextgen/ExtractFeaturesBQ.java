@@ -1,18 +1,21 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
-import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
 public class ExtractFeaturesBQ {
 
     public static String getVQSRFeatureExtractQueryString(final TableReference vet, final TableReference altAllele, final TableReference sampleList,
-                                                          final SimpleInterval interval, final boolean trainingSitesOnly) {
+                                                          final Long minLocation, final Long maxLocation, final boolean trainingSitesOnly) {
 
         //TODO try to remove the dependency on the vet tables since there are multiple tables that contain the data we need
         String trainingSitesStanza =
                 !trainingSitesOnly?"":
                         "AND location IN (SELECT location FROM `broad-dsp-spec-ops.joint_genotyping_ref.vqsr_training_sites_*` WHERE chrom='chr20')\n";
+        
+        String locationStanza = 
+                ((minLocation != null)?"AND location >= " + minLocation + " \n":"") +
+                ((maxLocation != null)?"AND location < " + maxLocation + " \n":"");
+
         String query =
                 "WITH ref_ad_info AS (\n" +
                         "SELECT \n" +
@@ -20,7 +23,7 @@ public class ExtractFeaturesBQ {
                         "  IFNULL(sum(cast(SPLIT(call_AD,\",\")[OFFSET(0)] as int64)),0) as ref_ad\n" +
                         "FROM `@vet` \n" +
                         "WHERE sample_id IN (SELECT sample_id FROM `@sample`)\n" +
-                        "AND (location >= @start AND location <= @end) \n" +
+                        locationStanza +
                         trainingSitesStanza +
                         "AND (\n" +
                         "  SELECT SUM(CAST(part AS int64)) FROM UNNEST(SPLIT(call_AD, ',')) part WITH OFFSET index WHERE index >= 1 ) \n" +
@@ -33,7 +36,7 @@ public class ExtractFeaturesBQ {
                         "  IFNULL(sum(cast(SPLIT(SPLIT(as_sb_table,\"|\")[OFFSET(0)],\",\")[OFFSET(1)] as int64)),0) as sb_ref_minus  \n" +
                         "FROM `@vet` \n" +
                         "WHERE sample_id IN (SELECT sample_id FROM `@sample`)\n" +
-                        "AND (location >= @start AND location <= @end) \n" +
+                        locationStanza +
                         trainingSitesStanza +
                         "GROUP BY location)\n" +
                         "SELECT \n" +
@@ -68,10 +71,10 @@ public class ExtractFeaturesBQ {
                         "       IFNULL(SUM(SB_ALT_PLUS),0)  as SB_ALT_PLUS, \n" +
                         "       IFNULL(SUM(SB_ALT_MINUS),0) as SB_ALT_MINUS\n" +
                         "FROM `@altAllele` as aa\n" +
-                        "WHERE (location >= @start AND location <= @end) \n" +
+                        "WHERE allele != '*'\n" +
+                        locationStanza +
                         trainingSitesStanza +
                         "AND sample_id in (SELECT sample_id from `@sample` )\n" +
-                        "AND allele != '*'\n" +
                         "GROUP BY 1,2,3\n" +
                         ") ai\n" +
                         "LEFT JOIN ref_ad_info radi ON (ai.location = radi.location)\n" +
@@ -80,7 +83,5 @@ public class ExtractFeaturesBQ {
         return query
                 .replaceAll("@vet", vet.getFQTableName())
                 .replaceAll("@sample", sampleList.getFQTableName())
-                .replaceAll("@start", String.format("%d", SchemaUtils.encodeLocation(interval.getContig(), interval.getStart())))
-                .replaceAll( "@end", String.format("%d",SchemaUtils.encodeLocation(interval.getContig(),interval.getEnd())))
-                .replaceAll( "@altAllele", altAllele.getFQTableName());
+                .replaceAll("@altAllele", altAllele.getFQTableName());
     }}
