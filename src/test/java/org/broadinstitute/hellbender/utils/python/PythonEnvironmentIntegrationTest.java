@@ -30,9 +30,10 @@ public class PythonEnvironmentIntegrationTest {
                 { "pandas",         "1.0.3" },
                 { "argparse",       null },
                 { "gcnvkernel",     null },
-                // R packages
-                { "r-backports",    "1.1.10" },
 
+                // R packages
+                // Commented out since we can't check versions of R packages in this test
+                // { "r-backports",    "1.1.10" },
         };
     }
 
