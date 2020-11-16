@@ -201,6 +201,7 @@ public class CommonCode {
     public enum OutputType {
         TSV,
         ORC,
+        AVRO,
         PARQUET
     }
 }
