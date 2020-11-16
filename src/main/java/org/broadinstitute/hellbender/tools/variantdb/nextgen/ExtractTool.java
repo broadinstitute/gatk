@@ -103,6 +103,20 @@ public abstract class ExtractTool extends GATKTool {
     )
     protected String refVersion = "37";
 
+    @Argument(
+        fullName = "min-location",
+        doc = "When extracting data, only include locations >= this value",
+        optional = true
+    )
+    protected Long minLocation = null;
+
+    @Argument(
+        fullName = "max-location",
+        doc = "When extracting data, only include locations <= this value",
+        optional = true
+    )
+    protected Long maxLocation = null;    
+
     @Override
     public boolean requiresReference() {
         return true;

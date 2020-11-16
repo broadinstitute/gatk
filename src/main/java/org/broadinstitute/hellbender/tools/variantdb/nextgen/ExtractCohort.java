@@ -37,20 +37,6 @@ public class ExtractCohort extends ExtractTool {
     )
     private String cohortTable = null;
 
-    @Argument(
-            fullName = "min-location",
-            doc = "When extracting data, only include locations >= this value",
-            optional = true
-    )
-    private Long minLocation = null;
-
-    @Argument(
-            fullName = "max-location",
-            doc = "When extracting data, only include locations <= this value",
-            optional = true
-    )
-    private Long maxLocation = null;
-
     @Override
     protected void onStartup() {
         super.onStartup();

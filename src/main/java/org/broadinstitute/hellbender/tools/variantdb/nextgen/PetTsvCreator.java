@@ -25,6 +25,7 @@ public final class PetTsvCreator {
 
     private SimpleXSVWriter petTsvWriter = null;
     private PetOrcWriter petOrcWriter = null;
+    private PetAvroWriter petAvroWriter = null;
     private PetParquetWriter petParquetWriter = null;
 
     private final String sampleId;
@@ -52,6 +53,9 @@ public final class PetTsvCreator {
                     break;
                 case ORC:
                     petOrcWriter = new PetOrcWriter(petOutputFile.getCanonicalPath());
+                    break;
+                case AVRO:
+                    petAvroWriter = new PetAvroWriter(petOutputFile.getCanonicalPath());
                     break;
                 case PARQUET:
                     petParquetWriter = new PetParquetWriter(petOutputFile.getCanonicalPath());
@@ -150,6 +154,9 @@ public final class PetTsvCreator {
                         case ORC:
                             petOrcWriter.addRow(location, sampleId, state);        
                             break;
+                        case AVRO:
+                            petAvroWriter.addRow(location, sampleId, state);        
+                            break;
                         case PARQUET:
                             petParquetWriter.addRow(location, sampleId, state);        
                             break;                            
@@ -183,6 +190,9 @@ public final class PetTsvCreator {
                         break;
                     case ORC:
                         petOrcWriter.addRow(location, sampleId, state);        
+                        break;
+                    case AVRO:
+                        petAvroWriter.addRow(location, sampleId, state);        
                         break;
                     case PARQUET:
                         petParquetWriter.addRow(location, sampleId, state);        
@@ -310,6 +320,9 @@ public final class PetTsvCreator {
                     break;
                 case ORC:
                     if (petOrcWriter != null) petOrcWriter.close();
+                    break;
+                case AVRO:
+                    if (petAvroWriter != null) petAvroWriter.close();
                     break;
                 case PARQUET:
                     if (petParquetWriter != null) petParquetWriter.close();
