@@ -35,7 +35,7 @@ public final class CreateFilteringFiles extends VariantWalker {
     private SimpleXSVWriter writer;
 
     private List<String> HEADER = 
-        Arrays.asList("mode","location","ref","alt","vqslod","culprit","training_label","yng");
+        Arrays.asList("filter_set_name","mode","location","ref","alt","vqslod","culprit","training_label","yng");
 
     
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, 
@@ -44,6 +44,12 @@ public final class CreateFilteringFiles extends VariantWalker {
             optional = false)
     private File output;
     
+    @Argument(
+        fullName = "filter-set-name",
+        doc = "Name to use in output files as the filter set name",
+        optional = false)
+    private String filterSetName;
+
     @Argument(
             fullName = "ref-version",
             doc = "Remove this option!!!! only for ease of testing. Valid options are 37 or 38",
@@ -92,6 +98,7 @@ public final class CreateFilteringFiles extends VariantWalker {
         String yng = variant.hasAttribute("POSITIVE_TRAIN_SITE")?"Y":"G";
 
         List<String> row = Arrays.asList(
+            filterSetName,
             mode,
             location.toString(),
             ref,
