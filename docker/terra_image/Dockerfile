@@ -1,26 +1,12 @@
-FROM us.gcr.io/broad-dsp-gcr-public/terra-jupyter-gatk:1.0.6
+FROM us.gcr.io/broad-dsp-gcr-public/terra-jupyter-gatk:1.0.9
 # https://github.com/DataBiosphere/terra-docker/blob/master/terra-jupyter-gatk/CHANGELOG.md
 
 USER root
-# Address errors due to enum34 package https://stackoverflow.com/a/45716067/4138705
+# TODO(deflaux) remove this after https://github.com/DataBiosphere/terra-docker/issues/175
 RUN pip3 uninstall -y enum34
 
-# Install custom private python package from Puneet Batra's team. Enable easy
-# local edits by placing it in the home directory with write access for
-# jupyter-user.
 USER $USER
-RUN mkdir -p $HOME/ml4h_pkg
-COPY --chown=jupyter-user:users ml4h $HOME/ml4h_pkg/ml4h
-COPY --chown=jupyter-user:users config $HOME/ml4h_pkg/config
-ENV PYTHONPATH $PYTHONPATH:$HOME/ml4h_pkg
-
-RUN pip3 install --user -r $HOME/ml4h_pkg/config/tensorflow-requirements.txt \
-  # Upgrade to a newer version so that %%bigquery does not print the
-  # first few rows of the downloaded dataframe of query results.
-  # Pin version due to https://github.com/googleapis/google-cloud-python/issues/9965
-  && pip3 install --upgrade --user google-cloud-bigquery[pandas]==1.22.0 \
-  # Upgrade to a newer version. The one on the base Terra image was a bit too old.
-  && pip3 install --upgrade --user numpy \
+RUN pip3 install git+https://github.com/broadinstitute/ml4h.git \
   # Configure notebook extensions.
   && jupyter nbextension install --user --py vega \
   && jupyter nbextension enable --user --py vega \

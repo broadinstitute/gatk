@@ -1,13 +1,13 @@
-# Use ml4h to review and annotate machine learning results
+# Use ml4h to review and annotate clinical data and machine learning results
 
-In this Terra workspace we demonstrate the notebooks used by clinicians and researchers to review and annotate both model inputs, such as phenotypes, ECGs and MRIs, and model outputs such as predicted left ventricular mass.
+In this Terra workspace we demonstrate the notebooks used by clinicians and researchers to review and annotate both clinical data model inputs, such as phenotypes, ECGs and MRIs, and model outputs such as predicted left ventricular mass.
 
 `ml4h` is a project aimed at using machine learning to model multi-modal cardiovascular
 time series and imaging data. `ml4h` began as a set of tools to make it easy to work
 with the UK Biobank on Google Cloud Platform and has since expanded to include other data sources
 and functionality. 
 
-Please see https://github.com/broadinstitute/ml/ for more details on the full project.
+Please see https://github.com/broadinstitute/ml4h/ for more details on the full project.
 
 ----------------------------
 ## How long will it take to run? How much will it cost?
@@ -31,6 +31,6 @@ Please see https://github.com/broadinstitute/ml/ for more details on the full pr
 ## Next steps
 
 * Try these notebooks on your own data.
-* Read more about the ml4h project on  https://github.com/broadinstitute/ml/ 
-* Ask questions https://github.com/broadinstitute/ml/issues
+* Read more about the ml4h project on  https://github.com/broadinstitute/ml4h/ 
+* Ask questions https://github.com/broadinstitute/ml4h/issues
 * Apply those resources to your own research!

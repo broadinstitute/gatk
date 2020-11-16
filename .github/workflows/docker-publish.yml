@@ -1,21 +1,25 @@
 name: Docker
 
 on:
-  push:
-    # Publish `master` as Docker `latest` image.
-    branches:
-      - master
+  workflow_dispatch:
+    # Allows manually triggering workflow in GitHub UI on selected branch.
+    # GitHub doc: https://docs.github.com/en/free-pro-team@latest/actions/reference/events-that-trigger-workflows#workflow_dispatch.
+    # GitHub blog demo: https://github.blog/changelog/2020-07-06-github-actions-manual-triggers-with-workflow_dispatch/.
 
-    # Publish `v1.2.3` tags as releases.
-    tags:
-      - v*
+## For now, disable the Docker deployment step.
+#  push:
+#    # Publish `master` as Docker `ml4h_terra:YYMMDD_hhmmss` image.
+#    branches: [ master ]
+#
+#    # Publish `v1.2.3` tags as releases.
+#    tags:
+#      - v*
 
   # Run tests for any PRs.
   pull_request:
 
 env:
-  # TODO: Change variable to your image's name.
-  IMAGE_NAME: image
+  IMAGE_NAME: ml4h_terra
 
 jobs:
   # Run tests.
@@ -28,12 +32,8 @@ jobs:
 
       - name: Run tests
         run: |
-          if [ -f docker-compose.test.yml ]; then
-            docker-compose --file docker-compose.test.yml build
-            docker-compose --file docker-compose.test.yml run sut
-          else
-            docker build . --file Dockerfile
-          fi
+          cd docker/terra_image
+          docker build . --file Dockerfile
 
   # Push image to GitHub Packages.
   # See also https://docs.docker.com/docker-hub/builds/
@@ -42,13 +42,15 @@ jobs:
     needs: test
 
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch'
 
     steps:
       - uses: actions/checkout@v2
 
       - name: Build image
-        run: docker build . --file Dockerfile --tag $IMAGE_NAME
+        run: |
+          cd docker/terra_image
+          docker build . --file Dockerfile --tag $IMAGE_NAME
 
       - name: Log into registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
@@ -60,14 +62,16 @@ jobs:
           # Change all uppercase to lowercase
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
 
+          # By default, use the branch name as the tag.
           # Strip git ref prefix from version
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
 
-          # Strip "v" prefix from tag name
+          # For repo tagging events, use the tag as the Docker image tag.
+          # Strip "v" prefix from tag name.
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
 
-          # Use Docker `latest` tag convention
-          [ "$VERSION" == "master" ] && VERSION=latest
+          # When the branch is 'master', use Docker date and time tag convention
+          [ "$VERSION" == "master" ] && VERSION=$(date +"%Y%m%d_%H%M%S")
 
           echo IMAGE_ID=$IMAGE_ID
           echo VERSION=$VERSION

@@ -50,12 +50,12 @@ FOLDERS[Runtime.TERRA] = {
     Dataset.FAKE: {
         # If fake data is not available, put in the path to the real data.
         # Dependent code must gracefully handle 'not found' conditions.
-        DataType.EXERCISE_ECG_HD5: 'gs://ml4cvd/projects/fake_hd5s/',
-        DataType.RESTING_ECG_HD5: 'gs://ml4cvd/projects/fake_hd5s/',
-        DataType.RESTING_ECG_SVG: 'gs://ml4cvd/ecg_views_fake/',
-        DataType.MRI_HD5: 'gs://ml4cvd/projects/fake_hd5s/',
-        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI_DICOM: 'gs://ml4cvd/data/mris/cardiac/',
+        DataType.EXERCISE_ECG_HD5: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_hd5s/',
+        DataType.RESTING_ECG_HD5: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_hd5s/',
+        DataType.RESTING_ECG_SVG: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_resting_ecg_svgs/',
+        DataType.MRI_HD5: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_hd5s/',
+        DataType.BRAIN_MRI_DICOM: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_dicoms/',
+        DataType.CARDIAC_MRI_DICOM: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_dicoms/',
     },
 }
 
