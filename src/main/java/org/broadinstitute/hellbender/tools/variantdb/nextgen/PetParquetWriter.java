@@ -21,7 +21,7 @@ public class PetParquetWriter implements Closeable {
     public PetParquetWriter(String outputFile) throws IOException{
         this.schema = SchemaBuilder.record("pet")
                                     .namespace("org.broadinstitute.dsp")
-                                    .fields().requiredInt("location").requiredInt("sample_id").requiredString("state")
+                                    .fields().requiredLong("location").requiredInt("sample_id").requiredString("state")
                                     .endRecord();
                                     
         writer = AvroParquetWriter.
