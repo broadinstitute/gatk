@@ -2,6 +2,9 @@ package org.broadinstitute.hellbender.tools.sv;
 
 
 import htsjdk.tribble.Feature;
+import org.broadinstitute.hellbender.utils.Utils;
+
+import java.util.Objects;
 
 public final class DiscordantPairEvidence implements Feature {
 
@@ -15,6 +18,9 @@ public final class DiscordantPairEvidence implements Feature {
 
     public DiscordantPairEvidence(final String sample, final String startContig, final int start, final boolean startStrand,
                                   final String endContig, final int end, final boolean endStrand) {
+        Utils.nonNull(sample);
+        Utils.nonNull(startContig);
+        Utils.nonNull(endContig);
         this.sample = sample;
         this.startContig = startContig;
         this.start = start;
@@ -56,7 +62,30 @@ public final class DiscordantPairEvidence implements Feature {
         }
     }
 
+    public int getEndPosition() {
+        return end;
+    }
+
     public boolean getEndStrand() {
         return endStrand;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof DiscordantPairEvidence)) return false;
+        DiscordantPairEvidence that = (DiscordantPairEvidence) o;
+        return start == that.start &&
+                end == that.end &&
+                startStrand == that.startStrand &&
+                endStrand == that.endStrand &&
+                sample.equals(that.sample) &&
+                startContig.equals(that.startContig) &&
+                endContig.equals(that.endContig);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(sample, startContig, endContig, start, end, startStrand, endStrand);
     }
 }

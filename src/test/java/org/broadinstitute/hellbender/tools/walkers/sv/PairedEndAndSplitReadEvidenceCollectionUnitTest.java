@@ -2,13 +2,14 @@ package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
+import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.OutputStreamWriter;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -86,7 +87,7 @@ public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTes
         final GATKRead rightClip = ArtificialReadUtils.createArtificialRead(header, "rightClip", 0, 1000, ArtificialReadUtils.createRandomReadBases(151, false),
                 ArtificialReadUtils.createRandomReadQuals(151), "100M51S");
 
-        final OutputStreamWriter mockSrWriter = Mockito.mock(OutputStreamWriter.class);
+        final FeatureOutputStream mockSrWriter = Mockito.mock(FeatureOutputStream.class);
 
         PairedEndAndSplitReadEvidenceCollection tool = new PairedEndAndSplitReadEvidenceCollection();
         final PriorityQueue<PairedEndAndSplitReadEvidenceCollection.SplitPos> splitCounts = new PriorityQueue<>(new PairedEndAndSplitReadEvidenceCollection.SplitPosComparator());
@@ -119,8 +120,10 @@ public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTes
         Assert.assertFalse(counts.containsKey(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1100, PairedEndAndSplitReadEvidenceCollection.POSITION.RIGHT)));
         Assert.assertFalse(counts.containsKey(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1100, PairedEndAndSplitReadEvidenceCollection.POSITION.LEFT)));
         Assert.assertEquals(counts.get(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1600, PairedEndAndSplitReadEvidenceCollection.POSITION.LEFT)).intValue(), 1);
-        Mockito.verify(mockSrWriter).write("1" + "\t" + 1099 + "\t" + "left" + "\t" + 1 + "\t" + "sample" + "\n");
-        Mockito.verify(mockSrWriter).write("1" + "\t" + 1099 + "\t" + "right" + "\t" + 2 + "\t" + "sample" + "\n");
+        final SplitReadEvidence splitRead1 = new SplitReadEvidence("sample", "1", 1099, 1, true);
+        final SplitReadEvidence splitRead2 = new SplitReadEvidence("sample", "1", 1099, 2, false);
+        Mockito.verify(mockSrWriter).add(splitRead1);
+        Mockito.verify(mockSrWriter).add(splitRead2);
         Mockito.verifyNoMoreInteractions(mockSrWriter);
 
     }
