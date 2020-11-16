@@ -47,7 +47,6 @@ public class ExtractFeaturesEngine {
     private final String projectID;
 
     private final TableReference altAlleleTable;
-    private final TableReference vetTable;
     private final TableReference sampleListTable;
     private final ProgressMeter progressMeter;
     private final Long minLocation;
@@ -64,7 +63,6 @@ public class ExtractFeaturesEngine {
                                final ReferenceDataSource refSource,
                                final boolean trainingSitesOnly,
                                final String fqAltAlleleTable,
-                               final String fqVetTable,
                                final TableReference sampleListTable,
                                final Long minLocation,
                                final Long maxLocation,
@@ -79,7 +77,6 @@ public class ExtractFeaturesEngine {
         this.refSource = refSource;
         this.trainingSitesOnly = trainingSitesOnly;
         this.altAlleleTable = new TableReference(fqAltAlleleTable, SchemaUtils.ALT_ALLELE_FIELDS);
-        this.vetTable = new TableReference(fqVetTable, SchemaUtils.VET_FIELDS);
         this.sampleListTable = sampleListTable;
         this.printDebugInformation = printDebugInformation;
         this.useBatchQueries = useBatchQueries;
@@ -91,7 +88,7 @@ public class ExtractFeaturesEngine {
 
     }
     public void traverse() {
-        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(vetTable, altAlleleTable, sampleListTable, minLocation, maxLocation, trainingSitesOnly);
+        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, sampleListTable, minLocation, maxLocation, trainingSitesOnly);
         logger.info(featureQueryString);
         final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, SchemaUtils.FEATURE_EXTRACT_FIELDS, projectID, useBatchQueries);
 

@@ -25,21 +25,6 @@ public class ExtractFeatures extends ExtractTool {
     private static final Logger logger = LogManager.getLogger(ExtractFeatures.class);
     private ExtractFeaturesEngine engine;
 
-    // TODO change this to vet_table_prefix!
-    @Argument(
-            fullName = "vet-table",
-            doc = "Fully qualified name of the vet table",
-            optional = false
-    )
-    protected String fqVetTable = null;
-
-//    @Argument(
-//            fullName = "pet-table",
-//            doc = "Fully qualified name of the pet table where",
-//            optional = false
-//    )
-//    protected String fqPetTable = null;
-
     @Argument(
             fullName = "alt-allele-table",
             doc = "Fully qualified name of the table where the alternate allele info is",
@@ -81,7 +66,6 @@ public class ExtractFeatures extends ExtractTool {
             reference,
             trainingSitesOnly,
             fqAltAlleleTable,
-            fqVetTable,
             sampleTableRef,
             minLocation,
             maxLocation,
