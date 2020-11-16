@@ -47,10 +47,10 @@ public class ExtractFeaturesEngine {
     private final String projectID;
 
     private final TableReference altAlleleTable;
-    private final TableReference vetTable;
     private final TableReference sampleListTable;
     private final ProgressMeter progressMeter;
-    private List<SimpleInterval> userIntervals;
+    private final Long minLocation;
+    private final Long maxLocation;
     private final boolean useBatchQueries;
 
 //    /** Set of sample names seen in the variant data from BigQuery. */
@@ -63,9 +63,9 @@ public class ExtractFeaturesEngine {
                                final ReferenceDataSource refSource,
                                final boolean trainingSitesOnly,
                                final String fqAltAlleleTable,
-                               final String fqVetTable,
                                final TableReference sampleListTable,
-                               final List<SimpleInterval> userIntervals,
+                               final Long minLocation,
+                               final Long maxLocation,
                                final int localSortMaxRecordsInRam,
                                final boolean printDebugInformation,
                                final boolean useBatchQueries,
@@ -77,27 +77,25 @@ public class ExtractFeaturesEngine {
         this.refSource = refSource;
         this.trainingSitesOnly = trainingSitesOnly;
         this.altAlleleTable = new TableReference(fqAltAlleleTable, SchemaUtils.ALT_ALLELE_FIELDS);
-        this.vetTable = new TableReference(fqVetTable, SchemaUtils.VET_FIELDS);
         this.sampleListTable = sampleListTable;
         this.printDebugInformation = printDebugInformation;
         this.useBatchQueries = useBatchQueries;
         this.progressMeter = progressMeter;
-        this.userIntervals = userIntervals;
+        this.minLocation = minLocation;
+        this.maxLocation = maxLocation;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
     }
     public void traverse() {
-        userIntervals.forEach(interval -> {
-            final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(vetTable, altAlleleTable, sampleListTable, interval, trainingSitesOnly);
-            logger.info(featureQueryString);
-            final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, SchemaUtils.FEATURE_EXTRACT_FIELDS, projectID, useBatchQueries);
+        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, sampleListTable, minLocation, maxLocation, trainingSitesOnly);
+        logger.info(featureQueryString);
+        final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, SchemaUtils.FEATURE_EXTRACT_FIELDS, projectID, useBatchQueries);
 
-            createVQSRInputFromTableResult(storageAPIAvroReader, interval.getContig());
-        });
+        createVQSRInputFromTableResult(storageAPIAvroReader);
     }
 
-    private void createVQSRInputFromTableResult(final GATKAvroReader avroReader, final String contig) {
+    private void createVQSRInputFromTableResult(final GATKAvroReader avroReader) {
         final org.apache.avro.Schema schema = avroReader.getSchema();
         final Set<String> columnNames = new HashSet<>();
         if ( schema.getField(LOCATION_FIELD_NAME) == null ) {
@@ -115,13 +113,14 @@ public class ExtractFeaturesEngine {
         }
         sortingCollection.printTempFileStats();
         for ( final GenericRecord row : sortingCollection ) {
-            processVQSRRecordForPosition(row, contig);
+            processVQSRRecordForPosition(row);
         }
     }
 
-    private void processVQSRRecordForPosition(GenericRecord rec, String contig) {
+    private void processVQSRRecordForPosition(GenericRecord rec) {
         final long location = Long.parseLong(rec.get(LOCATION_FIELD_NAME).toString());
 
+        String contig = SchemaUtils.decodeContig(location);
         int position = SchemaUtils.decodePosition(location);
         // I don't understand why the other modes iterate through a list of all columns, and then
         //  switch based on the column name rather than just getting the columns desired directly (like I'm going to do here).
