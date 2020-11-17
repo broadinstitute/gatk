@@ -19,13 +19,15 @@ import java.util.List;
 public class HomRefBlockUnitTest extends GATKBaseTest {
     private static final String SAMPLE_NAME = "foo";
     private static final Allele REF = Allele.create("A", true);
+    private static final int START = 1001;
+    private static final int END = START + 1000;
 
     private static List<Allele> getAlleles() {
         return Arrays.asList(REF, Allele.create("C"));
     }
 
     private static VariantContext getVariantContext() {
-        return new VariantContextBuilder(SAMPLE_NAME, "20", 1, 1, getAlleles()).make();
+        return new VariantContextBuilder(SAMPLE_NAME, "20", START, START, getAlleles()).make();
     }
 
     @Test
@@ -81,8 +83,8 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
         final VariantContext vc = getVariantContext();
         return new Object[][]{
                 {vc.getStart(), getValidGenotypeBuilder().PL((int[])null).make()}, //no PLs
-                {vc.getStart() + 1000, getValidGenotypeBuilder().make()}, //bad start
-                {vc.getStart() - 1000, getValidGenotypeBuilder().make()}, //bad start
+                {END + 2, getValidGenotypeBuilder().make()}, //bad start
+                {vc.getStart() - 1, getValidGenotypeBuilder().make()}, //bad start
                 {vc.getStart(), getValidGenotypeBuilder().GQ(1).make()}, // GQ out of bounds
                 {vc.getStart(), getValidGenotypeBuilder().GQ(100).make()}, // GQ out of bounds
                 {vc.getStart(), getValidGenotypeBuilder().alleles(Arrays.asList(REF, REF, REF)).make()}, //wrong ploidy
@@ -99,7 +101,9 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "badAdditions", expectedExceptions = IllegalArgumentException.class)
     public void testBadAdd(int start, Genotype gb) {
-        getHomRefBlock(getVariantContext()).add(start, gb);
+        final HomRefBlock block = getHomRefBlock(getVariantContext());
+        block.add(START, END, getValidGenotypeBuilder().make());
+        block.add(start, gb);
     }
 
     @Test(expectedExceptions = GATKException.class)
@@ -127,7 +131,7 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
 
         for ( final String chrMod : Arrays.asList("", ".mismatch") ) {
             for ( final int offset : Arrays.asList(-10, -1, 0, 1, 10) ) {
-                final boolean equals = chrMod.isEmpty() && offset == 0;
+                final boolean equals = chrMod.isEmpty() && (offset == 0 || offset == 1); //allow adding of VCs with same start or adjacent start
                 tests.add(new Object[]{vc.getContig() + chrMod, vc.getStart() + offset, equals});
             }
         }

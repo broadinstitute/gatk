@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.lang.math.IntRange;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
@@ -82,7 +83,7 @@ import java.util.stream.Collectors;
         programGroup = OtherProgramGroup.class,
         omitFromCommandLine = true)
 @DocumentedFeature
-public final class ReblockGVCF extends VariantWalker {
+public final class ReblockGVCF extends MultiVariantWalker {
 
     private final static int PLOIDY_TWO = 2;  //assume diploid genotypes
 
@@ -147,10 +148,12 @@ public final class ReblockGVCF extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        VCFHeader inputHeader = getHeaderForVariants();
-        if (inputHeader.getGenotypeSamples().size() > 1) {
-            throw new UserException.BadInput("ReblockGVCF is a single sample tool, but the input GVCF has more than 1 sample.");
+        if (getSamplesForVariants().size() != 1) {
+            throw new UserException.BadInput("ReblockGVCF can take multiple input GVCFs, but they must be "
+                    + "non-overlapping shards from the same sample.  Found samples " + getSamplesForVariants());
         }
+
+        final VCFHeader inputHeader = getHeaderForVariants();
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
 
         final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeaders);
@@ -188,7 +191,7 @@ public final class ReblockGVCF extends VariantWalker {
         } catch ( IllegalArgumentException e ) {
             throw new IllegalArgumentException("GQBands are malformed: " + e.getMessage(), e);
         }
-        vcfWriter.writeHeader(new VCFHeader(headerLines, inputHeader.getGenotypeSamples()));
+        vcfWriter.writeHeader(new VCFHeader(headerLines, getSamplesForVariants()));  //don't get samples from header -- multi-variant inputHeader doens't have sample names
 
         logger.info("Notice that the -ploidy parameter is ignored in " + getClass().getSimpleName() + " tool as this is tool assumes a diploid sample");
     }
@@ -255,7 +258,19 @@ public final class ReblockGVCF extends VariantWalker {
         }
     }
 
+    /**
+     * determine if a VC is a homRef block, i.e. has an end key and does not have filtering annotations
+     * @param result VariantContext to process
+     * @return true if VC is a homRef block and not a "call" with annotations
+     */
     private boolean isHomRefBlock(final VariantContext result) {
+        if (result.getGenotype(0).hasPL()) {
+            if (result.getGenotype(0).getPL()[0] != 0) {
+                return false;
+            }
+        } else {
+            return (result.getAttributes().size() == 1) && result.hasAttribute(VCFConstants.END_KEY);
+        }
         return result.getLog10PError() == VariantContext.NO_LOG10_PERROR;
     }
 
@@ -276,10 +291,10 @@ public final class ReblockGVCF extends VariantWalker {
             return null;
         }
         else if (genotype.isCalled() && genotype.isHomRef()) {
-            return result;
+            return result;  //don't need to remove infoFieldAnnotationKeyNamesToRemove because these are just ref blocks
         }
         else if (!genotype.isCalled() && genotype.hasPL() && genotype.getPL()[0] == 0) {
-            return result;
+            return result;  //don't need to remove infoFieldAnnotationKeyNamesToRemove because these are just ref blocks
         }
         else {
             return null;
@@ -288,8 +303,11 @@ public final class ReblockGVCF extends VariantWalker {
 
     @VisibleForTesting
     protected boolean shouldBeReblocked(final VariantContext result) {
+        if (!result.hasGenotypes()) {
+            throw new IllegalStateException("Variant contexts must contain genotypes to be reblocked.");
+        }
         final Genotype genotype = result.getGenotype(0);
-        return !genotype.isCalled() || (genotype.hasPL() && genotype.getPL()[0] < rgqThreshold) || genotype.isHomRef();
+        return !genotype.hasPL() || (genotype.hasPL() && genotype.getPL()[0] < rgqThreshold) || genotype.isHomRef();
     }
 
     /**
@@ -383,6 +401,9 @@ public final class ReblockGVCF extends VariantWalker {
                 }
             }
         }
+        //MLEAC and MLEAF get added by genotyper, not annotation engine, so do one last cleanup
+        removeAnnotations(attrMap);
+
         final Genotype genotype = result.getGenotype(0);
         if (doQualApprox && genotype.hasPL()) {
             attrMap.put(GATKVCFConstants.RAW_QUAL_APPROX_KEY, genotype.getPL()[0]);
@@ -547,7 +568,18 @@ public final class ReblockGVCF extends VariantWalker {
                 }
             }
         }
-        attrMap.put(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, g.getAlleles().stream().anyMatch(Allele::isReference) ? Arrays.asList(0,1,0) : Arrays.asList(0,0,1)); //ExcessHet currently uses rounded/integer genotype counts, so do the same here
+        List<Integer> gtCount;
+        if (g.hasPL()) {
+            int minPL = MathUtils.minElementIndex(g.getPL());
+            if (minPL == 1 || minPL == 3 || minPL == 6) { //these are the ref/alt indexes; we shouldn't have more than three alleles
+                gtCount = Arrays.asList(0,1,0);
+            } else {
+                gtCount = Arrays.asList(0,0,1);
+            }
+        } else {
+            gtCount = g.getAlleles().stream().anyMatch(Allele::isReference) ? Arrays.asList(0,1,0) : Arrays.asList(0,0,1); //ExcessHet currently uses rounded/integer genotype counts, so do the same here
+        }
+        attrMap.put(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, gtCount);
         builder.attributes(attrMap);
 
         if (allelesNeedSubsetting) {
@@ -555,6 +587,16 @@ public final class ReblockGVCF extends VariantWalker {
             return GATKVariantContextUtils.reverseTrimAlleles(builder.attributes(attrMap).unfiltered().make());
         }
         return builder.attributes(attrMap).genotypes(newGenotypes).unfiltered().make();
+    }
+
+    /**
+     * @param annotationMap  mutated by removing {@code infoFieldAnnotationKeyNamesToRemove}
+     *
+     */
+    private void removeAnnotations(final Map<String, Object> annotationMap) {
+        for (final String key : infoFieldAnnotationKeyNamesToRemove) {
+            annotationMap.remove(key);
+        }
     }
 
     @Override
