@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.util.FileExtensions;
+import htsjdk.samtools.util.Log;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
