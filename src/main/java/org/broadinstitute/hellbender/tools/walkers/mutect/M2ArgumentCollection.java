@@ -44,6 +44,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String NORMAL_LOG_10_ODDS_LONG_NAME = "normal-lod";
     public static final String IGNORE_ITR_ARTIFACTS_LONG_NAME = "ignore-itr-artifacts";
     public static final String MITOCHONDRIA_MODE_LONG_NAME = "mitochondria-mode";
+    public static final String MICROBIAL_MODE_LONG_NAME = "microbial-mode";
     public static final String CALLABLE_DEPTH_LONG_NAME = "callable-depth";
     public static final String PCR_SNV_QUAL_LONG_NAME = "pcr-snv-qual";
     public static final String PCR_INDEL_QUAL_LONG_NAME = "pcr-indel-qual";
