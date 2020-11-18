@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.transformers;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -95,7 +96,8 @@ public final class PalindromeArtifactClipReadTransformer implements ReadTransfor
         
         // it's possible that the read's assigned fragment length / mate start were incompatible with the contig length,
         // so we explicitly check for this case to avoid errors below.  We can't rely on the alignment!
-        if (refStart < 1 || refEnd > sequenceDictionary.getSequence(contig).getSequenceLength()) {
+        final SAMSequenceRecord sequenceRecord = sequenceDictionary.getSequence(contig);
+        if (refStart < 1 || sequenceRecord == null || refEnd > sequenceRecord.getSequenceLength()) {
             return read;
         }
 
