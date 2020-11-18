@@ -723,14 +723,16 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         // test no phased variants, empty map
         final Map<VariantContext, Pair<Integer, String>> nonePhased1 = new HashMap<>();
-        tests.add(new Object[]{calls, nonePhased1, 0, 0, 0, calls});
+        tests.add(new Object[]{calls, nonePhased1, 0, 0, 0, calls, null});
 
         // test no phased variants, full map, exception expected
+        final IllegalStateException tooSmallPhaseGroupException = new IllegalStateException("Somehow we have a group of phased variants that has fewer than 2 members");
+
         final Map<VariantContext, Pair<Integer, String>> nonePhased2 = new HashMap<>();
         nonePhased2.put(vc1, Pair.of(0, "0|1"));
         nonePhased2.put(vc2, Pair.of(1, "0|1"));
         nonePhased2.put(vc3, Pair.of(2, "0|1"));
-        tests.add(new Object[]{calls, nonePhased2, 3, -1, -1, calls});
+        tests.add(new Object[]{calls, nonePhased2, 3, -1, -1, calls, tooSmallPhaseGroupException});
 
         // test 2 phased variants
         final Genotype g1P = new GenotypeBuilder().alleles(Arrays.asList(ref, altC)).phased(true).make();
@@ -742,7 +744,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final Map<VariantContext, Pair<Integer, String>> twoPhased = new HashMap<>();
         twoPhased.put(vc1, Pair.of(0, "0|1"));
         twoPhased.put(vc2, Pair.of(0, "1|0"));
-        tests.add(new Object[]{calls, twoPhased, 1, 1, 2, phasedCalls});
+        tests.add(new Object[]{calls, twoPhased, 1, 1, 2, phasedCalls, null});
 
         // test all phased variants
         final Genotype g3P = new GenotypeBuilder().alleles(Arrays.asList(ref, altC)).phased(true).make();
@@ -753,7 +755,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         allPhased.put(vc1, Pair.of(0, "0|1"));
         allPhased.put(vc2, Pair.of(0, "1|0"));
         allPhased.put(vc3, Pair.of(0, "0|1"));
-        tests.add(new Object[]{calls, allPhased, 1, 1, 3, phasedCalls2});
+        tests.add(new Object[]{calls, allPhased, 1, 1, 3, phasedCalls2, null});
 
         // test a spanning deletion case: unphased snp, deletion, spanned snp
         final Allele delref = Allele.create("AA", true);
@@ -776,7 +778,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final Map<VariantContext, Pair<Integer, String>> phasedSpanDel = new HashMap<>();
         phasedSpanDel.put(vc4, Pair.of(0, "0|1"));
         phasedSpanDel.put(vc5, Pair.of(0, "1|0"));
-        tests.add(new Object[]{spandelCalls, phasedSpanDel, 1, 1, 2, spandelPhasedCalls});
+        tests.add(new Object[]{spandelCalls, phasedSpanDel, 1, 1, 2, spandelPhasedCalls, null});
 
         return tests.toArray(new Object[][]{});
     }
@@ -787,12 +789,13 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                          final int endIndex,
                                          final int expectedNumGroups,
                                          final int expectedGroupSize,
-                                         final List<VariantContext> expectedPhasedCalls) {
+                                         final List<VariantContext> expectedPhasedCalls,
+                                         final Exception expectedException) {
         final List<VariantContext> actualPhasedCalls;
         try {
             actualPhasedCalls = AssemblyBasedCallerUtils.constructPhaseGroups(calls, phaseMap, endIndex);
         } catch (IllegalStateException e) {
-            Assert.assertEquals(-1, expectedNumGroups);
+            Assert.assertEquals(e.getMessage(), expectedException.getMessage());
             return;
         }
 
@@ -937,16 +940,17 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypeMap.put(vc4, haplotypes4complete);
         tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 0, 0, 0, 0, 0});
 
-        final Allele refForDel = Allele.create("AA", true);
+        final Allele refForDel = Allele.create("AG", true);
         final Allele altDel = Allele.create("A", false);
 
         final VariantContext delVC = new VariantContextBuilder().chr("20").start(3).stop(4).alleles(Arrays.asList(refForDel, altDel)).make();
         final VariantContext spannedSnpVC = new VariantContextBuilder().chr("20").start(4).stop(4).alleles(Arrays.asList(ref, Allele.SPAN_DEL, altT)).make();
 
-        final Haplotype spandelHap = new Haplotype("AAAA".getBytes());
+        // the ref haplotype would be "TAGCA"
+        final Haplotype spandelHap = new Haplotype("TACA".getBytes());
         spandelHap.setEventMap(new EventMap(Arrays.asList(delVC)));
 
-        final Haplotype spannedSnp = new Haplotype("AAATA".getBytes());
+        final Haplotype spannedSnp = new Haplotype("TATCA".getBytes());
         spannedSnp.setEventMap(new EventMap(Arrays.asList(spannedSnpVC)));
 
         final Set<Haplotype> haplotypesWithSpanDel = new HashSet<>();
