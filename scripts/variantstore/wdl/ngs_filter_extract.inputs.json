@@ -1,0 +1,43 @@
+{
+  "NgsFilterExtract.reference": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "NgsFilterExtract.reference_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "NgsFilterExtract.reference_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+  
+  "NgsFilterExtract.snp_recalibration_annotation_values": ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"],
+  "NgsFilterExtract.snp_recalibration_tranche_values": ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ],
+
+  "NgsFilterExtract.indel_recalibration_annotation_values": ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"],
+  "NgsFilterExtract.indel_recalibration_tranche_values": ["100.0", "99.95", "99.9", "99.5", "99.0", "97.0", "96.0", "95.0", "94.0", "93.5", "93.0", "92.0", "91.0", "90.0"],
+
+  "NgsFilterExtract.axiomPoly_resource_vcf": "gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz",
+  "NgsFilterExtract.axiomPoly_resource_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz.tbi",
+  "NgsFilterExtract.dbsnp_vcf": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf",
+  "NgsFilterExtract.dbsnp_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf.idx",
+  "NgsFilterExtract.hapmap_resource_vcf": "gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz",
+  "NgsFilterExtract.hapmap_resource_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz.tbi",
+  "NgsFilterExtract.mills_resource_vcf": "gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+  "NgsFilterExtract.mills_resource_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi",
+  "NgsFilterExtract.omni_resource_vcf": "gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz",
+  "NgsFilterExtract.omni_resource_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz.tbi",
+  "NgsFilterExtract.one_thousand_genomes_resource_vcf": "gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+  "NgsFilterExtract.one_thousand_genomes_resource_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi",
+
+  "NgsFilterExtract.small_disk": 100,
+  "NgsFilterExtract.medium_disk": 200,
+  "NgsFilterExtract.large_disk": 1000,
+  "NgsFilterExtract.huge_disk": 2000,
+
+  "NgsFilterExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.1.8.1-145-gefaac86-SNAPSHOT-local.jar",
+
+  "NgsFilterExtract.fq_sample_table": "spec-ops-aou.kc_acmg.metadata",
+  "NgsFilterExtract.fq_alt_allele_table": "spec-ops-aou.kc_acmg.alt_allele",
+  "NgsFilterExtract.query_project": "spec-ops-aou",
+
+  "NgsFilterExtract.filter_set_name": "wdl_testing-1234",
+  "NgsFilterExtract.output_file_base_name": "kc_acmg.sites_only",
+
+  "NgsFilterExtract.fq_filter_set_info_table": "spec-ops-aou.kc_acmg.filter_set_info",
+  "NgsFilterExtract.fq_filter_set_tranches_table": "spec-ops-aou.kc_acmg.filter_set_tranches"
+
+
+}
