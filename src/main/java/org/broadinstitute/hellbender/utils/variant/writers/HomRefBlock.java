@@ -132,10 +132,8 @@ final class HomRefBlock extends GVCFBlock {
             minGQ = GATKVariantContextUtils.calculateGQFromPLs(minPPs);
         } else if (minPLs != null) {
             minGQ = GATKVariantContextUtils.calculateGQFromPLs(minPLs);
-        } else if (minGQ == -1) {
-            minGQ = genotype.getGQ();
         } else {
-            minGQ = Math.min(minGQ, genotype.getGQ());
+            minGQ = minGQ == -1 ? genotype.getGQ() : Math.min(minGQ, genotype.getGQ());
         }
 
         end = newEnd;

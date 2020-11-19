@@ -93,7 +93,7 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
     private static GenotypeBuilder getValidGenotypeBuilder() {
         return new GenotypeBuilder(SAMPLE_NAME)
                 .PL(getPLArray())
-                .GQ(15)
+                .GQ(getPLArray()[1])
                 .alleles(getVariantContext().getAlleles());
     }
 
@@ -114,20 +114,33 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
     public void testNoPLs() {
         //add VC with no PLs to block with PLs
         final VariantContext vc = getVariantContext();
-        final GVCFBlock band = getHomRefBlock(getVariantContext());
+        final HomRefBlock band = getHomRefBlock(getVariantContext());
+        Assert.assertNull(band.getMinPLs());
+        Assert.assertEquals(band.getMinGQ(), -1);
         band.add(vc.getStart(), getValidGenotypeBuilder().make() );
+        Assert.assertNotNull(band.getMinPLs());
+        Assert.assertEquals(band.getMinPLs()[1], getPLArray()[1]);
+        Assert.assertEquals(band.getMinGQ(), getPLArray()[1]);
         band.add(vc.getStart() + 1, getValidGenotypeBuilder().noPL().make());
-        Assert.assertTrue(band.getSize() == 2);
+        Assert.assertEquals(band.getSize(), 2);
+        Assert.assertEquals(band.getMinPLs()[1], getPLArray()[1]);
+        Assert.assertEquals(band.getMinGQ(), getPLArray()[1]);
 
-        //add VC with on PLs to block with no PLs
-        final GVCFBlock band2 = getHomRefBlock(getVariantContext());
+        //add VC with no PLs to block with no PLs
+        final HomRefBlock band2 = getHomRefBlock(getVariantContext());
+        Assert.assertNull(band2.getMinPLs());
+        Assert.assertEquals(band2.getMinGQ(), -1);
         band2.add(vc.getStart(), getValidGenotypeBuilder().noPL().make() );
+        Assert.assertEquals(band2.getMinGQ(), getPLArray()[1]);
+        Assert.assertNull(band2.getMinPLs());
         band2.add(vc.getStart() + 1, getValidGenotypeBuilder().noPL().make());
+        Assert.assertNull(band2.getMinPLs());
+        Assert.assertEquals(band2.getMinGQ(), getPLArray()[1]);
         Assert.assertTrue(band2.getSize() == 2);
     }
 
     private static int[] getPLArray() {
-        return new int[]{0,10,100};
+        return new int[]{0,15,100};
     }
 
     private static void assertValues(final GVCFBlock band, final int minDP, final int medianDP) {
