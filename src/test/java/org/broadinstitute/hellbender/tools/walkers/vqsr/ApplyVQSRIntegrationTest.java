@@ -185,7 +185,8 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                         " --output " + tempGZIPOut.getAbsolutePath() +
                         " --tranches-file " + getToolTestDataDir() + "VQSR.AStest.indels.tranches" +
                         " --recal-file " + getToolTestDataDir() + "VQSR.AStest.indels.recal.vcf" +
-                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false";
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false" +
+                        " --" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME + " true";  //because of the header hack, this won't validate
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(base, Collections.emptyList());
         spec.executeTest("testApplyRecalibrationAlleleSpecificINDELmodeGZIP", this);
