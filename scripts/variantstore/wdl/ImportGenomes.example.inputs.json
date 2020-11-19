@@ -4,10 +4,10 @@
   "ImportGenomes.metadata_schema": "gs://broad-dsp-spec-ops/scratch/andrea/schemas/sample_list_schema.json",
   "ImportGenomes.interval_list": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
   "ImportGenomes.drop_state": "SIXTY",
-  "ImportGenomes.gatk_override": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/gatk.jar",
+  "ImportGenomes.gatk_override": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/gatk-package-4.1.8.1-149-g6b93ec6-SNAPSHOT-local.jar",
 
   "ImportGenomes.project_id": "spec-ops-aou",
-  "ImportGenomes.dataset_name": "kc_import_test4",
+  "ImportGenomes.dataset_name": "kc_import_test5",
 
   "ImportGenomes.sample_map": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/test_sample_map.csv",
 
