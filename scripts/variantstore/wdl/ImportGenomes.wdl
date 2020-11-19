@@ -14,8 +14,6 @@ workflow ImportGenomes {
     File vet_schema
     File metadata_schema
     String? drop_state
-    #TODO: determine table_id from input sample_map (including looping over multiple table_ids)
-    Int table_id
 
     Int? preemptible_tries
     File? gatk_override
@@ -23,6 +21,11 @@ workflow ImportGenomes {
   }
 
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
+
+  call GetMaxTableId {
+    input:
+      sample_map = sample_map
+  }
 
   scatter (i in range(length(input_vcfs))) {
     if (defined(input_metrics)) {
@@ -43,49 +46,75 @@ workflow ImportGenomes {
     }
   }
 
-  call LoadData as LoadMetadataTsvs{
-    input:
-      done = CreateImportTsvs.done[0],
-      project_id = project_id,
-      dataset_name = dataset_name,
-      storage_location = output_directory,
-      datatype = "metadata",
-      numbered = "false",
-      partitioned = "false",
-      table_id = table_id,
-      schema = metadata_schema,
-      preemptible_tries = preemptible_tries,
-      docker = docker_final
-  }
+  scatter (i in range(GetMaxTableId.max_table_id)) {
+    call LoadData as LoadMetadataTsvs{
+      input:
+        done = CreateImportTsvs.done,
+        project_id = project_id,
+        dataset_name = dataset_name,
+        storage_location = output_directory,
+        datatype = "metadata",
+        numbered = "false",
+        partitioned = "false",
+        table_id = i + 1,
+        schema = metadata_schema,
+        preemptible_tries = preemptible_tries,
+        docker = docker_final
+    }
 
     call LoadData as LoadPetTsvs{
-    input:
-      done = CreateImportTsvs.done[0],
-      project_id = project_id,
-      dataset_name = dataset_name,
-      storage_location = output_directory,
-      datatype = "pet",
-      table_id = table_id,
-      schema = pet_schema,
-      preemptible_tries = preemptible_tries,
-      docker = docker_final
-  }
+      input:
+        done = CreateImportTsvs.done,
+        project_id = project_id,
+        dataset_name = dataset_name,
+        storage_location = output_directory,
+        datatype = "pet",
+        table_id = i + 1,
+        schema = pet_schema,
+        preemptible_tries = preemptible_tries,
+        docker = docker_final
+    }
 
-  call LoadData as LoadVetTsvs{
-    input:
-      done = CreateImportTsvs.done[0],
-      project_id = project_id,
-      dataset_name = dataset_name,
-      storage_location = output_directory,
-      datatype = "vet",
-      table_id = table_id,
-      schema = vet_schema,
-      preemptible_tries = preemptible_tries,
-      docker = docker_final
+    call LoadData as LoadVetTsvs{
+      input:
+        done = CreateImportTsvs.done,
+        project_id = project_id,
+        dataset_name = dataset_name,
+        storage_location = output_directory,
+        datatype = "vet",
+        table_id = i + 1,
+        schema = vet_schema,
+        preemptible_tries = preemptible_tries,
+        docker = docker_final
+    }
   }
-
 }
 
+task GetMaxTableId {
+  input {
+    File sample_map
+    Int? samples_per_table = 4000
+
+    # runtime
+    Int? preemptible_tries
+  }
+
+  command <<<
+      set -e
+      max_sample_id=$(cat ~{sample_map} | cut -d"," -f1 | sort -rn | head -1)
+      python -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))"
+  >>>
+  runtime {
+      docker: "python:3.8-slim-buster"
+      memory: "1 GB"
+      disks: "local-disk 10 HDD"
+      preemptible: select_first([preemptible_tries, 5])
+      cpu: 1
+  }
+  output {
+      Int max_table_id = read_int(stdout())
+  }
+}
 
 task CreateImportTsvs {
   input {
@@ -167,7 +196,7 @@ task LoadData {
     String uuid = ""
 
     #input from previous task needed to delay task from running until the other is complete
-    String done
+    Array[String] done
 
     # runtime
     Int? preemptible_tries
@@ -178,10 +207,6 @@ task LoadData {
 
   command <<<
     set -x
-    set +e
-    # make sure dataset exists
-    bq ls --project_id ~{project_id} ~{dataset_name} > /dev/null
-
     set -e
     ~{for_testing_only}
 
@@ -196,6 +221,7 @@ task LoadData {
       PARTITION_STRING="--range_partitioning=$PARTITION_FIELD,$PARTITION_START,$PARTITION_END,$PARTITION_STEP"
     fi
 
+    # we are loading ONLY one table, specified by table_id
     printf -v PADDED_TABLE_ID "_%03d" ~{table_id}
     FILES="~{datatype}${PADDED_TABLE_ID}_*"
     
@@ -206,13 +232,20 @@ task LoadData {
     NUM_FILES=$(gsutil ls $DIR$FILES | wc -l)
 
     # create the table and load
-    TABLE="~{dataset_name}.~{uuid + "_"}~{datatype}${PADDED_TABLE_ID}"
+    PREFIX=""
+    if [ -n "~{uuid}" ]; then
+        PREFIX="~{uuid}_"
+    fi
+
+    TABLE="~{dataset_name}.${PREFIX}~{datatype}${PADDED_TABLE_ID}"
     if [ $NUM_FILES -gt 0 ]; then
       set +e
       bq show --project_id ~{project_id} $TABLE > /dev/null
       BQ_SHOW_RC=$?
       set -e
       if [ $BQ_SHOW_RC -ne 0 ]; then
+
+        # If the dataset does not exist, it will be caught here as bq mk will error out
         echo "making table $TABLE"
         bq --location=US mk ${PARTITION_STRING} --project_id=~{project_id} $TABLE ~{schema}
         #TODO: add a Google Storage Transfer for the table when we make it.
@@ -221,6 +254,7 @@ task LoadData {
       if [ ~{load} = true ]; then
         bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema}
         echo "ingested ${FILES} file from $DIR into table $TABLE"
+        gsutil mv $DIR$FILES ${DIR}done/
       else
         echo "${FILES} will be ingested from $DIR by Google Storage Transfer"
       fi
@@ -230,9 +264,9 @@ task LoadData {
   >>>
   runtime {
     docker: docker
-    memory: "4 GB"
+    memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: select_first([preemptible_tries, 5])
-    cpu: 2
+    cpu: 1
   }
 }

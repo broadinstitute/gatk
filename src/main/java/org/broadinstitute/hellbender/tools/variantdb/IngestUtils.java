@@ -1,13 +1,9 @@
 package org.broadinstitute.hellbender.tools.variantdb;
 
-import com.google.cloud.bigquery.TableResult;
 import htsjdk.variant.vcf.VCFHeader;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
-import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 
@@ -15,10 +11,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class IngestUtils {
     static final Logger logger = LogManager.getLogger(IngestUtils.class);
@@ -69,7 +61,7 @@ public class IngestUtils {
     public static int getTableNumber(long sampleId, int sampleMod) { // this is based on sample id
         // sample ids 1-4000 will go in directory 001
         // subtract 1 from the sample id to make it 1-index (or do we want to 0-index?) and add 1 to the dir
-        int directoryNumber = (int) (Math.floorDiv((sampleId - 1), sampleMod) + 1); // TODO omg write some unit tests
+        int directoryNumber = new Long(Math.floorDiv((sampleId - 1), sampleMod) + 1).intValue(); // TODO omg write some unit tests
         return directoryNumber;
     }
 
