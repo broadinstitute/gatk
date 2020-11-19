@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
-import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import com.google.common.collect.Sets;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -32,7 +32,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import static org.broadinstitute.hellbender.tools.variantdb.arrays.ExtractCohortBQ.*;
 
 public class ExtractCohortEngine {
     private static final Logger logger = LogManager.getLogger(ExtractCohortEngine.class);
@@ -61,6 +60,8 @@ public class ExtractCohortEngine {
     private int totalNumberOfVariants = 0;
     private int totalNumberOfSites = 0;
 
+    private final String nameOfFilterSet;
+
     /**
      * The conf threshold above which variants are not included in the position tables.
      * This value is used to construct the genotype information of those missing samples
@@ -85,7 +86,8 @@ public class ExtractCohortEngine {
                                final double vqsLodSNPThreshold,
                                final double vqsLodINDELThreshold,
                                final ProgressMeter progressMeter,
-                               final ExtractCohort.QueryMode queryMode) {
+                               final ExtractCohort.QueryMode queryMode,
+                               final String nameOfFilterSet) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -105,6 +107,8 @@ public class ExtractCohortEngine {
         this.progressMeter = progressMeter;
         this.queryMode = queryMode;
 
+        this.nameOfFilterSet = nameOfFilterSet;
+
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
     }
@@ -113,19 +117,42 @@ public class ExtractCohortEngine {
     int getTotalNumberOfSites() { return totalNumberOfSites; }
 
     public void traverse() {
+
+        String rowRestriction = null;
+        if (minLocation != null && maxLocation != null) {
+            rowRestriction = "location >= " + minLocation + " AND location <= " + maxLocation;
+        }
+        final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + nameOfFilterSet + "'";
+
+        final StorageAPIAvroReader filteringTableAvroReader = new StorageAPIAvroReader(filteringTableRef, rowRestrictionWithFilterSetName, projectID);
+        final HashMap<Locatable, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap = new HashMap<>();
+        final HashMap<Locatable, HashMap<Allele, HashMap<Allele, String>>> fullYngMap = new HashMap<>();
+
+        for ( final GenericRecord queryRow : filteringTableAvroReader ) {
+            final long location = Long.parseLong(queryRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
+            final int currentPosition = SchemaUtils.decodePosition(location);
+            final String contig = SchemaUtils.decodeContig(location);
+            final Double vqslod = Double.parseDouble(queryRow.get("vqslod").toString());
+            final String yng = queryRow.get("yng_status").toString();
+            final Allele ref = Allele.create(queryRow.get("ref").toString(), true);
+            final Allele alt = Allele.create(queryRow.get("alt").toString(), false);
+            final Locatable locatable = new SimpleInterval(contig, currentPosition, currentPosition);
+            fullVqsLodMap.putIfAbsent(locatable, new HashMap<>());
+            fullVqsLodMap.get(locatable).putIfAbsent(ref, new HashMap<>());
+            fullVqsLodMap.get(locatable).get(ref).put(alt, vqslod);
+            fullYngMap.putIfAbsent(locatable, new HashMap<>());
+            fullYngMap.get(locatable).putIfAbsent(ref, new HashMap<>());
+            fullYngMap.get(locatable).get(ref).put(alt, yng);
+        }
+
         switch (queryMode) {
             case LOCAL_SORT:
                 if (printDebugInformation) {
                     logger.debug("using storage api with local sort");
                 }
-
-                String rowRestriction = null;
-                if (minLocation != null && maxLocation != null) {
-                    rowRestriction = "location >= " + minLocation + " AND location <= " + maxLocation;
-                }
         
                 final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);        
-                createVariantsFromUngroupedTableResult(storageAPIAvroReader);
+                createVariantsFromUngroupedTableResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap);
                 break;
             case QUERY:
                 if (printDebugInformation) {
@@ -134,12 +161,12 @@ public class ExtractCohortEngine {
                 // create the query string
                 String q = "SELECT " + StringUtils.join(SchemaUtils.COHORT_FIELDS,",") + " FROM " + cohortTableRef.getFQTableName() + " ORDER BY " + SchemaUtils.LOCATION_FIELD_NAME;
                 TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), cohortTableRef.tableProject, cohortTableRef.tableDataset, q);
-                createVariantsFromSortedTableResults(tr);
+                createVariantsFromSortedTableResults(tr, fullVqsLodMap, fullYngMap);
                 break;
         }
     }
 
-    private void createVariantsFromSortedTableResults(final TableResult tr) {
+    private void createVariantsFromSortedTableResults(final TableResult tr, HashMap<Locatable, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Locatable, HashMap<Allele, HashMap<Allele, String>>> fullYngMap) {
 
 //        final Set<String> columnNames = new HashSet<>();
 //        if ( schema.getField(POSITION_FIELD_NAME) == null || schema.getField(VALUES_ARRAY_FIELD_NAME) == null ) {
@@ -167,7 +194,7 @@ public class ExtractCohortEngine {
                     logger.info(currentLocation + ": processing records");
                 }
                 // TODO this should start a thread or something - i.e. scatter
-                processSampleRecordsForLocation(currentLocation, sampleRecords, new HashSet<>(SchemaUtils.ARRAY_COHORT_FIELDS));
+                processSampleRecordsForLocation(currentLocation, sampleRecords, new HashSet<>(SchemaUtils.ARRAY_COHORT_FIELDS), fullVqsLodMap, fullYngMap);
                 currentLocation = location;
                 sampleRecords = new ArrayList<>();
             }
@@ -175,7 +202,7 @@ public class ExtractCohortEngine {
             sampleRecords.add(new QueryRecord(row));
 
         }
-        processSampleRecordsForLocation(currentLocation, sampleRecords, new HashSet<>(SchemaUtils.ARRAY_COHORT_FIELDS));
+        processSampleRecordsForLocation(currentLocation, sampleRecords, new HashSet<>(SchemaUtils.ARRAY_COHORT_FIELDS), fullVqsLodMap, fullYngMap);
 
     }
 
@@ -195,7 +222,7 @@ public class ExtractCohortEngine {
     }
 
 
-    private void createVariantsFromUngroupedTableResult(final GATKAvroReader avroReader) {
+    private void createVariantsFromUngroupedTableResult(final GATKAvroReader avroReader, HashMap<Locatable, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Locatable, HashMap<Allele, HashMap<Allele, String>>> fullYngMap) {
 
         final org.apache.avro.Schema schema = avroReader.getSchema();
 
@@ -222,7 +249,7 @@ public class ExtractCohortEngine {
 
             if ( location != currentLocation && currentLocation != -1 ) {
                 ++totalNumberOfSites;
-                processSampleRecordsForLocation(currentLocation, currentPositionRecords, columnNames);
+                processSampleRecordsForLocation(currentLocation, currentPositionRecords, columnNames, fullVqsLodMap, fullYngMap);
 
                 currentPositionRecords.clear();
             }
@@ -233,21 +260,31 @@ public class ExtractCohortEngine {
 
         if ( ! currentPositionRecords.isEmpty() ) {
             ++totalNumberOfSites;
-            processSampleRecordsForLocation(currentLocation, currentPositionRecords, columnNames);
+            processSampleRecordsForLocation(currentLocation, currentPositionRecords, columnNames, fullVqsLodMap, fullYngMap);
         }
     }
 
-    private void processSampleRecordsForLocation(final long location, final Iterable<GenericRecord> sampleRecordsAtPosition, final Set<String> columnNames) {
+    private void processSampleRecordsForLocation(final long location, final Iterable<GenericRecord> sampleRecordsAtPosition, final Set<String> columnNames, HashMap<Locatable, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Locatable, HashMap<Allele, HashMap<Allele, String>>> fullYngMap) {
         final List<VariantContext> unmergedCalls = new ArrayList<>();
         final Set<String> currentPositionSamplesSeen = new HashSet<>();
         boolean currentPositionHasVariant = false;
-        final long currentPosition = SchemaUtils.decodePosition(location);
+        final int currentPosition = SchemaUtils.decodePosition(location);
         final String contig = SchemaUtils.decodeContig(location);
         final Allele refAllele = Allele.create(refSource.queryAndPrefetch(contig, currentPosition, currentPosition).getBaseString(), true);
         int numRecordsAtPosition = 0;
 
-        final HashMap<Allele, HashMap<Allele, Double>> vqsLodMap = new HashMap<>();
-        final HashMap<Allele, HashMap<Allele, String>> yngMap = new HashMap<>();
+        final HashMap<Allele, HashMap<Allele, Double>> vqsLodMap;
+        final HashMap<Allele, HashMap<Allele, String>> yngMap;
+        // If there's no yng/vqslod for this site, then we'll treat these as NAYs because VQSR dropped them (they have no alt reads).
+        if (fullVqsLodMap.get(new SimpleInterval(contig, currentPosition, currentPosition)) == null) {
+            vqsLodMap = new HashMap<>();
+            vqsLodMap.put(refAllele, new HashMap<>());
+            yngMap = new HashMap<>();
+            yngMap.put(refAllele, new HashMap<>());
+        } else {
+            vqsLodMap = fullVqsLodMap.get(new SimpleInterval(contig, currentPosition, currentPosition));
+            yngMap = fullYngMap.get(new SimpleInterval(contig, currentPosition, currentPosition));
+        }
 
         for ( final GenericRecord sampleRecord : sampleRecordsAtPosition ) {
             final String sampleName = sampleRecord.get(SchemaUtils.SAMPLE_NAME_FIELD_NAME).toString();
@@ -332,7 +369,7 @@ public class ExtractCohortEngine {
                 true);
 
 
-        final VariantContext finalVC = mode.equals(CommonCode.ModeEnum.ARRAYS) ? mergedVC : filterVariants(mergedVC);
+        final VariantContext finalVC = mode.equals(CommonCode.ModeEnum.ARRAYS) ? mergedVC : filterVariants(mergedVC, vqsLodMap, yngMap);
 //        final VariantContext annotatedVC = enableVariantAnnotator ?
 //                variantAnnotator.annotateContext(finalizedVC, new FeatureContext(), null, null, a -> true): finalVC;
 
@@ -352,45 +389,54 @@ public class ExtractCohortEngine {
         }
     }
 
-    private VariantContext filterVariants(VariantContext mergedVC) {
-        return mergedVC;
-        //TODO not needed for arrays
-//            LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap, Double.NaN);
-//            LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
-//
-//            final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
-//
-//            builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, remappedVqsLodMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
-//            builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, remappedYngMap.values());
-//
-//            int refLength = mergedVC.getReference().length();
-//
-//            // if there are any Yays, the site is PASS
-//            if (remappedYngMap.values().contains("Y")) {
-//                builder.filter("PASS");
-//            } else if (remappedYngMap.values().contains("N")) {
-//                // TODO: do we want to remove this variant?
-//                builder.filter("NAY");
-//            } else {
-//                if (remappedYngMap.values().contains("G")) {
-//                    // TODO change the initial query to include the filtername from the tranches tables
-//                    Optional<Double> snpMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
-//                    if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
-//                        // TODO: add in sensitivities
-//                        builder.filter("VQSRTrancheSNP");
-//                    }
-//                    Optional<Double> indelMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
-//                    if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
-//                        // TODO: add in sensitivities
-//                        builder.filter("VQSRTrancheINDEL");
-//                    }
-//                }
-//                // TODO: what if there is nothing in the YNG table?
-//                // this shouldn't happen
-//            }
-//
-//            final VariantContext filteredVC = builder.make();
+    private VariantContext filterVariants(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {
+        LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap, Double.NaN);
+        LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
+
+        final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
+
+        builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, mergedVC.getAlternateAlleles()
+                .stream()
+                .map(a -> remappedVqsLodMap.get(a))
+                .filter(Objects::nonNull)
+                .map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString())
+                .collect(Collectors.toList()));
+        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, mergedVC.getAlternateAlleles()
+                .stream()
+                .map(a -> remappedYngMap.get(a))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList()));
+
+        int refLength = mergedVC.getReference().length();
+
+        // if there are any Yays, the site is PASS
+        if (remappedYngMap.values().contains("Y")) {
+            builder.passFilters();
+        } else if (remappedYngMap.values().contains("N")) {
+            builder.filter(GATKVCFConstants.NAY_FROM_YNG);
+        } else {
+            // if it doesn't trigger any of the filters below, we assume it passes.
+            builder.passFilters();
+            if (remappedYngMap.values().contains("G")) {
+            // TODO change the initial query to include the filtername from the tranches tables
+            Optional<Double> snpMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
+            if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
+                // TODO: add in sensitivities
+                builder.filter(GATKVCFConstants.VQSR_TRANCHE_SNP);
+            }
+            Optional<Double> indelMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
+            if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
+                // TODO: add in sensitivities
+                builder.filter(GATKVCFConstants.VQSR_TRANCHE_INDEL);
+                }
+            } else {
+                // If VQSR dropped this site (there's no YNG or VQSLOD) then we'll filter it as a NAY.
+                builder.filter(GATKVCFConstants.NAY_FROM_YNG);
+            }
         }
+        final VariantContext filteredVC = builder.make();
+        return filteredVC;
+    }
 
     private <T> LinkedHashMap<Allele, T> remapAllelesInMap(VariantContext vc, HashMap<Allele, HashMap<Allele, T>> datamap, T emptyVal) {
         // get the extended reference
@@ -401,7 +447,7 @@ public class ExtractCohortEngine {
         vc.getAlternateAlleles().stream().forEachOrdered(allele -> results.put(allele, emptyVal));
 
         datamap.entrySet().stream().forEachOrdered(entry -> {
-            if (entry.getKey() == ref) {
+            if (entry.getKey().equals(ref)) {
                 // reorder
                 entry.getValue().entrySet().stream().forEach(altMapEntry -> results.put(altMapEntry.getKey(), altMapEntry.getValue()));
             } else {
@@ -413,8 +459,11 @@ public class ExtractCohortEngine {
                 VariantContextBuilder vcb = new VariantContextBuilder(vc.getSource(), vc.getContig(), vc.getStart(), vc.getStart()+refLength-1, allAlleles);
                 VariantContext newvc = vcb.make();
 
-                Map<Allele, Allele> alleleMapping = GATKVariantContextUtils.createAlleleMapping(ref, newvc);
-                alleleMapping.entrySet().stream().forEach(mapped -> results.put(mapped.getValue(), entry.getValue().get(mapped.getKey())));
+                //If the length of the reference from the filtering table is longer than the reference in the variantContext, then that allele is not present in the extracted samples and we don't need the data
+                if (refLength < ref.length()) {
+                    Map<Allele, Allele> alleleMapping = GATKVariantContextUtils.createAlleleMapping(ref, newvc);
+                    alleleMapping.entrySet().stream().forEach(mapped -> results.put(mapped.getValue(), entry.getValue().get(mapped.getKey())));
+                }
             }
         });
         return results;
@@ -440,7 +489,6 @@ public class ExtractCohortEngine {
         builder.stop(startPosition + alleles.get(0).length() - 1);
 
         genotypeBuilder.name(sample);
-
         vqsLodMap.putIfAbsent(ref, new HashMap<>());
         yngMap.putIfAbsent(ref, new HashMap<>());
 
