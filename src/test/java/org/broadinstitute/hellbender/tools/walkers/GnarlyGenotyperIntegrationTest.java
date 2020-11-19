@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -127,15 +128,17 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         runTool(genomicsDBUri, intervals, reference, outputResolved, outputDatabaseResolved, additionalArguments);
 
         // Test for an exact match against past results
-        if (!UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
-            final List<VariantContext> expectedVC = getVariantContexts(expected);
-            final List<VariantContext> actualVC = getVariantContexts(output);
-            assertEqualVariants(actualVC, expectedVC);
-            if (expectedDb != null) {
-                final List<VariantContext> expectedDB = getVariantContexts(expectedDb);
-                final List<VariantContext> actualDB = getVariantContexts(outputDatabase);
-                assertEqualVariants(actualDB, expectedDB);
-            }
+        if (!UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {final List<VariantContext> expectedVC = getVariantContexts(expected);
+        final List<VariantContext> actualVC = getVariantContexts(output);
+        assertEqualVariants(actualVC, expectedVC);
+
+        for (final VariantContext vc : actualVC) {
+            GATKVariantContextUtils.assertAlleleSpecificAnnotationsHaveCorrectLength(vc);
+        }
+        if (expectedDb != null) {
+            final List<VariantContext> expectedDB = getVariantContexts(expectedDb);
+            final List<VariantContext> actualDB = getVariantContexts(outputDatabase);
+            assertEqualVariants(actualDB, expectedDB);}
         }
     }
 

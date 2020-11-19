@@ -24,6 +24,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils.BRACKET_REGEX;
+
 /**
  * Guts of the GnarlyGenotyper
  *
@@ -153,13 +155,14 @@ public final class GnarlyGenotyperEngine {
         if ( variant.hasAttribute(GATKVCFConstants.VARIANT_DEPTH_KEY) ) {
             final int variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
             final double QD = QUALapprox / (double) variantDP;
-            vcfBuilder.attribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY, QD).log10PError(QUALapprox / -10.0 - Math.log10(sitePrior));
+            final double log10Confidence = Math.min(QUALapprox / -10.0 - Math.log10(sitePrior), 0);  //low quality sites won't survive the heterozygosity prior, so set to zero if (Phred-scaled) QUAL goes negative
+        vcfBuilder.attribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY, QD).log10PError(log10Confidence);
         }
-
         if (!keepAllSites) {
             vcfBuilder.rmAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY);
         }
 
+        //non-allele-specific strand bias counts
         int[] SBsum = {0,0,0,0};
 
         final List<Allele> targetAlleles;
@@ -249,12 +252,15 @@ public final class GnarlyGenotyperEngine {
                 if (annotation instanceof AS_StandardAnnotation && annotation instanceof ReducibleAnnotation) {
                     final ReducibleAnnotation ann = (ReducibleAnnotation) annotation;
                     //trim NON_REF out of AS values
-                    //trim NON_REF out of AS values
-                    if (variant.hasAttribute(ann.getRawKeyNames().get(0))) {
-                        vcfBuilder.attribute(annotation.getKeyNames().get(0), trimASAnnotation(vcfBuilder.make(), targetAlleles, annotation.getKeyNames().get(0)));
-                    }
-                    if (!keepAllSites && variant.hasAttribute(ann.getRawKeyNames().get(0))) {
-                        vcfBuilder.rmAttribute(ann.getRawKeyNames().get(0));
+                    if (variant.hasAttribute(ann.getPrimaryRawKey())) {
+                        vcfBuilder.attribute(annotation.getKeyNames().get(0), trimASAnnotation(vcfBuilder.make(), targetAlleles, annotation.getKeyNames().get(0), VCFHeaderLineCount.A));
+                        for (final String rawKey: ann.getRawKeyNames()) {
+                            if (variant.hasAttribute(rawKey)) {
+                                final String trimmedRawValue = trimASAnnotation(vcfBuilder.make(), targetAlleles, rawKey, VCFHeaderLineCount.R);
+                                vcfBuilder.attribute(rawKey, trimmedRawValue);
+                                annotationDBBuilder.attribute(rawKey, trimmedRawValue);
+                            }
+                        }
                     }
                 }
             }
@@ -281,6 +287,7 @@ public final class GnarlyGenotyperEngine {
             }
         }
         if (variant.hasAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY)) {
+            annotationDBBuilder.attribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, trimASAnnotation(vcfBuilder.make(), targetAlleles, GATKVCFConstants.AS_VARIANT_DEPTH_KEY, VCFHeaderLineCount.R));
             vcfBuilder.attribute(GATKVCFConstants.AS_ALT_ALLELE_DEPTH_KEY, AS_QualByDepth.finalizeRawGVCFVarDPValues(
                     variant.getAttributeAsString(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, null), targetAlleles.size()));
             //Since this was added by ReblockGVCFs and not the AnnotationEngine, I feel justified in taking it out without using the AnnotationEngine
@@ -451,18 +458,39 @@ public final class GnarlyGenotyperEngine {
     }
 
     /**
-     *  Trim an annotation to the values representing the target alleles
+     *  Trim an (A-length) annotation to the values representing the target alleles
      * @param variant   the VariantContext with annotations corresponding to the original alleles
-     * @param targetAlleles the subset of alleles to retain
      * @param key   the key for the annotation of interest
      * @return  a String representing an array of allele-specific values matching targetAlleles
      */
-    private static String trimASAnnotation(final VariantContext variant, final List<Allele> targetAlleles, final String key) {
-        final int[] relevantIndices = targetAlleles.stream().filter(a -> !a.isReference()).mapToInt(a -> variant.getAlternateAlleles().indexOf(a)).toArray();
+    private static String trimASAnnotation(final VariantContext variant, final List<Allele> targetAlleles, final String key, final VCFHeaderLineCount alleleCount) {
+        final int[] relevantIndices;
+        if (alleleCount.equals(VCFHeaderLineCount.A)) {
+            relevantIndices = targetAlleles.stream().filter(a -> !a.isReference()).mapToInt(a -> variant.getAlternateAlleles().indexOf(a)).toArray();
+            return trimASAnnotation(variant, key, relevantIndices, false);
+        } else if (alleleCount.equals(VCFHeaderLineCount.R)) {
+            relevantIndices = targetAlleles.stream().mapToInt(a -> variant.getAlleles().indexOf(a)).toArray();
+            return trimASAnnotation(variant, key, relevantIndices, true);
+        }
+        else {
+            throw new IllegalArgumentException("Allele count for allele-specific annotation must be VCFHeaderLineCount.A" +
+                    " or VCFHeaderLineCount.R to specify expected number of alleles.");
+        }
+    }
+
+
+    /**
+     *  Trim an (A-length) annotation to the values representing the target alleles
+     * @param variant   the VariantContext with annotations corresponding to the original alleles
+     * @param key   the key for the annotation of interest
+     * @return  a String representing an array of allele-specific values matching targetAlleles
+     */
+    private static String trimASAnnotation(final VariantContext variant, final String key, final int[] relevantIndices, final boolean isRaw) {
         if (!variant.hasAttribute(key)) {
             return null;
         }
-        final List<String> annotationEntries = AnnotationUtils.decodeAnyASList(variant.getAttribute(key).toString());
+        final List<String> annotationEntries = AnnotationUtils.decodeAnyASList(
+                variant.getAttribute(key).toString().replaceAll(BRACKET_REGEX, "").replaceAll(" ",""), isRaw);  //toString() adds a lot of extra formatting
         if (annotationEntries == null) {
             return null;
         }
@@ -474,17 +502,21 @@ public final class GnarlyGenotyperEngine {
                 returnString.add(VCFConstants.MISSING_VALUE_v4);
             }
         }
-        return AnnotationUtils.encodeStringList(returnString);
+        if (!isRaw) {
+            return AnnotationUtils.encodeStringList(returnString);
+        } else {
+            return AnnotationUtils.encodeAnyASListWithRawDelim(returnString);
+        }
     }
 
 
     /**
-     *
-     * @param vc input VariantContext
-     * @param calledAlleles should be size 2
-     * @return variable-length list of PL positions for genotypes including {@code calledAlleles}
-     * e.g. {0,1,2} for a REF/ALT0 call, {0,3,5} for a REF/ALT2 call, {0} for a REF/REF call, {2} for a ALT0/ALT0 call
-     */
+    *
+    * @param vc input VariantContext
+    * @param calledAlleles should be size 2
+    * @return variable-length list of PL positions for genotypes including {@code calledAlleles}
+    * e.g. {0,1,2} for a REF/ALT0 call, {0,3,5} for a REF/ALT2 call, {0} for a REF/REF call, {2} for a ALT0/ALT0 call
+    */
     private static List<Integer> getPLindicesForAlleles(final VariantContext vc, final List<Allele> calledAlleles) {
         final List<Integer> calledAllelePLPositions = new ArrayList<>();
         for (final Allele a : calledAlleles) {

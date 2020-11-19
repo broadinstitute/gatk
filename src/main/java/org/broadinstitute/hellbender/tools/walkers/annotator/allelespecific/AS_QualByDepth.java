@@ -208,7 +208,7 @@ public class AS_QualByDepth implements InfoFieldAnnotation, ReducibleAnnotation,
         map.put(getKeyNames().get(0), AnnotationUtils.encodeValueList(QDlist, "%.2f"));
         if (vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
             //keep AS_QUALapprox for Gnarly Pipeline because we don't subset alts or output genotypes if there are more than 6 alts
-            map.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, StringUtils.join(alleleQualList, AnnotationUtils.LIST_DELIMITER));
+            map.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, StringUtils.join(alleleQualList, AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM));
         }
         return map;
     }

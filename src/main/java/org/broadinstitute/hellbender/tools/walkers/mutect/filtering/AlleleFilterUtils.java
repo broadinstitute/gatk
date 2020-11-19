@@ -23,7 +23,7 @@ public class AlleleFilterUtils {
      */
     public static List<List<String>> decodeASFilters(VariantContext vc) {
         return AnnotationUtils.decodeAnyASListWithRawDelim(vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, "")).stream()
-                .map(filters -> AnnotationUtils.decodeAnyASList(filters).stream().map(String::trim).collect(Collectors.toList()))
+                .map(filters -> AnnotationUtils.decodeAnyASList(filters, false).stream().map(String::trim).collect(Collectors.toList()))
                 .collect(Collectors.toList());
     }
 

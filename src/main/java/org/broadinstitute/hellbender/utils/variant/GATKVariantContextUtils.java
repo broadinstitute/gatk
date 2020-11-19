@@ -20,6 +20,8 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypesCache;
@@ -724,6 +726,73 @@ public final class GATKVariantContextUtils {
             }
         }
         return false;
+    }
+
+    public static UserException assertAlleleSpecificAnnotationsHaveCorrectLength(final VariantContext vc) {
+        UserException e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY,
+                VCFHeaderLineCount.R);
+        if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY,
+                    VCFHeaderLineCount.A, false);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY,
+                    VCFHeaderLineCount.R);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_MAP_QUAL_RANK_SUM_KEY,
+                    VCFHeaderLineCount.A, false);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY,
+                    VCFHeaderLineCount.R);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_READ_POS_RANK_SUM_KEY,
+                    VCFHeaderLineCount.A, false);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_SB_TABLE_KEY,
+                    VCFHeaderLineCount.R);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_FISHER_STRAND_KEY,
+                    VCFHeaderLineCount.A, false);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY,
+                    VCFHeaderLineCount.A, false);
+        }
+        return e;
+    }
+
+    public static UserException assertAlleleSpecificAnnotationLengthsCorrect(final VariantContext actual, final String annotation, final VCFHeaderLineCount expectedCount) {
+        return assertAlleleSpecificAnnotationLengthsCorrect(actual, annotation, expectedCount, true, false);
+    }
+
+    public static UserException assertAlleleSpecificAnnotationLengthsCorrect(final VariantContext actual, final String annotation, final VCFHeaderLineCount expectedCount, final boolean isRawFormat) {
+        return assertAlleleSpecificAnnotationLengthsCorrect(actual, annotation, expectedCount, isRawFormat, false);
+    }
+
+    /**
+     * Check the counts of AS annotation values based on the alleles in the VariantContext
+     * @param vc    current VariantContext output
+     * @param annotation    key for the annotation to be tested (e.g. 'MQ' not the class 'RMSMappingQuality')
+     * @param expectedCount number of allele values represented, i.e. with or without reference allele
+     * @param isRawFormat   true if the AS annotation is in the "raw" format, which uses the pipe delimiter
+     * @return null if length is correct, else UserException
+     */
+    public static UserException assertAlleleSpecificAnnotationLengthsCorrect(final VariantContext vc, final String annotation, final VCFHeaderLineCount expectedCount, final boolean isRawFormat, final boolean failIfMissing) {
+        final List<Allele> alleles = vc.getAlleles();
+        final String regex = isRawFormat ? AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX : AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM;
+        if (vc.hasAttribute(annotation)) {
+            final String[] actualAnnotation = vc.getAttributeAsString(annotation, "").split(regex, -1);
+            final int expectedLength = (expectedCount == VCFHeaderLineCount.R ? alleles.size() : alleles.size() - 1);
+            if (actualAnnotation.length != expectedLength) {
+                return new UserException.BadInput("Annotation " + annotation + " at " + vc.getContig() + ":" + vc.getStart()
+                        + " expected to have length " + expectedLength + " but found length " + actualAnnotation.length);
+            }
+            return null;
+        } else {
+            if (failIfMissing) {
+                return new UserException.BadInput("Annotation " + annotation + " at " + vc.getContig() + ":" + vc.getStart()
+                        + " is missing.");
+            }
+            return null;
+        }
     }
 
     public enum GenotypeMergeType {
@@ -1564,7 +1633,7 @@ public final class GATKVariantContextUtils {
                 String filters = (String) attributes.get(GATKVCFConstants.AS_FILTER_STATUS_KEY);
                 // checking for . and PASS should be able to be removed. these were temporarily used to indicate no allele specific filter
                 if (filters != null && !filters.isEmpty() && !filters.equals(VCFConstants.EMPTY_INFO_FIELD) && !filters.equals(GATKVCFConstants.SITE_LEVEL_FILTERS) && !filters.equals((VCFConstants.PASSES_FILTERS_v4))) {
-                    AnnotationUtils.decodeAnyASList(filters).stream().forEach(filter -> builder.filter(filter));
+                    AnnotationUtils.decodeAnyASList(filters, false).stream().forEach(filter -> builder.filter(filter));
                 }
 
                 int alleleIndex = vc.getAlleleIndex(alt);

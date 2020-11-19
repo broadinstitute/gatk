@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 
@@ -134,8 +133,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     public void testMissingReference() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestStringWithoutReference(false, "validationExampleBad.vcf", false, REF),
-                0,
-                UserException.MissingReference.class
+                Collections.emptyList()
         );
 
         spec.executeTest("test bad ref base #1", this);

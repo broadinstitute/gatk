@@ -187,7 +187,7 @@ public class StrandBiasUtils {
         }
         List<String> asb = AnnotationUtils.decodeAnyASListWithRawDelim(sbStr);
         return asb.stream()
-                .map(fwdrev -> AnnotationUtils.decodeAnyASList(fwdrev).stream().map(String::trim)
+                .map(fwdrev -> AnnotationUtils.decodeAnyASListWithRawDelim(fwdrev).stream().map(String::trim)
                 .mapToInt(Integer::parseInt).boxed().collect(Collectors.toList())).collect(Collectors.toList());
 
     }

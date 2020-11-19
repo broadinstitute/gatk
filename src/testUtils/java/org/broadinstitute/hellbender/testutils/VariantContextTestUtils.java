@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDesc
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -468,24 +467,6 @@ public final class VariantContextTestUtils {
         return attributes.entrySet().stream()
                 .filter(p -> !attributesToIgnore.contains(p.getKey()) && p.getValue() != null)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    }
-
-    public static void assertAlleleSpecificAnnotationLengthsCorrect(final VariantContext actual, final String annotation, final VCFHeaderLineCount expectedCount) {
-        assertAlleleSpecificAnnotationLengthsCorrect(actual, annotation, expectedCount, true);
-    }
-
-    /**
-     * Check the counts of AS annotation values based on the alleles in the VariantContext
-     * @param actual    current VariantContext output
-     * @param annotation    key for the annotation to be tested (e.g. 'MQ' not the class 'RMSMappingQuality')
-     * @param expectedCount number of allele values represented, i.e. with or without reference allele
-     * @param isRawFormat   true if the AS annotation is in the "raw" format, which uses the pipe delimiter
-     */
-    public static void assertAlleleSpecificAnnotationLengthsCorrect(final VariantContext actual, final String annotation, final VCFHeaderLineCount expectedCount, final boolean isRawFormat) {
-        final List<Allele> alleles = actual.getAlleles();
-        final String regex = isRawFormat ? AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX : AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM;
-        final String[] actualAnnotation = actual.getAttributeAsString(annotation, "").split(regex,-1);
-        Assert.assertEquals(actualAnnotation.length, expectedCount == VCFHeaderLineCount.R ? alleles.size() : alleles.size() - 1);
     }
 
     // Method that determines whether two variant contexts have equivalent allele specific annotations regardless of allele ordering

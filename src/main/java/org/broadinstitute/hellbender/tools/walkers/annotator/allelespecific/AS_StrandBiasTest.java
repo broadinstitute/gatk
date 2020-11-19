@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -20,9 +21,6 @@ import java.util.*;
  */
 public abstract class AS_StrandBiasTest extends StrandBiasTest implements ReducibleAnnotation, AlleleSpecificAnnotation {
     private final static Logger logger = LogManager.getLogger(AS_StrandBiasTest.class);
-    public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
-    public static final String PRINT_DELIM = "|";
-    public static final String REDUCED_DELIM = ",";
     public static final int MIN_COUNT = 2;
     public static final double MIN_PVALUE = 1.0E-320;
     public static final int FORWARD = 0;
@@ -79,20 +77,22 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
                                                final AlleleLikelihoods<GATKRead, Allele> likelihoods ) {
 
         //for allele-specific annotations we only call from HC and we only use likelihoods
-        if ( likelihoods == null) {
+        if ( likelihoods == null ) {
             return Collections.emptyMap();
         }
         return StrandBiasUtils.computeSBAnnotation(vc, likelihoods, getPrimaryRawKey());
     }
 
-    protected String makeReducedAnnotationString(VariantContext vc, Map<Allele,Double> perAltsStrandCounts) {
+    @VisibleForTesting
+    protected static String makeReducedAnnotationString(final VariantContext vc, final Map<Allele,Double> perAltsStrandCounts) {
         String annotationString = "";
         for (Allele a : vc.getAlternateAlleles()) {
             if (!annotationString.isEmpty()) {
-                annotationString += REDUCED_DELIM;
+                annotationString += AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM;
             }
             if (!perAltsStrandCounts.containsKey(a)) {
-                logger.warn("ERROR: VC allele not found in annotation alleles -- maybe there was trimming?");
+                logger.warn("VC allele not found in annotation alleles -- maybe there was trimming?");
+                annotationString += VCFConstants.MISSING_VALUE_v4;
             } else {
                 annotationString += perAltsStrandCounts.get(a) == null ? VCFConstants.MISSING_VALUE_v4 : String.format("%.3f", perAltsStrandCounts.get(a));
             }
@@ -182,6 +182,6 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     }
 
     public static String rawValueAsString(int[][] table) {
-        return table[0][0]+","+table[0][1]+ PRINT_DELIM +table[1][0]+","+table[1][1];
+        return table[0][0]+","+table[0][1]+ AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM +table[1][0]+","+table[1][1];
     }
 }
