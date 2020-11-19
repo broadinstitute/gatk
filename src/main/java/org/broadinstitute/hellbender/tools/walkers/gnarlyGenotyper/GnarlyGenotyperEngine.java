@@ -612,10 +612,9 @@ public final class GnarlyGenotyperEngine {
         if (!variant.hasAttribute(key)) {
             return null;
         }
-        final List<String> annotationEntries = AnnotationUtils.decodeAnyASList(variant.getAttribute(key).toString(), isRaw);
-        if (annotationEntries == null) {
-            return null;
-        }
+        final List<String> annotationEntries = isRaw ?
+                AnnotationUtils.decodeAnyASListWithRawDelim(variant.getAttribute(key).toString())
+                : AnnotationUtils.decodeAnyASList(variant.getAttribute(key).toString());
         final List<String> returnString = new ArrayList<>();
         for (int i = 0; i < relevantIndices.length; i++) {
             if (relevantIndices[i] <= annotationEntries.size()-1) {
