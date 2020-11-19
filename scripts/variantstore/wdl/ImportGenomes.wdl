@@ -49,7 +49,7 @@ workflow ImportGenomes {
   scatter (i in range(GetMaxTableId.max_table_id)) {
     call LoadData as LoadMetadataTsvs{
       input:
-        done = CreateImportTsvs.done[0],
+        done = CreateImportTsvs.done,
         project_id = project_id,
         dataset_name = dataset_name,
         storage_location = output_directory,
@@ -64,7 +64,7 @@ workflow ImportGenomes {
 
     call LoadData as LoadPetTsvs{
       input:
-        done = CreateImportTsvs.done[0],
+        done = CreateImportTsvs.done,
         project_id = project_id,
         dataset_name = dataset_name,
         storage_location = output_directory,
@@ -77,7 +77,7 @@ workflow ImportGenomes {
 
     call LoadData as LoadVetTsvs{
       input:
-        done = CreateImportTsvs.done[0],
+        done = CreateImportTsvs.done,
         project_id = project_id,
         dataset_name = dataset_name,
         storage_location = output_directory,
@@ -196,7 +196,7 @@ task LoadData {
     String uuid = ""
 
     #input from previous task needed to delay task from running until the other is complete
-    String done
+    Array[String] done
 
     # runtime
     Int? preemptible_tries
