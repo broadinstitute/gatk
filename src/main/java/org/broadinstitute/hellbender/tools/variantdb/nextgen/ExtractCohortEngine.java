@@ -60,7 +60,7 @@ public class ExtractCohortEngine {
     private int totalNumberOfVariants = 0;
     private int totalNumberOfSites = 0;
 
-    private final String nameOfFilterSet;
+    private final String filterSetName;
 
     /**
      * The conf threshold above which variants are not included in the position tables.
@@ -87,7 +87,7 @@ public class ExtractCohortEngine {
                                final double vqsLodINDELThreshold,
                                final ProgressMeter progressMeter,
                                final ExtractCohort.QueryMode queryMode,
-                               final String nameOfFilterSet) {
+                               final String filterSetName) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -107,7 +107,7 @@ public class ExtractCohortEngine {
         this.progressMeter = progressMeter;
         this.queryMode = queryMode;
 
-        this.nameOfFilterSet = nameOfFilterSet;
+        this.filterSetName = filterSetName;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
@@ -122,27 +122,25 @@ public class ExtractCohortEngine {
         if (minLocation != null && maxLocation != null) {
             rowRestriction = "location >= " + minLocation + " AND location <= " + maxLocation;
         }
-        final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + nameOfFilterSet + "'";
+        final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
 
         final StorageAPIAvroReader filteringTableAvroReader = new StorageAPIAvroReader(filteringTableRef, rowRestrictionWithFilterSetName, projectID);
-        final HashMap<Locatable, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap = new HashMap<>();
-        final HashMap<Locatable, HashMap<Allele, HashMap<Allele, String>>> fullYngMap = new HashMap<>();
+        //First allele here is the ref, followed by the alts associated with that ref. We need this because at this point the alleles haven't been joined and remapped to one reference allele.
+        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap = new HashMap<>();
+        final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap = new HashMap<>();
 
         for ( final GenericRecord queryRow : filteringTableAvroReader ) {
             final long location = Long.parseLong(queryRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-            final int currentPosition = SchemaUtils.decodePosition(location);
-            final String contig = SchemaUtils.decodeContig(location);
             final Double vqslod = Double.parseDouble(queryRow.get("vqslod").toString());
             final String yng = queryRow.get("yng_status").toString();
             final Allele ref = Allele.create(queryRow.get("ref").toString(), true);
             final Allele alt = Allele.create(queryRow.get("alt").toString(), false);
-            final Locatable locatable = new SimpleInterval(contig, currentPosition, currentPosition);
-            fullVqsLodMap.putIfAbsent(locatable, new HashMap<>());
-            fullVqsLodMap.get(locatable).putIfAbsent(ref, new HashMap<>());
-            fullVqsLodMap.get(locatable).get(ref).put(alt, vqslod);
-            fullYngMap.putIfAbsent(locatable, new HashMap<>());
-            fullYngMap.get(locatable).putIfAbsent(ref, new HashMap<>());
-            fullYngMap.get(locatable).get(ref).put(alt, yng);
+            fullVqsLodMap.putIfAbsent(location, new HashMap<>());
+            fullVqsLodMap.get(location).putIfAbsent(ref, new HashMap<>());
+            fullVqsLodMap.get(location).get(ref).put(alt, vqslod);
+            fullYngMap.putIfAbsent(location, new HashMap<>());
+            fullYngMap.get(location).putIfAbsent(ref, new HashMap<>());
+            fullYngMap.get(location).get(ref).put(alt, yng);
         }
 
         switch (queryMode) {
@@ -166,7 +164,7 @@ public class ExtractCohortEngine {
         }
     }
 
-    private void createVariantsFromSortedTableResults(final TableResult tr, HashMap<Locatable, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Locatable, HashMap<Allele, HashMap<Allele, String>>> fullYngMap) {
+    private void createVariantsFromSortedTableResults(final TableResult tr, HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap) {
 
 //        final Set<String> columnNames = new HashSet<>();
 //        if ( schema.getField(POSITION_FIELD_NAME) == null || schema.getField(VALUES_ARRAY_FIELD_NAME) == null ) {
@@ -222,7 +220,7 @@ public class ExtractCohortEngine {
     }
 
 
-    private void createVariantsFromUngroupedTableResult(final GATKAvroReader avroReader, HashMap<Locatable, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Locatable, HashMap<Allele, HashMap<Allele, String>>> fullYngMap) {
+    private void createVariantsFromUngroupedTableResult(final GATKAvroReader avroReader, HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap) {
 
         final org.apache.avro.Schema schema = avroReader.getSchema();
 
@@ -264,7 +262,7 @@ public class ExtractCohortEngine {
         }
     }
 
-    private void processSampleRecordsForLocation(final long location, final Iterable<GenericRecord> sampleRecordsAtPosition, final Set<String> columnNames, HashMap<Locatable, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Locatable, HashMap<Allele, HashMap<Allele, String>>> fullYngMap) {
+    private void processSampleRecordsForLocation(final long location, final Iterable<GenericRecord> sampleRecordsAtPosition, final Set<String> columnNames, HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap) {
         final List<VariantContext> unmergedCalls = new ArrayList<>();
         final Set<String> currentPositionSamplesSeen = new HashSet<>();
         boolean currentPositionHasVariant = false;
@@ -276,14 +274,14 @@ public class ExtractCohortEngine {
         final HashMap<Allele, HashMap<Allele, Double>> vqsLodMap;
         final HashMap<Allele, HashMap<Allele, String>> yngMap;
         // If there's no yng/vqslod for this site, then we'll treat these as NAYs because VQSR dropped them (they have no alt reads).
-        if (fullVqsLodMap.get(new SimpleInterval(contig, currentPosition, currentPosition)) == null) {
+        if (fullVqsLodMap.get(SchemaUtils.encodeLocation(contig, currentPosition)) == null) {
             vqsLodMap = new HashMap<>();
             vqsLodMap.put(refAllele, new HashMap<>());
             yngMap = new HashMap<>();
             yngMap.put(refAllele, new HashMap<>());
         } else {
-            vqsLodMap = fullVqsLodMap.get(new SimpleInterval(contig, currentPosition, currentPosition));
-            yngMap = fullYngMap.get(new SimpleInterval(contig, currentPosition, currentPosition));
+            vqsLodMap = fullVqsLodMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
+            yngMap = fullYngMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
         }
 
         for ( final GenericRecord sampleRecord : sampleRecordsAtPosition ) {
@@ -438,6 +436,10 @@ public class ExtractCohortEngine {
         return filteredVC;
     }
 
+    /*
+     * Alleles from the filtering table need to be remapped to use the same ref allele that the will exist in the joined variant context.
+     * This method changes the alleles in the datamap to match the representation that's in the vc.
+     */
     private <T> LinkedHashMap<Allele, T> remapAllelesInMap(VariantContext vc, HashMap<Allele, HashMap<Allele, T>> datamap, T emptyVal) {
         // get the extended reference
         Allele ref = vc.getReference();

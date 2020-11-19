@@ -44,7 +44,7 @@ public class ExtractCohort extends ExtractTool {
             fullName = "filter-set-name",
             doc = "Name in filter_set_name column of filtering table to use. Which training set should be applied in extract."
     )
-    private String nameOfFilterSet = null;
+    private String filterSetName = null;
 
     @Override
     protected void onStartup() {
@@ -84,7 +84,7 @@ public class ExtractCohort extends ExtractTool {
                 vqsLodINDELThreshold,
                 progressMeter,
                 queryMode,
-                nameOfFilterSet);
+                filterSetName);
         vcfWriter.writeHeader(header);
     }
 
