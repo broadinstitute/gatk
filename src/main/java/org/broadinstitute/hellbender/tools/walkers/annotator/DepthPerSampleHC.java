@@ -7,6 +7,8 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -40,7 +42,7 @@ import java.util.stream.Collectors;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Depth of informative coverage for each sample (DP)")
 public final class DepthPerSampleHC extends GenotypeAnnotation implements StandardHCAnnotation, StandardMutectAnnotation {
-    private final transient OneShotLogger logger = new OneShotLogger(DepthPerSampleHC.class);
+    private final static Logger logger = LogManager.getLogger(DepthPerSampleHC.class);
 
     @Override
     public void annotate( final ReferenceContext ref,
@@ -53,7 +55,7 @@ public final class DepthPerSampleHC extends GenotypeAnnotation implements Standa
         Utils.nonNull(gb);
 
         if ( likelihoods == null || !g.isCalled() ) {
-            logger.warn("Annotation will not be calculated, genotype is not called or alleleLikelihoodMap is null");
+            logger.warn(AnnotationUtils.generateMissingDataWarning(vc, g, likelihoods));
             return;
         }
 
