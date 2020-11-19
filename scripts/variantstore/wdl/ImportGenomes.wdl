@@ -264,9 +264,9 @@ task LoadData {
   >>>
   runtime {
     docker: docker
-    memory: "10 GB"
-    disks: "local-disk 1000 HDD"
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
     preemptible: select_first([preemptible_tries, 5])
-    cpu: 2
+    cpu: 1
   }
 }
