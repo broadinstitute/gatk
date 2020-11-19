@@ -38,7 +38,6 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testFunctionClassWithSnpeff() throws IOException {
         String name = "testFunctionClassWithSnpeff";
-        
         IntegrationTestSpec spec = new IntegrationTestSpec(
                                         " -R " + b37Reference +
                                         " --dbsnp " + dbsnp_138_b37_1_65M_vcf +
@@ -336,12 +335,26 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         String vcf = getTestFilePath("noGenotypes.vcf");
 
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                " -R " + b37_reference_20_21 +
+                " -R " + b37Reference +
                         " -eval " + vcf +
                         " -O %s",
                 Arrays.asList(getExpectedFile(name))); //There is no md5 because we only care that this completes without an exception.
         spec.executeTest(name, this);
 
+    }
+
+    @Test
+    public void testEvalTrackWithoutGenotypesWithSampleFieldsWrongRef() throws IOException {
+        String name = "testEvalTrackWithoutGenotypesWithSampleFieldsWrongRef";
+        String vcf = getTestFilePath("noGenotypes.vcf");
+
+        //The VCF has chr 1, but FASTA has 20/21 only
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -R " + b37_reference_20_21 +
+                        " -eval " + vcf +
+                        " -O %s",
+                1, UserException.class);
+        spec.executeTest(name, this);
     }
 
     @Test
@@ -675,20 +688,5 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
                 .add("EV", countVariants);
 
         runCommandLine(args);
-    }
-
-    @Test
-    public void testWithoutRequiringAReference() {
-        testForCrashWithGivenEvaluator("IndelSummary");
-    }
-
-    @Test(expectedExceptions = UserException.class)
-    public void testNoReferenceWithEvaluatorsThatRequireOne() {
-        testForCrashWithGivenEvaluator("CountVariants");
-    }
-
-    @Test(expectedExceptions = GATKException.class)
-    public void testIncorrectlyLabelledEvaluator(){
-        testForCrashWithGivenEvaluator("TestEvaluatorWhichRequiresReferenceButDoesntSayItDoes");
     }
 }

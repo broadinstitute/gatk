@@ -1,16 +1,18 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 
@@ -125,7 +127,7 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
      * @param referenceContext  ReferenceContext object covering the reference of the longest spanning VariantContext
      * @param readsContexts
      */
-    public abstract void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext, final List<ReadsContext> readsContexts);
+    public abstract void apply(final List<VariantContext> variantContexts, final ReferenceContext referenceContext, final List<ReadsContext> readsContexts);
 
     public void apply(List<VariantContext> variantContexts, final List<ReadsContext> readsContexts) {
         apply(variantContexts, makeSpanningReferenceContext(variantContexts, referenceWindowPadding), readsContexts);

@@ -2,14 +2,17 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 @Analysis(description = "The overlap between eval and comp sites")
 public class CompOverlap extends VariantEvaluator implements StandardEval {
+    public CompOverlap(VariantEvalEngine engine) {
+        super(engine);
+    }
+
     @DataPoint(description = "number of eval variant sites", format = "%d")
     public long nEvalVariants = 0;
 
@@ -36,6 +39,7 @@ public class CompOverlap extends VariantEvaluator implements StandardEval {
     public double compRate() { return rate(nVariantsAtComp, nEvalVariants); }
     public double concordanceRate() { return rate(nConcordant, nVariantsAtComp); }
 
+    @Override
     public void finalizeEvaluation() {
         compRate = 100 * compRate();
         concordantRate = 100 * concordanceRate();
@@ -58,9 +62,10 @@ public class CompOverlap extends VariantEvaluator implements StandardEval {
         return false;
     }
 
-    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
-        boolean evalIsGood = eval != null && eval.isPolymorphicInSamples();
-        boolean compIsGood = comp != null && comp.isNotFiltered();
+    @Override
+    public void update2(final VariantContext eval, final VariantContext comp, final VariantEvalContext context) {
+        final boolean evalIsGood = eval != null && eval.isPolymorphicInSamples();
+        final boolean compIsGood = comp != null && comp.isNotFiltered();
 
         if (evalIsGood) nEvalVariants++;           // count the number of eval events
 

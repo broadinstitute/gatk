@@ -6,14 +6,12 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.VariantEvaluator;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.VariantStratifier;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.manager.StratificationManager;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.EvaluationContext;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
@@ -23,14 +21,14 @@ import org.testng.annotations.Test;
 import java.util.*;
 
 
-public class VariantEvalWalkerUnitTest extends BaseTest {
-    VariantEval VEwalker;
+public class VariantEvalEngineUnitTest extends BaseTest {
+    VariantEvalEngine engine;
     VariantContext eval;
 
 
     @BeforeMethod
     public void init() {
-        VEwalker = new VariantEval();
+        engine = new VariantEvalEngine();
         eval = new VariantContextBuilder("x", "chr1", 1, 1, Collections.singleton(Allele.create("A", true))).make();
     }
 
@@ -77,22 +75,22 @@ public class VariantEvalWalkerUnitTest extends BaseTest {
      * by that number
      */
     public static class IntegerStratifier extends VariantStratifier {
-        final List<Integer> integers;
+        List<Integer> integers;
 
-        private IntegerStratifier(final List<Integer> integers) {
-            this.integers = integers;
-            initialize();
+        public IntegerStratifier(VariantEvalEngine engine) {
+            super(null);
         }
 
-        @Override
-        public void initialize() {
+        private IntegerStratifier(final List<Integer> integers) {
+            super(null);
+            this.integers = integers;
             states.addAll(integers);
         }
 
         @Override
-        public List<Object> getRelevantStates(final ReferenceContext ref, final ReadsContext readsContext, final FeatureContext featureContext, final VariantContext comp, final String compName, final VariantContext eval, final String evalName, final String sampleName, final String familyName) {
+        public List<Object> getRelevantStates(final VariantEvalContext context, final VariantContext comp, final String compName, final VariantContext eval, final String evalName, final String sampleName, final String familyName) {
             int i = Integer.valueOf(evalName); // a terrible hack, but we can now provide accessible states
-            List<Object> states = new ArrayList<Object>();
+            List<Object> states = new ArrayList<>();
             for ( int state : integers )
                 if ( i % state == 0 )
                     states.add(state);
@@ -104,12 +102,20 @@ public class VariantEvalWalkerUnitTest extends BaseTest {
      * Test evaluator -> just counts the number of calls to update1
      */
     public static class CounterEval extends VariantEvaluator {
+        public CounterEval(VariantEvalEngine engine) {
+            super(engine);
+        }
+
         public int count = 0;
+
+        public CounterEval() {
+            super(null);
+        }
 
         @Override public int getComparisonOrder() { return 1; }
 
         @Override
-        public void update1(final VariantContext eval, final ReferenceContext ref, final ReadsContext readsContext, final FeatureContext featureContext) {
+        public void update1(final VariantContext eval, final VariantEvalContext context) {
             count++;
         }
 
@@ -125,20 +131,18 @@ public class VariantEvalWalkerUnitTest extends BaseTest {
     }
 
     private void initialize(StratifiedEvalTestProvider cfg) {
-        VEwalker.createStratificationStates(cfg.stratificationObjects, cfg.evaluationObjects);
+        engine.createStratificationStates(cfg.stratificationObjects, cfg.evaluationObjects);
 
-        final ReferenceContext ref = null;
-        final ReadsContext readsContext = null;
-        final FeatureContext featureContext = null;
+        final VariantEvalContext vec = null;
         final VariantContext comp = null;
         final String compName = null, sampleName = null, familyName = null;
 
         // increment eval counts for each stratification of divisors of i from from 1...maxI
         for ( int i = 1; i <= cfg.maxI; i++ ) {
             final String evalName = String.valueOf(i); // terrible hack to stratify by divisor
-            for ( EvaluationContext nec : VEwalker.getEvaluationContexts(ref, readsContext, featureContext, eval, evalName, comp, compName, sampleName, familyName) ) {
+            for ( EvaluationContext nec : engine.getEvaluationContexts(vec, eval, evalName, comp, compName, sampleName, familyName) ) {
                 synchronized (nec) {
-                    nec.apply(ref, readsContext, featureContext, comp, eval);
+                    nec.apply(vec, comp, eval);
                 }
             }
         }
@@ -194,7 +198,7 @@ public class VariantEvalWalkerUnitTest extends BaseTest {
     @Test(dataProvider = "StratifiedEvalTestProvider")
     public void testBasicOperation(StratifiedEvalTestProvider cfg) {
         initialize(cfg);
-        checkStratificationCountsAreExpected(VEwalker.stratManager, cfg.expectedCounts);
+        checkStratificationCountsAreExpected(engine.getStratManager(), cfg.expectedCounts);
     }
 
     private final void checkStratificationCountsAreExpected(final StratificationManager<VariantStratifier, EvaluationContext> manager,
@@ -225,7 +229,7 @@ public class VariantEvalWalkerUnitTest extends BaseTest {
             final VariantStratifier newStrat = cfg.stratificationObjects.get(i);
             final Map<Object, Object> remappedStates = makeIdentityFunctionMap(newStrat.getAllStates());
             StratificationManager<VariantStratifier, EvaluationContext> combined =
-                    VEwalker.stratManager.combineStrats(toReplace, newStrat, EvaluationContext.COMBINER, remappedStates);
+                    engine.getStratManager().combineStrats(toReplace, newStrat, EvaluationContext.COMBINER, remappedStates);
             checkStratificationCountsAreExpected(combined, cfg.expectedCounts);
         }
     }
@@ -255,7 +259,7 @@ public class VariantEvalWalkerUnitTest extends BaseTest {
             final List<Integer> expected = cfg.expectedCounts;
 
             StratificationManager<VariantStratifier, EvaluationContext> combined =
-                    VEwalker.stratManager.combineStrats(toReplace, newStrat, EvaluationContext.COMBINER, remappedStates);
+                    engine.getStratManager().combineStrats(toReplace, newStrat, EvaluationContext.COMBINER, remappedStates);
             checkStratificationCountsAreExpected(combined, expected);
         }
     }

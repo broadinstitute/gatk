@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.util.Collections;
@@ -30,10 +28,11 @@ public class AlleleFrequency extends VariantStratifier {
 
     private static int logLimit = 30; // go from -30 to 30 using logit function
 
-    @Override
-    public void initialize() {
-        scale = getVariantEvalWalker().getAFScale();
-        useCompAFStratifier = getVariantEvalWalker().getCompAFStratifier();
+    public AlleleFrequency(VariantEvalEngine engine) {
+        super(engine);
+
+        scale = getEngine().getAFScale();
+        useCompAFStratifier = getEngine().getCompAFStratifier();
 
         switch (scale) {
             case LINEAR:
@@ -49,7 +48,8 @@ public class AlleleFrequency extends VariantStratifier {
         }
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
+    @Override
+    public List<Object> getRelevantStates(final VariantEvalContext context, final VariantContext comp, final String compName, final VariantContext eval, final String evalName, final String sampleName, final String familyName) {
         if (eval != null) {
             try {
                 double alleleFrequency = Collections.max(eval.getAttributeAsDoubleList("AF", 0.0));

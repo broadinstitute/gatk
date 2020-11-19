@@ -2,11 +2,10 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 import java.util.Iterator;
 
@@ -15,6 +14,10 @@ import java.util.Iterator;
  */
 @Analysis(description = "Counts called and filtered genotypes across samples")
 public class GenotypeFilterSummary extends VariantEvaluator {
+    public GenotypeFilterSummary(VariantEvalEngine engine) {
+        super(engine);
+    }
+
     @DataPoint(description = "Number of Called Genotypes", format = "%d")
     public long nCalledNotFiltered = 0;
 
@@ -27,7 +30,7 @@ public class GenotypeFilterSummary extends VariantEvaluator {
     }
 
     @Override
-    public void update1(VariantContext eval, ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext) {
+    public void update1(final VariantContext eval, final VariantEvalContext context) {
         Iterator<Genotype> it = eval.getGenotypes().iterator();
         while (it.hasNext()){
             Genotype g = it.next();
