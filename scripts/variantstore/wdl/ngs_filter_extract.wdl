@@ -101,7 +101,7 @@ workflow NgsFilterExtract {
         disk_size = large_disk
     }
 
-    call SNPsVariantRecalibrator as SNPsVariantRecalibratorClassic {
+    call SNPsVariantRecalibrator {
       input:
           sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
           sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
@@ -125,9 +125,9 @@ workflow NgsFilterExtract {
      input:
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,
-        snp_recal_file = SNPsVariantRecalibratorClassic.recalibration,
-        snp_recal_file_index = SNPsVariantRecalibratorClassic.recalibration_index,
-        snp_recal_tranches = SNPsVariantRecalibratorClassic.tranches,
+        snp_recal_file = SNPsVariantRecalibrator.recalibration,
+        snp_recal_file_index = SNPsVariantRecalibrator.recalibration_index,
+        snp_recal_tranches = SNPsVariantRecalibrator.tranches,
 
         indel_recal_file = IndelsVariantRecalibrator.recalibration,
         indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
