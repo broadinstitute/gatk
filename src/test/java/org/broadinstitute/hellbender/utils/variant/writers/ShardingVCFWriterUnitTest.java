@@ -35,7 +35,7 @@ public final class ShardingVCFWriterUnitTest extends GATKBaseTest {
     private static final String contigName = "00";
     private final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(Collections.singletonList(new SAMSequenceRecord(contigName, 1000000)));
     private final Path vcfBasePath = Paths.get(createTempDir(getTestedClassName()).getAbsolutePath(), testVcfBaseFilename);
-    private final String firstShardPath = vcfBasePath.toAbsolutePath().toString() + ShardingVCFWriter.SHARD_INDEX_PREFIX + "0" + ShardingVCFWriter.SHARD_INDEX_SUFFIX;
+    private final String firstShardPath = ShardingVCFWriter.getShardFilename(vcfBasePath, 0);
 
     private ShardingVCFWriter createTestWriter(final Path path) {
         return new ShardingVCFWriter(path, 100, dictionary, false, Options.INDEX_ON_THE_FLY);
@@ -43,14 +43,6 @@ public final class ShardingVCFWriterUnitTest extends GATKBaseTest {
 
     private VariantContext createTestVariant(final String id) {
         return new VariantContextBuilder(null, contigName, 1, 1, Collections.singletonList(Allele.REF_N)).id(id).make();
-    }
-
-    private void closeReader(final BufferedReader reader) {
-        try {
-            reader.close();
-        } catch (final IOException e) {
-            throw new TestException(e);
-        }
     }
 
     private void asssertHeaderDictionariesEqual(final VCFHeader header, final String path) {
@@ -151,7 +143,6 @@ public final class ShardingVCFWriterUnitTest extends GATKBaseTest {
         }
 
         //Write test variants
-        final List<Allele> alleles = Collections.singletonList(Allele.REF_N);
         for (int i = 0; i < numVariants; i++) {
             final VariantContext variant = createTestVariant(testVariantId + "_" + i);
             writer.add(variant);
@@ -160,7 +151,7 @@ public final class ShardingVCFWriterUnitTest extends GATKBaseTest {
 
         //Check that correct number of shards are written and each is the correct size
         for (int i = 0; i < numExpectedShards; i++) {
-            final String shardPath = shardBasePath.toAbsolutePath().toString() + ShardingVCFWriter.SHARD_INDEX_PREFIX + i + ShardingVCFWriter.SHARD_INDEX_SUFFIX;
+            final String shardPath = ShardingVCFWriter.getShardFilename(shardBasePath, i);
             final int expectedCount = i < numExpectedShards - 1 ? shardSize : numExpectedVariantsLastShard;
             if (writeHeader) {
                 asssertHeaderDictionariesEqual(header, shardPath);

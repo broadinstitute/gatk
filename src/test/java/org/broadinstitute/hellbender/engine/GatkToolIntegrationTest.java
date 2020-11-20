@@ -81,8 +81,9 @@ public class GatkToolIntegrationTest extends CommandLineProgramTest {
         runCommandLine(Arrays.asList(args), SelectVariants.class.getSimpleName());
 
         // 11 total records in the test input should create 2 vcf shards with 10 and 1 records
-        final String firstShard = Paths.get(outDir, fileBase + ShardingVCFWriter.SHARD_INDEX_PREFIX + "0" + ShardingVCFWriter.SHARD_INDEX_SUFFIX).toString();
-        final String secondShard = Paths.get(outDir, fileBase + ShardingVCFWriter.SHARD_INDEX_PREFIX + "1" + ShardingVCFWriter.SHARD_INDEX_SUFFIX).toString();
+        final Path basePath = Paths.get(outDir, fileBase).toAbsolutePath();
+        final String firstShard = ShardingVCFWriter.getShardFilename(basePath, 0);
+        final String secondShard = ShardingVCFWriter.getShardFilename(basePath, 1);
         final Pair<VCFHeader, List<VariantContext>> firstResults = VariantContextTestUtils.readEntireVCFIntoMemory(firstShard);
         final Pair<VCFHeader, List<VariantContext>> secondResults = VariantContextTestUtils.readEntireVCFIntoMemory(secondShard);
         Assert.assertEquals(firstResults.getValue().size(), 10, "First shard has wrong number of records");

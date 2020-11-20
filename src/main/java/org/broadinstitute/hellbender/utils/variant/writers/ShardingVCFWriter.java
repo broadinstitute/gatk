@@ -99,12 +99,23 @@ public class ShardingVCFWriter implements VariantContextWriter {
      * @return the new writer
      */
     protected VariantContextWriter createNewWriter() {
-        final Path outPath = Paths.get(basePath + SHARD_INDEX_PREFIX + shardIndex + SHARD_INDEX_SUFFIX);
+        final Path outPath = Paths.get(getShardFilename(basePath, shardIndex));
         return GATKVariantContextUtils.createVCFWriter(
                 outPath,
                 dictionary,
                 createMD5,
                 options);
+    }
+
+    /**
+     * Gets filepath for the given shard and base path
+     *
+     * @param basePath path without extension
+     * @param shardIndex
+     * @return path as String
+     */
+    public static String getShardFilename(final Path basePath, final int shardIndex) {
+        return String.format("%s%s%05d%s", basePath, SHARD_INDEX_PREFIX, shardIndex, SHARD_INDEX_SUFFIX);
     }
 
     /**
