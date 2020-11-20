@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.*;
 
 import java.util.*;
+import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
@@ -39,6 +40,7 @@ public class ContaminationModel {
     public static final double MINIMUM_UNSCRUPULOUS_HOM_REF_ALT_FRACTION_THRESHOLD = 0.1;
 
     public static final double MAF_STEP_SIZE = 0.04;
+    private static final double PRECISION_FOR_STANDARD_ERROR = 0.000001;
     private final double contamination;
     private final double errorRate;
     private final List<Double> minorAlleleFractions;
@@ -160,15 +162,49 @@ public class ContaminationModel {
                 .mapToDouble(ps -> ps.getTotalCount() * oppositeAlleleFrequency.applyAsDouble(ps))
                 .sum();
 
-        final double contamination = contaminationOppositeDepth / totalDepthWeightedByOppositeFrequency;
+        final double contaminationEstimate = contaminationOppositeDepth / totalDepthWeightedByOppositeFrequency;
 
-        final double stdError = homs.isEmpty() ? 1 : Math.sqrt(homs.stream().mapToDouble(ps -> {
-            final double d = ps.getTotalCount();
-            final double f = 1 - oppositeAlleleFrequency.applyAsDouble(ps);
-            return (1 - f) * d * contamination * ((1 - contamination) + f * d * contamination);
-        }).sum()) / totalDepthWeightedByOppositeFrequency;
+        final double coeff1 = homs.stream().mapToDouble(ps -> oppositeAlleleFrequency.applyAsDouble(ps) * ps.getTotalCount()).sum();
+        final double coeff2 = homs.stream().mapToDouble(ps ->
+                oppositeAlleleFrequency.applyAsDouble(ps)*(1 - oppositeAlleleFrequency.applyAsDouble(ps)) * MathUtils.square(ps.getTotalCount())
+        ).sum();
 
-        return Pair.of(Math.min(contamination, 1.0), stdError);
+        final DoubleUnaryOperator errorFunc = c -> homs.isEmpty() ? 1 : Math.sqrt(coeff1*c*(1-c) + coeff2*c*c) / totalDepthWeightedByOppositeFrequency;
+
+        // we're going to binary search to find the largest contamination whose expected standard error brings it within range of
+        // our estimate.  That is, suppose we estimate a contamination of 0.03 and the standard error of 0.05 is 0.02.  Then 0.05 is
+        // the upper end of our 1-sigma confidence interval.
+        // this binary search is far from optimized (in fact we could solve this explicitly with a messy closed-form solution)
+        // but it converges to a precision of 1e-6 in 20 iterations of the square root of a linear function.  This is fast enough.
+        double top = 1.0;
+        double bottom = contaminationEstimate;
+        do {
+            final double mid = (top + bottom)/2;
+            final double error = errorFunc.applyAsDouble(mid);
+            if (contaminationEstimate < mid - error) {
+                top = mid;
+            } else {
+                bottom = mid;
+            }
+        } while(top - bottom > PRECISION_FOR_STANDARD_ERROR);
+        final double upperEstimate = (top + bottom)/2;
+
+        top = contaminationEstimate;
+        bottom = 0.0;
+        do {
+            final double mid = (top + bottom)/2;
+            final double error = errorFunc.applyAsDouble(mid);
+            if (mid < contaminationEstimate - error) {
+                bottom = mid;
+            } else {
+                top = mid;
+            }
+        } while(top - bottom > PRECISION_FOR_STANDARD_ERROR);
+        final double lowerEstimate = (top + bottom)/2;
+
+        final double stdError = Math.max(upperEstimate - contaminationEstimate, contaminationEstimate - lowerEstimate);
+
+        return Pair.of(Math.min(contaminationEstimate, 1.0), stdError);
     }
 
     private List<PileupSummary> getType(final int genotype, final double minMaf) {
