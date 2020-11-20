@@ -53,4 +53,9 @@ public class AnnotationUtilsUnitTest extends GATKBaseTest {
         Assert.assertTrue(bothBadWarning.contains("not called"));
         Assert.assertTrue(bothBadWarning.contains("alleleLikelihoodMap is null"));
     }
+
+    @Test
+    public void testDecodeAnyASList() {
+
+    }
 }

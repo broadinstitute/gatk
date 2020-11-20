@@ -228,6 +228,7 @@ public final class GnarlyGenotyper extends VariantWalker {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.QUAL_BY_DEPTH_KEY));
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.RMS_MAPPING_QUALITY_KEY));
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));   // needed for gVCFs without DP tags
+
         if (inputVCFHeader.hasInfoLine(GATKVCFConstants.AS_QUAL_KEY) || inputVCFHeader.hasInfoLine(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {  //use this as a proxy for all AS headers
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_ALT_ALLELE_DEPTH_KEY));
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_BASE_QUAL_RANK_SUM_KEY));
@@ -245,7 +246,7 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         vcfWriter = createVCFWriter(outputFile);
         if (outputDbName != null) {
-            annotationDatabaseWriter = createVCFWriter(new File(outputDbName));
+            annotationDatabaseWriter = createVCFWriter(new File(outputDbName).toPath(), true);
         }
 
         final Set<String> sampleNameSet = samples.asSetOfSamples();
@@ -269,7 +270,7 @@ public final class GnarlyGenotyper extends VariantWalker {
         SimpleInterval variantStart = new SimpleInterval(variant.getContig(), variant.getStart(), variant.getStart());
         //return early if there's no non-symbolic ALT since GDB already did the merging
         if ( !variant.isVariant() || !GATKVariantContextUtils.isProperlyPolymorphic(variant)
-                || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0
+                || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,-1) == 0
                 || (onlyOutputCallsStartingInIntervals && !intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
             if (keepAllSites) {
                 VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));  //don't fill in QUAL here because there's no alt data
@@ -281,9 +282,9 @@ public final class GnarlyGenotyper extends VariantWalker {
         }
 
         //return early if variant can't be genotyped
-        if (!variant.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) {
-            warning.warn("At least one variant cannot be genotyped because it is missing the " + GATKVCFConstants.RAW_QUAL_APPROX_KEY +
-                    "key assigned by the ReblockGVCFs tool. GnarlyGenotyper output may be empty.");
+        if (!(variant.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY) || variant.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY))) {
+            warning.warn("At least one variant cannot be genotyped. Variants require the " + GATKVCFConstants.RAW_QUAL_APPROX_KEY +
+                    " or " + GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY + " keys assigned by the ReblockGVCFs tool. GnarlyGenotyper output may be empty.");
             return;
         }
 

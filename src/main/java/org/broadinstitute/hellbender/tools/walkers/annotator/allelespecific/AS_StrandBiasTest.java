@@ -1,14 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -19,13 +22,16 @@ import java.util.*;
  */
 public abstract class AS_StrandBiasTest extends StrandBiasTest implements ReducibleAnnotation, AlleleSpecificAnnotation {
     private final static Logger logger = LogManager.getLogger(AS_StrandBiasTest.class);
-    public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
-    public static final String PRINT_DELIM = "|";
-    public static final String REDUCED_DELIM = ",";
     public static final int MIN_COUNT = 2;
     public static final double MIN_PVALUE = 1.0E-320;
     public static final int FORWARD = 0;
     public static final int REVERSE = 1;
+    private final List<Integer> ZERO_LIST = new ArrayList<>();
+
+    public AS_StrandBiasTest(){
+        ZERO_LIST.add(0,0);
+        ZERO_LIST.add(1,0);
+    }
 
     @Override
     public String getPrimaryRawKey() { return GATKVCFConstants.AS_SB_TABLE_KEY; }
@@ -79,14 +85,31 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         return StrandBiasUtils.computeSBAnnotation(vc, likelihoods, getPrimaryRawKey());
     }
 
-    protected String makeReducedAnnotationString(VariantContext vc, Map<Allele,Double> perAltsStrandCounts) {
+    protected String makeRawAnnotationString(final List<Allele> vcAlleles, final Map<Allele, List<Integer>> perAlleleValues) {
+        String annotationString = "";
+        for (final Allele a : vcAlleles) {
+            if (!annotationString.isEmpty()) {
+                annotationString += AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM;
+            }
+            List<Integer> alleleValues = perAlleleValues.get(a);
+            if (alleleValues == null) {
+                alleleValues = ZERO_LIST;
+            }
+            annotationString += encode(alleleValues);
+        }
+        return annotationString;
+    }
+
+    @VisibleForTesting
+    protected static String makeReducedAnnotationString(final VariantContext vc, final Map<Allele,Double> perAltsStrandCounts) {
         String annotationString = "";
         for (Allele a : vc.getAlternateAlleles()) {
             if (!annotationString.isEmpty()) {
-                annotationString += REDUCED_DELIM;
+                annotationString += AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM;
             }
             if (!perAltsStrandCounts.containsKey(a)) {
-                logger.warn("ERROR: VC allele not found in annotation alleles -- maybe there was trimming?");
+                logger.warn("VC allele not found in annotation alleles -- maybe there was trimming?");
+                annotationString += VCFConstants.MISSING_VALUE_v4;
             } else {
                 annotationString += String.format("%.3f", perAltsStrandCounts.get(a));
             }
@@ -114,6 +137,17 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         }
         final String annotationString = StrandBiasUtils.makeRawAnnotationString(vcAlleles, combinedData.getAttributeMap());
         return Collections.singletonMap(getPrimaryRawKey(), annotationString);
+    }
+
+    protected String encode(List<Integer> alleleValues) {
+        String annotationString = "";
+        for (int j =0; j < alleleValues.size(); j++) {
+            annotationString += alleleValues.get(j);
+            if (j < alleleValues.size()-1) {
+                annotationString += ",";
+            }
+        }
+        return annotationString;
     }
 
     /**
@@ -156,11 +190,16 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         Map<Allele, List<Integer>> perAlleleValues = new HashMap<>();
         for (int i = 0; i < values.size(); i++) {
             List<Integer> perAlleleList = new ArrayList<>();
-            String[] rawListEntriesAsStringVector = values.get(i).split(",");
-            //Read counts will only ever be integers
-            for (String s : rawListEntriesAsStringVector) {
-                if (!s.isEmpty()) {
-                    perAlleleList.add(Integer.parseInt(s.trim()));
+            if (values.get(i).isEmpty()) { //Hail may output AS_SB_TABLE as [x,x|] with no alt data
+                perAlleleList.add(0);
+                perAlleleList.add(0);
+            } else {
+                String[] rawListEntriesAsStringVector = values.get(i).split(",");
+                //Read counts will only ever be integers
+                for (String s : rawListEntriesAsStringVector) {
+                    if (!s.isEmpty()) {
+                        perAlleleList.add(Integer.parseInt(s.trim()));
+                    }
                 }
             }
             perAlleleValues.put(myData.getAlleles().get(i), perAlleleList);
@@ -176,6 +215,6 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     }
 
     public static String rawValueAsString(int[][] table) {
-        return table[0][0]+","+table[0][1]+ PRINT_DELIM +table[1][0]+","+table[1][1];
+        return table[0][0]+","+table[0][1]+ AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM +table[1][0]+","+table[1][1];
     }
 }

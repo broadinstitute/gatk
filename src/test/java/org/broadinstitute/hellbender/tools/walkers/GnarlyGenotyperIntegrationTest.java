@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -124,16 +125,22 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
-    @Test
-    public void testOnHailOutput() {
-        final String input = getToolTestDataDir() + "hailOutput.chr20snippet.sites_only.vcf";
+    @DataProvider(name="hailVcfs")
+    public Object[][] getHailVcfs() {
+        return new Object[][] {
+                new String[]{ getToolTestDataDir() + "300k.sites_only.hail.vcf", getToolTestDataDir() + "expected.300k.sites_only.hail.vcf", "chrX:37349125-37349619"},
+                new String[] {getToolTestDataDir() + "hailOutput.chr20snippet.sites_only.vcf", getToolTestDataDir() + "expected.hailOutput.chr20snippet.sites_only.vcf", "chr20:10000000-10030000"}
+        };
+    }
+
+    @Test(dataProvider = "hailVcfs")
+    public void testOnHailOutput(final String input, final String expected, final String interval) {
         final File output = createTempFile("GnarlyGenotyper", ".vcf");
-        final File expected = new File(getToolTestDataDir() + "expected.hailOutput.chr20snippet.sites_only.vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(hg38Reference))
                 .add("V", input)
-                .add("L", "chr20:10000000-10030000")
+                .add("L", interval)
                 .add("only-output-calls-starting-in-intervals", true)
                 .add("keep-all-sites", true)
                 .addOutput(output)
@@ -144,7 +151,7 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         //QUAL column filled in, retains SB_TABLE, MQ_DP (deprecated), VarDP
         //does not expect ExcessHet because legacy input has neither genotypes nor GT counts
         try (final FeatureDataSource<VariantContext> actualVcs = new FeatureDataSource<>(output);
-             final FeatureDataSource<VariantContext> expectedVcs = new FeatureDataSource<>(expected)) {
+             final FeatureDataSource<VariantContext> expectedVcs = new FeatureDataSource<>(new File(expected))) {
             GATKBaseTest.assertCondition(actualVcs, expectedVcs,
                     (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e,
                             Collections.emptyList(), Collections.emptyList()));
