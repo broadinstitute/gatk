@@ -613,8 +613,8 @@ public final class GnarlyGenotyperEngine {
             return null;
         }
         final List<String> annotationEntries = isRaw ?
-                AnnotationUtils.decodeAnyASListWithRawDelim(variant.getAttribute(key).toString())
-                : AnnotationUtils.decodeAnyASList(variant.getAttribute(key).toString());
+                AnnotationUtils.decodeAnyASListWithRawDelim(variant.getAttribute(key).toString().replaceAll(" ",""))
+                : AnnotationUtils.decodeAnyASList(variant.getAttribute(key).toString().replaceAll(" ",""));  //toString on List adds spaces
         final List<String> returnString = new ArrayList<>();
         for (int i = 0; i < relevantIndices.length; i++) {
             if (relevantIndices[i] <= annotationEntries.size()-1) {
