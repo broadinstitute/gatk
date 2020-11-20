@@ -74,6 +74,11 @@ public class GATKVCFHeaderLines {
         addFilterLine(new VCFFilterHeaderLine(LOW_QUAL_FILTER_NAME, "Low quality"));
         addFilterLine(new VCFFilterHeaderLine(VCFConstants.PASSES_FILTERS_v4, "Site contains at least one allele that passes filters"));
 
+        addFilterLine(new VCFFilterHeaderLine(NAY_FROM_YNG, "Considered a NAY in the Yay, Nay, Grey table"));
+        // TODO: take this out once we have the full tranche sensitivities implemented in ExtractCohort
+        addFilterLine(new VCFFilterHeaderLine(VQSR_TRANCHE_SNP, "Temporary VQSLOD cutoff for SNPs until we implememnt full tranche sensitivities"));
+        addFilterLine(new VCFFilterHeaderLine(VQSR_TRANCHE_INDEL, "Temporary VQSLOD cutoff for INDELs until we implememnt full tranche sensitivities"));
+
         // M2-related filters
         addFilterLine(new VCFFilterHeaderLine(ALIGNMENT_ARTIFACT_FILTER_NAME, "Alignment artifact"));
         addFilterLine(new VCFFilterHeaderLine(CLUSTERED_EVENTS_FILTER_NAME, "Clustered events observed in the tumor"));
@@ -152,6 +157,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(AS_FILTER_STATUS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Filter status for each allele, as assessed by ApplyVQSR. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles."));
         addInfoLine(new VCFInfoHeaderLine(AS_CULPRIT_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, the annotation which was the worst performing in the Gaussian mixture model, likely the reason why the variant was filtered out"));
         addInfoLine(new VCFInfoHeaderLine(AS_VQS_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, the log odds of being a true variant versus being false under the trained gaussian mixture model"));
+        addInfoLine(new VCFInfoHeaderLine(AS_YNG_STATUS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, the yay/nay/grey status (yay are known good alleles, nay are known false positives, grey are unknown)"));
 
         addInfoLine(new VCFInfoHeaderLine(HI_CONF_DENOVO_KEY, 1, VCFHeaderLineType.String, "High confidence possible de novo mutation (GQ >= 20 for all trio members)=[comma-delimited list of child samples]"));
         addInfoLine(new VCFInfoHeaderLine(LO_CONF_DENOVO_KEY, 1, VCFHeaderLineType.String, "Low confidence possible de novo mutation (GQ >= 10 for child, GQ > 0 for parents)=[comma-delimited list of child samples]"));

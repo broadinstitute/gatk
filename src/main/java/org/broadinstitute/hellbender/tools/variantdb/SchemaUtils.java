@@ -67,8 +67,17 @@ public class SchemaUtils {
     public static final String CALL_PID = GENOTYPE_FIELD_PREFIX + "PID";
     public static final String CALL_PL = GENOTYPE_FIELD_PREFIX + "PL";
 
+    //Filtering table
+    public static final String FILTER_SET_NAME = "filter_set_name";
+    public static final String TYPE = "type";
+    public static final String VQSLOD = "vqslod";
+    public static final String CULPRIT = "culprit";
+    public static final String TRAINING_LABEL = "training_label";
+    public static final String YNG_STATUS = "yng_status";
+
     public static final List<String> SAMPLE_FIELDS = Arrays.asList(SchemaUtils.SAMPLE_NAME_FIELD_NAME, SchemaUtils.SAMPLE_ID_FIELD_NAME);
-    public static final List<String> YNG_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME);
+    public static final List<String> YNG_FIELDS = Arrays.asList(FILTER_SET_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, VQSLOD, YNG_STATUS);
+
 
     public static final List<String> PET_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, STATE_FIELD_NAME);
     public static final List<String> VET_FIELDS = Arrays.asList(SAMPLE_ID_FIELD_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, AS_RAW_MQ,

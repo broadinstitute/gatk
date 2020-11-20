@@ -157,14 +157,7 @@ public class CommonCode {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
-
-        // TODO: Temporary.  We don't really want these as FORMAT fields,
-//        headerLines.add(
-//                new VCFInfoHeaderLine(AS_VQS_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, the log odds of being a true variant versus being false under the trained gaussian mixture model")
-//        );
-//        headerLines.add(
-//                new VCFInfoHeaderLine(AS_YNG_STATUS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, status of the YNG filter")
-//        );
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VARIANT_DEPTH_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.VARIANT_DEPTH_KEY));
@@ -181,13 +174,9 @@ public class CommonCode {
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
 
-        // TODO: There must be a more appropriate constant to use for these
-//        headerLines.add(new VCFFilterHeaderLine(PASSES_FILTERS_v4, "PASSING"));
-
-        // TODO: fix these
-//        headerLines.add(new VCFFilterHeaderLine("NAY", "Site is Nay in the YNG table"));
-//        headerLines.add(new VCFFilterHeaderLine("VQSRTrancheSNP", "Site fails to exceed the SNP tranch threshold"));
-        headerLines.add(new VCFFilterHeaderLine("VQSRTrancheINDEL", "Site fails to exceel the INDEL tranch threshold"));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.VQSR_TRANCHE_SNP));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.VQSR_TRANCHE_INDEL));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NAY_FROM_YNG));
 
         return headerLines;
     }

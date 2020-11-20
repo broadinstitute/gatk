@@ -7,8 +7,11 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SampleList;
+import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.*;
 
@@ -37,6 +40,12 @@ public class ExtractCohort extends ExtractTool {
     )
     private String cohortTable = null;
 
+    @Argument(
+            fullName = "filter-set-name",
+            doc = "Name in filter_set_name column of filtering table to use. Which training set should be applied in extract."
+    )
+    private String filterSetName = null;
+
     @Override
     protected void onStartup() {
         super.onStartup();
@@ -45,6 +54,17 @@ public class ExtractCohort extends ExtractTool {
         Set<String> sampleNames = new HashSet<>(sampleList.getSampleNames());
 
         VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary());
+
+        if (minLocation == null && maxLocation == null && hasUserSuppliedIntervals()) {
+            final SimpleInterval firstInterval = getTraversalIntervals().get(0);
+            final SimpleInterval lastInterval = getTraversalIntervals().get(getTraversalIntervals().size() - 1);
+
+            minLocation = SchemaUtils.encodeLocation(firstInterval.getContig(), firstInterval.getStart());
+            maxLocation = SchemaUtils.encodeLocation(lastInterval.getContig(), lastInterval.getEnd());
+        } else if ((minLocation != null || maxLocation != null) && hasUserSuppliedIntervals()) {
+            throw new UserException("min-location and max-location should not be used together with intervals (-L).");
+        }
+
 
         engine = new ExtractCohortEngine(
                 projectID,
@@ -63,7 +83,8 @@ public class ExtractCohort extends ExtractTool {
                 vqsLodSNPThreshold,
                 vqsLodINDELThreshold,
                 progressMeter,
-                queryMode);
+                queryMode,
+                filterSetName);
         vcfWriter.writeHeader(header);
     }
 
