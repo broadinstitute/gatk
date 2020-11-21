@@ -121,7 +121,31 @@ public enum VetFieldEnum {
 
     AS_RAW_MQRankSum { // TODO -- maybe rely on 1/1 for call_GT, also get rid of the | at the beginning
         public String getColumnValue(final VariantContext variant) {
+            // e.g. AS_RAW_MQRankSum=|1.4,1|NaN;
             String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY, null);
+
+            if (out == null) {
+                // Try to use non-AS version
+                // TODO: it looks like the AS_RAW version also trims to a single decimal point??
+                // e.g. MQRankSum=1.465 and turn it into |1.465,1|
+                String outNotAlleleSpecific = getAttribute(variant, GATKVCFConstants.READ_POS_RANK_SUM_KEY, null);
+                
+                
+                if ( outNotAlleleSpecific == null || "".equals(outNotAlleleSpecific) || outNotAlleleSpecific.contentEquals("||") || outNotAlleleSpecific.contentEquals("|||") ) {
+                    return "";
+                }
+                
+                if (variant.getAlleles().size() == 3) { // GT 0/1 1/1
+                    out = "|" + outNotAlleleSpecific + ",1|";
+
+                } else if (variant.getAlleles().size() == 4) { // GT 1/2
+                    // TODO: just replicate rather than distribute, is this right?
+                    out = "|" + outNotAlleleSpecific + ",1|" + outNotAlleleSpecific + ",1|";
+                } else {
+                    throw new UserException("Expected diploid sample to either have 3 alleles (ref, alt, non-ref) or 4 alleles (ref, alt 1, alt 2, non-ref)");
+                }               
+            }
+
             if ( out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
                 out = "";
                 return out;
@@ -176,7 +200,30 @@ public enum VetFieldEnum {
 
     AS_RAW_ReadPosRankSum {  // TODO -- maybe rely on 1/1 for call_GT
         public String getColumnValue(final VariantContext variant) {
+            // e.g. AS_RAW_ReadPosRankSum=|-0.3,1|0.6,1
             String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY, null);
+
+            if (out == null) {
+                // Try to use non-AS version
+                // TODO: it looks like the AS_RAW version also trims to a single decimal point??
+                // e.g. ReadPosRankSum=-0.511 and turn it into |-0.511,1|
+                String outNotAlleleSpecific = getAttribute(variant, GATKVCFConstants.READ_POS_RANK_SUM_KEY, null);
+
+                if ( outNotAlleleSpecific == null || "".equals(outNotAlleleSpecific) || outNotAlleleSpecific.contentEquals("||") || outNotAlleleSpecific.contentEquals("|||") ) {
+                    return "";
+                }
+
+                if (variant.getAlleles().size() == 3) { // GT 0/1 1/1
+                    out = "|" + outNotAlleleSpecific + ",1|";
+
+                } else if (variant.getAlleles().size() == 4) { // GT 1/2
+                    // TODO: just replicate rather than distribute, is this right?
+                    out = "|" + outNotAlleleSpecific + ",1|" + outNotAlleleSpecific + ",1|";
+                } else {
+                    throw new UserException("Expected diploid sample to either have 3 alleles (ref, alt, non-ref) or 4 alleles (ref, alt 1, alt 2, non-ref)");
+                }               
+            }
+
             if (out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
                 out = "";
                 return out;
