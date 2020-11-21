@@ -19,7 +19,6 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.StrandOddsRatio;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StrandBiasTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.GATKAvroReader;
 import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
@@ -130,6 +129,11 @@ public class ExtractFeaturesEngine {
         String ref = rec.get("ref").toString();
         String allele = rec.get("allele").toString();
 
+        if (allele == null || allele.equals("")) {
+            logger.warn("SEVERE WARNING: skipping " + contig + ":" + position + "(location="+location+") because it has a null alternate allele!");
+            return;
+        }
+
         // Numbers are returned as Long (sci notation)
         Double qual = Double.valueOf(rec.get(SchemaUtils.RAW_QUAL).toString());
 
@@ -147,10 +151,10 @@ public class ExtractFeaturesEngine {
         Double raw_ad_gt_1 = Double.valueOf(rec.get("RAW_AD_GT_1").toString());
 
         // TODO: KCIBUL QUESTION -- if we skip this... we won't have YNG Info @ extraction time?
-        if (raw_ad == 0) {
-            logger.info("skipping " + position + " because it has no alternate reads!");
-            return;
-        }
+        // if (raw_ad == 0) {
+        //     logger.info("skipping " + contig + ":" + position + "(location="+location+") because it has no alternate reads!");
+        //     return;
+        // }
 
         int sb_ref_plus = Double.valueOf(rec.get("SB_REF_PLUS").toString()).intValue();
         int sb_ref_minus = Double.valueOf(rec.get("SB_REF_MINUS").toString()).intValue();
