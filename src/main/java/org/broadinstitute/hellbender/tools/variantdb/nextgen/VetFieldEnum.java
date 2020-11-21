@@ -127,9 +127,14 @@ public enum VetFieldEnum {
             if (out == null) {
                 // Try to use non-AS version
                 // TODO: it looks like the AS_RAW version also trims to a single decimal point??
-                // e.g. MQRankSum=1.465 and turn it into |-0.511,1|
+                // e.g. MQRankSum=1.465 and turn it into |1.465,1|
                 String outNotAlleleSpecific = getAttribute(variant, GATKVCFConstants.READ_POS_RANK_SUM_KEY, null);
-
+                
+                
+                if ( outNotAlleleSpecific == null || "".equals(outNotAlleleSpecific) || outNotAlleleSpecific.contentEquals("||") || outNotAlleleSpecific.contentEquals("|||") ) {
+                    return "";
+                }
+                
                 if (variant.getAlleles().size() == 3) { // GT 0/1 1/1
                     out = "|" + outNotAlleleSpecific + ",1|";
 
@@ -203,6 +208,10 @@ public enum VetFieldEnum {
                 // TODO: it looks like the AS_RAW version also trims to a single decimal point??
                 // e.g. ReadPosRankSum=-0.511 and turn it into |-0.511,1|
                 String outNotAlleleSpecific = getAttribute(variant, GATKVCFConstants.READ_POS_RANK_SUM_KEY, null);
+
+                if ( outNotAlleleSpecific == null || "".equals(outNotAlleleSpecific) || outNotAlleleSpecific.contentEquals("||") || outNotAlleleSpecific.contentEquals("|||") ) {
+                    return "";
+                }
 
                 if (variant.getAlleles().size() == 3) { // GT 0/1 1/1
                     out = "|" + outNotAlleleSpecific + ",1|";
