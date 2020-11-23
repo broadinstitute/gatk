@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -34,6 +35,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     protected VariantAnnotatorEngine annotationEngine;
 
     protected Logger logger;
+
+    protected OneShotLogger oneShotLogger;
 
     protected final int numberOfGenomes;
 
@@ -134,7 +137,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         //Calculate the expected total length of the PL arrays for this VC to warn the user in the case that they will be exceptionally large
         final long maxPLLength = GenotypeLikelihoods.numLikelihoods(reducedVC.getNAlleles(), reducedVC.getMaxPloidy(defaultPloidy));
         if(maxPLLength >= TOO_LONG_PL) {
-            logger.warn("Length of PL arrays for this VC(position:" + reducedVC.getStart() + ", alleles:" + reducedVC.getNAlleles()
+            oneShotLogger.warn("Length of PL arrays for this VC(position:" + reducedVC.getStart() + ", alleles:" + reducedVC.getNAlleles()
                     + ", ploidy:" + reducedVC.getMaxPloidy(defaultPloidy) + ") is likely to reach " + maxPLLength + ", so processing may take a long time.");
         }
 
