@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -196,6 +197,14 @@ public class VariantAnnotator extends VariantWalker {
         sequenceDictionary = getBestAvailableSequenceDictionary();
         variantSamples = new IndexedSampleList(samples);
 
+        // Check that the reads have compatible samples to the variants:
+        if (hasReads()) {
+            final Set<String> readsSamples = getHeaderForReads().getReadGroups().stream().map(rg -> rg.getSample()).collect(Collectors.toSet());
+            readsSamples.forEach(readSample -> {
+                if (!samples.contains(readSample))
+                    throw new UserException(String.format("Reads sample '%s' from readgroups tags does not match any sample in the variant genotypes", readSample));
+            });
+        }
         annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, comps, false, false);
         annotatorEngine.addExpressions(expressionsToUse, resources, expressionAlleleConcordance);
 
