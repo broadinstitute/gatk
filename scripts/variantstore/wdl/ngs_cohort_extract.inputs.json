@@ -2,11 +2,15 @@
   "NgsCohortExtract.reference": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
   "NgsCohortExtract.reference_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
   "NgsCohortExtract.reference_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+  "NgsCohortExtract.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
+  "NgsCohortExtract.scatter_count": 50,
 
-  "NgsCohortExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.1.8.1-140-g8aa14d3-SNAPSHOT-local.jar",
+  "NgsCohortExtract.gatk_override": "gs://broad-dsp-spec-ops/scratch/mshand/JointGenotyping/jars/gatk_filtering_for_export.jar",
 
   "NgsCohortExtract.fq_sample_table": "spec-ops-aou.kc_high_cov_ccdg.cohort_100_of_194",
   "NgsCohortExtract.fq_cohort_extract_table": "spec-ops-aou.kc_high_cov_ccdg.exported_cohort_100_test",
+  "NgsCohortExtract.fq_filter_set_table": "spec-ops-aou.kc_high_cov_ccdg.filter_set_info",
+  "NgsCohortExtract.filter_set_name": "wgs_v1",
   "NgsCohortExtract.query_project": "spec-ops-aou",
 
   "NgsCohortExtract.output_file_base_name": "ccdg_high_cov_export_100"
