@@ -33,7 +33,8 @@ setup(
     long_description=open('gcnvkernel/README.txt').read(),
     install_requires=[
         "theano == 1.0.4",
-        "pymc3 == 3.1",
+        "pymc3 == 3.9.2",
+        "contextvars >= 2.3"
         "numpy >= 1.13.1",
         "scipy >= 0.19.1",
         "tqdm >= 4.15.0"
