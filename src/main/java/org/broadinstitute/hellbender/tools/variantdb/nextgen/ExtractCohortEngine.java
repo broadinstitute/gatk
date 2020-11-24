@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import com.google.common.collect.Sets;
-import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -388,22 +387,18 @@ public class ExtractCohortEngine {
     }
 
     private VariantContext filterVariants(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {
-        LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap, Double.NaN);
-        LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
+        final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap, Double.NaN);
+        final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
+
+        final LinkedHashMap<Allele, Double> relevantVqsLodMap = new LinkedHashMap<>();
+        mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedVqsLodMap.get(key)).ifPresent(value -> relevantVqsLodMap.put(key, value)));
+        final LinkedHashMap<Allele, String> relevantYngMap = new LinkedHashMap<>();
+        mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedYngMap.get(key)).ifPresent(value -> relevantYngMap.put(key, value)));
 
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
-        builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, mergedVC.getAlternateAlleles()
-                .stream()
-                .map(a -> remappedVqsLodMap.get(a))
-                .filter(Objects::nonNull)
-                .map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString())
-                .collect(Collectors.toList()));
-        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, mergedVC.getAlternateAlleles()
-                .stream()
-                .map(a -> remappedYngMap.get(a))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList()));
+        builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, relevantVqsLodMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
+        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, relevantYngMap.values());
 
         int refLength = mergedVC.getReference().length();
 
@@ -416,22 +411,23 @@ public class ExtractCohortEngine {
             // if it doesn't trigger any of the filters below, we assume it passes.
             builder.passFilters();
             if (remappedYngMap.values().contains("G")) {
-            // TODO change the initial query to include the filtername from the tranches tables
-            Optional<Double> snpMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
-            if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
-                // TODO: add in sensitivities
-                builder.filter(GATKVCFConstants.VQSR_TRANCHE_SNP);
-            }
-            Optional<Double> indelMax = remappedVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
-            if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
-                // TODO: add in sensitivities
-                builder.filter(GATKVCFConstants.VQSR_TRANCHE_INDEL);
+                // TODO change the initial query to include the filtername from the tranches tables
+                Optional<Double> snpMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
+                if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
+                    // TODO: add in sensitivities
+                    builder.filter(GATKVCFConstants.VQSR_TRANCHE_SNP);
                 }
+                Optional<Double> indelMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
+                if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
+                    // TODO: add in sensitivities
+                    builder.filter(GATKVCFConstants.VQSR_TRANCHE_INDEL);
+                    }
             } else {
                 // If VQSR dropped this site (there's no YNG or VQSLOD) then we'll filter it as a NAY.
                 builder.filter(GATKVCFConstants.NAY_FROM_YNG);
             }
         }
+        // TODO: add in other annotations we need in output (like AF, etc?)
         final VariantContext filteredVC = builder.make();
         return filteredVC;
     }
