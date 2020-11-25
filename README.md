@@ -570,6 +570,9 @@ Running this task requires a local [cromwell](https://github.com/broadinstitute/
 variables `CROMWELL_JAR` and `WOMTOOL_JAR` to be set to the full pathnames of the `cromwell` and `womtool` jar files.
 If no local install is available, this task will run automatically on travis in a separate job whenever a PR is submitted.
 
+* WDL wrappers for each GATK release are published to the [gatk-tool-wdls](https://github.com/broadinstitute/gatk-tool-wdls) repository.
+Only tools that have been annotated for WDL generation will show up there. 
+
 #### <a name="zenhub">Using Zenhub to track github issues</a>
 
 We use [Zenhub](https://www.zenhub.com/) to organize and track github issues.
