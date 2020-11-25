@@ -9,6 +9,7 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
+
 import java.io.File;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
@@ -43,10 +44,6 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-//TODO:
-//UserException overloads
-//VCF outs
-
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
  * the pre-packaged Walker traversals should feel free to extend this class directly. All other
@@ -66,7 +63,7 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
             shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
             doc = "Use the given sequence dictionary as the master/canonical sequence dictionary.  Must be a .dict file.", optional = true, common = true)
-    private String masterSequenceDictionaryFilename = null;
+    private GATKPath masterSequenceDictionaryFilename = null;
 
     public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "seconds-between-progress-updates";
 
@@ -607,7 +604,7 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     private void loadMasterSequenceDictionary() {
         if ( (masterSequenceDictionary == null) && (masterSequenceDictionaryFilename != null) ) {
-            masterSequenceDictionary = ReferenceUtils.loadFastaDictionary(new File(masterSequenceDictionaryFilename));
+            masterSequenceDictionary = ReferenceUtils.loadFastaDictionary(masterSequenceDictionaryFilename);
         }
     }
 

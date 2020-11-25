@@ -148,7 +148,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
      * A raw, unfiltered, highly sensitive callset in VCF format.
      */
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to which variants should be written")
-    public String outputVCF = null;
+    public GATKPath outputVCF = null;
 
     private VariantContextWriter vcfWriter;
 

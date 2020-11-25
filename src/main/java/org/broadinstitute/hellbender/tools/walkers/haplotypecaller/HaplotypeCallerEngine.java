@@ -48,8 +48,7 @@ import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 
 import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.file.Files;
+import java.io.OutputStreamWriter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -76,7 +75,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     private AssemblyRegionTrimmer trimmer;
 
-    private final PrintStream assemblyDebugOutStream;
+    private final OutputStreamWriter assemblyDebugOutStream;
 
     // the genotyping engine for the isActive() determination
     private MinimalGenotypingEngine activeRegionEvaluationGenotyperEngine = null;
@@ -171,9 +170,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         // Add necessary debug streams to the output
         if (hcArgs.assemblyStateOutput != null) {
             try {
-                assemblyDebugOutStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput)));
-            } catch (IOException e) {
-                throw new UserException.CouldNotCreateOutputFile(hcArgs.assemblyStateOutput, "Provided argument for assembly debug graph location could not be created");
+                assemblyDebugOutStream = new OutputStreamWriter(hcArgs.assemblyStateOutput.getOutputStream());
+            } catch (final Exception e) {
+                throw new UserException.CouldNotCreateOutputFile(hcArgs.assemblyStateOutput, "Provided argument for assembly debug graph location could not be created", e);
             }
         } else {
             assemblyDebugOutStream = null;
@@ -363,7 +362,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param readsDictionary sequence dictionary for the reads
      * @return a VCF or GVCF writer as appropriate, ready to use
      */
-    public VariantContextWriter makeVCFWriter( final String outputVCF, final SAMSequenceDictionary readsDictionary,
+    public VariantContextWriter makeVCFWriter( final GATKPath outputVCF, final SAMSequenceDictionary readsDictionary,
                                                final boolean createOutputVariantIndex, final boolean  createOutputVariantMD5,
                                                final boolean sitesOnlyMode ) {
         Utils.nonNull(outputVCF);
@@ -374,7 +373,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if (sitesOnlyMode) {options.add(Options.DO_NOT_WRITE_GENOTYPES);}
 
         VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(
-                IOUtils.getPath(outputVCF),
+                outputVCF.toPath(),
                 readsDictionary,
                 createOutputVariantMD5,
                 options.toArray(new Options[options.size()])
@@ -560,9 +559,13 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         if (assemblyDebugOutStream != null) {
-            assemblyDebugOutStream.println("\n\n\n\n"+region.getSpan()+"\nNumber of reads in region: " + region.getReads().size() + "     they are:");
-            for (GATKRead read : region.getReads()) {
-                assemblyDebugOutStream.println(read.getName() + "   " + read.convertToSAMRecord(region.getHeader()).getFlags());
+            try {
+                assemblyDebugOutStream.write("\n\n\n\n" + region.getSpan() + "\nNumber of reads in region: " + region.getReads().size() + "     they are:\n");
+                for (GATKRead read : region.getReads()) {
+                    assemblyDebugOutStream.write(read.getName() + "   " + read.convertToSAMRecord(region.getHeader()).getFlags() + "\n");
+                }
+            } catch (IOException e) {
+                throw new UserException("Error writing to debug output stream", e);
             }
         }
 
@@ -570,9 +573,14 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
 
         if (assemblyDebugOutStream != null) {
-            assemblyDebugOutStream.println("\nThere were " + untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:");
-            for (String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(haplotype -> haplotype.toString()).sorted().collect(Collectors.toList())) {
-                assemblyDebugOutStream.println(haplotype);
+            try {
+                assemblyDebugOutStream.write("\nThere were " + untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:\n");
+                for (String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(haplotype -> haplotype.toString()).sorted().collect(Collectors.toList())) {
+                    assemblyDebugOutStream.write(haplotype);
+                    assemblyDebugOutStream.append('\n');
+                }
+            } catch (IOException e) {
+                throw new UserException("Error writing to debug output stream", e);
             }
         }
 
@@ -776,7 +784,11 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         if (assemblyDebugOutStream != null) {
-            assemblyDebugOutStream.close();
+            try {
+                assemblyDebugOutStream.close();
+            } catch (IOException e) {
+                throw new UserException("Error closing debug output stream", e);
+            }
         }
         HaplotypeCallerGenotypingDebugger.close();
         // Write assembly region debug output if present

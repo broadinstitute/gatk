@@ -4,7 +4,9 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.util.BufferedLineReader;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -42,8 +44,8 @@ public final class ReferenceUtils {
      * @param fastaDictionaryFile fasta dictionary file
      * @return the SAMSequenceDictionary from fastaDictionaryFile
      */
-    public static SAMSequenceDictionary loadFastaDictionary( final File fastaDictionaryFile ) {
-        try ( final FileInputStream fastaDictionaryStream = new FileInputStream(fastaDictionaryFile) ) {
+    public static SAMSequenceDictionary loadFastaDictionary( final GATKPath fastaDictionaryFile ) {
+        try ( final InputStream fastaDictionaryStream = fastaDictionaryFile.getInputStream() ) {
             return loadFastaDictionary(fastaDictionaryStream);
         }
         catch ( IOException e ) {
@@ -55,6 +57,16 @@ public final class ReferenceUtils {
                             fastaDictionaryFile
             );
         }
+    }
+
+    /**
+     * Given a fasta dictionary file, returns its sequence dictionary
+     *
+     * @param fastaDictionaryFile fasta dictionary file
+     * @return the SAMSequenceDictionary from fastaDictionaryFile
+     */
+    public static SAMSequenceDictionary loadFastaDictionary( final File fastaDictionaryFile ) {
+        return loadFastaDictionary(new GATKPath(fastaDictionaryFile.getAbsolutePath()));
     }
 
     /**

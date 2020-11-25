@@ -27,7 +27,6 @@ import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
-import java.io.File;
 import java.io.PrintStream;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -194,7 +193,7 @@ public final class ClipReads extends ReadWalker {
      * sequences in the file.
      */
     @Argument(fullName = CLIP_SEQUENCES_FILE_LONG_NAME, shortName = CLIP_SEQUENCES_FILE_SHORT_NAME, doc = "Remove sequences within reads matching the sequences in this FASTA file", optional = true)
-    String clipSequenceFile = null;
+    GATKPath clipSequenceFile = null;
 
     /**
      * Clips bases from the reads matching the provided SEQ.
@@ -259,7 +258,7 @@ public final class ClipReads extends ReadWalker {
         }
 
         if (clipSequenceFile != null) {
-            ReferenceSequenceFile rsf = ReferenceSequenceFileFactory.getReferenceSequenceFile(new File(clipSequenceFile));
+            ReferenceSequenceFile rsf = ReferenceSequenceFileFactory.getReferenceSequenceFile(clipSequenceFile.toPath());
 
             while (true) {
                 ReferenceSequence rs = rsf.nextSequence();

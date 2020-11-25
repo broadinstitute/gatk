@@ -38,6 +38,23 @@ public class GATKPath extends PathSpecifier implements TaggedArgument, Serializa
         super(uriString);
     }
 
+    /**
+     * Create a GATKPath from an existing GATKPath. Propagates tag and tag attributes.
+     * @param sourceGATKPath
+     */
+    public GATKPath(final GATKPath sourceGATKPath) {
+        super(sourceGATKPath);
+
+        if (sourceGATKPath.getTag() != null) {
+            this.setTag(sourceGATKPath.getTag());
+        }
+
+        final Map<String, String> sourceTagMap = sourceGATKPath.getTagAttributes();
+        if (sourceTagMap != null) {
+            this.setTagAttributes(new HashMap<>(sourceTagMap));
+        }
+    }
+
     @Override
     public Path toPath() {
         // special case GCS, in case the filesystem provider wasn't installed properly but is available.

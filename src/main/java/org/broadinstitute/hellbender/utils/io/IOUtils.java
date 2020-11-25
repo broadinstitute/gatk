@@ -646,11 +646,11 @@ public final class IOUtils {
     /**
      * Makes a print stream for a file, gzipping on the fly if the file's name ends with '.gz'.
      */
-    public static PrintStream makePrintStreamMaybeGzipped(File file) throws IOException {
-        if (file.getPath().endsWith(".gz")) {
-            return new PrintStream(new GZIPOutputStream(new FileOutputStream(file)));
+    public static PrintStream makePrintStreamMaybeGzipped(GATKPath filePath) throws IOException {
+        if (filePath.hasExtension(".gz")) {
+            return new PrintStream(new GZIPOutputStream(filePath.getOutputStream()));
         } else {
-            return new PrintStream(file);
+            return new PrintStream(filePath.getOutputStream());
         }
     }
 

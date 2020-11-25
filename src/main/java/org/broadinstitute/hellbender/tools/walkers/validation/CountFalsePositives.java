@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import java.nio.file.Path;
-import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -11,13 +10,11 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 /**
@@ -51,7 +48,7 @@ public class CountFalsePositives extends VariantWalker {
     static final String USAGE_SUMMARY = "Count PASS (false positive) variants in a vcf file for Mutect2 NA12878 normal-normal evaluation";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file")
-    private File outputFile = null;
+    private GATKPath outputFile = null;
 
     long indelFalsePositiveCount = 0;
     long snpFalsePositiveCount = 0;
@@ -67,7 +64,7 @@ public class CountFalsePositives extends VariantWalker {
     public void onTraversalStart() {
         // TODO: ideally we would identify the tumor sample name and normal sample name from the vcf header but
         // there doesn't seem to be a function that let us query a sample name by its ID (e.g. Tumor/Normal) in VCFHeader class.
-        id = FilenameUtils.getBaseName(drivingVariantFile);
+        id = drivingVariantFile.getBaseName().get();
     }
 
     @Override
@@ -88,7 +85,7 @@ public class CountFalsePositives extends VariantWalker {
         final List<SimpleInterval> intervals =  intervalArgumentCollection.getIntervals(getReferenceDictionary());
         final long targetTerritory = intervals.stream().mapToLong(i -> i.size()).sum();
 
-        try ( FalsePositiveTableWriter writer = new FalsePositiveTableWriter(IOUtils.fileToPath(outputFile)) ) {
+        try ( FalsePositiveTableWriter writer = new FalsePositiveTableWriter(outputFile.toPath()) ) {
             FalsePositiveRecord falsePositiveRecord = new FalsePositiveRecord(id, snpFalsePositiveCount, indelFalsePositiveCount, targetTerritory);
             writer.writeRecord(falsePositiveRecord);
         } catch (IOException e){

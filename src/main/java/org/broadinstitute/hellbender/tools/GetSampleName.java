@@ -2,18 +2,17 @@ package org.broadinstitute.hellbender.tools;
 
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -58,7 +57,7 @@ final public class GetSampleName extends GATKTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    protected File outputSampleNameFile;
+    protected GATKPath outputSampleNameFile;
 
     public static final String URL_ENCODING_LONG_NAME = "use-url-encoding";
     public static final String URL_ENCODING_SHORT_NAME = "encode";
@@ -95,12 +94,12 @@ final public class GetSampleName extends GATKTool {
             throw new UserException.BadInput("The given bam input has no sample names.");
         }
 
-        try (final FileWriter fileWriter = new FileWriter(outputSampleNameFile, false)) {
+        try (final OutputStreamWriter fileWriter = new OutputStreamWriter(outputSampleNameFile.getOutputStream())) {
             final String rawSample = sampleNames.get(0);
             final String outputSample = urlEncode ? IOUtils.urlEncode(rawSample) : rawSample;
             fileWriter.write(outputSample);
         } catch (final IOException ioe) {
-            throw new UserException("Could not write file.", ioe);
+            throw new UserException(String.format("Could not write to output file %s.", outputSampleNameFile), ioe);
         }
     }
 

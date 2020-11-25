@@ -180,7 +180,7 @@ public class VariantEval extends MultiVariantWalker {
     protected Set<String> SAMPLE_EXPRESSIONS = new TreeSet<>();
 
     @Argument(fullName = StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, shortName = StandardArgumentDefinitions.PEDIGREE_FILE_SHORT_NAME, doc="Pedigree file for determining the population \"founders\"", optional=true)
-    private File pedigreeFile;
+    private GATKPath pedigreeFile;
 
     /**
      * List of feature tracks to be used for specifying "known" variants other than dbSNP.
@@ -255,7 +255,7 @@ public class VariantEval extends MultiVariantWalker {
             private static final long serialVersionUID = 1L;
 
             @Override
-            public List<String> getDrivingVariantPaths() {
+            public List<GATKPath> getDrivingVariantPaths() {
                 //driving variants will be determined by initializeDrivingVariants()
                 return Collections.emptyList();
             }
@@ -407,7 +407,7 @@ public class VariantEval extends MultiVariantWalker {
         // Load ancestral alignments
         if (ancestralAlignmentsFile != null) {
             try {
-                ancestralAlignments = new IndexedFastaSequenceFile(ancestralAlignmentsFile);
+                ancestralAlignments = new IndexedFastaSequenceFile(ancestralAlignmentsFile.toPath());
             } catch (FileNotFoundException e) {
                 throw new GATKException(String.format("The ancestral alignments file, '%s', could not be found", ancestralAlignmentsFile.getAbsolutePath()));
             }
@@ -755,7 +755,7 @@ public class VariantEval extends MultiVariantWalker {
                 metricsCollection.setData(compOverlap.concordantRate, indelSummary.n_SNPs, countVariants.nSNPs, indelSummary.n_indels, multiallelicSummary.nIndels, indelSummary.insertion_to_deletion_ratio, countVariants.insertionDeletionRatio, tiTvVariantEvaluator.tiTvRatio);
         }
 
-        try (PrintStream out = IOUtils.makePrintStreamMaybeGzipped(outFile)){
+        try (PrintStream out = IOUtils.makePrintStreamMaybeGzipped(new GATKPath(outFile.getAbsolutePath()))) {
             VariantEvalReportWriter.writeReport(out, stratManager, stratManager.getStratifiers(), stratManager.get(0).getVariantEvaluators());
         }
         catch(IOException e) {

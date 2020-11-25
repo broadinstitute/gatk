@@ -2,14 +2,14 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import java.nio.file.Path;
+
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
-import java.io.File;
 import java.io.IOException;
 
 /**
@@ -67,9 +67,9 @@ public class ConcordanceSummaryRecord {
         }
     }
 
-    public static Writer getWriter(final File outputTable){
+    public static Writer getWriter(final GATKPath outputTable){
         try {
-            Writer writer = new Writer(IOUtils.fileToPath(outputTable));
+            Writer writer = new Writer(outputTable.toPath());
             return writer;
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", outputTable), e);
