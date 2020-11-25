@@ -29,6 +29,8 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import static org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils.*;
+
 public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
     final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 100000000);
     final SAMLineParser parser = new SAMLineParser(header);
@@ -217,10 +219,10 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "testAnnotateReadLikelihoodsWithRegionsDataProvider")
     public void testAnnotateReadLikelihoodsWithRegions(AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods, final Locatable loc, final Locatable callableLoc) {
-        AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(readLikelihoods, callableLoc);
+        annotateReadLikelihoodsWithRegions(readLikelihoods, callableLoc);
         for (GATKRead read : readLikelihoods.sampleEvidence(0)) {
-            Assert.assertEquals(read.getAttributeAsString(AssemblyBasedCallerUtils.ALIGNMENT_REGION_TAG), loc.toString());
-            Assert.assertEquals(read.getAttributeAsString(AssemblyBasedCallerUtils.CALLABLE_REGION_TAG), callableLoc.toString());
+            Assert.assertEquals(read.getAttributeAsString(ALIGNMENT_REGION_TAG), loc.toString());
+            Assert.assertEquals(read.getAttributeAsString(CALLABLE_REGION_TAG), callableLoc.toString());
         }
     }
 
@@ -342,14 +344,14 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
             List<String> initReadAttributes = new ArrayList<>();
             for (GATKRead read : readLikelihoods.sampleEvidence(0)) {
-                initReadAttributes.add(read.getAttributeAsString(AssemblyBasedCallerUtils.SUPPORTED_ALLELES_TAG));
+                initReadAttributes.add(read.getAttributeAsString(SUPPORTED_ALLELES_TAG));
             }
-            AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(vc, readLikelihoods);
+            annotateReadLikelihoodsWithSupportedAlleles(vc, readLikelihoods);
             for (int j = 0; j < readLikelihoods.sampleEvidenceCount(0); j++) {
                 GATKRead read = readLikelihoods.sampleEvidence(0).get(j);
 
                 String expectedAttribute = (initReadAttributes.get(j) != null ? initReadAttributes.get(j) + ", " : "") + readAttributeList.get(j);
-                Assert.assertEquals(read.getAttributeAsString(AssemblyBasedCallerUtils.SUPPORTED_ALLELES_TAG), expectedAttribute);
+                Assert.assertEquals(read.getAttributeAsString(SUPPORTED_ALLELES_TAG), expectedAttribute);
             }
         }
     }
@@ -359,7 +361,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                                        final List<VariantContext> activeAllelesToGenotype,
                                                        final List<VariantContext> expectedVcsAtThisLocation) {
 
-        final List<VariantContext> vcsAtThisPosition = AssemblyBasedCallerUtils.getVariantContextsFromGivenAlleles(loc, activeAllelesToGenotype, true);
+        final List<VariantContext> vcsAtThisPosition = getVariantContextsFromGivenAlleles(loc, activeAllelesToGenotype, true);
         Assert.assertEquals(vcsAtThisPosition.size(), expectedVcsAtThisLocation.size());
         for (int i = 0; i < expectedVcsAtThisLocation.size(); i++) {
             VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedVcsAtThisLocation.get(i), new ArrayList<>(), Collections.emptyList());
@@ -521,7 +523,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                                            final int loc,
                                                            final List<VariantContext> expectedVcsAtThisLocation) {
 
-        final List<VariantContext> vcsAtThisPosition = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, true);
+        final List<VariantContext> vcsAtThisPosition = getVariantContextsFromActiveHaplotypes(loc, haplotypes, true);
         Assert.assertEquals(vcsAtThisPosition.size(), expectedVcsAtThisLocation.size());
         for (int i = 0; i < expectedVcsAtThisLocation.size(); i++) {
             VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedVcsAtThisLocation.get(i), new ArrayList<>(), Collections.emptyList());
@@ -694,7 +696,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                    final int loc,
                                    final List<Haplotype> haplotypes,
                                    final Map<Allele, List<Haplotype>> expectedEventMap) {
-        final Map<Allele, List<Haplotype>> actualEventMap = AssemblyBasedCallerUtils.createAlleleMapper(mergedVc, loc, haplotypes, true);
+        final Map<Allele, List<Haplotype>> actualEventMap = createAlleleMapper(mergedVc, loc, haplotypes, true);
         Assert.assertEquals(actualEventMap.size(), expectedEventMap.size());
         for (final Allele key : actualEventMap.keySet()) {
             Assert.assertTrue(expectedEventMap.containsKey(key), "Got unexpected allele " + key + " with values " + actualEventMap.get(key));
@@ -722,16 +724,16 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final List<VariantContext> calls = Arrays.asList(vc1, vc2, vc3);
 
         // test no phased variants, empty map
-        final Map<VariantContext, Pair<Integer, String>> nonePhased1 = new HashMap<>();
+        final Map<VariantContext, Pair<Integer, PhaseGroup>> nonePhased1 = new HashMap<>();
         tests.add(new Object[]{calls, nonePhased1, 0, 0, 0, calls, null});
 
         // test no phased variants, full map, exception expected
         final IllegalStateException tooSmallPhaseGroupException = new IllegalStateException("Somehow we have a group of phased variants that has fewer than 2 members");
 
-        final Map<VariantContext, Pair<Integer, String>> nonePhased2 = new HashMap<>();
-        nonePhased2.put(vc1, Pair.of(0, "0|1"));
-        nonePhased2.put(vc2, Pair.of(1, "0|1"));
-        nonePhased2.put(vc3, Pair.of(2, "0|1"));
+        final Map<VariantContext, Pair<Integer, PhaseGroup>> nonePhased2 = new HashMap<>();
+        nonePhased2.put(vc1, Pair.of(0, PhaseGroup.PHASE_01));
+        nonePhased2.put(vc2, Pair.of(1, PhaseGroup.PHASE_01));
+        nonePhased2.put(vc3, Pair.of(2, PhaseGroup.PHASE_01));
         tests.add(new Object[]{calls, nonePhased2, 3, -1, -1, calls, tooSmallPhaseGroupException});
 
         // test 2 phased variants
@@ -741,9 +743,9 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final VariantContext vc2P = new VariantContextBuilder().chr("20").start(2).stop(2).alleles(Arrays.asList(ref, altC)).genotypes(g2P).make();
         final List<VariantContext> phasedCalls = Arrays.asList(vc1P, vc2P, vc3);
 
-        final Map<VariantContext, Pair<Integer, String>> twoPhased = new HashMap<>();
-        twoPhased.put(vc1, Pair.of(0, "0|1"));
-        twoPhased.put(vc2, Pair.of(0, "1|0"));
+        final Map<VariantContext, Pair<Integer, PhaseGroup>> twoPhased = new HashMap<>();
+        twoPhased.put(vc1, Pair.of(0, PhaseGroup.PHASE_01));
+        twoPhased.put(vc2, Pair.of(0, PhaseGroup.PHASE_10));
         tests.add(new Object[]{calls, twoPhased, 1, 1, 2, phasedCalls, null});
 
         // test all phased variants
@@ -751,41 +753,41 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final VariantContext vc3P = new VariantContextBuilder().chr("20").start(3).stop(3).alleles(Arrays.asList(ref, altC)).genotypes(g3P).make();
         final List<VariantContext> phasedCalls2 = Arrays.asList(vc1P, vc2P, vc3P);
 
-        final Map<VariantContext, Pair<Integer, String>> allPhased = new HashMap<>();
-        allPhased.put(vc1, Pair.of(0, "0|1"));
-        allPhased.put(vc2, Pair.of(0, "1|0"));
-        allPhased.put(vc3, Pair.of(0, "0|1"));
+        final Map<VariantContext, Pair<Integer, PhaseGroup>> allPhased = new HashMap<>();
+        allPhased.put(vc1, Pair.of(0, PhaseGroup.PHASE_01));
+        allPhased.put(vc2, Pair.of(0, PhaseGroup.PHASE_10));
+        allPhased.put(vc3, Pair.of(0, PhaseGroup.PHASE_01));
         tests.add(new Object[]{calls, allPhased, 1, 1, 3, phasedCalls2, null});
 
         // test a spanning deletion case: unphased snp, deletion, spanned snp
-        final Allele delref = Allele.create("AA", true);
-        final Allele delalt = Allele.create("A", false);
+        final Allele delRef = Allele.create("AA", true);
+        final Allele delAlt = Allele.create("A", false);
 
 
-        final Genotype g4 = new GenotypeBuilder().alleles(Arrays.asList(delref, delalt)).make();
-        final VariantContext vc4 = new VariantContextBuilder().chr("20").start(3).stop(4).alleles(Arrays.asList(delref, delalt)).genotypes(g4).make();
+        final Genotype g4 = new GenotypeBuilder().alleles(Arrays.asList(delRef, delAlt)).make();
+        final VariantContext vc4 = new VariantContextBuilder().chr("20").start(3).stop(4).alleles(Arrays.asList(delRef, delAlt)).genotypes(g4).make();
         final Genotype g5 = new GenotypeBuilder().alleles(Arrays.asList(Allele.SPAN_DEL, altC)).make();
         final VariantContext vc5 = new VariantContextBuilder().chr("20").start(4).stop(4).alleles(Arrays.asList(ref, Allele.SPAN_DEL, altC)).genotypes(g5).make();
 
-        final Genotype g4P = new GenotypeBuilder().alleles(Arrays.asList(delref, delalt)).phased(true).make();
-        final VariantContext vc4P = new VariantContextBuilder().chr("20").start(3).stop(4).alleles(Arrays.asList(delref, delalt)).genotypes(g4P).make();
+        final Genotype g4P = new GenotypeBuilder().alleles(Arrays.asList(delRef, delAlt)).phased(true).make();
+        final VariantContext vc4P = new VariantContextBuilder().chr("20").start(3).stop(4).alleles(Arrays.asList(delRef, delAlt)).genotypes(g4P).make();
         final Genotype g5P = new GenotypeBuilder().alleles(Arrays.asList(altC, Allele.SPAN_DEL)).phased(true).make();
         final VariantContext vc5P = new VariantContextBuilder().chr("20").start(4).stop(4).alleles(Arrays.asList(ref, Allele.SPAN_DEL, altC)).genotypes(g5P).make();
 
-        final List<VariantContext> spandelCalls = Arrays.asList(vc1, vc4, vc5);
-        final List<VariantContext> spandelPhasedCalls = Arrays.asList(vc1, vc4P, vc5P);
+        final List<VariantContext> spanningDeletionCalls = Arrays.asList(vc1, vc4, vc5);
+        final List<VariantContext> spanningDeletionPhasedCalls = Arrays.asList(vc1, vc4P, vc5P);
 
-        final Map<VariantContext, Pair<Integer, String>> phasedSpanDel = new HashMap<>();
-        phasedSpanDel.put(vc4, Pair.of(0, "0|1"));
-        phasedSpanDel.put(vc5, Pair.of(0, "1|0"));
-        tests.add(new Object[]{spandelCalls, phasedSpanDel, 1, 1, 2, spandelPhasedCalls, null});
+        final Map<VariantContext, Pair<Integer, PhaseGroup>> phasedSpanDel = new HashMap<>();
+        phasedSpanDel.put(vc4, Pair.of(0, PhaseGroup.PHASE_01));
+        phasedSpanDel.put(vc5, Pair.of(0, PhaseGroup.PHASE_10));
+        tests.add(new Object[]{spanningDeletionCalls, phasedSpanDel, 1, 1, 2, spanningDeletionPhasedCalls, null});
 
         return tests.toArray(new Object[][]{});
     }
 
     @Test(dataProvider="ConstructPhaseGroupsProvider")
     public void testConstructPhaseGroups(final List<VariantContext> calls,
-                                         final Map<VariantContext, Pair<Integer, String>> phaseMap,
+                                         final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseMap,
                                          final int endIndex,
                                          final int expectedNumGroups,
                                          final int expectedGroupSize,
@@ -793,7 +795,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                          final Exception expectedException) {
         final List<VariantContext> actualPhasedCalls;
         try {
-            actualPhasedCalls = AssemblyBasedCallerUtils.constructPhaseGroups(calls, phaseMap, endIndex);
+            actualPhasedCalls = constructPhaseGroups(calls, phaseMap, endIndex);
         } catch (IllegalStateException e) {
             Assert.assertEquals(e.getMessage(), expectedException.getMessage());
             return;
@@ -979,16 +981,16 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                              final int expectedNumGroups,
                                              final int expectedNum01,
                                              final int expectedNum10) {
-        final Map<VariantContext, Pair<Integer, String>> actualPhaseSetMapping = new HashMap<>();
-        final int actualNumGroups = AssemblyBasedCallerUtils.constructPhaseSetMapping(calls, haplotypeMap, totalHaplotypes, actualPhaseSetMapping);
+        final Map<VariantContext, Pair<Integer, PhaseGroup>> actualPhaseSetMapping = new HashMap<>();
+        final int actualNumGroups = constructPhaseSetMapping(calls, haplotypeMap, totalHaplotypes, actualPhaseSetMapping);
         Assert.assertEquals(actualNumGroups, expectedNumGroups);
         Assert.assertEquals(actualPhaseSetMapping.size(), expectedMapSize);
 
         int num01 = 0, num10 = 0;
-        for ( final Pair<Integer, String> phase : actualPhaseSetMapping.values() ) {
-            if ( phase.getRight().equals("0|1") )
+        for ( final Pair<Integer, PhaseGroup> phase : actualPhaseSetMapping.values() ) {
+            if ( phase.getRight().equals(PhaseGroup.PHASE_01) )
                 num01++;
-            else if ( phase.getRight().equals("1|0") )
+            else if ( phase.getRight().equals(PhaseGroup.PHASE_10) )
                 num10++;
         }
         Assert.assertEquals(num01, expectedNum01);
@@ -1038,7 +1040,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider="CreateHaplotypeMappingProvider")
     public void testCreateHaplotypeMapping(final VariantContext vc, final Set<Haplotype> haplotypes, final Haplotype expected) {
-        final Map<VariantContext, Set<Haplotype>> mapping = AssemblyBasedCallerUtils.constructHaplotypeMapping(Arrays.asList(vc), haplotypes);
+        final Map<VariantContext, Set<Haplotype>> mapping = constructHaplotypeMapping(Arrays.asList(vc), haplotypes);
         final Set<Haplotype> actual = mapping.get(vc);
         if ( expected == null )
             Assert.assertTrue(actual.isEmpty(), actual.toString());
@@ -1068,21 +1070,21 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final VariantContext givenVC = new VariantContextBuilder("test", "chr", 2, 2,
                 Arrays.asList(Allele.create((byte) 'A', true), Allele.create((byte) 'C', false))).make();
 
-        AssemblyBasedCallerUtils.addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
+        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
                 aligner, refHaplotype, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "ACAACCCCGGGGTTTT");
 
 
         // adding the same VC should have no effect
-        AssemblyBasedCallerUtils.addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
+        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
                 aligner, refHaplotype, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
 
         // add another SNP
         final VariantContext givenVC2 = new VariantContextBuilder("test", "chr", 5, 5,
                 Arrays.asList(Allele.create((byte) 'C', true), Allele.create((byte) 'G', false))).make();
-        AssemblyBasedCallerUtils.addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC2), maxMnpDistance,
+        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC2), maxMnpDistance,
                 aligner, refHaplotype, assemblyResultSet);
         // SNP is not found in existing variation, so it's added to the ref and the first SNP
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 4);
@@ -1093,7 +1095,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         // haplotype that contains the overlapping 2nd SNP
         final VariantContext givenVC3 = new VariantContextBuilder("test", "chr", 5, 7,
                 Arrays.asList(Allele.create("CCC".getBytes(), true), Allele.create((byte) 'C', false))).make();
-        AssemblyBasedCallerUtils.addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC3), maxMnpDistance,
+        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC3), maxMnpDistance,
                 aligner, refHaplotype, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 6);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(4).getBaseString(), "AAAACCGGGGTTTT");
@@ -1102,7 +1104,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         // adding an equivalent deletion should do nothing
         final VariantContext givenVC4 = new VariantContextBuilder("test", "chr", 5, 8,
                 Arrays.asList(Allele.create("CCCC".getBytes(), true), Allele.create("CC".getBytes(), false))).make();
-        AssemblyBasedCallerUtils.addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC4), maxMnpDistance,
+        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC4), maxMnpDistance,
                 aligner, refHaplotype, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 6);
 
@@ -1119,7 +1121,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         final VariantContext givenVC5 = new VariantContextBuilder("test", "chr", 8, 8,
                 Arrays.asList(Allele.create((byte) 'C', true), Allele.create((byte) 'T', false))).make();
-        AssemblyBasedCallerUtils.addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC5), maxMnpDistance,
+        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC5), maxMnpDistance,
                 aligner, refHaplotype, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 7);
     }
@@ -1144,7 +1146,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final VariantContext givenVC = new VariantContextBuilder("test", "chr", 2, 2,
                 Arrays.asList(Allele.create((byte) 'A', true), Allele.create((byte) 'C', false), Allele.create((byte) 'T', false))).make();
 
-        AssemblyBasedCallerUtils.addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
+        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
                 aligner, refHaplotype, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 3);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "ACAACCCCGGGGTTTT");
@@ -1176,7 +1178,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final VariantContext givenVC = new VariantContextBuilder("test", "chr", 2, 2,
                 Arrays.asList(Allele.create((byte) 'A', true), Allele.create('A' + new String(insertedBases), false))).make();
 
-        AssemblyBasedCallerUtils.addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
+        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
                 aligner, refHaplotype, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "AA" + new String(insertedBases) + "AACCCCGGGGTTTT");

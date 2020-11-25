@@ -65,10 +65,28 @@ public final class AssemblyBasedCallerUtils {
     // get realigned incorrectly.  See https://github.com/broadinstitute/gatk/issues/5060
     public static final int MINIMUM_READ_LENGTH_AFTER_TRIMMING = 10;
 
-    // this notation can be interpreted as a representation of the alleles present on the two phased haplotypes at the site:
+    // Phase group notation can be interpreted as a representation of the alleles present on the two phased haplotypes at the site:
     // "0": REF or '*'; "1": site-specific alt allele
-    private static final String phase01 = "0|1";
-    private static final String phase10 = "1|0";
+    enum PhaseGroup {
+        PHASE_01("0|1", 1),
+        PHASE_10("1|0", 0);
+
+        PhaseGroup(final String description, final int altAlleleIndex) {
+            this.description = description;
+            this.altAlleleIndex = altAlleleIndex;
+        }
+
+        private final String description;
+        private final int altAlleleIndex;
+
+        public String getDescription() {
+            return description;
+        }
+
+        public int getAltAlleleIndex() {
+            return altAlleleIndex;
+        }
+    }
 
     /**
      * Returns a map with the original read as a key and the realigned read as the value.
@@ -626,7 +644,7 @@ public final class AssemblyBasedCallerUtils {
         final Map<VariantContext, Set<Haplotype>> haplotypeMap = constructHaplotypeMapping(calls, calledHaplotypes);
 
         // construct a mapping from call to phase set ID
-        final Map<VariantContext, Pair<Integer, String>> phaseSetMapping = new HashMap<>();
+        final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseSetMapping = new HashMap<>();
         final int uniqueCounterEndValue = constructPhaseSetMapping(calls, haplotypeMap, calledHaplotypes.size() - 1, phaseSetMapping);
 
         // we want to establish (potential) *groups* of phased variants, so we need to be smart when looking at pairwise phasing partners
@@ -646,7 +664,7 @@ public final class AssemblyBasedCallerUtils {
         final Map<VariantContext, Set<Haplotype>> haplotypeMap = new HashMap<>(originalCalls.size());
         for ( final VariantContext call : originalCalls ) {
             // don't try to phase if there is not exactly 1 alternate allele
-            if ( ! isBiallelic(call) ) {
+            if ( ! isBiallelicWithOneSiteSpecificAlternateAllele(call) ) {
                 haplotypeMap.put(call, Collections.<Haplotype>emptySet());
                 continue;
             }
@@ -687,7 +705,7 @@ public final class AssemblyBasedCallerUtils {
     static int constructPhaseSetMapping(final List<VariantContext> originalCalls,
                                                   final Map<VariantContext, Set<Haplotype>> haplotypeMap,
                                                   final int totalAvailableHaplotypes,
-                                                  final Map<VariantContext, Pair<Integer, String>> phaseSetMapping) {
+                                                  final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseSetMapping) {
 
         final int numCalls = originalCalls.size();
         int uniqueCounter = 0;
@@ -729,13 +747,13 @@ public final class AssemblyBasedCallerUtils {
                         // sample will actually be homozygous downstream: there are steps in the pipeline that are liable
                         // to change the genotypes.  Because we can't make those assumptions here, we have decided to output
                         // the phase as if the call is heterozygous and then "fix" it downstream as needed.
-                        phaseSetMapping.put(call, Pair.of(uniqueCounter, phase01));
-                        phaseSetMapping.put(comp, Pair.of(uniqueCounter, phase01));
+                        phaseSetMapping.put(call, Pair.of(uniqueCounter, PhaseGroup.PHASE_01));
+                        phaseSetMapping.put(comp, Pair.of(uniqueCounter, PhaseGroup.PHASE_01));
                         uniqueCounter++;
                     }
                     // otherwise it's part of an existing group so use that group's unique ID
                     else if ( ! phaseSetMapping.containsKey(comp) ) {
-                        final Pair<Integer, String> callPhase = phaseSetMapping.get(call);
+                        final Pair<Integer, PhaseGroup> callPhase = phaseSetMapping.get(call);
                         phaseSetMapping.put(comp, Pair.of(callPhase.getLeft(), callPhase.getRight()));
                     }
                 }
@@ -756,14 +774,14 @@ public final class AssemblyBasedCallerUtils {
                                 return 0;
                             }
 
-                            phaseSetMapping.put(call, Pair.of(uniqueCounter, phase01));
-                            phaseSetMapping.put(comp, Pair.of(uniqueCounter, phase10));
+                            phaseSetMapping.put(call, Pair.of(uniqueCounter, PhaseGroup.PHASE_01));
+                            phaseSetMapping.put(comp, Pair.of(uniqueCounter, PhaseGroup.PHASE_10));
                             uniqueCounter++;
                         }
                         // otherwise it's part of an existing group so use that group's unique ID
                         else if ( ! phaseSetMapping.containsKey(comp) ){
-                            final Pair<Integer, String> callPhase = phaseSetMapping.get(call);
-                            phaseSetMapping.put(comp, Pair.of(callPhase.getLeft(), callPhase.getRight().equals(phase01) ? phase10 : phase01));
+                            final Pair<Integer, PhaseGroup> callPhase = phaseSetMapping.get(call);
+                            phaseSetMapping.put(comp, Pair.of(callPhase.getLeft(), callPhase.getRight().equals(PhaseGroup.PHASE_01) ? PhaseGroup.PHASE_10 : PhaseGroup.PHASE_01));
                         }
                     }
                 }
@@ -783,7 +801,7 @@ public final class AssemblyBasedCallerUtils {
      */
     @VisibleForTesting
     static List<VariantContext> constructPhaseGroups(final List<VariantContext> originalCalls,
-                                                               final Map<VariantContext, Pair<Integer, String>> phaseSetMapping,
+                                                               final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseSetMapping,
                                                                final int indexTo) {
         final List<VariantContext> phasedCalls = new ArrayList<>(originalCalls);
 
@@ -824,10 +842,8 @@ public final class AssemblyBasedCallerUtils {
      * @param vc the variant context
      * @return true if this variant context is bi-allelic, ignoring the NON-REF symbolic allele and '*' symbolic allele, false otherwise
      */
-    private static boolean isBiallelic(final VariantContext vc) {
-        if (vc.isBiallelic()) return true;
-        final long siteSpecificAltAlleles = vc.getAlternateAlleles().stream().filter(a -> isSiteSpecificAltAllele(a)).count();
-        return siteSpecificAltAlleles == 1L;
+    private static boolean isBiallelicWithOneSiteSpecificAlternateAllele(final VariantContext vc) {
+        return vc.getAlternateAlleles().stream().filter(AssemblyBasedCallerUtils::isSiteSpecificAltAllele).count() == 1;
     }
 
     /**
@@ -835,10 +851,7 @@ public final class AssemblyBasedCallerUtils {
      * site (i.e. not '*', which represents a concrete alternate allele that begins upstream of the current site).
      */
     private static boolean isSiteSpecificAltAllele(final Allele a) {
-        if(a.isReference()) return false;
-        if (Allele.NON_REF_ALLELE.equals(a)) return false;
-        if (Allele.SPAN_DEL.equals(a)) return false;
-        return true;
+        return !(a.isReference() || a.isNonRefAllele() || Allele.SPAN_DEL.equals(a));
     }
 
     /**
@@ -859,25 +872,20 @@ public final class AssemblyBasedCallerUtils {
      * @param phaseGT the phase GT string to use
      * @return phased non-null variant context
      */
-    private static VariantContext phaseVC(final VariantContext vc, final String ID, final String phaseGT, final int phaseSetID) {
+    private static VariantContext phaseVC(final VariantContext vc, final String ID, final PhaseGroup phaseGT, final int phaseSetID) {
         final List<Genotype> phasedGenotypes = new ArrayList<>();
         for ( final Genotype g : vc.getGenotypes() ) {
             final List<Allele> alleles = g.getAlleles();
             final List<Allele> newAlleles = new ArrayList<>(alleles);
-            if (phaseGT.equals(phase10) && g.isHet()) {
-                if (! isSiteSpecificAltAllele(newAlleles.get(0))) {
-                    Collections.reverse(newAlleles); // swap the alleles if heterozygous
-                }
-            } else if (phaseGT.equals(phase01) && g.isHet()) {
-                if (!isSiteSpecificAltAllele(newAlleles.get(1))) {
-                    Collections.reverse(newAlleles); // swap the alleles if heterozygous
-                }
+            final int phasedAltAlleleIndex = phaseGT.getAltAlleleIndex();
+            if (g.isHet() && ! isSiteSpecificAltAllele(newAlleles.get(phasedAltAlleleIndex))) {
+                Collections.reverse(newAlleles);
             }
             final Genotype genotype = new GenotypeBuilder(g)
                 .alleles(newAlleles)
                 .phased(true)
                 .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, ID)
-                .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, phaseGT)
+                .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, phaseGT.getDescription())
                 .attribute(VCFConstants.PHASE_SET_KEY, phaseSetID)
                 .make();
             phasedGenotypes.add(genotype);
