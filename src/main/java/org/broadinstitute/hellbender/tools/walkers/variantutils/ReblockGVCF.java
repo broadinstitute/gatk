@@ -9,11 +9,10 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.VariantWalker;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_QualByDepth;
@@ -26,6 +25,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConf
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -88,6 +88,8 @@ import java.util.stream.Collectors;
 @DocumentedFeature
 public final class ReblockGVCF extends VariantWalker {
 
+    private static final OneShotLogger logger = new OneShotLogger(ReblockGVCF.class);
+
     private final static int PLOIDY_TWO = 2;  //assume diploid genotypes
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -123,6 +125,10 @@ public final class ReblockGVCF extends VariantWalker {
     @Advanced
     @Argument(fullName="do-qual-score-approximation", shortName="do-qual-approx", doc="Add necessary INFO field annotation to perform QUAL approximation downstream; required for GnarlyGenotyper")
     protected boolean doQualApprox = false;
+
+    @Advanced
+    @Argument(fullName="allow-missing-hom-ref-data", doc="Fill in homozygous reference genotypes with no PLs and no GQ with PL=[0,0,0].  Necessary for input from Regeneron's WeCall variant caller.")
+    protected boolean allowMissingHomRefData = false;
 
     /**
      * The rsIDs from this file are used to populate the ID column of the output.  Also, the DB INFO flag will be set when appropriate. Note that dbSNP is not used in any way for the calculations themselves.
@@ -194,7 +200,9 @@ public final class ReblockGVCF extends VariantWalker {
         }
         vcfWriter.writeHeader(new VCFHeader(headerLines, inputHeader.getGenotypeSamples()));
 
-        logger.info("Notice that the -ploidy parameter is ignored in " + getClass().getSimpleName() + " tool as this is tool assumes a diploid sample");
+        if (genotypeArgs.samplePloidy != PLOIDY_TWO) {
+            throw new UserException.BadInput("The -ploidy parameter is ignored in " + getClass().getSimpleName() + " tool as this is tool assumes a diploid sample");
+        }
     }
 
     private HaplotypeCallerGenotypingEngine createGenotypingEngine(SampleList samples) {
@@ -260,7 +268,7 @@ public final class ReblockGVCF extends VariantWalker {
     }
 
     private boolean isHomRefBlock(final VariantContext result) {
-        return result.getLog10PError() == VariantContext.NO_LOG10_PERROR;
+        return result.getAlternateAlleles().contains(Allele.NON_REF_ALLELE) && result.hasAttribute(VCFConstants.END_KEY);
     }
 
     /**
@@ -276,10 +284,33 @@ public final class ReblockGVCF extends VariantWalker {
 
     private VariantContext filterHomRefBlock(final VariantContext result) {
         final Genotype genotype = result.getGenotype(0);
-        if (dropLowQuals && (genotype.getGQ() <= rgqThreshold || genotype.getGQ() == 0)) {
+        if (dropLowQuals && (!genotype.hasGQ() || genotype.getGQ() < rgqThreshold || genotype.getGQ() == 0)) {
             return null;
         }
         else if (genotype.isCalled() && genotype.isHomRef()) {
+            if (!genotype.hasPL()) {
+                if (genotype.hasGQ()) {
+                    logger.warn("PL is missing for hom ref genotype at at least one position for sample " + genotype.getSampleName() + ": " + result.getContig() + ":" + result.getStart() +
+                            ".  Using GQ to determine quality.");
+                    final int gq = genotype.getGQ();
+                    final GenotypeBuilder gBuilder = new GenotypeBuilder(genotype);
+                    final VariantContextBuilder vcBuilder = new VariantContextBuilder(result);
+                    vcBuilder.genotypes(gBuilder.GQ(gq).make());
+                    return vcBuilder.make();
+                } else {
+                    final String message = "Homozygous reference genotypes must contain GQ or PL. Both are missing for hom ref genotype at "
+                            + result.getContig() + ":" + result.getStart() + " for sample " + genotype.getSampleName() + ".";
+                    if (allowMissingHomRefData) {
+                        logger.warn(message);
+                        final GenotypeBuilder gBuilder = new GenotypeBuilder(genotype);
+                        final VariantContextBuilder vcBuilder = new VariantContextBuilder(result);
+                        vcBuilder.genotypes(gBuilder.GQ(0).PL(new int[]{0,0,0}).make());
+                        return vcBuilder.make();
+                    } else {
+                        throw new UserException.BadInput(message);
+                    }
+                }
+            }
             return result;
         }
         else if (!genotype.isCalled() && genotype.hasPL() && genotype.getPL()[0] == 0) {
@@ -319,12 +350,14 @@ public final class ReblockGVCF extends VariantWalker {
         if (isHomRefCall(originalVC)) {
             final Genotype genotype = result.getGenotype(0);
             final int[] idxVector = originalVC.getGLIndicesOfAlternateAllele(Allele.NON_REF_ALLELE);   //this is always length 3
-            final int[] multiallelicPLs = genotype.getPL();
-            final int[] newPLs = new int[3];
-            newPLs[0] = multiallelicPLs[idxVector[0]];
-            newPLs[1] = multiallelicPLs[idxVector[1]];
-            newPLs[2] = multiallelicPLs[idxVector[2]];
-            gb.PL(newPLs);
+            if (genotype.hasPL()) {
+                final int[] multiallelicPLs = genotype.getPL();
+                final int[] newPLs = new int[3];
+                newPLs[0] = multiallelicPLs[idxVector[0]];
+                newPLs[1] = multiallelicPLs[idxVector[1]];
+                newPLs[2] = multiallelicPLs[idxVector[2]];
+                gb.PL(newPLs);
+            }
             if (genotype.hasAD()) {
                 int depth = (int) MathUtils.sum(genotype.getAD());
                 gb.DP(depth);
@@ -388,14 +421,6 @@ public final class ReblockGVCF extends VariantWalker {
             }
         }
         final Genotype genotype = result.getGenotype(0);
-        if (doQualApprox && genotype.hasPL()) {
-            attrMap.put(GATKVCFConstants.RAW_QUAL_APPROX_KEY, genotype.getPL()[0]);
-            int varDP = QualByDepth.getDepth(result.getGenotypes(), null);
-            if (varDP == 0) {  //prevent QD=Infinity case
-                varDP = originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 1); //if there's no VarDP and no DP, just prevent Infs/NaNs and QD will get capped later
-            }
-            attrMap.put(GATKVCFConstants.VARIANT_DEPTH_KEY, varDP);
-        }
         VariantContextBuilder builder = new VariantContextBuilder(result);  //QUAL from result is carried through
         builder.attributes(attrMap);
 
@@ -550,6 +575,14 @@ public final class ReblockGVCF extends VariantWalker {
                     attrMap.put(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, as_varDP.stream().map( n -> Integer.toString(n)).collect(Collectors.joining(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM)));
                 }
             }
+        } else {  //manually copy annotations that might be from reblocking and aren't part of AnnotationEngine
+            if (result.hasAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY)) {
+                attrMap.put(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, result.getAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY));
+            }
+            if (result.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) {
+                attrMap.put(GATKVCFConstants.RAW_QUAL_APPROX_KEY, result.getAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY));
+            }
+
         }
         attrMap.put(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, g.getAlleles().stream().anyMatch(Allele::isReference) ? Arrays.asList(0,1,0) : Arrays.asList(0,0,1)); //ExcessHet currently uses rounded/integer genotype counts, so do the same here
         builder.attributes(attrMap);

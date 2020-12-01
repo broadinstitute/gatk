@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLineCount;
-import htsjdk.variant.vcf.VCFHeaderLineType;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -23,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
 
@@ -184,5 +183,34 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 Assert.assertTrue(line.getDescription().contains("deprecated"));
             }
         }
+    }
+
+    @Test
+    public void testReReblocking() {
+        final File input = new File(getToolTestDataDir() + "alreadyReblocked.chr22snippet.vcf");
+        final File output = createTempFile("rereblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", input)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final List<VariantContext> inputVCs = VariantContextTestUtils.readEntireVCFIntoMemory(input.getAbsolutePath()).getRight();
+        final List<VariantContext> outputVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+
+        Assert.assertTrue(inputVCs.size() > outputVCs.size());
+        Assert.assertTrue(outputVCs.size() == 19);
+        //hom ref blocks change, but variants stay the same
+        Assert.assertEquals(inputVCs.stream().filter(vc -> !vc.getGenotype(0).isHomRef()).count(), outputVCs.stream().filter(vc -> !vc.getGenotype(0).isHomRef()).count());
+        List<String> inGenotypes= inputVCs.stream().filter(vc -> !vc.getGenotype(0).isHomRef()).map(vc -> vc.getGenotype(0)).map(Genotype::toString).collect(Collectors.toList());
+        List<String> outGenotypes = outputVCs.stream().filter(vc -> !vc.getGenotype(0).isHomRef()).map(vc -> vc.getGenotype(0)).map(Genotype::toString).collect(Collectors.toList());
+        Assert.assertTrue(inGenotypes.containsAll(outGenotypes)); //will check ref and alt alleles as part of genotype string representation
+        Assert.assertTrue(outputVCs.get(18).isVariant());
+
+        //all ref blocks have MIN_DP
+        Assert.assertEquals(outputVCs.stream().filter(vc -> vc.getGenotype(0).hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY)).count(), outputVCs.size() - outGenotypes.size());
+        //all variants have GQ
+        Assert.assertEquals(outputVCs.stream().filter(vc -> vc.getGenotype(0).hasGQ()).count(), outputVCs.size());
+        //we didn't ask to drop GQ0s, but they might get merged together
+        Assert.assertEquals(inputVCs.stream().anyMatch(vc -> vc.getGenotype(0).getGQ() == 0), outputVCs.stream().anyMatch(vc -> vc.getGenotype(0).getGQ() == 0));
     }
 }

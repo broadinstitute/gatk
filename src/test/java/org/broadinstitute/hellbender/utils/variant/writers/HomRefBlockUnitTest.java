@@ -80,12 +80,12 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
     public static Object[][] badAdditions() {
         final VariantContext vc = getVariantContext();
         return new Object[][]{
-                {vc.getStart(), getValidGenotypeBuilder().PL((int[])null).make()}, //no PLs
                 {vc.getStart() + 1000, getValidGenotypeBuilder().make()}, //bad start
                 {vc.getStart() - 1000, getValidGenotypeBuilder().make()}, //bad start
                 {vc.getStart(), getValidGenotypeBuilder().GQ(1).make()}, // GQ out of bounds
                 {vc.getStart(), getValidGenotypeBuilder().GQ(100).make()}, // GQ out of bounds
                 {vc.getStart(), getValidGenotypeBuilder().alleles(Arrays.asList(REF, REF, REF)).make()}, //wrong ploidy
+                {vc.getStart(), getValidGenotypeBuilder().noPL().noGQ().make()}, //no PL and no GQ
                 {vc.getStart(), null}, //null genotype
         };
     }
@@ -93,7 +93,7 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
     private static GenotypeBuilder getValidGenotypeBuilder() {
         return new GenotypeBuilder(SAMPLE_NAME)
                 .PL(getPLArray())
-                .GQ(15)
+                .GQ(getPLArray()[1])
                 .alleles(getVariantContext().getAlleles());
     }
 
@@ -110,8 +110,37 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
         band.add(vc.getStart() + 1, getValidGenotypeBuilder().PL(new int[] {1,2,4,5,6}).make() );
     }
 
+    @Test
+    public void testNoPLs() {
+        //add VC with no PLs to block with PLs
+        final VariantContext vc = getVariantContext();
+        final HomRefBlock band = getHomRefBlock(getVariantContext());
+        Assert.assertNull(band.getMinPLs());
+        Assert.assertEquals(band.getMinGQ(), -1);
+        band.add(vc.getStart(), getValidGenotypeBuilder().make() );
+        Assert.assertNotNull(band.getMinPLs());
+        Assert.assertEquals(band.getMinPLs()[1], getPLArray()[1]);
+        Assert.assertEquals(band.getMinGQ(), getPLArray()[1]);
+        band.add(vc.getStart() + 1, getValidGenotypeBuilder().noPL().make());
+        Assert.assertEquals(band.getSize(), 2);
+        Assert.assertEquals(band.getMinPLs()[1], getPLArray()[1]);
+        Assert.assertEquals(band.getMinGQ(), getPLArray()[1]);
+
+        //add VC with no PLs to block with no PLs
+        final HomRefBlock band2 = getHomRefBlock(getVariantContext());
+        Assert.assertNull(band2.getMinPLs());
+        Assert.assertEquals(band2.getMinGQ(), -1);
+        band2.add(vc.getStart(), getValidGenotypeBuilder().noPL().make() );
+        Assert.assertEquals(band2.getMinGQ(), getPLArray()[1]);
+        Assert.assertNull(band2.getMinPLs());
+        band2.add(vc.getStart() + 1, getValidGenotypeBuilder().noPL().make());
+        Assert.assertNull(band2.getMinPLs());
+        Assert.assertEquals(band2.getMinGQ(), getPLArray()[1]);
+        Assert.assertTrue(band2.getSize() == 2);
+    }
+
     private static int[] getPLArray() {
-        return new int[]{0,10,100};
+        return new int[]{0,15,100};
     }
 
     private static void assertValues(final GVCFBlock band, final int minDP, final int medianDP) {
