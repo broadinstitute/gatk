@@ -21,11 +21,28 @@ Please see https://github.com/broadinstitute/ml4h/ for more details on the full 
 1. Clone this workspace.
 1. From the preview view of one of the notebooks
     1. Copy the Terra custom Docker image name
-    1. Click on `Notebook Runtime`
-    1. Choose `Environment -> Custom Environment`
-    1. Paste the Docker image name `Container Image`
-    1. Click on the `Replace` button
-1. Run the notebooks in "Playground Mode" to explore model inputs and outputs.
+    1. Click on `Cloud Environment`
+    1. In section `Create custom environment` click on `Customize`
+    1. In section `Application configuration` scroll to the final option and choose `Custom environment`
+    2. In section `Container image` paste in the Terra custom Docker image name.
+    3. Click on the `Next` button
+1. Run the notebooks in "Playground Mode" to explore model inputs and outputs!
+
+----------------------------
+## Notebooks
+
+* **review_model_results_interactive**: Use this notebook to perform interactive quality control (QC) of a simulated ECG and MRI prediction model.
+* **review_one_sample_interactive**: Use this notebook to perform interactive quality control (QC) of per-patient multi-modal data for clinical machine learning models.
+* **image_annotations_demo**: Use this notebook to annotate MRI images to create new input data for machine learning.
+
+### Cloud Environment
+
+| Option | Value |
+| --- | --- |
+| Environment | ghcr.io/broadinstitute/ml4h/ml4h_terra:THE_TAG_VALUE_YOU_SEE_IN_THE_NOTEBOOKS |
+| CPU Minimum | 4|
+| Disk size Minimum | 50 GB |
+| Memory Minimum | 15 GB |
 
 ----------------------------
 ## Next steps
@@ -34,3 +51,15 @@ Please see https://github.com/broadinstitute/ml4h/ for more details on the full 
 * Read more about the ml4h project on  https://github.com/broadinstitute/ml4h/ 
 * Ask questions https://github.com/broadinstitute/ml4h/issues
 * Apply those resources to your own research!
+
+---
+
+### Contact information
+
+You can also reach us on GitHub by [filing an issue](https://github.com/broadinstitute/ml4h/issues).
+
+### License
+Please see the BSD-3-Clause [license on GitHub](https://github.com/broadinstitute/ml4h/blob/master/LICENSE.TXT)
+
+### Workspace Change Log
+Please see the [pull request history](https://github.com/broadinstitute/ml4h/pulls?q=is%3Apr+) on GitHub.

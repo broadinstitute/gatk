@@ -1,0 +1,79 @@
+name: Publish to Terra
+# Publish notebooks and dashboard markdown from the source-of-truth, a GitHub repository, to the
+# deployment destination, a Terra workspace. See http://app.terra.bio for more detail.
+#
+# Only use this workflow for Terra workspaces that are simply mirrors of GitHub repositories, as
+# it overwrites assets in Terra-managed storage.
+
+on:
+  workflow_dispatch:
+    # Allows manually triggering of workflow on a selected branch via the GitHub Actions tab.
+    # GitHub blog demo: https://github.blog/changelog/2020-07-06-github-actions-manual-triggers-with-workflow_dispatch/.
+
+  release:
+    types: [published]
+
+  # TODO(deflaux): remove the push trigger after testing is complete.
+  push:
+    branches: [ 'sample-to-patient' ]
+
+env:
+  # TO REUSE THIS TEMPLATE, change these values to reflect those of your destination Terra workspace.
+  NAMESPACE: 'uk-biobank-sek'
+  WORKSPACE: 'ml4h-toolkit-for-machine-learning-on-clinical-data'
+  WORKSPACE_BUCKET: 'fc-500bd872-4a53-45c9-87d3-39656bd83f85'
+
+jobs:
+
+  deploy_to_terra:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+
+    - name: Setup gcloud CLI
+      uses: google-github-actions/setup-gcloud@master
+      # TO REUSE THIS TEMPLATE, configure auth.
+      # Step 1: Create a service account and store its key in GitHub as 'TERRA_SECRET' per these instructions:
+      # https://github.com/google-github-actions/setup-gcloud/blob/master/setup-gcloud/README.md
+      # https://docs.github.com/en/free-pro-team@latest/actions/reference/encrypted-secrets#creating-encrypted-secrets-for-a-repository
+      # Step 2: Register the service account with Terra per these instructions
+      # https://github.com/broadinstitute/terra-tools/tree/master/scripts/register_service_account
+      # Step 3: Share the destination Terra workspace with the service account, granting it
+      # "WRITER" access. Also add it to the Authorization Domain for the workspace, if applicable.
+      with:
+        version: '290.0.1'
+        service_account_key: ${{ secrets.TERRA_SECRET }}
+        export_default_credentials: true
+
+    - name: Publish dashboard and notebooks
+      run: |
+        # Install the Terra client.
+        pip install firecloud==0.16.25
+
+        # TO REUSE THIS TEMPLATE, update the code to match your file and directory structure.
+        # This particular example is based on the structure of https://github.com/verilylifesciences/metis
+
+        # Change to the directory holding the workspace assets.
+        cd notebooks/terra_featured_workspace/
+
+        # Publish the main notebooks.
+        gsutil cp image_annotations_demo.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
+        gsutil cp review_model_results_interactive.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
+        gsutil cp review_one_sample_interactive.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
+
+        # Publish the dashboard markdown.
+        python << EOF
+        import firecloud.api as fapi
+        with open('workspace_description.md') as f:
+          fapi.update_workspace_attributes(
+              namespace="$NAMESPACE",
+              workspace="$WORKSPACE",
+              attrs=[fapi._attr_set(attr='description', value=f.read())]).json()
+        EOF
