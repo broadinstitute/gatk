@@ -21,6 +21,7 @@ else
   sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/;
 fi
 echo "Docker build done =========="
+sleep 10
 
 popd
 
