@@ -22,7 +22,9 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -47,6 +49,11 @@ public class ScrambleReferencePanel extends VariantWalker {
     final private List<BitSet> alleleHaplotypesBitSets = new ArrayList<>();
     final private List<BitSet> sharedHaplotypesBitSets = new ArrayList<>();
 
+    private int[] suffixArray;
+    private int[] indexNewSubgroups;
+    private int[][] sharedHaplotypeIndexBoundaries;
+    final private List<BitSet> alleleHaplotypesBitSets_suffixArrays = new ArrayList<>();
+
     final private Random rand = new Random();
     private int nextChange;
     private int blockCounter = 0;
@@ -58,11 +65,14 @@ public class ScrambleReferencePanel extends VariantWalker {
 
         final VCFHeader inputHeader = getHeaderForVariants();
         final int nSamplesInPanel = inputHeader.getNGenotypeSamples();
+        suffixArray = new int[2*nSamplesInPanel];
+        indexNewSubgroups = new int[2*nSamplesInPanel];
 
         if (nSamples < 0) {
             nSamples = nSamplesInPanel;
         }
         final List<String> sampleNames = new ArrayList<>();
+        sharedHaplotypeIndexBoundaries = new int[2*nSamplesInPanel][2];
         for (int i=0; i<nSamples; i++) {
             final String sampleName = "sample_" + i;
             for (int j=0; j<2; j++) {
@@ -72,6 +82,9 @@ public class ScrambleReferencePanel extends VariantWalker {
                 final BitSet bitSet = new BitSet(2*nSamplesInPanel);
                 bitSet.set(0, 2*nSamplesInPanel - 1);
                 sharedHaplotypesBitSets.add(bitSet);
+                sharedHaplotypeIndexBoundaries[2*i+j][0] = 0;
+                sharedHaplotypeIndexBoundaries[2*i+j][1] = 2*nSamplesInPanel - 1;
+                suffixArray[2*i + j] = 2*i + j;
             }
             sampleNames.add(sampleName);
         }
@@ -104,6 +117,8 @@ public class ScrambleReferencePanel extends VariantWalker {
 
         haplotypesBeingCopied.set(hapToChange, Pair.of(iSampleToChangeTo, hapToChangeTo));
         sharedHaplotypesBitSets.get(hapToChange).set(0, 2*nSamples - 1);
+        sharedHaplotypeIndexBoundaries[hapToChange][0] = 0;
+        sharedHaplotypeIndexBoundaries[hapToChange][1] = 2*nSamples - 1;
     }
 
     private boolean checkForRareHaplotype(final int iHap, final int allele) {
@@ -113,6 +128,21 @@ public class ScrambleReferencePanel extends VariantWalker {
         sharedHaplotypesBitSet.and(sharedHaplotypesThisAlleleBitSet);
 
         return sharedHaplotypesBitSet.cardinality() < minSharedHaplotypes;
+    }
+
+    private boolean checkForRareHaplotype_suffixArray(final int iHap, final int allele, final int indexNewStart) {
+        final int firstIndex = sharedHaplotypeIndexBoundaries[iHap][0];
+        final int lastIndex = sharedHaplotypeIndexBoundaries[iHap][1];
+
+        final BitSet sharedHaplotypesThisAlleleBitSet = alleleHaplotypesBitSets_suffixArrays.get(allele).get(firstIndex, lastIndex + 1);
+        final int newFirstIndex = indexNewSubgroups[sharedHaplotypesThisAlleleBitSet.nextSetBit(0) + firstIndex] + indexNewStart;
+        final int cardinality = sharedHaplotypesThisAlleleBitSet.cardinality();
+        final int newLastIndex = newFirstIndex + cardinality - 1;
+
+        sharedHaplotypeIndexBoundaries[iHap][0] = newFirstIndex;
+        sharedHaplotypeIndexBoundaries[iHap][1] = newLastIndex;
+
+        return cardinality < minSharedHaplotypes;
     }
 
     private int getBitSetIndex(final int sample, final int chrom) {
@@ -136,30 +166,84 @@ public class ScrambleReferencePanel extends VariantWalker {
         final GenotypesContext oldGenotypes = variant.getGenotypes();
 
         //fill allele bitSets
-        alleleHaplotypesBitSets.clear();
+//        alleleHaplotypesBitSets.clear();
+//        for (int i=0; i<variant.getNAlleles(); i++) {
+//            alleleHaplotypesBitSets.add(new BitSet(variant.getNSamples()));
+//        }
+//
+//        for (int i=0; i<oldGenotypes.size(); i++) {
+//            for (int j=0; j<2; j++) {
+//                final Allele allele = oldGenotypes.get(i).getAllele(j);
+//                alleleHaplotypesBitSets.get(variant.getAlleleIndex(allele)).set(getBitSetIndex(i, j));
+//            }
+//        }
+
+        //build new suffix array
+        alleleHaplotypesBitSets_suffixArrays.clear();
+        final List<List<Integer>> newSuffixArray = new ArrayList<>();
         for (int i=0; i<variant.getNAlleles(); i++) {
-            alleleHaplotypesBitSets.add(new BitSet(variant.getNSamples()));
+            newSuffixArray.add(new LinkedList<>());
+            alleleHaplotypesBitSets_suffixArrays.add(new BitSet(variant.getNSamples()));
         }
 
-        for (int i=0; i<oldGenotypes.size(); i++) {
-            for (int j=0; j<2; j++) {
-                final Allele allele = oldGenotypes.get(i).getAllele(j);
-                alleleHaplotypesBitSets.get(variant.getAlleleIndex(allele)).set(getBitSetIndex(i, j));
-            }
+
+
+        for (int i=0; i<suffixArray.length; i++) {
+            final int iHap = suffixArray[i];
+            final int iSample = iHap/2;
+            final int iChrom = iHap%2;
+            final Allele allele = oldGenotypes.get(iSample).getAllele(iChrom);
+            final int alleleIndex = variant.getAlleleIndex(allele);
+            final List<Integer> newSubgroup = newSuffixArray.get(alleleIndex);
+            indexNewSubgroups[i] = newSubgroup.size();
+            newSubgroup.add(iSample*2 + iChrom);
+            alleleHaplotypesBitSets_suffixArrays.get(alleleIndex).set(i);
         }
+
+        final List<Integer> newSuffixArrayStartIndecies = new ArrayList<>();
+        newSuffixArrayStartIndecies.add(0);
+        for (int i=1; i<newSuffixArray.size(); i++) {
+            newSuffixArrayStartIndecies.add(newSuffixArrayStartIndecies.get(i-1) + newSuffixArray.get(i-1).size());
+        }
+
 
         //check for rare haplotypes
+//        for (int iHap=0; iHap<haplotypesBeingCopied.size(); iHap++) {
+//            Pair<Integer, Integer> currentHap = haplotypesBeingCopied.get(iHap);
+//            Allele allele = oldGenotypes.get(currentHap.getLeft()).getAllele(currentHap.getRight());
+//
+//            while(checkForRareHaplotype(iHap, variant.getAlleleIndex(allele))) {
+//                switchHaplotypeArray(iHap, variant.getNSamples());
+//                currentHap = haplotypesBeingCopied.get(iHap);
+//                allele = oldGenotypes.get(currentHap.getLeft()).getAllele(currentHap.getRight());
+//                blockCounter = 0;
+//            }
+//        }
+
         for (int iHap=0; iHap<haplotypesBeingCopied.size(); iHap++) {
             Pair<Integer, Integer> currentHap = haplotypesBeingCopied.get(iHap);
             Allele allele = oldGenotypes.get(currentHap.getLeft()).getAllele(currentHap.getRight());
+            int alleleIndex = variant.getAlleleIndex(allele);
 
-            while(checkForRareHaplotype(iHap, variant.getAlleleIndex(allele))) {
+            while(checkForRareHaplotype_suffixArray(iHap, alleleIndex, newSuffixArrayStartIndecies.get(alleleIndex))) {
                 switchHaplotypeArray(iHap, variant.getNSamples());
                 currentHap = haplotypesBeingCopied.get(iHap);
                 allele = oldGenotypes.get(currentHap.getLeft()).getAllele(currentHap.getRight());
+                alleleIndex = variant.getAlleleIndex(allele);
                 blockCounter = 0;
             }
         }
+
+        //update suffix array
+        int index = 0;
+        for(final List<Integer> suffixArrayGroup : newSuffixArray) {
+            for (final Integer iHap : suffixArrayGroup) {
+                suffixArray[index] = iHap;
+                index++;
+            }
+        }
+
+
 
         for(int i=0; i<nSamples; i++) {
             final List<Allele> alleles = new ArrayList<>();
