@@ -24,6 +24,7 @@ import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -37,8 +38,7 @@ import java.util.Set;
 @DocumentedFeature
 public class ScrambleReferencePanel extends VariantWalker {
 
-    @Argument(shortName = "nSamples",  doc = "number of samples in output", optional = true)
-    public int nSamples = -1;
+    public int nSamples;
 
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     public GATKPath outPath;
@@ -46,13 +46,14 @@ public class ScrambleReferencePanel extends VariantWalker {
 
     final private List<Pair<Integer, Integer>> haplotypesBeingCopied = new ArrayList<>();
 
-    final private List<BitSet> alleleHaplotypesBitSets = new ArrayList<>();
-    final private List<BitSet> sharedHaplotypesBitSets = new ArrayList<>();
-
     private int[] suffixArray;
     private int[] indexNewSubgroups;
     private int[][] sharedHaplotypeIndexBoundaries;
+    private int[][] alleleCountsAboveInSuffixArray;
+    private int[][] indexNextAlleleOccuranceInSuffixArray;
     final private List<BitSet> alleleHaplotypesBitSets_suffixArrays = new ArrayList<>();
+    int currentNAlleles = 0;
+    private int[] haplotypeLengths;
 
     final private Random rand = new Random();
     private int nextChange;
@@ -68,20 +69,16 @@ public class ScrambleReferencePanel extends VariantWalker {
         suffixArray = new int[2*nSamplesInPanel];
         indexNewSubgroups = new int[2*nSamplesInPanel];
 
-        if (nSamples < 0) {
-            nSamples = nSamplesInPanel;
-        }
+
+        nSamples = nSamplesInPanel;
         final List<String> sampleNames = new ArrayList<>();
         sharedHaplotypeIndexBoundaries = new int[2*nSamplesInPanel][2];
+        haplotypeLengths = new int[2*nSamples];
         for (int i=0; i<nSamples; i++) {
             final String sampleName = "sample_" + i;
             for (int j=0; j<2; j++) {
-                final int iSampleToCopy = rand.nextInt(nSamples);
-                final int iChromToCopy = rand.nextInt(2);
-                haplotypesBeingCopied.add(Pair.of(iSampleToCopy, iChromToCopy));
-                final BitSet bitSet = new BitSet(2*nSamplesInPanel);
-                bitSet.set(0, 2*nSamplesInPanel - 1);
-                sharedHaplotypesBitSets.add(bitSet);
+                haplotypesBeingCopied.add(Pair.of(i, j));
+                Collections.shuffle(haplotypesBeingCopied);
                 sharedHaplotypeIndexBoundaries[2*i+j][0] = 0;
                 sharedHaplotypeIndexBoundaries[2*i+j][1] = 2*nSamplesInPanel - 1;
                 suffixArray[2*i + j] = 2*i + j;
@@ -112,35 +109,38 @@ public class ScrambleReferencePanel extends VariantWalker {
     }
 
     private void switchHaplotypeArray(final int hapToChange, final int nSamples) {
-        final int iSampleToChangeTo = rand.nextInt(nSamples);
-        final int hapToChangeTo = rand.nextInt(2);
-
-        haplotypesBeingCopied.set(hapToChange, Pair.of(iSampleToChangeTo, hapToChangeTo));
-        sharedHaplotypesBitSets.get(hapToChange).set(0, 2*nSamples - 1);
+        final int hapToChangeTo = rand.nextInt(2*nSamples);
+        final Pair<Integer, Integer> hapToSwap1 = haplotypesBeingCopied.get(hapToChange);
+        final Pair<Integer, Integer> hapToSwap2 = haplotypesBeingCopied.get(hapToChangeTo);
+        haplotypesBeingCopied.set(hapToChange, hapToSwap2);
+        haplotypesBeingCopied.set(hapToChangeTo, hapToSwap1);
         sharedHaplotypeIndexBoundaries[hapToChange][0] = 0;
         sharedHaplotypeIndexBoundaries[hapToChange][1] = 2*nSamples - 1;
-    }
+        haplotypeLengths[hapToChange] = 0;
 
-    private boolean checkForRareHaplotype(final int iHap, final int allele) {
-        final BitSet sharedHaplotypesBitSet = sharedHaplotypesBitSets.get(iHap);
-        final BitSet sharedHaplotypesThisAlleleBitSet = alleleHaplotypesBitSets.get(allele);
-
-        sharedHaplotypesBitSet.and(sharedHaplotypesThisAlleleBitSet);
-
-        return sharedHaplotypesBitSet.cardinality() < minSharedHaplotypes;
+        sharedHaplotypeIndexBoundaries[hapToChangeTo][0] = 0;
+        sharedHaplotypeIndexBoundaries[hapToChangeTo][1] = 2*nSamples - 1;
+        haplotypeLengths[hapToChangeTo] = 0;
     }
 
     private boolean checkForRareHaplotype_suffixArray(final int iHap, final int allele, final int indexNewStart) {
         final int firstIndex = sharedHaplotypeIndexBoundaries[iHap][0];
         final int lastIndex = sharedHaplotypeIndexBoundaries[iHap][1];
 
-        final BitSet sharedHaplotypesThisAlleleBitSet = alleleHaplotypesBitSets_suffixArrays.get(allele).get(firstIndex, lastIndex + 1);
-        final int newFirstIndex = indexNewSubgroups[sharedHaplotypesThisAlleleBitSet.nextSetBit(0) + firstIndex] + indexNewStart;
-        final int cardinality = sharedHaplotypesThisAlleleBitSet.cardinality();
-        final int newLastIndex = newFirstIndex + cardinality - 1;
-
+//        if(firstIndex<0 || lastIndex<0) {
+//            System.out.println("hmm");
+//        }
+        final int cardinality = alleleCountsAboveInSuffixArray[lastIndex][allele] - alleleCountsAboveInSuffixArray[firstIndex][allele] +
+                (indexNextAlleleOccuranceInSuffixArray[lastIndex][allele] == lastIndex? 1 : 0);
+        final int newFirstIndexSubgroup = indexNewSubgroups[indexNextAlleleOccuranceInSuffixArray[firstIndex][allele]];
+        final int newFirstIndex = newFirstIndexSubgroup >= 0 ? newFirstIndexSubgroup + indexNewStart : -1;
+        final int newLastIndex = newFirstIndex >= 0 ? newFirstIndex + cardinality - 1 : -1;
         sharedHaplotypeIndexBoundaries[iHap][0] = newFirstIndex;
         sharedHaplotypeIndexBoundaries[iHap][1] = newLastIndex;
+
+//        if(cardinality < minSharedHaplotypes) {
+//            System.out.println("hmm");
+//        }
 
         return cardinality < minSharedHaplotypes;
     }
@@ -165,19 +165,9 @@ public class ScrambleReferencePanel extends VariantWalker {
         final GenotypesContext genotypes = GenotypesContext.create(nSamples);
         final GenotypesContext oldGenotypes = variant.getGenotypes();
 
-        //fill allele bitSets
-//        alleleHaplotypesBitSets.clear();
-//        for (int i=0; i<variant.getNAlleles(); i++) {
-//            alleleHaplotypesBitSets.add(new BitSet(variant.getNSamples()));
+//        if (variant.getStart() == 904989) {
+//            System.out.println("hmm");
 //        }
-//
-//        for (int i=0; i<oldGenotypes.size(); i++) {
-//            for (int j=0; j<2; j++) {
-//                final Allele allele = oldGenotypes.get(i).getAllele(j);
-//                alleleHaplotypesBitSets.get(variant.getAlleleIndex(allele)).set(getBitSetIndex(i, j));
-//            }
-//        }
-
         //build new suffix array
         alleleHaplotypesBitSets_suffixArrays.clear();
         final List<List<Integer>> newSuffixArray = new ArrayList<>();
@@ -188,6 +178,14 @@ public class ScrambleReferencePanel extends VariantWalker {
 
 
 
+        if (variant.getNAlleles() > currentNAlleles || currentNAlleles > 5) {
+            alleleCountsAboveInSuffixArray = new int[2 * variant.getNSamples()][variant.getNAlleles()];
+            indexNextAlleleOccuranceInSuffixArray = new int[2 * variant.getNSamples()][variant.getNAlleles()];
+            currentNAlleles = variant.getNAlleles();
+        }
+
+        final int[] unfilledNextAllelesIndecies = new int[variant.getNAlleles()];
+        int prevAlleleIndex = 0;
         for (int i=0; i<suffixArray.length; i++) {
             final int iHap = suffixArray[i];
             final int iSample = iHap/2;
@@ -198,27 +196,60 @@ public class ScrambleReferencePanel extends VariantWalker {
             indexNewSubgroups[i] = newSubgroup.size();
             newSubgroup.add(iSample*2 + iChrom);
             alleleHaplotypesBitSets_suffixArrays.get(alleleIndex).set(i);
+            if (i>0) {
+                alleleCountsAboveInSuffixArray[i]=Arrays.copyOf(alleleCountsAboveInSuffixArray[i-1],variant.getNAlleles());
+                alleleCountsAboveInSuffixArray[i][prevAlleleIndex]++;
+            }
+            for (int j=unfilledNextAllelesIndecies[alleleIndex]; j<=i; j++) {
+                indexNextAlleleOccuranceInSuffixArray[j][alleleIndex] = i;
+            }
+            unfilledNextAllelesIndecies[alleleIndex] = i+1;
+            prevAlleleIndex = alleleIndex;
         }
+
+        //fill in end of indexNextAlleleOccuranceInSuffixArray
+        for (int i=0; i<variant.getNAlleles(); i++) {
+            for (int j=unfilledNextAllelesIndecies[i]; j<indexNextAlleleOccuranceInSuffixArray.length; j++) {
+                indexNextAlleleOccuranceInSuffixArray[j][i] = -1;
+            }
+        }
+
+        //check that there is more than one allele with AC>minSharedHaplotypes
+        int allowedAllele = -1;
+        int allowedAlleleCount = 0;
+        for (int iAllele = 0; iAllele < variant.getNAlleles(); iAllele++) {
+            if (alleleCountsAboveInSuffixArray[alleleCountsAboveInSuffixArray.length - 1][iAllele] +
+                    ((indexNextAlleleOccuranceInSuffixArray[alleleCountsAboveInSuffixArray.length - 1][iAllele] == alleleCountsAboveInSuffixArray.length - 1) ? 1 : 0) >= minSharedHaplotypes) {
+                allowedAllele = iAllele;
+                allowedAlleleCount++;
+            }
+        }
+
+        if (allowedAlleleCount < 2) {
+            final Allele onlyAllowedAllele = variant.getAlleles().get(allowedAllele);
+            final List<Allele> alleles = Arrays.asList(onlyAllowedAllele, onlyAllowedAllele);
+            for(int i=0; i<nSamples; i++) {
+                final Genotype newGenotype = new GenotypeBuilder("sample_" + i, alleles).phased(true).make();
+                genotypes.add(newGenotype);
+            }
+
+            newVC.genotypes(genotypes);
+            vcfWriter.add(newVC.make());
+
+            for (int i=0;i<haplotypeLengths.length; i++) {
+                haplotypeLengths[i]++;
+            }
+
+            return;
+
+        }
+
 
         final List<Integer> newSuffixArrayStartIndecies = new ArrayList<>();
         newSuffixArrayStartIndecies.add(0);
         for (int i=1; i<newSuffixArray.size(); i++) {
             newSuffixArrayStartIndecies.add(newSuffixArrayStartIndecies.get(i-1) + newSuffixArray.get(i-1).size());
         }
-
-
-        //check for rare haplotypes
-//        for (int iHap=0; iHap<haplotypesBeingCopied.size(); iHap++) {
-//            Pair<Integer, Integer> currentHap = haplotypesBeingCopied.get(iHap);
-//            Allele allele = oldGenotypes.get(currentHap.getLeft()).getAllele(currentHap.getRight());
-//
-//            while(checkForRareHaplotype(iHap, variant.getAlleleIndex(allele))) {
-//                switchHaplotypeArray(iHap, variant.getNSamples());
-//                currentHap = haplotypesBeingCopied.get(iHap);
-//                allele = oldGenotypes.get(currentHap.getLeft()).getAllele(currentHap.getRight());
-//                blockCounter = 0;
-//            }
-//        }
 
         for (int iHap=0; iHap<haplotypesBeingCopied.size(); iHap++) {
             Pair<Integer, Integer> currentHap = haplotypesBeingCopied.get(iHap);
@@ -262,6 +293,10 @@ public class ScrambleReferencePanel extends VariantWalker {
         newVC.genotypes(genotypes);
 
         vcfWriter.add(newVC.make());
+
+        for (int i=0;i<haplotypeLengths.length; i++) {
+            haplotypeLengths[i]++;
+        }
     }
 
     @Override
