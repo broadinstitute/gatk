@@ -22,11 +22,8 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -45,10 +42,10 @@ public class ScrambleReferencePanel extends VariantWalker {
     public GATKPath outPath;
     private VariantContextWriter vcfWriter;
 
-    final private LinkedHashMap<String, List<Pair<Integer, Integer>>> samplesToOldIndexMap = new LinkedHashMap<>();
+    final private List<Pair<Integer, Integer>> haplotypesBeingCopied = new ArrayList<>();
 
-    final private LinkedHashMap<Allele, BitSet> allelesToHaplotypesBitSetMap = new LinkedHashMap<>();
-    final private LinkedHashMap<Pair<String, Integer>, BitSet> sharedHaplotypesBitSetMap = new LinkedHashMap<>();
+    final private List<BitSet> alleleHaplotypesBitSets = new ArrayList<>();
+    final private List<BitSet> sharedHaplotypesBitSets = new ArrayList<>();
 
     final private Random rand = new Random();
     private int nextChange;
@@ -68,13 +65,14 @@ public class ScrambleReferencePanel extends VariantWalker {
         final List<String> sampleNames = new ArrayList<>();
         for (int i=0; i<nSamples; i++) {
             final String sampleName = "sample_" + i;
-            samplesToOldIndexMap.put(sampleName, Arrays.asList(Pair.of(i, 0), Pair.of(i, 1)));
-            final BitSet bitSet0 = new BitSet(2*nSamplesInPanel);
-            bitSet0.set(0, 2*nSamplesInPanel - 1);
-            sharedHaplotypesBitSetMap.put(Pair.of(sampleName, 0), bitSet0);
-            final BitSet bitSet1 = new BitSet(2*nSamplesInPanel);
-            bitSet1.set(0, 2*nSamplesInPanel - 1);
-            sharedHaplotypesBitSetMap.put(Pair.of(sampleName, 1), bitSet1);
+            for (int j=0; j<2; j++) {
+                final int iSampleToCopy = rand.nextInt(nSamples);
+                final int iChromToCopy = rand.nextInt(2);
+                haplotypesBeingCopied.add(Pair.of(iSampleToCopy, iChromToCopy));
+                final BitSet bitSet = new BitSet(2*nSamplesInPanel);
+                bitSet.set(0, 2*nSamplesInPanel - 1);
+                sharedHaplotypesBitSets.add(bitSet);
+            }
             sampleNames.add(sampleName);
         }
         final Set<VCFHeaderLine> metaData = inputHeader.getMetaDataInInputOrder();
@@ -100,27 +98,25 @@ public class ScrambleReferencePanel extends VariantWalker {
         return (int) (Math.log(1-rand.nextDouble())/(-0.1));
     }
 
-    private void switchHaplotype(final String sampleToChange, final int hapToChange, final int nSamples) {
+    private void switchHaplotypeArray(final int hapToChange, final int nSamples) {
         final int iSampleToChangeTo = rand.nextInt(nSamples);
         final int hapToChangeTo = rand.nextInt(2);
 
-        final List<Pair<Integer, Integer>> currentHaps = samplesToOldIndexMap.get(sampleToChange);
-        currentHaps.set(hapToChange, Pair.of(iSampleToChangeTo, hapToChangeTo));
-        //sharedHaplotypesMap.get(Pair.of(sampleToChange, hapToChange)).clear();
-        sharedHaplotypesBitSetMap.get(Pair.of(sampleToChange, hapToChange)).set(0, 2*nSamples - 1);
+        haplotypesBeingCopied.set(hapToChange, Pair.of(iSampleToChangeTo, hapToChangeTo));
+        sharedHaplotypesBitSets.get(hapToChange).set(0, 2*nSamples - 1);
     }
 
-    private boolean checkForRareHaplotype(final String sample, final int iHap, final Allele allele) {
-        final BitSet sharedHaplotypesBitSet = sharedHaplotypesBitSetMap.get(Pair.of(sample, iHap));
-        final BitSet sharedHaplotypesThisAlleleBitSet = allelesToHaplotypesBitSetMap.get(allele);
+    private boolean checkForRareHaplotype(final int iHap, final int allele) {
+        final BitSet sharedHaplotypesBitSet = sharedHaplotypesBitSets.get(iHap);
+        final BitSet sharedHaplotypesThisAlleleBitSet = alleleHaplotypesBitSets.get(allele);
 
         sharedHaplotypesBitSet.and(sharedHaplotypesThisAlleleBitSet);
 
         return sharedHaplotypesBitSet.cardinality() < minSharedHaplotypes;
     }
 
-    private int getBitSetIndex(final Pair<Integer, Integer> hap) {
-        return hap.getLeft() * 2 + hap.getRight();
+    private int getBitSetIndex(final int sample, final int chrom) {
+        return sample * 2 + chrom;
     }
 
     @Override
@@ -132,68 +128,53 @@ public class ScrambleReferencePanel extends VariantWalker {
 
             final int iSampleToChange = rand.nextInt(nSamples);
             final int hapToChange = rand.nextInt(2);
-            final String sampleToChange = "sample_" + iSampleToChange;
-            switchHaplotype(sampleToChange, hapToChange, variant.getNSamples());
+            switchHaplotypeArray(getBitSetIndex(iSampleToChange, hapToChange), variant.getNSamples());
         } else {
             blockCounter++;
         }
         final GenotypesContext genotypes = GenotypesContext.create(nSamples);
         final GenotypesContext oldGenotypes = variant.getGenotypes();
 
-        //fill allele to haplotypeMap
-//        allelesToHaplotypesMap.clear();
-//        for (final Allele allele : variant.getAlleles()) {
-//            allelesToHaplotypesMap.put(allele, new HashSet<>());
-//        }
-//
-//        for (int i=0; i<oldGenotypes.size(); i++) {
-//            for (int j=0; j<2; j++) {
-//                final Allele allele = oldGenotypes.get(i).getAllele(j);
-//                allelesToHaplotypesMap.get(allele).add(Pair.of(i,j));
-//            }
-//        }
-
-        //fill allele to haplotype bitsets
-        allelesToHaplotypesBitSetMap.clear();
-        for (final Allele allele : variant.getAlleles()) {
-            allelesToHaplotypesBitSetMap.put(allele, new BitSet(variant.getNSamples()));
+        //fill allele bitSets
+        alleleHaplotypesBitSets.clear();
+        for (int i=0; i<variant.getNAlleles(); i++) {
+            alleleHaplotypesBitSets.add(new BitSet(variant.getNSamples()));
         }
 
         for (int i=0; i<oldGenotypes.size(); i++) {
             for (int j=0; j<2; j++) {
                 final Allele allele = oldGenotypes.get(i).getAllele(j);
-                allelesToHaplotypesBitSetMap.get(allele).set(getBitSetIndex(Pair.of(i,j)));
+                alleleHaplotypesBitSets.get(variant.getAlleleIndex(allele)).set(getBitSetIndex(i, j));
             }
         }
 
         //check for rare haplotypes
-        for (final String sample : samplesToOldIndexMap.keySet()) {
-            final List<Pair<Integer, Integer>> currentHaps = samplesToOldIndexMap.get(sample);
-            for (int i=0; i<2; i++) {
-                Pair<Integer, Integer> hap = currentHaps.get(i);
-                Allele allele = oldGenotypes.get(hap.getLeft()).getAllele(hap.getRight());
+        for (int iHap=0; iHap<haplotypesBeingCopied.size(); iHap++) {
+            Pair<Integer, Integer> currentHap = haplotypesBeingCopied.get(iHap);
+            Allele allele = oldGenotypes.get(currentHap.getLeft()).getAllele(currentHap.getRight());
 
-                while (checkForRareHaplotype(sample, i, allele)) {
-                    //haplotype is rare so need to switch
-                    switchHaplotype(sample, i, variant.getNSamples());
-                    hap = samplesToOldIndexMap.get(sample).get(i);
-                    allele = oldGenotypes.get(hap.getLeft()).getAllele(hap.getRight());
-                }
-
+            while(checkForRareHaplotype(iHap, variant.getAlleleIndex(allele))) {
+                switchHaplotypeArray(iHap, variant.getNSamples());
+                currentHap = haplotypesBeingCopied.get(iHap);
+                allele = oldGenotypes.get(currentHap.getLeft()).getAllele(currentHap.getRight());
+                blockCounter = 0;
             }
         }
 
-        for (final Map.Entry<String, List<Pair<Integer, Integer>>> entry : samplesToOldIndexMap.entrySet()) {
+        for(int i=0; i<nSamples; i++) {
             final List<Allele> alleles = new ArrayList<>();
-            for (final Pair<Integer, Integer> hap : entry.getValue()) {
-                final Genotype genotype = oldGenotypes.get(hap.getLeft());
-                final Allele allele = genotype.getAllele(hap.getRight());
+            for (int j=0; j<2; j++) {
+                final int iHap = getBitSetIndex(i, j);
+                final Pair<Integer, Integer> hapToCopy = haplotypesBeingCopied.get(iHap);
+                final Genotype genotype = oldGenotypes.get(hapToCopy.getLeft());
+                final Allele allele = genotype.getAllele(hapToCopy.getRight());
                 alleles.add(allele);
             }
 
-            final Genotype newGenotype = new GenotypeBuilder(entry.getKey(),alleles).phased(true).make();
+            final Genotype newGenotype = new GenotypeBuilder("sample_"+i,alleles).phased(true).make();
             genotypes.add(newGenotype);
         }
+
         newVC.genotypes(genotypes);
 
         vcfWriter.add(newVC.make());
