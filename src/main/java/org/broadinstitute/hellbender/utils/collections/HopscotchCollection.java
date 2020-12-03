@@ -44,7 +44,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
 
     protected static final double LOAD_FACTOR = .85;
     private static final int NO_ELEMENT_INDEX = -1;
-    private static final int SPREADER = 241;
+    protected static final int SPREADER = 241;
 
     /** make a small HopscotchCollection */
     public HopscotchCollection() { this(12000); }

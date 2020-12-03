@@ -1,15 +1,11 @@
-package org.broadinstitute.hellbender.tools.walkers;
+package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.tools.PrintDistantMates;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
 import java.util.List;
 
 public class PrintDistantMatesUnitTest {
