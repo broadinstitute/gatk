@@ -180,7 +180,7 @@ if __name__ == "__main__":
     # main task
     main_task = gcnvkernel.CohortDenoisingAndCallingMainTask(
         main_denoising_config, main_calling_config, main_inference_params,
-        shared_workspace, initial_params_supplier, warm_up_task)
+        shared_workspace, initial_params_supplier, warm_up_task, "~/model", "~/calls", "~/opt")
 
     # go!
     main_task.engage()

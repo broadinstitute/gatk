@@ -349,12 +349,17 @@ class HybridInferenceTask(InferenceTask):
                     break
                 else:  # reset ADVI convergence tracker so that ADVI is run again
                     self.advi_convergence_tracker.reset_convergence_counter()
+                self.save_state()
             if all_converged:
                 _logger.info("Inference task completed successfully and convergence achieved.")
             else:
                 _logger.warning("Inference task completed successfully but convergence not achieved.")
         except KeyboardInterrupt:
             pass
+
+    @abstractmethod
+    def save_state(self):
+        pass
 
     def _log_start(self, task_name: str, i_epoch: int):
         self._t0 = time.time()

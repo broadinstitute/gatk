@@ -7,6 +7,7 @@ import theano as th
 
 from .inference_task_base import Sampler, Caller, CallerUpdateSummary, HybridInferenceTask, HybridInferenceParameters
 from .. import config, types
+from ..io.io_denoising_calling import DenoisingModelWriter, SampleDenoisingAndCallingPosteriorsWriter
 from ..models.model_denoising_calling import DenoisingModel, DenoisingModelConfig, \
     CopyNumberEmissionBasicSampler, InitialModelParametersSupplier, \
     DenoisingCallingWorkspace, CopyNumberCallingConfig, HHMMClassAndCopyNumberBasicCaller
@@ -156,8 +157,18 @@ class CohortDenoisingAndCallingMainTask(HybridInferenceTask):
                  hybrid_inference_params: HybridInferenceParameters,
                  shared_workspace: DenoisingCallingWorkspace,
                  initial_param_supplier: InitialModelParametersSupplier,
-                 warm_up_task: Optional[CohortDenoisingAndCallingWarmUpTask]):
+                 warm_up_task: Optional[CohortDenoisingAndCallingWarmUpTask],
+                 output_model_path: str,
+                 output_calls_path: str,
+                 output_opt_path: str):
         _logger.info("Instantiating the denoising model (main)...")
+        self.denosing_config = denoising_config
+        self.calling_config = calling_config
+        self.shared_workspace = shared_workspace
+        self.output_model_path = output_model_path
+        self.output_calls_path = output_calls_path
+        self.output_opt_path = output_opt_path
+
         denoising_model = DenoisingModel(
             denoising_config, shared_workspace, initial_param_supplier)
 
@@ -202,3 +213,16 @@ class CohortDenoisingAndCallingMainTask(HybridInferenceTask):
 
     def disengage(self):
         pass
+
+    def save_state(self):
+        # save model's current state
+        DenoisingModelWriter(self.denosing_config, self.calling_config,
+            self.shared_workspace, self.continuous_model, self.continuous_model_approx,
+            self.output_model_path)()
+
+        # save calls current state
+        SampleDenoisingAndCallingPosteriorsWriter(
+            self.denosing_config, self.calling_config, self.shared_workspace, self.continuous_model,
+            self.continuous_model_approx, self.output_calls_path)()
+
+        self.fancy_opt.save(output_opt_path)
