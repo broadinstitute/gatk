@@ -15,7 +15,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class PetTsvCreator {
@@ -24,6 +26,7 @@ public final class PetTsvCreator {
     private CommonCode.OutputType outputType;
 
     private SimpleXSVWriter petTsvWriter = null;
+    private PetTsvWriter petTsv2Writer = null;
     private PetOrcWriter petOrcWriter = null;
     private PetAvroWriter petAvroWriter = null;
     private PetParquetWriter petParquetWriter = null;
@@ -31,14 +34,13 @@ public final class PetTsvCreator {
     private final String sampleId;
     private SimpleInterval previousInterval;
     private final SAMSequenceDictionary seqDictionary;
-    private final GQStateEnum gqStateToIgnore;
+    private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<GQStateEnum>();
     private GenomeLocSortedSet coverageLocSortedSet;
     private static String PET_FILETYPE_PREFIX = "pet_";
 
-    public PetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final File outputDirectory, final CommonCode.OutputType outputType) {
+    public PetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType) {
         this.sampleId = sampleId;
         this.seqDictionary = seqDictionary;
-        this.gqStateToIgnore = gqStateToIgnore;
         this.outputType = outputType;
 
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
@@ -50,6 +52,9 @@ public final class PetTsvCreator {
                     List<String> petHeader = PetTsvCreator.getHeaders();
                     petTsvWriter = new SimpleXSVWriter(petOutputFile.toPath(), IngestConstants.SEPARATOR);
                     petTsvWriter.setHeaderLine(petHeader);
+                    break;
+                case TSV2:
+                    petTsv2Writer = new PetTsvWriter(petOutputFile.getCanonicalPath());
                     break;
                 case ORC:
                     petOrcWriter = new PetOrcWriter(petOutputFile.getCanonicalPath());
@@ -64,6 +69,10 @@ public final class PetTsvCreator {
             throw new UserException("Could not create pet outputs", e);
         }
 
+        this.gqStatesToIgnore.add(gqStateToIgnore);
+        if (dropAboveGqThreshold) {
+            this.gqStatesToIgnore.addAll(getGQStateEnumGreaterThan(gqStateToIgnore));
+        }
     }
 
     /**
@@ -112,13 +121,13 @@ public final class PetTsvCreator {
             // TODO throw an error if start and end are the same?
 
             // for each of the reference blocks with the GQ to discard, keep track of the positions for the missing insertions
-            if (PetTsvCreator.getGQStateEnum(variant.getGenotype(0).getGQ()).equals(gqStateToIgnore)) {
+            if (this.gqStatesToIgnore.contains(getGQStateEnum(variant.getGenotype(0).getGQ()))) {
                 // add interval to "covered" intervals
                 setCoveredInterval(variantChr, start, end);
             }
 
             // create PET output if the reference block's GQ is not the one to discard or its a variant
-            if (!variant.isReferenceBlock() || !PetTsvCreator.getGQStateEnum(variant.getGenotype(0).getGQ()).equals(gqStateToIgnore)) {
+            if (!variant.isReferenceBlock() || !this.gqStatesToIgnore.contains(PetTsvCreator.getGQStateEnum(variant.getGenotype(0).getGQ()))) {
 
                 // add interval to "covered" intervals
                 setCoveredInterval(variantChr, start, end);
@@ -150,6 +159,9 @@ public final class PetTsvCreator {
                     switch (outputType) {
                         case TSV:                
                             petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
+                            break;
+                        case TSV2:                
+                            petTsv2Writer.addRow(location, sampleId, state);        
                             break;
                         case ORC:
                             petOrcWriter.addRow(location, sampleId, state);        
@@ -308,6 +320,50 @@ public final class PetTsvCreator {
 
     }
 
+    // this is ugly.... I think we need to rework the enum to better handle the new use cases
+    // but just getting this going.
+    public static Set<GQStateEnum> getGQStateEnumGreaterThan(GQStateEnum s){
+        Set<GQStateEnum> ret = new HashSet<GQStateEnum>();
+
+        switch (s) {
+            case ZERO:                
+                ret.add(GQStateEnum.TEN);
+                ret.add(GQStateEnum.TWENTY);
+                ret.add(GQStateEnum.THIRTY);
+                ret.add(GQStateEnum.FORTY);
+                ret.add(GQStateEnum.FIFTY);
+                ret.add(GQStateEnum.SIXTY);
+                break;
+            case TEN:                
+                ret.add(GQStateEnum.TWENTY);
+                ret.add(GQStateEnum.THIRTY);
+                ret.add(GQStateEnum.FORTY);
+                ret.add(GQStateEnum.FIFTY);
+                ret.add(GQStateEnum.SIXTY);
+                break;
+            case TWENTY:                
+                ret.add(GQStateEnum.THIRTY);
+                ret.add(GQStateEnum.FORTY);
+                ret.add(GQStateEnum.FIFTY);
+                ret.add(GQStateEnum.SIXTY);
+                break;
+            case THIRTY:
+                ret.add(GQStateEnum.FORTY);
+                ret.add(GQStateEnum.FIFTY);
+                ret.add(GQStateEnum.SIXTY);
+                break;
+            case FORTY:
+                ret.add(GQStateEnum.FIFTY);
+                ret.add(GQStateEnum.SIXTY);
+                break;
+            case FIFTY:
+                ret.add(GQStateEnum.SIXTY);
+                break;
+        }
+
+        return ret;
+    }
+    
     public static List<String> getHeaders() {
         return Arrays.stream(PetFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
     }

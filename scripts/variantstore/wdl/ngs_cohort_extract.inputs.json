@@ -5,7 +5,7 @@
   "NgsCohortExtract.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
   "NgsCohortExtract.scatter_count": 50,
 
-  "NgsCohortExtract.gatk_override": "gs://broad-dsp-spec-ops/scratch/mshand/JointGenotyping/jars/gatk_filtering_for_export.jar",
+  "NgsCohortExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.1.8.1-153-g9c3b338-SNAPSHOT-local.jar",
 
   "NgsCohortExtract.fq_sample_table": "spec-ops-aou.kc_high_cov_ccdg.cohort_100_of_194",
   "NgsCohortExtract.fq_cohort_extract_table": "spec-ops-aou.kc_high_cov_ccdg.exported_cohort_100_test",

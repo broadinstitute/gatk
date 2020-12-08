@@ -14,6 +14,7 @@ workflow ImportGenomes {
     File vet_schema
     File metadata_schema
     String? drop_state
+    Boolean? drop_state_includes_greater_than = false
 
     Int? preemptible_tries
     File? gatk_override
@@ -39,6 +40,7 @@ workflow ImportGenomes {
         input_metrics = input_metric,
         sample_map = sample_map,
         drop_state = drop_state,
+        drop_state_includes_greater_than = drop_state_includes_greater_than,
         output_directory = output_directory,
         gatk_override = gatk_override,
         docker = docker_final,
@@ -124,6 +126,7 @@ task CreateImportTsvs {
     String output_directory
     File sample_map
     String? drop_state
+    Boolean? drop_state_includes_greater_than = false
 
     # runtime
     Int? preemptible_tries
@@ -157,6 +160,7 @@ task CreateImportTsvs {
         -V ~{input_vcf} \
         -L ~{interval_list} \
         ~{"-IG " + drop_state} \
+        --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
         ~{"-QCF " + input_metrics} \
         --mode GENOMES \
         -SNM ~{sample_map} \

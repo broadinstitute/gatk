@@ -27,7 +27,7 @@
   "NgsFilterExtract.large_disk": 1000,
   "NgsFilterExtract.huge_disk": 2000,
 
-  "NgsFilterExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.1.8.1-145-gefaac86-SNAPSHOT-local.jar",
+  "NgsFilterExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.1.8.1-153-g9c3b338-SNAPSHOT-local.jar",
 
   "NgsFilterExtract.fq_sample_table": "spec-ops-aou.kc_acmg.metadata",
   "NgsFilterExtract.fq_alt_allele_table": "spec-ops-aou.kc_acmg.alt_allele",

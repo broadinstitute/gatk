@@ -191,6 +191,7 @@ public class CommonCode {
         TSV,
         ORC,
         AVRO,
-        PARQUET
+        PARQUET,
+        TSV2
     }
 }
