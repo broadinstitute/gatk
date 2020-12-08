@@ -153,7 +153,7 @@ task CreateImportTsvs {
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
       ~{for_testing_only}
 
-      gatk --java-options "-Xmx2500m" CreateVariantIngestFiles \
+      gatk --java-options "-Xmx7500m" CreateVariantIngestFiles \
         -V ~{input_vcf} \
         -L ~{interval_list} \
         ~{"-IG " + drop_state} \
