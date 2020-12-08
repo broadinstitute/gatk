@@ -3,8 +3,7 @@
   "ImportGenomes.vet_schema": "gs://broad-dsp-spec-ops/scratch/andrea/schemas/vet_schema.relaxed.json",
   "ImportGenomes.metadata_schema": "gs://broad-dsp-spec-ops/scratch/andrea/schemas/sample_list_schema.json",
   "ImportGenomes.interval_list": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
-  "ImportGenomes.drop_state": "FORTY",
-  "ImportGenomes.drop_state_includes_greater_than": "true",  
+  "ImportGenomes.drop_state": "SIXTY",
   "ImportGenomes.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.1.8.1-153-g9c3b338-SNAPSHOT-local.jar",
 
   "ImportGenomes.project_id": "spec-ops-aou",
