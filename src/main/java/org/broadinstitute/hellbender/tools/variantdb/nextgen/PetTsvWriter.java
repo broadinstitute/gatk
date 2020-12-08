@@ -8,12 +8,9 @@ import java.nio.file.Paths;
 
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
 
-
 public class PetTsvWriter implements Closeable {
     private BufferedWriter writer;
     private final static char SEPARATOR = IngestConstants.SEPARATOR;
-
-//    static private TypeDescription schema = TypeDescription.fromString("struct<location:int,sample:int,state:char(1)>");
 
     public PetTsvWriter(String outputFile) throws IOException{
         writer = Files.newBufferedWriter(Paths.get(outputFile));
@@ -26,11 +23,11 @@ public class PetTsvWriter implements Closeable {
     }
 
     public void addRow(long location, long sampleId, String state) throws IOException {              
-        // writer.append(String.valueOf(location));
-        // writer.append(SEPARATOR);
-        // writer.append(String.valueOf(sampleId));
-        // writer.append(SEPARATOR);
-        // writer.append(state);
+        writer.append(String.valueOf(location));
+        writer.append(SEPARATOR);
+        writer.append(String.valueOf(sampleId));
+        writer.append(SEPARATOR);
+        writer.append(state);
     }
 
     public void close() throws IOException {
