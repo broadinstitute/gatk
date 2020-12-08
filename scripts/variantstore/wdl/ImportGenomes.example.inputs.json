@@ -3,11 +3,12 @@
   "ImportGenomes.vet_schema": "gs://broad-dsp-spec-ops/scratch/andrea/schemas/vet_schema.relaxed.json",
   "ImportGenomes.metadata_schema": "gs://broad-dsp-spec-ops/scratch/andrea/schemas/sample_list_schema.json",
   "ImportGenomes.interval_list": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
-  "ImportGenomes.drop_state": "SIXTY",
-  "ImportGenomes.gatk_override": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/gatk-package-4.1.8.1-149-g6b93ec6-SNAPSHOT-local.jar",
+  "ImportGenomes.drop_state": "FORTY",
+  "ImportGenomes.drop_state_includes_greater_than": "true",  
+  "ImportGenomes.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.1.8.1-153-g9c3b338-SNAPSHOT-local.jar",
 
   "ImportGenomes.project_id": "spec-ops-aou",
-  "ImportGenomes.dataset_name": "kc_import_test5",
+  "ImportGenomes.dataset_name": "kc_import_test1",
 
   "ImportGenomes.sample_map": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/test_sample_map.csv",
 
@@ -15,6 +16,6 @@
     "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/9a5be44d-c032-40ef-bd4f-8de736299484/ReblockGVCF/f02d7f4e-a19b-4d84-b0de-0750c9b3cfd9/call-Reblock/BI_NA23079_1_99000142156_SM-GXZVL_1.vcf.gz",
     "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/9a5be44d-c032-40ef-bd4f-8de736299484/ReblockGVCF/dc63b7c7-9d13-4674-8680-072ee04e9237/call-Reblock/BI_NA21987_1_99000142135_SM-GXZVB_1.vcf.gz"],
 
-  "ImportGenomes.output_directory": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/testrun1_importdir"
+  "ImportGenomes.output_directory": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/testrun2_importdir"
 }
 

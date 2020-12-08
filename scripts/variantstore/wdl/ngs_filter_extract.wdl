@@ -448,7 +448,7 @@ task SNPsVariantRecalibrator {
                                 dbsnp_resource_vcf],
                      "GiB"))
   Int machine_mem = select_first([machine_mem_gb, if auto_mem < 7 then 7 else auto_mem])
-  Int java_mem = machine_mem - 1
+  Int java_mem = machine_mem - 3
 
 
   String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT --output-tranches-for-scatter" else ""
@@ -458,7 +458,7 @@ task SNPsVariantRecalibrator {
 
     MODEL_REPORT=~{model_report}
 
-    gatk --java-options -Xms~{java_mem}g \
+    gatk --java-options -Xmx~{java_mem}g \
       VariantRecalibrator \
       -V ~{sites_only_variant_filtered_vcf} \
       -O ~{recalibration_filename} \
@@ -480,7 +480,7 @@ task SNPsVariantRecalibrator {
     memory: "~{machine_mem} GiB"
     cpu: 2
     disks: "local-disk " + disk_size + " HDD"
-    preemptible: 1
+    preemptible: 0
     docker: gatk_docker
   }
 

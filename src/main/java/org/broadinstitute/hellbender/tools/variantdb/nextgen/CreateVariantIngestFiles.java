@@ -62,6 +62,12 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public PetTsvCreator.GQStateEnum gqStateToIgnore = null;
 
+    @Argument(fullName = "ignore-above-gq-threshold",
+    shortName = "GTIG",
+    doc = "in addition to dropping the gq block specified by ref-block-gq-to-ignore, also drop higher gq blocks",
+    optional = true)
+    public boolean dropAboveGqThreshold = false;
+
     @Argument(fullName = "sample-name-mapping",
             shortName = "SNM",
             doc = "Sample name to sample id mapping",
@@ -145,7 +151,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        petTsvCreator = new PetTsvCreator(sampleName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, outputDir, outputType);
+        petTsvCreator = new PetTsvCreator(sampleName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType);
         switch (mode) {
             case EXOMES:
             case GENOMES:
