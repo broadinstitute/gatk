@@ -42,6 +42,10 @@ public class ScrambleReferencePanel extends VariantWalker {
 
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     public GATKPath outPath;
+
+    @Argument(shortName = "minShared", optional = true)
+    final private int minSharedHaplotypes = 5;
+
     private VariantContextWriter vcfWriter;
 
     final private List<Pair<Integer, Integer>> haplotypesBeingCopied = new ArrayList<>();
@@ -58,7 +62,6 @@ public class ScrambleReferencePanel extends VariantWalker {
     final private Random rand = new Random();
     private int nextChange;
     private int blockCounter = 0;
-    final private int minSharedHaplotypes = 5;
 
     @Override
     public void onTraversalStart() {
