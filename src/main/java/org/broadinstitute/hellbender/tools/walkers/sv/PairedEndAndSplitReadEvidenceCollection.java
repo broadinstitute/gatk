@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -27,6 +26,7 @@ import java.util.*;
 import java.util.function.Predicate;
 
 import static htsjdk.samtools.SAMSequenceRecord.UNAVAILABLE_SEQUENCE_INDEX;
+import static org.broadinstitute.hellbender.utils.read.ReadUtils.isBaseInsideAdaptor;
 
 /**
  * Creates discordant read pair and split read evidence files for use in the GATK-SV pipeline.
@@ -148,14 +148,14 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         final List<ReadFilter> readFilters = new ArrayList<>(super.getDefaultReadFilters());
         readFilters.add(ReadFilterLibrary.MAPPED);
         readFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
-        readFilters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
-        readFilters.add(ReadFilterLibrary.NOT_SUPPLEMENTARY_ALIGNMENT);
         return readFilters;
     }
 
     @Override
     public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        if ( read.isPaired() && !read.mateIsUnmapped() && !read.isProperlyPaired() ) {
+        if ( read.isPaired() &&
+                !read.mateIsUnmapped() && !read.isProperlyPaired() &&
+                !read.isSupplementaryAlignment() && !read.isSecondaryAlignment() ) {
             if ( isSoftClipped(read) ) {
                 countSplitRead(read, splitPosBuffer, srWriter);
             }
@@ -570,7 +570,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
                         if ( locusCounts.compareTo(opEnd) >= 0 ) {
                             break;
                         }
-                        if ( opStart.compareTo(locusCounts) <= 0 ) {
+                        if ( opStart.compareTo(locusCounts) <= 0 &&
+                                !isBaseInsideAdaptor(read, locusCounts.getPosition() )) {
                             final int callIdx =
                                     readIdx + locusCounts.getPosition() - opStart.getPosition();
                             if ( quals[callIdx] < minQ ) {
@@ -664,14 +665,14 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
                 writer.write(Integer.toString(locusCounts.getPosition()));
                 writer.write('\t');
                 final int refIdx = locusCounts.getRefIdx();
-                writer.write(Integer.toString(locusCounts.getCount(refIdx)));
+                final int refCount = locusCounts.getCount(refIdx);
+                writer.write(Integer.toString(refCount));
                 writer.write('\t');
-                final int altIdx = locusCounts.getAltIdx();
-                writer.write(Integer.toString(
-                            altIdx == LocusCounts.NO_ALT_IDX ? 0 : locusCounts.getCount(altIdx)));
+                writer.write(Integer.toString(locusCounts.getTotalCounts() - refCount));
                 writer.write('\t');
                 writer.write("ACGT".charAt(refIdx));
                 writer.write('\t');
+                final int altIdx = locusCounts.getAltIdx();
                 writer.write(altIdx == LocusCounts.NO_ALT_IDX ? 'N' : "ACGT".charAt(altIdx));
                 writer.newLine();
             } catch ( final IOException ioe ) {
@@ -736,5 +737,6 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         public int getCount( final int idx ) {
             return counts[idx];
         }
+        public int getTotalCounts() { return counts[0] + counts[1] + counts[2] + counts[3]; }
     }
 }
