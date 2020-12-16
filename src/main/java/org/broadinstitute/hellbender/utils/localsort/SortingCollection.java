@@ -171,7 +171,7 @@ public class SortingCollection<T> implements Iterable<T> {
                 long endMem = Runtime.getRuntime().freeMemory();
 
                 long usedBytes = endMem - startMem;
-                log.debug(String.format("%d records in ram required approximately %s memory or %s per record. ", maxRecordsInRam,
+                log.info(String.format("%d records in ram required approximately %s memory or %s per record. ", maxRecordsInRam,
                         StringUtil.humanReadableByteCount(usedBytes),
                         StringUtil.humanReadableByteCount(usedBytes / maxRecordsInRam)));
 

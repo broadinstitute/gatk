@@ -10,6 +10,7 @@ WITH
                WHERE sample_id IN (SELECT sample_id FROM `@sample`)
                @locationStanza
                @trainingSitesStanza
+               AND SAFE_CAST(as_qualapprox as FLOAT64) >= CASE WHEN LENGTH(ref) = LENGTH(allele) THEN @snpQualThreshold ELSE @indelQualThreshold END
                GROUP BY 1,2 HAVING SUM(ad) > 1
         ) 
         GROUP BY location),
@@ -22,6 +23,7 @@ WITH
                SELECT DISTINCT location, sample_id, sb_ref_plus, sb_ref_minus
                FROM `@altAllele`
                WHERE sample_id IN (SELECT sample_id FROM `@sample`)
+               AND SAFE_CAST(as_qualapprox as FLOAT64) >= CASE WHEN LENGTH(ref) = LENGTH(allele) THEN @snpQualThreshold ELSE @indelQualThreshold END
                @locationStanza
                @trainingSitesStanza               
         ) 
@@ -65,6 +67,7 @@ WITH
            IFNULL(SUM(SB_ALT_MINUS),0) as SB_ALT_MINUS
     FROM `@altAllele` as aa
     WHERE allele != '*'
+    AND SAFE_CAST(as_qualapprox as FLOAT64) >= CASE WHEN LENGTH(aa.ref) = LENGTH(aa.allele) THEN @snpQualThreshold ELSE @indelQualThreshold END
     AND sample_id in (SELECT sample_id from `@sample` )
     @locationStanza
     @trainingSitesStanza    

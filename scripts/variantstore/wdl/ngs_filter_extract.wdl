@@ -57,6 +57,8 @@ workflow NgsFilterExtract {
         String? preemptible_tries_override
         Int preemptible_tries = select_first([preemptible_tries_override, "3"])
 
+        Int? SNP_VQSR_machine_mem_gb
+        Int? SNP_VQSR_downsampleFactor = 1
     }
     
     scatter(i in range(max_chrom_id)) {
@@ -118,7 +120,9 @@ workflow NgsFilterExtract {
           dbsnp_resource_vcf = dbsnp_resource_vcf,
           dbsnp_resource_vcf_index = dbsnp_resource_vcf_index,
           use_allele_specific_annotations = true,
-          disk_size = large_disk
+          disk_size = large_disk,
+          machine_mem_gb = SNP_VQSR_machine_mem_gb,
+          downsampleFactor= SNP_VQSR_downsampleFactor
     }
 
    call UploadFilterSetToBQ {
@@ -434,6 +438,7 @@ task SNPsVariantRecalibrator {
     File dbsnp_resource_vcf_index
     Boolean use_allele_specific_annotations
     Int max_gaussians = 6
+    Int? downsampleFactor = 1
 
     Int disk_size
     String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.9.0"
@@ -448,7 +453,7 @@ task SNPsVariantRecalibrator {
                                 dbsnp_resource_vcf],
                      "GiB"))
   Int machine_mem = select_first([machine_mem_gb, if auto_mem < 7 then 7 else auto_mem])
-  Int java_mem = machine_mem - 3
+  Int java_mem = machine_mem - 5
 
 
   String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT --output-tranches-for-scatter" else ""
@@ -468,6 +473,7 @@ task SNPsVariantRecalibrator {
       -an ~{sep=' -an ' recalibration_annotation_values} \
       ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
       -mode SNP \
+      --sample-every-Nth-variant ~{downsampleFactor} \
        ~{model_report_arg} \
       --max-gaussians ~{max_gaussians} \
       -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \

@@ -5,7 +5,9 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
+
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
@@ -13,11 +15,14 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
+import org.broadinstitute.hellbender.tools.walkers.annotator.ExcessHet;
 import org.broadinstitute.hellbender.tools.walkers.annotator.FisherStrand;
 import org.broadinstitute.hellbender.tools.walkers.annotator.QualByDepth;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandOddsRatio;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StrandBiasTest;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.GATKAvroReader;
@@ -25,6 +30,7 @@ import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollection;
 import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.util.*;
 
@@ -86,8 +92,18 @@ public class ExtractFeaturesEngine {
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
     }
+
+    // taken from GnarlyGenotypingEngine
+    private final static double INDEL_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.INDEL_HETEROZYGOSITY);
+    private final static double SNP_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.SNP_HETEROZYGOSITY);
+
     public void traverse() {
-        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, sampleListTable, minLocation, maxLocation, trainingSitesOnly);
+
+
+        final String featureQueryString = 
+
+        ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, sampleListTable, minLocation, maxLocation, trainingSitesOnly, SNP_QUAL_THRESHOLD, INDEL_QUAL_THRESHOLD);
+
         logger.info(featureQueryString);
         final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, SchemaUtils.FEATURE_EXTRACT_FIELDS, projectID, useBatchQueries);
 
@@ -197,13 +213,39 @@ public class ExtractFeaturesEngine {
         builder.attribute("AS_ReadPosRankSum", AS_ReadPosRankSum==null?".":String.format("%.3f", AS_ReadPosRankSum));
         builder.attribute("AS_SOR", String.format("%.3f", sor));
 
-        // check out 478765 -- we need to "merge" different variant  contexts  at the same position.
-        // I think if we just set the right "base" annotations it's possible the standard annotation processing
-        // merging will take care of it?
-        // Also -- is it possible to write a JS UDF like areEqual(ref1, alt2, ref2, alt2)?
-        VariantContext vc = builder.make();
-        vcfWriter.add(vc);
-        progressMeter.update(vc);
+        // ExcessHet is a phred-scaled p-value. We want a cutoff of anything more extreme
+        // than a z-score of -4.5 which is a p-value of 3.4e-06, which phred-scaled is 54.69
+        // TODO: parameterize
+        float excess_het_threshold = 54.69f;
+
+        // TODO: add ExcessHet annotation and filter by it (config)
+        // following computeDiploidGenotypeCounts        
+
+        // TODO need to get these counts from BQ
+        double genotypeWithTwoRefsCount = 0;  //i.e. 0/0
+        double genotypesWithOneRefCount = 0;  //e.g. 0/1, 0/2, etc.
+        double genotypesWithNoRefsCount = 0;  //e.g. 1/1, 1/2, 2/2, etc.
+
+        GenotypeCounts genotypeCounts = new GenotypeCounts(genotypeWithTwoRefsCount, 
+                                                           genotypesWithOneRefCount, 
+                                                           genotypesWithNoRefsCount);
+
+        // sampleCount should follow isDiploidWithLikelihoods()
+        // TODO: isn't this the same as the sum of the above (ie no no-calls?)
+        // DON'T CARE ABOUT THIS VALUE, READ cODE
+        int sampleCount = (int) genotypeCounts.getRefs() + (int) genotypeCounts.getHets() + (int) genotypeCounts.getHoms();
+
+        Pair<Integer, Double> ehResult = ExcessHet.calculateEH(genotypeCounts, sampleCount);
+
+        if (ehResult.getRight() <= excess_het_threshold) {
+            // check out 478765 -- we need to "merge" different variant  contexts  at the same position.
+            // I think if we just set the right "base" annotations it's possible the standard annotation processing
+            // merging will take care of it?
+            // Also -- is it possible to write a JS UDF like areEqual(ref1, alt2, ref2, alt2)?
+            VariantContext vc = builder.make();
+            vcfWriter.add(vc);
+            progressMeter.update(vc);
+        }
 
 
     }

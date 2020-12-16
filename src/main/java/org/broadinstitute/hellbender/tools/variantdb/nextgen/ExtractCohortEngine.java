@@ -154,9 +154,10 @@ public class ExtractCohortEngine {
                 if (printDebugInformation) {
                     logger.debug("using storage api with local sort");
                 }
-        
+                logger.debug("Initializing Reader");
                 final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);        
                 createVariantsFromUngroupedTableResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                logger.debug("Finished Initializing Reader");
                 break;
             case QUERY:
                 if (printDebugInformation) {
@@ -222,7 +223,7 @@ public class ExtractCohortEngine {
                 return Long.compare(firstPosition, secondPosition);
             }
         };
-        return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam);
+        return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam, true);
     }
 
 
@@ -239,8 +240,16 @@ public class ExtractCohortEngine {
 
         SortingCollection<GenericRecord> sortingCollection =  getAvroSortingCollection(schema, localSortMaxRecordsInRam);
 
+        int recordsProcessed = 0;
+        long startTime = System.currentTimeMillis();
+    
         for ( final GenericRecord queryRow : avroReader ) {
             sortingCollection.add(queryRow);
+            if (recordsProcessed++ % 1000000 == 0) {
+                long endTime = System.currentTimeMillis();
+                logger.info("Processed " + recordsProcessed + " from BigQuery Read API in " + (endTime-startTime) + " ms");
+                startTime = endTime;
+            }
         }
 
         sortingCollection.printTempFileStats();

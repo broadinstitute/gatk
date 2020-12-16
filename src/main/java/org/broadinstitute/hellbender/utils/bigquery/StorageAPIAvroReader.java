@@ -52,6 +52,8 @@ public class StorageAPIAvroReader implements GATKAvroReader {
     public StorageAPIAvroReader(final TableReference tableRef, final String rowRestriction, String parentProjectId) {
 
         try {
+            logger.info("Using Storage API from " + tableRef + " with '" + rowRestriction + "'");
+
             this.client = BigQueryStorageClient.create();
 
             final String parent = String.format("projects/%s", parentProjectId == null || parentProjectId.isEmpty() ? tableRef.tableProject : parentProjectId);

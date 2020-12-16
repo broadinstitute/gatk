@@ -108,6 +108,7 @@ public final class GnarlyGenotyperEngine {
         final boolean hasSnpAllele = variant.getAlternateAlleles().stream().anyMatch(allele -> allele != Allele.SPAN_DEL && allele.length() == variant.getReference().length());
         final boolean isIndel = !hasSnpAllele;
         final double sitePrior = isIndel ? HomoSapiensConstants.INDEL_HETEROZYGOSITY : HomoSapiensConstants.SNP_HETEROZYGOSITY;
+        System.out.println("KCIBUL -- in the qualapprox w/ " + QUALapprox + " for isIndel " + isIndel + " and SNP:" + SNP_QUAL_THRESHOLD + " and INDEL:" + INDEL_QUAL_THRESHOLD);
         if((isIndel && QUALapprox < INDEL_QUAL_THRESHOLD) || (!isIndel && QUALapprox < SNP_QUAL_THRESHOLD)) {
             if (keepAllSites) {
                 final VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
@@ -157,6 +158,8 @@ public final class GnarlyGenotyperEngine {
         }
 
         if (!keepAllSites) {
+            System.out.println("KCIBUL -- in the QD Check");
+
             vcfBuilder.rmAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY);
         }
 
@@ -254,6 +257,8 @@ public final class GnarlyGenotyperEngine {
                         vcfBuilder.attribute(annotation.getKeyNames().get(0), trimASAnnotation(vcfBuilder.make(), targetAlleles, annotation.getKeyNames().get(0)));
                     }
                     if (!keepAllSites && variant.hasAttribute(ann.getRawKeyNames().get(0))) {
+                        System.out.println("KCIBUL -- in the AS Check");
+
                         vcfBuilder.rmAttribute(ann.getRawKeyNames().get(0));
                     }
                 }
@@ -264,6 +269,8 @@ public final class GnarlyGenotyperEngine {
         }
         //since AS_FS and AS_SOR share the same raw key, we have to wait to remove raw keys until all the finalized values are added
         if (!keepAllSites) {
+            System.out.println("KCIBUL -- in the ??? Check");
+
             for (final Class c : allASAnnotations) {
                 try {
                     final InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.getDeclaredConstructor().newInstance();
