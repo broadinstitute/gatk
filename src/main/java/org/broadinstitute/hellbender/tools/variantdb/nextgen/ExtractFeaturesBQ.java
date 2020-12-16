@@ -15,7 +15,8 @@ public class ExtractFeaturesBQ {
         "broad-dsp-spec-ops.joint_genotyping_ref.vqsr_training_sites_*";
 
     public static String getVQSRFeatureExtractQueryString(final TableReference altAllele, final TableReference sampleList,
-                                                          final Long minLocation, final Long maxLocation, final boolean trainingSitesOnly) {
+                                                          final Long minLocation, final Long maxLocation, final boolean trainingSitesOnly,
+                                                          final double snpQualThreshold, final double indelQualThreshold) {
 
         String trainingSitesStanza =
             !trainingSitesOnly?"":
@@ -33,7 +34,9 @@ public class ExtractFeaturesBQ {
                 .replaceAll("@locationStanza", locationStanza)
                 .replaceAll("@trainingSitesStanza", trainingSitesStanza)
                 .replaceAll("@sample", sampleList.getFQTableName())
-                .replaceAll("@altAllele", altAllele.getFQTableName());
+                .replaceAll("@altAllele", altAllele.getFQTableName())
+                .replaceAll("@snpQualThreshold", Double.toString(snpQualThreshold))
+                .replaceAll("@indelQualThreshold", Double.toString(indelQualThreshold));
 
         } catch (Exception ioe) {
             throw new GATKException("Unable to read query file from resources", ioe);
