@@ -32,7 +32,6 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest
         # Install the ml4h Python package.
         pip install .
     - name: Test with pytest

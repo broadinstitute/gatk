@@ -8,7 +8,6 @@ pydicom==1.2.2
 hyperopt==0.1.2
 seaborn==0.9.0
 scikit-image
-scikit-survival
 biosppy
 vtk==8.1.2
 imageio==2.6.1
