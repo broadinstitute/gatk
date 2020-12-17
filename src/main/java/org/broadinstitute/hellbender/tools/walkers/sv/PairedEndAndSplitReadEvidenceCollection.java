@@ -4,16 +4,13 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.engine.ReadWalker;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -25,7 +22,6 @@ import java.io.*;
 import java.util.*;
 import java.util.function.Predicate;
 
-import static htsjdk.samtools.SAMSequenceRecord.UNAVAILABLE_SEQUENCE_INDEX;
 import static org.broadinstitute.hellbender.utils.read.ReadUtils.isBaseInsideAdaptor;
 
 /**
@@ -75,8 +71,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     public static final String SPLIT_READ_FILE_ARGUMENT_LONG_NAME = "sr-file";
     public static final String ALLELE_COUNT_FILE_ARGUMENT_SHORT_NAME = "AC";
     public static final String ALLELE_COUNT_FILE_ARGUMENT_LONG_NAME = "allele-count-file";
-    public static final String ALLELE_COUNT_LOCI_FILE_ARGUMENT_SHORT_NAME = "AL";
-    public static final String ALLELE_COUNT_LOCI_FILE_ARGUMENT_LONG_NAME = "allele-count-loci-file";
+    public static final String ALLELE_COUNT_VCF_ARGUMENT_SHORT_NAME = "F";
+    public static final String ALLELE_COUNT_VCF_ARGUMENT_LONG_NAME = "allele-count-vcf";
     public static final String SAMPLE_NAME_ARGUMENT_LONG_NAME = "sample-name";
 
     @Argument(shortName = PAIRED_END_FILE_ARGUMENT_SHORT_NAME, fullName = PAIRED_END_FILE_ARGUMENT_LONG_NAME, doc = "Output file for paired end evidence", optional=false)
@@ -91,11 +87,11 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             optional = true)
     public String alleleCountFilename;
 
-    @Argument(shortName = ALLELE_COUNT_LOCI_FILE_ARGUMENT_SHORT_NAME,
-            fullName = ALLELE_COUNT_LOCI_FILE_ARGUMENT_LONG_NAME,
-            doc = "Output file for allele counts",
+    @Argument(shortName = ALLELE_COUNT_VCF_ARGUMENT_SHORT_NAME,
+            fullName = ALLELE_COUNT_VCF_ARGUMENT_LONG_NAME,
+            doc = "Input VCF of SNPs marking loci for allele counts",
             optional = true)
-    public String locusFilename;
+    public String vcfFilename;
 
     @Argument(fullName = "allele-count-min-mapq",
             doc = "minimum mapping quality for read to be allele-counted",
@@ -137,9 +133,9 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         srWriter = createOutputFile(srFile);
 
         sequenceDictionary = getBestAvailableSequenceDictionary();
-        if ( locusFilename != null && alleleCountFilename != null ) {
+        if ( vcfFilename != null && alleleCountFilename != null ) {
             alleleCounter =
-                    new AlleleCounter(sequenceDictionary, locusFilename, alleleCountFilename, minMapQ, minQ);
+                    new AlleleCounter(sequenceDictionary, vcfFilename, alleleCountFilename, minMapQ, minQ);
         }
     }
 
@@ -170,22 +166,12 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
     private static BufferedWriter createOutputFile( final String fileName ) {
         final GATKPath path = new GATKPath(fileName);
-        if ( fileName.endsWith(".gz") || fileName.endsWith(".bgz") ) {
+        if ( fileName.endsWith(".gz") ) {
             return new BufferedWriter(
                     new OutputStreamWriter(
                             new BlockCompressedOutputStream(path.getOutputStream(), path.toPath(), 6)));
         }
         return new BufferedWriter(new OutputStreamWriter(path.getOutputStream()));
-    }
-
-    private static BufferedReader openInputFile( final String fileName ) {
-        final GATKPath path = new GATKPath(fileName);
-        if ( fileName.endsWith(".gz") || fileName.endsWith(".bgz") ) {
-            return new BufferedReader(
-                    new InputStreamReader(
-                            new BlockCompressedInputStream(path.getInputStream())));
-        }
-        return new BufferedReader(new InputStreamReader(path.getInputStream()));
     }
 
     private void reportDiscordantReadPair(final GATKRead read) {
@@ -505,27 +491,30 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     @VisibleForTesting
     final static class AlleleCounter {
         private final SAMSequenceDictionary dict;
-        private final String locusFilename;
+        private final String vcfFilename;
         private final String outputFilename;
         private final int minMapQ;
         private final int minQ;
-        private final BufferedReader reader;
+        private final Iterator<VariantContext> snpSourceItr;
         private final BufferedWriter writer;
         private final Deque<LocusCounts> locusCountsQueue;
 
         public AlleleCounter( final SAMSequenceDictionary dict,
-                              final String locusFilename,
+                              final String vcfFilename,
                               final String outputFilename,
                               final int minMapQ,
                               final int minQ ) {
             this.dict = dict;
-            this.locusFilename = locusFilename;
+            this.vcfFilename = vcfFilename;
             this.outputFilename = outputFilename;
             this.minMapQ = minMapQ;
             this.minQ = minQ;
-            reader = openInputFile(locusFilename);
-            writer = createOutputFile(outputFilename);
-            locusCountsQueue = new ArrayDeque<>(100);
+            final FeatureDataSource<VariantContext> snpSource =
+                    new FeatureDataSource<>(vcfFilename);
+            dict.assertSameDictionary(snpSource.getSequenceDictionary());
+            this.snpSourceItr = snpSource.iterator();
+            this.writer = createOutputFile(outputFilename);
+            this.locusCountsQueue = new ArrayDeque<>(100);
             readLocus();
         }
 
@@ -533,7 +522,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             if ( read.getMappingQuality() < minMapQ || locusCountsQueue.isEmpty() ) {
                 return;
             }
-            // clean queue of LocusCounts that preceed the current read
+
+            // clean queue of LocusCounts that precede the current read
             final int contigId = dict.getSequenceIndex(read.getContig());
             final Locus readStart = new Locus(contigId, read.getStart());
             while ( locusCountsQueue.getFirst().compareTo(readStart) < 0 ) {
@@ -544,6 +534,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
                     }
                 }
             }
+
             // make sure that the last LocusCount in the queue happens after the current read
             //  if such a LocusCount is available
             final Locus readEnd = new Locus(contigId, read.getEnd());
@@ -552,6 +543,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
                     break;
                 }
             }
+
             walkReadMatches(read, contigId);
         }
 
@@ -602,59 +594,33 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             } catch ( final IOException ioe ) {
                 throw new UserException("can't close allele count output file " + outputFilename, ioe);
             }
-            try {
-                reader.close();
-            } catch ( final IOException ioe ) {
-                throw new UserException("can't close allele-count locus input file " + locusFilename);
-            }
         }
 
         private boolean readLocus() {
-            final String line;
-            try {
-                line = reader.readLine();
-            } catch ( final IOException ioe ) {
-                throw new UserException("can't read allele-count locus input file " + locusFilename);
-            }
-            if ( line == null ) {
+            if ( !snpSourceItr.hasNext() ) {
                 return false;
             }
-
-            final int tabIdx1 = line.indexOf('\t');
-            if ( tabIdx1 == -1 ) {
-                return badLine(line);
+            VariantContext snp = snpSourceItr.next();
+            while ( !snp.isSNP() ) {
+                if ( !snpSourceItr.hasNext() ) {
+                    return false;
+                }
+                snp = snpSourceItr.next();
             }
-            final int tabIdx2 = line.indexOf('\t', tabIdx1 + 1);
-            if ( tabIdx2 == -1 ) {
-                return badLine(line);
-            }
-            final int contigId = dict.getSequenceIndex(line.substring(0, tabIdx1));
-            if ( contigId == UNAVAILABLE_SEQUENCE_INDEX ) {
-                return badLine(line);
-            }
-
-            final int position;
-            try {
-                position = Integer.parseInt(line.substring(tabIdx1 + 1, tabIdx2));
-            } catch ( final NumberFormatException nfe ) {
-                return badLine(line);
-            }
-
-            final Nucleotide refCall;
-            try {
-                refCall = Nucleotide.decode(line.substring(tabIdx2 + 1));
-            } catch ( final IllegalArgumentException iae ) {
-                return badLine(line);
-            }
+            final int contigId = dict.getSequenceIndex(snp.getContig());
+            final int position = snp.getStart();
+            final byte[] refSeq = snp.getReference().getBases();
+            final Nucleotide refCall = Nucleotide.decode(refSeq[0]);
             if ( !refCall.isStandard() ) {
-                return badLine(line);
+                throw new UserException("vcf contains a SNP with a non-standard reference base " +
+                        refCall + " at locus " + snp.getContig() + ":" + position);
             }
             locusCountsQueue.add(new LocusCounts(contigId, position, refCall.ordinal()));
             return true;
         }
 
         private boolean badLine( final String line ) {
-            throw new UserException("allele-count locus input file " + locusFilename +
+            throw new UserException("allele-count locus input file " + vcfFilename +
                     " contains uninterpretable line " + line);
         }
 
