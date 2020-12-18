@@ -120,7 +120,9 @@ public final class BaseUtils {
         final int start = ignoreConversionOfFirstByte ? 1 : 0;
 
         for ( int i = start; i < length; i++ ) {
-            final int baseIndex = baseIndexWithIupacMap[bases[i]];
+            // we want to make sure we treat the base as an unsigned byte....so that we can access this array with it.
+            final int unsignedBase = ((int)bases[i]) & 0xff;
+            final int baseIndex = baseIndexWithIupacMap[unsignedBase];
             if ( baseIndex == Base.N.ordinal() ) {
                 bases[i] = 'N';
             } else if ( errorOnBadReferenceBase && baseIndex == -1 ) {
@@ -137,9 +139,9 @@ public final class BaseUtils {
      * @return 0, 1, 2, 3, or -1 if the base can't be understood
      */
     public static int simpleBaseToBaseIndex(final byte base) {
-        Utils.validateArg( base >= 0 && base < 256,
-                "Non-standard bases were encountered in either the input reference or BAM file(s)");
-        return baseIndexMap[base];
+        // we want to make sure we treat the base as an unsigned byte....so that we can access this array with it.
+        final int unsignedBase = ((int)base) & 0xff;
+        return baseIndexMap[unsignedBase];
     }
 
     /**
