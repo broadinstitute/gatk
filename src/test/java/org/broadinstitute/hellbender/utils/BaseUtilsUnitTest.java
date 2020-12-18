@@ -7,10 +7,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Random;
+import java.util.*;
 
 
 public final class BaseUtilsUnitTest extends GATKBaseTest {
@@ -25,6 +22,21 @@ public final class BaseUtilsUnitTest extends GATKBaseTest {
         checkBytesAreEqual(BaseUtils.convertIUPACtoN(new byte[]{'A', 'M', 'A'}, false, false), new byte[]{'A', 'N', 'A'});
         checkBytesAreEqual(BaseUtils.convertIUPACtoN(new byte[]{'A', 'A', 'K'}, false, false), new byte[]{'A', 'A', 'N'});
         checkBytesAreEqual(BaseUtils.convertIUPACtoN(new byte[]{'M', 'M', 'M'}, false, false), new byte[]{'N', 'N', 'N'});
+    }
+
+    @DataProvider
+    Iterator<Object[]> allByteValues() {
+        final List<Object[]> bytes = new ArrayList<>(256);
+        for (int i = 0; i < 256; i++) {
+            final byte oneByte = (byte) i;
+            bytes.add(new Object[]{oneByte});
+        }
+        return bytes.iterator();
+    }
+
+    @Test(dataProvider = "allByteValues")
+    public void testCanConvertAllBytes(final byte b) {
+        BaseUtils.convertIUPACtoN(new byte[]{b, b, b}, false, false);
     }
 
     private void checkBytesAreEqual(final byte[] b1, final byte[] b2) {
