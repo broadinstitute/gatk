@@ -3,9 +3,11 @@ package org.broadinstitute.hellbender.tools.walkers.qc;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.PileupIntegrationTestUtils;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Arrays;
 
 /**
@@ -53,7 +55,8 @@ public class PileupIntegrationTest extends CommandLineProgramTest {
                 " -I " + NA12878_20_21_WGS_bam +
                 " -metadata " + dbsnp_138_b37_20_21_vcf +
                 " -O %s",
-            Arrays.asList(TEST_OUTPUT_DIRECTORY + "expectedFeaturesPileup.txt")
+            Arrays.asList(PileupIntegrationTestUtils.createFeaturesPileupTestFile(Paths.get(dbsnp_138_b37_20_21_vcf).toAbsolutePath().toString(),
+                    TEST_OUTPUT_DIRECTORY + "expectedFeaturesPileupTemplate.txt").toString())
         );
         testSpec.executeTest("testFeaturesPileup", this);
     }

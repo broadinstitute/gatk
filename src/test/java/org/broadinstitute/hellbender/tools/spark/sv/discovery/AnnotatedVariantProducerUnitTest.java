@@ -265,6 +265,6 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                 AnnotatedVariantProducer.annotateBreakpointBasedCallsWithImpreciseEvidenceLinks(
                                     inputVariants, evidenceTree, metadata, refDict, params, localLogger);
 
-        VariantContextTestUtils.assertEqualVariants(processedVariantContexts, expectedVariants);
+        VariantContextTestUtils.DEPRECATED_assertEqualVariants_DEPRECATED(processedVariantContexts, expectedVariants);
     }
 }

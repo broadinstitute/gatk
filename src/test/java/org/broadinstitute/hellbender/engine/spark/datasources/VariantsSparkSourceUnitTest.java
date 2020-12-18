@@ -52,7 +52,7 @@ public final class VariantsSparkSourceUnitTest extends GATKBaseTest {
         JavaRDD<VariantContext> rddParallelVariantContexts =
                 variantsSparkSource.getParallelVariantContexts(vcf, null);
 
-        VariantContextTestUtils.assertEqualVariants(getSerialVariantContexts(vcf), rddParallelVariantContexts.collect());
+        VariantContextTestUtils.DEPRECATED_assertEqualVariants_DEPRECATED(getSerialVariantContexts(vcf), rddParallelVariantContexts.collect());
     }
 
     @DataProvider(name = "loadMultipleVCFs")

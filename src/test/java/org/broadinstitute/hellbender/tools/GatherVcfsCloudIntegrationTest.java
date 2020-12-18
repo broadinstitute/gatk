@@ -71,7 +71,7 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
 
             final List<VariantContext> actualVariants = StreamSupport.stream(Spliterators.spliteratorUnknownSize(actualReader.iterator(),Spliterator.ORDERED), false).collect(Collectors.toList());
             final List<VariantContext> expectedVariants = StreamSupport.stream(Spliterators.spliteratorUnknownSize(expectedReader.iterator(),Spliterator.ORDERED), false).collect(Collectors.toList());
-            VariantContextTestUtils.assertEqualVariants(actualVariants, expectedVariants);
+            VariantContextTestUtils.DEPRECATED_assertEqualVariants_DEPRECATED(actualVariants, expectedVariants);
 
             Assert.assertEquals(((VCFHeader) actualReader.getHeader()).getMetaDataInInputOrder(),
                     ((VCFHeader) expectedReader.getHeader()).getMetaDataInInputOrder());
@@ -143,7 +143,7 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
 
             try (final FeatureDataSource<VariantContext> outputDataSource = new FeatureDataSource<>(output)) {
                 final List<VariantContext> actual = Lists.newArrayList(outputDataSource);
-                VariantContextTestUtils.assertEqualVariants(actual, expected);
+                VariantContextTestUtils.DEPRECATED_assertEqualVariants_DEPRECATED(actual, expected);
 
                 Assert.assertEquals(((VCFHeader) outputDataSource.getHeader()).getMetaDataInInputOrder(),
                         ((VCFHeader) input.getHeader()).getMetaDataInInputOrder());
@@ -185,7 +185,7 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
         for (int i = 0; i < partitions.size(); i++) {
             final File file = writeShard(partitions.get(i), header, shardDir, i);
             try(final FeatureDataSource<VariantContext> features = new FeatureDataSource<>(file)) {
-                VariantContextTestUtils.assertEqualVariants(Lists.newArrayList(features),       partitions.get(i));
+                VariantContextTestUtils.DEPRECATED_assertEqualVariants_DEPRECATED(Lists.newArrayList(features),       partitions.get(i));
 
             }
             list.add(file);
