@@ -129,7 +129,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     @VisibleForTesting
     static final int DEFAULT_MAX_INDEL_SIZE = 200;
 
-    public static final String MAXte_LEADING_BASES_LONG_NAME = "max-leading-bases";
+    public static final String MAX_LEADING_BASES_LONG_NAME = "max-leading-bases";
     /**
      * Output file to which to write left aligned variants
      */
