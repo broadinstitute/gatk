@@ -637,10 +637,12 @@ public final class AssemblyBasedCallerUtils {
 
         // construct a mapping from alternate allele to the set of haplotypes that contain that allele
         final Map<VariantContext, Set<Haplotype>> haplotypeMap = constructHaplotypeMapping(calls, calledHaplotypes);
+        final Set<Haplotype> haplotypesWithCalledVariants = new HashSet<>(calledHaplotypes.size());
+        haplotypeMap.values().forEach(haplotypesWithCalledVariants::addAll);
 
         // construct a mapping from call to phase set ID
         final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseSetMapping = new HashMap<>();
-        final int uniqueCounterEndValue = constructPhaseSetMapping(calls, haplotypeMap, calledHaplotypes.size() - 1, phaseSetMapping);
+        final int uniqueCounterEndValue = constructPhaseSetMapping(calls, haplotypeMap, haplotypesWithCalledVariants.size(), phaseSetMapping);
 
         // we want to establish (potential) *groups* of phased variants, so we need to be smart when looking at pairwise phasing partners
         return constructPhaseGroups(calls, phaseSetMapping, uniqueCounterEndValue);

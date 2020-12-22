@@ -1050,6 +1050,74 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         }
     }
 
+    @DataProvider(name = "PhaseCallsDataProvider")
+    public Object[][] makePhaseCallsData() {
+        List<Object[]> tests = new ArrayList<Object[]>();
+
+
+        final Allele ref = Allele.create("A", true);
+        final Allele altC = Allele.create("C", false);
+        final Allele altT = Allele.create("T", false);
+
+        final Genotype vc1GT = new GenotypeBuilder().alleles(Arrays.asList(ref, altC)).make();
+        final VariantContext vc1 = new VariantContextBuilder().chr("20").start(2).stop(2).alleles(Arrays.asList(ref, altC)).genotypes(vc1GT).make();
+        final Genotype vc2GT = new GenotypeBuilder().alleles(Arrays.asList(ref, altC)).make();
+        final VariantContext vc2 = new VariantContextBuilder().chr("20").start(3).stop(3).alleles(Arrays.asList(ref, altC)).genotypes(vc2GT).make();
+        final Genotype vc3GT = new GenotypeBuilder().alleles(Arrays.asList(ref, altT)).make();
+        final VariantContext vc3 = new VariantContextBuilder().chr("20").start(4).stop(4).alleles(Arrays.asList(ref, altT)).genotypes(vc3GT).make();
+        final Genotype vc4GT = new GenotypeBuilder().alleles(Arrays.asList(ref, altT)).make();
+        final VariantContext vc4 = new VariantContextBuilder().chr("20").start(5).stop(5).alleles(Arrays.asList(ref, altT)).genotypes(vc4GT).make();
+        final List<VariantContext> calls = Arrays.asList(vc1, vc2, vc3, vc4);
+
+        final Set<Haplotype> haplotypes = new HashSet<>();
+
+        final Haplotype hap1 = new Haplotype("ACATAA".getBytes());
+        hap1.setEventMap(new EventMap(Arrays.asList(vc1, vc3)));
+        haplotypes.add(hap1);
+
+        final Haplotype hap2 = new Haplotype("AACATA".getBytes());
+        hap2.setEventMap(new EventMap(Arrays.asList(vc2, vc4)));
+        haplotypes.add(hap2);
+
+
+        final Genotype vc1PGT = new GenotypeBuilder().alleles(Arrays.asList(ref, altC)).phased(true).make();
+        final VariantContext vc1P = new VariantContextBuilder().chr("20").start(2).stop(2).alleles(Arrays.asList(ref, altC)).genotypes(vc1PGT).make();
+        final Genotype vc2PGT = new GenotypeBuilder().alleles(Arrays.asList(altC, ref)).phased(true).make();
+        final VariantContext vc2P = new VariantContextBuilder().chr("20").start(3).stop(3).alleles(Arrays.asList(ref, altC)).genotypes(vc2PGT).make();
+        final Genotype vc3PGT = new GenotypeBuilder().alleles(Arrays.asList(ref, altT)).phased(true).make();
+        final VariantContext vc3P = new VariantContextBuilder().chr("20").start(4).stop(4).alleles(Arrays.asList(ref, altT)).genotypes(vc3PGT).make();
+        final Genotype vc4PGT = new GenotypeBuilder().alleles(Arrays.asList(altT, ref)).phased(true).make();
+        final VariantContext vc4P = new VariantContextBuilder().chr("20").start(5).stop(5).alleles(Arrays.asList(ref, altT)).genotypes(vc4PGT).make();
+        final List<VariantContext> phasedCalls = Arrays.asList(vc1P, vc2P, vc3P, vc4P);
+
+        tests.add(new Object[]{calls, haplotypes, phasedCalls});
+
+
+        // add a fifth uncalled VC and haplotype
+        final Genotype vc5GT = new GenotypeBuilder().alleles(Arrays.asList(ref, altT)).make();
+        final VariantContext vc5Uncalled = new VariantContextBuilder().chr("20").start(6).stop(6).alleles(Arrays.asList(ref, altT)).genotypes(vc5GT).make();
+
+        final Set<Haplotype> haplotypesPlusUncalledVariant = new HashSet<>(haplotypes);
+        final Haplotype hap3 = new Haplotype("AAAAAT".getBytes());
+        hap3.setEventMap(new EventMap(Arrays.asList(vc5Uncalled)));
+        haplotypesPlusUncalledVariant.add(hap3);
+
+        tests.add(new Object[]{calls, haplotypesPlusUncalledVariant, phasedCalls});
+
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider="PhaseCallsDataProvider")
+    public void testPhaseCalls(final List<VariantContext> calls, final Set<Haplotype> calledHaplotypes, final List<VariantContext> expectedPhasedCalls) {
+        final List<VariantContext> actualPhasedCalls = phaseCalls(calls, calledHaplotypes);
+        Assert.assertEquals(actualPhasedCalls.size(), expectedPhasedCalls.size());
+        for (int i = 0; i < expectedPhasedCalls.size(); i++) {
+            VariantContextTestUtils.assertVariantContextsAreEqual(actualPhasedCalls.get(i), expectedPhasedCalls.get(i), new ArrayList<>(), Collections.emptyList());
+            Assert.assertEquals(actualPhasedCalls.get(i).getSource(), expectedPhasedCalls.get(i).getSource());
+        }
+
+    }
+
     @Test
     public void testAddGivenAlleles() {
         final int assemblyRegionStart = 1;
