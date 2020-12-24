@@ -637,6 +637,9 @@ public final class AssemblyBasedCallerUtils {
 
         // construct a mapping from alternate allele to the set of haplotypes that contain that allele
         final Map<VariantContext, Set<Haplotype>> haplotypeMap = constructHaplotypeMapping(calls, calledHaplotypes);
+
+        // produce a set of the haplotypes that support called alt alleles, use it to set totalAvailableHaplotypes in the
+        // call to constructPhaseSetMapping() below so that only haplotypes that supported called variants are used for phasing
         final Set<Haplotype> haplotypesWithCalledVariants = new HashSet<>(calledHaplotypes.size());
         haplotypeMap.values().forEach(haplotypesWithCalledVariants::addAll);
 
@@ -716,7 +719,12 @@ public final class AssemblyBasedCallerUtils {
             }
 
             final boolean callIsOnAllHaps = haplotypesWithCall.size() == totalAvailableHaplotypes;
-
+            // if the call is on all haplotypes but we only use some of them to phase it with another variant
+            // we need to keep track of which ones are still active for downstream phasing.
+            // ie if the call is hom var but we phase it with a het we remove the haplotypes with ref at the
+            // comp site for the purposes of phasing with additional variants. This set keeps track of what
+            // call variant haplotypes are available for phasing downstream for "callIsOnAllHaps" variants.
+            final Set<Haplotype> callHaplotypesAvailableForPhasing = new HashSet<>(haplotypesWithCall);
             for ( int j = i+1; j < numCalls; j++ ) {
                 final VariantContext comp = originalCalls.get(j);
                 final Set<Haplotype> haplotypesWithComp = haplotypeMap.get(comp);
@@ -727,7 +735,7 @@ public final class AssemblyBasedCallerUtils {
                 // if the variants are together on all haplotypes, record that fact.
                 // another possibility is that one of the variants is on all possible haplotypes (i.e. it is homozygous).
                 final boolean compIsOnAllHaps = haplotypesWithComp.size() == totalAvailableHaplotypes;
-                if ( (haplotypesWithCall.size() == haplotypesWithComp.size() && haplotypesWithCall.containsAll(haplotypesWithComp)) || callIsOnAllHaps || compIsOnAllHaps ) {
+                if ( (haplotypesWithCall.size() == haplotypesWithComp.size() && haplotypesWithCall.containsAll(haplotypesWithComp)) || callIsOnAllHaps &&  callHaplotypesAvailableForPhasing.containsAll(haplotypesWithComp) || compIsOnAllHaps ) {
 
                     // create a new group if these are the first entries
                     if ( ! phaseSetMapping.containsKey(call) ) {
@@ -746,6 +754,11 @@ public final class AssemblyBasedCallerUtils {
                         // the phase as if the call is heterozygous and then "fix" it downstream as needed.
                         phaseSetMapping.put(call, Pair.of(uniqueCounter, PhaseGroup.PHASE_01));
                         phaseSetMapping.put(comp, Pair.of(uniqueCounter, PhaseGroup.PHASE_01));
+
+                        // if the call was on all haps but the comp isn't, we need to narrow down the set of haps we'll consider
+                        // for further phasing with the call
+                        callHaplotypesAvailableForPhasing.retainAll(haplotypesWithComp);
+
                         uniqueCounter++;
                     }
                     // otherwise it's part of an existing group so use that group's unique ID

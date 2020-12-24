@@ -860,48 +860,51 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         pos234.getEventMap().put(2, vc2);
         pos234.getEventMap().put(3, vc3);
         pos234.getEventMap().put(4, vc4);
+        final Haplotype pos23 = new Haplotype("ACCAA".getBytes());
+        pos24.setEventMap(new EventMap(Arrays.asList(vc2, vc3)));
+        pos24.getEventMap().put(2, vc2);
+        pos24.getEventMap().put(3, vc3);
+
 
         final Map<VariantContext, Set<Haplotype>> haplotypeMap = new HashMap<>();
 
-        // test no phased variants #1
+        // test 1: no phased variants #1
         final Set<Haplotype> haplotypes2 = new HashSet<>();
         haplotypes2.add(pos2);
         haplotypeMap.put(vc2, haplotypes2);
-        tests.add(new Object[]{Arrays.asList(vc2), new HashMap<>(haplotypeMap), 2, 0, 0, 0, 0});
+        tests.add(new Object[]{Arrays.asList(vc2), new HashMap<>(haplotypeMap), 1, 0, 0, 0, 0});
 
-        // test no phased variants #2
+        // test 2: opposite phase
         final Set<Haplotype> haplotypes3 = new HashSet<>();
         haplotypes3.add(pos3);
         haplotypeMap.put(vc3, haplotypes3);
-        tests.add(new Object[]{Arrays.asList(vc2, vc3), new HashMap<>(haplotypeMap), 3, 0, 0, 0, 0});
-
-        // test opposite phase
         tests.add(new Object[]{Arrays.asList(vc2, vc3), new HashMap<>(haplotypeMap), 2, 2, 1, 1, 1});
 
-        // test no phased variants #3
+        // test 3: no phased variants (a third call is out of phase)
         final Set<Haplotype> haplotypes4 = new HashSet<>();
         haplotypes4.add(pos4);
         haplotypeMap.put(vc4, haplotypes4);
         tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 3, 0, 0, 0, 0});
 
-        // test mixture
+        // test 4: mixture
         final Set<Haplotype> haplotypes24 = new HashSet<>();
         haplotypes24.add(pos24);
         haplotypeMap.put(vc2, haplotypes24);
         haplotypeMap.put(vc4, haplotypes24);
         tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 2, 3, 1, 2, 1});
 
-        // test 2 hets
+        // test 5: 2 hets
         haplotypeMap.remove(vc3);
         tests.add(new Object[]{Arrays.asList(vc2, vc4), new HashMap<>(haplotypeMap), 1, 2, 1, 2, 0});
 
-        // test 2 with opposite phase
+        // test 6: two snps with opposite phase
         final Set<Haplotype> haplotypes1 = new HashSet<>();
         haplotypes1.add(pos1);
         haplotypeMap.put(vc1, haplotypes1);
         tests.add(new Object[]{Arrays.asList(vc1, vc2, vc4), new HashMap<>(haplotypeMap), 2, 3, 1, 1, 2});
 
-        // test homs around a het
+        // test 7: homs around a het
+        haplotypeMap.clear();
         final Set<Haplotype> haplotypes2hom = new HashSet<>();
         haplotypes2hom.add(pos24);
         haplotypes2hom.add(pos234);
@@ -915,7 +918,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypeMap.put(vc4, haplotypes4hom);
         tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 2, 3, 1, 3, 0});
 
-        // test hets around a hom
+        // test 8: hets around a hom
         final Set<Haplotype> haplotypes2het = new HashSet<>();
         haplotypes2het.add(pos234);
         final Set<Haplotype> haplotypes4het = new HashSet<>();
@@ -928,7 +931,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypeMap.put(vc4, haplotypes4het);
         tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 2, 3, 1, 3, 0});
 
-        // test no phased variants around a hom
+        // test 9: no phased variants around a hom
         final Set<Haplotype> haplotypes2incomplete = new HashSet<>();
         haplotypes2incomplete.add(pos24);
         final Set<Haplotype> haplotypes3incomplete = new HashSet<>();
@@ -940,8 +943,9 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypeMap.put(vc2, haplotypes2incomplete);
         haplotypeMap.put(vc3, haplotypes3incomplete);
         haplotypeMap.put(vc4, haplotypes4complete);
-        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 0, 0, 0, 0, 0});
+        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 3, 0, 0, 0, 0});
 
+        // test 10: snp spanned by overlapping deletion
         final Allele refForDel = Allele.create("AG", true);
         final Allele altDel = Allele.create("A", false);
 
@@ -970,7 +974,29 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         spandelCalls.add(spannedSnpVC);
 
         tests.add(new Object[]{spandelCalls, new HashMap<>(spanDelHapMap), 2, 2, 1, 1, 1});
+
+        // test 11: a hom followed by two opposite-phase hets
+        haplotypeMap.clear();
+        final Set<Haplotype> haplotypes2hom2 = new HashSet<>();
+        haplotypes2hom2.add(pos24);
+        haplotypes2hom2.add(pos23);
+        final Set<Haplotype> haplotypes3het2 = new HashSet<>();
+        haplotypes3het2.add(pos23);
+        final Set<Haplotype> haplotypes4het2 = new HashSet<>();
+        haplotypes4het2.add(pos24);
+        haplotypeMap.put(vc2, haplotypes2hom2);
+        haplotypeMap.put(vc3, haplotypes3het2);
+        haplotypeMap.put(vc4, haplotypes4het2);
+        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 2, 3, 1, 2, 1});
+
+
         return tests.toArray(new Object[][]{});
+    }
+
+    private int getTotalHaplotypes(final Map<VariantContext, Set<Haplotype>> haplotypeMap) {
+        final Set<Haplotype> haplotypesWithCalledVariants = new HashSet<>();
+        haplotypeMap.values().forEach(haplotypesWithCalledVariants::addAll);
+        return haplotypesWithCalledVariants.size();
     }
 
     @Test(dataProvider="ConstructPhaseSetMappingProvider")
@@ -982,6 +1008,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                              final int expectedNum01,
                                              final int expectedNum10) {
         final Map<VariantContext, Pair<Integer, PhaseGroup>> actualPhaseSetMapping = new HashMap<>();
+        Assert.assertEquals(totalHaplotypes, getTotalHaplotypes(haplotypeMap));
         final int actualNumGroups = constructPhaseSetMapping(calls, haplotypeMap, totalHaplotypes, actualPhaseSetMapping);
         Assert.assertEquals(actualNumGroups, expectedNumGroups);
         Assert.assertEquals(actualPhaseSetMapping.size(), expectedMapSize);
