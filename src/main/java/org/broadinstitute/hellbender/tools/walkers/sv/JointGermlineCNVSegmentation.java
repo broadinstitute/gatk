@@ -25,16 +25,17 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
-import org.broadinstitute.hellbender.tools.sv.SVClusterEngine;
-import org.broadinstitute.hellbender.tools.sv.SVCallRecordWithEvidence;
-import org.broadinstitute.hellbender.tools.sv.SVDepthOnlyCallDefragmenter;
+import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
+import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDB;
 import org.broadinstitute.hellbender.utils.samples.Sex;
-import org.broadinstitute.hellbender.utils.variant.*;
+import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -94,8 +95,8 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private SortedSet<String> samples;
     private VariantContextWriter vcfWriter;
     private SAMSequenceDictionary dictionary;
-    private SVDepthOnlyCallDefragmenter defragmenter;
-    private SVClusterEngine clusterEngine;
+    private CNVDefragmenter defragmenter;
+    private SVClusterEngine<SVCallRecord> clusterEngine;
     private List<GenomeLoc> callIntervals;
     private String currentContig;
     private SampleDB sampleDB;
@@ -122,6 +123,8 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     public static final String MIN_QUALITY_LONG_NAME = "minimum-qs-score";
     public static final String MIN_SAMPLE_NUM_OVERLAP_LONG_NAME = "min-sample-set-fraction-overlap";
     public static final String DEFRAGMENTATION_PADDING_LONG_NAME = "defragmentation-padding-fraction";
+    public static final String CLUSTERING_INTERVAL_OVERLAP_LONG_NAME = "clustering-interval-overlap";
+    public static final String CLUSTERING_BREAKEND_WINDOW_LONG_NAME = "clustering-breakend-window";
     public static final String MODEL_CALL_INTERVALS_LONG_NAME = "model-call-intervals";
     public static final String BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME = "breakpoint-summary-strategy";
 
@@ -129,16 +132,24 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private int minQS = 20;
 
     @Argument(fullName = MIN_SAMPLE_NUM_OVERLAP_LONG_NAME, doc = "Minimum fraction of common samples for two variants to cluster together", optional = true)
-    private double minSampleSetOverlap = 0.8;
+    private double minSampleSetOverlap = SVClusterEngine.DEFAULT_DEPTH_ONLY_PARAMS.getSampleOverlap();
 
     @Argument(fullName = DEFRAGMENTATION_PADDING_LONG_NAME, doc = "Extend events by this fraction on each side when determining overlap to merge", optional = true)
-    private double defragmentationPadding = SVDepthOnlyCallDefragmenter.getDefaultPaddingFraction();
+    private double defragmentationPadding = CNVDefragmenter.DEFAULT_PADDING_FRACTION;
+
+    @Argument(fullName = CLUSTERING_INTERVAL_OVERLAP_LONG_NAME,
+            doc="Minimum interval reciprocal overlap for clustering", optional=true)
+    public double clusterIntervalOverlap = SVClusterEngine.DEFAULT_DEPTH_ONLY_PARAMS.getReciprocalOverlap();
+
+    @Argument(fullName = CLUSTERING_BREAKEND_WINDOW_LONG_NAME,
+            doc="Cluster events whose endpoints are within this distance of each other", optional=true)
+    public int clusterWindow = SVClusterEngine.DEFAULT_DEPTH_ONLY_PARAMS.getWindow();
 
     @Argument(fullName = MODEL_CALL_INTERVALS_LONG_NAME, doc = "gCNV model intervals created with the FilterIntervals tool.")
     private GATKPath modelCallIntervalList = null;
 
     @Argument(fullName = BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME, doc = "Strategy to use for choosing a representative value for a breakpoint cluster.", optional = true)
-    private SVClusterEngine.BreakpointSummaryStrategy breakpointSummaryStrategy = SVClusterEngine.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END;
+    private SVCollapser.BreakpointSummaryStrategy breakpointSummaryStrategy = SVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END;
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -173,6 +184,9 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         return true;
     }
 
+    // Cannot require sample overlap when clustering across samples
+    private static final double CLUSTER_SAMPLE_OVERLAP_FRACTION = 0;
+
     @Override
     public void onTraversalStart() {
         reference = ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier());
@@ -186,8 +200,15 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         final GenomeLocParser parser = new GenomeLocParser(this.dictionary);
         setIntervals(parser);
 
-        defragmenter = new SVDepthOnlyCallDefragmenter(dictionary, minSampleSetOverlap, defragmentationPadding, callIntervals);
-        clusterEngine = new SVClusterEngine(dictionary, true, breakpointSummaryStrategy);
+        if (callIntervals == null) {
+            defragmenter = new CNVDefragmenter(dictionary, defragmentationPadding, minSampleSetOverlap);
+        } else {
+            defragmenter = new BinnedCNVDefragmenter(dictionary, defragmentationPadding, minSampleSetOverlap, callIntervals);
+        }
+        clusterEngine = new SVClusterEngine<>(dictionary, LocatableClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE,
+                true, (new SVCollapser(breakpointSummaryStrategy))::collapse);
+        final SVClusterEngine.DepthClusteringParameters clusterArgs = new SVClusterEngine.DepthClusteringParameters(clusterIntervalOverlap, clusterWindow, CLUSTER_SAMPLE_OVERLAP_FRACTION);
+        clusterEngine.setDepthOnlyParams(clusterArgs);
 
         vcfWriter = getVCFWriter();
 
@@ -248,12 +269,12 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
             currentContig = variantContexts.get(0).getContig();
         }
         for (final VariantContext vc : variantContexts) {
-            final SVCallRecord record = SVCallRecord.createDepthOnlyFromGCNV(vc, minQS);
+            final SVCallRecord record = SVCallRecordUtils.createDepthOnlyFromGCNVWithOriginalGenotypes(vc, minQS);
             if (record != null) {
                 if (!isMultiSampleInput) {
-                    defragmenter.add(new SVCallRecordWithEvidence(record));
+                    defragmenter.add(record);
                 } else {
-                    clusterEngine.add(new SVCallRecordWithEvidence(record));
+                    clusterEngine.add(record);
                 }
             }
         }
@@ -267,17 +288,17 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
 
     private void processClusters() {
         if (!defragmenter.isEmpty()) {
-            final List<SVCallRecordWithEvidence> defragmentedCalls = defragmenter.getOutput();
+            final List<SVCallRecord> defragmentedCalls = defragmenter.getOutput();
             defragmentedCalls.stream().forEachOrdered(clusterEngine::add);
         }
         //Jack and Isaac cluster first and then defragment
-        final List<SVCallRecordWithEvidence> clusteredCalls = clusterEngine.getOutput();
+        final List<SVCallRecord> clusteredCalls = clusterEngine.getOutput();
         write(clusteredCalls);
     }
 
-    private void write(final List<SVCallRecordWithEvidence> calls) {
+    private void write(final List<SVCallRecord> calls) {
         final List<VariantContext> sortedCalls = calls.stream()
-                .sorted(Comparator.comparing(c -> new SimpleInterval(c.getContig(), c.getStart(), c.getEnd()), //VCs have to be sorted by end as well
+                .sorted(Comparator.comparing(c -> new SimpleInterval(c.getContigA(), c.getPositionA(), c.getPositionB()), //VCs have to be sorted by end as well
                         IntervalUtils.getDictionaryOrderComparator(dictionary)))
                 .map(record -> buildVariantContext(record, reference))
                 .collect(Collectors.toList());
@@ -498,12 +519,12 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     }
 
     @VisibleForTesting
-    protected static VariantContext buildVariantContext(final SVCallRecordWithEvidence call, final ReferenceSequenceFile reference) {
+    protected static VariantContext buildVariantContext(final SVCallRecord call, final ReferenceSequenceFile reference) {
         Utils.nonNull(call);
         Utils.nonNull(reference);
         final boolean isCNV = call.getType().equals(StructuralVariantType.CNV);
         final List<Allele> outputAlleles = new ArrayList<>(3);  //max is ref, del, dup
-        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(reference, call.getContig(), call.getStart()), true);
+        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(reference, call.getContigA(), call.getPositionA()), true);
         outputAlleles.add(refAllele);
         if (!isCNV) {
             outputAlleles.add(Allele.create("<" + call.getType().name() + ">", false));
@@ -512,9 +533,9 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
             outputAlleles.add(GATKSVVCFConstants.DUP_ALLELE);
         }
 
-        final VariantContextBuilder builder = new VariantContextBuilder("", call.getContig(), call.getStart(), call.getEnd(),
+        final VariantContextBuilder builder = new VariantContextBuilder("", call.getContigA(), call.getPositionA(), call.getPositionB(),
                 outputAlleles);
-        builder.attribute(VCFConstants.END_KEY, call.getEnd());
+        builder.attribute(VCFConstants.END_KEY, call.getPositionB());
         builder.attribute(GATKSVVCFConstants.SVLEN, call.getLength());
         if (isCNV) {
             builder.attribute(VCFConstants.SVTYPE, "MCNV");  //MCNV for compatibility with svtk annotate

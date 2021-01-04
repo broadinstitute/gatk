@@ -22,7 +22,7 @@ public final class GATKSVVCFHeaderLines {
 
     private static final Map<String, VCFInfoHeaderLine> infoLines = new LinkedHashMap<>(30);
     private static final Map<String, VCFFormatHeaderLine> formatLines = new LinkedHashMap<>(5);
-    private static final Map<String, VCFFilterHeaderLine> filterLines = new LinkedHashMap<>(4);
+    private static final Map<String, VCFFilterHeaderLine> filterLines = new LinkedHashMap<>(2);
 
 
     private static void addFormatLine(final VCFFormatHeaderLine line) {

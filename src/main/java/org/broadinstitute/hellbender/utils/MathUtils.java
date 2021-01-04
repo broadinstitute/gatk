@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
-import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
@@ -13,7 +12,10 @@ import org.apache.commons.math3.util.MathArrays;
 import org.apache.commons.math3.util.Pair;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.OptionalDouble;
 import java.util.function.*;
 import java.util.stream.Collectors;
 
@@ -74,6 +76,34 @@ public final class MathUtils {
         } else {
             int smallest = values[0];
             int secondSmallest = Integer.MAX_VALUE;
+            for (int i = 1; i < values.length; i++) {
+                if (values[i] < smallest) {
+                    secondSmallest = smallest;
+                    smallest = values[i];
+                } else if (values[i] < secondSmallest) {
+                    secondSmallest = values[i];
+                }
+            }
+            return secondSmallest - smallest;
+        }
+    }
+
+    /**
+     * Given an double array returns the difference between the second smallest element
+     * and the smallest element.
+     * @param values the input values.
+     * @param defaultValue value to return in case the input array has zero or only one element.
+     * @return 0 if the input array has less than 2 elements, otherwise the second smallest
+     * - the smallest.
+     * @throws IllegalArgumentException if {@code values} is {@code null}.
+     */
+    public static double secondSmallestMinusSmallest(final double[] values, final double defaultValue) {
+        Utils.nonNull(values);
+        if (values.length <= 1) {
+            return defaultValue;
+        } else {
+            double smallest = values[0];
+            double secondSmallest = Double.MAX_VALUE;
             for (int i = 1; i < values.length; i++) {
                 if (values[i] < smallest) {
                     secondSmallest = smallest;
@@ -1117,6 +1147,40 @@ public final class MathUtils {
             }
         }
         return maxIndex;
+    }
+
+    /**
+     *
+     * @param array array of integers
+     * @return index of the min. In case of a tie, return the smallest index
+     */
+    public static int minElementIndex(final int[] array){
+        int minIndex = 0;
+        int currentMin = Integer.MAX_VALUE;
+        for (int i = 0; i < array.length; i++){
+            if (array[i] < currentMin){
+                minIndex = i;
+                currentMin = array[i];
+            }
+        }
+        return minIndex;
+    }
+
+    /**
+     *
+     * @param array array of doubles
+     * @return index of the min. In case of a tie, return the smallest index
+     */
+    public static int minElementIndex(final double[] array){
+        int minIndex = 0;
+        double currentMin = Double.MAX_VALUE;
+        for (int i = 0; i < array.length; i++){
+            if (array[i] < currentMin){
+                minIndex = i;
+                currentMin = array[i];
+            }
+        }
+        return minIndex;
     }
 
     /**

@@ -2,7 +2,10 @@ package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 public final class SplitReadEvidence implements Feature {
@@ -65,5 +68,16 @@ public final class SplitReadEvidence implements Feature {
     @Override
     public int hashCode() {
         return Objects.hash(sample, contig, position, count, strand);
+    }
+
+    public String toString() {
+        final List<String> data = Arrays.asList(
+                contig,
+                Integer.toString(position - 1),
+                strand ? SplitReadEvidenceCodec.DIRECTION_RIGHT : SplitReadEvidenceCodec.DIRECTION_LEFT,
+                Integer.toString(count),
+                sample
+        );
+        return String.join(SplitReadEvidenceCodec.COL_DELIMITER, data);
     }
 }

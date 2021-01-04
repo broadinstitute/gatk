@@ -5,6 +5,10 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
 import java.util.Objects;
+import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class DepthEvidence implements Feature {
 
@@ -55,5 +59,17 @@ public final class DepthEvidence implements Feature {
         int result = Objects.hash(contig, start, end);
         result = 31 * result + Arrays.hashCode(counts);
         return result;
+    }
+
+    public String toString() {
+        final int numCounts = counts.length;
+        final List<String> data = new ArrayList<>(3 + numCounts);
+        data.add(contig);
+        data.add(Integer.toString(start - 1));
+        data.add(Integer.toString(end));
+        for (int i = 0; i < numCounts; i++) {
+            data.add(Integer.toString(counts[i]));
+        }
+        return String.join(DepthEvidenceCodec.COL_DELIMITER, data);
     }
 }

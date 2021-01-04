@@ -10,11 +10,16 @@ import org.broadinstitute.hellbender.tools.sv.DepthEvidence;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.broadinstitute.hellbender.utils.Utils;
+
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence> {
 
     public static final String FORMAT_SUFFIX = ".rd.txt";
     public static final String COL_DELIMITER = "\t";
+    public static final String HEADER_CHAR = "#";
     private static final Splitter splitter = Splitter.on(COL_DELIMITER);
 
     public DepthEvidenceCodec() {
@@ -73,5 +78,19 @@ public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence> {
             columns.add(Integer.toString(counts[i]));
         }
         return String.join(COL_DELIMITER, columns);
+    }
+
+    public final class DepthEvidenceMetadata {
+        final List<String> samples;
+        public DepthEvidenceMetadata(final String header) {
+            Utils.nonNull(header);
+            Utils.validateArg(header.startsWith(HEADER_CHAR), "Expected header starting with " + HEADER_CHAR);
+            final String[] tokens = header.split(COL_DELIMITER);
+            samples = IntStream.range(3, tokens.length).mapToObj(i -> tokens[i]).collect(Collectors.toList());
+        }
+
+        public List<String> getSamples() {
+            return samples;
+        }
     }
 }

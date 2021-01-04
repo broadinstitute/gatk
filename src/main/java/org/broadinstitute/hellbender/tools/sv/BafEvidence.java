@@ -5,6 +5,14 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Objects;
 
+import org.broadinstitute.hellbender.utils.codecs.BafEvidenceCodec;
+
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * B-Allele frequency (BAF) evidence container
+ */
 public final class BafEvidence implements Feature {
 
     final String sample;
@@ -13,10 +21,8 @@ public final class BafEvidence implements Feature {
     final double value;
 
     public BafEvidence(final String sample, final String contig, final int position, final double value) {
-        Utils.nonNull(sample);
-        Utils.nonNull(contig);
-        this.sample = sample;
-        this.contig = contig;
+        this.sample = Utils.nonNull(sample);
+        this.contig = Utils.nonNull(contig);
         this.position = position;
         this.value = value;
     }
@@ -42,6 +48,17 @@ public final class BafEvidence implements Feature {
 
     public double getValue() {
         return value;
+    }
+
+    @Override
+    public String toString() {
+        final List<String> data = Arrays.asList(
+                contig,
+                Integer.toString(position - 1),
+                Double.toString(value),
+                sample
+        );
+        return String.join(BafEvidenceCodec.COL_DELIMITER, data);
     }
 
     @Override

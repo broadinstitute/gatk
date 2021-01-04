@@ -21,6 +21,13 @@ import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
 import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -178,7 +185,6 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     private void writeDiscordantPair(final DiscordantRead r) {
         final boolean strandA = !r.isReadReverseStrand();
         final boolean strandB = !r.isMateReverseStrand();
-
         final DiscordantPairEvidence discordantPair = new DiscordantPairEvidence(sampleName, r.getContig(), r.getStart(), strandA, r.getMateContig(), r.getMateStart(), strandB);
         peWriter.add(discordantPair);
     }

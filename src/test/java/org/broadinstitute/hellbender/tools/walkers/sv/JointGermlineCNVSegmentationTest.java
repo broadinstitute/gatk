@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.Sample;
 import org.broadinstitute.hellbender.utils.samples.SampleDB;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
-import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -64,7 +63,7 @@ public class JointGermlineCNVSegmentationTest extends CommandLineProgramTest {
         final VariantContext vcOut = JointGermlineCNVSegmentation.updateGenotypes(allosomalContigs, refCopyNumber, pedigree, allSamples,
                 JointGermlineCNVSegmentation.buildVariantContext(SVTestUtils.call1, ReferenceUtils.createReferenceReader(new GATKPath(GATKBaseTest.hg38Reference))),
                 sampleCopyNumbers);
-        Assert.assertEquals(vcOut.getStart(), SVTestUtils.call1.getStart());
+        Assert.assertEquals(vcOut.getStart(), SVTestUtils.call1.getPositionA());
     }
 
     @BeforeMethod
@@ -86,7 +85,7 @@ public class JointGermlineCNVSegmentationTest extends CommandLineProgramTest {
                 {"NA00000", "X", null, 2},
                 {"NA00000", "Y", null, 0},
                 {"NA00000", "1", null, 2},
-                {"sample1", "X", SVTestUtils.sample1, 1}, //sample1 isn't in ped, so use GT ploidy
+                {"sample1", "X", SVTestUtils.sample1Ploidy1, 1}, //sample1 isn't in ped, so use GT ploidy
                 {"sample1", "1", SVTestUtils.sample1, 2}, //sample1 isn't in ped, but contig is autosome
         };
     }

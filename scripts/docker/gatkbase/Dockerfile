@@ -1,6 +1,6 @@
 # Using OpenJDK 8
 # This Dockerfile does not require any files that are in the GATK4 repo.
-FROM ubuntu:18.04
+FROM nvcr.io/nvidia/cuda:10.2-base-ubuntu18.04
 
 #### Basic image utilities
 RUN apt-get update && \

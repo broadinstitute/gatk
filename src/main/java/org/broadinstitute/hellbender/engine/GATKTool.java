@@ -9,12 +9,6 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
-
-import java.io.File;
-import java.nio.file.Path;
-import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.stream.Stream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
@@ -43,6 +37,12 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.time.ZonedDateTime;
+import java.util.*;
+import java.util.stream.Stream;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of

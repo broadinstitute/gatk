@@ -4,9 +4,9 @@
 set -e
 
 
-REPO=broadinstitute
+REPO=mwalker174
 PROJECT=gatk
-VERSION=2.3.0
+VERSION=2.2.0-cuda-10.2
 FULL_PATH=${REPO}/${PROJECT}:gatkbase-${VERSION}
 
 #################################################
