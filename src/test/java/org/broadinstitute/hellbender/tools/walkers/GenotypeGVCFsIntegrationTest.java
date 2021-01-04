@@ -268,6 +268,50 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, args, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
     }
 
+    @Test(timeOut = 1000000)
+    public void testGenotypeGVCFsWithGVCFAndForceOutput() throws IOException {
+        //This will pass, giving non-N REF alleles for the range 20:10-20
+        final File output = getTestFile("CEUTrio.20.gatk3.7_30_ga4f720357.gvcf.forceoutput.expected.vcf");
+        testGenotypeGVCFsWithForceOutput(CEUTRIO_20_21_GATK3_4_G_VCF.getAbsolutePath(), output);
+    }
+
+    @Test(timeOut = 1000000)
+    public void testGenotypeGVCFsWithGenomicsDbAndForceOutput() throws IOException {
+        //This will fail, giving Ns as the REF alleles for the range 20:10-20
+        SimpleInterval interval = new SimpleInterval("20", 1, 11_000_000);
+        final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(CEUTRIO_20_21_GATK3_4_G_VCF, interval);
+        final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
+
+        final File output = getTestFile("CEUTrio.20.gatk3.7_30_ga4f720357.genomicsdb.forceoutput.expected.vcf");
+        testGenotypeGVCFsWithForceOutput(genomicsDBUri, output);
+    }
+
+    private void testGenotypeGVCFsWithForceOutput(final String inputURI, final File output) throws IOException {
+        //final File output = createTempFile("genotypegvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(b37_reference_20_21))
+                .add("V", inputURI)
+                .add(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10-20")
+                .addInterval(new SimpleInterval("20", 1, 10249652))
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false)
+                .add(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
+                .addOutput(output);
+
+        Utils.resetRandomGenerator();
+        runCommandLine(args);
+
+        //Actual should equal expected, except with additional VCs in 20:10-20:
+        final List<VariantContext> actualVCs = VariantContextTestUtils.getVariantContexts(output);
+        final List<VariantContext> actualVCs2 = actualVCs.subList(11, actualVCs.size());
+        Assert.assertEquals(actualVCs2.get(0).getStart(), 9999996);
+        final File expected = getTestFile("CEUTrio.20.gatk3.7_30_ga4f720357.expected.vcf");
+        final List<VariantContext> expectedVCs = VariantContextTestUtils.getVariantContexts(expected);
+        assertForEachElementInLists(actualVCs2, expectedVCs, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER));
+
+        actualVCs.forEach(vc -> Assert.assertNotEquals(Allele.REF_N, vc.getReference()));
+    }
+
     private void runAndCheckGenomicsDBOutput(final ArgumentsBuilder args, final File expected, final File output) {
         Utils.resetRandomGenerator();
         runCommandLine(args);
