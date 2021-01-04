@@ -22,6 +22,8 @@ jobs:
     strategy:
       matrix:
         python-version: [3.6, 3.7]
+        # Python 3.8 fails due to "ERROR: No matching distribution found for tensorflow==2.1.2".
+        # TODO Enable Python 3.8 test after https://github.com/broadinstitute/ml4h/pull/409 or similar.
 
     steps:
     - uses: actions/checkout@v2

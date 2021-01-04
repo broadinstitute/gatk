@@ -4,13 +4,14 @@ import json
 import os
 import socket
 import tempfile
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple, Type, Union
 
 from IPython.display import display
 import numpy as np
 import pandas as pd
 import h5py
 from ipyannotations import PolygonAnnotator
+from ipyannotations.images.annotator import Annotator
 import ipywidgets as widgets
 from ml4h.visualization_tools.hd5_mri_plots import MRI_TMAPS
 from ml4h.visualization_tools.annotation_storage import AnnotationStorage
@@ -20,30 +21,9 @@ import tensorflow as tf
 
 
 class BatchImageAnnotator():
-  """Annotate batches of images with polygons drawn over regions of interest."""
+  """Annotate batches of images with shapes drawn over regions of interest."""
 
-  SUBMIT_BUTTON_DESCRIPTION = 'Submit polygons, goto next sample'
-  USE_INSTRUCTIONS = '''
-    <p><ul>
-    <li>To draw a polygon, click anywhere you'd like to start. Continue to click
-    along the edge of the polygon until arrive back where you started. To
-    finish, simply click the first point (highlighted in red). It may be
-    helpful to increase the point size if you're struggling (using the slider).</li>
-
-    <li>You can change the class of a polygon using the dropdown menu while the
-    polygon is still "open", or unfinished. If you make a mistake, use the Undo
-    button until the point that's wrong has disappeared.
-
-    <li>You can move, but not add / subtract polygon points, by clicking the "Edit"
-    button. Simply drag a point you want to adjust. Again, if you have
-    difficulty aiming at the points, you can increase the point size.</li>
-
-    <li>You can increase or decrease the contrast and brightness  of the image
-    using the sliders to make it easier to annotate. Sometimes you need to see
-    what's behind already-created annotations, and for this purpose you can
-    make them more see-through using the "Opacity" slider.</li>
-    </ul></p>
-    '''
+  SUBMIT_BUTTON_DESCRIPTION = 'Submit annotations, goto next sample'
   EXPECTED_COLUMN_NAMES = ['sample_id', 'tmap_name', 'instance_number', 'folder']
   DEFAULT_ANNOTATION_CLASSNAME = 'region_of_interest'
   CSS = '''
@@ -61,16 +41,20 @@ class BatchImageAnnotator():
   def __init__(
       self, samples: pd.DataFrame, annotation_categories: List[str] = None,
       zoom: float = 1.5, annotation_storage: AnnotationStorage = TransientAnnotationStorage(),
+      annotator: Type[Annotator] = PolygonAnnotator,
   ):
     """Initializes an instance of BatchImageAnnotator.
 
     Args:
       samples: A dataframe of samples to annotate. Columns must include those
                in BatchImageAnnotator.EXPECTED_COLUMN_NAMES.
-      annotation_categories: A list of one or more strings to serve as tags for the polygons.
-      zoom: Desired zoom level for the image.
+      annotation_categories: A list of one or more strings to serve as tags for the annotations.
+      zoom: Desired zoom level for the image. Defaults to 1.5.
       annotation_storage: An instance of AnnotationStorage. This faciltates the use of a user-provided
-          strategy for the storage and processing of annotations.
+          strategy for the storage and processing of annotations. Defaults to  TransientAnnotationStorage.
+      annotator: An instance of Annotator from package ipyannotations. Concrete classes include
+        ipyannotations.BoxAnnotator, ipyannotations.PointAnnotator, and ipyannotations.PolygonAnnotator.
+        Defaults to  ipyannotations.PolygonAnnotator.
 
     Raises:
       ValueError: The provided dataframe does not contain the expected columns.
@@ -85,13 +69,20 @@ class BatchImageAnnotator():
     if annotation_categories is None:
       annotation_categories = [self.DEFAULT_ANNOTATION_CLASSNAME]
 
-    self.annotation_widget = PolygonAnnotator(
+    self.annotation_widget = annotator(
         options=annotation_categories,
         canvas_size=(900, 280 * self.zoom),
     )
     self.annotation_widget.on_submit(self._store_annotations)
     self.annotation_widget.submit_button.description = self.SUBMIT_BUTTON_DESCRIPTION
     self.annotation_widget.submit_button.layout = widgets.Layout(width='300px')
+
+    # Restructure the use instructions from the pydoc into a form that displays well as HTML.
+    self.use_instructions = (
+        '<ul><li>' +
+        annotator.__doc__[0:annotator.__doc__.find('Parameters')].strip().replace('\n\n', '</li><li>') +
+        '</li></ul>'
+    )
 
     self.title_widget = widgets.HTML('')
     self.results_widget = widgets.HTML('')
@@ -102,18 +93,35 @@ class BatchImageAnnotator():
       self.results_widget.value = '<h1>Annotation batch complete!</h1>Thank you for making the model better.'
       return
 
-    # Convert polygon points in canvas coordinates to tensor coordinates.
+    # Convert canvas coordinates to tensor coordinates.
     image_canvas_position = self.annotation_widget.canvas.image_extent
     x_offset, y_offset, _, _ = image_canvas_position
-    tensor_coords = [
-        (
-            a['label'],
-            [(
-                int((p[0] - x_offset) / self.zoom),
-                int((p[1] - y_offset) / self.zoom),
-            ) for p in a['points']],
-        ) for a in data
-    ]
+    annotations = []
+    for item in data:
+      annotation: Dict[str, Union[List[Tuple[int, int]], Tuple[int, int], Tuple[int, int, int, int], str]] = {}
+      annotations.append(annotation)
+      for key in item.keys():
+        if key == 'points':  # Polygons from PolygonAnnotator
+          annotation[key] = [(
+              int((p[0] - x_offset) / self.zoom),
+              int((p[1] - y_offset) / self.zoom),
+          ) for p in item[key]]
+        elif key == 'coordinates':  # Points from PointAnnotator
+          annotation[key] = (
+              int((item[key][0] - x_offset) / self.zoom),
+              int((item[key][1] - y_offset) / self.zoom),
+          )
+        elif key == 'xyxy':  # Rectangles from BoxAnnotator
+          annotation[key] = (
+              int((item[key][0] - x_offset) / self.zoom),
+              int((item[key][1] - y_offset) / self.zoom),
+              int((item[key][2] - x_offset) / self.zoom),
+              int((item[key][3] - y_offset) / self.zoom),
+          )
+        else:
+          # Pass all other values through unchanged.
+          annotation[key] = item[key]
+
     # Store the annotation using the provided annotation storage strategy.
     self.annotation_storage.submit_annotation(
         sample_id=self.samples.loc[self.current_sample, 'sample_id'],
@@ -121,14 +129,14 @@ class BatchImageAnnotator():
         key=self.samples.loc[self.current_sample, 'tmap_name'],
         value_numeric=self.samples.loc[self.current_sample, 'instance_number'],
         value_string=self.samples.loc[self.current_sample, 'folder'],
-        comment=json.dumps(tensor_coords),
+        comment=json.dumps(annotations),
     )
 
     # Display this annotation at the bottom of the widget.
     results = f'''
         <hr>
         <h2>Prior sample's submitted annotations</h2>
-        The <b>{self.SUBMIT_BUTTON_DESCRIPTION}</b> button is both printing out the polygons below and storing the polygons
+        The <b>{self.SUBMIT_BUTTON_DESCRIPTION}</b> button is both printing out the annotations below and storing the annotations
         via strategy {self.annotation_storage.__class__.__name__}.<br>
         Details: <i>{self.annotation_storage.describe()}</i>
         <h3>sample info</h3>
@@ -137,7 +145,7 @@ class BatchImageAnnotator():
         image extent {image_canvas_position}
         {[f'<pre>{json.dumps(x)}</pre>' for x in data]}
         <h3>source tensor coordinates</h3>
-        {[f'<pre>{json.dumps(x)}</pre>' for x in tensor_coords]}
+        {[f'<pre>{json.dumps(x)}</pre>' for x in annotations]}
         <hr>
       '''
     self.results_widget.value = results
@@ -165,9 +173,6 @@ class BatchImageAnnotator():
     """
     if self.current_sample >= self.samples.shape[0]:
       self.annotation_widget.canvas.clear()
-      # Note: the above command clears the canvas, but any incomplete polygons will be redrawn. Call this
-      # private method to clear those. TODO(deflaux) remove this after https://github.com/janfreyberg/ipyannotations/issues/15
-      self.annotation_widget.canvas._init_empty_data()  # pylint: disable=protected-access
       self.title_widget.value = '<h1>Annotation batch complete!</h1>Thank you for making the model better.'
       return
 
@@ -184,9 +189,6 @@ class BatchImageAnnotator():
         hd5 = h5py.File(local_path, mode='r')
       except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
         self.annotation_widget.canvas.clear()
-        # Note: the above command clears the canvas, but any incomplete polygons will be redrawn. Call this
-        # private method to clear those. TODO(deflaux) remove this after https://github.com/janfreyberg/ipyannotations/issues/15
-        self.annotation_widget.canvas._init_empty_data()  # pylint: disable=protected-access
         self.title_widget.value = f'''
             <div class="alert alert-block alert-danger">
             <H2>Warning: MRI HD5 file not available for sample {sample_id} in folder {folder}</h2>
@@ -209,7 +211,7 @@ class BatchImageAnnotator():
         {self.CSS}
         <div class='alert alert-block alert-info'>
         <h1>Batch annotation of {self.samples.shape[0]} samples</h1>
-        {self.USE_INSTRUCTIONS}
+        {self.use_instructions}
         </div>
         <h2>Current sample</h2>
         {self._format_info_for_current_sample()}

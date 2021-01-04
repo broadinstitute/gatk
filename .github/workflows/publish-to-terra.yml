@@ -13,10 +13,6 @@ on:
   release:
     types: [published]
 
-  # TODO(deflaux): remove the push trigger after testing is complete.
-  push:
-    branches: [ 'sample-to-patient' ]
-
 env:
   # TO REUSE THIS TEMPLATE, change these values to reflect those of your destination Terra workspace.
   NAMESPACE: 'uk-biobank-sek'

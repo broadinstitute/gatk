@@ -116,11 +116,26 @@ class BigQueryAnnotationStorage(AnnotationStorage):
   """
 
   def __init__(self, table: str):
-    """This table should already exist."""
-    self.table = table
+    """Create an instance of BigQueryAnnotationStorage.
+
+    Args:
+      table: 'your-project.your_dataset.your_table' identifier for a table that already exists
+        with the schema from annotations_schema.json.
+    Returns:
+      An instance of BigQueryAnnotationStorage, or an exception if the table id is malformed
+      or the table does not exist.
+    """
+    self.table_id = table
+    # Set up BigQuery client.
+    self.bqclient = bigquery.Client(credentials=bqmagics.context.credentials)
+    # Get the table properties to validate that all is working.
+    self.table = self.bqclient.get_table(self.table_id)
+    print(f'''Table {self.table.project}.{self.table.dataset_id}.{self.table.table_id}
+        currently has {self.table.num_rows} rows.''')
 
   def describe(self) -> str:
-    return f'''Annotations are stored in BigQuery table {self.table}'''
+    return f'''Annotations are stored in BigQuery table {self.table_id}.
+    https://console.cloud.google.com/bigquery?p={self.table.project}&d={self.table.dataset_id}&t={self.table.table_id}&page=table'''
 
   def submit_annotation(
       self, sample_id: Union[int, str], annotator: str, key: str,
@@ -138,19 +153,16 @@ class BigQueryAnnotationStorage(AnnotationStorage):
     Returns:
       Whether the submission is complete. Throws an Exception on failure.
     """
-    # Set up biquery client.
-    bqclient = bigquery.Client(credentials=bqmagics.context.credentials)
-
     # Format the insert string.
     query_string = f'''
-        INSERT INTO `{self.table}`
+        INSERT INTO `{self.table_id}`
           (sample_id, annotator, annotation_timestamp, key, value_numeric, value_string, comment)
         VALUES
           ('{sample_id}', '{annotator}', CURRENT_TIMESTAMP(), '{key}', SAFE_CAST('{value_numeric}' as NUMERIC), '{value_string}', '{comment}')
         '''
 
     # Submit the insert request.
-    submission = bqclient.query(query_string)
+    submission = self.bqclient.query(query_string)
 
     # Check for any errors. Upon error, this will throw an exception.
     _ = submission.result()
@@ -171,17 +183,14 @@ class BigQueryAnnotationStorage(AnnotationStorage):
       A dataframe of the most recent annotations.
     """
 
-    # set up biquery client.
-    bqclient = bigquery.Client(credentials=bqmagics.context.credentials)
-
     # Format the query string.
     query_string = f'''
-        SELECT * FROM `{self.table}`
+        SELECT * FROM `{self.table_id}`
         ORDER BY annotation_timestamp DESC
         LIMIT {count}
         '''
 
     # submit the query and store the result as a dataframe
-    df = bqclient.query(query_string).result().to_dataframe()
+    df = self.bqclient.query(query_string).result().to_dataframe()
 
     return df
