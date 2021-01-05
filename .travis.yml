@@ -206,6 +206,7 @@ after_success:
     ./gradlew uploadArchives; 
   fi;
 after_failure:
+- test -f hs_err_*.log && cat hs_err_*.log
 - dmesg | tail -100
 - export FAILED=true
 after_script:
