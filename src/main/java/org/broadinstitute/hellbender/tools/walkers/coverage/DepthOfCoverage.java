@@ -90,6 +90,8 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
     private Map<Locatable, DepthOfCoveragePartitionedDataStore> activeCoveragePartitioner = new HashMap<>();
     // Map used to store target tables for each partition which are used in the computation of median coverage scores
     private Map<DoCOutputType.Partition, int[][]> perIntervalStatisticsAggregationByPartitioning = new HashMap<>();
+    // Map used to store target tables for each partition which are used in the computation of median coverage scores
+    private Map<DoCOutputType.Partition, int[][]> perGeneStatisticsAggregationByPartitioning = new HashMap<>();
 
     // PartitionDataStore corresponding to every base traversed by the tool
     private DepthOfCoveragePartitionedDataStore coverageTotalsForEntireTraversal;
@@ -360,6 +362,17 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
 
             if ( ! omitPartiallyCoveredGenes || ((RefSeqFeature)activeInterval).getTotalExonLength() <= coverageBySample.getNumberOfLociCovered()) {
                 writer.writePerGeneDepthInformation((RefSeqFeature) activeInterval, coverageBySample, globalIdentifierMap.get(DoCOutputType.Partition.sample));
+
+                final DepthOfCoverageStats coverageByAggregationPartitionType = partitionerToRemove.getCoverageByAggregationType(DoCOutputType.Partition.sample);
+
+                // Create a new table if necessary
+                if (!perGeneStatisticsAggregationByPartitioning.containsKey(DoCOutputType.Partition.sample)) {
+                    perGeneStatisticsAggregationByPartitioning.put(DoCOutputType.Partition.sample, new int[coverageByAggregationPartitionType.getHistograms().size()][coverageByAggregationPartitionType.getEndpoints().length + 1]);
+                }
+
+                // Update the target table to reflect the updated coverage information for this target
+                CoverageUtils.updateTargetTable(perGeneStatisticsAggregationByPartitioning.get(DoCOutputType.Partition.sample), coverageByAggregationPartitionType);
+
             }
         } else {
             throw new GATKException("Unrecognized Locatable object supplied for traversal, only RefSeqFeature and SimpleInterval are supported: "+activeInterval.toString());
@@ -382,6 +395,13 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
         // Write out accumulated interval summary statistics
         for (DoCOutputType.Partition partition : perIntervalStatisticsAggregationByPartitioning.keySet()) {
             writer.writeOutputIntervalStatistics(partition, perIntervalStatisticsAggregationByPartitioning.get(partition), CoverageUtils.calculateCoverageHistogramBinEndpoints(start,stop,nBins));
+        }
+
+        // Write out accumulated gene summary statistics
+        if (!refSeqGeneListFiles.isEmpty()) {
+            for (DoCOutputType.Partition partition : perGeneStatisticsAggregationByPartitioning.keySet()) {
+                writer.writeOutputGeneStatistics(perGeneStatisticsAggregationByPartitioning.get(partition), CoverageUtils.calculateCoverageHistogramBinEndpoints(start, stop, nBins));
+            }
         }
 
         if (!omitSampleSummary) {
