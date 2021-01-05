@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
@@ -575,11 +576,11 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     /**
-     * load a tab delimited new line separated file of sample name to URI mapping:
+     * Load a tab delimited new line separated file of sample name to URI mapping:
      * this maintains the keys in the same order that they appeared in the file
      *
-     * this tool should only call {@link #loadSampleNameMapFileInSortedOrder(Path)},
-     * this version is exposed for the benefit of {@link org.broadinstitute.hellbender.tools.FixCallSetSampleOrdering}
+     * This tool should only call {@link #loadSampleNameMapFileInSortedOrder(Path)}.
+     * This non-sorting overload is exposed for testing purposes only.
      *
      * ex:
      *
@@ -591,7 +592,8 @@ public final class GenomicsDBImport extends GATKTool {
      * @param sampleToFileMapPath path to the mapping file
      * @return map of sample name to corresponding file, the map will be ordered according to the order in the input file
      */
-    public static LinkedHashMap<String, URI> loadSampleNameMapFile(final Path sampleToFileMapPath) {
+    @VisibleForTesting
+    static LinkedHashMap<String, URI> loadSampleNameMapFile(final Path sampleToFileMapPath) {
         try {
             final List<String> lines = Files.readAllLines(sampleToFileMapPath);
             if (lines.isEmpty()) {
