@@ -93,6 +93,12 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             optional = true)
     public String vcfFilename;
 
+    @Argument(fullName = "sv-pipe-counts",
+            doc = "True for SV pipeline style allele-count output (designated alt count reported), " +
+                    "otherwise CollectAllelicCounts style (max alt attracts all non-ref counts)",
+            optional = true)
+    public boolean svPipeStyleAlleleCounts = false;
+
     @Argument(fullName = "allele-count-min-mapq",
             doc = "minimum mapping quality for read to be allele-counted",
             optional = true)
@@ -134,8 +140,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
         sequenceDictionary = getBestAvailableSequenceDictionary();
         if ( vcfFilename != null && alleleCountFilename != null ) {
-            alleleCounter =
-                    new AlleleCounter(sequenceDictionary, vcfFilename, alleleCountFilename, minMapQ, minQ);
+            alleleCounter = new AlleleCounter(sequenceDictionary, vcfFilename, alleleCountFilename,
+                                                minMapQ, minQ, svPipeStyleAlleleCounts);
         }
     }
 
@@ -498,12 +504,14 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         private final Iterator<VariantContext> snpSourceItr;
         private final BufferedWriter writer;
         private final Deque<LocusCounts> locusCountsQueue;
+        private final boolean svPipeStyleAlleleCounts;
 
         public AlleleCounter( final SAMSequenceDictionary dict,
                               final String vcfFilename,
                               final String outputFilename,
                               final int minMapQ,
-                              final int minQ ) {
+                              final int minQ,
+                              final boolean svPipeStyleAlleleCounts ) {
             this.dict = dict;
             this.vcfFilename = vcfFilename;
             this.outputFilename = outputFilename;
@@ -515,6 +523,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             this.snpSourceItr = snpSource.iterator();
             this.writer = createOutputFile(outputFilename);
             this.locusCountsQueue = new ArrayDeque<>(100);
+            this.svPipeStyleAlleleCounts = svPipeStyleAlleleCounts;
             readLocus();
         }
 
@@ -615,13 +624,16 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
                 throw new UserException("vcf contains a SNP with a non-standard reference base " +
                         refCall + " at locus " + snp.getContig() + ":" + position);
             }
-            locusCountsQueue.add(new LocusCounts(contigId, position, refCall.ordinal()));
+            final byte[] altSeq = snp.getAlternateAllele(0).getBases();
+            final Nucleotide altCall = Nucleotide.decode(altSeq[0]);
+            if ( !altCall.isStandard() ) {
+                throw new UserException("vcf contains a SNP with a non-standard alt base" +
+                        altCall + " at locus " + snp.getContig() + ":" + position);
+            }
+            final LocusCounts locusCounts =
+                    new LocusCounts(contigId, position, refCall.ordinal(), altCall.ordinal());
+            locusCountsQueue.add(locusCounts);
             return true;
-        }
-
-        private boolean badLine( final String line ) {
-            throw new UserException("allele-count locus input file " + vcfFilename +
-                    " contains uninterpretable line " + line);
         }
 
         private void writeLocusCounts( final LocusCounts locusCounts ) {
@@ -634,12 +646,22 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
                 final int refCount = locusCounts.getCount(refIdx);
                 writer.write(Integer.toString(refCount));
                 writer.write('\t');
-                writer.write(Integer.toString(locusCounts.getTotalCounts() - refCount));
-                writer.write('\t');
-                writer.write("ACGT".charAt(refIdx));
-                writer.write('\t');
-                final int altIdx = locusCounts.getAltIdx();
-                writer.write(altIdx == LocusCounts.NO_ALT_IDX ? 'N' : "ACGT".charAt(altIdx));
+                if ( svPipeStyleAlleleCounts ) {
+                    final int altIdx = locusCounts.getAltIdx();
+                    final int altCount = locusCounts.getCount(altIdx);
+                    writer.write(Integer.toString(altCount));
+                    writer.write('\t');
+                    writer.write("ACGT".charAt(refIdx));
+                    writer.write('\t');
+                    writer.write("ACGT".charAt(altIdx));
+                } else {
+                    writer.write(Integer.toString(locusCounts.getTotalCounts() - refCount));
+                    writer.write('\t');
+                    writer.write("ACGT".charAt(refIdx));
+                    writer.write('\t');
+                    final int altIdx = locusCounts.getMaxAltIdx();
+                    writer.write(altIdx == LocusCounts.NO_ALT_IDX ? 'N' : "ACGT".charAt(altIdx));
+                }
                 writer.newLine();
             } catch ( final IOException ioe ) {
                 throw new UserException("can't write to allele count output file " + outputFilename, ioe);
@@ -674,18 +696,22 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         public static final int NO_ALT_IDX = -1;
         private final int[] counts;
         private final int refIdx;
+        private final int altIdx;
 
-        public LocusCounts( final int contigId, final int position, final int refIdx ) {
+        public LocusCounts( final int contigId, final int position,
+                            final int refIdx, final int altIdx ) {
             super(contigId, position);
             this.counts = new int[4];
             this.refIdx = refIdx;
+            this.altIdx = altIdx;
         }
 
         public void observe( final int idx ) { counts[idx] += 1; }
 
         public int getRefIdx() { return refIdx; }
+        public int getAltIdx() { return altIdx; }
 
-        public int getAltIdx() {
+        public int getMaxAltIdx() {
             int altIdx = NO_ALT_IDX;
             int altCount = 0;
             for ( int idx = 0; idx != 4; ++idx ) {
