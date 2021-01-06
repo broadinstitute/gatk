@@ -12,10 +12,10 @@ import htsjdk.tribble.readers.AsciiLineReaderIterator;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.tools.sv.DepthEvidence;
-import org.broadinstitute.hellbender.tools.sv.SVIOUtils;
-import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
+import org.broadinstitute.hellbender.tools.sv.*;
+import org.broadinstitute.hellbender.utils.codecs.BafEvidenceCodec;
 import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
+import org.broadinstitute.hellbender.utils.codecs.DiscordantPairEvidenceCodec;
 import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.testng.Assert;
@@ -72,7 +72,7 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
         final FeatureOutputStream stream = new TabixIndexedFeatureOutputStream(
                 new GATKPath(outFilePath.toString()),
                 codec,
-                SVIOUtils::encodeSVEvidenceFeature,
+                FeatureOutputStreamUnitTest::encodeSVEvidenceFeature,
                 dictionary,
                 4
         );
@@ -86,7 +86,7 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
         final Path outFilePath = Paths.get(tempDir.toString(), getClass().getSimpleName() + extension);
         final FeatureOutputStream stream = new UncompressedFeatureOutputStream(
                 new GATKPath(outFilePath.toString()),
-                SVIOUtils::encodeSVEvidenceFeature
+                FeatureOutputStreamUnitTest::encodeSVEvidenceFeature
         );
         testWithStream(stream, featureList, outFilePath, codec, expectedHeader, false);
     }
@@ -124,5 +124,18 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
             final Feature feature = codec.decode(reader);
             Assert.assertEquals(feature, expectedIterator.next());
         }
+    }
+
+    private static String encodeSVEvidenceFeature(final Object feature) {
+        if (feature instanceof BafEvidence) {
+            return BafEvidenceCodec.encode((BafEvidence) feature);
+        } else if (feature instanceof DepthEvidence) {
+            return DepthEvidenceCodec.encode((DepthEvidence) feature);
+        } else if (feature instanceof DiscordantPairEvidence) {
+            return DiscordantPairEvidenceCodec.encode((DiscordantPairEvidence) feature);
+        } else if (feature instanceof SplitReadEvidence) {
+            return SplitReadEvidenceCodec.encode((SplitReadEvidence) feature);
+        }
+        throw new IllegalArgumentException("Unsupported SV evidence class: " + feature.getClass().getSimpleName());
     }
 }
