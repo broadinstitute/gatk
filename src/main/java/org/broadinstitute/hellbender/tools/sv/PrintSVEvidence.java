@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.BafEvidenceCodec;
 import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
@@ -89,7 +90,11 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
     )
     private int compressionLevel = 4;
 
-    private FeatureOutputStream outputStream;
+    private FeatureOutputStream<DiscordantPairEvidence> peStream;
+    private FeatureOutputStream<SplitReadEvidence> srStream;
+    private FeatureOutputStream<BafEvidence> bafStream;
+    private FeatureOutputStream<DepthEvidence> rdStream;
+    private Class<? extends Feature> evidenceClass;
 
     @Override
     protected boolean isAcceptableFeatureType(final Class<? extends Feature> featureType) {
@@ -111,21 +116,43 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
     }
 
     private void validateInputs() {
-        final Class inputClass = FeatureManager.getCodecForFile(inputFilePath.toPath()).getClass();
-        final Class outputClass = FeatureManager.getCodecForFile(outputFilePath.toPath()).getClass();
+        final Class<? extends Feature> inputClass = FeatureManager.getCodecForFile(inputFilePath.toPath()).getFeatureType();
+        final Class<? extends Feature> outputClass = FeatureManager.getCodecForFile(outputFilePath.toPath()).getFeatureType();
         Utils.validate(inputClass == outputClass, "Input and output file types do not match");
+        evidenceClass = inputClass;
     }
 
     private void initializeOutput() {
-        outputStream = new FeatureOutputStreamFactory().create(outputFilePath, SVIOUtils::encodeSVEvidenceFeature,
-                getBestAvailableSequenceDictionary(), compressionLevel);
+        if (evidenceClass.equals(DiscordantPairEvidence.class)) {
+            peStream = new FeatureOutputStreamFactory().create(outputFilePath, DiscordantPairEvidenceCodec::encode,
+                    getBestAvailableSequenceDictionary(), compressionLevel);
+        } else if (evidenceClass.equals(SplitReadEvidence.class)) {
+            srStream = new FeatureOutputStreamFactory().create(outputFilePath, SplitReadEvidenceCodec::encode,
+                    getBestAvailableSequenceDictionary(), compressionLevel);
+        } else if (evidenceClass.equals(BafEvidence.class)) {
+            bafStream = new FeatureOutputStreamFactory().create(outputFilePath, BafEvidenceCodec::encode,
+                    getBestAvailableSequenceDictionary(), compressionLevel);
+        } else if (evidenceClass.equals(DepthEvidence.class)) {
+            rdStream = new FeatureOutputStreamFactory().create(outputFilePath, DepthEvidenceCodec::encode,
+                    getBestAvailableSequenceDictionary(), compressionLevel);
+        } else {
+            throw new UserException.BadInput("Unsupported evidence type: " + evidenceClass.getSimpleName());
+        }
     }
 
     private void writeHeader() {
         final Object header = getDrivingFeaturesHeader();
         if (header != null) {
             if (header instanceof String) {
-                outputStream.writeHeader((String) header);
+                if (peStream != null) {
+                    peStream.writeHeader((String) header);
+                } else if (srStream != null) {
+                    srStream.writeHeader((String) header);
+                } else if (bafStream != null) {
+                    bafStream.writeHeader((String) header);
+                } else {
+                    rdStream.writeHeader((String) header);
+                }
             } else {
                 throw new IllegalArgumentException("Expected header object of type " + String.class.getSimpleName());
             }
@@ -137,15 +164,28 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
                       final ReadsContext readsContext,
                       final ReferenceContext referenceContext,
                       final FeatureContext featureContext) {
-        // All evidence data types implement an encoding with toString()
-        outputStream.add(feature);
+        if (peStream != null) {
+            peStream.add((DiscordantPairEvidence) feature);
+        } else if (srStream != null) {
+            srStream.add((SplitReadEvidence) feature);
+        } else if (bafStream != null) {
+            bafStream.add((BafEvidence) feature);
+        } else {
+            rdStream.add((DepthEvidence) feature);
+        }
     }
 
     @Override
     public Object onTraversalSuccess() {
         super.onTraversalSuccess();
-        if (outputStream != null) {
-            outputStream.close();
+        if (peStream != null) {
+            peStream.close();
+        } else if (srStream != null) {
+            srStream.close();
+        } else if (bafStream != null) {
+            bafStream.close();
+        } else {
+            rdStream.close();
         }
         return null;
     }

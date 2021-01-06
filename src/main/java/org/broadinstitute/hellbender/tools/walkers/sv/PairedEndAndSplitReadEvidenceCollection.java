@@ -15,8 +15,9 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.tools.sv.DiscordantPairEvidence;
-import org.broadinstitute.hellbender.tools.sv.SVIOUtils;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
+import org.broadinstitute.hellbender.utils.codecs.DiscordantPairEvidenceCodec;
+import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
 import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 import org.broadinstitute.hellbender.utils.io.FeatureOutputStreamFactory;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -91,8 +92,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     int currentDiscordantPosition = -1;
     String currentChrom = null;
 
-    private FeatureOutputStream peWriter;
-    private FeatureOutputStream srWriter;
+    private FeatureOutputStream<DiscordantPairEvidence> peWriter;
+    private FeatureOutputStream<SplitReadEvidence> srWriter;
 
     private SAMSequenceDictionary sequenceDictionary;
 
@@ -107,8 +108,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         super.onTraversalStart();
         sequenceDictionary = getBestAvailableSequenceDictionary();
         final FeatureOutputStreamFactory outputFactory = new FeatureOutputStreamFactory();
-        peWriter = outputFactory.create(peFile, SVIOUtils::encodeSVEvidenceFeature, sequenceDictionary, compressionLevel);
-        srWriter = outputFactory.create(srFile, SVIOUtils::encodeSVEvidenceFeature, sequenceDictionary, compressionLevel);
+        peWriter = outputFactory.create(peFile, DiscordantPairEvidenceCodec::encode, sequenceDictionary, compressionLevel);
+        srWriter = outputFactory.create(srFile, SplitReadEvidenceCodec::encode, sequenceDictionary, compressionLevel);
     }
 
     @Override
@@ -190,7 +191,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
      * srWriter if necessary.
      */
     @VisibleForTesting
-    public void countSplitRead(final GATKRead read, final PriorityQueue<SplitPos> splitCounts, final FeatureOutputStream srWriter) {
+    public void countSplitRead(final GATKRead read, final PriorityQueue<SplitPos> splitCounts, final FeatureOutputStream<SplitReadEvidence> srWriter) {
         final SplitPos splitPosition = getSplitPosition(read);
         final int readStart = read.getStart();
         if (splitPosition.direction == POSITION.MIDDLE) {
@@ -208,7 +209,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         splitCounts.add(splitPosition);
     }
 
-    private void flushSplitCounts(final Predicate<SplitPos> flushablePosition, final FeatureOutputStream srWriter, final PriorityQueue<SplitPos> splitCounts) {
+    private void flushSplitCounts(final Predicate<SplitPos> flushablePosition, final FeatureOutputStream<SplitReadEvidence> srWriter, final PriorityQueue<SplitPos> splitCounts) {
 
         while (splitCounts.size() > 0 && flushablePosition.test(splitCounts.peek())) {
             SplitPos pos = splitCounts.poll();

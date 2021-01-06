@@ -36,7 +36,7 @@ public final class TabixIndexedFeatureOutputStream<F extends Feature> implements
      * @param dictionary sequence dictionary
      * @param compressionLevel block compression level
      */
-    public TabixIndexedFeatureOutputStream(final GATKPath file, final FeatureCodec<F, Object> codec,
+    public TabixIndexedFeatureOutputStream(final GATKPath file, final FeatureCodec<? extends Feature, ?> codec,
                                            final Function<F, String> encoder, final SAMSequenceDictionary dictionary,
                                            final int compressionLevel) {
         Utils.nonNull(file);
