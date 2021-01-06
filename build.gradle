@@ -427,7 +427,8 @@ tasks.withType(Jar) {
                 'Toolkit-Short-Name' : 'GATK',
                 'Main-Class': project.mainClassName,
                 'Picard-Version': picardVersion,
-                'htsjdk-Version': htsjdkVersion
+                'htsjdk-Version': htsjdkVersion,
+                'Spark-Version': sparkVersion
     }
 }
 
