@@ -95,7 +95,7 @@ import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.AS_FI
  *    --filter-name "my_filter" \
  *    --filter-expression "AB < 0.2 || MQ0 > 50"
  *  </pre>
- * See this <a href="https://www.broadinstitute.org/gatk/guide/article?id=1255">article about using JEXL expressions</a>
+ * See this <a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions">article about using JEXL expressions</a>
  * for more information.
  */
 @CommandLineProgramProperties(
