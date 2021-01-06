@@ -52,7 +52,7 @@ import java.util.*;
  *     <li>_interval_summary: total, mean, median, quartiles, and threshold proportions, aggregated per interval</li>
  *     <li>_interval_statistics: 2x2 table of # of intervals covered to >= X depth in >=Y samples</li>
  *     <li>_gene_summary: total, mean, median, quartiles, and threshold proportions, aggregated per gene</li>
- *     <li>_gene_statistics: 2x2 table of # of genes covered to >= X depth in >= Y samples</li>
+ *     <li>_gene_statistics: 2x2 table of # of genes covered to >= X depth in >= Y samples. In its current incarnation it will not include genes not at least partially covered (see --omit-genes-not-entirely-covered-by-traversal for details) </li>
  *     <li>_cumulative_coverage_counts: coverage histograms (# locus with >= X coverage), aggregated over all bases</li>
  *     <li>_cumulative_coverage_proportions: proprotions of loci with >= X coverage, aggregated over all bases</li>
  * </ul>

@@ -365,7 +365,7 @@ public class CoverageOutputWriter implements Closeable {
     }
 
     /**
-     * Write out the interval summary statistics. Note that this method expects as input that the provided table has had
+     * Write out the gene statistics. Note that this method expects as input that the provided table has had
      * {@link CoverageUtils#updateTargetTable(int[][], DepthOfCoverageStats)} called on it exactly once for each interval
      * summarized in this traversal.
      *
