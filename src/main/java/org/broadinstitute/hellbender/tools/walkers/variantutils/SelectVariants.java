@@ -637,7 +637,7 @@ public final class SelectVariants extends VariantWalker {
                 // The IAE thrown by htsjdk already includes an informative error message ("Invalid JEXL
                 //  expression detected...")
                 throw new UserException(e.getMessage() +
-                        "\nSee https://www.broadinstitute.org/gatk/guide/article?id=1255 for documentation on using JEXL in GATK", e);
+                        "\nSee https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions for documentation on using JEXL in GATK", e);
             }
 
             if (!failedJexlMatch &&
