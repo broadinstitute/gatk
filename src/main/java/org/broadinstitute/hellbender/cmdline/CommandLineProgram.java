@@ -403,7 +403,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                 final String sparkVersion = manifestAttributes.getValue("Spark-Version");
                 logger.info("HTSJDK Version: " + (htsjdkVersion != null ? htsjdkVersion : "unknown"));
                 logger.info("Picard Version: " + (picardVersion != null ? picardVersion : "unknown"));
-                logger.info("Spark Version: " + (sparkVersion != null ? sparkVersion : "unknown"));
+                logger.info("Built for Spark Version: " + (sparkVersion != null ? sparkVersion : "unknown"));
         }
     }
 
