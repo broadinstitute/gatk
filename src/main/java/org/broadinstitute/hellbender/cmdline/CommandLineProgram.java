@@ -400,8 +400,10 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                 final Attributes manifestAttributes = manifest.getMainAttributes();
                 final String htsjdkVersion = manifestAttributes.getValue("htsjdk-Version");
                 final String picardVersion = manifestAttributes.getValue("Picard-Version");
+                final String sparkVersion = manifestAttributes.getValue("Spark-Version");
                 logger.info("HTSJDK Version: " + (htsjdkVersion != null ? htsjdkVersion : "unknown"));
                 logger.info("Picard Version: " + (picardVersion != null ? picardVersion : "unknown"));
+                logger.info("Built for Spark Version: " + (sparkVersion != null ? sparkVersion : "unknown"));
         }
     }
 
