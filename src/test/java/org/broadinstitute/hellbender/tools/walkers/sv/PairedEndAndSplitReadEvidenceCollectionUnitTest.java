@@ -8,7 +8,7 @@ import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.OutputStreamWriter;
+import java.io.BufferedWriter;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTest {
 
     @Test
-    public void testGetReportableDiscordantReadPair() throws Exception {
+    public void testGetReportableDiscordantReadPair() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(2, 1, 10000);
 
         // read pair on different contigs
@@ -86,9 +86,9 @@ public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTes
         final GATKRead rightClip = ArtificialReadUtils.createArtificialRead(header, "rightClip", 0, 1000, ArtificialReadUtils.createRandomReadBases(151, false),
                 ArtificialReadUtils.createRandomReadQuals(151), "100M51S");
 
-        final OutputStreamWriter mockSrWriter = Mockito.mock(OutputStreamWriter.class);
+        final BufferedWriter mockSrWriter = Mockito.mock(BufferedWriter.class);
 
-        PairedEndAndSplitReadEvidenceCollection tool = new PairedEndAndSplitReadEvidenceCollection();
+        final PairedEndAndSplitReadEvidenceCollection tool = new PairedEndAndSplitReadEvidenceCollection();
         final PriorityQueue<PairedEndAndSplitReadEvidenceCollection.SplitPos> splitCounts = new PriorityQueue<>(new PairedEndAndSplitReadEvidenceCollection.SplitPosComparator());
         tool.sampleName = "sample";
 
