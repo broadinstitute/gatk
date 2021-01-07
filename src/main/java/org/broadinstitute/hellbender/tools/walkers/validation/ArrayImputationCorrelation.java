@@ -1,7 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
+import htsjdk.samtools.util.StringUtil;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFUtils;
 import org.apache.commons.collections4.Predicate;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -23,12 +27,15 @@ import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+import shaded.cloud_nio.com.google.errorprone.annotations.Var;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @CommandLineProgramProperties(
@@ -41,10 +48,6 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     final static String USAGE_SUMMARY = "ArrayImputationCorrelation";
     final static String USAGE_ONE_LINE_SUMMARY = "ArrayImputationCorrelation";
 
-    @Argument(doc = "af annotation",
-            shortName = "a")
-    protected String afAnnotation;
-
     @Argument(fullName= StandardArgumentDefinitions.RESOURCE_LONG_NAME, doc="External resource VCF file", optional=true)
     public FeatureInput<VariantContext> af_resource;
 
@@ -55,6 +58,9 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
      */
     @Argument(fullName="keep-ids", shortName="ids", doc="List of variant rsIDs to select", optional=true)
     private Set<String> rsIDsToKeep = new HashSet<>();
+
+    @Argument(fullName="dosage-field", optional=true)
+    public String dosageField = null;
 
     @Argument(
             doc = "Output file for correlation.",
@@ -71,39 +77,63 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     private GATKPath outputAccuracyFile = null;
 
     @Argument(
-            doc = "Output file for incorrectly genotyped sites",
-            fullName = "output-incorrect-sites",
-            shortName = "OI",
-            optional = true
+        fullName = "af-annotations"
     )
-    private GATKPath outputIncorrectSitesFile = null;
+    private List<String> afAnnotations;
+
+//    @Argument(
+//            doc = "Output file for incorrectly genotyped sites",
+//            fullName = "output-incorrect-sites",
+//            shortName = "OI",
+//            optional = true
+//    )
+//    private GATKPath outputIncorrectSitesFile = null;
 
     final int nBins = 14;
     final double firstBinRightEdge = 0.0005;
-    final List<AFCorrelationAggregator> aggregators = new ArrayList<>();
-    final AccuracyMetrics snpMetrics = new AccuracyMetrics(VariantContext.Type.SNP);
-    final AccuracyMetrics indelMetrics = new AccuracyMetrics(VariantContext.Type.INDEL);
+    final List<List<AFCorrelationAggregator>> aggregators = new ArrayList<>();
+    final List<AccuracyMetrics> snpMetrics = new ArrayList<>();
+    final List<AccuracyMetrics> indelMetrics = new ArrayList<>();
     private VariantContext currentReferenceBlockVC;
-    private IncorrectlyGenotypedSitesWriter incorrectlyGenotypedSitesWriter;
+    final Map<String, String> afAnnotationsMap = new HashMap<>();
+//    private IncorrectlyGenotypedSitesWriter incorrectlyGenotypedSitesWriter;
 
     @Override
     public void onTraversalStart() {
-        aggregators.add(new AFCorrelationAggregator(firstBinRightEdge /2));
-        for (int i = 1; i < nBins; i++) {
-            final double log10_bin_width = (- Math.log10(firstBinRightEdge))/(double)(nBins - 1);
-            final double logBinCenter = Math.log10(firstBinRightEdge) + (i - 0.5) * log10_bin_width;
-            final double binCenter = Math.pow(10, logBinCenter);
-            aggregators.add(new AFCorrelationAggregator(binCenter));
+        final VCFHeader header = getEvalHeader();
+        final List<String> samples = header.getSampleNamesInOrder();
+        for (final String afAnnotation : afAnnotations) {
+            String[] tokens = new String[2];
+            StringUtil.split(afAnnotation, tokens,':');
+            afAnnotationsMap.put(tokens[0], tokens[1]);
+        }
+        for (final String sample : samples) {
+            if (!afAnnotationsMap.containsKey(sample)) {
+                continue;
+            }
+            final List<AFCorrelationAggregator> theseAggregators = new ArrayList<>();
+            theseAggregators.add(new AFCorrelationAggregator(firstBinRightEdge / 2, sample));
+            for (int i = 1; i < nBins; i++) {
+                final double log10_bin_width = (-Math.log10(firstBinRightEdge)) / (double) (nBins - 1);
+                final double logBinCenter = Math.log10(firstBinRightEdge) + (i - 0.5) * log10_bin_width;
+                final double binCenter = Math.pow(10, logBinCenter);
+                theseAggregators.add(new AFCorrelationAggregator(binCenter, sample));
+            }
+            aggregators.add(theseAggregators);
+            snpMetrics.add(new AccuracyMetrics(VariantContext.Type.SNP, sample));
+            indelMetrics.add(new AccuracyMetrics(VariantContext.Type.INDEL, sample));
         }
 
-        if (outputIncorrectSitesFile != null) {
-            try {
-                incorrectlyGenotypedSitesWriter = new IncorrectlyGenotypedSitesWriter(outputIncorrectSitesFile.toPath());
-            }
-            catch (final IOException ex) {
-                throw new GATKException("Error writing out to file " + outputIncorrectSitesFile, ex);
-            }
-        }
+
+
+//        if (outputIncorrectSitesFile != null) {
+//            try {
+//                incorrectlyGenotypedSitesWriter = new IncorrectlyGenotypedSitesWriter(outputIncorrectSitesFile.toPath());
+//            }
+//            catch (final IOException ex) {
+//                throw new GATKException("Error writing out to file " + outputIncorrectSitesFile, ex);
+//            }
+//        }
     }
 
     @Override
@@ -156,62 +186,81 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
         if ((truthVC.getReference().equals(evalVC.getReference()) && (truthVC.getAlternateAllele(0).equals(evalVC.getAlternateAllele(0)) || truthVC.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE))) ||
             truthVC == currentReferenceBlockVC) {
 
-            Double af = null;
+            VariantContext resourceVariant = null;
+            Integer iMAF=-1;
             for (final VariantContext vc : resourceFeatures) {
                 if (vc.getReference().equals(evalVC.getReference())) {
                     for (int i = 0; i < vc.getNAlleles() - 1; i++) {
                         if (vc.getAlternateAllele(i).equals(evalVC.getAlternateAllele(0))) {
-                            final List<Double> afList = vc.getAttributeAsDoubleList(afAnnotation, -99);
-                            if (afList.isEmpty()) {
-                                return;
-                            }
-                            af = afList.get(i);
+                            iMAF = i;
+                            resourceVariant = vc;
                             break;
                         }
                     }
                 }
             }
-            if (af == null) {
+            if (resourceVariant == null) {
                 return;
             }
-            if (af < 0 || af > 1) {
-                throw new GATKException("invalid af value");
-            }
-
-            final int bin = getBin(af);
-            final double evalRefFrac = (double)evalVC.getGenotype(0).countAllele(evalVC.getReference())/(double)evalVC.getGenotype(0).getPloidy();
-            final double truthRefFrac = (double)truthVC.getGenotype(0).countAllele(truthVC.getReference())/(double)truthVC.getGenotype(0).getPloidy();
-            final int truthAltCount = truthVC.getGenotype(0).getPloidy() - truthVC.getGenotype(0).countAllele(truthVC.getReference());
-            final int evalAltCount = evalVC.getGenotype(0).getPloidy() - evalVC.getGenotype(0).countAllele(evalVC.getReference());
-            if (evalVC.isSNP()) {
-                aggregators.get(bin).snp_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
-                snpMetrics.incrementMetrics(evalAltCount, truthAltCount);
-            } else if (evalVC.isIndel()){
-                aggregators.get(bin).indel_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
-                indelMetrics.incrementMetrics(evalAltCount, truthAltCount);
-            }
-
-            if (incorrectlyGenotypedSitesWriter != null && truthAltCount != evalAltCount) {
-                try {
-                    incorrectlyGenotypedSitesWriter.writeRecord(evalVC);
-                } catch (final IOException ex) {
-                    throw new GATKException("error writing to incorrectly genotyped sites file", ex);
+            final Allele refAllele = evalVC.getReference();
+            for (int i=0; i<aggregators.size(); i++) {
+                final String sample = snpMetrics.get(i).sampleName;
+                final String afAnnotation = afAnnotationsMap.get(sample);
+                final List<Double> afList = resourceVariant.getAttributeAsDoubleList(afAnnotation, -99);
+                if (afList.isEmpty()) {
+                    continue;
+                }
+                final Double af = afList.get(iMAF);
+                if (af < 0 || af > 1) {
+                    throw new GATKException("invalid af value");
+                }
+                final int bin = getBin(af);
+                final Genotype evalGenotype = evalVC.getGenotype(sample);
+                final Genotype truthGenotype = truthVC.getGenotype(sample);
+                final double evalRefFrac = getDosageFrac(evalGenotype, refAllele);
+                final double truthRefFrac = getDosageFrac(truthGenotype, refAllele);
+                final int truthAltCount = truthGenotype.getPloidy() - truthGenotype.countAllele(truthVC.getReference());
+                final int evalAltCount = evalGenotype.getPloidy() - evalGenotype.countAllele(evalVC.getReference());
+                if (evalVC.isSNP()) {
+                    aggregators.get(i).get(bin).snp_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
+                    snpMetrics.get(i).incrementMetrics(evalAltCount, truthAltCount);
+                } else if (evalVC.isIndel()) {
+                    aggregators.get(i).get(bin).indel_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
+                    indelMetrics.get(i).incrementMetrics(evalAltCount, truthAltCount);
                 }
             }
+
+//            if (incorrectlyGenotypedSitesWriter != null && truthAltCount != evalAltCount) {
+//                try {
+//                    incorrectlyGenotypedSitesWriter.writeRecord(evalVC);
+//                } catch (final IOException ex) {
+//                    throw new GATKException("error writing to incorrectly genotyped sites file", ex);
+//                }
+//            }
         }
+    }
+
+    private double getDosageFrac(final Genotype geno, final Allele refAllele) {
+        if (dosageField != null) {
+            return VCFUtils.parseVcfDouble((String)geno.getExtendedAttribute(dosageField))/(double)geno.getPloidy();
+
+        }
+
+        return (double)geno.countAllele(refAllele)/(double)geno.getPloidy();
     }
 
     @Override
     public Object onTraversalSuccess() {
         try (final AFCorrelationWriter writer = new AFCorrelationWriter(outputFile.toPath())) {
-            writer.writeAllRecords(aggregators);
+            for (final List<AFCorrelationAggregator> theseAggregators : aggregators )
+            writer.writeAllRecords(theseAggregators);
         } catch (final IOException ex) {
             throw new GATKException("error writing output", ex);
         }
 
         try (final AccuracyWriter writer = new AccuracyWriter(outputAccuracyFile.toPath())) {
-            writer.writeRecord(snpMetrics);
-            writer.writeRecord(indelMetrics);
+            writer.writeAllRecords(snpMetrics);
+            writer.writeAllRecords(indelMetrics);
         } catch (final IOException ex) {
             throw new GATKException("error writing output", ex);
         }
@@ -234,33 +283,36 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 
     private static final class AFCorrelationAggregator {
         final double binCenter;
+        final String sampleName;
         final PearsonCorrelationAggregator snp_pearsonCorrelationAggregator = new PearsonCorrelationAggregator();
         final PearsonCorrelationAggregator indel_pearsonCorrelationAggregator = new PearsonCorrelationAggregator();
 
-        AFCorrelationAggregator(final double binCenter) {
+        AFCorrelationAggregator(final double binCenter, final String sampleName) {
             this.binCenter = binCenter;
+            this.sampleName = sampleName;
         }
     }
 
-    private static class IncorrectlyGenotypedSitesWriter extends TableWriter<VariantContext> {
-        IncorrectlyGenotypedSitesWriter(final Path file) throws IOException {
-            super(file, new TableColumnCollection("chrom", "start", "end"));
-        }
-
-        protected void composeLine(final VariantContext vc, final DataLine dataLine) {
-            dataLine.set("chrom", vc.getContig())
-                    .set("start", vc.getStart())
-                    .set("end", vc.getEnd());
-        }
-    }
+//    private static class IncorrectlyGenotypedSitesWriter extends TableWriter<VariantContext> {
+//        IncorrectlyGenotypedSitesWriter(final Path file) throws IOException {
+//            super(file, new TableColumnCollection("chrom", "start", "end"));
+//        }
+//
+//        protected void composeLine(final VariantContext vc, final DataLine dataLine) {
+//            dataLine.set("chrom", vc.getContig())
+//                    .set("start", vc.getStart())
+//                    .set("end", vc.getEnd());
+//        }
+//    }
 
     private static class AFCorrelationWriter extends TableWriter<AFCorrelationAggregator> {
         AFCorrelationWriter(final Path file) throws IOException {
-            super(file, new TableColumnCollection("bin_center", "snp_correlation", "snp_n_sites", "indel_correlation", "indel_n_sites"));
+            super(file, new TableColumnCollection("bin_center", "sample_name", "snp_correlation", "snp_n_sites", "indel_correlation", "indel_n_sites"));
         }
 
         protected void composeLine(final AFCorrelationAggregator afCorrelationAggregator, final DataLine dataLine) {
             dataLine.set("bin_center", afCorrelationAggregator.binCenter)
+                    .set("sample_name", afCorrelationAggregator.sampleName)
                     .set("snp_correlation", afCorrelationAggregator.snp_pearsonCorrelationAggregator.getCorrelation())
                     .set("snp_n_sites", afCorrelationAggregator.snp_pearsonCorrelationAggregator.n)
                     .set("indel_correlation", afCorrelationAggregator.indel_pearsonCorrelationAggregator.getCorrelation())
@@ -299,11 +351,12 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 
     private static class AccuracyWriter extends TableWriter<AccuracyMetrics> {
         AccuracyWriter(final Path file) throws IOException {
-            super(file, new TableColumnCollection("type", "true_positives", "true_negatives", "false_positives", "false_negatives", "recall", "precision", "accuracy"));
+            super(file, new TableColumnCollection("type", "sample_name", "true_positives", "true_negatives", "false_positives", "false_negatives", "recall", "precision", "accuracy"));
         }
 
         protected void composeLine(final AccuracyMetrics metrics, final DataLine dataLine) {
             dataLine.set("type", metrics.type.toString())
+                    .set("sample_name", metrics.sampleName)
                     .set("true_positives", metrics.true_positives)
                     .set("true_negatives", metrics.true_negatives)
                     .set("false_positives", metrics.false_positives)
@@ -315,14 +368,16 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     }
 
     static final class AccuracyMetrics {
+        final String sampleName;
         int true_positives;
         int true_negatives;
         int false_positives;
         int false_negatives;
         final VariantContext.Type type;
 
-        AccuracyMetrics(final VariantContext.Type type) {
+        AccuracyMetrics(final VariantContext.Type type, final String sampleName) {
             this.type = type;
+            this.sampleName = sampleName;
         }
         double getRecall() {
             return (double)true_positives/((double)true_positives + (double) false_negatives);
