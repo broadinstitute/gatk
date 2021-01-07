@@ -497,7 +497,6 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     @VisibleForTesting
     final static class AlleleCounter {
         private final SAMSequenceDictionary dict;
-        private final String vcfFilename;
         private final String outputFilename;
         private final int minMapQ;
         private final int minQ;
@@ -513,7 +512,6 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
                               final int minQ,
                               final boolean svPipeStyleAlleleCounts ) {
             this.dict = dict;
-            this.vcfFilename = vcfFilename;
             this.outputFilename = outputFilename;
             this.minMapQ = minMapQ;
             this.minQ = minQ;
