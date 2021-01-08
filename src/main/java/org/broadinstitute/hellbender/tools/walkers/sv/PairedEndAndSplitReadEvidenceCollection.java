@@ -641,10 +641,10 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
                 writer.write(Integer.toString(locusCounts.getPosition()));
                 writer.write('\t');
                 final int refIdx = locusCounts.getRefIdx();
-                final int refCount = locusCounts.getCount(refIdx);
-                writer.write(Integer.toString(refCount));
-                writer.write('\t');
                 if ( svPipeStyleAlleleCounts ) {
+                    final int totalCount = locusCounts.getTotalCounts();
+                    writer.write(Integer.toString(totalCount));
+                    writer.write('\t');
                     final int altIdx = locusCounts.getAltIdx();
                     final int altCount = locusCounts.getCount(altIdx);
                     writer.write(Integer.toString(altCount));
@@ -653,6 +653,9 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
                     writer.write('\t');
                     writer.write("ACGT".charAt(altIdx));
                 } else {
+                    final int refCount = locusCounts.getCount(refIdx);
+                    writer.write(Integer.toString(refCount));
+                    writer.write('\t');
                     writer.write(Integer.toString(locusCounts.getTotalCounts() - refCount));
                     writer.write('\t');
                     writer.write("ACGT".charAt(refIdx));
