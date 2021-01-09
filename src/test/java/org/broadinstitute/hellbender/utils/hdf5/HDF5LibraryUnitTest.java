@@ -98,7 +98,7 @@ public final class HDF5LibraryUnitTest extends GATKBaseTest {
 
     @Test()
     public void testMakeDouble() throws IOException {
-        final File testFile = File.createTempFile("hdf5", ".hd5");
+        final File testFile = IOUtils.createTempFile("hdf5", ".hd5");
         HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         file.makeGroup("test-group/double-group");
         Assert.assertTrue(file.makeDouble("test-group/double-group/my-double", 1.1));
@@ -114,7 +114,7 @@ public final class HDF5LibraryUnitTest extends GATKBaseTest {
 
     @Test()
     public void testMakeNaNDouble() throws IOException {
-        final File testFile = File.createTempFile("hdf5", ".hd5");
+        final File testFile = IOUtils.createTempFile("hdf5", ".hd5");
         HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         file.makeGroup("test-group/double-group");
         Assert.assertTrue(file.makeDouble("test-group/double-group/my-double", Double.NaN));
@@ -130,7 +130,7 @@ public final class HDF5LibraryUnitTest extends GATKBaseTest {
 
     @Test()
     public void testMakeDoubleArray() throws IOException {
-        final File testFile = File.createTempFile("hdf5", ".hd5");
+        final File testFile = IOUtils.createTempFile("hdf5", ".hd5");
         HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         file.makeGroup("test-group/double-group");
         final double[] testValues = new double[] { 1.1 , -2.2, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0111e10-10 };
@@ -147,7 +147,7 @@ public final class HDF5LibraryUnitTest extends GATKBaseTest {
 
     @Test()
     public void testReMakeDoubleArray() throws IOException {
-        final File testFile = File.createTempFile("hdf5", ".hd5");
+        final File testFile = IOUtils.createTempFile("hdf5", ".hd5");
         HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         file.makeGroup("test-group/double-group");
         final double[] testValues1 = new double[] { 1.1 , -2.2, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0111e10-10 };
@@ -170,7 +170,7 @@ public final class HDF5LibraryUnitTest extends GATKBaseTest {
 
     @Test()
     public void testMakeDoubleMatrix() throws IOException {
-        final File testFile = File.createTempFile("hdf5", ".hd5");
+        final File testFile = IOUtils.createTempFile("hdf5", ".hd5");
         HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         file.makeGroup("test-group/double-group");
         final double[][] testValues = new double[][] {
@@ -190,7 +190,7 @@ public final class HDF5LibraryUnitTest extends GATKBaseTest {
 
     @Test()
     public void testMakeStringArray() throws IOException {
-        final File testFile = File.createTempFile("hdf5", ".hd5");
+        final File testFile = IOUtils.createTempFile("hdf5", ".hd5");
         HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         file.makeGroup("test-group/double-group");
         final String[] testValues = new String[] { "0", "1", "absdsd12 sdsad121 sdasadsad 1212sdasdas",

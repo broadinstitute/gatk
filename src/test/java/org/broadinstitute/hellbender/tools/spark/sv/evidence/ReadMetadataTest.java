@@ -7,6 +7,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
 import org.broadinstitute.hellbender.utils.IntHistogramTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.BaseTest;
@@ -129,10 +130,9 @@ public class ReadMetadataTest extends GATKBaseTest {
     @Test(groups = "sv", expectedExceptions = UserException.class)
     void testStandaloneDeserializationOfTextFile() throws IOException {
         final ReadMetadata readMetadata = composeTestReadMetadata();
-        final File tempFile = File.createTempFile("test-ser", ".txt");
+        final File tempFile = IOUtils.createTempFile("test-ser", ".txt");
         try {
             tempFile.delete();
-            tempFile.deleteOnExit();
             ReadMetadata.writeMetadata(readMetadata, tempFile.toString());
             Assert.assertTrue(tempFile.isFile());
             ReadMetadata.Serializer.readStandalone(tempFile.toString());
@@ -144,10 +144,9 @@ public class ReadMetadataTest extends GATKBaseTest {
     @Test(groups = "sv")
     void testStandaloneSerialization() throws IOException {
         final ReadMetadata readMetadata = composeTestReadMetadata();
-        final File tempFile = File.createTempFile("test-ser", ".bin.gz");
+        final File tempFile = IOUtils.createTempFile("test-ser", ".bin.gz");
         try {
             tempFile.delete();
-            tempFile.deleteOnExit();
             ReadMetadata.Serializer.writeStandalone(readMetadata, tempFile.toString());
             Assert.assertTrue(tempFile.isFile());
             final ReadMetadata readMetadata2 = ReadMetadata.Serializer.readStandalone(tempFile.toString());

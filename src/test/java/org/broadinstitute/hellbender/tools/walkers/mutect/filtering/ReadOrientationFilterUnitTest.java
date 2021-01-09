@@ -86,7 +86,7 @@ public class ReadOrientationFilterUnitTest extends GATKBaseTest {
             double[] pi = createReasonablePrior(altBases[n]);
             priors.set(new ArtifactPrior(reference.getKmerAround(variantPosition + n, F1R2FilterConstants.REF_CONTEXT_PADDING), pi, numRefExamples, numAltExamples));
         }
-        final File table = File.createTempFile("prior", "table");
+        final File table = IOUtils.createTempFile("prior", "table");
         priors.writeArtifactPriors(table);
 
         final ReadOrientationFilter filter = new ReadOrientationFilter(Collections.singletonList(table));

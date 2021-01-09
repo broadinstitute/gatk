@@ -113,7 +113,7 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
     @Test(dataProvider = "provideGeneExonMapTest")
     public void testWriteGeneExonToVariantFuncotationMap(SortedMap<Pair<String,String>, Pair<VariantContext, FuncotationMap>> gtMap,
         final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) throws IOException {
-        final File outputFile = File.createTempFile("simpleSegFileWriting", ".seg");
+        final File outputFile = IOUtils.createTempFile("simpleSegFileWriting", ".seg");
 
         final GeneListOutputRenderer geneListOutputRenderer = new GeneListOutputRenderer(outputFile.toPath(), new LinkedHashMap<>(),
                 new LinkedHashMap<>(), new HashSet<>(), "TEST_TOOL");
@@ -152,7 +152,7 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
           expectedExceptions = UserException.BadInput.class)
     public void testValidateAbleToWriteFailureOnShortLength(final FuncotationMap funcotationMap,
                                                             final VariantContext segmentVariantContext) throws IOException {
-        final File outputFile = File.createTempFile("testFileForSegmentLengthTesting", ".seg");
+        final File outputFile = IOUtils.createTempFile("testFileForSegmentLengthTesting", ".seg");
         final GeneListOutputRenderer geneListOutputRenderer =
                 new GeneListOutputRenderer(
                         outputFile.toPath(),
@@ -169,7 +169,7 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
     public void testValidateAbleToWriteSuccessOnShortLengthWithNonDefaultMinSegmentSize(
             final FuncotationMap funcotationMap, final VariantContext segmentVariantContext
     ) throws IOException {
-        final File outputFile = File.createTempFile("testFileForSegmentLengthTesting", ".seg");
+        final File outputFile = IOUtils.createTempFile("testFileForSegmentLengthTesting", ".seg");
         final GeneListOutputRenderer geneListOutputRenderer =
                 new GeneListOutputRenderer(
                         outputFile.toPath(),
@@ -301,8 +301,8 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
     }
 
     @Test(expectedExceptions = UserException.BadInput.class, dataProvider = "provideErroneousConfigurationsForGeneListMultipleGencodeFields")
-    public void testErroneousWriteGeneExonToVariantFuncotationMapMultipleGencodeFields(final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) throws IOException {
-        final File outputFile = File.createTempFile("simpleSegFileWriting", ".seg");
+    public void testErroneousWriteGeneExonToVariantFuncotationMapMultipleGencodeFields(final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) {
+        final File outputFile = IOUtils.createTempFile("simpleSegFileWriting", ".seg");
 
         final GeneListOutputRenderer geneListOutputRenderer = new GeneListOutputRenderer(outputFile.toPath(), new LinkedHashMap<>(),
                 new LinkedHashMap<>(), new HashSet<>(), "TEST_TOOL");
@@ -311,8 +311,8 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class, expectedExceptionsMessageRegExp = ".*" + GeneListOutputRenderer.MISSING_GENCODE_FIELD_ERROR_MSG + ".*",
             dataProvider = "provideErroneousWriteGeneExonToVariantFuncotationMapMissingGencodeFields")
-    public void testErroneousWriteGeneExonToVariantFuncotationMapMissingGencodeField(final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) throws IOException {
-        final File outputFile = File.createTempFile("simpleSegFileWriting", ".seg");
+    public void testErroneousWriteGeneExonToVariantFuncotationMapMissingGencodeField(final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) {
+        final File outputFile = IOUtils.createTempFile("simpleSegFileWriting", ".seg");
 
         final GeneListOutputRenderer geneListOutputRenderer = new GeneListOutputRenderer(outputFile.toPath(), new LinkedHashMap<>(),
                 new LinkedHashMap<>(), new HashSet<>(), "TEST_TOOL");
@@ -321,8 +321,8 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class, expectedExceptionsMessageRegExp = ".*" + GeneListOutputRenderer.ONE_ALTERNATE_ALLELE_ERR_MSG + ".*",
             dataProvider = "provideErroneousWriteGeneExonToVariantFuncotationMapWrongAltAlleles")
-    public void testErroneousWriteGeneExonToVariantFuncotationMapOneAltAllele(final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) throws IOException {
-        final File outputFile = File.createTempFile("simpleSegFileWriting", ".seg");
+    public void testErroneousWriteGeneExonToVariantFuncotationMapOneAltAllele(final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) {
+        final File outputFile = IOUtils.createTempFile("simpleSegFileWriting", ".seg");
 
         final GeneListOutputRenderer geneListOutputRenderer = new GeneListOutputRenderer(outputFile.toPath(), new LinkedHashMap<>(),
                 new LinkedHashMap<>(), new HashSet<>(), "TEST_TOOL");
@@ -331,8 +331,8 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class, expectedExceptionsMessageRegExp = ".*" + GeneListOutputRenderer.INVALID_VARIANT_CONTEXT_ERR_MSG + ".*",
             dataProvider = "provideErroneousWriteGeneExonToVariantFuncotationMapInvalidVariantContext")
-    public void testErroneousWriteGeneExonToVariantFuncotationMapInvalidVariantContext(final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) throws IOException {
-        final File outputFile = File.createTempFile("simpleSegFileWriting", ".seg");
+    public void testErroneousWriteGeneExonToVariantFuncotationMapInvalidVariantContext(final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) {
+        final File outputFile = IOUtils.createTempFile("simpleSegFileWriting", ".seg");
 
         final GeneListOutputRenderer geneListOutputRenderer = new GeneListOutputRenderer(outputFile.toPath(), new LinkedHashMap<>(),
                 new LinkedHashMap<>(), new HashSet<>(), "TEST_TOOL");
@@ -341,8 +341,8 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class, expectedExceptionsMessageRegExp = ".*" + GeneListOutputRenderer.INCORRECT_NUM_TRANSCRIPT_ERR_MSG + ".*",
             dataProvider = "provideErroneousWriteGeneExonToVariantFuncotationMapNotExactlyOneTranscript")
-    public void testErroneousWriteGeneExonToVariantFuncotationMapNotExactlyOneTranscript(final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) throws IOException {
-        final File outputFile = File.createTempFile("simpleSegFileWriting", ".seg");
+    public void testErroneousWriteGeneExonToVariantFuncotationMapNotExactlyOneTranscript(final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) {
+        final File outputFile = IOUtils.createTempFile("simpleSegFileWriting", ".seg");
 
         final GeneListOutputRenderer geneListOutputRenderer = new GeneListOutputRenderer(outputFile.toPath(), new LinkedHashMap<>(),
                 new LinkedHashMap<>(), new HashSet<>(), "TEST_TOOL");
@@ -351,8 +351,8 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class, expectedExceptionsMessageRegExp = ".*" + GeneListOutputRenderer.INVALID_TRANSCRIPT_ID_ERR_MSG + ".*",
             dataProvider = "provideErroneousWriteGeneExonToVariantFuncotationMapInvalidTranscriptID")
-    public void testErroneousWriteGeneExonToVariantFuncotationMapNotValidTranscriptId(final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) throws IOException {
-        final File outputFile = File.createTempFile("simpleSegFileWriting", ".seg");
+    public void testErroneousWriteGeneExonToVariantFuncotationMapNotValidTranscriptId(final VariantContext segmentVariantContext, final FuncotationMap funcotationMap) {
+        final File outputFile = IOUtils.createTempFile("simpleSegFileWriting", ".seg");
 
         final GeneListOutputRenderer geneListOutputRenderer = new GeneListOutputRenderer(outputFile.toPath(), new LinkedHashMap<>(),
                 new LinkedHashMap<>(), new HashSet<>(), "TEST_TOOL");
@@ -469,8 +469,8 @@ public class GeneListOutputRendererUnitTest extends GATKBaseTest {
      */
     @Test(dataProvider = "provideGeneExonMapSortingTest")
     public void testSortingOfGeneExonPair(final List<Pair<String,String>> gtSorting,
-                                          final List<VariantContext> segmentVariantContexts, final List<FuncotationMap> funcotationMaps) throws IOException {
-        final File outputFile = File.createTempFile("simpleSegFileWriting", ".seg");
+                                          final List<VariantContext> segmentVariantContexts, final List<FuncotationMap> funcotationMaps) {
+        final File outputFile = IOUtils.createTempFile("simpleSegFileWriting", ".seg");
 
         Assert.assertEquals(segmentVariantContexts.size(), funcotationMaps.size(), "The number of test VariantContexts and FuncotationMaps must be equal.  This needs to be fixed in the test code by a GATK developer.");
 

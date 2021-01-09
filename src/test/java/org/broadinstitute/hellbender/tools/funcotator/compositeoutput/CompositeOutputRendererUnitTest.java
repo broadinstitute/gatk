@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.tools.funcotator.OutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.simpletsvoutput.SimpleTsvOutputRenderer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.testng.annotations.Test;
 
@@ -27,8 +28,8 @@ public class CompositeOutputRendererUnitTest extends GATKBaseTest {
 
     @Test
     public void testWriteTwoFiles() throws IOException {
-        final File outputFile1 = File.createTempFile("compositeWriteTwoFiles1", ".seg");
-        final File outputFile2 = File.createTempFile("compositeWriteTwoFiles2", ".seg");
+        final File outputFile1 = IOUtils.createTempFile("compositeWriteTwoFiles1", ".seg");
+        final File outputFile2 = IOUtils.createTempFile("compositeWriteTwoFiles2", ".seg");
 
         final SimpleInterval interval = new SimpleInterval("3", 1000000, 2000000);
         final SimpleTsvOutputRenderer renderer1 = SimpleTsvOutputRenderer.createFromFile(outputFile1.toPath(),

@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.testng.Assert;
@@ -42,7 +43,7 @@ public class SimpleTsvOutputRendererUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "provideForSimpleSegFileWriting")
     public void testSimpleSegFileWriting(final VariantContext segVC) throws IOException {
-        final File outputFile = File.createTempFile("simpleSegFileWriting", ".seg");
+        final File outputFile = IOUtils.createTempFile("simpleSegFileWriting", ".seg");
 
         final SimpleTsvOutputRenderer renderer = SimpleTsvOutputRenderer.createFromFile(outputFile.toPath(),
                 new LinkedHashMap<>(),
@@ -403,7 +404,7 @@ public class SimpleTsvOutputRendererUnitTest extends GATKBaseTest {
                              final LinkedHashMap<String, List<String>> columnNameToAliasesMap,
                              final VariantContext segVC, final FuncotationMap funcotationMap,
                              final List<String> gtAliasKeys, final List<String> gtAliasFuncotationFields, final List<String> gtFinalValues) throws IOException {
-        final File outputFile = File.createTempFile("testAliasing", ".seg");
+        final File outputFile = IOUtils.createTempFile("testAliasing", ".seg");
         final SimpleTsvOutputRenderer simpleTsvOutputRenderer = new SimpleTsvOutputRenderer(outputFile.toPath(),
                 unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations, excludedOutputFields,
                 columnNameToAliasesMap, "TESTING_VERSION", isWriteFuncotationFieldsNotInConfig);
@@ -466,8 +467,8 @@ public class SimpleTsvOutputRendererUnitTest extends GATKBaseTest {
                                    final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
                                    final Set<String> excludedOutputFields, final boolean isWriteFuncotationFieldsNotInConfig,
                                    final LinkedHashMap<String, List<String>> columnNameToAliasesMap,
-                                   final VariantContext segVC, final FuncotationMap funcotationMap) throws IOException {
-        final File outputFile = File.createTempFile("testAliasing", ".seg");
+                                   final VariantContext segVC, final FuncotationMap funcotationMap) {
+        final File outputFile = IOUtils.createTempFile("testAliasing", ".seg");
         final SimpleTsvOutputRenderer simpleTsvOutputRenderer = new SimpleTsvOutputRenderer(outputFile.toPath(),
                 unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations, excludedOutputFields,
                 columnNameToAliasesMap, "TESTING_VERSION", isWriteFuncotationFieldsNotInConfig);

@@ -31,7 +31,7 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
     private static final String REVERSE_ORDERED_SAMPLE_MAP = "reverseOrdered.sample_map";
     private static final String BADLY_SORTED1000_BATCH_SIZE50_VCF = "badlySorted1000-batch-size50.vcf";
 
-    private static File writeManyVCFs(int howMany, boolean samplesInHeaderCanMismatch, boolean addDuplicateHeaderSamples) throws IOException {
+    private static File writeManyVCFs(int howMany, boolean samplesInHeaderCanMismatch, boolean addDuplicateHeaderSamples) {
         final Map<String,File> nameToFileMap = new LinkedHashMap<>();
         final String contig = "chr20";
         final SAMSequenceDictionary dict = new SAMSequenceDictionary(
@@ -44,7 +44,7 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
         headerLines.add(VCFStandardHeaderLines.getFormatLine("GT"));
 
         for( int i = 0; i < howMany ; i++) {
-            final File out = File.createTempFile("tiny_", ".vcf");
+            final File out = IOUtils.createTempFile("tiny_", ".vcf");
 
             try (final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(out.toPath(), dict, false, Options.INDEX_ON_THE_FLY)) {
                 final String sampleName = "Sample_" + String.valueOf(i);
@@ -86,7 +86,7 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
      * generated sample name map file.
      */
     @Test(enabled = false)
-    public void generateVCFs() throws IOException {
+    public void generateVCFs() {
         final File file = writeManyVCFs(1000, false, false);
         System.out.println(file);
     }
@@ -101,7 +101,7 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
      * generated sample name map file.
      */
     @Test(enabled = false)
-    public void generateVCFsWithMismatchingSampleNamesInHeaders() throws IOException {
+    public void generateVCFsWithMismatchingSampleNamesInHeaders() {
         final File file = writeManyVCFs(1000, true, true);
         System.out.println(file);
     }

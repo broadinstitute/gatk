@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStanda
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -21,9 +22,9 @@ public class MergeAnnotatedRegionsIntegrationTest extends CommandLineProgramTest
     private static final String REF = hg19MiniReference;
 
     @Test
-    public void basicTest() throws IOException {
+    public void basicTest() {
         // This test is a bit more like the real world
-        final File outputFile = File.createTempFile("mergeannotatedregions", ".seg");
+        final File outputFile = IOUtils.createTempFile("mergeannotatedregions", ".seg");
         final List<String> arguments = new ArrayList<>();
         arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(SIMPLE_TEST_FILE);

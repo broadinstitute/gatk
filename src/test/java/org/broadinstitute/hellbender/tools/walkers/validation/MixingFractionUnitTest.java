@@ -1,13 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
-import org.broadinstitute.hellbender.tools.walkers.validation.MixingFraction;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -26,9 +25,9 @@ public class MixingFractionUnitTest {
     }
 
     @Test
-    public void testIO() throws IOException {
+    public void testIO() {
         Utils.resetRandomGenerator();
-        final File file = File.createTempFile("mixing_fractions", ".table");
+        final File file = IOUtils.createTempFile("mixing_fractions", ".table");
 
         final String sample1 = "SAMPLE1";
         final double fraction1 = 0.15;

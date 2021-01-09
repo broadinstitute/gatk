@@ -97,9 +97,9 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
      * This test confirms that this case is handled correctly, and the resulting variants are ouput correctly sorted.
      */
     @Test
-    public void testUntrimmedVariants() throws IOException {
+    public void testUntrimmedVariants() {
         final File testFile = new File(getToolTestDataDir() + "untrimmed.vcf");
-        final File output = File.createTempFile("test_untrimmed", ".vcf");
+        final File output = IOUtils.createTempFile("test_untrimmed", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(testFile)
                 .addOutput(output)
@@ -113,9 +113,9 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testUntrimmedVariantsWithSetFilteredGtToNocall() throws IOException {
+    public void testUntrimmedVariantsWithSetFilteredGtToNocall() {
         final File testFile = new File(getToolTestDataDir() + "untrimmed.vcf");
-        final File output = File.createTempFile("test_untrimmed", ".vcf");
+        final File output = IOUtils.createTempFile("test_untrimmed", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(testFile)
                 .addOutput(output)

@@ -206,8 +206,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         File actualVcf;
         // work around TribbleIndexedFeatureReader not reading header from .bgz files
         if (vcf.endsWith(".bgz")) {
-            actualVcf = File.createTempFile(vcf, ".gz");
-            actualVcf.deleteOnExit();
+            actualVcf = IOUtils.createTempFile(vcf, ".gz");
             Files.copy(new File(vcf), actualVcf);
         } else {
             actualVcf = new File(vcf);

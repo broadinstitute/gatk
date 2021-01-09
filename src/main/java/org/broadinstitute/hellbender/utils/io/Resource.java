@@ -83,7 +83,7 @@ public final class Resource {
      * @throws IOException
      */
     public static File getResourceContentsAsFile(final String resourcePath) throws IOException {
-        final File tmpResourceFile = File.createTempFile("tmp_read_resource_", ".config");
+        final File tmpResourceFile = IOUtils.createTempFile("tmp_read_resource_", ".config");
         // use current classloader rather than system classloader to support dynamic environments like Spark executors
         final InputStream resourceAsStream = Resource.class.getClassLoader().getResourceAsStream(resourcePath);
 

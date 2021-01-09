@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -27,8 +28,8 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
     public static final String REF = hg19_chr1_1M_Reference;
 
     @Test
-    public void testBasic() throws IOException {
-        final File outputFile = File.createTempFile("tag_germline_seg_", ".seg");
+    public void testBasic() {
+        final File outputFile = IOUtils.createTempFile("tag_germline_seg_", ".seg");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(TAG_GERMLINE_TUMOR_MATCHED_NORMAL_SEG_FILE);
@@ -55,8 +56,8 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testSlightlyDifferent() throws IOException {
-        final File outputFile = File.createTempFile("tag_germline_seg_", ".seg");
+    public void testSlightlyDifferent() {
+        final File outputFile = IOUtils.createTempFile("tag_germline_seg_", ".seg");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(TAG_GERMLINE_TUMOR_ALMOST_MATCHED_NORMAL_SEG_FILE);
@@ -83,8 +84,8 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testSlightlyDifferentAndSplit() throws IOException {
-        final File outputFile = File.createTempFile("tag_germline_seg_", ".seg");
+    public void testSlightlyDifferentAndSplit() {
+        final File outputFile = IOUtils.createTempFile("tag_germline_seg_", ".seg");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(TAG_GERMLINE_TUMOR_SPLIT_ALMOST_MATCHED_NORMAL_SEG_FILE);
@@ -112,8 +113,8 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testTotallyDifferent() throws IOException {
-        final File outputFile = File.createTempFile("tag_germline_seg_", ".seg");
+    public void testTotallyDifferent() {
+        final File outputFile = IOUtils.createTempFile("tag_germline_seg_", ".seg");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(TAG_GERMLINE_TUMOR_NOT_MATCHED_NORMAL_SEG_FILE);
@@ -152,8 +153,8 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testSplit() throws IOException {
-        final File outputFile = File.createTempFile("tag_germline_seg_", ".seg");
+    public void testSplit() {
+        final File outputFile = IOUtils.createTempFile("tag_germline_seg_", ".seg");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(TAG_GERMLINE_TUMOR_SPLIT_NO_MATCHED_NORMAL_SEG_FILE);

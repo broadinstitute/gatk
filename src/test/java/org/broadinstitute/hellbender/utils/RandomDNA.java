@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
@@ -200,7 +201,7 @@ public final class RandomDNA {
     /**
      * Create a random reference and writes in FASTA format into a temporal file.
      * <p>
-     *     The output file is instantiated using {@link File#createTempFile}.
+     *     The output file is instantiated using {@link IOUtils#createTempFile}.
      * </p>
      * <p>
      *     The invoking code is responsible to manage and dispose of the output file.
@@ -213,7 +214,7 @@ public final class RandomDNA {
      */
     public File nextFasta(final SAMSequenceDictionary dict, final int basesPerLine)
         throws IOException {
-        final File result = File.createTempFile("random-", ".fasta");
+        final File result = IOUtils.createTempFile("random-", ".fasta");
         nextFasta(result, dict, basesPerLine);
         return result;
     }
