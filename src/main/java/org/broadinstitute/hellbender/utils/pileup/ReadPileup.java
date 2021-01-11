@@ -211,6 +211,10 @@ public class ReadPileup implements Iterable<PileupElement> {
         return toReturn;
     }
 
+    public List<PileupElement> getPileupElements(){
+        return pileupElements;
+    }
+
     /**
      * The best way to access PileupElements where you only care about the bases and quals in the pileup.
      * <p>
@@ -276,7 +280,7 @@ public class ReadPileup implements Iterable<PileupElement> {
     /**
      * Get counts of A, C, G, T in order, which returns a int[4] vector with counts according
      * to BaseUtils.simpleBaseToBaseIndex for each base.
-     * Deletions are not counted.
+     * Deletions are not counted. sato: deletions are not counted....would this make a difference tho?
      */
     public int[] getBaseCounts() {
         final int[] counts = new int[4];

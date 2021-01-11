@@ -190,10 +190,15 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
         result.normalizeLikelihoods(log10globalReadMismappingRate, symmetricallyNormalizeAllelesToReference);
 
+        // sato: disable filtering---for now.
+        if (true){
+            return result;
+        }
+
         if (dynamicDisqualification) {
             result.filterPoorlyModeledEvidence(daynamicLog10MinLiklihoodModel(readDisqualificationScale, log10MinTrueLikelihood(expectedErrorRatePerBase, false)));
         } else {
-            result.filterPoorlyModeledEvidence(log10MinTrueLikelihood(expectedErrorRatePerBase, true));
+            result.filterPoorlyModeledEvidence(log10MinTrueLikelihood(expectedErrorRatePerBase, true)); // sato: 0.02 by default
         }
         return result;
     }

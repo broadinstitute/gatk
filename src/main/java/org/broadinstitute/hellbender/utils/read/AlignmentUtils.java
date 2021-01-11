@@ -64,7 +64,7 @@ public final class AlignmentUtils {
         final GATKRead readMinusSoftClips = ReadClipper.hardClipSoftClippedBases(originalRead);
         final int softClippedBases = originalRead.getLength() - readMinusSoftClips.getLength();
         final SmithWatermanAlignment readToHaplotypeSWAlignment = aligner.align(haplotype.getBases(), readMinusSoftClips.getBases(), CigarUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
-        if ( readToHaplotypeSWAlignment.getAlignmentOffset() == -1 ) {
+        if ( readToHaplotypeSWAlignment.getAlignmentOffset() == -1 ) { // START HERE can I get a smith-waterman score?
             // sw can fail (reasons not clear) so if it happens just don't realign the read
             return originalRead;
         }
