@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
+import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 
 import java.io.File;
@@ -111,6 +112,10 @@ public class CalculateContamination extends CommandLineProgram {
             doc="The maximum coverage relative to the mean.", optional = true)
     private final double highCoverageRatioThreshold = DEFAULT_HIGH_COVERAGE_RATIO_THRESHOLD;
 
+    public static final String POST_FILTER_PILEUP_NAME = "post-filter-pileup";
+    @Argument(fullName = POST_FILTER_PILEUP_NAME, optional = true)
+    private final File postFilterPileup = new File("pileup_post_filter.tsv");
+
     @Override
     public Object doWork() {
         final Pair<String, List<PileupSummary>> sampleAndsites = PileupSummary.readFromFile(inputPileupSummariesTable);
@@ -127,7 +132,7 @@ public class CalculateContamination extends CommandLineProgram {
             final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel : new ContaminationModel(sites);
             MinorAlleleFractionRecord.writeToFile(sample, tumorModel.segmentationRecords(), outputTumorSegmentation);
         }
-
+        PileupSummary.writeToFile("test", sites, postFilterPileup);
         final Pair<Double, Double> contaminationAndError = genotypingModel.calculateContaminationFromHoms(sites);
         ContaminationRecord.writeToFile(Arrays.asList(
                 new ContaminationRecord(sample, contaminationAndError.getLeft(), contaminationAndError.getRight())), outputTable);

@@ -25,7 +25,7 @@ public interface ReadLikelihoodCalculationEngine extends AutoCloseable {
      *
      * @return never {@code null}, and with at least one entry for input sample (keys in {@code perSampleReadList}.
      *    The value maps can be potentially empty though.
-     */
+     */ // sato: TODO This method should take a list of haplotypes, instead of assemblyResult set.
     public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods(AssemblyResultSet assemblyResultSet, SampleList samples,
                                                                          Map<String, List<GATKRead>> perSampleReadList);
 
