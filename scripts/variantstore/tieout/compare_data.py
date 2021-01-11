@@ -60,11 +60,11 @@ def parseline(e, header):
 
     return data;
 
-def compare(e1, e2, key, ):
-    if (e1[key] != e2[key]):
-        print(f"DIFF on {key}")
-        print(f"{e1}")
-        print(f"{e2}")
+def equals(e1, e2, key):
+    return (key in e1 and key in e2 and e1[key] == e2[key])
+#        print(f"DIFF on {key}")
+#        print(f"{e1}")
+#        print(f"{e2}")
 
 def compare_float(e1, e2, key, tolerance):
     # compare directly first, also handles '.' case
@@ -117,7 +117,27 @@ def get_gt_alleles(gt, ref, alts):
 
     # TODO: for now, ignore phasing...
     return [a1,a2]
-    
+
+def log_difference(key, e1, e2, sample_id = None):
+    if sample_id:
+        sd1 = e1['sample_data']
+        sd2 = e2['sample_data']
+        a1 = get_gt_alleles(sd1[sample_id]['GT'], e1['ref'], e1['alt'])
+        a2 = get_gt_alleles(sd2[sample_id]['GT'], e2['ref'], e2['alt'])
+                
+        print(f"DIFF on {key} for {sample_id} at {e1['chrom']}:{e1['pos']} with {e1['alt']} and {e2['alt']}")
+        print(f"{a1} vs {a2}")
+        print(sd1[sample_id])
+        print(sd2[sample_id])
+    else:
+        print(f"DIFF on {key} {e1['chrom']}:{e1['pos']} with {e1['alt']} and {e2['alt']}")
+        print(e1)
+        print(e2)
+
+    print("--------------")
+        
+        
+        
 def compare_sample_data(e1, e2):
     sd1 = e1['sample_data']
     sd2 = e2['sample_data']
@@ -129,9 +149,23 @@ def compare_sample_data(e1, e2):
  
     for sample_id in sd1.keys():
         # if either has a GQ... compare it!
-        if 'GQ' in sd1 or 'GQ' in sd2:
-            compare(sd1[sample_id], sd2[sample_id], 'GQ')
+        if 'GQ' in sd1[sample_id] or 'GQ' in sd2[sample_id]:
+            if not equals(sd1[sample_id], sd2[sample_id], 'GQ'):
+                log_difference('GQ', e1, e2, sample_id) 
 
+        # if both have RGQ compare it (unlikely)
+        if 'RGQ' in sd1[sample_id] and 'RGQ' in sd2[sample_id]:
+            if not equals(sd1[sample_id], sd2[sample_id], 'RGQ'):
+                log_difference('RGQ', e1, e2, sample_id) 
+
+        # if first (older) has PLs, and seccond (bq) has RGQ... compare!
+        elif 'PL' in sd1[sample_id] and 'RGQ' in sd2[sample_id]:
+            rgq1 = sd1[sample_id]['PL'].split(",")[0]
+            rgq2 = sd2[sample_id]['RGQ']
+            
+            if (rgq1 != rgq2):
+                log_difference('RGQ', e1, e2, sample_id) 
+            
         # compare genotypes based on actual alleles (since order of alts might differ)
         a1 = get_gt_alleles(sd1[sample_id]['GT'], e1['ref'], e1['alt'])
         a2 = get_gt_alleles(sd2[sample_id]['GT'], e2['ref'], e2['alt'])
@@ -141,16 +175,10 @@ def compare_sample_data(e1, e2):
             # TODO: hack to work around myriad of errors where overlapping reference blocks incorrectly report ./. in classic pipeline
             if ( sd1[sample_id]['GT'] == "./." and sd2[sample_id]['GT'] == "0/0"):
                 return
-            
-            print(f"DIFF on Genotypes for {sample_id} at {e1['chrom']}:{e1['pos']} with {e1['alt']} and {e2['alt']}")
-            print(f"{a1} vs {a2}")
-            print(sd1[sample_id])
-            print(sd2[sample_id])
-            print("--------------")
+
+            log_difference('Genotypes', e1, e2, sample_id) 
+
     
-    
-# NOTE: files should have been passed through "unix sort" first
-# i.e. cat foo.vcf | sort > new.vcf
 vcf_file_1 = sys.argv[1]
 vcf_file_2 = sys.argv[2]
 
@@ -180,9 +208,10 @@ with open(vcf_file_1) as file1, open(vcf_file_2) as file2:
         e1 = parseline(line1, header1)
         e2 = parseline(line2, header2)
         
-        # do the comparison of exact matches
+        # do the comparison of exact matches at the position level
         for key in ['chrom','pos','id', 'ref']:
-            compare(e1, e2, key)
+            if not equals(e1, e2, key):
+                log_difference(key, e1, e2) 
 
         # TODO: temporary until we decide what to do with spanning deletions
         if ('*' in e1['alt']):
