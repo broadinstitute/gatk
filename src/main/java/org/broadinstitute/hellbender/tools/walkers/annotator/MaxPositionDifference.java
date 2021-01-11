@@ -1,22 +1,16 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.primitives.Ints;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.List;
-import java.util.OptionalDouble;
 import java.util.OptionalInt;
+import java.util.stream.Collectors;
 
 /**
  * Median distance of variant starts from ends of reads supporting each alt allele.
@@ -39,7 +33,15 @@ public class MaxPositionDifference extends PerAlleleAnnotation implements Standa
 
     @Override
     protected int aggregate(final List<Integer> values) {
-        return values.isEmpty() ? VALUE_FOR_NO_READS : MathUtils.arrayMax(Ints.toArray(values)) - MathUtils.arrayMin(Ints.toArray(values));
+        List<Integer> positiveValues = values.stream()
+                .filter(v -> v >= 0)
+                .collect(Collectors.toList());
+
+        List<Integer> negativeValues = values.stream()
+                .filter(v -> v < 0)
+                .collect(Collectors.toList());
+
+        return values.isEmpty() ? VALUE_FOR_NO_READS : MathUtils.arrayMax(Ints.toArray(positiveValues)) - MathUtils.arrayMin(Ints.toArray(positiveValues));
     }
 
     @Override
@@ -54,7 +56,7 @@ public class MaxPositionDifference extends PerAlleleAnnotation implements Standa
             return OptionalInt.empty();
         }
 
-        final OptionalInt valueAsInt = OptionalInt.of(read.getUnclippedStart());
+        final OptionalInt valueAsInt = OptionalInt.of(read.getUnclippedStart() * (read.isSecondOfPair() ? -1 : 1));
         return valueAsInt.isPresent() ? valueAsInt : OptionalInt.empty();
     }
 }

@@ -4,6 +4,7 @@ import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQuality;
 import org.broadinstitute.hellbender.tools.walkers.annotator.FragmentLength;
 import org.broadinstitute.hellbender.tools.walkers.annotator.MappingQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.MaxPositionDifference;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ReadPosition;
 import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -99,6 +100,7 @@ public class GATKVCFHeaderLines {
         addFilterLine(new VCFFilterHeaderLine(STRICT_STRAND_BIAS_FILTER_NAME, "Evidence for alt allele is not represented in both directions"));
         addFilterLine(new VCFFilterHeaderLine(N_RATIO_FILTER_NAME, "Ratio of N to alt exceeds specified ratio"));
         addFilterLine(new VCFFilterHeaderLine(ALLELE_FRACTION_FILTER_NAME, "Allele fraction is below specified threshold"));
+        addFilterLine(new VCFFilterHeaderLine(MAX_POSITION_DIFFERENCE_FILTER_NAME, "Max position difference in read start position"));
 
         //Mitochondrial M2-related filters
         addFilterLine(new VCFFilterHeaderLine(CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME, "NuMT variant with too many ALT reads originally from autosome"));
@@ -213,7 +215,6 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(UNITIG_SIZES_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Sizes of reassembled unitigs"));
         addInfoLine(new VCFInfoHeaderLine(JOINT_ALIGNMENT_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Number of joint alignments"));
         addInfoLine(new VCFInfoHeaderLine(ALIGNMENT_SCORE_DIFFERENCE_KEY, 1, VCFHeaderLineType.Integer, "Difference in alignment score between best and next-best alignment"));
-        addInfoLine(new VCFInfoHeaderLine(READ_POSITION_MAX_DIFF_KEY, 1, VCFHeaderLineType.Integer, "Maximum difference between reads that support the alt allele"));
-
+        addInfoLine(new MaxPositionDifference().getDescriptions().get(0));
     }
 }

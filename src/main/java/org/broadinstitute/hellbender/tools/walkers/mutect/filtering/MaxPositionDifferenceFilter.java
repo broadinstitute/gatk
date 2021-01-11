@@ -22,7 +22,8 @@ public class MaxPositionDifferenceFilter extends HardFilter {
         final double[] tumorLods = Mutect2FilteringEngine.getTumorLogOdds(vc);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
-        return readPositionMaxDiff.get(indexOfMaxTumorLod + 1) == 1;
+        return readPositionMaxDiff.get(indexOfMaxTumorLod) == 1;
+//        return readPositionMaxDiff.get(indexOfMaxTumorLod + 1) == 1;
     }
 
     @Override
