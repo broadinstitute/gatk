@@ -4,8 +4,6 @@ def get_next_line(i):
     for line in i:
         if (line.startswith("##")):
             pass;
-        elif ("ZEROED_OUT_ASSAY" in line):
-            pass;
         else:
             parts = line.strip().split("\t")
             loc = f"{parts[0]}:{parts[1]}"
@@ -138,8 +136,12 @@ def compare_sample_data(e1, e2):
         a1 = get_gt_alleles(sd1[sample_id]['GT'], e1['ref'], e1['alt'])
         a2 = get_gt_alleles(sd2[sample_id]['GT'], e2['ref'], e2['alt'])
         
-        
         if (set(a1) != set(a2)):
+            
+            # TODO: hack to work around myriad of errors where overlapping reference blocks incorrectly report ./. in classic pipeline
+            if ( sd1[sample_id]['GT'] == "./." and sd2[sample_id]['GT'] == "0/0"):
+                return
+            
             print(f"DIFF on Genotypes for {sample_id} at {e1['chrom']}:{e1['pos']} with {e1['alt']} and {e2['alt']}")
             print(f"{a1} vs {a2}")
             print(sd1[sample_id])
@@ -196,4 +198,4 @@ with open(vcf_file_1) as file1, open(vcf_file_2) as file2:
         lines = lines + 1
         
         
-print(f"Compared {lines} lines...")
+print(f"Compared {lines} positions")
