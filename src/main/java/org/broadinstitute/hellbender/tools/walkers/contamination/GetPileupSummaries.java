@@ -177,6 +177,9 @@ public class GetPileupSummaries extends LocusWalker {
     @Argument(fullName = "counts", optional = true)
     private GATKPath countsFile = null;
 
+    @Argument(fullName = "filter-ends-of-reads", optional = true)
+    private boolean filterEndsOfReads = false;
+
     private final List<PileupSummary> pileupSummaries = new ArrayList<>();
 
     private boolean sawVariantsWithoutAlleleFrequency = false;
@@ -270,9 +273,10 @@ public class GetPileupSummaries extends LocusWalker {
             final ReadPileup rawPileup = alignmentContext.getBasePileup();
             final Predicate<PileupElement> mqFilter = pe -> pe.getRead().getMappingQuality() >= minMappingQuality;
             final Predicate<PileupElement> endsOfReadsFilter = pe -> Math.min(pe.getOffset(), pe.getRead().getLength() - pe.getOffset()) >=  MAX_REQUIRED_DISTANCE_FROM_END;
+            final Predicate<PileupElement> pileupFilter = filterEndsOfReads ? mqFilter.and(endsOfReadsFilter) : mqFilter;
 
             ReadPileup pileup = alignmentContext.getBasePileup()
-                    .makeFilteredPileup(mqFilter.and(endsOfReadsFilter));
+                    .makeFilteredPileup(pileupFilter);
             final int numReadsRemoved = rawPileup.size() - pileup.size();
 
             final byte altBase = vc.getAlternateAllele(0).getBases()[0];
