@@ -114,7 +114,7 @@ public class CalculateContamination extends CommandLineProgram {
 
     public static final String POST_FILTER_PILEUP_NAME = "post-filter-pileup";
     @Argument(fullName = POST_FILTER_PILEUP_NAME, optional = true)
-    private final File postFilterPileup = new File("pileup_post_filter.tsv");
+    private final File postFilterPileup = null;
 
     @Override
     public Object doWork() {
@@ -126,13 +126,18 @@ public class CalculateContamination extends CommandLineProgram {
         final List<PileupSummary> genotypingSites = matchedPileupSummariesTable == null ? sites :
                 filterSitesByCoverage(PileupSummary.readFromFile(matchedPileupSummariesTable).getRight());
 
+        // sato: output the sites that are used for calculating contamination
+        if (postFilterPileup != null){
+            PileupSummary.writeToFile(sampleAndsites.getKey(), genotypingSites, postFilterPileup);
+        }
+
         final ContaminationModel genotypingModel = new ContaminationModel(genotypingSites);
 
         if (outputTumorSegmentation != null) {
             final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel : new ContaminationModel(sites);
             MinorAlleleFractionRecord.writeToFile(sample, tumorModel.segmentationRecords(), outputTumorSegmentation);
         }
-        PileupSummary.writeToFile("test", sites, postFilterPileup);
+
         final Pair<Double, Double> contaminationAndError = genotypingModel.calculateContaminationFromHoms(sites);
         ContaminationRecord.writeToFile(Arrays.asList(
                 new ContaminationRecord(sample, contaminationAndError.getLeft(), contaminationAndError.getRight())), outputTable);
