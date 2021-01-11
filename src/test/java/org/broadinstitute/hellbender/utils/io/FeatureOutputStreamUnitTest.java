@@ -40,6 +40,7 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
     public Object[][] featureOutputStreamData() {
         return new Object[][] {
                 {
+                    SplitReadEvidence.class,
                     Lists.newArrayList(
                                 new SplitReadEvidence("sample1", "chr1", 4783443, 3, true),
                                 new SplitReadEvidence("sample2", "chr1", 4783443, 2, true),
@@ -65,11 +66,11 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "featureOutputStreamData")
-    public void testTabixIndexedStream(final ArrayList<Feature> featureList, final String extension,
-                                       final FeatureCodec codec, final String expectedHeader) throws IOException {
+    public <T extends Feature> void testTabixIndexedStream(final ArrayList<T> featureList, final String extension,
+                                       final FeatureCodec<T, LineIterator> codec, final String expectedHeader) throws IOException {
         final File tempDir = IOUtils.createTempDir(TabixIndexedFeatureOutputStream.class.getSimpleName());
         final Path outFilePath = Paths.get(tempDir.toString(), getClass().getSimpleName() + extension + ".gz");
-        final FeatureOutputStream stream = new TabixIndexedFeatureOutputStream(
+        final FeatureOutputStream<T> stream = new TabixIndexedFeatureOutputStream<T>(
                 new GATKPath(outFilePath.toString()),
                 codec,
                 FeatureOutputStreamUnitTest::encodeSVEvidenceFeature,
@@ -80,19 +81,21 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "featureOutputStreamData")
-    public void testUncompressedStream(final ArrayList<Feature> featureList, final String extension,
-                                       final FeatureCodec codec, final String expectedHeader) throws IOException {
+    public <T extends Feature> void testUncompressedStream(final ArrayList<T> featureList,
+                                                           final String extension,
+                                                           final FeatureCodec<T, LineIterator> codec,
+                                                           final String expectedHeader) throws IOException {
         final File tempDir = IOUtils.createTempDir(TabixIndexedFeatureOutputStream.class.getSimpleName());
         final Path outFilePath = Paths.get(tempDir.toString(), getClass().getSimpleName() + extension);
-        final FeatureOutputStream stream = new UncompressedFeatureOutputStream(
+        final FeatureOutputStream<T> stream = new UncompressedFeatureOutputStream<T>(
                 new GATKPath(outFilePath.toString()),
                 FeatureOutputStreamUnitTest::encodeSVEvidenceFeature
         );
         testWithStream(stream, featureList, outFilePath, codec, expectedHeader, false);
     }
 
-    private void testWithStream(final FeatureOutputStream stream, final ArrayList<Feature> featureList,
-                                final Path outFilePath, final FeatureCodec codec,
+    private <T extends Feature> void testWithStream(final FeatureOutputStream<T> stream, final ArrayList<T> featureList,
+                                final Path outFilePath, final FeatureCodec<T, LineIterator> codec,
                                 final String expectedHeader, final boolean indexed) throws IOException {
         final Path outIndexPath = Paths.get(outFilePath + FileExtensions.TABIX_INDEX);
         if (expectedHeader != null) {
@@ -118,10 +121,10 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
         }
 
         //Check records
-        final Iterator<Feature> expectedIterator = featureList.iterator();
+        final Iterator<T> expectedIterator = featureList.iterator();
         while (reader.hasNext()) {
             Assert.assertTrue(expectedIterator.hasNext(), "Actual file had more lines than expected");
-            final Feature feature = codec.decode(reader);
+            final T feature = codec.decode(reader);
             Assert.assertEquals(feature, expectedIterator.next());
         }
     }

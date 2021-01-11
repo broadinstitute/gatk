@@ -81,13 +81,17 @@ public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTes
         Assert.assertEquals(reportableDiscordantReadPair.getMateStart(), gatkRead.getMateStart());
     }
 
+    // Workaround for use of generic class with Mockito
+    private interface SplitReadFeatureOutputStream extends FeatureOutputStream<SplitReadEvidence> {
+    }
+
     @Test
     public void testCountSplitRead() throws Exception {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(2, 1, 10000);
         final GATKRead rightClip = ArtificialReadUtils.createArtificialRead(header, "rightClip", 0, 1000, ArtificialReadUtils.createRandomReadBases(151, false),
                 ArtificialReadUtils.createRandomReadQuals(151), "100M51S");
 
-        final FeatureOutputStream<SplitReadEvidence> mockSrWriter = Mockito.mock(FeatureOutputStream.class);
+        final FeatureOutputStream<SplitReadEvidence> mockSrWriter = Mockito.mock(SplitReadFeatureOutputStream.class);
 
         PairedEndAndSplitReadEvidenceCollection tool = new PairedEndAndSplitReadEvidenceCollection();
         final PriorityQueue<PairedEndAndSplitReadEvidenceCollection.SplitPos> splitCounts = new PriorityQueue<>(new PairedEndAndSplitReadEvidenceCollection.SplitPosComparator());
