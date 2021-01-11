@@ -4,6 +4,8 @@ The goal is to compare data from the WARP pipeline (from Gnarly from GenomicsDB 
 
 ## Data
 
+The 35 sample gVCF used for this analysis are listed in `warp_samples.tsv`
+
 Get a shard of pre-hard filtered extracted data from the WARP run:
 
 ```bash
@@ -33,6 +35,16 @@ This shell script compares the two VCFs at the line/position level and output so
 
 ### Allele / Genotype Comparison
 
+The code in this python script is iterative, and a bit janky.  As we find cases we understand we can exclude them from the comparison with a TODO note about what the difference is.
+
+For example, we are currently ignoring:
+
+* spaning deletions (possibly incorrectly)
+* phasing (e.g. 0/1 vs 0|1)
+
+
+To run the script:
+
 ```bash
 python compare_data.py <first-vcf> <second-vcf> <file-of-positions-to-exclude>
 ```
@@ -43,7 +55,27 @@ So for example,
 python compare_data.py bq_validation_35.0.gnarly.vcf acmg_35_chr1.vcf /tmp/only.f1.pos
 ```
 
+The output has grown organically to help with debugging discrepancies.  It will look something like this for a difference:
 
+```text
+DIFF on Genotypes for SM-GXZUI at chr1:891951 with C and C
+['.', '.'] vs ['T', 'T']
+{'GT': './.'}
+{'GT': '0/0', 'GQ': '50'}
+--------------
+DIFF on Genotypes for SM-GXZUP at chr1:960406 with A and A
+['.', '.'] vs ['G', 'G']
+{'GT': './.'}
+{'GT': '0/0', 'GQ': '50'}
+--------------
+```
+
+Where each discrepancy is separated by `------------`
+
+## Notes
+
+* the order of samples in the VCFs is different... why would this be?  Shouldn't the be lexically sorted?
+* the order of alleles in the VCFs is different... same question as above?
 
 ## Debugging Tips
 
