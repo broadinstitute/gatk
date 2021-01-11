@@ -111,6 +111,7 @@ public final class GATKVCFConstants {
     public static final String UNITIG_SIZES_KEY = "UNITIGS";
     public static final String ALIGNMENT_SCORE_DIFFERENCE_KEY = "ALIGN_DIFF";
     public static final String JOINT_ALIGNMENT_COUNT_KEY = "NALIGNS";
+    public static final String READ_POSITION_MAX_DIFF_KEY = "RPMD";
 
     // Methylation-specific INFO Keys
     public static final String UNCONVERTED_BASE_COVERAGE_KEY =      "UNCONVERTED_BASE_COV";
@@ -164,6 +165,7 @@ public final class GATKVCFConstants {
     public final static String CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME =       "numt_chimera"; //mitochondria
     public final static String ALLELE_FRACTION_FILTER_NAME =                   "low_allele_frac";
     public static final String POTENTIAL_POLYMORPHIC_NUMT_FILTER_NAME =        "numt_novel";
+    public static final String MAX_POSITION_DIFFERENCE_FILTER_NAME =           "max_pos_diff";
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(VCFConstants.PASSES_FILTERS_v4, POLYMERASE_SLIPPAGE,
             PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_EVIDENCE_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
