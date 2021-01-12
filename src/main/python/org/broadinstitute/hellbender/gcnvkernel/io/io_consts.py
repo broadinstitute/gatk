@@ -134,3 +134,7 @@ default_contig_ploidy_prior_tsv_filename = "contig_ploidy_prior.tsv"
 default_adamax_m_filename = "adamax_m.npy"
 default_adamax_u_filename = "adamax_u.npy"
 default_adamax_res_filename = "adamax_res.npy"
+
+# default exit code that indicates that inference diverged
+# note that it needs to be in sync with the corresponding constant in GermlineCNVCaller
+diverged_inference_exit_code = 239

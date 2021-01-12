@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.python;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.testutils.BaseTest;
+import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -15,6 +16,7 @@ import java.util.List;
 
 public class PythonScriptExecutorUnitTest extends GATKBaseTest {
     final String HELLO_WORLD_SCRIPT = "print (\"hello, world\")";
+    final String EXIT_WITH_CODE_SCRIPT = "import sys;sys.exit(239)";
 
     @Test(groups = "python")
     public void testPythonExists() {
@@ -52,11 +54,47 @@ public class PythonScriptExecutorUnitTest extends GATKBaseTest {
     }
 
     @Test(groups = "python", dependsOnMethods = "testPythonExists")
+    public void testExecuteAsScriptAndGetProcessOutput() {
+        final File scriptFile = writeTemporaryScriptFile(HELLO_WORLD_SCRIPT, PythonScriptExecutor.PYTHON_EXTENSION);
+
+        final PythonScriptExecutor executor = new PythonScriptExecutor(true);
+        final ProcessOutput po = executor.executeScriptAndGetOutput(scriptFile.getAbsolutePath(), null, null);
+
+        Assert.assertEquals(po.getExitValue(), 0);
+    }
+
+    @Test(groups = "python", dependsOnMethods = "testPythonExists")
+    public void testExecuteAsScriptAndGetProcessOutputWithFailureCode() {
+        final File scriptFile = writeTemporaryScriptFile(EXIT_WITH_CODE_SCRIPT, PythonScriptExecutor.PYTHON_EXTENSION);
+
+        final PythonScriptExecutor executor = new PythonScriptExecutor(true);
+        final ProcessOutput po = executor.executeScriptAndGetOutput(scriptFile.getAbsolutePath(), null, null);
+
+        Assert.assertEquals(po.getExitValue(), 239);
+    }
+
+    @Test(groups = "python", dependsOnMethods = "testPythonExists")
     public void testExecuteAsRawArgs() {
         final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
         final boolean ret = pythonExecutor.executeArgs(new ArrayList<String>(Arrays.asList("-c", HELLO_WORLD_SCRIPT)));
 
         Assert.assertTrue(ret, "Python exec failed");
+    }
+
+    @Test(groups = "python", dependsOnMethods = "testPythonExists")
+    public void testExecuteAsRawArgsAndGetProcessOutput() {
+        final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
+        final ProcessOutput po = pythonExecutor.executeArgsAndGetOutput(new ArrayList<String>(Arrays.asList("-c", HELLO_WORLD_SCRIPT)));
+
+        Assert.assertEquals(po.getExitValue(), 0);
+    }
+
+    @Test(groups = "python", dependsOnMethods = "testPythonExists")
+    public void testExecuteAsRawArgsAndGetProcessOutputWithFailureCode() {
+        final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
+        final ProcessOutput po = pythonExecutor.executeArgsAndGetOutput(new ArrayList<String>(Arrays.asList("-c", EXIT_WITH_CODE_SCRIPT)));
+
+        Assert.assertEquals(po.getExitValue(), 239);
     }
 
     @Test(groups = "python", dependsOnMethods = "testPythonExists")

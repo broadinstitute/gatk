@@ -173,18 +173,31 @@ if __name__ == "__main__":
         logger.info("A saved optimizer state was provided to use as starting point...")
         warm_up_task.fancy_opt.load(args.input_opt_path)
 
-    # go!
-    warm_up_task.engage()
-    warm_up_task.disengage()
+
+    try:
+        # go!
+        warm_up_task.engage()
+        warm_up_task.disengage()
+    except gcnvkernel.ConvergenceError as err:
+        logger.info(err.message)
+        # if inference diverged, pass an exit code to the Java side indicating that restart is needed
+        sys.exit(gcnvkernel.io_consts.diverged_inference_exit_code)
+
 
     # main task
     main_task = gcnvkernel.CohortDenoisingAndCallingMainTask(
         main_denoising_config, main_calling_config, main_inference_params,
         shared_workspace, initial_params_supplier, warm_up_task)
 
-    # go!
-    main_task.engage()
-    main_task.disengage()
+    try:
+        # go!
+        main_task.engage()
+        main_task.disengage()
+    except gcnvkernel.ConvergenceError as err:
+        logger.info(err.message)
+        # if inference diverged, pass an exit code to the Java side indicating that restart is needed
+        sys.exit(gcnvkernel.io_consts.diverged_inference_exit_code)
+
 
     # save model
     gcnvkernel.io_denoising_calling.DenoisingModelWriter(

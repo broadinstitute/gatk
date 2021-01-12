@@ -24,6 +24,8 @@ public abstract class ScriptExecutor {
 
     private final File externalScriptExecutablePath;        // File for path to externalScriptExecutable
 
+    private String[] commandLineArgs;
+
     /**
      * @param externalScriptExecutableName Name of the script engine to run (i.e. "RScript" or "python")
      */
@@ -72,62 +74,42 @@ public abstract class ScriptExecutor {
     public abstract ScriptExecutorException getScriptException(final String message);
 
     /**
-     * Execute the script represented by the arguments in {@code commandLineArguments}.
+     * Inspect process output exit code and construct a corresponding exception message.
      *
-     * @param commandLineArguments
+     * @param po script process output
+     * @return script exception message
+     */
+    public String getExceptionMessageFromScriptError(final ProcessOutput po) {
+        Utils.nonNull(po, "process output cannot be null");
+        final int exitValue = po.getExitValue();
+        final String commandLineMessage = String.format("\n%s exited with %d\nCommand Line: %s",
+                externalScriptExecutableName,
+                exitValue,
+                String.join(" ", Utils.nonNull(commandLineArgs, "command line args have not been set yet")));
+
+        //if debug was enabled the stdout/error were already output somewhere
+        final boolean outputStdout = !logger.isDebugEnabled();
+
+        return commandLineMessage.concat(po.getStatusSummary(outputStdout));
+    }
+
+    /**
+     * Execute the script represented by the arguments in {@code commandLineArguments} and handle process output.
+     *
+     * @param commandLineArguments command line arguments
      * @return true if the command executed successfully, otherwise false
      */
     protected boolean executeCuratedArgs(final String[] commandLineArguments) {
-        if (!externalExecutableExists()) {
-            if (!ignoreExceptions) {
-                executableMissing();
-            } else {
-                logger.warn("Skipping: " + getApproximateCommandLine());
+        try {
+            final ProcessOutput po = executeCuratedArgsAndGetOutput(commandLineArguments);
+            if (po == null) {
                 return false;
             }
-        }
-
-        try {
-            final ProcessSettings processSettings = new ProcessSettings(commandLineArguments);
-            //if debug is enabled, output the stdout and stderr, otherwise capture it to a buffer
-            if (logger.isDebugEnabled()) {
-                processSettings.getStdoutSettings().printStandard(true);
-                processSettings.getStderrSettings().printStandard(true);
-            } else {
-                processSettings.getStdoutSettings().setBufferSize(8192);
-                processSettings.getStderrSettings().setBufferSize(8192);
-            }
-
-            final ProcessController controller = ProcessController.getThreadLocal();
-
-            if (logger.isDebugEnabled()) {
-                logger.debug("Executing:");
-                for (final String arg: commandLineArguments) {
-                    logger.debug("  " + arg);
-                }
-            }
-            final ProcessOutput po = controller.exec(processSettings);
             final int exitValue = po.getExitValue();
             logger.debug("Result: " + exitValue);
 
-            if (exitValue != 0){
-                final StringBuilder message = new StringBuilder();
-                message.append(
-                        String.format("\n%s exited with %d\nCommand Line: %s",
-                                externalScriptExecutableName,
-                                exitValue,
-                                String.join(" ", commandLineArguments)));
-                if (exitValue == 137) {
-                    // process received SIGKILL, which might indicate OOM
-                    message.append("\nThe exit code indicates that the process was terminated. This may mean the process requires additional memory.\n");
-                }
-                //if debug was enabled the stdout/error were already output somewhere
-                if (!logger.isDebugEnabled()){
-                    message.append(String.format("\nStdout: %s\nStderr: %s",
-                            po.getStdout().getBufferString(),
-                            po.getStderr().getBufferString()));
-                }
-                throw getScriptException(message.toString());
+            if (exitValue != 0) {
+                throw getScriptException(getExceptionMessageFromScriptError(po));
             }
 
             return true;
@@ -141,4 +123,44 @@ public abstract class ScriptExecutor {
         }
     }
 
+    /**
+     * Execute the script represented by the arguments in {@code commandLineArguments} and return process output.
+     * Note that this method does not do any examination or handling of the process output.
+     *
+     * @param commandLineArguments command line arguments
+     * @return process output
+     */
+    protected ProcessOutput executeCuratedArgsAndGetOutput(final String[] commandLineArguments) {
+        Utils.nonNull(commandLineArguments, "Command line arguments cannot be null");
+
+        commandLineArgs = commandLineArguments;
+        if (!externalExecutableExists()) {
+            if (!ignoreExceptions) {
+                executableMissing();
+            } else {
+                logger.warn("Skipping: " + getApproximateCommandLine());
+                return null;
+            }
+        }
+
+        final ProcessSettings processSettings = new ProcessSettings(commandLineArgs);
+        //if debug is enabled, output the stdout and stderr, otherwise capture it to a buffer
+        if (logger.isDebugEnabled()) {
+            processSettings.getStdoutSettings().printStandard(true);
+            processSettings.getStderrSettings().printStandard(true);
+        } else {
+            processSettings.getStdoutSettings().setBufferSize(8192);
+            processSettings.getStderrSettings().setBufferSize(8192);
+        }
+
+        final ProcessController controller = ProcessController.getThreadLocal();
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("Executing:");
+            for (final String arg: commandLineArgs) {
+                logger.debug("  " + arg);
+            }
+        }
+        return controller.exec(processSettings);
+    }
 }
