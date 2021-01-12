@@ -8,11 +8,13 @@ import org.testng.annotations.Test;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 
 public final class BaseUtilsUnitTest extends GATKBaseTest {
@@ -44,6 +46,16 @@ public final class BaseUtilsUnitTest extends GATKBaseTest {
         BaseUtils.convertIUPACtoN(new byte[]{b, b, b}, false, false);
     }
 
+    /** from the javaDoc of {@link BaseUtils#simpleBaseToBaseIndex} */
+    private final static Integer[] possibleResults = {0, 1, 2, 3, -1};
+    private final static Set<Integer> possibleResultsSet = new HashSet<>(Arrays.asList(possibleResults));
+
+    @Test(dataProvider = "allByteValues")
+    public void testCanConvertToBaseIndex(final byte b) {
+        Assert.assertTrue(possibleResultsSet.contains(BaseUtils.simpleBaseToBaseIndex(b)));
+    }
+
+    // TODO: where should this be?
     private void checkBytesAreEqual(final byte[] b1, final byte[] b2) {
         for ( int i = 0; i < b1.length; i++ )
             Assert.assertEquals(b1[i], b2[i]);
