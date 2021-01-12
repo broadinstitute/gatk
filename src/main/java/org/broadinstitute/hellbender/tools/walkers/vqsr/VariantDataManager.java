@@ -421,7 +421,11 @@ public class VariantDataManager {
         if (datum.alternateAllele == null) {
             return true;
         }
-        return GATKVariantContextUtils.isAlleleInList(datum.referenceAllele, datum.alternateAllele, trainVC.getReference(), trainVC.getAlternateAlleles());
+        try {
+            return GATKVariantContextUtils.isAlleleInList(datum.referenceAllele, datum.alternateAllele, trainVC.getReference(), trainVC.getAlternateAlleles());
+        } catch (final IllegalStateException e) {
+            throw new IllegalStateException("Reference allele mismatch at position " + trainVC.getContig() + ":" + trainVC.getStart() + " : ", e);
+        }
     }
 
     protected static boolean checkVariationClass( final VariantContext evalVC, final VariantContext trainVC ) {
