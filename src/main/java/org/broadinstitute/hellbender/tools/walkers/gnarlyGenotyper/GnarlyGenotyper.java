@@ -271,8 +271,6 @@ public final class GnarlyGenotyper extends VariantWalker {
         if ( !variant.isVariant() || !GATKVariantContextUtils.isProperlyPolymorphic(variant)
                 || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0
                 || (onlyOutputCallsStartingInIntervals && !intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
-
-            warning.warn("KCIBUL -- in the apply");
             if (keepAllSites) {
                 VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));  //don't fill in QUAL here because there's no alt data
                 builder.filter(GATKVCFConstants.LOW_QUAL_FILTER_NAME);
