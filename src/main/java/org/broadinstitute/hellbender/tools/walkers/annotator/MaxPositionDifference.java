@@ -41,6 +41,9 @@ public class MaxPositionDifference extends PerAlleleAnnotation implements Standa
                 .filter(v -> v < 0)
                 .collect(Collectors.toList());
 
+        if (positiveValues.isEmpty()) {
+            return 0;
+        }
         return values.isEmpty() ? VALUE_FOR_NO_READS : MathUtils.arrayMax(Ints.toArray(positiveValues)) - MathUtils.arrayMin(Ints.toArray(positiveValues));
     }
 

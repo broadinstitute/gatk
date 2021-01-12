@@ -23,7 +23,6 @@ public class MaxPositionDifferenceFilter extends HardFilter {
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
         return readPositionMaxDiff.get(indexOfMaxTumorLod) == 1;
-//        return readPositionMaxDiff.get(indexOfMaxTumorLod + 1) == 1;
     }
 
     @Override
