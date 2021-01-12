@@ -54,7 +54,7 @@ public class HaplotypeCallerEngineUnitTest extends GATKBaseTest {
 
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, new AssemblyRegionArgumentCollection(), false, false, reads.getHeader(), referenceReader, new VariantAnnotatorEngine(new ArrayList<>(), hcArgs.dbsnp.dbsnp, hcArgs.comps, false, false));
 
-            List<ReadFilter> hcFilters = HaplotypeCallerEngine.makeStandardHCReadFilters(hcArgs.mappingQualityThreshold);
+            List<ReadFilter> hcFilters = HaplotypeCallerEngine.makeStandardHCReadFilters();
             hcFilters.forEach(filter -> filter.setHeader(reads.getHeader()));
             ReadFilter hcCombinedFilter = hcFilters.get(0);
             for ( int i = 1; i < hcFilters.size(); ++i ) {

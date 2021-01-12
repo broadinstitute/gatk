@@ -5,6 +5,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
@@ -150,7 +151,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     //TODO pull the threshold from that filter since it might or might not exist by the time we go to filter for threading, really
     //TODO we should unify on the readFilter version of this check i think but perhaps they are seperate for athropological historical reasons and it is thus culturally protected?
     @Advanced
-    @Argument(fullName = "mapping-quality-threshold", doc = "Control the threshold for discounting reads from genotyping/calling due to mapping quality")
+    @Argument(fullName = "mapping-quality-threshold-for-genotyping", doc = "Control the threshold for discounting reads from the genotyper due to mapping quality after the active region detection and assembly steps but before genotyping. NOTE: this is in contrast to the --"+ ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME+" argument which filters reads from all parts of the HaplotypeCaller. If you would like to call genotypes with a different threshold both arguments must be set.", optional = true)
     public int mappingQualityThreshold = HaplotypeCallerEngine.DEFAULT_READ_QUALITY_FILTER_THRESHOLD;
     @Advanced
     @Argument(fullName = "max-effective-depth-adjustment-for-frd", doc = "Set the maximum depth to modify FRD adjustment to in the event of high depth sites (0 to disable)", optional = false)

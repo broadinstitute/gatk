@@ -245,7 +245,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-O", outputPath,
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 // FRD arguments
-                "--apply-frd", "--transform-dragen-mapping-quality", "--mapping-quality-threshold", "1", "--disable-cap-base-qualities-to-map-quality", "--minimum-mapping-quality", "1",
+                "--apply-frd", "--transform-dragen-mapping-quality", "--mapping-quality-threshold-for-genotyping", "1", "--disable-cap-base-qualities-to-map-quality", "--minimum-mapping-quality", "1",
                 // BQD arguments
                 "--apply-bqd",  "--soft-clip-low-quality-ends",
                 // Dynamic read disqualification arguments"
@@ -460,7 +460,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-O", outputPath,
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 // FRD arguments
-                "--apply-frd", "--transform-dragen-mapping-quality", "--mapping-quality-threshold", "1", "--disable-cap-base-qualities-to-map-quality", "--minimum-mapping-quality", "1",
+                "--apply-frd", "--transform-dragen-mapping-quality", "--mapping-quality-threshold-for-genotyping", "1", "--disable-cap-base-qualities-to-map-quality", "--minimum-mapping-quality", "1",
                 // BQD arguments
                 "--apply-bqd",  "--soft-clip-low-quality-ends",
                 // Dynamic read disqualification arguments"
