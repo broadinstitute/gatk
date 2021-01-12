@@ -68,6 +68,12 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     optional = true)
     public boolean dropAboveGqThreshold = false;
 
+    @Argument(fullName = "emit-spanning-deletions-in-vet",
+    shortName = "esdav",
+    doc = "should spanning deletions be emitted as variants?",
+    optional = true)
+    public boolean emitSpanningDeletionsInVet = true;
+
     @Argument(fullName = "sample-name-mapping",
             shortName = "SNM",
             doc = "Sample name to sample id mapping",
@@ -182,17 +188,18 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         // if the only alt allele for a variant is `*`, we ignore it
-        if (!variant.isReferenceBlock() &&  variant.getAlternateAlleles().size() == 2 && variant.hasAlternateAllele(Allele.SPAN_DEL)){
-            return;
-        }
-
+        boolean isSpanDelVariant = !variant.isReferenceBlock() &&  variant.getAlternateAlleles().size() == 2 && variant.hasAlternateAllele(Allele.SPAN_DEL);
 
         // create VET output
         if (!variant.isReferenceBlock()) {
-            vetTsvCreator.apply(variant, readsContext, referenceContext, featureContext);
+            // write VET entries for spanning deletion entires only if emitSpanningDeletionsInVet is enabled
+            if (!isSpanDelVariant || emitSpanningDeletionsInVet) {
+                vetTsvCreator.apply(variant, readsContext, referenceContext, featureContext);
+            }
         }
+
         try {
-            petTsvCreator.apply(variant, intervalsToWrite);
+            petTsvCreator.apply(variant, intervalsToWrite, isSpanDelVariant);
         } catch (IOException ioe) {
             throw new GATKException("Error writing PET", ioe);
         }

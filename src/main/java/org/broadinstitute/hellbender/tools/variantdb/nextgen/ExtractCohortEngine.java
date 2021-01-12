@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.*;
@@ -28,6 +29,7 @@ import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollectionCodec;
 import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -111,6 +113,9 @@ public class ExtractCohortEngine {
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
     }
+
+    private final static double INDEL_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.INDEL_HETEROZYGOSITY);
+    private final static double SNP_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.SNP_HETEROZYGOSITY);
 
     int getTotalNumberOfVariants() { return totalNumberOfVariants; }
     int getTotalNumberOfSites() { return totalNumberOfSites; }
@@ -277,6 +282,29 @@ public class ExtractCohortEngine {
         }
     }
 
+    private long getQUALapproxFromSampleRecord(GenericRecord sampleRecord) {
+        long qa = 0;
+
+        Object o = sampleRecord.get(SchemaUtils.AS_QUALapprox);
+
+        // gracefully handle records without a QUALapprox (like the ones generated in the PET from a deletion)
+        if (o==null) {
+            return 0;
+        }
+        
+        String s = o.toString();
+
+        // TODO: KCIBUL -- unclear how QUALapproxes are summed from non-ref alleles... replicating what I saw but need to confirm with Laura
+        if (s.contains("|")) {
+            String[] parts = s.split("\\|");
+            qa = Long.parseLong(parts[0]) + 
+                 Long.parseLong(parts[1]) / 2; // ceiling or floor?!?
+        } else {
+            qa = Long.parseLong(s);
+        }
+        return qa;
+    }
+
     private void processSampleRecordsForLocation(final long location, final Iterable<GenericRecord> sampleRecordsAtPosition, final Set<String> columnNames, HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap, boolean noFilteringRequested) {
         final List<VariantContext> unmergedCalls = new ArrayList<>();
         final Set<String> currentPositionSamplesSeen = new HashSet<>();
@@ -302,9 +330,14 @@ public class ExtractCohortEngine {
             yngMap = fullYngMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
         }
 
+        long totalAsQualApprox = 0;
+        boolean hasSnpAllele = false;
+        final List<String> nonUniqueSamplesSeen = new ArrayList<>();
+
         for ( final GenericRecord sampleRecord : sampleRecordsAtPosition ) {
             final String sampleName = sampleRecord.get(SchemaUtils.SAMPLE_NAME_FIELD_NAME).toString();
             currentPositionSamplesSeen.add(sampleName);
+            nonUniqueSamplesSeen.add(sampleName);
             ++numRecordsAtPosition;
 
             if ( printDebugInformation ) {
@@ -314,7 +347,13 @@ public class ExtractCohortEngine {
             switch (sampleRecord.get(SchemaUtils.STATE_FIELD_NAME).toString()) {
                 case "v":   // Variant
                     ++totalNumberOfVariants;
-                    unmergedCalls.add(createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName, vqsLodMap, yngMap));
+                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName, vqsLodMap, yngMap);
+                    unmergedCalls.add(vc);
+
+                    totalAsQualApprox += getQUALapproxFromSampleRecord(sampleRecord);
+                    if (vc.isSNP()) { 
+                        hasSnpAllele = true; 
+                    }
                     currentPositionHasVariant = true;
                     break;
                 case "0":   // Non Variant Block with GQ < 10
@@ -339,6 +378,15 @@ public class ExtractCohortEngine {
                     unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 60));
                     break;
                 case "*":   // Spanning Deletion - do nothing. just mark the sample as seen
+                    // KCIBUL 12-22-2020 - incorporate qualapprox value to match existing GenomicsDB/Gnarly behavior
+                    // Also a strange case (see ACMG59 SM-GXZUO @ chr1:10440) where we have multiple PET records for the same position
+                    // A spanning deletion (*) overlapping a variant (v) and a reference block (2)
+                    // Only count quals when the PET = '*' AND the variant allele is '*' (ie not inferred spanning deletion)
+                    Object o = sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME);
+                    if (o != null && "*".equals(o.toString())) {
+                        totalAsQualApprox += getQUALapproxFromSampleRecord(sampleRecord);
+                    }
+
                     break;
                 case "m":   // Missing
                     // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
@@ -352,13 +400,90 @@ public class ExtractCohortEngine {
 
         }
 
+        // There is a bug in ReblockGVCFs which leads to having overlapping results for a site.  Specifically a preceding reference
+        // block may overlap a variant.  In this case the variant should take precedence.
+        // TODO: this is being fixed by Laura in ReblockGVCFs.  We might also handle this in CreateVariantIngestFile to be robust
+        // and have a clean database. However, for tieout, this is the most expedient way to handle this.
+        Set<String> duplicates = findDuplicates(nonUniqueSamplesSeen);
+
+        if ( duplicates.size() > 0 ) {
+//            System.out.println(unmergedCalls);
+//            System.out.println(nonUniqueSamplesSeen);
+            System.out.println("Duplicate data detected for " + duplicates + " at " + contig + ":" + currentPosition);
+            Map<String, List<VariantContext>> dupData = new HashMap<>();
+
+            // initialize data structure
+            for ( String sampleName : duplicates) {
+                dupData.put(sampleName, new ArrayList<>());
+            }
+
+            // pull out the duplicates
+            for (VariantContext vc : unmergedCalls) {
+                String sampleName = vc.getSampleNames().stream().findFirst().get();
+                if (duplicates.contains(sampleName)) {
+                    dupData.get(sampleName).add(vc);
+                }
+            }
+
+            // remove from original list
+            unmergedCalls.removeIf(vc -> duplicates.contains(vc.getSampleNames().stream().findFirst().get()));
+
+            // Process the duplicates
+            for ( Map.Entry<String, List<VariantContext>> entry : dupData.entrySet()) {
+                List<VariantContext> variants    = entry.getValue().stream().filter(e -> !e.getGenotypes(entry.getKey()).get(entry.getKey()).isHomRef()).collect(Collectors.toList());
+                List<VariantContext> nonVariants = entry.getValue().stream().filter(e ->  e.getGenotypes(entry.getKey()).get(entry.getKey()).isHomRef()).collect(Collectors.toList());
+
+                if (variants.size() > 1) {
+                    throw new GATKException("Conflicting VC records!!" + entry);
+                } else if (variants.size() == 1) {
+                    unmergedCalls.add(variants.get(0));
+                } else if (nonVariants.size() == 0) {
+                    // this can happen if we have two * alleles or something else that doesn't get emitted
+                } else {
+                    // sort by GQ descending and take first
+                    nonVariants.sort((vc1, vc2) -> vc2.getGenotypes(entry.getKey()).get(entry.getKey()).getGQ() - vc1.getGenotypes(entry.getKey()).get(entry.getKey()).getGQ());
+                    System.out.println(variants);
+                    System.out.println(nonVariants);
+
+                    unmergedCalls.add(nonVariants.iterator().next());
+                }
+            }
+        }
+
+
+
         if ( printDebugInformation ) {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
-
+        
+        // TODO: KCIBUL - we can optimize this by pushing this back into the query
+        // Replicating this logic:
+        // final boolean hasSnpAllele = mergedVC.getAlternateAlleles().stream().anyMatch(allele -> allele.length() == mergedVC.getReference().length());
+        final boolean isIndel = !hasSnpAllele;
+        // final double sitePrior = isIndel ? HomoSapiensConstants.INDEL_HETEROZYGOSITY : HomoSapiensConstants.SNP_HETEROZYGOSITY;
+        System.out.println("KCIBUL -- in the qualapprox w/ " + totalAsQualApprox + " for isIndel " + isIndel + " and SNP:" + SNP_QUAL_THRESHOLD + " and INDEL:" + INDEL_QUAL_THRESHOLD);
+        if((isIndel && totalAsQualApprox < INDEL_QUAL_THRESHOLD) || (!isIndel && totalAsQualApprox < SNP_QUAL_THRESHOLD)) {
+            logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
+            return;
+        }
+        
+        
         finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele, vqsLodMap, yngMap, noFilteringRequested);
     }
 
+    private <T> Set<T> findDuplicates(Collection<T> collection) {
+
+        Set<T> duplicates = new LinkedHashSet<>();
+        Set<T> uniques = new HashSet<>();
+
+        for(T t : collection) {
+            if(!uniques.add(t)) {
+                duplicates.add(t);
+            }
+        }
+
+        return duplicates;
+    }
     private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls, final Set<String> currentVariantSamplesSeen, final boolean currentPositionHasVariant, final String contig, final long start, final Allele refAllele, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean noFilteringRequested) {
         // If there were no variants at this site, we don't emit a record and there's nothing to do here
         if ( ! currentPositionHasVariant ) {
@@ -386,6 +511,8 @@ public class ExtractCohortEngine {
 
 
         final VariantContext finalVC = noFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? mergedVC : filterVariants(mergedVC, vqsLodMap, yngMap);
+//
+//        final VariantContext finalizedVC = disableGnarlyGenotyper ? filteredVC : gnarlyGenotyper.finalizeGenotype(filteredVC);
 
 
 //        final VariantContext annotatedVC = enableVariantAnnotator ?
@@ -514,7 +641,8 @@ public class ExtractCohortEngine {
 
         for ( final String columnName : columnNames ) {
             if ( SchemaUtils.REQUIRED_FIELDS.contains(columnName) ||
-                    columnName.equals(SchemaUtils.LOCATION_FIELD_NAME) ) {
+                    columnName.equals(SchemaUtils.LOCATION_FIELD_NAME) ||
+                    columnName.equals(SchemaUtils.AS_QUALapprox )) {
                 continue;
             }
 
