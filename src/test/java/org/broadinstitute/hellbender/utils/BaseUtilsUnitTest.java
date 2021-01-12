@@ -8,9 +8,13 @@ import org.testng.annotations.Test;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 
 public final class BaseUtilsUnitTest extends GATKBaseTest {
@@ -27,6 +31,31 @@ public final class BaseUtilsUnitTest extends GATKBaseTest {
         checkBytesAreEqual(BaseUtils.convertIUPACtoN(new byte[]{'M', 'M', 'M'}, false, false), new byte[]{'N', 'N', 'N'});
     }
 
+    @DataProvider
+    Iterator<Object[]> allByteValues() {
+        final List<Object[]> bytes = new ArrayList<>(256);
+        for (int i = 0; i < 256; i++) {
+            final byte oneByte = (byte) i;
+            bytes.add(new Object[]{oneByte});
+        }
+        return bytes.iterator();
+    }
+
+    @Test(dataProvider = "allByteValues")
+    public void testCanConvertAllBytes(final byte b) {
+        BaseUtils.convertIUPACtoN(new byte[]{b, b, b}, false, false);
+    }
+
+    /** from the javaDoc of {@link BaseUtils#simpleBaseToBaseIndex} */
+    private final static Integer[] possibleResults = {0, 1, 2, 3, -1};
+    private final static Set<Integer> possibleResultsSet = new HashSet<>(Arrays.asList(possibleResults));
+
+    @Test(dataProvider = "allByteValues")
+    public void testCanConvertToBaseIndex(final byte b) {
+        Assert.assertTrue(possibleResultsSet.contains(BaseUtils.simpleBaseToBaseIndex(b)));
+    }
+
+    // TODO: where should this be?
     private void checkBytesAreEqual(final byte[] b1, final byte[] b2) {
         for ( int i = 0; i < b1.length; i++ )
             Assert.assertEquals(b1[i], b2[i]);
@@ -34,27 +63,27 @@ public final class BaseUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testTransitionTransversion() {
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'A', (byte)'T' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'A', (byte)'C' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'A', (byte)'G' ) == BaseUtils.BaseSubstitutionType.TRANSITION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'C', (byte)'A' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'C', (byte)'T' ) == BaseUtils.BaseSubstitutionType.TRANSITION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'C', (byte)'G' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'T', (byte)'A' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'T', (byte)'C' ) == BaseUtils.BaseSubstitutionType.TRANSITION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'T', (byte)'G' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'G', (byte)'A' ) == BaseUtils.BaseSubstitutionType.TRANSITION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'G', (byte)'T' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'G', (byte)'C' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'A', (byte) 'T'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'A', (byte) 'C'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'A', (byte) 'G'), BaseUtils.BaseSubstitutionType.TRANSITION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'C', (byte) 'A'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'C', (byte) 'T'), BaseUtils.BaseSubstitutionType.TRANSITION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'C', (byte) 'G'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'T', (byte) 'A'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'T', (byte) 'C'), BaseUtils.BaseSubstitutionType.TRANSITION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'T', (byte) 'G'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'G', (byte) 'A'), BaseUtils.BaseSubstitutionType.TRANSITION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'G', (byte) 'T'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'G', (byte) 'C'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
 
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'a', (byte)'T' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'a', (byte)'C' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'A', (byte)'T' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'A', (byte)'C' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'A', (byte)'t' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'A', (byte)'c' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'a', (byte)'t' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
-        Assert.assertTrue( BaseUtils.SNPSubstitutionType( (byte)'a', (byte)'c' ) == BaseUtils.BaseSubstitutionType.TRANSVERSION );
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'a', (byte) 'T'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'a', (byte) 'C'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'A', (byte) 'T'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'A', (byte) 'C'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'A', (byte) 't'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'A', (byte) 'c'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'a', (byte) 't'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
+        Assert.assertSame(BaseUtils.SNPSubstitutionType((byte) 'a', (byte) 'c'), BaseUtils.BaseSubstitutionType.TRANSVERSION);
     }
 
     @Test
@@ -67,7 +96,7 @@ public final class BaseUtilsUnitTest extends GATKBaseTest {
     private void compareRCStringToExpected(String fw, String rcExp) {
         String rcObs = new String(BaseUtils.simpleReverseComplement(fw.getBytes()));
 
-        Assert.assertTrue(rcObs.equals(rcExp));
+        Assert.assertEquals(rcExp, rcObs);
     }
 
 
@@ -123,7 +152,7 @@ public final class BaseUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider="baseComparatorData")
     public void testBaseComparator(final Collection<byte[]> basesToSort) {
         final ArrayList<byte[]> sorted = new ArrayList<>(basesToSort);
-        Collections.sort(sorted, BaseUtils.BASES_COMPARATOR);
+        sorted.sort(BaseUtils.BASES_COMPARATOR);
         for (int i = 0; i < sorted.size(); i++)   {
             Assert.assertEquals(BaseUtils.BASES_COMPARATOR.compare(sorted.get(i),sorted.get(i)),0);
             final String iString = new String(sorted.get(i));
