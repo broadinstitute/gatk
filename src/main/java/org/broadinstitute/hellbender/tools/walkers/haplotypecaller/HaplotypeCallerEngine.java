@@ -129,7 +129,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private static final int MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY = 2;
 
     /**
-     * Reads with length lower than this number, after clipping off overhands outside the active region,
+     * Reads with length lower than this number, after clipping off overhangs outside the active region,
      * won't be considered for genotyping.
      */
     private static final int READ_LENGTH_FILTER_THRESHOLD = 10;
