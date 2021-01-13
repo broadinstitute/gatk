@@ -644,8 +644,9 @@ public final class AssemblyBasedCallerUtils {
         haplotypeMap.values().forEach(haplotypesWithCalledVariants::addAll);
 
         // construct a mapping from call to phase set ID
-        final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseSetMapping = new HashMap<>();
-        final int uniqueCounterEndValue = constructPhaseSetMapping(calls, haplotypeMap, haplotypesWithCalledVariants.size(), phaseSetMapping);
+        final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseSetMapping =
+                constructPhaseSetMapping(calls, haplotypeMap, haplotypesWithCalledVariants.size());
+        final int uniqueCounterEndValue = Math.toIntExact(phaseSetMapping.values().stream().map(Pair::getLeft).distinct().count());
 
         // we want to establish (potential) *groups* of phased variants, so we need to be smart when looking at pairwise phasing partners
         return constructPhaseGroups(calls, phaseSetMapping, uniqueCounterEndValue);
@@ -665,7 +666,7 @@ public final class AssemblyBasedCallerUtils {
         for ( final VariantContext call : originalCalls ) {
             // don't try to phase if there is not exactly 1 alternate allele
             if ( ! isBiallelicWithOneSiteSpecificAlternateAllele(call) ) {
-                haplotypeMap.put(call, Collections.<Haplotype>emptySet());
+                haplotypeMap.put(call, Collections.emptySet());
                 continue;
             }
 
@@ -697,15 +698,15 @@ public final class AssemblyBasedCallerUtils {
      * @param originalCalls    the original unphased calls
      * @param haplotypeMap     mapping from alternate allele to the set of haplotypes that contain that allele
      * @param totalAvailableHaplotypes the total number of possible haplotypes used in calling
-     * @param phaseSetMapping  the map to populate in this method;
-     *                         note that it is okay for this method NOT to populate the phaseSetMapping at all (e.g. in an impossible-to-phase situation)
-     * @return the next incremental unique index
+     * @return a map from each variant context to a pair with the phase set ID and phase group of the alt allele
+     *  note this may be empty in impossible-to-phase situations
      */
     @VisibleForTesting
-    static int constructPhaseSetMapping(final List<VariantContext> originalCalls,
+    static Map<VariantContext, Pair<Integer, PhaseGroup>> constructPhaseSetMapping(final List<VariantContext> originalCalls,
                                                   final Map<VariantContext, Set<Haplotype>> haplotypeMap,
-                                                  final int totalAvailableHaplotypes,
-                                                  final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseSetMapping) {
+                                                  final int totalAvailableHaplotypes) {
+
+        final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseSetMapping = new HashMap<>(haplotypeMap.size());
 
         final int numCalls = originalCalls.size();
         int uniqueCounter = 0;
@@ -744,7 +745,7 @@ public final class AssemblyBasedCallerUtils {
                         // situation, we should abort if we encounter it.
                         if ( phaseSetMapping.containsKey(comp) ) {
                             phaseSetMapping.clear();
-                            return 0;
+                            return phaseSetMapping;
                         }
 
                         // An important note: even for homozygous variants we are setting the phase as "0|1" here.
@@ -781,7 +782,7 @@ public final class AssemblyBasedCallerUtils {
                             // situation, we should abort if we encounter it.
                             if ( phaseSetMapping.containsKey(comp) ) {
                                 phaseSetMapping.clear();
-                                return 0;
+                                return phaseSetMapping;
                             }
 
                             phaseSetMapping.put(call, Pair.of(uniqueCounter, PhaseGroup.PHASE_01));
@@ -798,7 +799,7 @@ public final class AssemblyBasedCallerUtils {
             }
         }
 
-        return uniqueCounter;
+        return phaseSetMapping;
     }
 
     /**

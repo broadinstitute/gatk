@@ -1056,9 +1056,10 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                              final int expectedNumGroups,
                                              final int expectedNum01,
                                              final int expectedNum10) {
-        final Map<VariantContext, Pair<Integer, PhaseGroup>> actualPhaseSetMapping = new HashMap<>();
         Assert.assertEquals(totalHaplotypes, getTotalHaplotypes(haplotypeMap));
-        final int actualNumGroups = constructPhaseSetMapping(calls, haplotypeMap, totalHaplotypes, actualPhaseSetMapping);
+        final Map<VariantContext, Pair<Integer, PhaseGroup>> actualPhaseSetMapping =
+                constructPhaseSetMapping(calls, haplotypeMap, totalHaplotypes);
+        final int actualNumGroups = Math.toIntExact(actualPhaseSetMapping.values().stream().map(Pair::getLeft).distinct().count());
         Assert.assertEquals(actualNumGroups, expectedNumGroups);
         Assert.assertEquals(actualPhaseSetMapping.size(), expectedMapSize);
 
