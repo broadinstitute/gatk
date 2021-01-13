@@ -904,7 +904,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         tests.add(new Object[]{Arrays.asList(vc1, vc2, vc4), new HashMap<>(haplotypeMap), 2, 3, 1, 1, 2});
 
         // test 7: homs around a het
-        haplotypeMap.clear();
+        final Map<VariantContext, Set<Haplotype>> haplotypeMap7 = new HashMap<>();
         final Set<Haplotype> haplotypes2hom = new HashSet<>();
         haplotypes2hom.add(pos24);
         haplotypes2hom.add(pos234);
@@ -913,12 +913,13 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypes4hom.add(pos234);
         final Set<Haplotype> haplotypes3het = new HashSet<>();
         haplotypes3het.add(pos234);
-        haplotypeMap.put(vc2, haplotypes2hom);
-        haplotypeMap.put(vc3, haplotypes3het);
-        haplotypeMap.put(vc4, haplotypes4hom);
-        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 2, 3, 1, 3, 0});
+        haplotypeMap7.put(vc2, haplotypes2hom);
+        haplotypeMap7.put(vc3, haplotypes3het);
+        haplotypeMap7.put(vc4, haplotypes4hom);
+        tests.add(new Object[]{calls, haplotypeMap7, 2, 3, 1, 3, 0});
 
         // test 8: hets around a hom
+        final Map<VariantContext, Set<Haplotype>> haplotypeMap8 = new HashMap<>();
         final Set<Haplotype> haplotypes2het = new HashSet<>();
         haplotypes2het.add(pos234);
         final Set<Haplotype> haplotypes4het = new HashSet<>();
@@ -926,12 +927,13 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final Set<Haplotype> haplotypes3hom = new HashSet<>();
         haplotypes3hom.add(pos3);
         haplotypes3hom.add(pos234);
-        haplotypeMap.put(vc2, haplotypes2het);
-        haplotypeMap.put(vc3, haplotypes3hom);
-        haplotypeMap.put(vc4, haplotypes4het);
-        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 2, 3, 1, 3, 0});
+        haplotypeMap8.put(vc2, haplotypes2het);
+        haplotypeMap8.put(vc3, haplotypes3hom);
+        haplotypeMap8.put(vc4, haplotypes4het);
+        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap8), 2, 3, 1, 3, 0});
 
         // test 9: no phased variants around a hom
+        final Map<VariantContext, Set<Haplotype>> haplotypeMap9 = new HashMap<>();
         final Set<Haplotype> haplotypes2incomplete = new HashSet<>();
         haplotypes2incomplete.add(pos24);
         final Set<Haplotype> haplotypes3incomplete = new HashSet<>();
@@ -940,10 +942,10 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypes4complete.add(pos24);
         haplotypes4complete.add(pos34);
         haplotypes4complete.add(pos234);
-        haplotypeMap.put(vc2, haplotypes2incomplete);
-        haplotypeMap.put(vc3, haplotypes3incomplete);
-        haplotypeMap.put(vc4, haplotypes4complete);
-        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 3, 0, 0, 0, 0});
+        haplotypeMap9.put(vc2, haplotypes2incomplete);
+        haplotypeMap9.put(vc3, haplotypes3incomplete);
+        haplotypeMap9.put(vc4, haplotypes4complete);
+        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap9), 3, 0, 0, 0, 0});
 
         // test 10: snp spanned by overlapping deletion
         final Allele refForDel = Allele.create("AG", true);
@@ -976,7 +978,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         tests.add(new Object[]{spandelCalls, new HashMap<>(spanDelHapMap), 2, 2, 1, 1, 1});
 
         // test 11: a hom followed by two opposite-phase hets
-        haplotypeMap.clear();
+        final Map<VariantContext, Set<Haplotype>> haplotypeMap11 = new HashMap<>();
         final Set<Haplotype> haplotypes2hom2 = new HashSet<>();
         haplotypes2hom2.add(pos24);
         haplotypes2hom2.add(pos23);
@@ -984,11 +986,58 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypes3het2.add(pos23);
         final Set<Haplotype> haplotypes4het2 = new HashSet<>();
         haplotypes4het2.add(pos24);
-        haplotypeMap.put(vc2, haplotypes2hom2);
-        haplotypeMap.put(vc3, haplotypes3het2);
-        haplotypeMap.put(vc4, haplotypes4het2);
-        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 2, 3, 1, 2, 1});
+        haplotypeMap11.put(vc2, haplotypes2hom2);
+        haplotypeMap11.put(vc3, haplotypes3het2);
+        haplotypeMap11.put(vc4, haplotypes4het2);
+        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap11), 2, 3, 1, 2, 1});
 
+
+        // test 12: opposite-phase hets followed by a hom
+        final Map<VariantContext, Set<Haplotype>> haplotypeMap12 = new HashMap<>();
+        final Set<Haplotype> haplotypes2het12 = new HashSet<>();
+        haplotypes2het12.add(pos24);
+
+        final Set<Haplotype> haplotypes3het12 = new HashSet<>();
+        haplotypes3het12.add(pos34);
+
+        final Set<Haplotype> haplotypes4hom12 = new HashSet<>();
+        haplotypes4hom12.add(pos24);
+        haplotypes4hom12.add(pos34);
+        haplotypeMap12.put(vc2, haplotypes2het12);
+        haplotypeMap12.put(vc3, haplotypes3het12);
+        haplotypeMap12.put(vc4, haplotypes4hom12);
+        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap12), 2, 3, 1, 2, 1});
+
+        // test 13: opposite-phase hets surrounding a hom
+        final Map<VariantContext, Set<Haplotype>> haplotypeMap13 = new HashMap<>();
+        final Set<Haplotype> haplotypes2het13 = new HashSet<>();
+        haplotypes2het13.add(pos23);
+
+        final Set<Haplotype> haplotypes3hom13 = new HashSet<>();
+        haplotypes3hom13.add(pos23);
+        haplotypes3hom13.add(pos34);
+
+        final Set<Haplotype> haplotypes4het13 = new HashSet<>();
+        haplotypes4het13.add(pos34);
+        haplotypeMap13.put(vc2, haplotypes2het13);
+        haplotypeMap13.put(vc3, haplotypes3hom13);
+        haplotypeMap13.put(vc4, haplotypes4het13);
+        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap13), 2, 3, 1, 2, 1});
+
+        // test 13: two hets on the same haplotype surrounding an opposite hap het
+        final Map<VariantContext, Set<Haplotype>> haplotypeMap14 = new HashMap<>();
+        final Set<Haplotype> haplotypes2het14 = new HashSet<>();
+        haplotypes2het14.add(pos24);
+
+        final Set<Haplotype> haplotypes3het14 = new HashSet<>();
+        haplotypes3het14.add(pos3);
+
+        final Set<Haplotype> haplotypes4het14 = new HashSet<>();
+        haplotypes4het14.add(pos24);
+        haplotypeMap14.put(vc2, haplotypes2het14);
+        haplotypeMap14.put(vc3, haplotypes3het14);
+        haplotypeMap14.put(vc4, haplotypes4het14);
+        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap14), 2, 3, 1, 2, 1});
 
         return tests.toArray(new Object[][]{});
     }
