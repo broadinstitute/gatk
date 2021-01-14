@@ -24,7 +24,7 @@ import java.util.Map;
  * difficult to manually match with sample names.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="List of samples that are not homozygous reference at a variant site (Samples)")
-public final class SampleList extends InfoFieldAnnotation {
+public final class SampleList implements InfoFieldAnnotation {
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,

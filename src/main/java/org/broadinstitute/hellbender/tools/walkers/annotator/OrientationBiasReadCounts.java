@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  *  by Costello et al, doi: 10.1093/nar/gks1443</a></p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Count of read pairs in the F1R2 and F2R1 configurations supporting REF and ALT alleles (F1R2, F2R1)")
-public final class OrientationBiasReadCounts extends GenotypeAnnotation implements StandardMutectAnnotation {
+public final class OrientationBiasReadCounts implements GenotypeAnnotation, StandardMutectAnnotation {
 
     private static final Logger logger = LogManager.getLogger(OrientationBiasReadCounts.class);
 

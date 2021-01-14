@@ -15,7 +15,7 @@ import java.util.Map;
 /**
  * Annotations relevant to the INFO field of the variant file (ie annotations for sites).
  */
-public abstract class InfoFieldAnnotation extends VariantAnnotation{
+public interface InfoFieldAnnotation extends VariantAnnotation {
 
     /**
      * Computes the annotation for the given variant and the likelihoods per read.
@@ -25,7 +25,7 @@ public abstract class InfoFieldAnnotation extends VariantAnnotation{
      * @param vc Variant to be annotated. Not null.
      * @param likelihoods likelihoods indexed by sample, allele, and read within sample
      */
-    public abstract Map<String, Object> annotate(final ReferenceContext ref,
+    public Map<String, Object> annotate(final ReferenceContext ref,
                                                  final VariantContext vc,
                                                  final AlleleLikelihoods<GATKRead, Allele> likelihoods);
 
@@ -33,7 +33,7 @@ public abstract class InfoFieldAnnotation extends VariantAnnotation{
      * Returns the descriptions used for the VCF INFO meta field.
      * Subclasses must ensure that this list is not null and does not contain null.
      */
-    public List<VCFInfoHeaderLine> getDescriptions() {
+    default List<VCFInfoHeaderLine> getDescriptions() {
         final List<VCFInfoHeaderLine> lines = new ArrayList<>(getKeyNames().size());
         for (final String key : getKeyNames()) {
             lines.add(GATKVCFHeaderLines.getInfoLine(key));

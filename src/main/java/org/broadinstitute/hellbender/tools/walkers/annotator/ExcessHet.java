@@ -40,7 +40,7 @@ import java.util.*;
  * <p><b>InbreedingCoeff</b> also describes the heterozygosity of the called samples, though without explicitly taking into account the number of samples</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Phred-scaled p-value for exact test of excess heterozygosity (ExcessHet)")
-public final class ExcessHet extends PedigreeAnnotation implements StandardAnnotation {
+public final class ExcessHet extends PedigreeAnnotation implements InfoFieldAnnotation, StandardAnnotation {
 
     private static final double MIN_NEEDED_VALUE = 1.0E-16;
     private static final boolean ROUND_GENOTYPE_COUNTS = true;

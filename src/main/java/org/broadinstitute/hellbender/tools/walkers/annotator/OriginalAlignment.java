@@ -8,7 +8,8 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.AddOriginalAlignmentTags;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
@@ -35,7 +36,7 @@ import java.util.Map;
  *
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of alt reads with an OA tag that doesn't match the current alignment contig.")
-public class OriginalAlignment extends InfoFieldAnnotation {
+public class OriginalAlignment implements InfoFieldAnnotation {
     protected final OneShotLogger warning = new OneShotLogger(this.getClass());
     public static final String KEY = GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY;
 

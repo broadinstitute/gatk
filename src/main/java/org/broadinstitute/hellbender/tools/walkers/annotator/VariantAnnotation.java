@@ -3,17 +3,12 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import java.util.List;
 
 /**
- * Superclass of all variant annotations.
+ * Interface of all variant annotations. See also InfoFieldAnnotation and GenotypeFieldAnnotation
  */
-public abstract class VariantAnnotation implements Annotation{
+public interface VariantAnnotation extends Annotation {
 
     /**
      * Return the keys
      */
-    public abstract List<String> getKeyNames();
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
-    }
+    List<String> getKeyNames();
 }

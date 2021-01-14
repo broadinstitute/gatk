@@ -6,9 +6,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StrandBiasTest;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AlleleSpecificAnnotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AlleleSpecificAnnotationData;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
@@ -22,7 +20,7 @@ import java.util.Map;
 /**
  * Adds the strand bias table annotation for use in mutect filters
  */
-public class AS_StrandBiasMutectAnnotation extends InfoFieldAnnotation implements StandardMutectAnnotation, AlleleSpecificAnnotation {
+public class AS_StrandBiasMutectAnnotation implements InfoFieldAnnotation, StandardMutectAnnotation, AlleleSpecificAnnotation {
     private final static Logger logger = LogManager.getLogger(StrandBiasBySample.class);
 
     @Override
@@ -35,11 +33,6 @@ public class AS_StrandBiasMutectAnnotation extends InfoFieldAnnotation implement
         }
 
         return StrandBiasUtils.computeSBAnnotation(vc, likelihoods, GATKVCFConstants.AS_SB_TABLE_KEY);
-    }
-
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return super.getDescriptions();
     }
 
     @Override

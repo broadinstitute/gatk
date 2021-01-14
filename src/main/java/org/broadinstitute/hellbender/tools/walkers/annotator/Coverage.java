@@ -35,7 +35,7 @@ import java.util.Map;
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Total depth of coverage per sample and over all samples (DP)")
-public final class Coverage extends InfoFieldAnnotation implements StandardAnnotation, StandardMutectAnnotation {
+public final class Coverage implements InfoFieldAnnotation, StandardAnnotation, StandardMutectAnnotation {
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,

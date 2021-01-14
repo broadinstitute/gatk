@@ -44,7 +44,7 @@ import java.util.*;
  *
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Root mean square of the mapping quality of reads across all samples (MQ)")
-public final class RMSMappingQuality extends InfoFieldAnnotation implements StandardAnnotation, ReducibleAnnotation {
+public final class RMSMappingQuality implements InfoFieldAnnotation, StandardAnnotation, ReducibleAnnotation {
     private static final OneShotLogger logger = new OneShotLogger(RMSMappingQuality.class);
     private static final RMSMappingQuality instance = new RMSMappingQuality();
     private static final int NUM_LIST_ENTRIES = 2;
