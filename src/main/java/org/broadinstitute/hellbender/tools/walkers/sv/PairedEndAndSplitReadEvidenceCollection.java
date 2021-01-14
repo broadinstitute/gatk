@@ -5,7 +5,12 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -140,8 +145,11 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
         sequenceDictionary = getBestAvailableSequenceDictionary();
         if ( vcfFilename != null && alleleCountFilename != null ) {
-            alleleCounter = new AlleleCounter(sequenceDictionary, vcfFilename, alleleCountFilename,
-                                                minMapQ, minQ, svPipeStyleAlleleCounts);
+            final LocusCountsWriter writer = svPipeStyleAlleleCounts ?
+                    new LocusCountsVCFWriter(sequenceDictionary, sampleName,
+                            createVCFWriter(new GATKPath(alleleCountFilename))) :
+                    new LocusCountsFileWriter(sequenceDictionary, alleleCountFilename);
+            alleleCounter = new AlleleCounter(sequenceDictionary, vcfFilename, minMapQ, minQ, writer);
         }
     }
 
@@ -497,31 +505,25 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     @VisibleForTesting
     final static class AlleleCounter {
         private final SAMSequenceDictionary dict;
-        private final String outputFilename;
         private final int minMapQ;
         private final int minQ;
         private final Iterator<VariantContext> snpSourceItr;
-        private final BufferedWriter writer;
+        private final LocusCountsWriter writer;
         private final Deque<LocusCounts> locusCountsQueue;
-        private final boolean svPipeStyleAlleleCounts;
 
         public AlleleCounter( final SAMSequenceDictionary dict,
                               final String vcfFilename,
-                              final String outputFilename,
                               final int minMapQ,
                               final int minQ,
-                              final boolean svPipeStyleAlleleCounts ) {
+                              final LocusCountsWriter writer ) {
             this.dict = dict;
-            this.outputFilename = outputFilename;
             this.minMapQ = minMapQ;
             this.minQ = minQ;
-            final FeatureDataSource<VariantContext> snpSource =
-                    new FeatureDataSource<>(vcfFilename);
+            final FeatureDataSource<VariantContext> snpSource = new FeatureDataSource<>(vcfFilename);
             dict.assertSameDictionary(snpSource.getSequenceDictionary());
             this.snpSourceItr = snpSource.iterator();
-            this.writer = createOutputFile(outputFilename);
+            this.writer = writer;
             this.locusCountsQueue = new ArrayDeque<>(100);
-            this.svPipeStyleAlleleCounts = svPipeStyleAlleleCounts;
             readLocus();
         }
 
@@ -534,7 +536,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             final int contigId = dict.getSequenceIndex(read.getContig());
             final Locus readStart = new Locus(contigId, read.getStart());
             while ( locusCountsQueue.getFirst().compareTo(readStart) < 0 ) {
-                writeLocusCounts(locusCountsQueue.removeFirst());
+                writer.write(locusCountsQueue.removeFirst());
                 if ( locusCountsQueue.isEmpty() ) {
                     if ( !readLocus() ) {
                         return;
@@ -594,13 +596,9 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
         public void close() {
             while ( !locusCountsQueue.isEmpty() ) {
-                writeLocusCounts(locusCountsQueue.removeFirst());
+                writer.write(locusCountsQueue.removeFirst());
             }
-            try {
-                writer.close();
-            } catch ( final IOException ioe ) {
-                throw new UserException("can't close allele count output file " + outputFilename, ioe);
-            }
+            writer.close();
         }
 
         private boolean readLocus() {
@@ -633,40 +631,115 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             locusCountsQueue.add(locusCounts);
             return true;
         }
+    }
 
-        private void writeLocusCounts( final LocusCounts locusCounts ) {
+    public interface LocusCountsWriter {
+        void write( LocusCounts locusCounts );
+        void close();
+    }
+
+    @VisibleForTesting
+    static class LocusCountsFileWriter implements LocusCountsWriter {
+        private final SAMSequenceDictionary dict;
+        private final String outputFilename;
+        private final BufferedWriter writer;
+
+        public LocusCountsFileWriter( final SAMSequenceDictionary dict,
+                                      final String outputFilename ) {
+            this.dict = dict;
+            this.outputFilename = outputFilename;
+            this.writer = createOutputFile(outputFilename);
+        }
+
+        public void write( final LocusCounts locusCounts ) {
             try {
                 writer.write(dict.getSequence(locusCounts.getContigId()).getContig());
                 writer.write('\t');
                 writer.write(Integer.toString(locusCounts.getPosition()));
                 writer.write('\t');
                 final int refIdx = locusCounts.getRefIdx();
-                if ( svPipeStyleAlleleCounts ) {
-                    final int totalCount = locusCounts.getTotalCounts();
-                    writer.write(Integer.toString(totalCount));
-                    writer.write('\t');
-                    final int altIdx = locusCounts.getAltIdx();
-                    final int altCount = locusCounts.getCount(altIdx);
-                    writer.write(Integer.toString(altCount));
-                    writer.write('\t');
-                    writer.write("ACGT".charAt(refIdx));
-                    writer.write('\t');
-                    writer.write("ACGT".charAt(altIdx));
-                } else {
-                    final int refCount = locusCounts.getCount(refIdx);
-                    writer.write(Integer.toString(refCount));
-                    writer.write('\t');
-                    writer.write(Integer.toString(locusCounts.getTotalCounts() - refCount));
-                    writer.write('\t');
-                    writer.write("ACGT".charAt(refIdx));
-                    writer.write('\t');
-                    final int altIdx = locusCounts.getMaxAltIdx();
-                    writer.write(altIdx == LocusCounts.NO_ALT_IDX ? 'N' : "ACGT".charAt(altIdx));
-                }
+                final int refCount = locusCounts.getCount(refIdx);
+                writer.write(Integer.toString(refCount));
+                writer.write('\t');
+                writer.write(Integer.toString(locusCounts.getTotalCounts() - refCount));
+                writer.write('\t');
+                writer.write("ACGT".charAt(refIdx));
+                writer.write('\t');
+                final int altIdx = locusCounts.getMaxAltIdx();
+                writer.write(altIdx == LocusCounts.NO_ALT_IDX ? 'N' : "ACGT".charAt(altIdx));
                 writer.newLine();
             } catch ( final IOException ioe ) {
                 throw new UserException("can't write to allele count output file " + outputFilename, ioe);
             }
+        }
+
+        public void close() {
+            try {
+                writer.close();
+            } catch ( final IOException ioe ) {
+                throw new UserException("Can't close " + outputFilename);
+            }
+        }
+    }
+
+    @VisibleForTesting
+    static class LocusCountsVCFWriter implements LocusCountsWriter {
+        final SAMSequenceDictionary dict;
+        final String sampleName;
+        final VariantContextWriter writer;
+
+        final static String DEPTH_KEY = "DP";
+        final static String ALLELE_DEPTH_KEY = "AD";
+        final static Allele[][][] allelePairs = {
+                {       {},
+                        {Allele.REF_A, Allele.ALT_C},
+                        {Allele.REF_A, Allele.ALT_G},
+                        {Allele.REF_A, Allele.ALT_T} },
+                {       {Allele.REF_C, Allele.ALT_A},
+                        {},
+                        {Allele.REF_C, Allele.ALT_G},
+                        {Allele.REF_C, Allele.ALT_T} },
+                {       {Allele.REF_G, Allele.ALT_A},
+                        {Allele.REF_G, Allele.ALT_C},
+                        {},
+                        {Allele.REF_G, Allele.ALT_T} },
+                {       {Allele.REF_T, Allele.ALT_A},
+                        {Allele.REF_T, Allele.ALT_C},
+                        {Allele.REF_T, Allele.ALT_G},
+                        {} } };
+
+        public LocusCountsVCFWriter( final SAMSequenceDictionary dict,
+                                     final String sampleName,
+                                     final VariantContextWriter writer ) {
+            this.dict = dict;
+            this.sampleName = sampleName;
+            this.writer = writer;
+            final VCFHeader header = new VCFHeader(VCFHeaderVersion.VCF4_2, Collections.emptySet(),
+                                                    Collections.singleton(sampleName));
+            header.setSequenceDictionary(dict);
+            header.addMetaDataLine(
+                    new VCFFormatHeaderLine(DEPTH_KEY, 1, VCFHeaderLineType.Integer, "Read depth"));
+            header.addMetaDataLine(
+                    new VCFFormatHeaderLine(ALLELE_DEPTH_KEY, 1, VCFHeaderLineType.Integer, "Alt allele depth"));
+            writer.writeHeader(header);
+        }
+
+        public void write( final LocusCounts locusCounts ) {
+            writer.add(new VariantContextBuilder(
+                    "AlleleCounter",
+                    dict.getSequence(locusCounts.getContigId()).getSequenceName(),
+                    locusCounts.getPosition(),
+                    locusCounts.getPosition(),
+                    Arrays.asList(allelePairs[locusCounts.getRefIdx()][locusCounts.getAltIdx()]))
+                    .genotypes(new GenotypeBuilder(sampleName)
+                            .DP(locusCounts.getTotalCounts())
+                            .AD(new int[]{locusCounts.getCount(locusCounts.getAltIdx())})
+                            .make())
+                    .make());
+        }
+
+        public void close() {
+            writer.close();
         }
     }
 
