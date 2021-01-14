@@ -833,6 +833,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final VariantContext vc2 = new VariantContextBuilder().chr("20").start(2).stop(2).alleles(Arrays.asList(ref, altC)).make();
         final VariantContext vc3 = new VariantContextBuilder().chr("20").start(3).stop(3).alleles(Arrays.asList(ref, altT)).make();
         final VariantContext vc4 = new VariantContextBuilder().chr("20").start(4).stop(4).alleles(Arrays.asList(ref, altC)).make();
+        final VariantContext vc5 = new VariantContextBuilder().chr("20").start(5).stop(5).alleles(Arrays.asList(ref, altC)).make();
         final List<VariantContext> calls = Arrays.asList(vc2, vc3, vc4);
 
         final Haplotype pos1 = new Haplotype("CAAAA".getBytes());
@@ -867,6 +868,10 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
 
         final Map<VariantContext, Set<Haplotype>> haplotypeMap = new HashMap<>();
+
+        // note: the references to genotype below are referring to the state of input sample. the method we are
+        // testing only views alternate haplotypes, so it has no way of knowing if a variant is truly homozygous
+        // or just appears on all alternate haplotypes.
 
         // test 1: no phased variants #1
         final Set<Haplotype> haplotypes2 = new HashSet<>();
@@ -1024,7 +1029,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypeMap13.put(vc4, haplotypes4het13);
         tests.add(new Object[]{calls, new HashMap<>(haplotypeMap13), 2, 3, 1, 2, 1});
 
-        // test 13: two hets on the same haplotype surrounding an opposite hap het
+        // test 14: two hets on the same haplotype surrounding an opposite hap het
         final Map<VariantContext, Set<Haplotype>> haplotypeMap14 = new HashMap<>();
         final Set<Haplotype> haplotypes2het14 = new HashSet<>();
         haplotypes2het14.add(pos24);
@@ -1038,6 +1043,52 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypeMap14.put(vc3, haplotypes3het14);
         haplotypeMap14.put(vc4, haplotypes4het14);
         tests.add(new Object[]{calls, new HashMap<>(haplotypeMap14), 2, 3, 1, 2, 1});
+
+        // we should have a test for a case that returns two phase groups
+        // test 15: create two phase groups broken by an unphased SNP
+        final Map<VariantContext, Set<Haplotype>> haplotypeMap15 = new HashMap<>();
+        final Haplotype pos12 = new Haplotype("CCAAA".getBytes());
+        pos12.setEventMap(new EventMap(Arrays.asList(vc1, vc2)));
+        pos12.getEventMap().put(1, vc1);
+        pos12.getEventMap().put(2, vc2);
+        final Haplotype pos1245 = new Haplotype("CCACC".getBytes());
+        pos12.setEventMap(new EventMap(Arrays.asList(vc1, vc2, vc4, vc5)));
+        pos12.getEventMap().put(1, vc1);
+        pos12.getEventMap().put(2, vc2);
+        pos12.getEventMap().put(4, vc5);
+        pos12.getEventMap().put(5, vc5);
+        final Haplotype pos45 = new Haplotype("AAACC".getBytes());
+        pos45.setEventMap(new EventMap(Arrays.asList(vc4, vc5)));
+        pos45.getEventMap().put(4, vc4);
+        pos45.getEventMap().put(5, vc5);
+
+        final Set<Haplotype> haplotypes1het15 = new HashSet<>();
+        haplotypes1het15.add(pos12);
+        haplotypes1het15.add(pos1245);
+
+        final Set<Haplotype> haplotypes2het15 = new HashSet<>();
+        haplotypes2het15.add(pos12);
+        haplotypes2het15.add(pos1245);
+
+        final Set<Haplotype> haplotypes3het15 = new HashSet<>();
+        haplotypes3het15.add(pos3);
+
+        final Set<Haplotype> haplotypes4het15 = new HashSet<>();
+        haplotypes4het15.add(pos45);
+        haplotypes4het15.add(pos1245);
+
+        final Set<Haplotype> haplotypes5het15 = new HashSet<>();
+        haplotypes5het15.add(pos45);
+        haplotypes5het15.add(pos1245);
+
+        haplotypeMap15.put(vc1, haplotypes1het15);
+        haplotypeMap15.put(vc2, haplotypes2het15);
+        haplotypeMap15.put(vc3, haplotypes3het15);
+        haplotypeMap15.put(vc4, haplotypes4het15);
+        haplotypeMap15.put(vc5, haplotypes5het15);
+        // this will end up with two phase groups, with both pairs of alts assigned to 0|1 within their respective groups
+        tests.add(new Object[]{Arrays.asList(vc1, vc2, vc3, vc4, vc5), new HashMap<>(haplotypeMap15), 4, 4, 2, 4, 0});
+
 
         return tests.toArray(new Object[][]{});
     }
@@ -1058,7 +1109,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                              final int expectedNum10) {
         Assert.assertEquals(totalHaplotypes, getTotalHaplotypes(haplotypeMap));
         final Map<VariantContext, Pair<Integer, PhaseGroup>> actualPhaseSetMapping =
-                constructPhaseSetMapping(calls, haplotypeMap, totalHaplotypes);
+                constructPhaseSetMapping(calls, haplotypeMap);
         final int actualNumGroups = Math.toIntExact(actualPhaseSetMapping.values().stream().map(Pair::getLeft).distinct().count());
         Assert.assertEquals(actualNumGroups, expectedNumGroups);
         Assert.assertEquals(actualPhaseSetMapping.size(), expectedMapSize);
