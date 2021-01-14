@@ -159,8 +159,12 @@ public class GetPileupSummaries extends LocusWalker {
     // Filter pileup elements that appear within this many bases from the ends of reads
     private static int MAX_REQUIRED_DISTANCE_FROM_END = 5;
 
-    public static final String POST_FILTER_PILEUP_BAM = "filtered-pileup-bam";
-    @Argument(fullName = POST_FILTER_PILEUP_BAM, optional = true)
+    public static final String REALIGN_REF_READS_NAME = "realign-ref-reads";
+    @Argument(fullName = REALIGN_REF_READS_NAME, optional = true)
+    private boolean realignRefReads = false;
+
+    public static final String POST_FILTER_PILEUP_BAM_NAME = "filtered-pileup-bam";
+    @Argument(fullName = POST_FILTER_PILEUP_BAM_NAME, optional = true)
     private GATKPath filteredPileupBam = null;
     GATKReadWriter bamWriter;
 
@@ -272,7 +276,8 @@ public class GetPileupSummaries extends LocusWalker {
         if (vc.isBiallelic() && vc.isSNP() && alleleFrequencyInRange(vc)) {
             final ReadPileup rawPileup = alignmentContext.getBasePileup();
             final Predicate<PileupElement> mqFilter = pe -> pe.getRead().getMappingQuality() >= minMappingQuality;
-            final Predicate<PileupElement> endsOfReadsFilter = pe -> Math.min(pe.getOffset(), pe.getRead().getLength() - pe.getOffset()) >=  MAX_REQUIRED_DISTANCE_FROM_END;
+            final Predicate<PileupElement> endsOfReadsFilter = pe ->
+                    Math.min(vc.getStart() - pe.getRead().getStart(), pe.getRead().getEnd() - vc.getStart())  >=  MAX_REQUIRED_DISTANCE_FROM_END;
             final Predicate<PileupElement> pileupFilter = filterEndsOfReads ? mqFilter.and(endsOfReadsFilter) : mqFilter;
 
             ReadPileup pileup = alignmentContext.getBasePileup()
@@ -318,7 +323,11 @@ public class GetPileupSummaries extends LocusWalker {
                     final double refLikelihood = readLikelihoods.sampleMatrix(0).get(0, 0);
                     final double altLikelihood = readLikelihoods.sampleMatrix(0).get(1, 0);
 
-                    String readName = elem.getRead().getName();
+                    // The rest of the code in this for loop checks and filters ref reads
+                    if (! realignRefReads){
+                        continue;
+                    }
+
                     if (elem.isDeletion()) {
                         numDeletions++;
                         if (refLikelihood < altLikelihood) {
