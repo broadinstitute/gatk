@@ -50,7 +50,12 @@ public class HaplotypeBAMWriter implements AutoCloseable {
          * A mode for users.  Writes out the reads aligned only to the called
          * haplotypes.  Useful to understand why the caller is calling what it is
          */
-        CALLED_HAPLOTYPES
+        CALLED_HAPLOTYPES,
+
+        /**
+         * With this option, haplotypes will not be included in the output bam.
+         */
+        NO_HAPLOTYPES
 
     }
 
@@ -133,7 +138,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
             }
             writeHaplotypesAsReads(calledHaplotypes, calledHaplotypes, paddedReferenceLoc, callableRegion);
 
-        } else {
+        } else if (writerType.equals(WriterType.ALL_POSSIBLE_HAPLOTYPES)){
             writeHaplotypesAsReads(haplotypes, new LinkedHashSet<>(bestHaplotypes), paddedReferenceLoc, callableRegion);
         }
 
