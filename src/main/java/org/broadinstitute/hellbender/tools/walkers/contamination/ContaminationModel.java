@@ -53,11 +53,11 @@ public class ContaminationModel {
     private static final List<Double> CONTAMINATION_INITIAL_GUESSES = Arrays.asList(0.02, 0.05, 0.1, 0.2);
 
     public ContaminationModel(List<PileupSummary> sites) {
-        errorRate = calculateErrorRate(sites);
+        errorRate = Math.max(1e-4, calculateErrorRate(sites)); // sato: protect against the case where error rate is 0.0
 
         // partition genome into minor allele fraction (MAF) segments to better distinguish hom alts from LoH hets.
         segments = ContaminationSegmenter.findSegments(sites);
-        final int numSegments = segments.size();
+        final int numSegments = segments.size(); // sato: segments are not ordered....
 
         final List<Double> minorAlleleFractionsGuess = new ArrayList<>(Collections.nCopies(segments.size(), 0.5));
         final MutableDouble contaminationGuess = new MutableDouble(0);
@@ -133,7 +133,7 @@ public class ContaminationModel {
             genotypingHoms = homAlts(minMaf);
         } else if (strategy == Strategy.HOM_REF) {
             genotypingHoms = homRefs(minMaf);
-        } else {
+        } else { // sato: unscrupulous hom ref
             final List<PileupSummary> candidateHomRefs = tumorSites.stream()
                     .filter(site -> site.getAltFraction() < UNSCRUPULOUS_HOM_REF_ALLELE_FRACTION)
                     .collect(Collectors.toList());
@@ -150,7 +150,7 @@ public class ContaminationModel {
 
         final long totalDepth = homs.stream().mapToLong(PileupSummary::getTotalCount).sum();
 
-        // total reaad count of ref in hom alt or alt in hom ref, as the case may be
+        // total read count of ref in hom alt or alt in hom ref, as the case may be
         final long oppositeDepth = homs.stream().mapToLong(oppositeCount::applyAsInt).sum();
         final long errorDepth = Math.round(totalDepth * tumorErrorRate / 3);
         final long contaminationOppositeDepth = Math.max(oppositeDepth - errorDepth, 0);
