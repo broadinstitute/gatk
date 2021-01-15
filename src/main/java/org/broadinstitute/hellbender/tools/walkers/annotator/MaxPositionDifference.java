@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.OptionalInt;
 import java.util.stream.Collectors;
 
+import static java.lang.Math.min;
+
 /**
  * Median distance of variant starts from ends of reads supporting each alt allele.
  *
@@ -41,10 +43,13 @@ public class MaxPositionDifference extends PerAlleleAnnotation implements Standa
                 .filter(v -> v < 0)
                 .collect(Collectors.toList());
 
-        if (positiveValues.isEmpty()) {
+        if (positiveValues.isEmpty() || negativeValues.isEmpty()) {
             return 0;
         }
-        return values.isEmpty() ? VALUE_FOR_NO_READS : MathUtils.arrayMax(Ints.toArray(positiveValues)) - MathUtils.arrayMin(Ints.toArray(positiveValues));
+
+        int positiveMax = MathUtils.arrayMax(Ints.toArray(positiveValues)) - MathUtils.arrayMin(Ints.toArray(positiveValues));
+        int negativeMax = MathUtils.arrayMax(Ints.toArray(negativeValues)) - MathUtils.arrayMin(Ints.toArray(negativeValues));
+        return values.isEmpty() ? VALUE_FOR_NO_READS : min(positiveMax, negativeMax);
     }
 
     @Override
