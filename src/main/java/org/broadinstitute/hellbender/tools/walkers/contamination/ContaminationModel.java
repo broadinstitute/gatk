@@ -120,7 +120,7 @@ public class ContaminationModel {
             if (!Double.isNaN(result.getLeft()) && result.getRight() < (result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR)) {
                 if (auxiliaryInfoFile != null){
                     try (PrintWriter pw = new PrintWriter(auxiliaryInfoFile)){
-                      pw.write(strategy.toString());
+                      pw.println(strategy.toString());
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     }
