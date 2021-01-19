@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.Test;
 import picard.util.BasicInputParser;
 
@@ -30,6 +31,12 @@ public final class VectorPairHMMUnitTest extends GATKBaseTest {
         final PairHMMNativeArguments args = new PairHMMNativeArguments();
         args.useDoublePrecision = false;
         args.maxNumberOfThreads = 1;
+
+        // Skip this test on Java 11. Re-enable when https://github.com/broadinstitute/gatk/issues/6649 is fixed.
+        final String jvmVersionString = System.getProperty("java.version");
+        if (jvmVersionString.startsWith("1.11")) {
+            throw new SkipException("testLikelihoodsFromHaplotypesForAvailableImplementations on Java 11");
+        }
 
         for (final VectorLoglessPairHMM.Implementation imp : VectorLoglessPairHMM.Implementation.values()) {
             PairHMM hmm;
