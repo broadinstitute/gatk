@@ -137,11 +137,6 @@ public class CalculateContamination extends CommandLineProgram {
 
         final ContaminationModel genotypingModel = new ContaminationModel(genotypingSites, Optional.ofNullable(homSitesFile)); // sato: genotyping sites vs sites?
 
-        // Write the messages from the "learning" step
-        if (auxiliaryInfoFile != null){
-            genotypingModel.writeMessages(auxiliaryInfoFile, false);
-        }
-
         if (outputTumorSegmentation != null) {
             final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel :
                     new ContaminationModel(sites, Optional.ofNullable(homSitesFile));
@@ -152,15 +147,13 @@ public class CalculateContamination extends CommandLineProgram {
             PileupSummary.writeToFile("sample", sites, highCoverageSitesFile);
         }
 
-        if (auxiliaryInfoFile != null){
-            genotypingModel.writeMessages(auxiliaryInfoFile, true);
-        }
-
-
         final Pair<Double, Double> contaminationAndError = genotypingModel.calculateContaminationFromHoms(sites);
         ContaminationRecord.writeToFile(Arrays.asList(
                 new ContaminationRecord(sample, contaminationAndError.getLeft(), contaminationAndError.getRight())), outputTable);
 
+        if (auxiliaryInfoFile != null){
+            genotypingModel.writeMessages(auxiliaryInfoFile, true);
+        }
         return "SUCCESS";
     }
 
