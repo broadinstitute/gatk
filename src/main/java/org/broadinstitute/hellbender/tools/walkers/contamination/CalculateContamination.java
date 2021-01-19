@@ -135,10 +135,12 @@ public class CalculateContamination extends CommandLineProgram {
         final List<PileupSummary> genotypingSites = matchedPileupSummariesTable == null ? sites :
                 filterSitesByCoverage(PileupSummary.readFromFile(matchedPileupSummariesTable).getRight());
 
-        final ContaminationModel genotypingModel = new ContaminationModel(genotypingSites, Optional.ofNullable(homSitesFile)); // sato: genotyping sites vs sites?
+        final ContaminationModel genotypingModel =
+                new ContaminationModel(genotypingSites, Optional.ofNullable(homSitesFile), Optional.ofNullable(auxiliaryInfoFile)); // sato: genotyping sites vs sites?
 
         if (outputTumorSegmentation != null) {
-            final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel : new ContaminationModel(sites, Optional.ofNullable(homSitesFile));
+            final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel :
+                    new ContaminationModel(sites, Optional.ofNullable(homSitesFile), Optional.ofNullable(auxiliaryInfoFile));
             MinorAlleleFractionRecord.writeToFile(sample, tumorModel.segmentationRecords(), outputTumorSegmentation);
         }
 
@@ -147,7 +149,7 @@ public class CalculateContamination extends CommandLineProgram {
         }
 
 
-        final Pair<Double, Double> contaminationAndError = genotypingModel.calculateContaminationFromHoms(sites, auxiliaryInfoFile);
+        final Pair<Double, Double> contaminationAndError = genotypingModel.calculateContaminationFromHoms(sites);
         ContaminationRecord.writeToFile(Arrays.asList(
                 new ContaminationRecord(sample, contaminationAndError.getLeft(), contaminationAndError.getRight())), outputTable);
 
