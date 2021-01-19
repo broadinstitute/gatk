@@ -113,8 +113,17 @@ public class CalculateContamination extends CommandLineProgram {
     private final double highCoverageRatioThreshold = DEFAULT_HIGH_COVERAGE_RATIO_THRESHOLD;
 
     public static final String HOM_SITES_FOR_CALCULATION_NAME = "hom-sites";
-    @Argument(fullName = HOM_SITES_FOR_CALCULATION_NAME, optional = true)
+    @Argument(fullName = HOM_SITES_FOR_CALCULATION_NAME, doc = "homozygous sites (alt or ref) used for calculating contamination", optional = true)
     private final File homSitesFile = null;
+
+    public static final String HIGH_COVERAGE_SITES_NAME = "high-coverage-sites";
+    @Argument(fullName = HIGH_COVERAGE_SITES_NAME, optional = true)
+    private final File highCoverageSitesFile = null;
+
+    public static final String AUXILIARY_INFO = "aux";
+    @Argument(fullName = AUXILIARY_INFO, optional = true)
+    private final File auxiliaryInfoFile = null;
+
 
     @Override
     public Object doWork() {
@@ -133,14 +142,17 @@ public class CalculateContamination extends CommandLineProgram {
             MinorAlleleFractionRecord.writeToFile(sample, tumorModel.segmentationRecords(), outputTumorSegmentation);
         }
 
-        final Pair<Double, Double> contaminationAndError = genotypingModel.calculateContaminationFromHoms(sites);
+        if (highCoverageSitesFile != null){
+            PileupSummary.writeToFile("sample", sites, highCoverageSitesFile);
+        }
+
+
+        final Pair<Double, Double> contaminationAndError = genotypingModel.calculateContaminationFromHoms(sites, auxiliaryInfoFile);
         ContaminationRecord.writeToFile(Arrays.asList(
                 new ContaminationRecord(sample, contaminationAndError.getLeft(), contaminationAndError.getRight())), outputTable);
 
         return "SUCCESS";
     }
-
-
 
     private List<PileupSummary> filterSitesByCoverage(final List<PileupSummary> allSites) {
         // Just in case the intervals given to GetPileupSummaries contained un-covered sites, we remove them

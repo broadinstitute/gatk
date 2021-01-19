@@ -12,6 +12,8 @@ import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.*;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.util.*;
 import java.util.function.DoubleUnaryOperator;
 import java.util.function.ToDoubleFunction;
@@ -97,22 +99,33 @@ public class ContaminationModel {
      * could be derived from the tumor itself or a matched normal.
      * @return
      */
-    public Pair<Double, Double> calculateContaminationFromHoms(final List<PileupSummary> tumorSites) {
+    public Pair<Double, Double> calculateContaminationFromHoms(final List<PileupSummary> tumorSites, final File auxiliaryInfoFile) {
         for (double minMaf = INITIAL_MAF_THRESHOLD; minMaf >= 0; minMaf -= MAF_STEP_SIZE) {
-
+            Strategy strategy;
             final Pair<Double, Double> result;
             if (minMaf > MAF_TO_SWITCH_TO_HOM_REF) { // sato: compute, then check the result below. Continue for loop if result not good.
+                strategy = Strategy.HOM_ALT;
                 result = calculateContamination(Strategy.HOM_ALT, tumorSites, minMaf);
             } else if (minMaf > MAF_TO_SWITCH_TO_UNSCRUPULOUS_HOM_REF) {
+                strategy = Strategy.HOM_REF;
                 result = calculateContamination(Strategy.HOM_REF, tumorSites, minMaf);
             } else {
+                strategy = Strategy.UNSCRUPULOUS_HOM_REF;
                 result = calculateContamination(Strategy.UNSCRUPULOUS_HOM_REF, tumorSites, minMaf);
             }
 
-            final double error = result.getLeft();
+            final double error = result.getRight();
             final double allowedError = result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR; // sato: can I choose these smartly?
 
             if (!Double.isNaN(result.getLeft()) && result.getRight() < (result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR)) {
+                if (auxiliaryInfoFile != null){
+                    try (PrintWriter pw = new PrintWriter(auxiliaryInfoFile)){
+                      pw.write(strategy.toString());
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                }
+
                 return result;
             }
         }
@@ -208,7 +221,7 @@ public class ContaminationModel {
                     final int end = segment.get(segment.size() - 1).getEnd();
                     final double maf = minorAlleleFractions.get(n);
                     return new MinorAlleleFractionRecord(new SimpleInterval(contig, start, end), maf);
-                }).collect(Collectors.toList());
+                }).sorted().collect(Collectors.toList());
     }
 
     private static double calculateErrorRate(final List<PileupSummary> sites) {
