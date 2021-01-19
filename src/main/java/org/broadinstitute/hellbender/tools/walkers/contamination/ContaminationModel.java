@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.*;
 
+import java.io.File;
 import java.util.*;
 import java.util.function.DoubleUnaryOperator;
 import java.util.function.ToDoubleFunction;
@@ -52,7 +53,9 @@ public class ContaminationModel {
     private static final double MIN_ABSOLUTE_ERROR = 0.001;
     private static final List<Double> CONTAMINATION_INITIAL_GUESSES = Arrays.asList(0.02, 0.05, 0.1, 0.2);
 
-    public ContaminationModel(List<PileupSummary> sites) {
+    Optional<File> homSitesOutput;
+
+    public ContaminationModel(List<PileupSummary> sites, Optional<File> homSitesOutput) {
         errorRate = Math.max(1e-4, calculateErrorRate(sites)); // sato: protect against the case where error rate is 0.0
 
         // partition genome into minor allele fraction (MAF) segments to better distinguish hom alts from LoH hets.
@@ -69,6 +72,8 @@ public class ContaminationModel {
 
         minorAlleleFractions = minorAlleleFractionsGuess;
         contamination = contaminationGuess.doubleValue();
+        this.homSitesOutput = homSitesOutput;
+
     }
 
     private static Pair<List<List<PileupSummary>>, List<Double>> getNonLOHSegments(final List<List<PileupSummary>> segments, final List<Double> mafs) {
@@ -96,13 +101,17 @@ public class ContaminationModel {
         for (double minMaf = INITIAL_MAF_THRESHOLD; minMaf >= 0; minMaf -= MAF_STEP_SIZE) {
 
             final Pair<Double, Double> result;
-            if (minMaf > MAF_TO_SWITCH_TO_HOM_REF) {
+            if (minMaf > MAF_TO_SWITCH_TO_HOM_REF) { // sato: compute, then check the result below. Continue for loop if result not good.
                 result = calculateContamination(Strategy.HOM_ALT, tumorSites, minMaf);
             } else if (minMaf > MAF_TO_SWITCH_TO_UNSCRUPULOUS_HOM_REF) {
                 result = calculateContamination(Strategy.HOM_REF, tumorSites, minMaf);
             } else {
                 result = calculateContamination(Strategy.UNSCRUPULOUS_HOM_REF, tumorSites, minMaf);
             }
+
+            final double error = result.getLeft();
+            final double allowedError = result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR; // sato: can I choose these smartly?
+
             if (!Double.isNaN(result.getLeft()) && result.getRight() < (result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR)) {
                 return result;
             }
@@ -141,7 +150,7 @@ public class ContaminationModel {
                     new Percentile(UNSCRUPULOUS_HOM_REF_PERCENTILE).evaluate(candidateHomRefs.stream().mapToDouble(PileupSummary::getAltFraction).toArray()));
             genotypingHoms = candidateHomRefs.stream().filter(site -> site.getAltFraction() <= altFractionThreshold).collect(Collectors.toList());
         }
-        final List<PileupSummary> homs = subsetSites(tumorSites, genotypingHoms);
+        final List<PileupSummary> homs = subsetSites(tumorSites, genotypingHoms); // sato: I should write these genotyping homs.
         final double tumorErrorRate = calculateErrorRate(tumorSites);
 
         // depth of ref in hom alt or alt in hom ref
@@ -167,6 +176,12 @@ public class ContaminationModel {
             final double f = 1 - oppositeAlleleFrequency.applyAsDouble(ps);
             return (1 - f) * d * contamination * ((1 - contamination) + f * d * contamination);
         }).sum()) / totalDepthWeightedByOppositeFrequency;
+
+        if (!Double.isNaN(contamination) && stdError < (contamination * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR)){ // sato: i.e. if this contamination estimate will be outputted
+            if (homSitesOutput.isPresent()){
+                PileupSummary.writeToFile("sample", homs, homSitesOutput.get()); START HERE, update wdl etc.
+            }
+        }
 
         return Pair.of(Math.min(contamination, 1.0), stdError);
     }
