@@ -11,12 +11,12 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
-import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -112,9 +112,9 @@ public class CalculateContamination extends CommandLineProgram {
             doc="The maximum coverage relative to the mean.", optional = true)
     private final double highCoverageRatioThreshold = DEFAULT_HIGH_COVERAGE_RATIO_THRESHOLD;
 
-    public static final String POST_FILTER_PILEUP_NAME = "post-filter-pileup";
-    @Argument(fullName = POST_FILTER_PILEUP_NAME, optional = true)
-    private final File postFilterPileup = null;
+    public static final String HOM_SITES_FOR_CALCULATION_NAME = "hom-sites";
+    @Argument(fullName = HOM_SITES_FOR_CALCULATION_NAME, optional = true)
+    private final File homSitesFile = null;
 
     @Override
     public Object doWork() {
@@ -126,15 +126,10 @@ public class CalculateContamination extends CommandLineProgram {
         final List<PileupSummary> genotypingSites = matchedPileupSummariesTable == null ? sites :
                 filterSitesByCoverage(PileupSummary.readFromFile(matchedPileupSummariesTable).getRight());
 
-        // sato: output the sites that are used for calculating contamination
-        if (postFilterPileup != null){
-            PileupSummary.writeToFile(sampleAndsites.getKey(), genotypingSites, postFilterPileup);
-        }
-
-        final ContaminationModel genotypingModel = new ContaminationModel(genotypingSites);
+        final ContaminationModel genotypingModel = new ContaminationModel(genotypingSites, Optional.ofNullable(homSitesFile)); // sato: genotyping sites vs sites?
 
         if (outputTumorSegmentation != null) {
-            final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel : new ContaminationModel(sites);
+            final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel : new ContaminationModel(sites, Optional.ofNullable(homSitesFile));
             MinorAlleleFractionRecord.writeToFile(sample, tumorModel.segmentationRecords(), outputTumorSegmentation);
         }
 
