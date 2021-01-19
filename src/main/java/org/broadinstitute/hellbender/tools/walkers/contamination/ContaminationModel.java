@@ -179,7 +179,7 @@ public class ContaminationModel {
 
         if (!Double.isNaN(contamination) && stdError < (contamination * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR)){ // sato: i.e. if this contamination estimate will be outputted
             if (homSitesOutput.isPresent()){
-                PileupSummary.writeToFile("sample", homs, homSitesOutput.get()); START HERE, update wdl etc.
+                PileupSummary.writeToFile("sample", homs, homSitesOutput.get());
             }
         }
 
