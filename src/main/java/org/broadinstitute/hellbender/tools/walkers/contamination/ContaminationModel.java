@@ -221,7 +221,7 @@ public class ContaminationModel {
                     final int end = segment.get(segment.size() - 1).getEnd();
                     final double maf = minorAlleleFractions.get(n);
                     return new MinorAlleleFractionRecord(new SimpleInterval(contig, start, end), maf);
-                }).sorted().collect(Collectors.toList());
+                }).collect(Collectors.toList());
     }
 
     private static double calculateErrorRate(final List<PileupSummary> sites) {
