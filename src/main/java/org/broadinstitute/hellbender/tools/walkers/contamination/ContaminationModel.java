@@ -1,17 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
 import htsjdk.samtools.util.OverlapDetector;
+import org.apache.avro.generic.GenericData;
 import org.apache.commons.lang.mutable.MutableDouble;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.optim.univariate.UnivariatePointValuePair;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.commons.math3.util.FastMath;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.*;
 import java.util.function.DoubleUnaryOperator;
 import java.util.function.ToDoubleFunction;
@@ -54,9 +54,9 @@ public class ContaminationModel {
     private static final List<Double> CONTAMINATION_INITIAL_GUESSES = Arrays.asList(0.02, 0.05, 0.1, 0.2);
 
     Optional<File> homSitesOutput;
-    Optional<File> auxiliaryInfoFile;
+    List<String> messages;
 
-    public ContaminationModel(List<PileupSummary> sites, Optional<File> homSitesOutput, Optional<File> auxiliaryInfoFile) {
+    public ContaminationModel(List<PileupSummary> sites, Optional<File> homSitesOutput) {
         errorRate = Math.max(1e-4, calculateErrorRate(sites)); // sato: protect against the case where error rate is 0.0
 
         // partition genome into minor allele fraction (MAF) segments to better distinguish hom alts from LoH hets.
@@ -75,10 +75,8 @@ public class ContaminationModel {
         contamination = contaminationGuess.doubleValue();
 
         this.homSitesOutput = homSitesOutput;
-        this.auxiliaryInfoFile = auxiliaryInfoFile;
-
-        writeAux("Num segments," + numSegments);
-
+        this.messages = new ArrayList<>();
+        messages.add("num_segments," + numSegments);
     }
 
     private static Pair<List<List<PileupSummary>>, List<Double>> getNonLOHSegments(final List<List<PileupSummary>> segments, final List<Double> mafs) {
@@ -121,24 +119,16 @@ public class ContaminationModel {
             final double allowedError = result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR; // sato: can I choose these smartly?
 
             if (!Double.isNaN(result.getLeft()) && result.getRight() < (result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR)) {
-                writeAux("strategy," + strategy.toString());
+                messages.add("strategy," + strategy.toString());
+                messages.add("error," + error);
+                messages.add("allowed_error," + allowedError);
                 return result;
             }
         }
 
-        writeAux("strategy," + Strategy.UNSCRUPULOUS_HOM_REF.toString());
+        messages.add("strategy," + Strategy.UNSCRUPULOUS_HOM_REF.toString());
         final Pair<Double, Double> result = calculateContamination(Strategy.UNSCRUPULOUS_HOM_REF, tumorSites, 0);
         return Double.isNaN(result.getLeft()) ? Pair.of(0.0, 1.0) : result;
-    }
-
-    private void writeAux(String message){
-        if (auxiliaryInfoFile.isPresent()){
-            try (PrintWriter pw = new PrintWriter(auxiliaryInfoFile.get())){
-                pw.println(message);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     /**
@@ -171,9 +161,9 @@ public class ContaminationModel {
             genotypingHoms = candidateHomRefs.stream().filter(site -> site.getAltFraction() <= altFractionThreshold).collect(Collectors.toList());
         }
         final List<PileupSummary> homs = subsetSites(tumorSites, genotypingHoms);
-        writeAux("Num hom sites," + homs.size());
-        writeAux("Num all sites," + tumorSites.size());
-        writeAux("Num Genotyping Segments," + genotypingHoms.size());
+        messages.add("num_hom_sites," + homs.size());
+        messages.add("num_all_sites," + tumorSites.size());
+        messages.add("num_genotyping_segments," + genotypingHoms.size());
         final double tumorErrorRate = calculateErrorRate(tumorSites);
 
         // depth of ref in hom alt or alt in hom ref
@@ -186,7 +176,6 @@ public class ContaminationModel {
         final long oppositeDepth = homs.stream().mapToLong(oppositeCount::applyAsInt).sum();
         final long errorDepth = Math.round(totalDepth * tumorErrorRate / 3);
         final long contaminationOppositeDepth = Math.max(oppositeDepth - errorDepth, 0);
-
 
         final double totalDepthWeightedByOppositeFrequency = homs.stream()
                 .mapToDouble(ps -> ps.getTotalCount() * oppositeAlleleFrequency.applyAsDouble(ps))
@@ -207,6 +196,16 @@ public class ContaminationModel {
         }
 
         return Pair.of(Math.min(contamination, 1.0), stdError);
+    }
+
+    public void writeMessages(File auxInfoFile){
+        try (PrintWriter auxWriter = new PrintWriter(auxInfoFile)){
+            for (String message : messages){
+                auxWriter.println(message);
+            }
+        } catch (IOException e){
+            throw new UserException("Something went wrong writing the aux info", e);
+        }
     }
 
     private List<PileupSummary> getType(final int genotype, final double minMaf) {
