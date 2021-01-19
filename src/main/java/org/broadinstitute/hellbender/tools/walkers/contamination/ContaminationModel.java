@@ -63,6 +63,8 @@ public class ContaminationModel {
         // partition genome into minor allele fraction (MAF) segments to better distinguish hom alts from LoH hets.
         segments = ContaminationSegmenter.findSegments(sites);
         final int numSegments = segments.size(); // sato: segments are not ordered....
+        this.messages = new ArrayList<>();
+        messages.add("num_segments," + numSegments);
 
         final List<Double> minorAlleleFractionsGuess = new ArrayList<>(Collections.nCopies(segments.size(), 0.5));
         final MutableDouble contaminationGuess = new MutableDouble(0);
@@ -76,8 +78,6 @@ public class ContaminationModel {
         contamination = contaminationGuess.doubleValue();
 
         this.homSitesOutput = homSitesOutput;
-        this.messages = new ArrayList<>();
-        messages.add("num_segments," + numSegments);
     }
 
     private static Pair<List<List<PileupSummary>>, List<Double>> getNonLOHSegments(final List<List<PileupSummary>> segments, final List<Double> mafs) {
