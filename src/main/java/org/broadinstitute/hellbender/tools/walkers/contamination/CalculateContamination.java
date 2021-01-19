@@ -139,7 +139,7 @@ public class CalculateContamination extends CommandLineProgram {
 
         // Write the messages from the "learning" step
         if (auxiliaryInfoFile != null){
-            genotypingModel.writeMessages(auxiliaryInfoFile);
+            genotypingModel.writeMessages(auxiliaryInfoFile, false);
         }
 
         if (outputTumorSegmentation != null) {
@@ -153,7 +153,7 @@ public class CalculateContamination extends CommandLineProgram {
         }
 
         if (auxiliaryInfoFile != null){
-            genotypingModel.writeMessages(auxiliaryInfoFile);
+            genotypingModel.writeMessages(auxiliaryInfoFile, true);
         }
 
 

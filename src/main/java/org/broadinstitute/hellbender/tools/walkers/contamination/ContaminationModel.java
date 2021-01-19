@@ -200,8 +200,8 @@ public class ContaminationModel {
         return Pair.of(Math.min(contamination, 1.0), stdError);
     }
 
-    public void writeMessages(File auxInfoFile){
-        try (PrintWriter auxWriter = new PrintWriter(auxInfoFile)){
+    public void writeMessages(File auxInfoFile, boolean append){
+        try (PrintWriter auxWriter = new PrintWriter(new FileOutputStream(auxInfoFile, append))){
             for (String message : messages){
                 auxWriter.println(message);
             }
