@@ -137,6 +137,11 @@ public class CalculateContamination extends CommandLineProgram {
 
         final ContaminationModel genotypingModel = new ContaminationModel(genotypingSites, Optional.ofNullable(homSitesFile)); // sato: genotyping sites vs sites?
 
+        // Write the messages from the "learning" step
+        if (auxiliaryInfoFile != null){
+            genotypingModel.writeMessages(auxiliaryInfoFile);
+        }
+
         if (outputTumorSegmentation != null) {
             final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel :
                     new ContaminationModel(sites, Optional.ofNullable(homSitesFile));

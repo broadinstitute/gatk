@@ -55,6 +55,7 @@ public class ContaminationModel {
 
     Optional<File> homSitesOutput;
     List<String> messages;
+    int i = 0;
 
     public ContaminationModel(List<PileupSummary> sites, Optional<File> homSitesOutput) {
         errorRate = Math.max(1e-4, calculateErrorRate(sites)); // sato: protect against the case where error rate is 0.0
@@ -161,6 +162,7 @@ public class ContaminationModel {
             genotypingHoms = candidateHomRefs.stream().filter(site -> site.getAltFraction() <= altFractionThreshold).collect(Collectors.toList());
         }
         final List<PileupSummary> homs = subsetSites(tumorSites, genotypingHoms);
+        messages.add("iteration," + i++);
         messages.add("num_hom_sites," + homs.size());
         messages.add("num_all_sites," + tumorSites.size());
         messages.add("num_genotyping_segments," + genotypingHoms.size());
