@@ -6,7 +6,6 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 /**
  * A FeatureWalker is a tool that processes a {@link Feature} at a time from a source of Features, with
@@ -55,16 +54,16 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
 
     @SuppressWarnings("unchecked")
     private void initializeDrivingFeatures() {
-        final GATKPath drivingFeaturesPath = getDrivingFeaturePath();
-        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(IOUtils.getPath(drivingFeaturesPath.toString()));
+        final GATKPath drivingPath = getDrivingFeaturePath();
+        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(drivingPath.toPath());
         if (isAcceptableFeatureType(codec.getFeatureType())) {
-            final FeatureInput<F> drivingFeaturesInput = new FeatureInput<>(drivingFeaturesPath.toString());
+            final FeatureInput<F> drivingFeaturesInput = new FeatureInput<>(drivingPath);
             drivingFeatures = new FeatureDataSource<>(drivingFeaturesInput, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, null, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, referenceArguments.getReferencePath());
             features.addToFeatureSources(0, drivingFeaturesInput, codec.getFeatureType(), cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                          referenceArguments.getReferencePath());
             header = getHeaderForFeatures(drivingFeaturesInput);
         } else {
-            throw new UserException("File " + drivingFeaturesPath.toPath() + " contains features of the wrong type.");
+            throw new UserException("File " + drivingPath.getRawInputString() + " contains features of the wrong type.");
         }
     }
 
