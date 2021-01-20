@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.tools.sv;
 
-import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
 import java.util.Objects;
 
-public final class DepthEvidence implements Feature {
+public final class DepthEvidence implements SVEvidence {
 
     final String contig;
     final int start;

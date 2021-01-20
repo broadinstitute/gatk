@@ -7,11 +7,12 @@ import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.sv.DepthEvidence;
+import org.broadinstitute.hellbender.tools.sv.SVEvidence;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence> {
+public class DepthEvidenceCodec extends SVEvidenceCodec<DepthEvidence> {
 
     public static final String FORMAT_SUFFIX = ".rd.txt";
     public static final String COL_DELIMITER = "\t";
@@ -62,7 +63,7 @@ public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence> {
         return reader.next();
     }
 
-    public static String encode(final DepthEvidence ev) {
+    public String encode(final DepthEvidence ev) {
         final int[] counts = ev.getCounts();
         final int numCounts = counts.length;
         final List<String> columns = new ArrayList<>(3 + numCounts);

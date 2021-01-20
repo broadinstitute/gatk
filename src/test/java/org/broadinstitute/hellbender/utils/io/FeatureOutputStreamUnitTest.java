@@ -131,13 +131,13 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
 
     private static String encodeSVEvidenceFeature(final Object feature) {
         if (feature instanceof BafEvidence) {
-            return BafEvidenceCodec.encode((BafEvidence) feature);
+            return new BafEvidenceCodec().encode((BafEvidence) feature);
         } else if (feature instanceof DepthEvidence) {
-            return DepthEvidenceCodec.encode((DepthEvidence) feature);
+            return new DepthEvidenceCodec().encode((DepthEvidence) feature);
         } else if (feature instanceof DiscordantPairEvidence) {
-            return DiscordantPairEvidenceCodec.encode((DiscordantPairEvidence) feature);
+            return new DiscordantPairEvidenceCodec().encode((DiscordantPairEvidence) feature);
         } else if (feature instanceof SplitReadEvidence) {
-            return SplitReadEvidenceCodec.encode((SplitReadEvidence) feature);
+            return new SplitReadEvidenceCodec().encode((SplitReadEvidence) feature);
         }
         throw new IllegalArgumentException("Unsupported SV evidence class: " + feature.getClass().getSimpleName());
     }

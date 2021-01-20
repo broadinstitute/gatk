@@ -6,11 +6,12 @@ import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.tools.sv.BafEvidence;
+import org.broadinstitute.hellbender.tools.sv.SVEvidence;
 
 import java.util.Arrays;
 import java.util.List;
 
-public class BafEvidenceCodec extends AsciiFeatureCodec<BafEvidence> {
+public class BafEvidenceCodec extends SVEvidenceCodec<BafEvidence> {
 
     public static final String FORMAT_SUFFIX = ".baf.txt";
     public static final String COL_DELIMITER = "\t";
@@ -52,7 +53,7 @@ public class BafEvidenceCodec extends AsciiFeatureCodec<BafEvidence> {
     @Override
     public Object readActualHeader(final LineIterator reader) { return null; }
 
-    public static String encode(final BafEvidence ev) {
+    public String encode(final BafEvidence ev) {
         final List<String> columns = Arrays.asList(
                 ev.getContig(),
                 Integer.toString(ev.getStart() - 1),
@@ -61,4 +62,5 @@ public class BafEvidenceCodec extends AsciiFeatureCodec<BafEvidence> {
         );
         return String.join(COL_DELIMITER, columns);
     }
+
 }

@@ -108,8 +108,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         super.onTraversalStart();
         sequenceDictionary = getBestAvailableSequenceDictionary();
         final FeatureOutputStreamFactory outputFactory = new FeatureOutputStreamFactory();
-        peWriter = outputFactory.create(peFile, DiscordantPairEvidenceCodec::encode, sequenceDictionary, compressionLevel);
-        srWriter = outputFactory.create(srFile, SplitReadEvidenceCodec::encode, sequenceDictionary, compressionLevel);
+        peWriter = outputFactory.create(peFile, new DiscordantPairEvidenceCodec()::encode, sequenceDictionary, compressionLevel);
+        srWriter = outputFactory.create(srFile, new SplitReadEvidenceCodec()::encode, sequenceDictionary, compressionLevel);
     }
 
     @Override

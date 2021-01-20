@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.codecs;
 
 import com.google.common.base.Splitter;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.tools.sv.DiscordantPairEvidence;
@@ -10,7 +9,7 @@ import org.broadinstitute.hellbender.tools.sv.DiscordantPairEvidence;
 import java.util.Arrays;
 import java.util.List;
 
-public class DiscordantPairEvidenceCodec extends AsciiFeatureCodec<DiscordantPairEvidence> {
+public class DiscordantPairEvidenceCodec extends SVEvidenceCodec<DiscordantPairEvidence> {
 
     public static final String FORMAT_SUFFIX = ".pe.txt";
     public static final String COL_DELIMITER = "\t";
@@ -55,7 +54,8 @@ public class DiscordantPairEvidenceCodec extends AsciiFeatureCodec<DiscordantPai
     @Override
     public Object readActualHeader(final LineIterator reader) { return null; }
 
-    public static String encode(final DiscordantPairEvidence ev) {
+    @Override
+    public String encode(final DiscordantPairEvidence ev) {
         final List<String> columns = Arrays.asList(
                 ev.getContig(),
                 Integer.toString(ev.getStart() - 1),
