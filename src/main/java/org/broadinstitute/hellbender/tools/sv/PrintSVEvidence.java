@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.tribble.Feature;
+import htsjdk.tribble.FeatureCodec;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
@@ -9,7 +10,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.BafEvidenceCodec;
 import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
 import org.broadinstitute.hellbender.utils.codecs.DiscordantPairEvidenceCodec;
@@ -94,6 +94,7 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
     private FeatureOutputStream<SplitReadEvidence> srStream;
     private FeatureOutputStream<BafEvidence> bafStream;
     private FeatureOutputStream<DepthEvidence> rdStream;
+    private FeatureCodec<? extends Feature, ?> featureCodec;
     private Class<? extends Feature> evidenceClass;
 
     @Override
@@ -110,30 +111,24 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
-        validateInputs();
+        featureCodec = FeatureManager.getCodecForFile(inputFilePath.toPath());
+        evidenceClass = featureCodec.getFeatureType();
         initializeOutput();
         writeHeader();
     }
 
-    private void validateInputs() {
-        final Class<? extends Feature> inputClass = FeatureManager.getCodecForFile(inputFilePath.toPath()).getFeatureType();
-        final Class<? extends Feature> outputClass = FeatureManager.getCodecForFile(outputFilePath.toPath()).getFeatureType();
-        Utils.validate(inputClass == outputClass, "Input and output file types do not match");
-        evidenceClass = inputClass;
-    }
-
     private void initializeOutput() {
         if (evidenceClass.equals(DiscordantPairEvidence.class)) {
-            peStream = new FeatureOutputStreamFactory().create(outputFilePath, DiscordantPairEvidenceCodec::encode,
+            peStream = new FeatureOutputStreamFactory().create(outputFilePath, featureCodec, DiscordantPairEvidenceCodec::encode,
                     getBestAvailableSequenceDictionary(), compressionLevel);
         } else if (evidenceClass.equals(SplitReadEvidence.class)) {
-            srStream = new FeatureOutputStreamFactory().create(outputFilePath, SplitReadEvidenceCodec::encode,
+            srStream = new FeatureOutputStreamFactory().create(outputFilePath, featureCodec, SplitReadEvidenceCodec::encode,
                     getBestAvailableSequenceDictionary(), compressionLevel);
         } else if (evidenceClass.equals(BafEvidence.class)) {
-            bafStream = new FeatureOutputStreamFactory().create(outputFilePath, BafEvidenceCodec::encode,
+            bafStream = new FeatureOutputStreamFactory().create(outputFilePath, featureCodec, BafEvidenceCodec::encode,
                     getBestAvailableSequenceDictionary(), compressionLevel);
         } else if (evidenceClass.equals(DepthEvidence.class)) {
-            rdStream = new FeatureOutputStreamFactory().create(outputFilePath, DepthEvidenceCodec::encode,
+            rdStream = new FeatureOutputStreamFactory().create(outputFilePath, featureCodec, DepthEvidenceCodec::encode,
                     getBestAvailableSequenceDictionary(), compressionLevel);
         } else {
             throw new UserException.BadInput("Unsupported evidence type: " + evidenceClass.getSimpleName());
