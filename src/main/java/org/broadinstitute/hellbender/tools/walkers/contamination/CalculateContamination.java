@@ -137,9 +137,10 @@ public class CalculateContamination extends CommandLineProgram {
 
         final ContaminationModel genotypingModel = new ContaminationModel(genotypingSites, Optional.ofNullable(homSitesFile)); // sato: genotyping sites vs sites?
 
+        // sato: tumorModel is only used for the purpose of outputting the tumor segments.
+        // this is not used in calculating contamination, but rather it is used by FilterMutectCalls
         if (outputTumorSegmentation != null) {
-            final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel :
-                    new ContaminationModel(sites, Optional.ofNullable(homSitesFile));
+            final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel : new ContaminationModel(sites, Optional.ofNullable(homSitesFile));
             MinorAlleleFractionRecord.writeToFile(sample, tumorModel.segmentationRecords(), outputTumorSegmentation);
         }
 
@@ -152,7 +153,7 @@ public class CalculateContamination extends CommandLineProgram {
                 new ContaminationRecord(sample, contaminationAndError.getLeft(), contaminationAndError.getRight())), outputTable);
 
         if (auxiliaryInfoFile != null){
-            genotypingModel.writeMessages(auxiliaryInfoFile, true);
+            genotypingModel.writeMessages(auxiliaryInfoFile, false);
         }
         return "SUCCESS";
     }

@@ -163,9 +163,9 @@ public class ContaminationModel {
         }
         final List<PileupSummary> homs = subsetSites(tumorSites, genotypingHoms);
         messages.add("iteration," + i++);
+        messages.add("min_maf," + minMaf);
         messages.add("num_hom_sites," + homs.size());
         messages.add("num_all_sites," + tumorSites.size());
-        messages.add("num_genotyping_segments," + genotypingHoms.size());
         final double tumorErrorRate = calculateErrorRate(tumorSites);
 
         // depth of ref in hom alt or alt in hom ref
@@ -210,11 +210,13 @@ public class ContaminationModel {
         }
     }
 
+    // sato: returns the sites in non-LOH segments that have the requested genotype (e.g. homAlt)
     private List<PileupSummary> getType(final int genotype, final double minMaf) {
         final int[] nonLOHIndices = IntStream.range(0, segments.size()).filter(s -> minorAlleleFractions.get(s) > minMaf).toArray();
         final List<List<PileupSummary>> nonLOHSegments = Arrays.stream(nonLOHIndices).mapToObj(segments::get).collect(Collectors.toList());
         final List<Double> nonLOHMafs = Arrays.stream(nonLOHIndices).mapToObj(minorAlleleFractions::get).collect(Collectors.toList());
 
+        messages.add("num_non_loh_segments," + nonLOHSegments.size());
         return IntStream.range(0, nonLOHSegments.size())
                 .mapToObj(n -> nonLOHSegments.get(n).stream().filter(site -> probability(site, contamination, errorRate, nonLOHMafs.get(n), genotype) > 0.5))
                 .flatMap(stream -> stream)
