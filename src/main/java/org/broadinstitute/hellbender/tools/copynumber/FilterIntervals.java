@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import org.apache.commons.collections4.ListUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
@@ -16,6 +17,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
@@ -23,6 +25,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Annota
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.annotation.AnnotationKey;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.annotation.CopyNumberAnnotations;
@@ -270,16 +273,16 @@ public final class FilterIntervals extends CommandLineProgram {
     )
     private double extremeCountFilterPercentageOfSamples = 90.;
 
-    private SimpleIntervalCollection intersectedIntervals;
-    private AnnotatedIntervalCollection annotatedIntervals;
-
     @Override
     public Object doWork() {
         validateArguments();
 
-        resolveAndValidateIntervals();
+        final Pair<SimpleIntervalCollection, AnnotatedIntervalCollection> intersectedIntervalsPair = resolveAndValidateIntervals(
+                logger, inputAnnotatedIntervalsFile, inputReadCountFiles, intervalArgumentCollection);
+        final SimpleIntervalCollection intersectedIntervals = intersectedIntervalsPair.getLeft();
+        final AnnotatedIntervalCollection intersectedAnnotatedIntervals = intersectedIntervalsPair.getRight();
 
-        final SimpleIntervalCollection filteredIntervals = filterIntervals();
+        final SimpleIntervalCollection filteredIntervals = filterIntervals(intersectedIntervals, intersectedAnnotatedIntervals);
         logger.info(String.format("Writing filtered intervals to %s...", outputFilteredIntervalsFile.getAbsolutePath()));
         final IntervalList filteredIntervalList = new IntervalList(filteredIntervals.getMetadata().getSequenceDictionary());
         filteredIntervals.getIntervals().forEach(i -> filteredIntervalList.add(new Interval(i)));
@@ -304,19 +307,28 @@ public final class FilterIntervals extends CommandLineProgram {
         CopyNumberArgumentValidationUtils.validateOutputFiles(outputFilteredIntervalsFile);
     }
 
-    private void resolveAndValidateIntervals() {
+    private static Pair<SimpleIntervalCollection, AnnotatedIntervalCollection> resolveAndValidateIntervals(
+            final Logger logger,
+            final File inputAnnotatedIntervalsFile,
+            final List<File> inputReadCountFiles,
+            final IntervalArgumentCollection intervalArgumentCollection) {
         //parse inputs to resolve and intersect intervals
         final LocatableMetadata metadata;
         final List<SimpleInterval> resolved;
         final List<SimpleInterval> intersected;
+        final List<AnnotatedInterval> intersectedAnnotated;
         if (inputAnnotatedIntervalsFile != null && inputReadCountFiles.isEmpty()) {
             //only annotated intervals provided
-            annotatedIntervals = new AnnotatedIntervalCollection(inputAnnotatedIntervalsFile);
-            metadata = annotatedIntervals.getMetadata();
+            final AnnotatedIntervalCollection inputAnnotatedIntervals = new AnnotatedIntervalCollection(inputAnnotatedIntervalsFile);
+            metadata = inputAnnotatedIntervals.getMetadata();
             resolved = intervalArgumentCollection.getIntervals(metadata.getSequenceDictionary());
             intersected = ListUtils.intersection(
                     resolved,
-                    annotatedIntervals.getIntervals());
+                    inputAnnotatedIntervals.getIntervals());
+            final Set<SimpleInterval> intersectedSet = new HashSet<>(intersected);
+            intersectedAnnotated = inputAnnotatedIntervals.getRecords().stream()
+                    .filter(ai -> intersectedSet.contains(ai.getInterval()))
+                    .collect(Collectors.toList());
         } else if (inputAnnotatedIntervalsFile == null && !inputReadCountFiles.isEmpty()) {
             //only counts provided
             final File firstReadCountFile = inputReadCountFiles.get(0);
@@ -326,49 +338,63 @@ public final class FilterIntervals extends CommandLineProgram {
             intersected = ListUtils.intersection(
                     resolved,
                     firstReadCounts.getIntervals());
+            intersectedAnnotated = null;
         } else {
             //both annotated intervals and counts provided
-            annotatedIntervals = new AnnotatedIntervalCollection(inputAnnotatedIntervalsFile);
+            final AnnotatedIntervalCollection inputAnnotatedIntervals = new AnnotatedIntervalCollection(inputAnnotatedIntervalsFile);
             final File firstReadCountFile = inputReadCountFiles.get(0);
             final SimpleCountCollection firstReadCounts = SimpleCountCollection.read(firstReadCountFile);
             CopyNumberArgumentValidationUtils.isSameDictionary(
-                    annotatedIntervals.getMetadata().getSequenceDictionary(),
+                    inputAnnotatedIntervals.getMetadata().getSequenceDictionary(),
                     firstReadCounts.getMetadata().getSequenceDictionary());
-            metadata = annotatedIntervals.getMetadata();
+            metadata = inputAnnotatedIntervals.getMetadata();
             resolved = intervalArgumentCollection.getIntervals(metadata.getSequenceDictionary());
             intersected = ListUtils.intersection(
                     ListUtils.intersection(
                             resolved,
-                            annotatedIntervals.getIntervals()),
+                            inputAnnotatedIntervals.getIntervals()),
                     firstReadCounts.getIntervals());
+            final Set<SimpleInterval> intersectedSet = new HashSet<>(intersected);
+            intersectedAnnotated = inputAnnotatedIntervals.getRecords().stream()
+                    .filter(ai -> intersectedSet.contains(ai.getInterval()))
+                    .collect(Collectors.toList());
         }
         Utils.validateArg(!intersected.isEmpty(), "At least one interval must remain after intersection.");
         logger.info(String.format("After interval resolution, %d intervals remain...", resolved.size()));
         logger.info(String.format("After interval intersection, %d intervals remain...", intersected.size()));
-        intersectedIntervals = new SimpleIntervalCollection(metadata, intersected);
+        final SimpleIntervalCollection intersectedIntervals = new SimpleIntervalCollection(metadata, intersected);
+        final AnnotatedIntervalCollection intersectedAnnotatedIntervals = intersectedAnnotated == null
+                ? null
+                : new AnnotatedIntervalCollection(metadata, intersectedAnnotated);
+        if (intersectedAnnotatedIntervals != null && !intersectedIntervals.getRecords().equals(intersectedAnnotatedIntervals.getIntervals())) {
+            //redundant check to prevent regression of https://github.com/broadinstitute/gatk/pull/7046
+            throw new GATKException.ShouldNeverReachHereException("After intersection, intervals should match those of annotated intervals.");
+        }
+        return Pair.of(intersectedIntervals, intersectedAnnotatedIntervals);
     }
 
-    private SimpleIntervalCollection filterIntervals() {
+    private SimpleIntervalCollection filterIntervals(final SimpleIntervalCollection intersectedIntervals,
+                                                     final AnnotatedIntervalCollection intersectedAnnotatedIntervals) {
         final int numIntersectedIntervals = intersectedIntervals.size();
         final boolean[] mask = new boolean[numIntersectedIntervals];     //if true, filter out; each filter modifies this mask
 
         //apply annotation-based filters
-        if (annotatedIntervals != null) {
+        if (intersectedAnnotatedIntervals != null) {
             logger.info("Applying annotation-based filters...");
             //for present annotations, apply corresponding filters
-            final List<AnnotationKey<?>> annotationKeys = annotatedIntervals.getRecords().get(0).getAnnotationMap().getKeys();
+            final List<AnnotationKey<?>> annotationKeys = intersectedAnnotatedIntervals.getRecords().get(0).getAnnotationMap().getKeys();
             if (annotationKeys.contains(CopyNumberAnnotations.GC_CONTENT)) {    //this should always be true, but we check it anyway
-                updateMaskByAnnotationFilter(logger, intersectedIntervals, annotatedIntervals, mask,
+                updateMaskByAnnotationFilter(logger, intersectedIntervals, intersectedAnnotatedIntervals, mask,
                         CopyNumberAnnotations.GC_CONTENT, "GC-content",
                         minimumGCContent, maximumGCContent);
             }
             if (annotationKeys.contains(CopyNumberAnnotations.MAPPABILITY)) {
-                updateMaskByAnnotationFilter(logger, intersectedIntervals, annotatedIntervals, mask,
+                updateMaskByAnnotationFilter(logger, intersectedIntervals, intersectedAnnotatedIntervals, mask,
                         CopyNumberAnnotations.MAPPABILITY, "mappability",
                         minimumMappability, maximumMappability);
             }
             if (annotationKeys.contains(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT)) {
-                updateMaskByAnnotationFilter(logger, intersectedIntervals, annotatedIntervals, mask,
+                updateMaskByAnnotationFilter(logger, intersectedIntervals, intersectedAnnotatedIntervals, mask,
                         CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, "segmental-duplication-content",
                         minimumSegmentalDuplicationContent, maximumSegmentalDuplicationContent);
             }
@@ -466,16 +492,18 @@ public final class FilterIntervals extends CommandLineProgram {
 
     private static void updateMaskByAnnotationFilter(final Logger logger,
                                                      final SimpleIntervalCollection intersectedIntervals,
-                                                     final AnnotatedIntervalCollection annotatedIntervals,
+                                                     final AnnotatedIntervalCollection intersectedAnnotatedIntervals,
                                                      final boolean[] mask,
                                                      final AnnotationKey<Double> annotationKey,
                                                      final String filterName,
                                                      final double minValue,
                                                      final double maxValue) {
+        //we assume that intersectedIntervals.getIntervals().equals(intersectedAnnotatedIntervals.getIntervals()) was validated previously
+        //see https://github.com/broadinstitute/gatk/pull/7046
         IntStream.range(0, intersectedIntervals.size())
                 .filter(i -> !mask[i])
                 .forEach(i -> {
-                    final double value = annotatedIntervals.getRecords().get(i).getAnnotationMap().getValue(annotationKey);
+                    final double value = intersectedAnnotatedIntervals.getRecords().get(i).getAnnotationMap().getValue(annotationKey);
                     if (!(minValue <= value && value <= maxValue)) {
                         mask[i] = true;
                     }});
