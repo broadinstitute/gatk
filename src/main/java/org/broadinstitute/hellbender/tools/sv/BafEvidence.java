@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Objects;
 
-public final class BafEvidence implements Feature {
+public final class BafEvidence implements SVEvidence {
 
     final String sample;
     final String contig;

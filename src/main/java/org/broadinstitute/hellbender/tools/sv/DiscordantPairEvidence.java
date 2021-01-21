@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Objects;
 
-public final class DiscordantPairEvidence implements Feature {
+public final class DiscordantPairEvidence implements SVEvidence {
 
     final String sample;
     final String startContig;

@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Objects;
 
-public final class SplitReadEvidence implements Feature {
+public final class SplitReadEvidence implements SVEvidence {
 
     final String sample;
     final String contig;

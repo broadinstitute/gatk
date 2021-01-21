@@ -38,9 +38,10 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
 
     @DataProvider
     public Object[][] featureOutputStreamData() {
+        final FeatureCodec<SplitReadEvidence, LineIterator> splitReadEvidenceCodec = new SplitReadEvidenceCodec();
+        final FeatureCodec<DepthEvidence, LineIterator> depthEvidenceCodec = new DepthEvidenceCodec();
         return new Object[][] {
                 {
-                    SplitReadEvidence.class,
                     Lists.newArrayList(
                                 new SplitReadEvidence("sample1", "chr1", 4783443, 3, true),
                                 new SplitReadEvidence("sample2", "chr1", 4783443, 2, true),
@@ -49,7 +50,7 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
                                 new SplitReadEvidence("sample1", "chr1", 8398393, 7, true)
                         ),
                         SplitReadEvidenceCodec.FORMAT_SUFFIX,
-                        new SplitReadEvidenceCodec(),
+                        splitReadEvidenceCodec,
                         null
                 },
                 {
@@ -59,7 +60,7 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
                                 new DepthEvidence("chr1", 4200, 4300, new int[]{0, 1, 1})
                         ),
                         DepthEvidenceCodec.FORMAT_SUFFIX,
-                        new DepthEvidenceCodec(),
+                        depthEvidenceCodec,
                         "#Chr\tStart\tEnd\tsample1\tsample2\tsample3"
                 },
         };
@@ -131,13 +132,13 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
 
     private static String encodeSVEvidenceFeature(final Object feature) {
         if (feature instanceof BafEvidence) {
-            return BafEvidenceCodec.encode((BafEvidence) feature);
+            return new BafEvidenceCodec().encode((BafEvidence) feature);
         } else if (feature instanceof DepthEvidence) {
-            return DepthEvidenceCodec.encode((DepthEvidence) feature);
+            return new DepthEvidenceCodec().encode((DepthEvidence) feature);
         } else if (feature instanceof DiscordantPairEvidence) {
-            return DiscordantPairEvidenceCodec.encode((DiscordantPairEvidence) feature);
+            return new DiscordantPairEvidenceCodec().encode((DiscordantPairEvidence) feature);
         } else if (feature instanceof SplitReadEvidence) {
-            return SplitReadEvidenceCodec.encode((SplitReadEvidence) feature);
+            return new SplitReadEvidenceCodec().encode((SplitReadEvidence) feature);
         }
         throw new IllegalArgumentException("Unsupported SV evidence class: " + feature.getClass().getSimpleName());
     }
