@@ -38,9 +38,10 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
 
     @DataProvider
     public Object[][] featureOutputStreamData() {
+        final FeatureCodec<SplitReadEvidence, LineIterator> splitReadEvidenceCodec = new SplitReadEvidenceCodec();
+        final FeatureCodec<DepthEvidence, LineIterator> depthEvidenceCodec = new DepthEvidenceCodec();
         return new Object[][] {
                 {
-                    SplitReadEvidence.class,
                     Lists.newArrayList(
                                 new SplitReadEvidence("sample1", "chr1", 4783443, 3, true),
                                 new SplitReadEvidence("sample2", "chr1", 4783443, 2, true),
@@ -49,7 +50,7 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
                                 new SplitReadEvidence("sample1", "chr1", 8398393, 7, true)
                         ),
                         SplitReadEvidenceCodec.FORMAT_SUFFIX,
-                        new SplitReadEvidenceCodec(),
+                        splitReadEvidenceCodec,
                         null
                 },
                 {
@@ -59,7 +60,7 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
                                 new DepthEvidence("chr1", 4200, 4300, new int[]{0, 1, 1})
                         ),
                         DepthEvidenceCodec.FORMAT_SUFFIX,
-                        new DepthEvidenceCodec(),
+                        depthEvidenceCodec,
                         "#Chr\tStart\tEnd\tsample1\tsample2\tsample3"
                 },
         };
