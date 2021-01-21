@@ -54,8 +54,13 @@ public class ContaminationModel {
     private static final List<Double> CONTAMINATION_INITIAL_GUESSES = Arrays.asList(0.02, 0.05, 0.1, 0.2);
 
     Optional<File> homSitesOutput;
-    List<String> messages;
-    int i = 0;
+    Strategy strategy;
+    double mafThreshold;
+    int numHomSites;
+    int numTotalSites;
+    int numNonLOHSegments;
+    double allowedError;
+
 
     public ContaminationModel(List<PileupSummary> sites, Optional<File> homSitesOutput) {
         errorRate = Math.max(1e-4, calculateErrorRate(sites)); // sato: protect against the case where error rate is 0.0
@@ -63,8 +68,6 @@ public class ContaminationModel {
         // partition genome into minor allele fraction (MAF) segments to better distinguish hom alts from LoH hets.
         segments = ContaminationSegmenter.findSegments(sites);
         final int numSegments = segments.size(); // sato: segments are not ordered....
-        this.messages = new ArrayList<>();
-        messages.add("num_segments," + numSegments);
 
         final List<Double> minorAlleleFractionsGuess = new ArrayList<>(Collections.nCopies(segments.size(), 0.5));
         final MutableDouble contaminationGuess = new MutableDouble(0);
@@ -103,7 +106,6 @@ public class ContaminationModel {
      */
     public Pair<Double, Double> calculateContaminationFromHoms(final List<PileupSummary> tumorSites) {
         for (double minMaf = INITIAL_MAF_THRESHOLD; minMaf >= 0; minMaf -= MAF_STEP_SIZE) {
-            Strategy strategy;
             final Pair<Double, Double> result;
             if (minMaf > MAF_TO_SWITCH_TO_HOM_REF) { // sato: compute, then check the result below. Continue for loop if result not good.
                 strategy = Strategy.HOM_ALT;
@@ -117,17 +119,13 @@ public class ContaminationModel {
             }
 
             final double error = result.getRight();
-            final double allowedError = result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR; // sato: can I choose these smartly?
+            allowedError = result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR; // sato: can I choose these smartly?
 
             if (!Double.isNaN(result.getLeft()) && result.getRight() < (result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR)) {
-                messages.add("strategy," + strategy.toString());
-                messages.add("error," + error);
-                messages.add("allowed_error," + allowedError);
                 return result;
             }
         }
 
-        messages.add("strategy," + Strategy.UNSCRUPULOUS_HOM_REF.toString());
         final Pair<Double, Double> result = calculateContamination(Strategy.UNSCRUPULOUS_HOM_REF, tumorSites, 0);
         return Double.isNaN(result.getLeft()) ? Pair.of(0.0, 1.0) : result;
     }
@@ -162,10 +160,10 @@ public class ContaminationModel {
             genotypingHoms = candidateHomRefs.stream().filter(site -> site.getAltFraction() <= altFractionThreshold).collect(Collectors.toList());
         }
         final List<PileupSummary> homs = subsetSites(tumorSites, genotypingHoms);
-        messages.add("iteration," + i++);
-        messages.add("min_maf," + minMaf);
-        messages.add("num_hom_sites," + homs.size());
-        messages.add("num_all_sites," + tumorSites.size());
+        this.mafThreshold = minMaf;
+        this.numHomSites = homs.size();
+        this.numTotalSites = tumorSites.size();
+
         final double tumorErrorRate = calculateErrorRate(tumorSites);
 
         // depth of ref in hom alt or alt in hom ref
@@ -202,9 +200,12 @@ public class ContaminationModel {
 
     public void writeMessages(File auxInfoFile, boolean append){
         try (PrintWriter auxWriter = new PrintWriter(new FileOutputStream(auxInfoFile, append))){
-            for (String message : messages){
-                auxWriter.println(message);
-            }
+            auxWriter.println(strategy.toString());
+            auxWriter.println(mafThreshold);
+            auxWriter.println(numHomSites);
+            auxWriter.println(numTotalSites);
+            auxWriter.println(numNonLOHSegments);
+            auxWriter.print(allowedError);
         } catch (IOException e){
             throw new UserException("Something went wrong writing the aux info", e);
         }
@@ -216,7 +217,7 @@ public class ContaminationModel {
         final List<List<PileupSummary>> nonLOHSegments = Arrays.stream(nonLOHIndices).mapToObj(segments::get).collect(Collectors.toList());
         final List<Double> nonLOHMafs = Arrays.stream(nonLOHIndices).mapToObj(minorAlleleFractions::get).collect(Collectors.toList());
 
-        messages.add("num_non_loh_segments," + nonLOHSegments.size());
+        numNonLOHSegments = nonLOHSegments.size();
         return IntStream.range(0, nonLOHSegments.size())
                 .mapToObj(n -> nonLOHSegments.get(n).stream().filter(site -> probability(site, contamination, errorRate, nonLOHMafs.get(n), genotype) > 0.5))
                 .flatMap(stream -> stream)
