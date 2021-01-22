@@ -36,7 +36,7 @@ import org.broadinstitute.hellbender.utils.io.FeatureOutputStreamFactory;
  *
  * <ul>
  *     <li>
- *         Coordinate-sorted evidence file, indexed if block compressed
+ *         Coordinate-sorted evidence file, automatically indexed if ending with ".gz"
  *     </li>
  * </ul>
  *

@@ -181,7 +181,6 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         final boolean strandA = !r.isReadReverseStrand();
         final boolean strandB = !r.isMateReverseStrand();
 
-        // subtract 1 from positions to match pysam output
         final DiscordantPairEvidence discordantPair = new DiscordantPairEvidence(sampleName, r.getContig(), r.getStart(), strandA, r.getMateContig(), r.getMateStart(), strandB);
         peWriter.add(discordantPair);
     }

@@ -22,7 +22,8 @@ public final class FeatureOutputStreamFactory {
                                                              final int compressionLevel) {
         if (IOUtil.hasBlockCompressedExtension(path.toPath())) {
             return new TabixIndexedFeatureOutputStream<>(path, codec, encoder, dictionary, compressionLevel);
+        } else {
+            return new UncompressedFeatureOutputStream<>(path, encoder);
         }
-        return new UncompressedFeatureOutputStream<>(path, encoder);
     }
 }
