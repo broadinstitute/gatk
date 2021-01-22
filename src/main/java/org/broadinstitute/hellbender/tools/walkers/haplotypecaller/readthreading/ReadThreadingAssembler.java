@@ -66,7 +66,7 @@ public final class ReadThreadingAssembler {
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
     private int pruneFactor;
     private final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> chainPruner;
-    private int minMachingBasesToDanglngEndRecovery;
+    private int minMatchingBasesToDanglingEndRecovery;
 
     private File debugGraphOutputPath = null;  //Where to write debug graphs, if unset it defaults to the current working dir
     private File graphOutputPath = null;
@@ -95,7 +95,7 @@ public final class ReadThreadingAssembler {
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, pruningSeedingLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
-        this.minMachingBasesToDanglngEndRecovery = minMachingBasesToDanglngEndRecovery;
+        this.minMatchingBasesToDanglingEndRecovery = minMachingBasesToDanglngEndRecovery;
     }
 
     @VisibleForTesting
@@ -110,8 +110,8 @@ public final class ReadThreadingAssembler {
 
     // this method should not be used, only exposed for testing purposes. This should be set in the constructor.
     @VisibleForTesting
-    void setMinMachingBasesToDanglngEndRecovery(final int mimMatchingBases) {
-        this.minMachingBasesToDanglngEndRecovery = mimMatchingBases;
+    void setMinMatchingBasesToDanglingEndRecovery(final int mimMatchingBases) {
+        this.minMatchingBasesToDanglingEndRecovery = mimMatchingBases;
     }
 
     /**
@@ -618,8 +618,8 @@ public final class ReadThreadingAssembler {
         }
 
         // TODO figure out how you want to hook this in
-        final AbstractReadThreadingGraph rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, minMachingBasesToDanglngEndRecovery) :
-                new JunctionTreeLinkedDeBruijnGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, minMachingBasesToDanglngEndRecovery);
+        final AbstractReadThreadingGraph rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, minMatchingBasesToDanglingEndRecovery) :
+                new JunctionTreeLinkedDeBruijnGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, minMatchingBasesToDanglingEndRecovery);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 
