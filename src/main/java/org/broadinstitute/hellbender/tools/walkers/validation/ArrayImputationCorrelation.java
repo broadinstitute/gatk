@@ -81,6 +81,11 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     )
     private List<String> afAnnotations;
 
+    @Argument(
+            fullName = "sample-map"
+    )
+    private List<String> sampleMappings;
+
 //    @Argument(
 //            doc = "Output file for incorrectly genotyped sites",
 //            fullName = "output-incorrect-sites",
@@ -96,6 +101,7 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     final List<AccuracyMetrics> indelMetrics = new ArrayList<>();
     private VariantContext currentReferenceBlockVC;
     final Map<String, String> afAnnotationsMap = new HashMap<>();
+    final Map<String, String> sampleMap = new HashMap<>();
 //    private IncorrectlyGenotypedSitesWriter incorrectlyGenotypedSitesWriter;
 
     @Override
@@ -107,8 +113,15 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
             StringUtil.split(afAnnotation, tokens,':');
             afAnnotationsMap.put(tokens[0], tokens[1]);
         }
+        for (final String sampleMapping : sampleMappings) {
+            String[] tokens = new String[2];
+            StringUtil.split(sampleMapping, tokens,':');
+            sampleMap.put(tokens[0], tokens[1]);
+        }
+
         for (final String sample : samples) {
-            if (!afAnnotationsMap.containsKey(sample)) {
+            String mappedSample = getMappedSample(sample);
+            if (!afAnnotationsMap.containsKey(sample) && !afAnnotationsMap.containsKey(mappedSample)) {
                 continue;
             }
             final List<AFCorrelationAggregator> theseAggregators = new ArrayList<>();
@@ -134,6 +147,14 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 //                throw new GATKException("Error writing out to file " + outputIncorrectSitesFile, ex);
 //            }
 //        }
+    }
+
+    private String getMappedSample(final String sample) {
+        if (sampleMap == null) {
+            return sample;
+        } else {
+            return sampleMap.getOrDefault(sample, sample);
+        }
     }
 
     @Override
@@ -205,7 +226,11 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
             final Allele refAllele = evalVC.getReference();
             for (int i=0; i<aggregators.size(); i++) {
                 final String sample = snpMetrics.get(i).sampleName;
-                final String afAnnotation = afAnnotationsMap.get(sample);
+                final String mappedSample = getMappedSample(sample);
+                String afAnnotation = afAnnotationsMap.get(sample);
+                if (afAnnotation == null) {
+                    afAnnotation = afAnnotationsMap.get(mappedSample);
+                }
                 final List<Double> afList = resourceVariant.getAttributeAsDoubleList(afAnnotation, -99);
                 if (afList.isEmpty()) {
                     continue;
@@ -216,7 +241,7 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
                 }
                 final int bin = getBin(af);
                 final Genotype evalGenotype = evalVC.getGenotype(sample);
-                final Genotype truthGenotype = truthVC.getGenotype(sample);
+                final Genotype truthGenotype = truthVC.getGenotype(mappedSample);
                 final double evalRefFrac = getDosageFrac(evalGenotype, refAllele);
                 final double truthRefFrac = getDosageFrac(truthGenotype, refAllele);
                 final int truthAltCount = truthGenotype.getPloidy() - truthGenotype.countAllele(truthVC.getReference());
