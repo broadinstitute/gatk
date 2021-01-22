@@ -19,7 +19,6 @@ import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
 import org.broadinstitute.hellbender.utils.codecs.DiscordantPairEvidenceCodec;
 import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
 import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
-import org.broadinstitute.hellbender.utils.io.FeatureOutputStreamFactory;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
@@ -107,9 +106,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     public void onTraversalStart() {
         super.onTraversalStart();
         sequenceDictionary = getBestAvailableSequenceDictionary();
-        final FeatureOutputStreamFactory outputFactory = new FeatureOutputStreamFactory();
-        peWriter = outputFactory.create(peFile, new DiscordantPairEvidenceCodec(), DiscordantPairEvidenceCodec::encode, sequenceDictionary, compressionLevel);
-        srWriter = outputFactory.create(srFile, new SplitReadEvidenceCodec(), SplitReadEvidenceCodec::encode, sequenceDictionary, compressionLevel);
+        peWriter = new FeatureOutputStream<>(peFile, new DiscordantPairEvidenceCodec(), DiscordantPairEvidenceCodec::encode, sequenceDictionary, compressionLevel);
+        srWriter = new FeatureOutputStream<>(srFile, new SplitReadEvidenceCodec(), SplitReadEvidenceCodec::encode, sequenceDictionary, compressionLevel);
     }
 
     @Override

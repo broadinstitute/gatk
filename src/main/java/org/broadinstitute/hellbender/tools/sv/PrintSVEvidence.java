@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
 import org.broadinstitute.hellbender.utils.codecs.DiscordantPairEvidenceCodec;
 import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
 import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
-import org.broadinstitute.hellbender.utils.io.FeatureOutputStreamFactory;
 
 /**
  * Prints SV evidence records. Can be used with -L to retrieve records on a set of intervals. Supports streaming input
@@ -119,16 +118,16 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
 
     private void initializeOutput() {
         if (evidenceClass.equals(DiscordantPairEvidence.class)) {
-            peStream = new FeatureOutputStreamFactory().create(outputFilePath, featureCodec, DiscordantPairEvidenceCodec::encode,
+            peStream = new FeatureOutputStream<>(outputFilePath, featureCodec, DiscordantPairEvidenceCodec::encode,
                     getBestAvailableSequenceDictionary(), compressionLevel);
         } else if (evidenceClass.equals(SplitReadEvidence.class)) {
-            srStream = new FeatureOutputStreamFactory().create(outputFilePath, featureCodec, SplitReadEvidenceCodec::encode,
+            srStream = new FeatureOutputStream<>(outputFilePath, featureCodec, SplitReadEvidenceCodec::encode,
                     getBestAvailableSequenceDictionary(), compressionLevel);
         } else if (evidenceClass.equals(BafEvidence.class)) {
-            bafStream = new FeatureOutputStreamFactory().create(outputFilePath, featureCodec, BafEvidenceCodec::encode,
+            bafStream = new FeatureOutputStream<>(outputFilePath, featureCodec, BafEvidenceCodec::encode,
                     getBestAvailableSequenceDictionary(), compressionLevel);
         } else if (evidenceClass.equals(DepthEvidence.class)) {
-            rdStream = new FeatureOutputStreamFactory().create(outputFilePath, featureCodec, DepthEvidenceCodec::encode,
+            rdStream = new FeatureOutputStream<>(outputFilePath, featureCodec, DepthEvidenceCodec::encode,
                     getBestAvailableSequenceDictionary(), compressionLevel);
         } else {
             throw new UserException.BadInput("Unsupported evidence type: " + evidenceClass.getSimpleName());

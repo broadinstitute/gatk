@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
+import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
 import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -82,7 +85,11 @@ public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTes
     }
 
     // Workaround for use of generic class with Mockito
-    private interface SplitReadFeatureOutputStream extends FeatureOutputStream<SplitReadEvidence> {
+    private class SplitReadFeatureOutputStream extends FeatureOutputStream<SplitReadEvidence> {
+        public SplitReadFeatureOutputStream() {
+            super(new GATKPath(""), new SplitReadEvidenceCodec(), SplitReadEvidenceCodec::encode,
+                    new SAMSequenceDictionary(), 4);
+        }
     }
 
     @Test

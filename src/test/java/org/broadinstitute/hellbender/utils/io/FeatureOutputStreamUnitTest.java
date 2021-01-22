@@ -40,7 +40,6 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
     public Object[][] featureOutputStreamData() {
         return new Object[][] {
                 {
-                    SplitReadEvidence.class,
                     Lists.newArrayList(
                                 new SplitReadEvidence("sample1", "chr1", 4783443, 3, true),
                                 new SplitReadEvidence("sample2", "chr1", 4783443, 2, true),
@@ -66,32 +65,30 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "featureOutputStreamData")
-    public <T extends Feature> void testTabixIndexedStream(final ArrayList<T> featureList, final String extension,
-                                       final FeatureCodec<T, LineIterator> codec, final String expectedHeader) throws IOException {
-        final File tempDir = IOUtils.createTempDir(TabixIndexedFeatureOutputStream.class.getSimpleName());
-        final Path outFilePath = Paths.get(tempDir.toString(), getClass().getSimpleName() + extension + ".gz");
-        final FeatureOutputStream<T> stream = new TabixIndexedFeatureOutputStream<T>(
+    public <T extends Feature> void test(final ArrayList<T> featureList,
+                                         final String extension,
+                                         final FeatureCodec<T, LineIterator> codec,
+                                         final String expectedHeader) throws IOException {
+        final File tempDir = IOUtils.createTempDir(FeatureOutputStream.class.getSimpleName());
+        final Path outFilePath = Paths.get(tempDir.toString(), getClass().getSimpleName() + extension);
+        final FeatureOutputStream<T> stream = new FeatureOutputStream<T>(
                 new GATKPath(outFilePath.toString()),
                 codec,
                 FeatureOutputStreamUnitTest::encodeSVEvidenceFeature,
                 dictionary,
                 4
         );
-        testWithStream(stream, featureList, outFilePath, codec, expectedHeader, true);
-    }
-
-    @Test(dataProvider = "featureOutputStreamData")
-    public <T extends Feature> void testUncompressedStream(final ArrayList<T> featureList,
-                                                           final String extension,
-                                                           final FeatureCodec<T, LineIterator> codec,
-                                                           final String expectedHeader) throws IOException {
-        final File tempDir = IOUtils.createTempDir(TabixIndexedFeatureOutputStream.class.getSimpleName());
-        final Path outFilePath = Paths.get(tempDir.toString(), getClass().getSimpleName() + extension);
-        final FeatureOutputStream<T> stream = new UncompressedFeatureOutputStream<T>(
-                new GATKPath(outFilePath.toString()),
-                FeatureOutputStreamUnitTest::encodeSVEvidenceFeature
-        );
         testWithStream(stream, featureList, outFilePath, codec, expectedHeader, false);
+
+        final Path outFilePathGz = Paths.get(outFilePath + ".gz");
+        final FeatureOutputStream<T> streamGz = new FeatureOutputStream<T>(
+                new GATKPath(outFilePathGz.toString()),
+                codec,
+                FeatureOutputStreamUnitTest::encodeSVEvidenceFeature,
+                dictionary,
+                4
+        );
+        testWithStream(streamGz, featureList, outFilePathGz, codec, expectedHeader, true);
     }
 
     private <T extends Feature> void testWithStream(final FeatureOutputStream<T> stream, final ArrayList<T> featureList,
