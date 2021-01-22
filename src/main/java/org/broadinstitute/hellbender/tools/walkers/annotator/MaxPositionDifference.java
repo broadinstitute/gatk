@@ -39,17 +39,20 @@ public class MaxPositionDifference extends PerAlleleAnnotation implements Standa
                 .filter(v -> v >= 0)
                 .collect(Collectors.toList());
 
-        List<Integer> negativeValues = values.stream()
-                .filter(v -> v < 0)
-                .collect(Collectors.toList());
-
-        if (positiveValues.isEmpty() || negativeValues.isEmpty()) {
+        if (positiveValues.isEmpty()) {
             return 0;
         }
 
         int positiveMax = MathUtils.arrayMax(Ints.toArray(positiveValues)) - MathUtils.arrayMin(Ints.toArray(positiveValues));
-        int negativeMax = MathUtils.arrayMax(Ints.toArray(negativeValues)) - MathUtils.arrayMin(Ints.toArray(negativeValues));
-        return values.isEmpty() ? VALUE_FOR_NO_READS : min(positiveMax, negativeMax);
+
+        System.out.println("positiveMax = " + positiveMax);
+
+        if(positiveMax == 1) {
+            return 1;
+        }
+        else {
+            return values.isEmpty() ? VALUE_FOR_NO_READS : positiveMax;
+        }
     }
 
     @Override
@@ -64,7 +67,7 @@ public class MaxPositionDifference extends PerAlleleAnnotation implements Standa
             return OptionalInt.empty();
         }
 
-        final OptionalInt valueAsInt = OptionalInt.of(read.getUnclippedStart() * (read.isSecondOfPair() ? -1 : 1));
+        final OptionalInt valueAsInt = OptionalInt.of(read.getFragmentLength());
         return valueAsInt.isPresent() ? valueAsInt : OptionalInt.empty();
     }
 }
