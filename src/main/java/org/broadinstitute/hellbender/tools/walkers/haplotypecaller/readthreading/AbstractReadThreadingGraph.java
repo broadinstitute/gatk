@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -487,56 +488,24 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      */
     private Pair<Integer, Integer> bestPrefixMatch(final List<CigarElement> cigarElements, final byte[] path1, final byte[] path2) {
         final int minMismatchingBases = getMinMatchingBases();
-        int matchesSinceLastMismatch = 0;
-        int refIndex = 0, readIdx = 0;
-        int bestRefIndex = 0, bestReadIdx = 0;
-        // we want to paste the base before the last read base, thus we need to handle it in the next iteration when we find a mismatch
-        boolean wasLastIndexAMismatch = false;
 
-        for (final CigarElement ce : cigarElements) {
-            final int elementLength = ce.getLength();
-            switch (ce.getOperator()) {
-                case X:case EQ:case M:
-                    for (int j = 0; j < elementLength; j++, refIndex++, readIdx++)
-                        if (path1[refIndex] != path2[readIdx]) {
-                            bestReadIdx = readIdx;
-                            matchesSinceLastMismatch = 0;
-                            wasLastIndexAMismatch = true;
-                        } else {
-                            // We want the index BEFORE the mismatch on the ref so we can connect it
-                            if (wasLastIndexAMismatch) {
-                                bestRefIndex = refIndex;
-                                wasLastIndexAMismatch = false;
-                            }
-                            matchesSinceLastMismatch++;
-                        }
+        int refIdx = cigarElements.stream().mapToInt(ce -> ce.getOperator().consumesReferenceBases()? ce.getLength() : 0).sum() - 1;
+        int readIdx = path2.length - 1;
+
+        // NOTE: this only works when the last cigar element has a sufficient number of M bases, so no indels within min-mismatches of the edge.
+        for (final CigarElement ce : Lists.reverse(cigarElements)) {
+            if (!(ce.getOperator().consumesReadBases() && ce.getOperator().consumesReferenceBases())) {
+                break;
+            }
+            for (int j = 0; j < ce.getLength(); j++, refIdx--, readIdx--) {
+                if (path1[refIdx] != path2[readIdx]) {
                     break;
-                // If there is an insertion, set the bestReadIndex to the last base of said insertion
-                case I:
-                    wasLastIndexAMismatch = true;
-                    matchesSinceLastMismatch = 0;
-                    readIdx += elementLength;
-                    bestReadIdx = readIdx -1; // Compensate for the last iteration in a matching field being excessive
-                    break;
-                // If there is a deletion, set the bestReadIndex to the last base before the deletion
-                case D:
-                    bestReadIdx = readIdx - 1; // Compensate for the last iteration in a matching field being excessive
-                    wasLastIndexAMismatch = true;
-                    matchesSinceLastMismatch = 0;
-                    refIndex += elementLength;
-                    break;
-                case H:
-                case P:
-                    break;
-                default:
-                    throw new GATKException("The " + ce.getOperator() + " cigar element is not currently supported");
+                }
             }
         }
-        if (matchesSinceLastMismatch >= minMismatchingBases) {
-            return Pair.of(bestRefIndex, bestReadIdx);
-        } else {
-            return Pair.of(-1, -1);
-        }
+
+        final int matches = path2.length - 1 - readIdx;
+        return matches < minMismatchingBases ? Pair.of(-1,-1) : Pair.of(readIdx, refIdx);
     }
 
     /**
