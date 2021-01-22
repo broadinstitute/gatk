@@ -625,6 +625,10 @@ public final class ReadThreadingAssembler {
         // actually build the read threading graph
         rtgraph.buildGraphIfNecessary();
 
+        if (debugGraphTransformations) {
+            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
+        }
+
         // It's important to prune before recovering dangling ends so that we don't waste time recovering bad ends.
         // It's also important to prune before checking for cycles so that sequencing errors don't create false cycles
         // and unnecessarily abort assembly
@@ -662,7 +666,7 @@ public final class ReadThreadingAssembler {
         }
 
         if (debugGraphTransformations) {
-            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
+            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.chain_pruned_readthreading_graph.dot");
         }
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
@@ -678,14 +682,14 @@ public final class ReadThreadingAssembler {
         }
 
         if (debugGraphTransformations) {
-            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.cleaned_readthreading_graph.dot");
+            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.cleaned_readthreading_graph.dot");
         }
 
         // Either return an assembly result with a sequence graph or with an unchanged sequence graph deptending on the kmer duplication behavior
         if (generateSeqGraph) {
             final SeqGraph initialSeqGraph = rtgraph.toSequenceGraph();
             if (debugGraphTransformations) {
-                rtgraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.initial_seqgraph.dot"), 10000);
+                rtgraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.3.initial_seqgraph.dot"), 10000);
             }
 
             // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
@@ -697,7 +701,7 @@ public final class ReadThreadingAssembler {
                 logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
             }
             if (debugGraphTransformations) {
-                printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
+                printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.4.initial_seqgraph.dot");
             }
             initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
