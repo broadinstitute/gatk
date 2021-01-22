@@ -37,7 +37,7 @@ public final class BafEvidence implements Feature {
 
     @Override
     public int getEnd() {
-        return position + 1;
+        return position;
     }
 
     public double getValue() {

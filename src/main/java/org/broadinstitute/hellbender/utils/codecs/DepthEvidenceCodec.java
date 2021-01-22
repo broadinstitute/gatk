@@ -23,7 +23,7 @@ public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence> {
 
     @Override
     public TabixFormat getTabixFormat() {
-        return new TabixFormat(TabixFormat.ZERO_BASED, 1, 2, 0, '#', 1);
+        return new TabixFormat(TabixFormat.ZERO_BASED, 1, 2, 3, '#', 1);
     }
 
     @Override

@@ -39,7 +39,7 @@ public final class SplitReadEvidence implements Feature {
 
     @Override
     public int getEnd() {
-        return position + 1;
+        return position;
     }
 
     public boolean getStrand() {
