@@ -66,6 +66,16 @@ public class SchemaUtils {
     public static final String TRAINING_LABEL = "training_label";
     public static final String YNG_STATUS = "yng_status";
 
+    public static final List<String> COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_NAME_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, CALL_RGQ, AS_QUALapprox);//, AS_VarDP);
+    public static final List<String> ARRAY_COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_NAME_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ);
+
+    public static final List<String> RAW_ARRAY_COHORT_FIELDS_COMPRESSED =
+            Arrays.asList(BASIC_ARRAY_DATA_FIELD_NAME, RAW_ARRAY_DATA_FIELD_NAME);
+
+    public static final List<String> RAW_ARRAY_COHORT_FIELDS_UNCOMPRESSED =
+            Arrays.asList(SAMPLE_ID_FIELD_NAME, "probe_id", "GT_encoded","NORMX","NORMY","BAF","LRR");
+
+
     public static final List<String> SAMPLE_FIELDS = Arrays.asList(SchemaUtils.SAMPLE_NAME_FIELD_NAME, SchemaUtils.SAMPLE_ID_FIELD_NAME);
     public static final List<String> YNG_FIELDS = Arrays.asList(FILTER_SET_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, VQSLOD, YNG_STATUS);
 
