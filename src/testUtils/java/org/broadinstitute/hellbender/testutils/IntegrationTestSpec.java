@@ -75,6 +75,7 @@ public final class IntegrationTestSpec {
         this.expectedFileNames = null;
         this.compareBamFilesSorted = false;
         this.validationStringency = ValidationStringency.DEFAULT_STRINGENCY;
+        this.tempExtension = DEFAULT_TEMP_EXTENSION;
     }
 
     public boolean expectsException() {
