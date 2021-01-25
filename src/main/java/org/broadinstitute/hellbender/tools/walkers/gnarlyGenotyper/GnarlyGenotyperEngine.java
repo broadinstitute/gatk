@@ -89,11 +89,22 @@ public final class GnarlyGenotyperEngine {
         //GenomicsDB or Evoquer merged all the annotations, but we still need to finalize MQ and QD annotations
         //return a VC with the finalized annotations and dbBuilder gets the raw annotations for the database
 
-        final double QUALapprox = variant.getAttributeAsInt(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0);
+        final double QUALapprox;
+        if (variant.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) {
+            QUALapprox = variant.getAttributeAsInt(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0);
+        }
+        else if (variant.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
+            List<Integer> alleleSpecificQualList = AS_QualByDepth.parseQualList(variant);
+            QUALapprox = Collections.max(alleleSpecificQualList);
+        }
+        else {
+            QUALapprox = 0;
+        }
         //Don't apply the indel prior to mixed sites if there's a SNP
         final boolean hasSnpAllele = variant.getAlternateAlleles().stream().anyMatch(allele -> allele.length() == variant.getReference().length());
         final boolean isIndel = !hasSnpAllele;
         final double sitePrior = isIndel ? HomoSapiensConstants.INDEL_HETEROZYGOSITY : HomoSapiensConstants.SNP_HETEROZYGOSITY;
+//        System.out.println("KCIBUL -- in the qualapprox w/ " + QUALapprox + " for isIndel " + isIndel + " and SNP:" + SNP_QUAL_THRESHOLD + " and INDEL:" + INDEL_QUAL_THRESHOLD);
         if((isIndel && QUALapprox < INDEL_QUAL_THRESHOLD) || (!isIndel && QUALapprox < SNP_QUAL_THRESHOLD)) {
             if (keepAllSites) {
                 final VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
@@ -135,9 +146,11 @@ public final class GnarlyGenotyperEngine {
         }
         vcfBuilder.attributes(annotationsToBeModified);
 
-        final int variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
-        final double QD = QUALapprox / (double)variantDP;
-        vcfBuilder.attribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY, QD).log10PError(QUALapprox/-10.0-Math.log10(sitePrior));
+        if ( variant.hasAttribute(GATKVCFConstants.VARIANT_DEPTH_KEY) ) {
+            final int variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
+            final double QD = QUALapprox / (double) variantDP;
+            vcfBuilder.attribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY, QD).log10PError(QUALapprox / -10.0 - Math.log10(sitePrior));
+        }
         if (!keepAllSites) {
             vcfBuilder.rmAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY);
         }
@@ -397,7 +410,7 @@ public final class GnarlyGenotyperEngine {
                 final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
                 glCalc = GLCprovider.getInstance(ASSUMED_PLOIDY, allelesToUse.size());
             }
-            
+
             final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(maxLikelihoodIndex);
 
             gb.alleles(alleleCounts.asAlleleList(allelesToUse));

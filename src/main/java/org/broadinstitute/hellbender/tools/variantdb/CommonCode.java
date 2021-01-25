@@ -51,7 +51,7 @@ public class CommonCode {
         return allele_indices;
     }
 
-    public static VCFHeader generateRawArrayVcfHeader(Set<String> sampleNames, final SAMSequenceDictionary sequenceDictionary) {       
+    public static VCFHeader generateRawArrayVcfHeader(Set<String> sampleNames, final SAMSequenceDictionary sequenceDictionary) {
         final Set<VCFHeaderLine> lines = new HashSet<>();
 
         lines.add(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_KEY));
@@ -152,6 +152,8 @@ public class CommonCode {
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.QUAL_BY_DEPTH_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EXCESS_HET_KEY));
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
 
