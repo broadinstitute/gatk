@@ -894,18 +894,18 @@ def _repeat_dimension(dim: List[int], name: str, num_filters_needed: int) -> Lis
 def make_multimodal_multitask_model(
         tensor_maps_in: List[TensorMap],
         tensor_maps_out: List[TensorMap],
-        activation: str,
-        learning_rate: float,
-        bottleneck_type: BottleneckType,
-        optimizer: str,
+        activation: str = 'relu',
+        learning_rate: float = 1e-3,
+        bottleneck_type: BottleneckType = BottleneckType.FlattenRestructure,
+        optimizer: str = 'adam',
         dense_layers: List[int] = None,
         dense_normalize: str = None,
         dense_regularize: str = None,
         dense_regularize_rate: float = None,
         conv_layers: List[int] = None,
         dense_blocks: List[int] = None,
-        block_size: int = None,
-        conv_type: str = None,
+        block_size: int = 3,
+        conv_type: str = 'conv',
         conv_normalize: str = None,
         conv_regularize: str = None,
         conv_regularize_rate: float = None,
@@ -917,7 +917,7 @@ def make_multimodal_multitask_model(
         pool_x: int = None,
         pool_y: int = None,
         pool_z: int = None,
-        pool_type: str = None,
+        pool_type: str = 'max',
         training_steps: int = None,
         learning_rate_schedule: str = None,
         **kwargs,
@@ -979,6 +979,12 @@ def make_multimodal_multitask_model(
         m.summary()
         logging.info(f"Loaded model file from: {kwargs['model_file']}")
         return m
+
+    # set up defaults
+    dense_blocks = dense_blocks or [32, 24, 16]
+    conv_x = conv_x or [3]
+    conv_y = conv_y or [3]
+    conv_z = conv_y or [1]
 
     # list of filter dimensions should match the number of convolutional layers = len(dense_blocks) + [ + len(conv_layers) if convolving input tensors]
     num_dense = len(dense_blocks)
