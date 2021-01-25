@@ -96,6 +96,7 @@ public final class GnarlyGenotyperEngine {
         }
         else if (variant.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
             List<Integer> alleleSpecificQualList = AS_QualByDepth.parseQualList(variant);
+
             QUALapprox = alleleSpecificQualList.stream()
                     .mapToInt(Integer::intValue)
                     .sum();
@@ -108,6 +109,7 @@ public final class GnarlyGenotyperEngine {
         final boolean hasSnpAllele = variant.getAlternateAlleles().stream().anyMatch(allele -> allele != Allele.SPAN_DEL && allele.length() == variant.getReference().length());
         final boolean isIndel = !hasSnpAllele;
         final double sitePrior = isIndel ? HomoSapiensConstants.INDEL_HETEROZYGOSITY : HomoSapiensConstants.SNP_HETEROZYGOSITY;
+//        System.out.println("KCIBUL -- in the qualapprox w/ " + QUALapprox + " for isIndel " + isIndel + " and SNP:" + SNP_QUAL_THRESHOLD + " and INDEL:" + INDEL_QUAL_THRESHOLD);
         if((isIndel && QUALapprox < INDEL_QUAL_THRESHOLD) || (!isIndel && QUALapprox < SNP_QUAL_THRESHOLD)) {
             if (keepAllSites) {
                 final VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
@@ -415,7 +417,7 @@ public final class GnarlyGenotyperEngine {
                 final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
                 glCalc = GLCprovider.getInstance(ASSUMED_PLOIDY, allelesToUse.size());
             }
-            
+
             final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(maxLikelihoodIndex);
 
             gb.alleles(alleleCounts.asAlleleList(allelesToUse));

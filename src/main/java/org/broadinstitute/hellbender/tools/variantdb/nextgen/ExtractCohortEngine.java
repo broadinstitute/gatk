@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper.GnarlyGenotyperEngine;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.*;
@@ -160,7 +161,7 @@ public class ExtractCohortEngine {
                     logger.debug("using storage api with local sort");
                 }
                 logger.debug("Initializing Reader");
-                final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);        
+                final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
                 createVariantsFromUngroupedTableResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
                 logger.debug("Finished Initializing Reader");
                 break;
@@ -247,7 +248,7 @@ public class ExtractCohortEngine {
 
         int recordsProcessed = 0;
         long startTime = System.currentTimeMillis();
-    
+
         for ( final GenericRecord queryRow : avroReader ) {
             sortingCollection.add(queryRow);
             if (recordsProcessed++ % 1000000 == 0) {
@@ -291,13 +292,13 @@ public class ExtractCohortEngine {
         if (o==null) {
             return 0;
         }
-        
+
         String s = o.toString();
 
         // TODO: KCIBUL -- unclear how QUALapproxes are summed from non-ref alleles... replicating what I saw but need to confirm with Laura
         if (s.contains("|")) {
             String[] parts = s.split("\\|");
-            qa = Long.parseLong(parts[0]) + 
+            qa = Long.parseLong(parts[0]) +
                  Long.parseLong(parts[1]) / 2; // ceiling or floor?!?
         } else {
             qa = Long.parseLong(s);
@@ -351,8 +352,8 @@ public class ExtractCohortEngine {
                     unmergedCalls.add(vc);
 
                     totalAsQualApprox += getQUALapproxFromSampleRecord(sampleRecord);
-                    if (vc.isSNP()) { 
-                        hasSnpAllele = true; 
+                    if (vc.isSNP()) {
+                        hasSnpAllele = true;
                     }
                     currentPositionHasVariant = true;
                     break;
@@ -455,7 +456,7 @@ public class ExtractCohortEngine {
         if ( printDebugInformation ) {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
-        
+
         // TODO: KCIBUL - we can optimize this by pushing this back into the query
         // Replicating this logic:
         // final boolean hasSnpAllele = mergedVC.getAlternateAlleles().stream().anyMatch(allele -> allele.length() == mergedVC.getReference().length());
@@ -466,8 +467,8 @@ public class ExtractCohortEngine {
             logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
             return;
         }
-        
-        
+
+
         finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele, vqsLodMap, yngMap, noFilteringRequested);
     }
 
@@ -505,14 +506,17 @@ public class ExtractCohortEngine {
                 unmergedCalls,
                 new SimpleInterval(contig, (int) start, (int) start),
                 refAllele.getBases()[0],
-                true,
+                false,
                 false,
                 true);
 
 
-        final VariantContext finalVC = noFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? mergedVC : filterVariants(mergedVC, vqsLodMap, yngMap);
+//        final VariantContext finalVC = noFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? mergedVC : filterVariants(mergedVC, vqsLodMap, yngMap);
 //
-//        final VariantContext finalizedVC = disableGnarlyGenotyper ? filteredVC : gnarlyGenotyper.finalizeGenotype(filteredVC);
+        GnarlyGenotyperEngine gnarlyGenotyper = new GnarlyGenotyperEngine(false, 30, false, true);
+//        final VariantContext genotypedVC = disableGnarlyGenotyper ? mergedVC : gnarlyGenotyper.finalizeGenotype(mergedVC);
+        VariantContext gnarlyVC = gnarlyGenotyper.finalizeGenotype(mergedVC);
+        final VariantContext finalVC = noFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? gnarlyVC : filterVariants(gnarlyVC, vqsLodMap, yngMap);
 
 
 //        final VariantContext annotatedVC = enableVariantAnnotator ?
@@ -527,10 +531,10 @@ public class ExtractCohortEngine {
         if ( finalVC != null ) {
             vcfWriter.add(finalVC);
             progressMeter.update(finalVC);
-        } else {
-            // TODO should i print a warning here?
-            vcfWriter.add(mergedVC);
-            progressMeter.update(mergedVC);
+//        } else {
+//            // TODO should i print a warning here?
+//            vcfWriter.add(mergedVC);
+//            progressMeter.update(mergedVC);
         }
     }
 

@@ -105,9 +105,58 @@ public class AS_QualByDepth implements InfoFieldAnnotation, ReducibleAnnotation,
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
     public Map<String, Object> combineRawData(List<Allele> allelesList, List<ReducibleAnnotationData<?>>  listOfRawData) {
-        return null;
+        //VC already contains merged alleles from ReferenceConfidenceVariantContextMerger
+        ReducibleAnnotationData<Integer> combinedData = new AlleleSpecificAnnotationData(allelesList, null);
+
+        for (final ReducibleAnnotationData<?> currentValue : listOfRawData) {
+            ReducibleAnnotationData<Integer> value = (ReducibleAnnotationData<Integer>)currentValue;
+            parseRawDataString(value);
+            combineAttributeMap(value, combinedData);
+        }
+        final Map<String, Object> annotations = new HashMap<>();
+        String annotationString = makeRawAnnotationString(allelesList, combinedData.getAttributeMap());
+        annotations.put(getPrimaryRawKey(), annotationString);
+        return annotations;
     }
 
+    protected void parseRawDataString(final ReducibleAnnotationData<Integer> myData) {
+        final String rawDataString = myData.getRawData();
+        //get per-allele data by splitting on allele delimiter
+        final String[] rawDataPerAllele = rawDataString.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
+        for (int i=0; i<rawDataPerAllele.length; i++) {
+            final String alleleData = rawDataPerAllele[i];
+            myData.putAttribute(myData.getAlleles().get(i), (alleleData.isEmpty() || alleleData.equals(AnnotationUtils.MISSING_VALUE)) ? null : Integer.parseInt(alleleData));
+        }
+    }
+
+    public void combineAttributeMap(final ReducibleAnnotationData<Integer> toAdd, final ReducibleAnnotationData<Integer> combined) {
+        //check that alleles match
+        for (final Allele currentAllele : combined.getAlleles()){
+            //combined is initialized with all alleles, but toAdd might have only a subset
+            if (toAdd.getAttribute(currentAllele) != null) {
+                if (toAdd.getAttribute(currentAllele) != null && combined.getAttribute(currentAllele) != null) {
+                    combined.putAttribute(currentAllele, (int)combined.getAttribute(currentAllele) + (int)toAdd.getAttribute(currentAllele));
+                } else {
+                    combined.putAttribute(currentAllele, toAdd.getAttribute(currentAllele));
+                }
+            }
+        }
+    }
+
+    private String makeRawAnnotationString(final List<Allele> vcAlleles, final Map<Allele, Integer> perAlleleValues) {
+        String annotationString = "";
+        for (final Allele current : vcAlleles) {
+            if (!annotationString.isEmpty()) {
+                annotationString += AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM;
+            }
+            if(perAlleleValues.get(current) != null) {
+                annotationString += String.format("%d", perAlleleValues.get(current));
+            } else {
+                annotationString += String.format("%d", 0);
+            }
+        }
+        return annotationString;
+    }
 
     /**
      * Uses the "AS_QUAL" key, which must be computed by the genotyping engine in GenotypeGVCFs, to
