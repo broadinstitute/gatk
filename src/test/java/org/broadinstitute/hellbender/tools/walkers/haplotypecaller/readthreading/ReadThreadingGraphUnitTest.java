@@ -253,16 +253,21 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         List<Object[]> tests = new ArrayList<>();
 
         // add 1M to the expected CIGAR because it includes the previous (common) base too
-        tests.add(new Object[]{"AAAAAAAAAA", "CAAA", "5M", true, 3});                  // incomplete haplotype
-        tests.add(new Object[]{"AAAAAAAAAA", "CAAAAAAAAAA", "1M1I10M", true, 10});     // insertion
-        tests.add(new Object[]{"CCAAAAAAAAAA", "AAAAAAAAAA", "1M2D10M", true, 10});    // deletion
-        tests.add(new Object[]{"AAAAAAAA", "CAAAAAAA", "9M", true, 7});                // 1 snp
-        tests.add(new Object[]{"AAAAAAAA", "CAAGATAA", "9M", true, 2});                // several snps
-        tests.add(new Object[]{"AAAAA", "C", "1M4D1M", false, -1});                    // funky SW alignment
-        tests.add(new Object[]{"AAAAA", "CA", "1M3D2M", false, 1});                    // very little data
-        tests.add(new Object[]{"AAAAAAA", "CAAAAAC", "8M", true, -1});                 // ends in mismatch
-        tests.add(new Object[]{"AAAAAA", "CGAAAACGAA", "1M2I4M2I2M", false, 0});       // alignment is too complex
-        tests.add(new Object[]{"AAAAA", "XXXXX", "1M5I", false, -1});                  // insertion
+        tests.add(new Object[]{"AAAAAAAAAA", "CAAA", "5M", true, 3, -1});                  // incomplete haplotype
+        tests.add(new Object[]{"AAAAAAAAAA", "CAAAAAAAAAA", "1M1I10M", true, 10, -1});     // insertion
+        tests.add(new Object[]{"CCAAAAAAAAAA", "AAAAAAAAAA", "1M2D10M", true, 10, -1});    // deletion
+        tests.add(new Object[]{"AAAAAAAA", "CAAAAAAA", "9M", true, 7, -1});                // 1 snp
+        tests.add(new Object[]{"AAAAAAAA", "CAAGATAA", "9M", true, 2, -1});                // several snps
+        tests.add(new Object[]{"AAAAAAAA", "CAAGATAA", "9M", true, 2, 0});                // several snps
+        tests.add(new Object[]{"AAAAAAAA", "CAAGATAA", "9M", true, 2, 1});                // several snps
+        tests.add(new Object[]{"AAAAAAAA", "CAAGATAA", "9M", true, 2, 2});                // several snps
+        tests.add(new Object[]{"AAAAAAAA", "CAAGATAA", "9M", true, -1, 3});                // several snps (not enough bases to match)
+        tests.add(new Object[]{"AAAAAAAA", "CAAGATAA", "9M", true, -1, 4});                // several snps (not enough bases to match)
+        tests.add(new Object[]{"AAAAA", "C", "1M4D1M", false, -1, -1});                    // funky SW alignment
+        tests.add(new Object[]{"AAAAA", "CA", "1M3D2M", false, 1, -1});                    // very little data
+        tests.add(new Object[]{"AAAAAAA", "CAAAAAC", "8M", true, -1, -1});                 // ends in mismatch
+        tests.add(new Object[]{"AAAAAA", "CGAAAACGAA", "1M2I4M2I2M", false, 0, -1});       // alignment is too complex
+        tests.add(new Object[]{"AAAAA", "XXXXX", "1M5I", false, -1, -1});                  // insertion
 
         return tests.toArray(new Object[][]{});
     }
@@ -272,7 +277,8 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
                                   final String altEnd,
                                   final String cigar,
                                   final boolean cigarIsGood,
-                                  final int mergePointDistanceFromSink) {
+                                  final int mergePointDistanceFromSink,
+                                  final int numLeadingMatchesAllowed) {
 
         final int kmerSize = 15;
 
@@ -287,6 +293,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(alt.getBytes(), Utils.dupBytes((byte) 30, alt.length()), alt.length() + "M");
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         rtgraph.addRead(read, header);
+        rtgraph.setMinMatchingBasesToDangingEndRecovery(numLeadingMatchesAllowed);
         rtgraph.buildGraphIfNecessary();
 
         // confirm that we have just a single dangling tail
@@ -329,6 +336,53 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
                 }
                 Assert.assertTrue(rtgraph.outDegreeOf(v) > 1);
             }
+        }
+    }
+
+    @Test
+    public void testForkedDanglingEndsWithSuffixCode() {
+
+        final int kmerSize = 15;
+
+        // construct the haplotypes
+        final String commonPrefix = "AAAAAAAAAACCCCCCCCCCGGGGGGGGGGTTTTTTTTTT";
+        final String refEnd = "GCTAGCTAATCGTTAAGCTTTAAC";
+        final String altEnd1 = "GCTAGCTAA"+ "GGCG";// two mismatches compared to the reference
+        final String altEnd2 = "GCTAGCTAA"+ "GCCGATGGCT";
+        final String ref = commonPrefix + refEnd;
+        final String alt1 = commonPrefix + altEnd1;
+        final String alt2 = commonPrefix + altEnd2;
+
+        // create the graph and populate it
+        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize);
+        rtgraph.addSequence("ref", ref.getBytes(), true);
+        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
+        final GATKRead read2 = ArtificialReadUtils.createArtificialRead(alt2.getBytes(), Utils.dupBytes((byte) 30, alt2.length()), alt2.length() + "M");
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        rtgraph.setMinMatchingBasesToDangingEndRecovery(1);
+        rtgraph.addRead(read2, header);
+        rtgraph.addRead(read1, header);
+        rtgraph.buildGraphIfNecessary();
+
+        Assert.assertEquals(rtgraph.getSinks().size(), 3);
+
+        // Testing a degenerate case where the wrong "reference" path is selected and assuring that when
+        for (final MultiDeBruijnVertex altSink : rtgraph.getSinks()) {
+            if (rtgraph.isReferenceNode(altSink) || !altSink.getSequenceString().equals("GCTAAGCCGATGGCT")) {
+                continue;
+            }
+
+            // confirm that the SW alignment agrees with our expectations
+            final ReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink,
+                    0, 2, false, SmithWatermanJavaAligner.getInstance());
+            Assert.assertNotNull(result);
+            Assert.assertTrue(ReadThreadingGraph.cigarIsOkayToMerge(result.cigar, false, true));
+
+            Assert.assertEquals(Math.min(AbstractReadThreadingGraph.longestSuffixMatch(result.referencePathString, result.danglingPathString, result.cigar.getReferenceLength() - 1), result.cigar.getCigarElement(0).getLength()), 0);
+
+            // confirm that the tail merging works as expected
+            final int mergeResult = rtgraph.mergeDanglingTail(result);
+            Assert.assertTrue(mergeResult == 0);
         }
     }
 
@@ -423,13 +477,30 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         List<Object[]> tests = new ArrayList<>();
 
         // add 1M to the expected CIGAR because it includes the last (common) base too
-        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AAYCGGTTACGT", "8M", true});        // 1 snp
-        tests.add(new Object[]{"XXXAACCGGTTACGT", "XAAACCGGTTACGT", "7M", false});         // 1 snp
-        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "XAACGGTTACGT", "4M1D4M", false});   // deletion
-        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AYYCGGTTACGT", "8M", true});        // 2 snps
-        tests.add(new Object[]{"XXXXXXXAACCGGTTACGTAA", "AYCYGGTTACGTAA", "9M", true});    // 2 snps
-        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AYCGGTTACGT", "7M", true});         // very little data
-        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "YCCGGTTACGT", "6M", true});         // begins in mismatch
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AAYCGGTTACGT", "8M", true, -1});        // 1 snp
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AAYCGGTTACGT", "8M", true, 0});        // 1 snp
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AAYCGGTTACGT", "8M", true, 1});        // 1 snp
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AAYCGGTTACGT", "8M", true, 2});        // 1 snp
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AAYCGGTTACGT", "8M", false, 3});        // 1 snp
+
+        // One SNP failing in legacy behavior (failing due to being too close to the reference start
+        tests.add(new Object[]{"XXXAACCGGTTACGT", "XAAACCGGTTACGT", "7M", false, -1});         // 1 snp
+        tests.add(new Object[]{"XXXAACCGGTTACGT", "XAAACCGGTTACGT", "7M", false, 0});         // 1 snp
+
+        // Testing that indels now work
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "XAACGGTTACGT", "4M1D4M", false, -1});   // deletion
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "XAACGGTTACGT", "4M1D4M", true, 1});   // deletion
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "XAACYCGGTTACGT", "5M1I4M", false, -1});   // insertion
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "XAACYCGGTTACGT", "5M1I4M", true, 1});   // insertion
+
+        // Testing old/new behavior with multiple SNPs
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AYYCGGTTACGT", "8M", false, -1});        // 2 snps (only allow 1 SNP by default)
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AYYCGGTTACGT", "8M", true, 1});        // 2 snps
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGTAA", "AYCYGGTTACGTAA", "9M", false, -1});    // 2 snps (only allow 1 SNP by default)
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGTAA", "AYCYGGTTACGTAA", "9M", true, 1});    // 2 snps
+
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AYCGGTTACGT", "7M", true, -1});         // very little data
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "YCCGGTTACGT", "6M", true, -1});         // begins in mismatch
 
         return tests.toArray(new Object[][]{});
     }
@@ -438,7 +509,8 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
     public void testDanglingHeads(final String ref,
                                   final String alt,
                                   final String cigar,
-                                  final boolean shouldBeMerged) {
+                                  final boolean shouldBeMerged,
+                                  final int numLeadingMatchesAllowed) {
 
         final int kmerSize = 5;
 
@@ -448,7 +520,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(alt.getBytes(), Utils.dupBytes((byte) 30, alt.length()), alt.length() + "M");
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         rtgraph.addRead(read, header);
-        rtgraph.setMaxMismatchesInDanglingHead(10);
+        rtgraph.setMinMatchingBasesToDangingEndRecovery(numLeadingMatchesAllowed);
         rtgraph.buildGraphIfNecessary();
 
         // confirm that we have just a single dangling head
@@ -474,7 +546,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         Assert.assertTrue(cigar.equals(result.cigar.toString()), "SW generated cigar = " + result.cigar.toString());
 
         // confirm that the tail merging works as expected
-        final int mergeResult = rtgraph.mergeDanglingHead(result);
+        final int mergeResult = numLeadingMatchesAllowed >= 0 ? rtgraph.mergeDanglingHead(result) : rtgraph.mergeDanglingHeadLegacy(result);
         Assert.assertTrue(mergeResult > 0 || !shouldBeMerged);
 
         // confirm that we created the appropriate bubble in the graph only if expected

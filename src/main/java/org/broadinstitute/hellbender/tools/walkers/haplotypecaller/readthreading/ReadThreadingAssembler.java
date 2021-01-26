@@ -66,6 +66,7 @@ public final class ReadThreadingAssembler {
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
     private int pruneFactor;
     private final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> chainPruner;
+    private int minMatchingBasesToDanglingEndRecovery;
 
     private File debugGraphOutputPath = null;  //Where to write debug graphs, if unset it defaults to the current working dir
     private File graphOutputPath = null;
@@ -77,7 +78,8 @@ public final class ReadThreadingAssembler {
                                   final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
                                   final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
-                                  final double pruningSeedingLogOddsThreshold, final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs, final boolean enableLegacyGraphCycleDetection) {
+                                  final double pruningSeedingLogOddsThreshold, final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs,
+                                  final boolean enableLegacyGraphCycleDetection, final int minMachingBasesToDanglngEndRecovery) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes.stream().sorted(Integer::compareTo).collect(Collectors.toList());
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
@@ -93,16 +95,23 @@ public final class ReadThreadingAssembler {
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, pruningSeedingLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
+        this.minMatchingBasesToDanglingEndRecovery = minMachingBasesToDanglngEndRecovery;
     }
 
     @VisibleForTesting
     ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final int pruneFactor) {
-        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, 2, Integer.MAX_VALUE, false, false);
+        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, 2, Integer.MAX_VALUE, false, false, 3);
     }
 
     @VisibleForTesting
     ReadThreadingAssembler() {
         this(DEFAULT_NUM_PATHS_PER_GRAPH, Arrays.asList(25), 2);
+    }
+
+    // this method should not be used, only exposed for testing purposes. This should be set in the constructor.
+    @VisibleForTesting
+    void setMinMatchingBasesToDanglingEndRecovery(final int mimMatchingBases) {
+        this.minMatchingBasesToDanglingEndRecovery = mimMatchingBases;
     }
 
     /**
@@ -609,8 +618,8 @@ public final class ReadThreadingAssembler {
         }
 
         // TODO figure out how you want to hook this in
-        final AbstractReadThreadingGraph rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples) :
-                new JunctionTreeLinkedDeBruijnGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
+        final AbstractReadThreadingGraph rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, minMatchingBasesToDanglingEndRecovery) :
+                new JunctionTreeLinkedDeBruijnGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, minMatchingBasesToDanglingEndRecovery);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 

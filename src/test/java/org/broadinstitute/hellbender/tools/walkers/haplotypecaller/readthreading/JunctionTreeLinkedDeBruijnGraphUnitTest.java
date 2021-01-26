@@ -1049,7 +1049,7 @@ public class JunctionTreeLinkedDeBruijnGraphUnitTest extends BaseTest {
         Assert.assertTrue(cigar.equals(result.cigar.toString()), "SW generated cigar = " + result.cigar.toString());
 
         // confirm that the tail merging works as expected
-        final int mergeResult = rtgraph.mergeDanglingHead(result);
+        final int mergeResult = rtgraph.mergeDanglingHeadLegacy(result);
         Assert.assertTrue(mergeResult > 0 || !shouldBeMerged);
 
         // confirm that we created the appropriate bubble in the graph only if expected

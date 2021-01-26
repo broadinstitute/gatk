@@ -186,6 +186,10 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName = CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME, doc = "Write a BAM called assemblyFailure.bam capturing all of the reads that were in the active region when the assembler failed for any reason", optional = true)
     public boolean captureAssemblyFailureBAM = false;
 
+    @Hidden
+    @Argument(fullName = "num-matching-bases-in-dangling-end-to-recover", doc = "Sets the number of exactly matching bases in the suffix of a dangling tail and the prefix for a dangling head necessary in order to recover the path. (-1 indicates legacy behavior)", optional = true)
+    public int minMatchingBasesToDanglingEndRecovery = -1;
+
     //---------------------------------------------------------------------------------------------------------------
     //
     // Read Error Corrector Related Parameters
