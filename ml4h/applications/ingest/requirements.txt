@@ -1,0 +1,4 @@
+fastparquet
+blosc
+xxhash
+zstandard
