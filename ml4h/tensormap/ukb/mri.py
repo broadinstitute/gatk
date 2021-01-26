@@ -5,9 +5,11 @@ from typing import Dict, Tuple, Callable
 import h5py
 import numpy as np
 from tensorflow.keras.utils import to_categorical
+import cv2
+import blosc
 
 from ml4h.metrics import weighted_crossentropy
-from ml4h.normalizer import ZeroMeanStd1, Standardize
+from ml4h.normalizer import ZeroMeanStd1, Standardize, NonZeroNormalize, TopKNormalize, ImagenetNormalizeTorch
 from ml4h.TensorMap import TensorMap, Interpretation, make_range_validator
 from ml4h.tensormap.ukb.demographics import is_genetic_man, is_genetic_woman
 from ml4h.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES, MRI_LVOT_SEGMENTED_CHANNEL_MAP, \
@@ -2100,4 +2102,337 @@ slax_view_detect = TensorMap(
         'cine_segmented_sax_b8': 7, 'cine_segmented_sax_b9': 8,
         'cine_segmented_sax_b10': 9, 'cine_segmented_sax_b11': 10,
     },
+)
+
+
+
+def mri_adiposity_rotate_image(image, angle):
+    image_center = tuple(np.array(image.shape[1::-1]) / 2)
+    rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+    result  = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
+    return result
+
+
+def mri_adiposity_translate_image(image, shape, steps):
+    M = np.float32([[1, 0, steps], [0, 1, steps]])
+    image = cv2.warpAffine(image, M, shape)
+    return image
+
+
+def mri_adiposity_uncompress_data(compressed_data: h5py.Dataset) -> np.ndarray:
+    return np.frombuffer(
+        blosc.decompress(compressed_data[()]), dtype=np.uint16
+    ).reshape(compressed_data.attrs["shape"]).astype(np.float32)
+
+
+def mdrk_adiposity_mri_2dprojection_view_mixup(data: np.ndarray, alpha: float = 1.0, midpoint: int = 144) -> np.ndarray:
+    """Mixup on the CPU: this special version computes two separate mixup
+    operations on a single input tensor where the sagittal and coronal
+    2D projections are placed side-by-side. Failure to compute mixup this
+    way for side-by-side images does not give the expected results.
+
+    Args:
+        data (np.ndarray): Input tensor
+        alpha (float, optional): Mixing factor: passed as a parameter to the Beta distribution. Defaults to 1.0.
+        midpoint (int, optional): Number of pixels for the image to the left. Defaults to 144.
+
+    Returns:
+        np.ndarray: Side-by-side mixup of input tensor
+    """
+    batch_size = len(data)
+    weights1 = np.random.beta(alpha, alpha, batch_size)
+    weights2 = np.random.beta(alpha, alpha, batch_size)
+    index1   = np.random.permutation(batch_size)
+    index2   = np.random.permutation(batch_size)
+    x2 = np.zeros(data.shape)
+    # Midpoint is scaled and should be 224/1.5546875 = 144
+    for i in range(len(weights1)):
+        x2[i][:, 0:midpoint, :] = data[i][:, 0:midpoint, :] * weights1[i] + data[index1[i]][:, 0:midpoint, :] * (1 - weights1[i])
+        x2[i][:, midpoint:, :]  = data[i][:, midpoint:, :]  * weights2[i] + data[index2[i]][:, midpoint:, :]  * (1 - weights2[i])
+    return x2
+
+
+def mdrk_projection_single(field: str, instance: int = 2, augment: bool = False):
+    def _mdrk_projection_single(tm, hd5, dependents={}):
+        try:
+            compressed_data = hd5["instance"][str(instance)][field]
+        except Exception as e:
+            raise Exception(e)
+        #
+        try:
+            tensor = mri_adiposity_uncompress_data(compressed_data)
+        except Exception as e:
+            raise Exception(e)
+        #
+        tensor = cv2.resize(tensor, (224, 368))
+        if augment:
+            if np.random.random() > 0.5:
+                M = np.float32(
+                    [
+                        [1, 0, np.random.randint(-15, 15)],
+                        [0, 1, np.random.randint(-15, 15)],
+                    ]
+                )
+                tensor = cv2.warpAffine(tensor, M, (224, 368))
+            if np.random.random() > 0.5:
+                tensor = cv2.flip(tensor, 1)
+        tensor = np.expand_dims(tensor, axis=-1)
+        return tensor
+    return _mdrk_projection_single
+
+
+def mdrk_projection_single_both_views_all_stationwide_normalization(
+    instance: int = 2,
+    augment: bool = False,
+    stationwise_normalization=True,
+    normalize_histogram=True,
+    clahe_amount=5,
+    clahe_clip=2.0,
+):
+    """This function wrapper constructs a new image with the coronal and sagittal 2D
+    projections side-by-side and each capture/reconstruciton modality stacked in the
+    channels. Returns a (237, 256, 4) tensor. This function does *NOT* respect the
+    desired shape provided in the TensorMap instance.
+
+    Requirements:
+
+    This subroutine requires that the target HDF5 file has the following datasets:
+    * /instance/{instance}/w_sagittal and /instance/{instance}/w_coronal
+    * /instance/{instance}/f_sagittal and /instance/{instance}/f_coronal
+    * /instance/{instance}/in_sagittal and /instance/{instance}/in_coronal
+    * /instance/{instance}/opp_sagittal and /instance/{instance}/opp_coronal
+
+    that are compressed with blosc as 16-bit unsigned integers. Each dataset must also
+    have the attribute `shape`.
+
+    Example ML4H usage:
+
+    ```python
+    >>> actual_train_tm = ml4h.TensorMap(
+        'mdrk_projection_single_both_views_all_stationwide_normalization',
+        tensor_from_file=mdrk_projection_single_both_views_all_stationwide_normalization(instance = 2, augment=True),
+        shape=(237, 256, 4),
+        normalization=ml4h.ZeroMeanStd1(),
+    )
+    ```
+
+    Args:
+        instance (int, optional): UK Biobank instance numbering. Defaults to 2.
+        augment (bool, optional): Augment data: includes a translation, rotation, and axis flip. Defaults to False.
+        stationwise_normalization (bool, optional): Normalize each station separately before appending as a channel. Defaults to True.
+        normalize_histogram (bool, optional): Normalize intensity histogram using CLAHE. Defaults to True.
+        clahe_amount (int, optional): Size of CLAHE kernel. Defaults to 5.
+        clahe_clip (float, optional): Clip limit for the CLAHE kernel. Defaults to 2.0.
+    """
+    def _mdrk_projection_single_both_views_all_stationwide_normalization(
+        tm, hd5, dependents={}
+    ):
+        # 174 + 224 = 398 -> (368, 398)
+        # map to (237, 256)
+        clahe = cv2.createCLAHE(
+            clipLimit=clahe_clip, 
+            tileGridSize=(clahe_amount, clahe_amount)
+        )
+
+        do_augment = False
+        do_flip = False
+        rand_angle = 0.0
+        rand_move = 0.0
+        if augment:
+            do_augment = True
+            if np.random.random() > 0.5:
+                do_flip = True
+            if np.random.random() > 0.5:
+                rand_angle = np.random.randint(-5, 5)
+            if np.random.random() > 0.5:
+                rand_move = np.random.randint(-16, 16)
+        
+        prefixes = ["w", "f", "in", "opp"]
+        tensor = np.zeros((368, 174 + 224, len(prefixes)))
+        
+        for p, i in zip(prefixes, range(len(prefixes))):
+            # Coronal view
+            compressed_data = hd5["instance"][str(instance)][f"{p}_coronal"]
+            tensor_coronal = mri_adiposity_uncompress_data(compressed_data)
+            
+            if stationwise_normalization:
+                tensor_coronal = TopKNormalize(50).normalize(tensor_coronal)
+            if normalize_histogram:
+                tensor_coronal = (
+                    clahe.apply((tensor_coronal * 255.0).astype(np.uint8)).astype(
+                        np.float32
+                    )
+                    / 255.0
+                )
+            
+            tensor_coronal = cv2.resize(tensor_coronal, (224, 368))
+            if do_augment:
+                if do_flip:
+                    tensor_coronal = cv2.flip(tensor_coronal, 1)
+                tensor_coronal = mri_adiposity_translate_image(tensor_coronal, (224, 368), rand_move)
+                tensor_coronal = mri_adiposity_rotate_image(tensor_coronal, rand_angle)
+            tensor[..., 0:224, i] = tensor_coronal
+            
+            compressed_data = hd5["instance"][str(instance)][f"{p}_sagittal"]
+            tensor_sagittal = mri_adiposity_uncompress_data(compressed_data)
+            
+            if stationwise_normalization:
+                tensor_sagittal = TopKNormalize(50).normalize(tensor_sagittal)
+            if normalize_histogram:
+                tensor_sagittal = (
+                    clahe.apply((tensor_sagittal * 255.0).astype(np.uint8)).astype(
+                        np.float32
+                    )
+                    / 255.0
+                )
+            #
+            tensor_sagittal = cv2.resize(tensor_sagittal, (174, 368))
+            if do_augment:
+                tensor_sagittal = mri_adiposity_translate_image(
+                    tensor_sagittal, (174, 368), rand_move
+                )
+                tensor_sagittal = mri_adiposity_rotate_image(tensor_sagittal, rand_angle)
+            tensor[..., 224:, i] = tensor_sagittal
+        tensor = cv2.resize(tensor, (256, 237))
+        return tensor
+    return _mdrk_projection_single_both_views_all_stationwide_normalization
+
+
+def mdrk_projection_both_views_pretrained(
+    instance: int = 2,
+    augment: bool = False,
+    stationwise_normalization=True,
+    normalize_histogram=True,
+    clahe_amount=5,
+    clahe_clip=2.0,
+):
+    """This function wrapper constructs a new image with the coronal and sagittal 2D
+    projections side-by-side for the water/fat reconstructions stacked in the
+    channels followed by an empty channel to fit the expectations of pretrained image
+    models. Returns a (237, 256, 3) tensor. This function does *NOT* respect the
+    desired shape provided in the TensorMap instance.
+
+    Requirements:
+
+    This subroutine requires that the target HDF5 file has the following datasets:
+    * /instance/{instance}/w_sagittal and /instance/{instance}/w_coronal
+    * /instance/{instance}/f_sagittal and /instance/{instance}/f_coronal
+
+    that are compressed with blosc as 16-bit unsigned integers. Each dataset must also
+    have the attribute `shape`.
+
+    Example ML4H usage:
+
+    ```python
+    >>> actual_train_tm = ml4h.TensorMap(
+        'mdrk_projection_both_views_pretrained',
+        tensor_from_file=mdrk_projection_both_views_pretrained(instance = 2, augment=True),
+        shape=(237, 256, 2),
+        normalization=ml4h.ZeroMeanStd1(),
+    )
+    ```
+
+    Args:
+        instance (int, optional): UK Biobank instance numbering. Defaults to 2.
+        augment (bool, optional): Augment data: includes a translation, rotation, and axis flip. Defaults to False.
+        stationwise_normalization (bool, optional): Normalize each station separately before appending as a channel. Defaults to True.
+        normalize_histogram (bool, optional): Normalize intensity histogram using CLAHE. Defaults to True.
+        clahe_amount (int, optional): Size of CLAHE kernel. Defaults to 5.
+        clahe_clip (float, optional): Clip limit for the CLAHE kernel. Defaults to 2.0.
+    """
+    def _mdrk_projection_both_views_pretrained(tm, hd5, dependents={}):
+        do_augment = False
+        do_flip = False
+        rand_angle = 0.0
+        rand_move = 0.0
+        cclip = clahe_clip
+        camount = clahe_amount
+        if augment:
+            do_augment = True
+            if np.random.random() > 0.5:
+                do_flip = True
+            rand_angle = np.random.randint(-5, 5)
+            rand_move = np.random.randint(-16, 16)
+            cclip = np.random.randint(0, 5)
+            camount = np.random.randint(1, 10)
+        
+        clahe = cv2.createCLAHE(
+            clipLimit=cclip, tileGridSize=(camount, camount)
+        )
+        prefixes = ["w", "f"]
+        tensor = np.zeros((368, 174 + 224, 3), dtype=np.float32)
+        
+        for p, i in zip(prefixes, range(len(prefixes))):
+            # Coronal view
+            compressed_data = hd5["instance"][str(instance)][f"{p}_coronal"]
+            tensor_coronal = mri_adiposity_uncompress_data(compressed_data)
+            
+            if stationwise_normalization:
+                tensor_coronal = TopKNormalize(50).normalize(tensor_coronal)
+            if normalize_histogram:
+                tensor_coronal = (
+                    clahe.apply((tensor_coronal * 255.0).astype(np.uint8)).astype(
+                        np.float32
+                    )
+                    / 255.0
+                )
+            
+            tensor_coronal = cv2.resize(tensor_coronal, (224, 368))
+            if do_augment:
+                if do_flip:
+                    tensor_coronal = cv2.flip(tensor_coronal, 1)
+                tensor_coronal = mri_adiposity_translate_image(tensor_coronal, (224, 368), rand_move)
+                tensor_coronal = mri_adiposity_rotate_image(tensor_coronal, rand_angle)
+            tensor[..., 0:224, i] = tensor_coronal
+            
+            compressed_data = hd5["instance"][str(instance)][f"{p}_sagittal"]
+            # Sagittal view
+            tensor_sagittal = mri_adiposity_uncompress_data(compressed_data)
+            
+            if stationwise_normalization:
+                tensor_sagittal = TopKNormalize(50).normalize(tensor_sagittal)
+            if normalize_histogram:
+                tensor_sagittal = (
+                    clahe.apply((tensor_sagittal * 255.0).astype(np.uint8)).astype(
+                        np.float32
+                    )
+                    / 255.0
+                )
+            
+            tensor_sagittal = cv2.resize(tensor_sagittal, (174, 368))
+            if do_augment:
+                tensor_sagittal = mri_adiposity_translate_image(
+                    tensor_sagittal, (174, 368), rand_move
+                )
+                tensor_sagittal = mri_adiposity_rotate_image(tensor_sagittal, rand_angle)
+            tensor[..., 224:, i] = tensor_sagittal
+        tensor = cv2.resize(tensor, (256, 237))
+        return tensor
+    return _mdrk_projection_both_views_pretrained
+
+
+mdrk_adiposity_mri_2dprojection_actual_train_tm = TensorMap(
+    "mdrk_projection_single_both_views_all_stationwide_normalization",
+    tensor_from_file=mdrk_projection_both_views_pretrained(
+        instance=2, augment=True
+    ),
+    # shape=(368,174+224, 3), reshaped to (237, 256, 3)
+    shape=(237, 256, 3),
+    normalization=ZeroMeanStd1()
+)
+
+mdrk_adiposity_mri_2dprojection_actual_test_tm = TensorMap(
+    "mdrk_projection_single_both_views_all_stationwide_normalization",
+    tensor_from_file=mdrk_projection_both_views_pretrained(instance=2, augment=False),
+    # shape=(368,174+224, 3), reshaped to (237, 256, 3)
+    shape=(237, 256, 3),
+    normalization=ZeroMeanStd1()
+)
+
+# Fake TMAP for compatibility with ML4H constructor.
+mdrk_adiposity_mri_2dprojection_scalar_output_fake = TensorMap(
+    "mdrk_adiposity_scalar_output_fake",
+    shape=(1,),
+    normalization=None,
+    tensor_from_file=None
 )
