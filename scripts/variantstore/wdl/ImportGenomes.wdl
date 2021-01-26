@@ -90,7 +90,7 @@ workflow ImportGenomes {
       schema = vet_schema,
       preemptible_tries = preemptible_tries,
       docker = docker_final
-    }
+  }
 }
 
 task GetMaxTableId {
@@ -103,19 +103,19 @@ task GetMaxTableId {
   }
 
   command <<<
-      set -e
-      max_sample_id=$(cat ~{sample_map} | cut -d"," -f1 | sort -rn | head -1)
-      python -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))"
+    set -e
+    max_sample_id=$(cat ~{sample_map} | cut -d"," -f1 | sort -rn | head -1)
+    python -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))"
   >>>
   runtime {
-      docker: "python:3.8-slim-buster"
-      memory: "1 GB"
-      disks: "local-disk 10 HDD"
-      preemptible: select_first([preemptible_tries, 5])
-      cpu: 1
+    docker: "python:3.8-slim-buster"
+    memory: "1 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: select_first([preemptible_tries, 5])
+    cpu: 1
   }
   output {
-      Int max_table_id = read_int(stdout())
+    Int max_table_id = read_int(stdout())
   }
 }
 
@@ -144,47 +144,47 @@ task CreateImportTsvs {
     description: "Creates a tsv file for imort into BigQuery"
     volatile: true
   }
-  
+
   parameter_meta {
     input_vcf: {
-      localization_optional: true
-    }
+                 localization_optional: true
+               }
   }
   command <<<
-      set -e
+    set -e
 
-      #workaround for https://github.com/broadinstitute/cromwell/issues/3647
-      export TMPDIR=/tmp
+    #workaround for https://github.com/broadinstitute/cromwell/issues/3647
+    export TMPDIR=/tmp
 
-      export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-      ~{for_testing_only}
+    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+    ~{for_testing_only}
 
-      gatk --java-options "-Xmx2500m" CreateVariantIngestFiles \
-        -V ~{input_vcf} \
-        -L ~{interval_list} \
-        ~{"-IG " + drop_state} \
-        --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
-        ~{"-QCF " + input_metrics} \
-        --mode GENOMES \
-        -SNM ~{sample_map} \
-        --ref-version 38
-        
-      gsutil cp metadata_*.tsv ~{output_directory}/metadata_tsvs/
-      gsutil cp pet_*.tsv ~{output_directory}/pet_tsvs/
-      gsutil cp vet_*.tsv ~{output_directory}/vet_tsvs/
+    gatk --java-options "-Xmx2500m" CreateVariantIngestFiles \
+    -V ~{input_vcf} \
+    -L ~{interval_list} \
+    ~{"-IG " + drop_state} \
+    --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
+    ~{"-QCF " + input_metrics} \
+    --mode GENOMES \
+    -SNM ~{sample_map} \
+    --ref-version 38
+
+    gsutil cp metadata_*.tsv ~{output_directory}/metadata_tsvs/
+    gsutil cp pet_*.tsv ~{output_directory}/pet_tsvs/
+    gsutil cp vet_*.tsv ~{output_directory}/vet_tsvs/
   >>>
   runtime {
-      docker: docker
-      memory: "10 GB"
-      disks: "local-disk " + disk_size + " HDD"
-      preemptible: select_first([preemptible_tries, 5])
-      cpu: 2
+    docker: docker
+    memory: "10 GB"
+    disks: "local-disk " + disk_size + " HDD"
+    preemptible: select_first([preemptible_tries, 5])
+    cpu: 2
   }
   output {
-      File metadata_tsv = glob("metadata_*.tsv")[0]
-      File pet_tsv = glob("pet_*.tsv")[0] 
-      File vet_tsv = glob("vet_*.tsv")[0]
-      String done = "true"
+    File metadata_tsv = glob("metadata_*.tsv")[0]
+    File pet_tsv = glob("pet_*.tsv")[0]
+    File vet_tsv = glob("vet_*.tsv")[0]
+    String done = "true"
   }
 }
 
