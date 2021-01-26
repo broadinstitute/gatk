@@ -212,7 +212,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         }
 
         // Run Haplotype Caller
-        final ReadFilter hcReadFilter = ReadFilter.fromList(HaplotypeCallerEngine.makeStandardHCReadFilters(hcArgs.mappingQualityThreshold), header);
+        final ReadFilter hcReadFilter = ReadFilter.fromList(HaplotypeCallerEngine.makeStandardHCReadFilters(), header);
         final JavaRDD<GATKRead> filteredReadsForHC = finalReads.filter(hcReadFilter::test);
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);

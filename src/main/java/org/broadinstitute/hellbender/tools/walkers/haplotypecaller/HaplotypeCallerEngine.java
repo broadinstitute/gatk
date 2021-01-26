@@ -333,9 +333,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     /**
      * @return the default set of read filters for use with the HaplotypeCaller
      */
-    public static List<ReadFilter> makeStandardHCReadFilters(final int mappingQualityThreshold) {
+    public static List<ReadFilter> makeStandardHCReadFilters() {
         List<ReadFilter> filters = new ArrayList<>();
-        filters.add(new MappingQualityReadFilter(mappingQualityThreshold));
+        filters.add(new MappingQualityReadFilter(DEFAULT_READ_QUALITY_FILTER_THRESHOLD));
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPED);
         filters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);

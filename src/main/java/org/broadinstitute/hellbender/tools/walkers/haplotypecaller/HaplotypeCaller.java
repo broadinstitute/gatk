@@ -156,7 +156,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
-        return HaplotypeCallerEngine.makeStandardHCReadFilters(hcArgs.mappingQualityThreshold);
+        return HaplotypeCallerEngine.makeStandardHCReadFilters();
     }
 
     /**
@@ -224,7 +224,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
             logger.warn("* --apply-bqd                                                           *");
             logger.warn("* --transform-dragen-mapping-quality                                    *");
             logger.warn("* --soft-clip-low-quality-ends                                          *");
-            logger.warn("* --mapping-quality-threshold  1                                        *");
+            logger.warn("* --mapping-quality-threshold-for-genotyping  1                         *");
             logger.warn("* --minimum-mapping-quality  1                                          *");
             logger.warn("* --allele-informative-reads-overlap-margin  1                          *");
             logger.warn("* --disable-cap-base-qualities-to-map-quality                           *");
