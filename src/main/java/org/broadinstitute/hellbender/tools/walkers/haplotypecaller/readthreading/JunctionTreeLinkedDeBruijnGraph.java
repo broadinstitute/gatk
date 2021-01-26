@@ -39,8 +39,9 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
     // TODO should this be constructed here or elsewhere
     private final Set<Kmer> kmers = new HashSet<>();
 
+    @VisibleForTesting
     public JunctionTreeLinkedDeBruijnGraph(int kmerSize) {
-        this(kmerSize, false, (byte)6, 1, 3);
+        this(kmerSize, false, (byte)6, 1, -1);
     }
 
     /**
