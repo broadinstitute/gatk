@@ -7,7 +7,7 @@ workflow LoadBigQueryData {
     String storage_location
     String datatype
     Int max_table_id
-    
+
     File schema
     String numbered = "true"
     String partitioned = "true"
@@ -18,7 +18,7 @@ workflow LoadBigQueryData {
     String docker
     String? for_testing_only
   }
-  
+
   call CreateTables {
   	input:
       project_id = project_id,
@@ -48,7 +48,7 @@ workflow LoadBigQueryData {
         docker = docker
     }
   }
-  
+
   output {
     Array[String] table_dir_files_list = CreateTables.table_dir_files_list
   }
@@ -58,13 +58,13 @@ task LoadTable {
   meta {
     volatile: true
   }
-  
+
   input {
     String table_dir_files_str
     String project_id
     File schema
     String load
-    
+
     Int? preemptible_tries
     String docker
   }
@@ -83,7 +83,7 @@ task LoadTable {
       echo "${FILES} will be ingested from $DIR by Google Storage Transfer"
     fi
   >>>
-  
+
   runtime {
     docker: docker
     memory: "3 GB"
@@ -93,11 +93,14 @@ task LoadTable {
   }
 }
 
+# Creates all the tables necessary for the LoadData operation
+# As an optimization, I also generate a (table, dir, files) csv file which contains
+# most of inputs necessary for the following LoadTable task.
 task CreateTables {
 	meta {
     	volatile: true
   	}
-  
+
 	input {
       String project_id
       String dataset_name
@@ -167,7 +170,7 @@ task CreateTables {
         echo "no ${FILES} files to process"
       fi
 
-    done 
+    done
   >>>
 
   output {
