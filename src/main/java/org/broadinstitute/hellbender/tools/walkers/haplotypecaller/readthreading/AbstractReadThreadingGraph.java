@@ -594,7 +594,6 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
         final List<CigarElement> elements = danglingHeadMergeResult.cigar.getCigarElements();
         final CigarElement firstElement = elements.get(0);
-        Utils.validateArg( firstElement.getOperator() == CigarOperator.M, "The first Cigar element must be an M");
 
         final int indexesToMerge = bestPrefixMatchLegacy(danglingHeadMergeResult.referencePathString, danglingHeadMergeResult.danglingPathString, firstElement.getLength());
         if (indexesToMerge <= 0) {
