@@ -6,9 +6,8 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
+import org.broadinstitute.hellbender.tools.walkers.mutect.AlignmentData;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
@@ -50,6 +49,11 @@ public final class AssemblyRegion implements Locatable {
     private final List<GATKRead> reads;
 
     /**
+     * The reads are specifically used for haplotype generation to kmerize reads to match with haplotype kmers.
+     */
+    private final List<GATKRead> hardClippedPileupReads;
+
+    /**
      * The active span in which this AssemblyRegion is responsible for calling variants
      */
     private final SimpleInterval activeSpan;
@@ -69,6 +73,8 @@ public final class AssemblyRegion implements Locatable {
      * Indicates whether the region has been finalized
      */
     private boolean hasBeenFinalized;
+
+    private List<AlignmentData> alignmentData = new ArrayList<>();
 
     /**
      * Create a new AssemblyRegion containing no reads
@@ -104,6 +110,7 @@ public final class AssemblyRegion implements Locatable {
         Utils.validate(paddedSpan.contains(activeSpan), "Padded span must contain active span.");
 
         reads = new ArrayList<>();
+        hardClippedPileupReads = new ArrayList<>();
         this.isActive = isActive;
     }
 
@@ -112,6 +119,23 @@ public final class AssemblyRegion implements Locatable {
      */
     public AssemblyRegion(final SimpleInterval activeSpan, final int padding, final SAMFileHeader header) {
         this(activeSpan, true, padding, header);
+    }
+
+    /**
+     * Method for obtaining the alignment data which is attached to the assembly region.
+     *
+     * @return The list of AlignmentData objects associated with ActiveRegion.
+     */
+    public List<AlignmentData> getAlignmentData() {
+        return alignmentData;
+    }
+
+    /**
+     * Method for adding alignment data to the collection of AlignmentData associated with
+     * the ActiveRegion.
+     */
+    public void addAllAlignmentData(List<AlignmentData> alignmentData) {
+        this.alignmentData.addAll(alignmentData);
     }
 
     @Override
@@ -174,6 +198,16 @@ public final class AssemblyRegion implements Locatable {
     */
     public List<GATKRead> getReads(){
         return Collections.unmodifiableList(new ArrayList<>(reads));
+    }
+
+    /**
+     * Get an unmodifiable copy of the list of reads currently in this assembly region.
+     *
+     * The reads are sorted by their coordinate position.
+     * @return an unmodifiable and inmutable copy of the reads in the assembly region.
+     */
+    public List<GATKRead> getHardClippedPileupReads(){
+        return Collections.unmodifiableList(new ArrayList<>(hardClippedPileupReads));
     }
 
     /**
@@ -252,20 +286,24 @@ public final class AssemblyRegion implements Locatable {
      * @param read a non-null GATKRead
      */
     public void add( final GATKRead read ) {
+        addToReadCollectionAndValidate(read, reads);
+    }
+
+    private void addToReadCollectionAndValidate(final GATKRead read, final List<GATKRead> collection) {
         Utils.nonNull(read, "Read cannot be null");
         final SimpleInterval readLoc = new SimpleInterval( read );
         Utils.validateArg(paddedSpan.overlaps(read), () ->
                 "Read location " + readLoc + " doesn't overlap with active region padded span " + paddedSpan);
 
-        if ( ! reads.isEmpty() ) {
-            final GATKRead lastRead = reads.get(size() - 1);
+        if ( ! collection.isEmpty() ) {
+            final GATKRead lastRead = collection.get(collection.size() - 1);
             Utils.validateArg(Objects.equals(lastRead.getContig(), read.getContig()), () ->
                     "Attempting to add a read to ActiveRegion not on the same contig as other reads: lastRead " + lastRead + " attempting to add " + read);
             Utils.validateArg( read.getStart() >= lastRead.getStart(), () ->
                     "Attempting to add a read to ActiveRegion out of order w.r.t. other reads: lastRead " + lastRead + " at " + lastRead.getStart() + " attempting to add " + read + " at " + read.getStart());
         }
 
-        reads.add( read );
+        collection.add( read );
     }
 
     /**
@@ -279,6 +317,7 @@ public final class AssemblyRegion implements Locatable {
      */
     public void clearReads() {
         reads.clear();
+        hardClippedPileupReads.clear();
     }
 
     /**
@@ -296,6 +335,10 @@ public final class AssemblyRegion implements Locatable {
      */
     public void addAll(final Collection<GATKRead> readsToAdd){
         Utils.nonNull(readsToAdd).forEach(r -> add(r));
+    }
+
+    public void addHardClippedPileupReads(final Collection<GATKRead> readsToAdd) {
+        Utils.nonNull(readsToAdd).forEach(r -> addToReadCollectionAndValidate(r, hardClippedPileupReads));
     }
 
     /**

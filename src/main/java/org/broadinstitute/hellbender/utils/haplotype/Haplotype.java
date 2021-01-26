@@ -5,6 +5,7 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -13,8 +14,10 @@ import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 
 public final class Haplotype extends Allele {
     private static final long serialVersionUID = 1L;
@@ -31,6 +34,7 @@ public final class Haplotype extends Allele {
     private Cigar cigar;
     private int alignmentStartHapwrtRef;
     private double score = Double.NaN;
+    private List<VariantContext> variantContextList = new ArrayList<>();
 
     // debug information for tracking kmer sizes used in graph construction for debug output
     private int kmerSize = 0;
@@ -146,6 +150,14 @@ public final class Haplotype extends Allele {
         this.eventMap = eventMap;
     }
 
+/*
+    public List<VariantContext> getVariantContextList() {return variantContextList;}
+
+    public void setVariantContextList(VariantContext variantContext) {
+        this.variantContextList.add(variantContext);
+    }
+*/
+
     @Override
     public String toString() {
         return getDisplayString();
@@ -215,6 +227,7 @@ public final class Haplotype extends Allele {
     public Haplotype insertAllele( final Allele refAllele, final Allele altAllele, final int refInsertLocation, final int genomicInsertLocation ) {
         // refInsertLocation is in ref haplotype offset coordinates NOT genomic coordinates
         final Pair<Integer, CigarOperator> haplotypeInsertLocationAndOperator = ReadUtils.getReadIndexForReferenceCoordinate(alignmentStartHapwrtRef, cigar, refInsertLocation);
+//        final Pair<Integer, CigarOperator> haplotypeInsertLocationAndOperator = ReadUtils.getReadIndexForReferenceCoordinate(genomeLocation.getStart(), cigar, refInsertLocation);
 
         // can't insert outside the haplotype or into a deletion
         if( haplotypeInsertLocationAndOperator.getLeft() == ReadUtils.READ_INDEX_NOT_FOUND || !haplotypeInsertLocationAndOperator.getRight().consumesReadBases() ) {
@@ -232,7 +245,9 @@ public final class Haplotype extends Allele {
         newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, ArrayUtils.subarray(myBases, 0, haplotypeInsertLocation)); // bases before the variant
         newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, altAllele.getBases()); // the alt allele of the variant
         newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, ArrayUtils.subarray(myBases, haplotypeInsertLocation + refAllele.length(), myBases.length)); // bases after the variant
-        return new Haplotype(newHaplotypeBases);
+        Haplotype newHaplotype  = new Haplotype(newHaplotypeBases);
+        newHaplotype.setVariantContextList(this.getVariantContextList());
+        return newHaplotype;
     }
 
     /**
@@ -269,5 +284,19 @@ public final class Haplotype extends Allele {
 
     public void setKmerSize(int kmerSize) {
         this.kmerSize = kmerSize;
+    }
+
+
+
+    public void setVariantContextList(List<VariantContext> variantContextList) {
+        this.variantContextList.addAll(variantContextList);
+    }
+
+    public List<VariantContext> getVariantContextList() {
+        return variantContextList;
+    }
+
+    public void addVariantContext(VariantContext variantContext) {
+        this.variantContextList.add(variantContext);
     }
 }

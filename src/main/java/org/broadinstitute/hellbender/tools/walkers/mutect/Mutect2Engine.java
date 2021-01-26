@@ -45,6 +45,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.pileup.PileupBasedAlleles;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -246,7 +247,19 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final List<VariantContext> givenAlleles = featureContext.getValues(MTAC.alleles).stream()
                 .filter(vc -> MTAC.forceCallFiltered || vc.isNotFiltered()).collect(Collectors.toList());
 
-        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false);
+        // BG & AH create VariantContext list for our 2 additional snps
+/*
+        VariantContextBuilder firstSNP = new VariantContextBuilder("pileup", "gi|395136682|gb|CP003248.1|", 104814, 104814, Arrays.asList(Allele.create("T", true), Allele.create("G")));
+        VariantContextBuilder secondSNP = new VariantContextBuilder("pileup", "gi|395136682|gb|CP003248.1|", 104821, 104821, Arrays.asList(Allele.create("C", true), Allele.create("A")));
+        ArrayList<VariantContext> forcedPileupAlleles = new ArrayList<>(Arrays.asList(firstSNP.make(), secondSNP.make()));
+*/
+
+        List<VariantContext> forcedPileupAlleles = Collections.emptyList();
+        if(MTAC.usePileupDetection){
+            forcedPileupAlleles = PileupBasedAlleles.getPileupVariantContexts(originalAssemblyRegion.getAlignmentData());
+        }
+
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, givenAlleles, forcedPileupAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false);
         ReadThreadingAssembler.addAssembledVariantsToEventMapOutput(untrimmedAssemblyResult, assembledEventMapVariants, MTAC.maxMnpDistance, assembledEventMapVcfOutputWriter);
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(MTAC.maxMnpDistance);

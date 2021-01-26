@@ -34,6 +34,8 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public static final String EMIT_REF_CONFIDENCE_SHORT_NAME = "ERC";
     public static final String ALLELE_EXTENSION_LONG_NAME = "allele-informative-reads-overlap-margin";
 
+    public static final String PILEUP_DETECTION_LONG_NAME = "pileup-detection";
+
     public static final String SMITH_WATERMAN_DANGLING_END_MATCH_VALUE_LONG_NAME = "smith-waterman-dangling-end-match-value";
     public static final String SMITH_WATERMAN_DANGLING_END_MISMATCH_PENALTY_LONG_NAME = "smith-waterman-dangling-end-mismatch-penalty";
     public static final String SMITH_WATERMAN_DANGLING_END_GAP_OPEN_PENALTY_LONG_NAME = "smith-waterman-dangling-end-gap-open-penalty";
@@ -170,6 +172,15 @@ public abstract class AssemblyBasedCallerArgumentCollection {
                     "that overlap the variant or any base no further than this distance expressed in base pairs",
             optional = true)
     public int informativeReadOverlapMargin = 2;
+
+    /**
+     * Enables pileup-based haplotype creation and variant detection
+     *
+     * NOTE: --pileup-detection is a beta feature. Use this mode at your own risk.
+     */
+    @Argument(fullName= PILEUP_DETECTION_LONG_NAME, doc = "If enabled, the variant caller will create pileup-based haplotypes in addition to the assembly-based haplotype generation.", optional = true)
+    public boolean usePileupDetection = false;
+
 
     // -----------------------------------------------------------------------------------------------
     // Smith-Waterman parameters for dangling-end recovery

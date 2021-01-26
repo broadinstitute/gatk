@@ -40,6 +40,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Created by davidben on 9/8/16.
@@ -47,6 +48,9 @@ import java.util.stream.Collectors;
 public final class AssemblyBasedCallerUtils {
 
     static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
+//    static final int REFERENCE_PADDING_FOR_ASSEMBLY = 200;
+//    public static final int NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO = 5;
+    // AH & BG edit
     public static final int NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO = 5;
     public static final String SUPPORTED_ALLELES_TAG="XA";
     public static final String CALLABLE_REGION_TAG = "CR";
@@ -123,11 +127,15 @@ public final class AssemblyBasedCallerUtils {
         final byte minTailQualityToUse = errorCorrectReads ? HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION : minTailQuality;
 
         final List<GATKRead> readsToUse = new ArrayList<>();
+        final List<GATKRead> hardClippedReadsToUse = new ArrayList<>();
+
+        //TODO BG & AH make this a separate method instead of 2 copies of this code
         for (GATKRead originalRead : region.getReads()) {
             // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
             // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
-            GATKRead read = (dontUseSoftClippedBases || ! ReadUtils.hasWellDefinedFragmentSize(originalRead) ?
+            GATKRead read = (dontUseSoftClippedBases || !ReadUtils.hasWellDefinedFragmentSize(originalRead) ?
                     ReadClipper.hardClipSoftClippedBases(originalRead) : ReadClipper.revertSoftClippedBases(originalRead));
+            GATKRead hardClippedRead = ReadClipper.hardClipLowQualEnds(ReadClipper.hardClipSoftClippedBases(originalRead), minTailQualityToUse);
             read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(read, minTailQualityToUse) :
                     ReadClipper.hardClipLowQualEnds(read, minTailQualityToUse));
 
@@ -135,25 +143,47 @@ public final class AssemblyBasedCallerUtils {
                 read = (read.isUnmapped() ? read : ReadClipper.hardClipAdaptorSequence(read));
 
                 if (!read.isEmpty() && read.getCigar().getReadLength() > 0) {
-                    read = ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() );
+                    read = ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd());
 
                     if (read.getStart() <= read.getEnd() && read.getLength() > 0 && read.overlaps(region.getPaddedSpan())) {
                         // NOTE: here we make a defensive copy of the read if it has not been modified by the above operations
                         // which might only make copies in the case that the read is actually clipped
-                        readsToUse.add(read == originalRead? read.copy() : read);
+                        readsToUse.add(read == originalRead ? read.copy() : read);
                     }
                 }
             }
+
+            if (hardClippedRead.getStart() <= hardClippedRead.getEnd()) {
+                hardClippedRead = hardClippedRead.isUnmapped() ? null : ReadClipper.hardClipAdaptorSequence(hardClippedRead);
+
+                if (hardClippedRead != null && !hardClippedRead.isEmpty() && hardClippedRead.getCigar().getReadLength() > 0) {
+                    hardClippedRead = ReadClipper.hardClipToRegion(hardClippedRead, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd());
+
+                    if (hardClippedRead.getStart() <= hardClippedRead.getEnd() && hardClippedRead.getLength() > 0 && hardClippedRead.overlaps(region.getPaddedSpan())) {
+                        // NOTE: here we make a defensive copy of the read if it has not been modified by the above operations
+                        // which might only make copies in the case that the read is actually clipped
+                        hardClippedReadsToUse.add(hardClippedRead == originalRead ? hardClippedRead.copy() : hardClippedRead);
+                    }
+                }
+
+            }
         }
         readsToUse.sort(new ReadCoordinateComparator(readsHeader));
+        hardClippedReadsToUse.sort(new ReadCoordinateComparator(readsHeader));
+
 
         // handle overlapping read pairs from the same fragment
         if (correctOverlappingBaseQualities) {
             cleanOverlappingReadPairs(readsToUse, samplesList, readsHeader, true, OptionalInt.empty(), OptionalInt.empty());
         }
 
+        // handle overlapping read pairs from the same fragment
+        if (correctOverlappingBaseQualities) {
+            cleanOverlappingReadPairs(hardClippedReadsToUse, samplesList, readsHeader, true, OptionalInt.empty(), OptionalInt.empty());
+        }
         region.clearReads();
         region.addAll(readsToUse);
+        region.addHardClippedPileupReads(hardClippedReadsToUse);
         region.setFinalized(true);
     }
 
@@ -260,6 +290,7 @@ public final class AssemblyBasedCallerUtils {
      */
     public static AssemblyResultSet assembleReads(final AssemblyRegion region,
                                                   final List<VariantContext> givenAlleles,
+                                                  final List<VariantContext> forcedPileupAlleles,
                                                   final AssemblyBasedCallerArgumentCollection argumentCollection,
                                                   final SAMFileHeader header,
                                                   final SampleList sampleList,
@@ -295,6 +326,11 @@ public final class AssemblyBasedCallerUtils {
                 addGivenAlleles(region.getPaddedSpan().getStart(), givenAlleles, argumentCollection.maxMnpDistance, aligner, haplotypeToReferenceSWParameters, refHaplotype, assemblyResultSet);
             }
 
+            if (!forcedPileupAlleles.isEmpty()) {
+                processPileupAlleles(region, forcedPileupAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
+            }
+
+
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);
             assemblyResultSet.debugDump(logger);
             return assemblyResultSet;
@@ -312,6 +348,88 @@ public final class AssemblyBasedCallerUtils {
     }
 
     @VisibleForTesting
+    static void processPileupAlleles(AssemblyRegion region, List<VariantContext> givenAlleles, int maxMnpDistance, SmithWatermanAligner aligner, Haplotype refHaplotype, AssemblyResultSet assemblyResultSet) {
+        final int assemblyRegionStart = region.getPaddedSpan().getStart();
+        final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
+        final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
+                .collect(Collectors.groupingBy(VariantContext::getStart, Collectors.collectingAndThen(Collectors.toList(), AssemblyBasedCallerUtils::makeMergedVariantContext)));
+
+        Set<Haplotype> baseHaplotypes = new TreeSet<>();
+        //BG Testing assembledAndNewHaplotypes.addAll(assemblyResultSet.getHaplotypeList());
+        //Todo BG testing to see if limiting the initial list of haplotypes resolves the issue of variants not getting called in clustered regions
+        baseHaplotypes.addAll(assemblyResultSet.getHaplotypeList().stream()
+                .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
+                .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
+                .collect(Collectors.toList()));
+
+        Map<Kmer, Integer> kmerReadCounts = getKmerReadCounts(region.getHardClippedPileupReads(), 10);
+        //TODO BG & AH filter out low base and/or mapping quality alleles
+
+        for (final VariantContext givenVC : givenAlleles) {
+            //TODO BG Question - What does the assembledVC do?
+            final VariantContext assembledVC = assembledVariants.get(givenVC.getStart());
+            final int givenVCRefLength = givenVC.getReference().length();
+            final Allele longerRef = (assembledVC == null || givenVCRefLength > assembledVC.getReference().length()) ? givenVC.getReference() : assembledVC.getReference();
+            final List<Allele> unassembledGivenAlleles;
+            if (assembledVC == null) {
+                unassembledGivenAlleles = givenVC.getAlternateAlleles();
+            } else {
+                // map all alleles to the longest common reference
+                final Set<Allele> assembledAlleleSet = new HashSet<>(longerRef.length() == assembledVC.getReference().length() ? assembledVC.getAlternateAlleles() :
+                        ReferenceConfidenceVariantContextMerger.remapAlleles(assembledVC, longerRef));
+                final Set<Allele> givenAlleleSet = new HashSet<>(longerRef.length() == givenVCRefLength ? givenVC.getAlternateAlleles() :
+                        ReferenceConfidenceVariantContextMerger.remapAlleles(givenVC, longerRef));
+                unassembledGivenAlleles = givenAlleleSet.stream().filter(a -> !assembledAlleleSet.contains(a)).collect(Collectors.toList());
+            }
+
+            final List<Allele> unassembledNonSymbolicAlleles = unassembledGivenAlleles.stream().filter(a -> {
+                final byte[] bases = a.getBases();
+                return !(Allele.wouldBeNoCallAllele(bases) || Allele.wouldBeNullAllele(bases) || Allele.wouldBeStarAllele(bases) || Allele.wouldBeSymbolicAllele(bases));
+            }).collect(Collectors.toList());
+
+            // choose the highest-scoring haplotypes along with the reference for building force-calling haplotypes
+//            final List<Haplotype> filteredPileupHaplotypes = unassembledNonSymbolicAlleles.isEmpty() ? Collections.emptyList() : assembledAndNewHaplotypes.stream()
+//                    .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
+////                    .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
+//                    .collect(Collectors.toList());
+
+            final List<Haplotype> newPileupHaplotypes = new ArrayList<>();
+            for (final Allele givenAllele : unassembledNonSymbolicAlleles) {
+                for (final Haplotype baseHaplotype : baseHaplotypes) {
+                    // make sure this allele doesn't collide with a variant on the haplotype
+                    if (baseHaplotype.getEventMap()!= null && baseHaplotype.getEventMap().getVariantContexts().stream().anyMatch(vc -> vc.overlaps(givenVC))) {
+                        continue;
+                    }
+
+                    // BG & AH this is the right way to insert a new haplotype
+                    final Haplotype insertedHaplotype = baseHaplotype.insertAllele(longerRef, givenAllele, activeRegionStart + givenVC.getStart() - assemblyRegionStart, givenVC.getStart());
+                    if (insertedHaplotype != null) { // can be null if the requested allele can't be inserted into the haplotype
+                        final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner, SWOverhangStrategy.INDEL);
+                        insertedHaplotype.setCigar(cigar);
+                        insertedHaplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
+                        insertedHaplotype.setAlignmentStartHapwrtRef(activeRegionStart);
+                        insertedHaplotype.addVariantContext(givenVC);
+//                        assemblyResultSet.add(insertedHaplotype);
+
+                        // and add to our internal list so we get haplotypes that contain all given alleles
+                        // do we want a flag to control this behavior
+                        newPileupHaplotypes.add(insertedHaplotype);
+//                        if(!assembledAndNewHaplotypes.get(assembledAndNewHaplotypes.indexOf(insertedHaplotype)).isReference()) {
+//                            assembledAndNewHaplotypes.get(assembledAndNewHaplotypes.indexOf(insertedHaplotype)).setVariantContext(givenVC);
+//                        }
+                    }
+                }
+            }
+
+            baseHaplotypes.addAll(filterPileupHaplotypes(newPileupHaplotypes, kmerReadCounts, 5));
+
+        }
+//        Set<Haplotype> filteredPileupHaplotypes = filterPileupHaplotypes(assemblyResultSet.getHaplotypeList(), assembledAndNewHaplotypes, region.getHardClippedPileupReads(), givenAlleles.size()*10);
+//        Set<Haplotype> filteredPileupHaplotypes = filterPileupHaplotypes(assemblyResultSet.getHaplotypeList(), assembledAndNewHaplotypes, region.getHardClippedPileupReads(), 30000 );
+        baseHaplotypes.forEach(haplotype -> assemblyResultSet.add(haplotype));
+        assemblyResultSet.regenerateVariationEvents(maxMnpDistance);
+    }
+
     static void addGivenAlleles(final int assemblyRegionStart, final List<VariantContext> givenAlleles, final int maxMnpDistance,
                                 final SmithWatermanAligner aligner, final SWParameters haplotypeToReferenceSWParameters, final Haplotype refHaplotype, final AssemblyResultSet assemblyResultSet) {
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
@@ -365,6 +483,88 @@ public final class AssemblyBasedCallerUtils {
             }
         }
         assemblyResultSet.regenerateVariationEvents(maxMnpDistance);
+    }
+
+
+
+    static Map<Kmer, Integer>  getKmerReadCounts(final List<GATKRead> hardClippedPileupReads, int kmerSize) {
+        Map<Kmer, Integer> kmerReadCounts = new HashMap<>();
+        hardClippedPileupReads.forEach(read -> kmerizeAndCountOccurences(read.getBases(), kmerSize, kmerReadCounts));
+        return kmerReadCounts;
+    }
+
+    static Set<Haplotype> filterPileupHaplotypes(final List<Haplotype> onlyNewHaplotypes,
+                                                  final Map<Kmer, Integer> kmerReadCounts, final int numPileupHaplotypes) {
+        // TODO AH & BG add the following code to check for quality of the SNPs
+//        // make sure we're supposed to look for high entropy
+//        if ( lookForMismatchEntropy &&
+//                pileup.getNumberOfElements() >= minReadsAtLocus &&
+//                (double)mismatchQualities / (double)totalQualities >= mismatchThreshold )
+//            hasPointEvent = true;
+
+        int kmerSize = 10;
+//        List<Haplotype> onlyNewHaplotypes = new ArrayList<>();
+//        onlyNewHaplotypes.addAll(assembledAndNewHaplotypes);
+//        onlyNewHaplotypes.removeAll(originalAssemblyHaplotypes);
+
+        //  int numPileupHaplotypes = 10;
+        // AH & BG filter
+        // get reads from assemblyResultSet.regionForGenotyping.reads[x].samRecord mReadBases and mBaseQualities and kmerize them.
+        // Map<kmer, Integer> # times Kmer in all the reads
+        // for each kmer in reads - find hapotypes that contain it and
+        // filter haplotypes that don't have 10% coverage of read kmers
+        // check if finalizeRegion methods is already applied and it removes the softclipped bases
+//        Map<Kmer, Integer> kmerReadCounts = new HashMap<>();
+//        hardClippedPileupReads.forEach(read -> kmerizeAndCountOccurences(read.getBases(), kmerSize, kmerReadCounts));
+
+        // get haplotypes from assemblyResultSet and kmerize. for each haplotype create a set of kmers.
+        // for each haplotype, look up the kmers in the read-map and sum thee counts fo the haplotype score
+        // create a Map<Haplytope, Score>
+        LinkedHashMap<Haplotype, Integer> haplotypeScores = new LinkedHashMap<>();
+        for (Haplotype haplotype : onlyNewHaplotypes) {
+            Set<Kmer> hapKmers = kmerizeBytes(haplotype.getBases(), kmerSize);
+            int hapKmerCount = 0;
+            for(Kmer kmer : hapKmers) {
+// BG Testing                hapKmerCount += kmerReadCounts.getOrDefault(kmer, 0);
+                hapKmerCount += kmerReadCounts.containsKey(kmer) ? 1 : 0;
+
+            }
+            haplotypeScores.put(haplotype, hapKmerCount);
+            // reuse score to save kmer count for debugging
+            haplotype.setScore(hapKmerCount);
+        }
+
+        Map<Haplotype,Integer> sortedHaplotypeScores =
+                haplotypeScores.entrySet().stream()
+                        .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
+                        .limit(numPileupHaplotypes)
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
+        return sortedHaplotypeScores.keySet();
+    }
+
+    static void kmerizeAndCountOccurences(byte[] sequence, int kmerSize, Map<Kmer, Integer> results){
+        final int stopPosition = sequence.length - kmerSize;
+        for (int i = 0; i <= stopPosition; i++) {
+            final Kmer kmer = new Kmer(sequence, i, kmerSize);
+            if (!results.containsKey(kmer)) {
+                results.put(kmer, 1);
+            } else {
+                results.put(kmer, results.get(kmer)+1);
+            }
+        }
+    }
+
+
+    static Set<Kmer> kmerizeBytes(byte[] sequence, int kmerSize){
+        final Set<Kmer> allKmers = new LinkedHashSet<>();
+        final int stopPosition = sequence.length - kmerSize;
+        for (int i = 0; i <= stopPosition; i++) {
+            final Kmer kmer = new Kmer(sequence, i, kmerSize);
+            allKmers.add(kmer);
+        }
+        return allKmers;
     }
 
     /**

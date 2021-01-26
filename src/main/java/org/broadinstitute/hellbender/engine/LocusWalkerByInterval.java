@@ -1,17 +1,15 @@
 package org.broadinstitute.hellbender.engine;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import org.apache.commons.collections4.SetUtils;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.locusiterator.AlignmentContextIteratorBuilder;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * An implementation of {@link LocusWalker} that supports arbitrary interval side inputs.

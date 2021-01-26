@@ -2,11 +2,12 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.collect.Maps;
 import htsjdk.samtools.*;
-import htsjdk.variant.variantcontext.*;
-
 import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.*;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -18,12 +19,6 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.apache.commons.lang3.StringUtils;
-
-import java.util.*;
-import java.util.stream.Collectors;
-
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -31,11 +26,14 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.*;
+import java.util.stream.Collectors;
+
 import static org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils.*;
 
 public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
     private static final SWParameters HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS = SmithWatermanAlignmentConstants.NEW_SW_PARAMETERS;
-    
+
     final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 100000000);
     final SAMLineParser parser = new SAMLineParser(header);
 

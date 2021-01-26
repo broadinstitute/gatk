@@ -27,6 +27,8 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public static final String DONT_INCREASE_KMER_SIZE_LONG_NAME = "dont-increase-kmer-sizes-for-cycles";
     public static final String LINKED_DE_BRUIJN_GRAPH_LONG_NAME = "linked-de-bruijn-graph";
 
+
+
     // -----------------------------------------------------------------------------------------------
     // arguments to control internal behavior of the read threading assembler
     // -----------------------------------------------------------------------------------------------
@@ -142,6 +144,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Advanced
     @Argument(fullName= LINKED_DE_BRUIJN_GRAPH_LONG_NAME, doc = "If enabled, the Assembly Engine will construct a Linked De Bruijn graph to recover better haplotypes", optional = true)
     public boolean useLinkedDeBruijnGraph = false;
+
 
     /**
      * This is used to disable the recovery of paths that were dropped in the graph based on the junction trees. Disabling this
