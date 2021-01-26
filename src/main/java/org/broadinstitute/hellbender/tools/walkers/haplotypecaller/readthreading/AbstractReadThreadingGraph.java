@@ -38,7 +38,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     private static final boolean DEBUG_NON_UNIQUE_CALC = false;
     private static final int MAX_CIGAR_COMPLEXITY = 3;
     private static final boolean INCREASE_COUNTS_BACKWARDS = true;
-    private int minMatchingBasesToDangingEndRecovery = -1;
+    private int minMatchingBasesToDanglingEndRecovery = -1;
 
     /**
      * for debugging info printing
@@ -87,7 +87,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
         this.debugGraphTransformations = debugGraphTransformations;
         this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
-        this.minMatchingBasesToDangingEndRecovery = numDanglingMatchingPrefixBases;
+        this.minMatchingBasesToDanglingEndRecovery = numDanglingMatchingPrefixBases;
     }
 
     /**
@@ -181,8 +181,8 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     }
 
     @VisibleForTesting
-    void setMinMatchingBasesToDangingEndRecovery(final int minMatchingBasesToDangingEndRecovery) {
-        this.minMatchingBasesToDangingEndRecovery = minMatchingBasesToDangingEndRecovery;
+    void setMinMatchingBasesToDanglingEndRecovery(final int minMatchingBasesToDanglingEndRecovery) {
+        this.minMatchingBasesToDanglingEndRecovery = minMatchingBasesToDanglingEndRecovery;
     }
 
     @VisibleForTesting
@@ -512,7 +512,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      * The minimum number of matches to be considered allowable for recovering dangling ends
      */
     private int getMinMatchingBases() {
-        return minMatchingBasesToDangingEndRecovery;
+        return minMatchingBasesToDanglingEndRecovery;
     }
 
     /**
@@ -539,7 +539,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         }
 
         // merge
-        return minMatchingBasesToDangingEndRecovery >= 0 ? mergeDanglingHead(danglingHeadMergeResult) : mergeDanglingHeadLegacy(danglingHeadMergeResult);
+        return minMatchingBasesToDanglingEndRecovery >= 0 ? mergeDanglingHead(danglingHeadMergeResult) : mergeDanglingHeadLegacy(danglingHeadMergeResult);
     }
 
     /**
@@ -557,7 +557,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
         final int lastRefIndex = danglingTailMergeResult.cigar.getReferenceLength() - 1;
         final int matchingSuffix = Math.min(longestSuffixMatch(danglingTailMergeResult.referencePathString, danglingTailMergeResult.danglingPathString, lastRefIndex), lastElement.getLength());
-        if (minMatchingBasesToDangingEndRecovery >= 0 ? matchingSuffix < minMatchingBasesToDangingEndRecovery : matchingSuffix == 0 ) {
+        if (minMatchingBasesToDanglingEndRecovery >= 0 ? matchingSuffix < minMatchingBasesToDanglingEndRecovery : matchingSuffix == 0 ) {
             return 0;
         }
 
@@ -602,7 +602,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         }
 
         // we can't push back the reference path
-        if ( indexesToMerge.getKey() >= danglingHeadMergeResult.referencePath.size() - 1 ) {
+        if ( indexesToMerge >= danglingHeadMergeResult.referencePath.size() - 1 ) {
             return 0;
         }
 
@@ -612,7 +612,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
             return 0;
         }
 
-        addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge.getKey()), danglingHeadMergeResult.danglingPath.get(indexesToMerge.getValue()), ((MyEdgeFactory)getEdgeFactory()).createEdge(false, 1));
+        addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge), danglingHeadMergeResult.danglingPath.get(indexesToMerge), ((MyEdgeFactory)getEdgeFactory()).createEdge(false, 1));
 
         return 1;
     }
