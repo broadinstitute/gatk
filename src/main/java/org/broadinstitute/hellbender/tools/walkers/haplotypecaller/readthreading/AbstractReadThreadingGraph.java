@@ -602,7 +602,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         }
 
         // we can't push back the reference path
-        if ( indexesToMerge.getKey() >= danglingHeadMergeResult.referencePath.size() - 1 ) {
+        if ( indexesToMerge >= danglingHeadMergeResult.referencePath.size() - 1 ) {
             return 0;
         }
 
@@ -612,7 +612,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
             return 0;
         }
 
-        addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge.getKey()), danglingHeadMergeResult.danglingPath.get(indexesToMerge.getValue()), ((MyEdgeFactory)getEdgeFactory()).createEdge(false, 1));
+        addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge), danglingHeadMergeResult.danglingPath.get(indexesToMerge), ((MyEdgeFactory)getEdgeFactory()).createEdge(false, 1));
 
         return 1;
     }
