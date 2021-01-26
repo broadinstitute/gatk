@@ -232,7 +232,7 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
         return extraSequence;
     }
 
-    // TODO this behavior is frankly silly and needs to be fixed, there is no way upwards paths should be dangingling head recovered differently
+    // TODO this behavior is frankly silly and needs to be fixed, there is no way upwards paths should be dangling head recovered differently
     private List<MultiDeBruijnVertex> getReferencePathBackwardsForKmer(final MultiDeBruijnVertex targetKmer) {
         int firstIndex = referencePath.indexOf(targetKmer);
         if (firstIndex == -1) return Collections.singletonList(targetKmer);
