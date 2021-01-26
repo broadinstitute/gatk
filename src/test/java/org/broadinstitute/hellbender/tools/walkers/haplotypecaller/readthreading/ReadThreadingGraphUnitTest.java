@@ -293,7 +293,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(alt.getBytes(), Utils.dupBytes((byte) 30, alt.length()), alt.length() + "M");
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         rtgraph.addRead(read, header);
-        rtgraph.setMinMatchingBasesToDangingEndRecovery(numLeadingMatchesAllowed);
+        rtgraph.setMinMatchingBasesToDanglingEndRecovery(numLeadingMatchesAllowed);
         rtgraph.buildGraphIfNecessary();
 
         // confirm that we have just a single dangling tail
@@ -359,7 +359,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         final GATKRead read1 = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
         final GATKRead read2 = ArtificialReadUtils.createArtificialRead(alt2.getBytes(), Utils.dupBytes((byte) 30, alt2.length()), alt2.length() + "M");
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
-        rtgraph.setMinMatchingBasesToDangingEndRecovery(1);
+        rtgraph.setMinMatchingBasesToDanglingEndRecovery(1);
         rtgraph.addRead(read2, header);
         rtgraph.addRead(read1, header);
         rtgraph.buildGraphIfNecessary();
@@ -526,7 +526,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(alt.getBytes(), Utils.dupBytes((byte) 30, alt.length()), alt.length() + "M");
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         rtgraph.addRead(read, header);
-        rtgraph.setMinMatchingBasesToDangingEndRecovery(numLeadingMatchesAllowed);
+        rtgraph.setMinMatchingBasesToDanglingEndRecovery(numLeadingMatchesAllowed);
         rtgraph.buildGraphIfNecessary();
 
         // confirm that we have just a single dangling head
