@@ -135,7 +135,7 @@ public class CoverageOutputWriter implements Closeable {
                 DoCOutputType intervalSummaryBypartition = new DoCOutputType(partition, DoCOutputType.Aggregation.interval, DoCOutputType.FileType.summary);
                 outputs.put(intervalSummaryBypartition, getOutputStream(outputBaseName, intervalSummaryBypartition, separator));
 
-                // Create an interval summary output sink
+                // Create an interval statistics output sink
                 DoCOutputType intervalStatisticsByPartition = new DoCOutputType(partition, DoCOutputType.Aggregation.interval, DoCOutputType.FileType.statistics);
                 outputs.put(intervalStatisticsByPartition, getOutputStream(outputBaseName, intervalStatisticsByPartition, separator));
             }
@@ -146,6 +146,10 @@ public class CoverageOutputWriter implements Closeable {
             // Create a special output sink for gene data if provided
             DoCOutputType geneSummaryOut = new DoCOutputType(DoCOutputType.Partition.sample, DoCOutputType.Aggregation.gene, DoCOutputType.FileType.summary);
             outputs.put(geneSummaryOut, getOutputStream(outputBaseName, geneSummaryOut, separator));
+
+            // Create an gene statistics output sink
+            DoCOutputType geneStatisticsByPartition = new DoCOutputType(DoCOutputType.Partition.sample, DoCOutputType.Aggregation.gene, DoCOutputType.FileType.statistics);
+            outputs.put(geneStatisticsByPartition, getOutputStream(outputBaseName, geneStatisticsByPartition, separator));
         }
 
         if (!omitSampleSummary) {
@@ -357,6 +361,19 @@ public class CoverageOutputWriter implements Closeable {
      */
     public void writeOutputIntervalStatistics(final DoCOutputType.Partition partition, final int[][] nTargetsByAvgCvgBySample, final int[] binEndpoints) {
         SimpleCSVWriterWrapperWithHeader output = getCorrectOutputWriter(partition, DoCOutputType.Aggregation.interval, DoCOutputType.FileType.statistics);
+        printIntervalTable(output, nTargetsByAvgCvgBySample, binEndpoints);
+    }
+
+    /**
+     * Write out the gene statistics. Note that this method expects as input that the provided table has had
+     * {@link CoverageUtils#updateTargetTable(int[][], DepthOfCoverageStats)} called on it exactly once for each interval
+     * summarized in this traversal.
+     *
+     * @param nTargetsByAvgCvgBySample Target sample coverage histogram for the given partition to be written out
+     * @param binEndpoints             Bins endpoints used in the construction of of the provided histogram
+     */
+    public void writeOutputGeneStatistics(final int[][] nTargetsByAvgCvgBySample, final int[] binEndpoints) {
+        SimpleCSVWriterWrapperWithHeader output = getCorrectOutputWriter(DoCOutputType.Partition.sample, DoCOutputType.Aggregation.gene, DoCOutputType.FileType.statistics);
         printIntervalTable(output, nTargetsByAvgCvgBySample, binEndpoints);
     }
 

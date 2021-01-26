@@ -52,7 +52,7 @@ import java.util.*;
  *     <li>_interval_summary: total, mean, median, quartiles, and threshold proportions, aggregated per interval</li>
  *     <li>_interval_statistics: 2x2 table of # of intervals covered to >= X depth in >=Y samples</li>
  *     <li>_gene_summary: total, mean, median, quartiles, and threshold proportions, aggregated per gene</li>
- *     <li>_gene_statistics: 2x2 table of # of genes covered to >= X depth in >= Y samples</li>
+ *     <li>_gene_statistics: 2x2 table of # of genes covered to >= X depth in >= Y samples. In its current incarnation it will not include genes not at least partially covered (see --omit-genes-not-entirely-covered-by-traversal for details) </li>
  *     <li>_cumulative_coverage_counts: coverage histograms (# locus with >= X coverage), aggregated over all bases</li>
  *     <li>_cumulative_coverage_proportions: proprotions of loci with >= X coverage, aggregated over all bases</li>
  * </ul>
@@ -90,6 +90,8 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
     private Map<Locatable, DepthOfCoveragePartitionedDataStore> activeCoveragePartitioner = new HashMap<>();
     // Map used to store target tables for each partition which are used in the computation of median coverage scores
     private Map<DoCOutputType.Partition, int[][]> perIntervalStatisticsAggregationByPartitioning = new HashMap<>();
+    // Map used to store target tables for each partition which are used in the computation of median coverage scores
+    private Map<DoCOutputType.Partition, int[][]> perGeneStatisticsAggregationByPartitioning = new HashMap<>();
 
     // PartitionDataStore corresponding to every base traversed by the tool
     private DepthOfCoveragePartitionedDataStore coverageTotalsForEntireTraversal;
@@ -360,6 +362,17 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
 
             if ( ! omitPartiallyCoveredGenes || ((RefSeqFeature)activeInterval).getTotalExonLength() <= coverageBySample.getNumberOfLociCovered()) {
                 writer.writePerGeneDepthInformation((RefSeqFeature) activeInterval, coverageBySample, globalIdentifierMap.get(DoCOutputType.Partition.sample));
+
+                final DepthOfCoverageStats coverageByAggregationPartitionType = partitionerToRemove.getCoverageByAggregationType(DoCOutputType.Partition.sample);
+
+                // Create a new table if necessary
+                if (!perGeneStatisticsAggregationByPartitioning.containsKey(DoCOutputType.Partition.sample)) {
+                    perGeneStatisticsAggregationByPartitioning.put(DoCOutputType.Partition.sample, new int[coverageByAggregationPartitionType.getHistograms().size()][coverageByAggregationPartitionType.getEndpoints().length + 1]);
+                }
+
+                // Update the target table to reflect the updated coverage information for this target
+                CoverageUtils.updateTargetTable(perGeneStatisticsAggregationByPartitioning.get(DoCOutputType.Partition.sample), coverageByAggregationPartitionType);
+
             }
         } else {
             throw new GATKException("Unrecognized Locatable object supplied for traversal, only RefSeqFeature and SimpleInterval are supported: "+activeInterval.toString());
@@ -382,6 +395,13 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
         // Write out accumulated interval summary statistics
         for (DoCOutputType.Partition partition : perIntervalStatisticsAggregationByPartitioning.keySet()) {
             writer.writeOutputIntervalStatistics(partition, perIntervalStatisticsAggregationByPartitioning.get(partition), CoverageUtils.calculateCoverageHistogramBinEndpoints(start,stop,nBins));
+        }
+
+        // Write out accumulated gene summary statistics
+        if (!refSeqGeneListFiles.isEmpty()) {
+            for (DoCOutputType.Partition partition : perGeneStatisticsAggregationByPartitioning.keySet()) {
+                writer.writeOutputGeneStatistics(perGeneStatisticsAggregationByPartitioning.get(partition), CoverageUtils.calculateCoverageHistogramBinEndpoints(start, stop, nBins));
+            }
         }
 
         if (!omitSampleSummary) {
