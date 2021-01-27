@@ -123,7 +123,7 @@ import java.util.*;
  * </pre>
  * <p>Note that to use the allele-specific (AS) mode, the input VCF must have been produced using allele-specific
  * annotations in HaplotypeCaller. Note also that each allele will have a separate line in the output recalibration
- * file with its own VQSLOD and `culprit`, which will be transferred to the final VCF by the ApplyRecalibration tool.
+ * file with its own VQSLOD and `culprit`, which will be transferred to the final VCF by the ApplyVQSR tool.
  *
  * <h3>Caveats</h3>
  *
@@ -197,10 +197,10 @@ public class VariantRecalibrator extends MultiVariantWalker {
     /////////////////////////////
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc="The output recal file used by ApplyRecalibration", optional=false)
+            doc="The output recal file used by ApplyVQSR", optional=false)
     private GATKPath output;
 
-    @Argument(fullName="tranches-file", doc="The output tranches file used by ApplyRecalibration", optional=false)
+    @Argument(fullName="tranches-file", doc="The output tranches file used by ApplyVQSR", optional=false)
     private File TRANCHES_FILE; // not GATKPath since this name must be accessible to R code
 
     /////////////////////////////
@@ -241,7 +241,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
     private List<Double> TS_TRANCHES = new ArrayList<Double>(Arrays.asList(100.0, 99.9, 99.0, 90.0));
 
     /**
-     * For this to work properly, the --ignore-filter argument should also be applied to the ApplyRecalibration command.
+     * For this to work properly, the --ignore-filter argument should also be applied to the ApplyVQSR command.
      */
     @Argument(fullName="ignore-filter",
             doc="If specified, the variant recalibrator will also use variants marked as filtered by the specified filter name in the input VCF file",
