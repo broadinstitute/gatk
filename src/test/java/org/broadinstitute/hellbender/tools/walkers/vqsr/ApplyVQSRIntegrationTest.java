@@ -54,7 +54,7 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                     " --recal-file " + getLargeVQSRTestDataDir() + "snpRecal.vcf" +
                     " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Arrays.asList(getLargeVQSRTestDataDir() + "expected/snpApplyResult.vcf"));
-        spec.executeTest("testApplyRecalibrationSNP", this);
+        spec.executeTest("testApplyVQSRSNP", this);
     }
 
     @Test
@@ -73,11 +73,11 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                     " --recal-file " + getLargeVQSRTestDataDir() + "indelRecal.vcf" +
                     " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Arrays.asList(getLargeVQSRTestDataDir() + "expected/indelApplyResult.vcf"));
-        spec.executeTest("testApplyRecalibrationIndel", this);
+        spec.executeTest("testApplyVQSRIndel", this);
     }
 
     @Test
-    public void testApplyRecalibrationSnpAndIndelTogether() throws IOException {
+    public void testApplyVQSRSnpAndIndelTogether() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                     " -L 20:1000100-1000500" +
                     " -mode BOTH" +
@@ -87,13 +87,13 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                     " --recal-file " + getToolTestDataDir() + "VQSR.mixedTest.recal.vcf" +
                     " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Arrays.asList(getToolTestDataDir() + "expected/applySNPAndIndelResult.vcf"));
-        spec.executeTest("testApplyRecalibrationSnpAndIndelTogether", this);
+        spec.executeTest("testApplyVQSRSnpAndIndelTogether", this);
     }
 
     @Test
-    public void testApplyRecalibrationSnpAndIndelTogetherExcludeFiltered() throws Exception {
+    public void testApplyVQSRSnpAndIndelTogetherExcludeFiltered() throws Exception {
         ArgumentsBuilder args = new ArgumentsBuilder();
-        File tempOut = createTempFile("testApplyRecalibrationSnpAndIndelTogetherExcludeFiltered", ".vcf");
+        File tempOut = createTempFile("testApplyVQSRSnpAndIndelTogetherExcludeFiltered", ".vcf");
 
         args.addRaw("--variant");
         args.addRaw(new File(getToolTestDataDir() + "VQSR.mixedTest.input.vcf"));
@@ -121,7 +121,7 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testApplyRecalibrationAlleleSpecificSNPmode() throws IOException {
+    public void testApplyVQSRAlleleSpecificSNPmode() throws IOException {
         final String base =
                 " -L 3:113005755-195507036" +
                 " -mode SNP -AS" +
@@ -135,11 +135,11 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 base,
                 Arrays.asList(getToolTestDataDir() + "expected/applySNPAlleleSpecificResult.vcf"));
-        spec.executeTest("testApplyRecalibrationAlleleSpecificSNPmode", this);
+        spec.executeTest("testApplyVQSRAlleleSpecificSNPmode", this);
     }
 
     @Test
-    public void testApplyRecalibrationAlleleSpecificINDELmode() throws IOException {
+    public void testApplyVQSRAlleleSpecificINDELmode() throws IOException {
         final String base =
                 " -L 3:113005755-195507036" +
                 " -mode INDEL -AS" +
@@ -153,7 +153,7 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 base,
                 Arrays.asList(getToolTestDataDir() + "expected/applyIndelAlleleSpecificResult.vcf"));
-        spec.executeTest("testApplyRecalibrationAlleleSpecificINDELmode", this);
+        spec.executeTest("testApplyVQSRAlleleSpecificINDELmode", this);
     }
 
     // This test verifies that we can write valid .gz/.tbi pair using a .gz input file with a large header.
@@ -163,18 +163,18 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
     //
     // The input file used was constructed as follows:
     //
-    //  1) take the "VQSR.AStest.postSNPinput.vcf input file used in testApplyRecalibrationAlleleSpecificINDELmode above
+    //  1) take the "VQSR.AStest.postSNPinput.vcf input file used in testApplyVQSRAlleleSpecificINDELmode above
     //  2) Replace all of the contig header lines with header lines from hg38
     //  3) Rename the contig "chr3" to "3" in the header, so it will match the variants in the input file
     //  4) Convert to GZIP/.tbi, since we need to query on input
     //
     @Test
-    public void testApplyRecalibrationAlleleSpecificINDELmodeGZIPIndex() throws IOException {
-        final File tempGZIPOut = createTempFile("testApplyRecalibrationAlleleSpecificINDELmodeGZIP", ".vcf.gz");
+    public void testApplyVQSRAlleleSpecificINDELmodeGZIPIndex() throws IOException {
+        final File tempGZIPOut = createTempFile("testApplyVQSRAlleleSpecificINDELmodeGZIP", ".vcf.gz");
         final File expectedFile = new File(getToolTestDataDir(), "expected/applyIndelAlleleSpecificResult.vcf");
         final SimpleInterval queryInterval = new SimpleInterval("3:113005755-195507036");
 
-        // The input file is the same file as used in testApplyRecalibrationAlleleSpecificINDELmode, except that the
+        // The input file is the same file as used in testApplyVQSRAlleleSpecificINDELmode, except that the
         // hg38 sequence dictionary has been transplanted into the header (the header itself has been modified so that
         // contig "chr3" is renamed to "3" to match the variants in this file), and the file is a .gz.
         final String base =
@@ -189,7 +189,7 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                         " --" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME + " true";  //because of the header hack, this won't validate
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(base, Collections.emptyList());
-        spec.executeTest("testApplyRecalibrationAlleleSpecificINDELmodeGZIP", this);
+        spec.executeTest("testApplyVQSRAlleleSpecificINDELmodeGZIP", this);
 
         // make sure we got a tabix index
         final File tabixIndexFile = new File(tempGZIPOut.getAbsolutePath() + FileExtensions.TABIX_INDEX);

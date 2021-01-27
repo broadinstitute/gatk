@@ -278,7 +278,7 @@ public final class VariantFiltration extends VariantWalker {
         final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>();
         hInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
         if (applyForAllele) {
-            hInfo.add(new VCFInfoHeaderLine(AS_FILTER_STATUS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Filter status for each allele, as assessed by ApplyRecalibration. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles."));
+            hInfo.add(new VCFInfoHeaderLine(AS_FILTER_STATUS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Filter status for each allele, as assessed by ApplyVQSR. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles."));
         }
 
         // need AC, AN and AF since output if set filtered genotypes to no-call
