@@ -5,7 +5,7 @@
 ##FORMAT=<ID=RD,Number=1,Type=Integer,Description="Read Depth (only filtered reads used for calling)">
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AFrange,Number=2,Type=String,Description="Allele Frequency, for each ALT allele, in the same order as listed">
-##INFO=<ID=AS_FilterStatus,Number=A,Type=String,Description="Filter status for each allele, as assessed by ApplyRecalibration. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles.">
+##INFO=<ID=AS_FilterStatus,Number=A,Type=String,Description="Filter status for each allele, as assessed by ApplyVQSR. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles.">
 ##INFO=<ID=AlleleBalance,Number=1,Type=Float,Description="Allele balance">
 ##INFO=<ID=DoC,Number=1,Type=Integer,Description="Filtered Depth">
 ##INFO=<ID=FisherStrand,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
