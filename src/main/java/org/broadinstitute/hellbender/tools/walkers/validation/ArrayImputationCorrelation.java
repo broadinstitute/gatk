@@ -82,7 +82,8 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     private List<String> afAnnotations;
 
     @Argument(
-            fullName = "sample-map"
+            fullName = "sample-map",
+            optional = true
     )
     private List<String> sampleMappings;
 
@@ -113,10 +114,12 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
             StringUtil.split(afAnnotation, tokens,':');
             afAnnotationsMap.put(tokens[0], tokens[1]);
         }
-        for (final String sampleMapping : sampleMappings) {
-            String[] tokens = new String[2];
-            StringUtil.split(sampleMapping, tokens,':');
-            sampleMap.put(tokens[0], tokens[1]);
+        if (sampleMappings != null) {
+            for (final String sampleMapping : sampleMappings) {
+                String[] tokens = new String[2];
+                StringUtil.split(sampleMapping, tokens, ':');
+                sampleMap.put(tokens[0], tokens[1]);
+            }
         }
 
         for (final String sample : samples) {
@@ -150,11 +153,7 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     }
 
     private String getMappedSample(final String sample) {
-        if (sampleMap == null) {
-            return sample;
-        } else {
-            return sampleMap.getOrDefault(sample, sample);
-        }
+        return sampleMap.getOrDefault(sample, sample);
     }
 
     @Override
@@ -223,7 +222,8 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
             if (resourceVariant == null) {
                 return;
             }
-            final Allele refAllele = evalVC.getReference();
+            final Allele evalRefAllele = evalVC.getReference();
+            final Allele truthRefAllele = truthVC.getReference();
             for (int i=0; i<aggregators.size(); i++) {
                 final String sample = snpMetrics.get(i).sampleName;
                 final String mappedSample = getMappedSample(sample);
@@ -242,8 +242,8 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
                 final int bin = getBin(af);
                 final Genotype evalGenotype = evalVC.getGenotype(sample);
                 final Genotype truthGenotype = truthVC.getGenotype(mappedSample);
-                final double evalRefFrac = getDosageFrac(evalGenotype, refAllele);
-                final double truthRefFrac = getDosageFrac(truthGenotype, refAllele);
+                final double evalRefFrac = getDosageFrac(evalGenotype, evalRefAllele);
+                final double truthRefFrac = getDosageFrac(truthGenotype, truthRefAllele);
                 final int truthAltCount = truthGenotype.getPloidy() - truthGenotype.countAllele(truthVC.getReference());
                 final int evalAltCount = evalGenotype.getPloidy() - evalGenotype.countAllele(evalVC.getReference());
                 if (evalVC.isSNP()) {
