@@ -173,6 +173,10 @@ public class ContaminationModel {
         final boolean useMyModel = true;
         if (useMyModel){
             final VariationalContamination myContamination = new VariationalContamination(tumorErrorRate);
+            if (homSitesOutput.isPresent()){
+                PileupSummary.writeToFile("sample", homs, homSitesOutput.get());
+            }
+
             return myContamination.calculateContaminationFromHoms(homs);
         }
 
