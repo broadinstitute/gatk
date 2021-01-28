@@ -11,9 +11,7 @@
 
   "ImportGenomes.sample_map": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/test_sample_map.csv",
 
-  "ImportGenomes.input_vcfs": ["gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/9a5be44d-c032-40ef-bd4f-8de736299484/ReblockGVCF/65c5b1d0-4aeb-44cc-a696-710dbc5f60f1/call-Reblock/BI_NA14170_A11_99000142090_SM-GXZV3_1.vcf.gz",
-    "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/9a5be44d-c032-40ef-bd4f-8de736299484/ReblockGVCF/f02d7f4e-a19b-4d84-b0de-0750c9b3cfd9/call-Reblock/BI_NA23079_1_99000142156_SM-GXZVL_1.vcf.gz",
-    "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/9a5be44d-c032-40ef-bd4f-8de736299484/ReblockGVCF/dc63b7c7-9d13-4674-8680-072ee04e9237/call-Reblock/BI_NA21987_1_99000142135_SM-GXZVB_1.vcf.gz"],
+  "ImportGenomes.input_vcfs_list": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/input_vcfs.txt",
 
   "ImportGenomes.output_directory": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/testrun2_importdir"
 }
