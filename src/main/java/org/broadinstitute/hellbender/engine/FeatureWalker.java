@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
 
     private FeatureDataSource<F> drivingFeatures;
+    private Object header;
 
     @Override
     public boolean requiresFeatures(){
@@ -61,6 +62,7 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
             final FeatureInput<F> drivingFeaturesInput = new FeatureInput<>(drivingPath, "drivingFeatureFile");
             features.addToFeatureSources(0, drivingFeaturesInput, codec.getFeatureType(), cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                          referenceArguments.getReferencePath());
+            header = getHeaderForFeatures(drivingFeaturesInput);
         } else {
             throw new UserException("File " + drivingPath.getRawInputString() + " contains features of the wrong type.");
         }
@@ -146,4 +148,12 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
      * @return never {@code null}.
      */
     public abstract GATKPath getDrivingFeaturePath();
+
+
+    /**
+     * Returns the header of the driving features file.
+     */
+    public Object getDrivingFeaturesHeader() {
+        return header;
+    }
 }

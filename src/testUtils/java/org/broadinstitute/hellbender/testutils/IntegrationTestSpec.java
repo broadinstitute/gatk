@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.testutils;
 
+import com.google.common.io.Files;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.FileExtensions;
+import org.aeonbits.owner.util.Collections;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,6 +22,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 public final class IntegrationTestSpec {
 
@@ -27,11 +31,21 @@ public final class IntegrationTestSpec {
 
     public static final String DEFAULT_TEMP_EXTENSION = ".tmp";
     public static final String DEFAULT_TEMP_PREFIX = "walktest.tmp_param";
+    public static final Set<String> INDEX_EXTENSIONS = Collections.set(
+            FileExtensions.BAI_INDEX,
+            FileExtensions.COMPRESSED_VCF_INDEX,
+            FileExtensions.CRAM_INDEX,
+            FileExtensions.FASTA_INDEX,
+            FileExtensions.TABIX_INDEX,
+            FileExtensions.TRIBBLE_INDEX,
+            FileExtensions.VCF_INDEX
+    );
 
     private final String args;
     private final Class<?> expectedException;
     private final int nOutputFiles;
     private final List<String> expectedFileNames;
+    private String tempExtension;
 
     //If this field is set to true, bam files will be compared after they get sorted.
     //This is needed as a workaround because Spark tools don't respect a pre-ordered BAMs
@@ -48,6 +62,7 @@ public final class IntegrationTestSpec {
         this.expectedFileNames = expectedFileNames;
         this.compareBamFilesSorted = false;
         this.validationStringency = ValidationStringency.DEFAULT_STRINGENCY;
+        this.tempExtension = DEFAULT_TEMP_EXTENSION;
     }
 
     public IntegrationTestSpec(String args, int nOutputFiles, Class<?> expectedException) {
@@ -60,6 +75,7 @@ public final class IntegrationTestSpec {
         this.expectedFileNames = null;
         this.compareBamFilesSorted = false;
         this.validationStringency = ValidationStringency.DEFAULT_STRINGENCY;
+        this.tempExtension = DEFAULT_TEMP_EXTENSION;
     }
 
     public boolean expectsException() {
@@ -70,6 +86,10 @@ public final class IntegrationTestSpec {
         if (!expectsException())
             throw new GATKException("Tried to get exception for walker test that doesn't expect one");
         return expectedException;
+    }
+
+    public void setOutputFileExtension(final String ext) {
+        tempExtension = ext;
     }
 
     public void setCompareBamFilesSorted(final boolean compareBamFilesSorted) {
@@ -88,11 +108,14 @@ public final class IntegrationTestSpec {
         return expectedFileNames;
     }
 
-    public void executeTest(final String name, CommandLineProgramTester test) throws IOException {
+    public void executeTest(final String name, final CommandLineProgramTester test) throws IOException {
+        executeTest(name, test, null);
+    }
+
+    public void executeTest(final String name, CommandLineProgramTester test, final String expectedIndexExtension) throws IOException {
         List<File> tmpFiles = new ArrayList<>();
         for (int i = 0; i < nOutputFiles; i++) {
-            String ext = DEFAULT_TEMP_EXTENSION;
-            File fl = BaseTest.createTempFile(String.format(DEFAULT_TEMP_PREFIX + ".%d", i), ext);
+            File fl = BaseTest.createTempFile(String.format(DEFAULT_TEMP_PREFIX + ".%d", i), tempExtension);
             tmpFiles.add(fl);
         }
 
@@ -102,28 +125,29 @@ public final class IntegrationTestSpec {
 
         if (expectsException()) {
             // this branch handles the case were we are testing that a walker will fail as expected
-            executeTest(name, test, null, null, tmpFiles, formattedArgs, getExpectedException());
+            executeTest(name, test, null, null, tmpFiles, formattedArgs, getExpectedException(), expectedIndexExtension);
         } else {
             final List<String> expectedFileNames = new ArrayList<>(expectedFileNames());
             if (!expectedFileNames.isEmpty() && preFormattedArgs.equals(formattedArgs)) {
                 throw new GATKException("Incorrect test specification - you're expecting " + expectedFileNames.size() + " file(s) the specified arguments do not contain the same number of \"%s\" placeholders");
             }
 
-            executeTest(name, test, null, expectedFileNames, tmpFiles, formattedArgs, null);
+            executeTest(name, test, null, expectedFileNames, tmpFiles, formattedArgs, null, expectedIndexExtension);
         }
     }
 
     /**
      * execute the test, given the following:
      *
-     * @param testName              the name of the test
-     * @param testClass             the object that contains the test
-     * @param expectedFileNames     the list of expectedFileNames
-     * @param tmpFiles              the temp file corresponding to the expectedFileNames list
-     * @param args                  the argument list
-     * @param expectedException     the expected exception or null
+     * @param testName               the name of the test
+     * @param testClass              the object that contains the test
+     * @param expectedFileNames      the list of expectedFileNames
+     * @param tmpFiles               the temp file corresponding to the expectedFileNames list
+     * @param args                   the argument list
+     * @param expectedException      the expected exception or null
+     * @param expectedIndexExtension the extension of output indexes or null
      */
-    private void executeTest(String testName, CommandLineProgramTester testClass, File outputFileLocation, List<String> expectedFileNames, List<File> tmpFiles, String args, Class<?> expectedException) throws IOException {
+    private void executeTest(String testName, CommandLineProgramTester testClass, File outputFileLocation, List<String> expectedFileNames, List<File> tmpFiles, String args, Class<?> expectedException, String expectedIndexExtension) throws IOException {
         if (outputFileLocation != null) {
             args += " -O " + outputFileLocation.getAbsolutePath();
         }
@@ -131,6 +155,12 @@ public final class IntegrationTestSpec {
 
         if (expectedException == null && !expectedFileNames.isEmpty()) {
             assertMatchingFiles(tmpFiles, expectedFileNames, compareBamFilesSorted, validationStringency);
+            if (expectedIndexExtension != null) {
+                for (final File f : tmpFiles) {
+                    final String indexPath = f.getAbsolutePath() + expectedIndexExtension;
+                    Assert.assertTrue(new File(indexPath).exists(), "Index expected at " + indexPath);
+                }
+            }
         }
     }
 
@@ -183,7 +213,10 @@ public final class IntegrationTestSpec {
             final File resultFile = resultFiles.get(i);
             final String expectedFileName = expectedFiles.get(i);
             final File expectedFile = new File(expectedFileName);
-            if (expectedFileName.endsWith(".bam")){
+            final boolean isIndex = INDEX_EXTENSIONS.stream().anyMatch(ext -> expectedFileName.endsWith(ext));
+            if (isIndex) {
+                Assert.assertTrue(Files.equal(expectedFile, resultFile), "Resulting index file different from expected");
+            } else if (expectedFileName.endsWith(".bam")) {
                 SamAssertionUtils.assertEqualBamFiles(resultFile, expectedFile, compareBamFilesSorted, stringency);
             } else {
                 assertEqualTextFiles(resultFile, expectedFile);
@@ -243,7 +276,7 @@ public final class IntegrationTestSpec {
             throw new AssertionError("Detected unequal lines: " + numUnequalLines + " between files actual file = "+resultFile+", expected file = "+expectedFile);
         }
         else if (!sizeMatches) {
-            throw new AssertionError("File sizes are unequal - actual = " + actual.readLines().size() + ", expected = " + expected.readLines().size());
+            throw new AssertionError("File sizes are unequal - actual = " + (i + actual.readLines().size()) + ", expected = " + (i + expected.readLines().size()));
         }
     }
 

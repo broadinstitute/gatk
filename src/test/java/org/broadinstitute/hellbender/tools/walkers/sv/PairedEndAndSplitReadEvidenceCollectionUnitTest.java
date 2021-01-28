@@ -1,14 +1,18 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
+import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
+import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.OutputStreamWriter;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -80,13 +84,21 @@ public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTes
         Assert.assertEquals(reportableDiscordantReadPair.getMateStart(), gatkRead.getMateStart());
     }
 
+    // Workaround for use of generic class with Mockito
+    private class SplitReadFeatureOutputStream extends FeatureOutputStream<SplitReadEvidence> {
+        public SplitReadFeatureOutputStream() {
+            super(new GATKPath(""), new SplitReadEvidenceCodec(), SplitReadEvidenceCodec::encode,
+                    new SAMSequenceDictionary(), 4);
+        }
+    }
+
     @Test
     public void testCountSplitRead() throws Exception {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(2, 1, 10000);
         final GATKRead rightClip = ArtificialReadUtils.createArtificialRead(header, "rightClip", 0, 1000, ArtificialReadUtils.createRandomReadBases(151, false),
                 ArtificialReadUtils.createRandomReadQuals(151), "100M51S");
 
-        final OutputStreamWriter mockSrWriter = Mockito.mock(OutputStreamWriter.class);
+        final FeatureOutputStream<SplitReadEvidence> mockSrWriter = Mockito.mock(SplitReadFeatureOutputStream.class);
 
         PairedEndAndSplitReadEvidenceCollection tool = new PairedEndAndSplitReadEvidenceCollection();
         final PriorityQueue<PairedEndAndSplitReadEvidenceCollection.SplitPos> splitCounts = new PriorityQueue<>(new PairedEndAndSplitReadEvidenceCollection.SplitPosComparator());
@@ -119,8 +131,10 @@ public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTes
         Assert.assertFalse(counts.containsKey(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1100, PairedEndAndSplitReadEvidenceCollection.POSITION.RIGHT)));
         Assert.assertFalse(counts.containsKey(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1100, PairedEndAndSplitReadEvidenceCollection.POSITION.LEFT)));
         Assert.assertEquals(counts.get(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1600, PairedEndAndSplitReadEvidenceCollection.POSITION.LEFT)).intValue(), 1);
-        Mockito.verify(mockSrWriter).write("1" + "\t" + 1099 + "\t" + "left" + "\t" + 1 + "\t" + "sample" + "\n");
-        Mockito.verify(mockSrWriter).write("1" + "\t" + 1099 + "\t" + "right" + "\t" + 2 + "\t" + "sample" + "\n");
+        final SplitReadEvidence splitRead1 = new SplitReadEvidence("sample", "1", 1100, 1, false);
+        final SplitReadEvidence splitRead2 = new SplitReadEvidence("sample", "1", 1100, 2, true);
+        Mockito.verify(mockSrWriter).add(splitRead1);
+        Mockito.verify(mockSrWriter).add(splitRead2);
         Mockito.verifyNoMoreInteractions(mockSrWriter);
 
     }
