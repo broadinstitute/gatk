@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
+import org.apache.commons.math3.special.Gamma;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -23,5 +24,22 @@ public class BetaDistributionShape {
 
     public double getBeta() {
         return beta;
+    }
+
+    // sato: add tests
+    public double getLogMean() {
+        return Gamma.digamma(alpha) - Gamma.digamma(alpha + beta);
+    }
+
+    public double getExpectationLog1MinusP() {
+        return Gamma.digamma(beta) - Gamma.digamma(alpha + beta);
+    }
+
+    public double getMean(){
+        return alpha / (alpha + beta);
+    }
+
+    public double getVariance(){
+        return alpha*beta/(Math.pow(alpha+beta, 2.0)*(alpha + beta + 1));
     }
 }

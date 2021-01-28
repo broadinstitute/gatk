@@ -118,8 +118,12 @@ public class ContaminationModel {
                 result = calculateContamination(Strategy.UNSCRUPULOUS_HOM_REF, tumorSites, minMaf);
             }
 
-            final double error = result.getRight();
             allowedError = result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR; // sato: can I choose these smartly?
+            boolean useMyModel = true;
+            if (useMyModel){
+                // Just emit the result with mimMaf = 0.4
+                return result;
+            }
 
             if (!Double.isNaN(result.getLeft()) && result.getRight() < (result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR)) {
                 return result;
@@ -165,6 +169,12 @@ public class ContaminationModel {
         this.numTotalSites = tumorSites.size();
 
         final double tumorErrorRate = calculateErrorRate(tumorSites);
+
+        final boolean useMyModel = true;
+        if (useMyModel){
+            final VariationalContamination myContamination = new VariationalContamination(tumorErrorRate);
+            return myContamination.calculateContaminationFromHoms(homs);
+        }
 
         // depth of ref in hom alt or alt in hom ref
         final ToIntFunction<PileupSummary> oppositeCount = useHomAlt ? PileupSummary::getRefCount : PileupSummary::getAltCount;
@@ -238,7 +248,7 @@ public class ContaminationModel {
                 }).collect(Collectors.toList());
     }
 
-    private static double calculateErrorRate(final List<PileupSummary> sites) {
+    public static double calculateErrorRate(final List<PileupSummary> sites) {
         final long totalBases = sites.stream().mapToInt(PileupSummary::getTotalCount).sum();
         final long otherAltBases = sites.stream().mapToInt(PileupSummary::getOtherAltCount).sum();
         return 1.5 * ((double) otherAltBases / totalBases);
@@ -249,6 +259,7 @@ public class ContaminationModel {
         return OptimizationUtils.max(objective, 0.1, 0.5, 0.4, 0.01, 0.01, 20).getPoint();
     }
 
+    /** not to be confused with another calculateContamination with different input **/
     private static double calculateContamination(final double errorRate, final List<List<PileupSummary>> segments, final List<Double> mafs) {
         final DoubleUnaryOperator objective = c -> modelLogLikelihood(segments, c, errorRate, mafs);
 

@@ -155,6 +155,7 @@ public class CalculateContamination extends CommandLineProgram {
         if (auxiliaryInfoFile != null){
             genotypingModel.writeMessages(auxiliaryInfoFile, false);
         }
+
         return "SUCCESS";
     }
 
