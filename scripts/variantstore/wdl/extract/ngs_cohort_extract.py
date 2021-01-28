@@ -202,7 +202,8 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_dataset, 
             new_vet.call_GT,
             new_vet.call_GQ,
             cast(SPLIT(new_vet.call_pl,",")[OFFSET(0)] as int64) as call_RGQ,
-            new_vet.AS_QUALapprox
+            new_vet.AS_QUALapprox,
+            new_vet.call_PL
           FROM
             `{fq_temp_table_dataset}.{PET_NEW_TABLE}` new_pet
           LEFT OUTER JOIN

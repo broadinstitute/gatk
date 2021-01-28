@@ -19,7 +19,7 @@ Extract the same region from BQ (using the `spec-ops-aou.kc_acmg_tieout` which w
 ```bash
 gatk ExtractCohort --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT -R ~/projects/references/hg38/v0/Homo_sapiens_assembly38.fasta \
   -O acmg_35_chr1.vcf --local-sort-max-records-in-ram 1000000 --sample-table spec-ops-aou.kc_acmg_tieout_v2.metadata  --project-id spec-ops-aou \
-    --cohort-extract-table spec-ops-aou.kc_acmg_tieout_v2.exported_cohort_35_test \
+    --cohort-extract-table spec-ops-aou.kc_acmg_tieout_v2.exported_cohort_35_test_pl \
       -L chr1:1-35055461
 ```
 
@@ -101,6 +101,6 @@ gatk --java-options "-Xms8g -Xdebug -Xrunjdwp:transport=dt_socket,address=5005,s
   --local-sort-max-records-in-ram 1000000 \
   --sample-table ${dataset}.metadata  \
   --project-id spec-ops-aou \
-  --cohort-extract-table ${dataset}.exported_cohort_35_test \
+  --cohort-extract-table ${dataset}.exported_cohort_35_test_pl \
   -L chr1:602222
 ```

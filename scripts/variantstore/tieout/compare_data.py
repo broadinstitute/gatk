@@ -107,18 +107,19 @@ def compare_alts(e1, e2):
         print(f"{s1}")
         print(f"{s2}")
 
-def get_gt_alleles(gt, ref, alts):
-    alleles = [ref] + alts.split(",")
+def get_gt_indexes(gt):
     delim = "|" if "|" in gt else "/"
     
     gt1 = gt.split(delim)[0]
     gt2 = gt.split(delim)[1]
-        
-    a1 = alleles[int(gt1)] if gt1 != "." else "."
+    return (gt1, gt2)
+
+def get_gt_alleles(gt, ref, alts):
+    alleles = [ref] + alts.split(",")
     
-#    if gt2 == "/":
-#        print(gt)
+    (gt1, gt2) = get_gt_indexes(gt)
         
+    a1 = alleles[int(gt1)] if gt1 != "." else "."        
     a2 = alleles[int(gt2)] if gt2 != "." else "."
 
     # TODO: for now, ignore phasing...
@@ -142,7 +143,21 @@ def log_difference(key, e1, e2, sample_id = None):
 
     print("--------------")
         
-        
+def get_pl_for_gt(gt,pl):
+    (gt1, gt2) = get_gt_indexes(gt)
+
+    # No PLs for no-calls
+    if (gt1 == "." or gt2 == "."):
+        return None
+
+    # from the VCF spec:  for P=2, the index of the genotype “a/b”, where a ≤ b, is b(b + 1)/2 + a
+    a = min(int(gt1), int(gt2))
+    b = max(int(gt1), int(gt2))
+    i = int(b * (b+1)/2 + a)
+    
+#    print(f"Calculated PL index {i} for {gt} with a: {a} and b: {b}")
+
+    return int(pl.split(",")[i])
         
 def compare_sample_data(e1, e2):
     sd1 = e1['sample_data']
@@ -180,6 +195,20 @@ def compare_sample_data(e1, e2):
             
             # TODO: hack to work around myriad of errors where overlapping reference blocks incorrectly report ./. in classic pipeline
             if ( sd1[sample_id]['GT'] == "./." and sd2[sample_id]['GT'] == "0/0"):
+                return
+
+            # If the genotypes are different BUT they have the same PL, they are effectively eqivalent.  
+
+            if 'PL' in sd1[sample_id] and 'PL' in sd2[sample_id]:
+                pl1 = get_pl_for_gt(sd1[sample_id]['GT'], sd1[sample_id]['PL'])
+                pl2 = get_pl_for_gt(sd2[sample_id]['GT'], sd2[sample_id]['PL'])
+
+                # print(f"comparing pl1 vs pl2: {pl1} vs {pl2}")
+                if ( pl1 == pl2 ):
+                    return
+
+            # special case where WARP drops PLs, we accept both being GQ0 as equivalent
+            if 'PL' not in sd1[sample_id] and int(sd1[sample_id]['GQ']) == 0 and int(sd2[sample_id]['GQ']) == 0:
                 return
 
             log_difference('Genotypes', e1, e2, sample_id) 
