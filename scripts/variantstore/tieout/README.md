@@ -9,8 +9,8 @@ The 35 sample gVCF used for this analysis are listed in `warp_samples.tsv`
 Get a shard of pre-hard filtered extracted data from the WARP run:
 
 ```bash
-gsutil cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/52245f96-6b2d-47c3-a191-4119cc31f319/call-TotallyRadicalGatherVcfs/shard-0/bq_validation_35.0.gnarly.vcf.gz .
-
+WORFLOW_ID=feeca595-85a8-4d2b-b1ef-7f6dc64d714c
+gsutil cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORFLOW_ID}/call-TotallyRadicalGatherVcfs/shard-0/*.gnarly.vcf.gz bq_validation_35.0.gnarly.vcf.gz
 gunzip bq_validation_35.0.gnarly.vcf.gz
 ```
 
@@ -18,20 +18,12 @@ Extract the same region from BQ (using the `spec-ops-aou.kc_acmg_tieout` which w
 
 ```bash
 gatk ExtractCohort --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT -R ~/projects/references/hg38/v0/Homo_sapiens_assembly38.fasta \
-  -O acmg_35_chr1.vcf --local-sort-max-records-in-ram 1000000 --sample-table spec-ops-aou.kc_acmg.metadata  --project-id spec-ops-aou \
-    --cohort-extract-table spec-ops-aou.kc_acmg_tieout.exported_cohort_35_test \
+  -O acmg_35_chr1.vcf --local-sort-max-records-in-ram 1000000 --sample-table spec-ops-aou.kc_acmg_tieout_v2.metadata  --project-id spec-ops-aou \
+    --cohort-extract-table spec-ops-aou.kc_acmg_tieout_v2.exported_cohort_35_test \
       -L chr1:1-35055461
 ```
 
 ## Comparison
-
-### Position Comparison
-
-This shell script compares the two VCFs at the line/position level and output some statistics about that comparison.  Importantly, it also creates two files (`/tmp/only.f1.pos` and `/temp/only.f2.pos`) which contain a list of position that are only found in the first or second files respectively.  This is important so we can ignore those in the site-level comparison
-
-```bash
-./find_common_position.sh bq_validation_35.0.gnarly.vcf acmg_35_chr1.vcf
-```
 
 ### Allele / Genotype Comparison
 
@@ -46,13 +38,13 @@ For example, we are currently ignoring:
 To run the script:
 
 ```bash
-python compare_data.py <first-vcf> <second-vcf> <file-of-positions-to-exclude>
+python compare_data.py <first-vcf> <second-vcf>
 ```
 
 So for example,
 
 ```bash
-python compare_data.py bq_validation_35.0.gnarly.vcf acmg_35_chr1.vcf /tmp/only.f1.pos
+python compare_data.py bq_validation_35.0.gnarly.vcf acmg_35_chr1.vcf
 ```
 
 The output has grown organically to help with debugging discrepancies.  It will look something like this for a difference:
@@ -82,7 +74,7 @@ Where each discrepancy is separated by `------------`
 Download the GenomicsDB TAR for this shard
 
 ```bash
-gsutil cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/52245f96-6b2d-47c3-a191-4119cc31f319/call-ImportGVCFs/shard-0/genomicsdb.tar .
+gsutil cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/feeca595-85a8-4d2b-b1ef-7f6dc64d714c/call-ImportGVCFs/shard-0/genomicsdb.tar .
 
 tar -xf genomicsdb.tar
 WORKSPACE=genomicsdb
@@ -92,9 +84,23 @@ reference="/Users/kcibul/projects/references/hg38/v0/Homo_sapiens_assembly38.fas
 gatk --java-options "-Xms8g -Xdebug -Xrunjdwp:transport=dt_socket,address=5005,server=y,suspend=n" \
   GnarlyGenotyper \
   -R $reference \
-  -O bq_validation_35.0.0.vcf.gz \
+  -O debug_warp.vcf \
   -V gendb://$WORKSPACE \
   --only-output-calls-starting-in-intervals \
   -stand-call-conf 10 \
-  -L chr1:691395-691500
+  -L chr1:602222
+```
+
+```
+dataset="spec-ops-aou.kc_acmg_tieout_v2"
+
+gatk --java-options "-Xms8g -Xdebug -Xrunjdwp:transport=dt_socket,address=5005,server=y,suspend=n" \
+  ExtractCohort --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT \
+  -R $reference \
+  -O acmg_35_debug.vcf \
+  --local-sort-max-records-in-ram 1000000 \
+  --sample-table ${dataset}.metadata  \
+  --project-id spec-ops-aou \
+  --cohort-extract-table ${dataset}.exported_cohort_35_test \
+  -L chr1:602222
 ```
