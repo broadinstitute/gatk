@@ -140,7 +140,6 @@ task CreateTables {
         PARTITION_STRING="--range_partitioning=$PARTITION_FIELD,$PARTITION_START,$PARTITION_END,$PARTITION_STEP"
       fi
 
-      # we are loading ONLY one table, specified by table_id
       printf -v PADDED_TABLE_ID "_%03d" ${TABLE_ID}
       FILES="~{datatype}${PADDED_TABLE_ID}_*"
 
