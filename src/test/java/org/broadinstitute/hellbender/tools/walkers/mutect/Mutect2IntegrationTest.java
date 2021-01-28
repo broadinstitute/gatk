@@ -297,6 +297,26 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(numVariantsPassingFilters < 2);
     }
 
+    // make sure we can call tumor alts when the normal has a different alt at the same site
+    // regression test for https://github.com/broadinstitute/gatk/issues/6901
+    @Test
+    public void testDifferentAltsInTumorAndNormal() {
+        Utils.resetRandomGenerator();
+        final File tumor = new File(toolsTestDir, "mutect/different-alts-tumor.bam");
+        final File normal = new File(toolsTestDir, "mutect/different-alts-normal.bam");
+        final File output = createTempFile("output", ".vcf");
+
+
+        runMutect2(tumor, normal, output, "20:10020000-10021200", b37Reference, Optional.empty(),
+                args -> args.add(M2ArgumentCollection.NORMAL_LOG_10_ODDS_LONG_NAME, 0.0));
+
+        final Map<Integer, Allele> altAllelesByPosition = VariantContextTestUtils.streamVcf(output)
+                .collect(Collectors.toMap(VariantContext::getStart, VariantContext::getAltAlleleWithHighestAlleleCount));
+
+        Assert.assertTrue(altAllelesByPosition.get(10020042).basesMatch(Allele.ALT_C)); //tumor G->C, normal G->A
+        Assert.assertTrue(altAllelesByPosition.get(10020124).basesMatch(Allele.ALT_G)); //tumor A->G, normal A->T
+    }
+    
     // test on an artificial bam with several contrived MNPs
     @Test
     public void testMnps() {
