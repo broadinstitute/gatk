@@ -57,6 +57,7 @@ public class ExtractCohortEngine {
     /** List of sample names seen in the variant data from BigQuery. */
     private Set<String> sampleNames;
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
+    private final GnarlyGenotyperEngine gnarlyGenotyper;
     private final ExtractCohort.QueryMode queryMode;
 
     private int totalNumberOfVariants = 0;
@@ -112,6 +113,7 @@ public class ExtractCohortEngine {
         this.filterSetName = filterSetName;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
+        this.gnarlyGenotyper = new GnarlyGenotyperEngine(false, 30, false, true);
 
     }
 
@@ -428,7 +430,7 @@ public class ExtractCohortEngine {
         // final boolean hasSnpAllele = mergedVC.getAlternateAlleles().stream().anyMatch(allele -> allele.length() == mergedVC.getReference().length());
         final boolean isIndel = !hasSnpAllele;
         // final double sitePrior = isIndel ? HomoSapiensConstants.INDEL_HETEROZYGOSITY : HomoSapiensConstants.SNP_HETEROZYGOSITY;
-        System.out.println("KCIBUL -- in the qualapprox w/ " + totalAsQualApprox + " for isIndel " + isIndel + " and SNP:" + SNP_QUAL_THRESHOLD + " and INDEL:" + INDEL_QUAL_THRESHOLD);
+        // System.out.println("KCIBUL -- in the qualapprox w/ " + totalAsQualApprox + " for isIndel " + isIndel + " and SNP:" + SNP_QUAL_THRESHOLD + " and INDEL:" + INDEL_QUAL_THRESHOLD);
         if((isIndel && totalAsQualApprox < INDEL_QUAL_THRESHOLD) || (!isIndel && totalAsQualApprox < SNP_QUAL_THRESHOLD)) {
             logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
             return;
@@ -468,39 +470,24 @@ public class ExtractCohortEngine {
             }
         }
 
+        // TODO: for easy mode switching, could be a tool parameter if it is useful in the longer term
+        boolean disableGnarlyGenotyper = false;
+
         final VariantContext mergedVC = variantContextMerger.merge(
                 unmergedCalls,
                 new SimpleInterval(contig, (int) start, (int) start),
                 refAllele.getBases()[0],
-                false,
+                disableGnarlyGenotyper?true:false,
                 false,
                 true);
 
 
-//        final VariantContext finalVC = noFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? mergedVC : filterVariants(mergedVC, vqsLodMap, yngMap);
-//
-        GnarlyGenotyperEngine gnarlyGenotyper = new GnarlyGenotyperEngine(false, 30, false, true);
-//        final VariantContext genotypedVC = disableGnarlyGenotyper ? mergedVC : gnarlyGenotyper.finalizeGenotype(mergedVC);
-        VariantContext gnarlyVC = gnarlyGenotyper.finalizeGenotype(mergedVC);
-        final VariantContext finalVC = noFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? gnarlyVC : filterVariants(gnarlyVC, vqsLodMap, yngMap);
-
-
-//        final VariantContext annotatedVC = enableVariantAnnotator ?
-//                variantAnnotator.annotateContext(finalizedVC, new FeatureContext(), null, null, a -> true): finalVC;
-
-//        if ( annotatedVC != null ) {
-//            vcfWriter.add(annotatedVC);
-//            progressMeter.update(annotatedVC);
-//        } else
-
+        final VariantContext genotypedVC = disableGnarlyGenotyper ? mergedVC : gnarlyGenotyper.finalizeGenotype(mergedVC);
+        final VariantContext finalVC = noFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? genotypedVC : filterVariants(genotypedVC, vqsLodMap, yngMap);
 
         if ( finalVC != null ) {
             vcfWriter.add(finalVC);
             progressMeter.update(finalVC);
-//        } else {
-//            // TODO should i print a warning here?
-//            vcfWriter.add(mergedVC);
-//            progressMeter.update(mergedVC);
         }
     }
 
@@ -599,6 +586,10 @@ public class ExtractCohortEngine {
         alleles.add(ref);
         List<Allele> altAlleles = Arrays.stream(sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString().split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER))
                 .map(altAllele -> Allele.create(altAllele, false)).collect(Collectors.toList());
+
+        // NOTE: gnarly needs this it seems?
+        altAlleles.add(Allele.NON_REF_ALLELE);
+
         alleles.addAll(altAlleles);
         builder.alleles(alleles);
 
@@ -611,8 +602,8 @@ public class ExtractCohortEngine {
 
         for ( final String columnName : columnNames ) {
             if ( SchemaUtils.REQUIRED_FIELDS.contains(columnName) ||
-                    columnName.equals(SchemaUtils.LOCATION_FIELD_NAME) ||
-                    columnName.equals(SchemaUtils.AS_QUALapprox )) {
+                    columnName.equals(SchemaUtils.LOCATION_FIELD_NAME)
+               ) {
                 continue;
             }
 
@@ -620,7 +611,12 @@ public class ExtractCohortEngine {
             if ( columnValue == null ) {
                 continue;
             }
-            final String columnValueString = columnValue.toString();
+            String columnValueString = columnValue.toString();
+
+            // need to re-prepend the leading "|" to AS_QUALapprox for use in gnarly
+            if ( columnName.equals(SchemaUtils.AS_QUALapprox) ) {
+                columnValueString = "|" + columnValueString;
+            }
 
             if ( columnName.startsWith(SchemaUtils.GENOTYPE_FIELD_PREFIX) ) {
                 final String genotypeAttributeName = columnName.substring(SchemaUtils.GENOTYPE_FIELD_PREFIX.length());
