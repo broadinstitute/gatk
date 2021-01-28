@@ -159,7 +159,7 @@ task CreateImportTsvs {
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
       ~{for_testing_only}
 
-      gatk --java-options "-Xmx2500m" CreateVariantIngestFiles \
+      gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
         -V ~{input_vcf} \
         -L ~{interval_list} \
         ~{"-IG " + drop_state} \
@@ -178,12 +178,9 @@ task CreateImportTsvs {
       memory: "10 GB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
-      cpu: 2
+      cpu: 1
   }
   output {
-      File metadata_tsv = glob("metadata_*.tsv")[0]
-      File pet_tsv = glob("pet_*.tsv")[0] 
-      File vet_tsv = glob("vet_*.tsv")[0]
       String done = "true"
   }
 }
