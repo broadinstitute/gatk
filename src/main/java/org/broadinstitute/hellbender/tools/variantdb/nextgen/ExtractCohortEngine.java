@@ -283,8 +283,8 @@ public class ExtractCohortEngine {
         }
     }
 
-    private long getQUALapproxFromSampleRecord(GenericRecord sampleRecord) {
-        long qa = 0;
+    private double getQUALapproxFromSampleRecord(GenericRecord sampleRecord) {
+        double qa = 0;
 
         Object o = sampleRecord.get(SchemaUtils.AS_QUALapprox);
 
@@ -297,11 +297,24 @@ public class ExtractCohortEngine {
 
         // TODO: KCIBUL -- unclear how QUALapproxes are summed from non-ref alleles... replicating what I saw but need to confirm with Laura
         if (s.contains("|")) {
+
+            // take the average of all non-* alleles
+            // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part            
+            String[] alleles = sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString().split(",");
             String[] parts = s.split("\\|");
-            qa = Long.parseLong(parts[0]) +
-                 Long.parseLong(parts[1]) / 2; // ceiling or floor?!?
+
+            double total = 0;
+            int count = 0;
+            for (int i=0; i < alleles.length; i++) {
+                if (!"*".equals(alleles[i])) {
+                    total += (double) Long.parseLong(parts[i]);
+                    count++;
+                }
+            }
+
+            qa = total / (double) count;
         } else {
-            qa = Long.parseLong(s);
+            qa = (double) Long.parseLong(s);
         }
         return qa;
     }
@@ -331,7 +344,7 @@ public class ExtractCohortEngine {
             yngMap = fullYngMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
         }
 
-        long totalAsQualApprox = 0;
+        double totalAsQualApprox = 0;
         boolean hasSnpAllele = false;
         final List<String> nonUniqueSamplesSeen = new ArrayList<>();
 
@@ -352,9 +365,12 @@ public class ExtractCohortEngine {
                     unmergedCalls.add(vc);
 
                     totalAsQualApprox += getQUALapproxFromSampleRecord(sampleRecord);
-                    if (vc.isSNP()) {
-                        hasSnpAllele = true;
-                    }
+
+                    // hasSnpAllele should be set to true if any sample has at least one snp (gnarly definition here)                    
+                    boolean thisHasSnp = vc.getAlternateAlleles().stream().anyMatch(allele -> allele != Allele.SPAN_DEL && allele.length() == vc.getReference().length());
+//                    logger.info("\t" + contig + ":" + currentPosition + ": calculated thisHasSnp of " + thisHasSnp + " from " + vc.getAlternateAlleles() + " and ref " + vc.getReference());
+                    hasSnpAllele = hasSnpAllele || thisHasSnp;
+
                     currentPositionHasVariant = true;
                     break;
                 case "0":   // Non Variant Block with GQ < 10
@@ -399,56 +415,6 @@ public class ExtractCohortEngine {
                     throw new GATKException("Unrecognized state: " + sampleRecord.get(SchemaUtils.STATE_FIELD_NAME).toString());
             }
 
-        }
-
-        // There is a bug in ReblockGVCFs which leads to having overlapping results for a site.  Specifically a preceding reference
-        // block may overlap a variant.  In this case the variant should take precedence.
-        // TODO: this is being fixed by Laura in ReblockGVCFs.  We might also handle this in CreateVariantIngestFile to be robust
-        // and have a clean database. However, for tieout, this is the most expedient way to handle this.
-        Set<String> duplicates = findDuplicates(nonUniqueSamplesSeen);
-
-        if ( duplicates.size() > 0 ) {
-//            System.out.println(unmergedCalls);
-//            System.out.println(nonUniqueSamplesSeen);
-            System.out.println("Duplicate data detected for " + duplicates + " at " + contig + ":" + currentPosition);
-            Map<String, List<VariantContext>> dupData = new HashMap<>();
-
-            // initialize data structure
-            for ( String sampleName : duplicates) {
-                dupData.put(sampleName, new ArrayList<>());
-            }
-
-            // pull out the duplicates
-            for (VariantContext vc : unmergedCalls) {
-                String sampleName = vc.getSampleNames().stream().findFirst().get();
-                if (duplicates.contains(sampleName)) {
-                    dupData.get(sampleName).add(vc);
-                }
-            }
-
-            // remove from original list
-            unmergedCalls.removeIf(vc -> duplicates.contains(vc.getSampleNames().stream().findFirst().get()));
-
-            // Process the duplicates
-            for ( Map.Entry<String, List<VariantContext>> entry : dupData.entrySet()) {
-                List<VariantContext> variants    = entry.getValue().stream().filter(e -> !e.getGenotypes(entry.getKey()).get(entry.getKey()).isHomRef()).collect(Collectors.toList());
-                List<VariantContext> nonVariants = entry.getValue().stream().filter(e ->  e.getGenotypes(entry.getKey()).get(entry.getKey()).isHomRef()).collect(Collectors.toList());
-
-                if (variants.size() > 1) {
-                    throw new GATKException("Conflicting VC records!!" + entry);
-                } else if (variants.size() == 1) {
-                    unmergedCalls.add(variants.get(0));
-                } else if (nonVariants.size() == 0) {
-                    // this can happen if we have two * alleles or something else that doesn't get emitted
-                } else {
-                    // sort by GQ descending and take first
-                    nonVariants.sort((vc1, vc2) -> vc2.getGenotypes(entry.getKey()).get(entry.getKey()).getGQ() - vc1.getGenotypes(entry.getKey()).get(entry.getKey()).getGQ());
-                    System.out.println(variants);
-                    System.out.println(nonVariants);
-
-                    unmergedCalls.add(nonVariants.iterator().next());
-                }
-            }
         }
 
 

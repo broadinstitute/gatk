@@ -110,7 +110,7 @@ public final class PetTsvCreator {
 
     }
 
-    public void apply(VariantContext variant, List<GenomeLoc> intervalsToWrite, boolean isSpanDelVariant) throws IOException {
+    public void apply(VariantContext variant, List<GenomeLoc> intervalsToWrite) throws IOException {
         boolean firstInterval = true;
         final String variantChr = variant.getContig();
 
@@ -127,22 +127,11 @@ public final class PetTsvCreator {
                 setCoveredInterval(variantChr, start, end);
             }
 
-            // // don't ever write out spanning deletion variants in PET, the upstream deletion would write these entries
-            // // however we have to process this in here because the notion of "covered sites" is private to this class
-            // if (isSpanDelVariant) {
-            //     // add interval to "covered" intervals
-            //     setCoveredInterval(variantChr, start, end);
-            // }
-
             // create PET output if the reference block's GQ is not the one to discard or its a variant
             if (!variant.isReferenceBlock() || !this.gqStatesToIgnore.contains(PetTsvCreator.getGQStateEnum(variant.getGenotype(0).getGQ()))) {
 
                 // add interval to "covered" intervals
                 setCoveredInterval(variantChr, start, end);
-
-                // don't ever write out spanning deletion variants in PET, the upstream deletion would write these entries
-                // however we have to process this in here because the notion of "covered sites" is private to this class
-//               ...
 
                 List<List<String>> TSVLinesToCreatePet;
                 // handle deletions that span across multiple intervals

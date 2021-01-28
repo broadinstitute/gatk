@@ -13,8 +13,8 @@ workflow NgsCohortExtract {
         String fq_sample_table
         String fq_cohort_extract_table
         String query_project
-        String fq_filter_set_table
-        String filter_set_name
+        String? fq_filter_set_table
+        String? filter_set_name
     
         String output_file_base_name
         File? gatk_override
@@ -68,8 +68,8 @@ task ExtractTask {
         String fq_cohort_extract_table
         String read_project_id
         String output_file
-        String fq_filter_set_table
-        String filter_set_name
+        String? fq_filter_set_table
+        String? filter_set_name
         
         # Runtime Options:
         File? gatk_override
@@ -96,8 +96,8 @@ task ExtractTask {
                 --cohort-extract-table ~{fq_cohort_extract_table} \
                 -L ~{intervals} \
                 --project-id ~{read_project_id} \
-                --variant-filter-table ~{fq_filter_set_table} \
-                --filter-set-name ~{filter_set_name}
+                ~{"--variant-filter-table " + fq_filter_set_table} \
+                ~{"--filter-set-name " + filter_set_name}
     >>>
 
     # ------------------------------------------------

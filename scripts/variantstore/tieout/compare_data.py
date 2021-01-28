@@ -30,7 +30,7 @@ def parseline(e, header):
     parts = e.strip().split("\t")
 
     data['chrom'] = parts[0]
-    data['pos'] = parts[1]
+    data['pos'] = int(parts[1])
     data['id'] = parts[2]
     ref= parts[3]
     data['orig_alt'] = parts[4]
@@ -62,9 +62,15 @@ def parseline(e, header):
 
 def equals(e1, e2, key):
     return (key in e1 and key in e2 and e1[key] == e2[key])
-#        print(f"DIFF on {key}")
-#        print(f"{e1}")
-#        print(f"{e2}")
+
+def equals_int(e1, e2, key, tolerance):
+    if (key in e1 and key in e2):
+        v1 = int(e1[key]) if e1[key] != "." else -1
+        v2 = int(e2[key]) if e2[key] != "." else -1
+        
+        return (abs(v2-v1) <= tolerance)
+    else:
+        return False
 
 def compare_float(e1, e2, key, tolerance):
     # compare directly first, also handles '.' case
@@ -150,7 +156,7 @@ def compare_sample_data(e1, e2):
     for sample_id in sd1.keys():
         # if either has a GQ... compare it!
         if 'GQ' in sd1[sample_id] or 'GQ' in sd2[sample_id]:
-            if not equals(sd1[sample_id], sd2[sample_id], 'GQ'):
+            if not equals_int(sd1[sample_id], sd2[sample_id], 'GQ', 2):
                 log_difference('GQ', e1, e2, sample_id) 
 
         # if both have RGQ compare it (unlikely)
@@ -207,7 +213,19 @@ with open(vcf_file_1) as file1, open(vcf_file_2) as file2:
         # parse out data
         e1 = parseline(line1, header1)
         e2 = parseline(line2, header2)
-        
+
+        while (e1['pos'] != e2['pos']):
+            if (e1['pos'] < e2['pos']):
+                print(f"DIFF on position {e1['chrom']}:{e1['pos']} is MISSING in file 2.  Advancing")
+                print("--------------")
+                line1 = get_next_line(file1)    
+                e1 = parseline(line1, header1)
+            else:
+                print(f"DIFF on position {e2['chrom']}:{e2['pos']} is MISSING in file 1.  Advancing")
+                print("--------------")
+                line2 = get_next_line(file2)
+                e2 = parseline(line2, header2)
+
         # do the comparison of exact matches at the position level
         for key in ['chrom','pos','id', 'ref']:
             if not equals(e1, e2, key):
