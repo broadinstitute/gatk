@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SamReaderFactory;
 import org.apache.commons.pool.BasePoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -14,8 +15,8 @@ import java.util.List;
  */
 public final class ReadsDataSourcePool extends GenericObjectPool<ReadsPathDataSource> implements AutoCloseable {
 
-    public ReadsDataSourcePool(final List<Path> readPaths) {
-        super(new Factory(readPaths));
+    public ReadsDataSourcePool(final List<Path> readPaths, final Path referencePath) {
+        super(new Factory(readPaths, referencePath));
         setWhenExhaustedAction(WHEN_EXHAUSTED_GROW);
     }
 
@@ -57,8 +58,13 @@ public final class ReadsDataSourcePool extends GenericObjectPool<ReadsPathDataSo
     private static class Factory extends BasePoolableObjectFactory<ReadsPathDataSource> {
 
         private final List<Path> paths;
+        private final SamReaderFactory factory;
 
-        private Factory(final List<Path> paths) {
+        private Factory(final List<Path> paths, final Path referencePath) {
+            this.factory = SamReaderFactory.makeDefault();
+            if (referencePath != null) {
+                this.factory.referenceSequence(referencePath);
+            }
             this.paths = new ArrayList<>(paths);
         }
 
