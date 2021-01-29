@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.contamination;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.curator.shaded.com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.BetaDistributionShape;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -24,7 +23,7 @@ public class VariationalContamination {
     public Pair<Double, Double> calculateContaminationFromHoms(List<PileupSummary> sites){
         int allBases = sites.stream().mapToInt(s -> s.getTotalCount()).sum();
         if (errorRate == 0.0){
-            errorRate = 1.0/allBases; // If the reported error rate is none
+            errorRate = 1.0/allBases; // If the reported sequencing error rate is 0
         }
 
         // Variational E-step
@@ -49,45 +48,27 @@ public class VariationalContamination {
                 final int otherAltCount = site.getOtherAltCount();
 
                 // I believe we don't need to worry about losing precision since we normalize for each base
-                double refGivenContam = getConditionalLogProbability(ReadAllele.REF, State.CONTAMINATION, f);
-                double refGivenGood = getConditionalLogProbability(ReadAllele.REF, State.GOOD, f);
-                double unnormalizedResponsibilityContamRef = Math.exp(contamination.getLogMean() + refGivenContam);
-                double unnormalizedResponsibilityGoodRef = Math.exp(contamination.getExpectationLog1MinusP() + refGivenGood);
-                double responsibilityRefBase = unnormalizedResponsibilityContamRef / (unnormalizedResponsibilityContamRef + unnormalizedResponsibilityGoodRef);
-                double effectiveContamRefBaseCountForSite = refCount * responsibilityRefBase;
-                double effectiveGoodRefBaseCountForSite = refCount * (1-responsibilityRefBase);
-                if (Math.abs(effectiveContamRefBaseCountForSite + effectiveGoodRefBaseCountForSite - refCount) > 1e-3){
-                    throw new UserException("Ref effective counts don't add up");
-                }
-                effectiveContaminationBaseCount += effectiveContamRefBaseCountForSite;
-                effectiveGoodBaseCount += effectiveGoodRefBaseCountForSite;
+                double effectiveContaminationBaseCountForSite = 0.0;
+                double effectiveGoodBaseCountForSite = 0.0;
 
-                double altGivenContam = getConditionalLogProbability(ReadAllele.ALT, State.CONTAMINATION, f);
-                double altGivenGood = getConditionalLogProbability(ReadAllele.ALT, State.GOOD, f);
-                double unnormalizedResponsibilityContamAlt = Math.exp(contamination.getLogMean() + altGivenContam);
-                double unnormalizedResponsibilityGoodAlt = Math.exp(contamination.getExpectationLog1MinusP() + altGivenGood);
-                double responsibilityAltBase = unnormalizedResponsibilityContamAlt / (unnormalizedResponsibilityContamAlt + unnormalizedResponsibilityGoodAlt);
-                double effectiveContamAltBaseCountForSite = altCount * responsibilityAltBase;
-                double effectiveGoodAltBaseCountForSite = altCount * (1-responsibilityAltBase);
-                if (Math.abs(effectiveContamAltBaseCountForSite + effectiveGoodAltBaseCountForSite - altCount) > 1e-3){
-                    throw new UserException("Alt effective counts don't add up");
-                }
-                effectiveContaminationBaseCount += effectiveContamAltBaseCountForSite;
-                effectiveGoodBaseCount += effectiveGoodAltBaseCountForSite;
 
-                double otherAltGivenContam = getConditionalLogProbability(ReadAllele.OTHER_ALT, State.CONTAMINATION, f);
-                double otherAltGivenGood = getConditionalLogProbability(ReadAllele.OTHER_ALT, State.GOOD, f);
-                double unnormalizedResponsibilityContamOther = Math.exp(contamination.getLogMean() + otherAltGivenContam);
-                double unnormalizedResponsibilityGoodOther = Math.exp(contamination.getLogMean() + otherAltGivenGood);
-                double responsibilityOtherAltBase = unnormalizedResponsibilityContamOther / (unnormalizedResponsibilityContamOther + unnormalizedResponsibilityGoodOther);
-                double effectiveContamOtherAltBaseCountForSite = otherAltCount * responsibilityOtherAltBase;
-                double effectiveGoodOtherAltBaseCountForSite = otherAltCount * (1.0 - responsibilityOtherAltBase);
-                if (Math.abs(effectiveContamOtherAltBaseCountForSite + effectiveGoodOtherAltBaseCountForSite - otherAltCount) > 1e-3){
-                    throw new UserException("Other alt effective counts don't add up");
-                }
+                final Pair<Double, Double> refEffectiveCounts = getEffectiveCounts(refCount, ReadAllele.REF, f);
+                effectiveContaminationBaseCountForSite += refEffectiveCounts.getLeft();
+                effectiveGoodBaseCountForSite += refEffectiveCounts.getRight();
 
-                effectiveContaminationBaseCount += effectiveContamOtherAltBaseCountForSite;
-                effectiveGoodBaseCount += effectiveGoodOtherAltBaseCountForSite;
+                final Pair<Double, Double> altEffectiveCounts = getEffectiveCounts(altCount, ReadAllele.ALT, f);
+                effectiveContaminationBaseCountForSite += altEffectiveCounts.getLeft();
+                effectiveGoodBaseCountForSite += altEffectiveCounts.getRight();
+
+                final Pair<Double, Double> otherAltEffectiveCounts = getEffectiveCounts(otherAltCount, ReadAllele.OTHER_ALT, f);
+                effectiveContaminationBaseCountForSite += otherAltEffectiveCounts.getLeft();
+                effectiveGoodBaseCountForSite += otherAltEffectiveCounts.getRight();
+
+                effectiveContaminationBaseCount += effectiveContaminationBaseCountForSite;
+                effectiveGoodBaseCount += effectiveGoodBaseCountForSite;
+                if (Math.abs(effectiveContaminationBaseCountForSite + effectiveGoodBaseCountForSite - site.getTotalCount()) > 1e-3){
+                    throw new UserException("Effective Counts don't add up.");
+                }
             }
 
             // Variaitonal M-step
@@ -131,9 +112,9 @@ public class VariationalContamination {
         double logAlleleLikelihoodGivenContamination = getConditionalLogProbability(allele, State.CONTAMINATION, f);
         double logAlleleLikelihoodGivenGood = getConditionalLogProbability(allele, State.GOOD, f);
         double[] responsibility = MathUtils.normalizeFromLog10ToLinearSpace(new double[]{
-                contamination.getLogMean() + logAlleleLikelihoodGivenContamination, contamination.getExpectationLog1MinusP() + logAlleleLikelihoodGivenGood });
+                contamination.getExpectationOfLog() + logAlleleLikelihoodGivenContamination, contamination.getExpectationOfLog1MinusP() + logAlleleLikelihoodGivenGood });
         double effectiveContamCount = count * responsibility[CONTAMINTION_INDEX];
-        double effectiveGoodCount = count * (1.0-responsibility[GOOD_INDEX]);
+        double effectiveGoodCount = count * responsibility[GOOD_INDEX];
         if (Math.abs(effectiveContamCount + effectiveGoodCount - count) > 1e-3){
             throw new UserException("Effective counts don't add up");
         }

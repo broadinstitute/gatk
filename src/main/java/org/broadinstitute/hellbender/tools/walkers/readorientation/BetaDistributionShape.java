@@ -27,11 +27,11 @@ public class BetaDistributionShape {
     }
 
     // sato: add tests
-    public double getLogMean() {
+    public double getExpectationOfLog() {
         return Gamma.digamma(alpha) - Gamma.digamma(alpha + beta);
     }
 
-    public double getExpectationLog1MinusP() {
+    public double getExpectationOfLog1MinusP() {
         return Gamma.digamma(beta) - Gamma.digamma(alpha + beta);
     }
 
