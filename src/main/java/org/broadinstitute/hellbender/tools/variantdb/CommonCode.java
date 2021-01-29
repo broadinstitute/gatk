@@ -26,15 +26,6 @@ public class CommonCode {
     public static String CALL_RATE_FILTER = "CALL_RATE";
     public static String INVARIANT_FILTER = "INVARIANT";
 
-    public static String getGTString(final VariantContext variant) {
-        List<Integer> allele_indices = getGTAlleleIndexes(variant);
-        if (allele_indices.size() != 2){
-            throw new IllegalArgumentException("GT doesnt have two alleles");
-        }
-        List<String> gsStrings = allele_indices.stream().map(index -> index == -1 ? "." : index.toString()).collect(Collectors.toList());
-        String separator = variant.getGenotype(0).isPhased() ? VCFConstants.PHASED : VCFConstants.UNPHASED;
-        return StringUtils.join(gsStrings, separator);
-    }
 
     /**
      * If the alleles are "missing", -1 will be returned as the index
@@ -56,18 +47,9 @@ public class CommonCode {
         if (allele_indices.size() != 2){
             throw new IllegalArgumentException("GT doesnt have two alleles");
         }
+        List<String> gsStrings = allele_indices.stream().map(index -> index == -1 ? "." : index.toString()).collect(Collectors.toList());
         String separator = variant.getGenotype(0).isPhased() ? VCFConstants.PHASED : VCFConstants.UNPHASED;
-        return StringUtils.join(allele_indices, separator);
-    }
-
-    public static List<Integer> getGTAlleleIndexes(final VariantContext variant) {
-        IndexedAlleleList<Allele> alleleList = new IndexedAlleleList<>(variant.getAlleles());
-        ArrayList<Integer> allele_indices = new ArrayList<Integer>();
-
-        for (Allele allele : variant.getGenotype(0).getAlleles()) {
-            allele_indices.add(alleleList.indexOfAllele(allele));
-        }
-        return allele_indices;
+        return StringUtils.join(gsStrings, separator);
     }
 
     public static VCFHeader generateRawArrayVcfHeader(Set<String> sampleNames, final SAMSequenceDictionary sequenceDictionary) {       

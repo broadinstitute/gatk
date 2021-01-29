@@ -61,7 +61,7 @@ public class IngestUtils {
     public static int getTableNumber(long sampleId, int sampleMod) { // this is based on sample id
         // sample ids 1-4000 will go in directory 001
         // subtract 1 from the sample id to make it 1-index (or do we want to 0-index?) and add 1 to the dir
-        int directoryNumber = new Long(Math.floorDiv((sampleId - 1), sampleMod) + 1).intValue(); // TODO omg write some unit tests
+        int directoryNumber = (int) Math.floorDiv((sampleId - 1), (long) sampleMod) + 1; // TODO omg write some unit tests
         return directoryNumber;
     }
 
