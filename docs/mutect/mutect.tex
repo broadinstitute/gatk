@@ -247,17 +247,17 @@ Several filters are hard filters that assign an error probability of 1 whenever 
 
 \begin{table}[h!]
 \centering
- \begin{tabular}{|| c c c ||} 
+ \begin{tabular}{|| l l l ||} 
  \hline
  Filter & Threshold & Explanation \\ [0.5ex] 
  \hline\hline
  \code{clustered\_events} & \code{max-events-in-region} & mutations sharing an assembly region \\
  \code{duplicate\_evidence} & \code{unique-alt-read-count} & unique insert start/end pairs of alt reads \\
  \code{multiallelic} & \code{max-alt-alleles-count} & passing alt alleles at a site \\
- \code{base\_quality} & \code{min-median-base-quality} & median base quality of alt reads \\
- \code{mapping\_quality} & \code{min-median-mapping-quality} & median mapping quality of alt reads \\
- \code{fragment\_length} & \code{max-median-fragment-length-difference} & difference of alt and ref reads' median fragment lengths \\
- \code{read\_position} &\code{min-median-read-position} & median distance of alt mutations from end of read \\
+ \code{base\_qual} & \code{min-median-base-quality} & median base quality of alt reads \\
+ \code{map\_qual} & \code{min-median-mapping-quality} & median mapping quality of alt reads \\
+ \code{fragment} & \code{max-median-fragment-length-difference} & difference of alt and ref reads' median fragment lengths \\
+ \code{position} &\code{min-median-read-position} & median distance of alt mutations from end of read \\
  \code{panel\_of\_normals} & \code{panel-of-normals}  & presence in panel of normals \\
  \hline
  \end{tabular}
@@ -526,7 +526,7 @@ Once we have learned the parameters of this model, we can easily infer the poste
 Finally, we note that the same calculation can be reversed by using alt reads in hom ref sites as the signal and replacing $f$ by $1-f$ everywhere above.  We use the estimate from hom refs as a backup when the hom alt estimate has too great an error, as can occur in the case of targeted panels with few sites.  We do not use this as our primary estimate because it is much more affected by uncertainty in the population allele frequencies and is thus susceptible to systematic bias.
 
 \subsection{Filtering Alignment Artifacts}
-\code{FilterMutectCalls} does a fairly good job detecting all sorts of errors, including mapping artifacts.  When more precision is needed and a slight loss of sensitivity is acceptable, one can run the output of \code{FilterMutectCalls} through \code{FilterAlignmentArtifacts}.  This tool looks at every alt-supporting read together with its mate and maps both to the best reference available\footnote{That is, if the reads come from an hg19-aligned bam, they will still be realigned to hg38 if that is provided.} using an embedded BWA-mem with parameters optimized for detecting multimapping.  The tool requires a BWA mem reference image index file, which is available from the GATK resource bucket.  The first step below, in which this image is generated, is usually not necessary.
+\code{FilterMutectCalls} does a fairly good job detecting all sorts of errors, including mapping artifacts.  When more precision is needed and a slight loss of sensitivity is acceptable, one can run the output of \code{FilterMutectCalls} through \code{FilterAlignmentArtifacts}.  This tool assembles alt-supporting reads together with their mates using the GATK assembly engine in order to generate a local alt allele haplotype.  It then maps this alt haplotype to the best reference available\footnote{That is, if the reads come from an hg19-aligned bam, they will still be realigned to hg38 if that is provided.} using an embedded BWA-mem with parameters optimized for detecting multimapping.  The tool requires a BWA mem reference image index file, which is available from the GATK resource bucket.  The first step below, in which this image is generated, is usually not necessary.
 
 \begin{lstlisting}[language=bash,caption={FilterAlignmentArtifacts command}, label={cmd-filter-alignment-artifacts}]
 gatk BwaMemIndexImageCreator -I reference.fasta -O reference.fasta.img
