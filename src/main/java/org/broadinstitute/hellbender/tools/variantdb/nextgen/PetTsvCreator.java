@@ -87,7 +87,6 @@ public final class PetTsvCreator {
     public enum GQStateEnum {
         VARIANT("v"),
         STAR("*"),
-        SPANDEL("+"),
         ZERO("0"),
         TEN("1"),
         TWENTY("2"),

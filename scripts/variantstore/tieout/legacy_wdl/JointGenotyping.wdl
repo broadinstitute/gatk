@@ -66,7 +66,9 @@ workflow JointGenotyping {
     Boolean scatter_cross_check_fingerprints = false
   }
 
-  Boolean allele_specific_annotations = !use_gnarly_genotyper && use_allele_specific_annotations
+  # Confirmed with Laura -- this should be changed to allow AS w/ Gnarly
+  # Boolean allele_specific_annotations = !use_gnarly_genotyper && use_allele_specific_annotations
+  Boolean allele_specific_annotations = use_allele_specific_annotations
 
   Array[Array[String]] sample_name_map_lines = read_tsv(sample_name_map)
   Int num_gvcfs = length(sample_name_map_lines)

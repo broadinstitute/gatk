@@ -261,9 +261,9 @@ with open(vcf_file_1) as file1, open(vcf_file_2) as file2:
                 log_difference(key, e1, e2) 
 
         # TODO: temporary until we decide what to do with spanning deletions
-        if ('*' in e1['alt']):
+#        if ('*' in e1['alt']):
 #            print(f"Dropping {e1['chrom']}:{e1['pos']} due to * allele")
-            continue
+#            continue
             
         # compare the minimized version of ref/alt
         compare_alts(e1['alt'], e2['alt'])

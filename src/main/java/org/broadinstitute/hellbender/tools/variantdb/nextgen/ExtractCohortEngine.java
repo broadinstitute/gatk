@@ -397,15 +397,6 @@ public class ExtractCohortEngine {
                     unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 60));
                     break;
                 case "*":   // Spanning Deletion - do nothing. just mark the sample as seen
-                    // KCIBUL 12-22-2020 - incorporate qualapprox value to match existing GenomicsDB/Gnarly behavior
-                    // Also a strange case (see ACMG59 SM-GXZUO @ chr1:10440) where we have multiple PET records for the same position
-                    // A spanning deletion (*) overlapping a variant (v) and a reference block (2)
-                    // Only count quals when the PET = '*' AND the variant allele is '*' (ie not inferred spanning deletion)
-                    Object o = sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME);
-                    if (o != null && "*".equals(o.toString())) {
-                        totalAsQualApprox += getQUALapproxFromSampleRecord(sampleRecord);
-                    }
-
                     break;
                 case "m":   // Missing
                     // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
@@ -425,11 +416,8 @@ public class ExtractCohortEngine {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        // TODO: KCIBUL - we can optimize this by pushing this back into the query
-        // Replicating this logic:
-        // final boolean hasSnpAllele = mergedVC.getAlternateAlleles().stream().anyMatch(allele -> allele.length() == mergedVC.getReference().length());
+        // same qualapprox check as Gnarly
         final boolean isIndel = !hasSnpAllele;
-        // final double sitePrior = isIndel ? HomoSapiensConstants.INDEL_HETEROZYGOSITY : HomoSapiensConstants.SNP_HETEROZYGOSITY;
         // System.out.println("KCIBUL -- in the qualapprox w/ " + totalAsQualApprox + " for isIndel " + isIndel + " and SNP:" + SNP_QUAL_THRESHOLD + " and INDEL:" + INDEL_QUAL_THRESHOLD);
         if((isIndel && totalAsQualApprox < INDEL_QUAL_THRESHOLD) || (!isIndel && totalAsQualApprox < SNP_QUAL_THRESHOLD)) {
             logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
@@ -440,19 +428,6 @@ public class ExtractCohortEngine {
         finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele, vqsLodMap, yngMap, noFilteringRequested);
     }
 
-    private <T> Set<T> findDuplicates(Collection<T> collection) {
-
-        Set<T> duplicates = new LinkedHashSet<>();
-        Set<T> uniques = new HashSet<>();
-
-        for(T t : collection) {
-            if(!uniques.add(t)) {
-                duplicates.add(t);
-            }
-        }
-
-        return duplicates;
-    }
     private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls, final Set<String> currentVariantSamplesSeen, final boolean currentPositionHasVariant, final String contig, final long start, final Allele refAllele, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean noFilteringRequested) {
         // If there were no variants at this site, we don't emit a record and there's nothing to do here
         if ( ! currentPositionHasVariant ) {
