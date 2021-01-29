@@ -348,12 +348,10 @@ public class ExtractCohortEngine {
 
         double totalAsQualApprox = 0;
         boolean hasSnpAllele = false;
-        final List<String> nonUniqueSamplesSeen = new ArrayList<>();
 
         for ( final GenericRecord sampleRecord : sampleRecordsAtPosition ) {
             final String sampleName = sampleRecord.get(SchemaUtils.SAMPLE_NAME_FIELD_NAME).toString();
             currentPositionSamplesSeen.add(sampleName);
-            nonUniqueSamplesSeen.add(sampleName);
             ++numRecordsAtPosition;
 
             if ( printDebugInformation ) {
