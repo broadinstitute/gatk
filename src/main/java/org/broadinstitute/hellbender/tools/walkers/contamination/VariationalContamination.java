@@ -2,8 +2,10 @@ package org.broadinstitute.hellbender.tools.walkers.contamination;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.curator.shaded.com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.BetaDistributionShape;
+import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.util.List;
 
@@ -110,20 +112,45 @@ public class VariationalContamination {
         return new ImmutablePair<>(contamination.getMean(), Math.sqrt(contamination.getVariance()));
     }
 
-    private enum State {
-        CONTAMINATION, GOOD
+    public enum State {
+        CONTAMINATION(0), GOOD(1);
+
+        int index = -1;
+        State(int index){
+            this.index = index;
+        }
     }
 
-    private enum ReadAllele {
+    public enum ReadAllele {
         REF, ALT, OTHER_ALT
     }
 
+    public Pair<Double, Double> getEffectiveCounts(int count, ReadAllele allele, double f){
+        final int CONTAMINTION_INDEX = 0;
+        final int GOOD_INDEX = 1;
+        double logAlleleLikelihoodGivenContamination = getConditionalLogProbability(allele, State.CONTAMINATION, f);
+        double logAlleleLikelihoodGivenGood = getConditionalLogProbability(allele, State.GOOD, f);
+        double[] responsibility = MathUtils.normalizeFromLog10ToLinearSpace(new double[]{
+                contamination.getLogMean() + logAlleleLikelihoodGivenContamination, contamination.getExpectationLog1MinusP() + logAlleleLikelihoodGivenGood });
+        double effectiveContamCount = count * responsibility[CONTAMINTION_INDEX];
+        double effectiveGoodCount = count * (1.0-responsibility[GOOD_INDEX]);
+        if (Math.abs(effectiveContamCount + effectiveGoodCount - count) > 1e-3){
+            throw new UserException("Effective counts don't add up");
+        }
+        return new ImmutablePair<>(effectiveContamCount, effectiveGoodCount);
+    }
 
-    public double getConditionalLogProbability(final ReadAllele readAllele, final State state, final double af){
+
+    /**
+     *
+     * Computes log p(x=allle|z=state)
+     * @param f allele frequency at the site
+     */
+    public double getConditionalLogProbability(final ReadAllele readAllele, final State state, final double f){
         if (readAllele == ReadAllele.REF){
-            return state == State.CONTAMINATION ? Math.log((1.0-af)*(1-errorRate) + af*errorRate/3.0) : Math.log(errorRate/3.0);
+            return state == State.CONTAMINATION ? Math.log((1.0-f)*(1-errorRate) + f*errorRate/3.0) : Math.log(errorRate/3.0);
         } else if (readAllele == ReadAllele.ALT) {
-            return state == State.CONTAMINATION ? Math.log(af*(1-errorRate) + (1-af)*errorRate/3.0) : Math.log(1.0-errorRate);
+            return state == State.CONTAMINATION ? Math.log(f*(1-errorRate) + (1-f)*errorRate/3.0) : Math.log(1.0-errorRate);
         } else {
             return Math.log(2.0 * errorRate / 3.0);
         }
