@@ -6,9 +6,12 @@ import it.unimi.dsi.fastutil.ints.*;
 import org.apache.commons.io.output.NullOutputStream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
@@ -43,8 +46,10 @@ import java.util.stream.*;
 @CommandLineProgramProperties(
         summary = "estimates the parameters for the DRAGstr model for the input sample",
         oneLineSummary = "summary",
-        programGroup = ExampleProgramGroup.class
+        programGroup = ShortVariantDiscoveryProgramGroup.class
 )
+@BetaFeature
+@DocumentedFeature
 public class CalibrateDragstrModel extends GATKTool {
 
     public static final String STR_TABLE_PATH_SHORT_NAME = "str";

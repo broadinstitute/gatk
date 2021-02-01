@@ -70,7 +70,7 @@ public final class ReadsDataSourcePool extends GenericObjectPool<ReadsPathDataSo
 
         @Override
         public ReadsPathDataSource makeObject() {
-            return new ReadsPathDataSource(paths);
+            return new ReadsPathDataSource(paths, factory);
         }
 
         @Override
