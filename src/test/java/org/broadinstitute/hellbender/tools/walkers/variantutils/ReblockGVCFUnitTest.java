@@ -77,6 +77,32 @@ public class ReblockGVCFUnitTest {
         final VariantContext noData = makeDeletionVC("noData", Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE), LONG_REF.length(), g2);
         final VariantContext notCrashing = reblocker.lowQualVariantToGQ0HomRef(noData, noData);
         Assert.assertTrue(notCrashing.getGenotype(0).isNoCall());
+
+        //haploid hom ref call
+        final int[] pls = {0, 35, 72};
+        final GenotypeBuilder gb = new GenotypeBuilder("male_sample", Arrays.asList(LONG_REF)).PL(pls);
+        final VariantContextBuilder vb = new VariantContextBuilder();
+        vb.chr("20").start(10001).stop(10004).alleles(Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE)).log10PError(-3.0).genotypes(gb.make());
+        final VariantContext vc = vb.make();
+
+        final VariantContext haploidRefBlock = reblocker.lowQualVariantToGQ0HomRef(vc, vc);
+        final Genotype newG = haploidRefBlock.getGenotype("male_sample");
+
+        Assert.assertEquals(newG.getPloidy(), 1);
+        Assert.assertEquals(newG.getGQ(), 35);
+    }
+
+    @Test
+    public void testCalledHomRefGetsAltGQ() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+
+        final Genotype g3 = makeG("sample1", LONG_REF, LONG_REF, 0, 11, 37, 100, 200, 400);
+        final VariantContext twoAltsHomRef = makeDeletionVC("lowQualVar", Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE), LONG_REF.length(), g3);
+        final GenotypeBuilder takeGoodAltGQ = reblocker.changeCallToGQ0HomRef(twoAltsHomRef, new HashMap<>());
+        final Genotype nowRefBlock = takeGoodAltGQ.make();
+        Assert.assertEquals(nowRefBlock.getGQ(), 11);
+        Assert.assertEquals(nowRefBlock.getDP(), 18);
+        Assert.assertEquals((int)nowRefBlock.getExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY), 18);
     }
 
     @Test
@@ -112,7 +138,8 @@ public class ReblockGVCFUnitTest {
     private VariantContext makeDeletionVC(final String source, final List<Allele> alleles, final int refLength, final Genotype... genotypes) {
         final int start = 10;
         final int stop = start+refLength-1;
-        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).unfiltered().make();
+        return new VariantContextBuilder(source, "1", start, stop, alleles)
+                .genotypes(Arrays.asList(genotypes)).unfiltered().log10PError(-3.0).attribute(VCFConstants.DEPTH_KEY, 18).make();
     }
 
     private Genotype addAD(final Genotype g, final int... ads) {

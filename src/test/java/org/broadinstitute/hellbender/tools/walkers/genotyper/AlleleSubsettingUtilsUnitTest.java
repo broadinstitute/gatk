@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -366,7 +365,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
         final VariantContext vc1 = new VariantContextBuilder("source", "contig", 1, 1, twoAlleles)
                 .genotypes(Arrays.asList(g1, g2, g3, gNull)).make();
 
-        Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc1, 2)[1], 4.2, 1.0e-8);
+        Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc1, 2, false)[1], 4.2, 1.0e-8);
 
         // diploid, triallelic, two samples
         final List<Allele> threeAlleles = Arrays.asList(Aref, C, G);
@@ -390,7 +389,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
         final VariantContext vc2 = new VariantContextBuilder("source", "contig", 1, 1, threeAlleles)
                 .genotypes(Arrays.asList(g4, g5)).make();
 
-        final double[] likelihoodSums2 = AlleleSubsettingUtils.calculateLikelihoodSums(vc2, 2);
+        final double[] likelihoodSums2 = AlleleSubsettingUtils.calculateLikelihoodSums(vc2, 2, false);
         Assert.assertEquals(likelihoodSums2[1], 4.1, 1.0e-8);
         Assert.assertEquals(likelihoodSums2[2], 3.1, 1.0e-8);
 
@@ -405,7 +404,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
         final VariantContext vc3 = new VariantContextBuilder("source", "contig", 1, 1, twoAlleles)
                 .genotypes(Arrays.asList(g6)).make();
 
-        Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc3, 3)[1], 3.5, 1.0e-8);
+        Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc3, 3, false)[1], 3.5, 1.0e-8);
     }
 
     // This test exists to enforce the behavior that AlleleSubsetting utils can be used to reorder alleles, if a developer

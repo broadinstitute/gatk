@@ -122,7 +122,7 @@ public final class VariantsSparkSink {
         final JavaRDD<VariantContext> sortedVariants = sortVariantsToHeader ? sortVariants(variants, header, numReducers) : variants;
         final JavaRDD<VariantContext> variantsToSave;
         if (writeGvcf) {
-            GVCFBlockCombiner gvcfBlockCombiner = new GVCFBlockCombiner(gqPartitions, defaultPloidy, false);
+            GVCFBlockCombiner gvcfBlockCombiner = new GVCFBlockCombiner(gqPartitions, false);
             gvcfBlockCombiner.addRangesToHeader(header);
             variantsToSave = sortedVariants.mapPartitions((FlatMapFunction<Iterator<VariantContext>, VariantContext>) v -> new GVCFBlockCombiningIterator(v, gqPartitions, defaultPloidy));
         } else {
