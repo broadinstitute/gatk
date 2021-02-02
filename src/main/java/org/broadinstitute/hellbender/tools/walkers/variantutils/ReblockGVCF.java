@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.VariantWalker;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_QualByDepth;
@@ -29,7 +30,6 @@ import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 import picard.cmdline.programgroups.OtherProgramGroup;
 
@@ -76,8 +76,6 @@ import java.util.stream.Collectors;
  *
  * <h3>Caveats</h3>
  * <p>Only single-sample GVCF files produced by HaplotypeCaller can be used as input for this tool.</p>
- * <h3>Special note on ploidy</h3>
- * <p>This tool assumes diploid genotypes.</p>
  *
  */
 @BetaFeature
@@ -194,14 +192,14 @@ public final class ReblockGVCF extends VariantWalker {
         VariantContextWriter writer = createVCFWriter(outputFile);
 
         try {
-            vcfWriter = new GVCFWriter(writer, new ArrayList<Number>(GVCFGQBands), PLOIDY_TWO, floorBlocks);
+            vcfWriter = new GVCFWriter(writer, new ArrayList<Number>(GVCFGQBands), floorBlocks);
         } catch ( IllegalArgumentException e ) {
             throw new IllegalArgumentException("GQBands are malformed: " + e.getMessage(), e);
         }
         vcfWriter.writeHeader(new VCFHeader(headerLines, inputHeader.getGenotypeSamples()));
 
         if (genotypeArgs.samplePloidy != PLOIDY_TWO) {
-            throw new UserException.BadInput("The -ploidy parameter is ignored in " + getClass().getSimpleName() + " tool as this is tool assumes a diploid sample");
+            throw new UserException.BadInput("The -ploidy parameter is ignored in " + getClass().getSimpleName() + " tool as this tool maintains input ploidy for each genotype");
         }
     }
 
@@ -347,27 +345,37 @@ public final class ReblockGVCF extends VariantWalker {
 
         //there are some cases where there are low quality variants with homRef calls AND alt alleles!
         //TODO: the best thing would be to take the most likely alt's likelihoods
-        if (isHomRefCall(originalVC)) {
+        /*if (isHomRefCall(originalVC)) {
             final Genotype genotype = result.getGenotype(0);
             final int[] idxVector = originalVC.getGLIndicesOfAlternateAllele(Allele.NON_REF_ALLELE);   //this is always length 3
             if (genotype.hasPL()) {
                 final int[] multiallelicPLs = genotype.getPL();
-                final int[] newPLs = new int[3];
-                newPLs[0] = multiallelicPLs[idxVector[0]];
-                newPLs[1] = multiallelicPLs[idxVector[1]];
-                newPLs[2] = multiallelicPLs[idxVector[2]];
-                gb.PL(newPLs);
+                try {
+                    final int[] newPLs = new int[3];
+                    newPLs[0] = multiallelicPLs[idxVector[0]];
+                    newPLs[1] = multiallelicPLs[idxVector[1]];
+                    newPLs[2] = multiallelicPLs[idxVector[2]];
+                    gb.PL(newPLs);
+                } catch (IndexOutOfBoundsException e) {
+                    throw new GATKException.ShouldNeverReachHereException("Some kind of PL problem: " + genotype + " at " + originalVC.getContig() + ":" + originalVC.getStart(), e);
+                }
             }
             if (genotype.hasAD()) {
                 int depth = (int) MathUtils.sum(genotype.getAD());
                 gb.DP(depth);
                 gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, depth);
             }
-        }
+        }*/
 
         VariantContextBuilder builder = new VariantContextBuilder(result);
         final Genotype newG = gb.make();
-        return builder.alleles(Arrays.asList(newG.getAlleles().get(0), Allele.NON_REF_ALLELE)).unfiltered().log10PError(VariantContext.NO_LOG10_PERROR).attributes(attrMap).genotypes(newG).make(); //genotyping engine will add lowQual filter, so strip it off
+        try {
+            //genotyping engine will add lowQual filter, so strip it off
+            final VariantContext returnVC = builder.alleles(Arrays.asList(newG.getAlleles().get(0), Allele.NON_REF_ALLELE)).unfiltered().log10PError(VariantContext.NO_LOG10_PERROR).attributes(attrMap).genotypes(newG).make();
+            return returnVC;
+        } catch (IllegalArgumentException e) {
+            throw new GATKException("Bad ref allele at " + result.getContig() + ":" + result.getStart() + " for genotype " + newG.toString());
+        }
     }
 
     /**
@@ -381,17 +389,35 @@ public final class ReblockGVCF extends VariantWalker {
         Genotype genotype = result.getGenotype(0);
         Allele newRef = result.getReference();
         GenotypeBuilder gb = new GenotypeBuilder(genotype);
+        //if GT is not homRef, correct it
+        if (!isHomRefCall(result)) {
+            gb.PL(new int[GenotypeLikelihoods.numLikelihoods(2, genotype.getPloidy())]);  //2 alleles for ref and non-ref
+            gb.GQ(0).noAD().alleles(Collections.nCopies(genotype.getPloidy(), newRef)).noAttributes();
+        } else {
+            final List<Allele> bestAlleles = AlleleSubsettingUtils.calculateMostLikelyAllelesForMonomorphicSite(result, PLOIDY_TWO, 1);
+            final Optional<Allele> bestNonSymbolicAlt = bestAlleles.stream().filter(a -> !a.isReference() && !a.isNonRefAllele()).findFirst();  //allow span dels
+            //here we're assuming that an alt that isn't <NON_REF> will have higher likelihood than non-ref, which should be true
+            final Allele bestAlt = bestNonSymbolicAlt.isPresent() ? bestNonSymbolicAlt.get() : Allele.NON_REF_ALLELE;
+            final GenotypesContext context = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
+                    genotype.getPloidy(), result.getAlleles(), Arrays.asList(result.getReference(), bestAlt),
+                    null, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));  //BEST_MATCH to avoid no-calling low qual genotypes
+            gb = new GenotypeBuilder(context.get(0));
+        }
+        if (result.hasAttribute(VCFConstants.DEPTH_KEY)) {
+            int depth = result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0);
+            gb.DP(depth);
+            gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, depth);
+        } else if (genotype.hasAD()) {
+            int depth = (int) MathUtils.sum(genotype.getAD());
+            gb.DP(depth);
+            gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, depth);
+        }
         //NB: If we're dropping a deletion allele, then we need to trim the reference and add an END tag with the vc stop position
         if (result.getReference().length() > 1) {
             attrMap.put(VCFConstants.END_KEY, result.getEnd());
             newRef = Allele.create(newRef.getBases()[0], true);
-            gb.alleles(Collections.nCopies(PLOIDY_TWO, newRef));
         }
-        //if GT is not homRef, correct it
-        if (!isHomRefCall(result)) {
-            gb.PL(new int[3]);  //3 for diploid PLs, automatically initializes to zero
-            gb.GQ(0).noAD().alleles(Collections.nCopies(PLOIDY_TWO, newRef)).noAttributes();
-        }
+        gb.alleles(Collections.nCopies(genotype.getPloidy(), newRef));
         return gb;
     }
 
@@ -499,11 +525,11 @@ public final class ReblockGVCF extends VariantWalker {
             builder.alleles(newAlleleSet);
             final GenotypesContext gc;
             if(!genotypesWereModified) {
-                gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(), PLOIDY_TWO, result.getAlleles(), newAlleleSet, null, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), false);
+                gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(), g.getPloidy(), result.getAlleles(), newAlleleSet, null, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), false);
                 builder.genotypes(gc);
             }
             else {
-                gc = AlleleSubsettingUtils.subsetAlleles(newGenotypes, PLOIDY_TWO, result.getAlleles(), newAlleleSet, null, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), false);
+                gc = AlleleSubsettingUtils.subsetAlleles(newGenotypes, g.getPloidy(), result.getAlleles(), newAlleleSet, null, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), false);
                 builder.genotypes(gc);
             }
             g = gc.get(0);
@@ -559,7 +585,7 @@ public final class ReblockGVCF extends VariantWalker {
                         continue;
                     }
                     final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
-                            HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), Arrays.asList(result.getReference(), alt), null,
+                            g.getPloidy(), result.getAlleles(), Arrays.asList(result.getReference(), alt), null,
                             GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0), false);
                     if (gc.get(0).hasPL()) {
                         quals.add(Integer.toString(gc.get(0).getPL()[0]));
@@ -569,7 +595,7 @@ public final class ReblockGVCF extends VariantWalker {
                 }
                 attrMap.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM +String.join(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM, quals));
                 List<Integer> as_varDP = AS_QualByDepth.getAlleleDepths(AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
-                        HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), newAlleleSet, null,
+                        g.getPloidy(), result.getAlleles(), newAlleleSet, null,
                         GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0), false));
                 if (as_varDP != null) {
                     attrMap.put(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, as_varDP.stream().map( n -> Integer.toString(n)).collect(Collectors.joining(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM)));
