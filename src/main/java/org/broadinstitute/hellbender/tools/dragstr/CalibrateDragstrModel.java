@@ -44,7 +44,7 @@ import java.util.stream.*;
  * </p>
  */
 @CommandLineProgramProperties(
-        summary = "estimates the parameters for the DRAGstr model for the input sample",
+        summary = "estimates the parameters for the DRAGstr model for the input sample using the output of the ComposeSTRTable tool",
         oneLineSummary = "summary",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )

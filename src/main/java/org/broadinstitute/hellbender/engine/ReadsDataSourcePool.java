@@ -58,18 +58,19 @@ public final class ReadsDataSourcePool extends GenericObjectPool<ReadsPathDataSo
     private static class Factory extends BasePoolableObjectFactory<ReadsPathDataSource> {
 
         private final List<Path> paths;
-        private final SamReaderFactory factory;
+        private final Path referencePath;
 
         private Factory(final List<Path> paths, final Path referencePath) {
-            this.factory = SamReaderFactory.makeDefault();
-            if (referencePath != null) {
-                this.factory.referenceSequence(referencePath);
-            }
-            this.paths = new ArrayList<>(paths);
+            this.paths = paths;
+            this.referencePath = referencePath;
         }
 
         @Override
         public ReadsPathDataSource makeObject() {
+            SamReaderFactory factory = SamReaderFactory.makeDefault();
+            if (referencePath != null) {
+                factory.referenceSequence(referencePath);
+            }
             return new ReadsPathDataSource(paths, factory);
         }
 
