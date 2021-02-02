@@ -1,12 +1,18 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.CloseableIterator;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.PrintReads;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
@@ -16,9 +22,14 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
+import java.util.function.Function;
 
 public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
 
@@ -186,5 +197,61 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
         };
     }
 
+    @DataProvider(name = "serialQueriesOnRemoteFileTest")
+    public Object[][] serialQueriesForRemoteFileTest() {
+        final File localCRAMWithCrai = new File(publicTestDir +
+                "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.cram");
+
+        return new Object[][]{
+                { localCRAMWithCrai, new File(b37_reference_20_21), Arrays.asList("20:10000009-10000011", "unmapped"),
+                        Arrays.asList("a", "b", "c", "d", "e", "g", "h", "h", "i", "i"),
+                        Arrays.asList("g", "h", "h", "i", "i") },
+                { localCRAMWithCrai, new File(b37_reference_20_21), Arrays.asList("20:10000009-10000013", "unmapped"),
+                        Arrays.asList("a", "b", "c", "d", "e", "f", "f", "g", "h", "h", "i", "i"),
+                        Arrays.asList("g", "h", "h", "i", "i") }
+        };
+    }
+
+    // regression test for https://github.com/broadinstitute/gatk/issues/6475
+    @Test(dataProvider = "serialQueriesOnRemoteFileTest")
+    public void testSerialQueriesOnRemoteFile(
+            final File cramFile,
+            final File referenceFile,
+            final List<String> intervalStrings,
+            final List<String> expectedMappedNames,
+            final List<String> expectedUnmappedNames) throws IOException {
+
+        final File cramIndex = SamFiles.findIndex(cramFile);
+        try (final FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
+            final Path jimfsCRAM = jimfs.getPath(cramFile.getName());
+            final Path jimfsCRAI = jimfs.getPath(cramIndex.getName());
+            Files.copy(cramFile.toPath(), jimfsCRAM);
+            Files.copy(cramIndex.toPath(), jimfsCRAI);
+            final File tempBAMOutFile = createTempFile("testSerialQueriesOnRemoteFile", "bam");
+
+            final ArgumentsBuilder args = new ArgumentsBuilder();
+            args.addRaw("-I"); args.addRaw(jimfsCRAM.toUri().toString());
+            args.addRaw("-O"); args.addRaw(tempBAMOutFile.getAbsolutePath());
+            args.addRaw("-R"); args.addRaw(referenceFile);
+            for ( final String intervalString : intervalStrings ) {
+                args.addRaw("-L"); args.addRaw(intervalString);
+            }
+            runCommandLine(args);
+
+            Assert.assertEquals(getReadNames(tempBAMOutFile, s -> s.iterator()), expectedMappedNames);
+            Assert.assertEquals(getReadNames(tempBAMOutFile, s -> s.queryUnmapped()), expectedUnmappedNames);
+        }
+    }
+
+    private final List<String> getReadNames(final File bamFile, final Function<SamReader, SAMRecordIterator> getIt) throws IOException {
+        final List<String> allReadNames = new ArrayList<>();
+        try (final SamReader samReader = SamReaderFactory.makeDefault().open(bamFile);
+             final SAMRecordIterator it = getIt.apply(samReader)) {
+            while (it.hasNext()) {
+                allReadNames.add(it.next().getReadName());
+            }
+        }
+        return allReadNames;
+    }
 
 }
