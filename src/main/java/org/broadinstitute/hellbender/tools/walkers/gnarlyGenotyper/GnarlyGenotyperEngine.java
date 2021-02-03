@@ -43,13 +43,18 @@ public final class GnarlyGenotyperEngine {
 
     private final int maxAltAllelesToOutput;
     private final boolean summarizePls;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
+    private final boolean emitPls;
     private final boolean keepAllSites;
     private final boolean stripASAnnotations;
 
-
     public GnarlyGenotyperEngine(final boolean keepAllSites, final int maxAltAllelesToOutput, final boolean summarizePls, final boolean stripASAnnotations) {
+        this(keepAllSites, maxAltAllelesToOutput, summarizePls, true, stripASAnnotations);
+    }
+
+    public GnarlyGenotyperEngine(final boolean keepAllSites, final int maxAltAllelesToOutput, final boolean summarizePls, final boolean emitPls, final boolean stripASAnnotations) {
         this.maxAltAllelesToOutput = maxAltAllelesToOutput;
         this.summarizePls = summarizePls;
+        this.emitPls = emitPls;
         this.keepAllSites = keepAllSites;
         this.stripASAnnotations = stripASAnnotations;
 
@@ -182,7 +187,9 @@ public final class GnarlyGenotyperEngine {
         //Get AC and SB annotations
         //remove the NON_REF allele and update genotypes if necessary
         final int[] rawGenotypeCounts = new int[3];
-        final GenotypesContext calledGenotypes = iterateOnGenotypes(variant, targetAlleles, alleleCountMap, SBsum, removeNonRef, summarizePls, variant.hasAttribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY) ? null : rawGenotypeCounts);
+        final GenotypesContext calledGenotypes = 
+            iterateOnGenotypes(variant, targetAlleles, alleleCountMap, SBsum, removeNonRef, summarizePls, emitPls, variant.hasAttribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY) ? null : rawGenotypeCounts);
+
         Integer numCalledAlleles = 0;
         if (variant.hasGenotypes()) {
             for (final Allele a : targetAlleles) {
@@ -307,7 +314,7 @@ public final class GnarlyGenotyperEngine {
     @VisibleForTesting
     protected GenotypesContext iterateOnGenotypes(final VariantContext vc, final List<Allele> targetAlleles,
                                                 final Map<Allele,Integer> targetAlleleCounts, final int[] SBsum,
-                                                final boolean nonRefReturned, final boolean summarizePLs,
+                                                final boolean nonRefReturned, final boolean summarizePLs, final boolean emitPLs,
                                                 final int[] rawGenotypeCounts) {
         final int maxAllelesToOutput = maxAltAllelesToOutput + 1;  //+1 for ref
         final List<Allele> inputAllelesWithNonRef = vc.getAlleles();
@@ -354,7 +361,13 @@ public final class GnarlyGenotyperEngine {
                     summarizePLs(genotypeBuilder, g, vc);
                 } else {
                     final int[] PLs = trimPLs(g, newPLsize);
-                    genotypeBuilder.PL(PLs);
+
+                    if (emitPLs) {
+                        genotypeBuilder.PL(PLs);
+                    } else {
+                        genotypeBuilder.noPL();
+                    }
+                    
                     genotypeBuilder.GQ(MathUtils.secondSmallestMinusSmallest(PLs, 0));
                     //If GenomicsDB returns no-call genotypes like CombineGVCFs (depending on the GenomicsDBExportConfiguration),
                     // then we need to actually find the GT from PLs
