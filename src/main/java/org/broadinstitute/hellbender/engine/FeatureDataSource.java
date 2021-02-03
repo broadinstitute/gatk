@@ -18,7 +18,9 @@ import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.codecs.FeaturesHeader;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Reader;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.genomicsdb.model.GenomicsDBExportConfiguration;
 import org.genomicsdb.reader.GenomicsDBFeatureReader;
@@ -26,17 +28,16 @@ import org.genomicsdb.reader.GenomicsDBFeatureReader;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
 import static org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.createExportConfiguration;
+import static org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.BCI_FILE_EXTENSION;
 
 /**
  * Enables traversals and queries over sources of Features, which are metadata associated with a location
@@ -305,7 +306,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * @param setNameOnCodec            If true, and if this FeatureDataSource uses a NameAwareCodec, the name of the FeatureInput will be used to set the codec's name. This exists as a mechanism to store the FeatureInput name in the source field of VariantContexts
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
-                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final GenomicsDBOptions genomicsDBOptions, final boolean setNameOnCodec) {
+                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final GenomicsDBOptions genomicsDBOptions,
+                             final boolean setNameOnCodec) {
         Utils.validateArg(queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         this.featureInput = Utils.nonNull(featureInput, "featureInput must not be null");
         if (IOUtils.isGenomicsDBPath(featureInput)) {
@@ -319,12 +321,14 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                 BucketUtils.getPrefetchingWrapper(cloudIndexPrefetchBuffer),
                 genomicsDBOptions, setNameOnCodec);
 
-        if (IOUtils.isGenomicsDBPath(featureInput)) {
+        if (IOUtils.isGenomicsDBPath(featureInput) ||
+                featureInput.getFeaturePath().toLowerCase().endsWith(BCI_FILE_EXTENSION)) {
             //genomics db uri's have no associated index file to read from, but they do support random access
+            // likewise with block-compressed interval files
             this.hasIndex = false;
             this.supportsRandomAccess = true;
         } else if (featureReader instanceof AbstractFeatureReader) {
-            this.hasIndex = ((AbstractFeatureReader<T, ?>) featureReader).hasIndex();
+            this.hasIndex = ((AbstractFeatureReader<T, ?>)featureReader).hasIndex();
             this.supportsRandomAccess = hasIndex;
         } else {
             throw new GATKException("Found a feature input that was neither GenomicsDB or a Tribble AbstractFeatureReader.  Input was " + featureInput.toString() + ".");
@@ -345,7 +349,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         queryCache.printCacheStatistics( getName() );
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private static <T extends Feature> FeatureReader<T> getFeatureReader(final FeatureInput<T> featureInput, final Class<? extends Feature> targetFeatureType,
                                                                          final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
                                                                          final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper,
@@ -367,6 +371,9 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             }
         } else {
             final FeatureCodec<T, ?> codec = getCodecForFeatureInput(featureInput, targetFeatureType, setNameOnCodec);
+            if ( featureInput.getFeaturePath().toLowerCase().endsWith(BCI_FILE_EXTENSION) ) {
+                return new Reader(featureInput, codec);
+            }
             return getTribbleFeatureReader(featureInput, codec, cloudWrapper, cloudIndexWrapper);
         }
     }
@@ -380,7 +387,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      */
     @SuppressWarnings("unchecked")
     private static <T extends Feature> FeatureCodec<T, ?> getCodecForFeatureInput(final FeatureInput<T> featureInput,
-                                                                                  final Class<? extends Feature> targetFeatureType, final boolean setNameOnCodec) {
+                                                                                  final Class<? extends Feature> targetFeatureType,
+                                                                                  final boolean setNameOnCodec) {
         final FeatureCodec<T, ?> codec;
         final Class<FeatureCodec<T, ?>> codecClass = featureInput.getFeatureCodecClass();
         if (codecClass == null) {
@@ -461,7 +469,9 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     public SAMSequenceDictionary getSequenceDictionary() {
         SAMSequenceDictionary dict = null;
         final Object header = getHeader();
-        if (header instanceof VCFHeader) {
+        if ( header instanceof FeaturesHeader ) {
+            dict = ((FeaturesHeader)header).getDictionary();
+        } else if (header instanceof VCFHeader) {
             dict = ((VCFHeader) header).getSequenceDictionary();
         }
         if (dict != null && !dict.isEmpty()) {

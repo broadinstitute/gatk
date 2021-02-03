@@ -28,7 +28,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.Assembly
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.CpxVariantInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SegmentedCpxVariantSimpleVariantExtractor;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
+import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;

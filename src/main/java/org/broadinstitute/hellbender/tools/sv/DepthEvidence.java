@@ -13,6 +13,8 @@ public final class DepthEvidence implements Feature {
     final int end;
     final int[] counts;
 
+    public static final String BCI_VERSION = "1.0";
+
     public DepthEvidence(final String contig, int start, final int end, final int[] counts) {
         Utils.nonNull(contig);
         Utils.nonNull(counts);

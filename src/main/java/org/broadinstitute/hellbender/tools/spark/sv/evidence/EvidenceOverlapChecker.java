@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
+import org.broadinstitute.hellbender.utils.SVInterval;
+import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 

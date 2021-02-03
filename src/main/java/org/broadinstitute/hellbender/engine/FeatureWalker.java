@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -57,12 +59,18 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
         final GATKPath drivingPath = getDrivingFeaturePath();
         final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(drivingPath.toPath());
         if (isAcceptableFeatureType(codec.getFeatureType())) {
-            drivingFeatures = new FeatureDataSource<>(new FeatureInput<>(drivingPath), FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, null, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, referenceArguments.getReferencePath());
+            final GenomicsDBOptions options = new GenomicsDBOptions(referenceArguments.getReferencePath());
+            final FeatureInput<F> drivingFeatureInput = new FeatureInput<>(drivingPath);
+            drivingFeatureInput.setFeatureCodecClass((Class<FeatureCodec<F, ?>>)codec.getClass());
+            drivingFeatures = new FeatureDataSource<>(drivingFeatureInput, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, null,
+                    cloudPrefetchBuffer, cloudIndexPrefetchBuffer, options, false);
+            header = drivingFeatures.getHeader();
 
-            final FeatureInput<F> drivingFeaturesInput = new FeatureInput<>(drivingPath, "drivingFeatureFile");
-            features.addToFeatureSources(0, drivingFeaturesInput, codec.getFeatureType(), cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                         referenceArguments.getReferencePath());
-            header = getHeaderForFeatures(drivingFeaturesInput);
+            final FeatureInput<F> featureInput = new FeatureInput<>(drivingPath, "drivingFeatureFile");
+            featureInput.setFeatureCodecClass((Class<FeatureCodec<F, ?>>)codec.getClass());
+            features.addToFeatureSources(featureInput,
+                    new FeatureDataSource<>(featureInput, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, null,
+                        cloudPrefetchBuffer, cloudIndexPrefetchBuffer, options, false));
         } else {
             throw new UserException("File " + drivingPath.getRawInputString() + " contains features of the wrong type.");
         }

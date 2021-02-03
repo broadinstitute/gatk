@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
+import org.broadinstitute.hellbender.tools.walkers.sv.CollectSVEvidence.*;
 import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
 import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -19,10 +20,10 @@ import java.util.PriorityQueue;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTest {
+public class CollectSVEvidenceUnitTest extends GATKBaseTest {
 
     @Test
-    public void testGetReportableDiscordantReadPair() throws Exception {
+    public void testGetReportableDiscordantReadPair() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(2, 1, 10000);
 
         // read pair on different contigs
@@ -45,9 +46,9 @@ public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTes
 
         final HashSet<String> observedDiscordantNamesAtThisLocus = new HashSet<>();
 
-        final PairedEndAndSplitReadEvidenceCollection tool = new PairedEndAndSplitReadEvidenceCollection();
+        final CollectSVEvidence tool = new CollectSVEvidence();
 
-        PairedEndAndSplitReadEvidenceCollection.DiscordantRead reportableDiscordantReadPair =
+        DiscordantRead reportableDiscordantReadPair =
                 tool.getReportableDiscordantReadPair(discRPDiffContigsFirst, observedDiscordantNamesAtThisLocus, header.getSequenceDictionary());
         Assert.assertNotNull(reportableDiscordantReadPair);
         assertDiscordantReadInfo(reportableDiscordantReadPair, discRPDiffContigsFirst);
@@ -76,7 +77,7 @@ public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTes
 
     }
 
-    private void assertDiscordantReadInfo(final PairedEndAndSplitReadEvidenceCollection.DiscordantRead reportableDiscordantReadPair, final GATKRead gatkRead) {
+    private void assertDiscordantReadInfo(final DiscordantRead reportableDiscordantReadPair, final GATKRead gatkRead) {
         Assert.assertEquals(reportableDiscordantReadPair.getName(), gatkRead.getName());
         Assert.assertEquals(reportableDiscordantReadPair.getContig(), gatkRead.getContig());
         Assert.assertEquals(reportableDiscordantReadPair.getStart(), gatkRead.getStart());
@@ -85,58 +86,54 @@ public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTes
     }
 
     // Workaround for use of generic class with Mockito
-    private class SplitReadFeatureOutputStream extends FeatureOutputStream<SplitReadEvidence> {
+    private static class SplitReadFeatureOutputStream extends FeatureOutputStream<SplitReadEvidence> {
         public SplitReadFeatureOutputStream() {
-            super(new GATKPath(""), new SplitReadEvidenceCodec(), SplitReadEvidenceCodec::encode,
-                    new SAMSequenceDictionary(), 4);
+            super(new GATKPath(""), new SplitReadEvidenceCodec().getTabixFormat(),
+                    SplitReadEvidenceCodec::encode, new SAMSequenceDictionary(), 4);
         }
     }
 
     @Test
-    public void testCountSplitRead() throws Exception {
+    public void testCountSplitRead() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(2, 1, 10000);
         final GATKRead rightClip = ArtificialReadUtils.createArtificialRead(header, "rightClip", 0, 1000, ArtificialReadUtils.createRandomReadBases(151, false),
                 ArtificialReadUtils.createRandomReadQuals(151), "100M51S");
 
-        final FeatureOutputStream<SplitReadEvidence> mockSrWriter = Mockito.mock(SplitReadFeatureOutputStream.class);
+        final SplitReadFeatureOutputStream mockSrWriter = Mockito.mock(SplitReadFeatureOutputStream.class);
 
-        PairedEndAndSplitReadEvidenceCollection tool = new PairedEndAndSplitReadEvidenceCollection();
-        final PriorityQueue<PairedEndAndSplitReadEvidenceCollection.SplitPos> splitCounts = new PriorityQueue<>(new PairedEndAndSplitReadEvidenceCollection.SplitPosComparator());
+        CollectSVEvidence tool = new CollectSVEvidence();
+        final PriorityQueue<SplitPos> splitCounts = new PriorityQueue<>(new SplitPosComparator());
         tool.sampleName = "sample";
 
         tool.countSplitRead(rightClip, splitCounts, mockSrWriter);
-        Map<PairedEndAndSplitReadEvidenceCollection.SplitPos, Long> counts = splitCounts.stream().collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-        Assert.assertEquals(counts.get(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1100, PairedEndAndSplitReadEvidenceCollection.POSITION.RIGHT)).intValue(), 1);
+        Map<SplitPos, Long> counts = splitCounts.stream().collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+        Assert.assertEquals(counts.get(new SplitPos(1100, POSITION.RIGHT)).intValue(), 1);
         Mockito.verifyZeroInteractions(mockSrWriter);
 
         final GATKRead rightClip2 = ArtificialReadUtils.createArtificialRead(header, "rightClip2", 0, 1050, ArtificialReadUtils.createRandomReadBases(151, false),
                 ArtificialReadUtils.createRandomReadQuals(151), "50M101S");
         tool.countSplitRead(rightClip2, splitCounts, mockSrWriter);
         counts = splitCounts.stream().collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-        Assert.assertEquals(counts.get(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1100, PairedEndAndSplitReadEvidenceCollection.POSITION.RIGHT)).intValue(), 2);
+        Assert.assertEquals(counts.get(new SplitPos(1100, POSITION.RIGHT)).intValue(), 2);
         Mockito.verifyZeroInteractions(mockSrWriter);
 
         final GATKRead leftClip = ArtificialReadUtils.createArtificialRead(header, "leftClip", 0, 1100, ArtificialReadUtils.createRandomReadBases(151, false),
                 ArtificialReadUtils.createRandomReadQuals(151), "20S131M");
         tool.countSplitRead(leftClip, splitCounts, mockSrWriter);
         counts = splitCounts.stream().collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-        Assert.assertEquals(counts.get(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1100, PairedEndAndSplitReadEvidenceCollection.POSITION.RIGHT)).intValue(), 2);
-        Assert.assertEquals(counts.get(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1100, PairedEndAndSplitReadEvidenceCollection.POSITION.LEFT)).intValue(), 1);
+        Assert.assertEquals(counts.get(new SplitPos(1100, POSITION.RIGHT)).intValue(), 2);
+        Assert.assertEquals(counts.get(new SplitPos(1100, POSITION.LEFT)).intValue(), 1);
         Mockito.verifyZeroInteractions(mockSrWriter);
 
         final GATKRead leftClipDownstream = ArtificialReadUtils.createArtificialRead(header, "leftClipDownstream", 0, 1600, ArtificialReadUtils.createRandomReadBases(151, false),
                 ArtificialReadUtils.createRandomReadQuals(151), "20S131M");
         tool.countSplitRead(leftClipDownstream, splitCounts, mockSrWriter);
         counts = splitCounts.stream().collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-        Assert.assertFalse(counts.containsKey(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1100, PairedEndAndSplitReadEvidenceCollection.POSITION.RIGHT)));
-        Assert.assertFalse(counts.containsKey(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1100, PairedEndAndSplitReadEvidenceCollection.POSITION.LEFT)));
-        Assert.assertEquals(counts.get(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1600, PairedEndAndSplitReadEvidenceCollection.POSITION.LEFT)).intValue(), 1);
-        final SplitReadEvidence splitRead1 = new SplitReadEvidence("sample", "1", 1100, 1, false);
-        final SplitReadEvidence splitRead2 = new SplitReadEvidence("sample", "1", 1100, 2, true);
-        Mockito.verify(mockSrWriter).add(splitRead1);
-        Mockito.verify(mockSrWriter).add(splitRead2);
+        Assert.assertFalse(counts.containsKey(new SplitPos(1100, POSITION.RIGHT)));
+        Assert.assertFalse(counts.containsKey(new SplitPos(1100, POSITION.LEFT)));
+        Assert.assertEquals(counts.get(new SplitPos(1600, POSITION.LEFT)).intValue(), 1);
+        Mockito.verify(mockSrWriter).write(new SplitReadEvidence(tool.sampleName, "1", 1100, 1, false));
+        Mockito.verify(mockSrWriter).write(new SplitReadEvidence(tool.sampleName, "1", 1100, 2, true));
         Mockito.verifyNoMoreInteractions(mockSrWriter);
-
     }
-
 }

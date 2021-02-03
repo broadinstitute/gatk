@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.spark.sv.utils;
+package org.broadinstitute.hellbender.utils;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;

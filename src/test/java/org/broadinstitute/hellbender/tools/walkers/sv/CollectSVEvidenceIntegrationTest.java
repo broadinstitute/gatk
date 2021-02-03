@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
-public class PairedEndAndSplitReadEvidenceCollectionIntegrationTest extends CommandLineProgramTest {
+public class CollectSVEvidenceIntegrationTest extends CommandLineProgramTest {
 
     public static final String pesrTestDir = toolsTestDir + "walkers/sv/pesr";
 
