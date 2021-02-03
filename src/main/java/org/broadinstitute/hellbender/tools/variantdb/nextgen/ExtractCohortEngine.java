@@ -113,7 +113,7 @@ public class ExtractCohortEngine {
         this.filterSetName = filterSetName;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
-        this.gnarlyGenotyper = new GnarlyGenotyperEngine(false, 30, false, true);
+        this.gnarlyGenotyper = new GnarlyGenotyperEngine(false, 30, false, false, true);
 
     }
 
@@ -418,7 +418,7 @@ public class ExtractCohortEngine {
         final boolean isIndel = !hasSnpAllele;
         // System.out.println("KCIBUL -- in the qualapprox w/ " + totalAsQualApprox + " for isIndel " + isIndel + " and SNP:" + SNP_QUAL_THRESHOLD + " and INDEL:" + INDEL_QUAL_THRESHOLD);
         if((isIndel && totalAsQualApprox < INDEL_QUAL_THRESHOLD) || (!isIndel && totalAsQualApprox < SNP_QUAL_THRESHOLD)) {
-            logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
+            // logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
             return;
         }
 
