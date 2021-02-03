@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorConstants;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -10,6 +11,22 @@ import java.util.List;
  * Created by jonn on 11/9/18.
  */
 public class DataProviderForTroubleVariants {
+
+    public static List<Object[]> provideTP53AllelesForOrderTestsHg19() {
+        return Collections.singletonList(
+                new Object[]{ "TP53",
+                        17, 7578492, 7578492,
+                        GencodeFuncotation.VariantClassification.NONSENSE,
+                        GencodeFuncotation.VariantType.SNP,
+                        "C",
+                        "T",
+                        "g.chr17:7578492C>T",
+                        "-",
+                        "c.438G>A",
+                        "c.(436-438)tgG>tgA",
+                        "p.W146*" }
+        );
+    }
 
     public static List<Object[]> provideSymbolicAllelesAndMaskedBasesForHg38() {
         return Arrays.asList(
