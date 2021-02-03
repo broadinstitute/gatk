@@ -1490,15 +1490,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                 final ReferenceDataSource referenceDataSource,
                                 final String transcriptFastaFile, final String transcriptGtfFile) {
 
-        //        outList.addAll(
-        //        addReferenceDataToUnitTestData(DataProviderForTroubleVariants.provideTP53AllelesForOrderTestsHg19(),
-        //        FuncotatorReferenceTestUtils.retrieveHg19Chr17Ref(),
-        //        gencodeHg19TP53FeatureReader,
-        //        refDataSourceHg19Ch17,
-        //        FuncotatorTestConstants.TP53_REVERSE_ORDER_GENCODE_TRANSCRIPT_FASTA_FILE,
-        //        FuncotatorTestConstants.TP53_REVERSE_ORDER_GENCODE_TRANSCRIPT_FASTA_FILE ) );
-
-
         final String contig = "chr" + Integer.toString(chromosomeNumber);
         final SimpleInterval variantInterval = new SimpleInterval( contig, start, end );
 
