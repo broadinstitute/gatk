@@ -1305,7 +1305,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Sort by exon number first:
         transcript.getExons().sort((lhs, rhs) -> lhs.getExonNumber() < rhs.getExonNumber() ? -1 : (lhs.getExonNumber() > rhs.getExonNumber() ) ? 1 : 0 );
 
-        final List<Locatable> regionList = new ArrayList<>(transcript.getExons().size());
+        final List<GencodeGtfFeature> regionList = new ArrayList<>(transcript.getExons().size());
         for ( final GencodeGtfExonFeature exon : transcript.getExons() ) {
 
             // Add in a CDS region:
@@ -1337,6 +1337,15 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 regionList.add( exon.getStopCodon() );
             }
         }
+
+        // Now we have to sort by the transcript direction because of assumptions in the code later.
+        // If the transcript is in the + direction, we don't do anything.
+        // For - transcripts, we sort in order by reverse starting position.
+        // This is a fix for issue https://github.com/broadinstitute/gatk/issues/7051
+        if (transcript.getGenomicStrand() == Strand.NEGATIVE) {
+            regionList.sort(Comparator.comparingInt(GencodeGtfFeature::getStart).reversed());
+        }
+
         return regionList;
     }
 
