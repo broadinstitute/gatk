@@ -45,10 +45,17 @@ public class GnarlyGenotyperEngineUnitTest {
         final int[] rawGenotypeCounts = {0, 1, 1};
 
         final GenotypesContext genotypes = engine.iterateOnGenotypes(vc, Arrays.asList(Aref, oneInserted, twoInserted, threeInserted, fourRepeats),
-                alleleCounts, sbSum, false, false, rawGenotypeCounts);
+                alleleCounts, sbSum, false, false, true, rawGenotypeCounts);
 
         Assert.assertTrue(genotypes.get(0).hasPL() && genotypes.get(0).getPL().length == 15);
         Assert.assertTrue(genotypes.get(1).hasPL() && genotypes.get(1).getPL().length == 15);
+
+        // repeat, but this time request that PLs are not returned in the GenotypesContext and verify
+        final GenotypesContext genotypesNoPl = engine.iterateOnGenotypes(vc, Arrays.asList(Aref, oneInserted, twoInserted, threeInserted, fourRepeats),
+                alleleCounts, sbSum, false, false, false, rawGenotypeCounts);
+
+        Assert.assertTrue(!genotypesNoPl.get(0).hasPL());
+        Assert.assertTrue(!genotypesNoPl.get(1).hasPL());        
     }
 
     //use more alts than the maxAltAllelesToOutput for the engine, forcing on-the-fly generation of GLCalculator not in the cache
