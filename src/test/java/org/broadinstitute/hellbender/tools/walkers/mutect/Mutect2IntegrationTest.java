@@ -13,12 +13,14 @@ import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.NuMTFilterTool;
@@ -84,6 +86,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final String DEEP_MITO_SAMPLE_NAME = "mixture";
 
     private static final File FILTERING_DIR = new File(toolsTestDir, "mutect/filtering");
+
+    private static final File MICROBIAL_DIR = new File(toolsTestDir, "mutect/microbial");
+
 
     private static final File GNOMAD_WITHOUT_AF_SNIPPET = new File(toolsTestDir, "mutect/gnomad-without-af.vcf");
 
@@ -742,7 +747,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 .filter(key -> variantMap.containsKey(key) && variantMap2.containsKey(key))
                 .collect(Collectors.toList());
         Assert.assertFalse(refBlockKeys.isEmpty());
-        
+
         refBlockKeys.forEach(key -> Assert.assertTrue(onlyNonRefTlodsChange(variantMap.get(key), variantMap2.get(key), minAF)));
     }
 
@@ -830,6 +835,24 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         runMutect2(DREAM_1_TUMOR, outputVcf, "20:10000000-13000000", b37Reference, Optional.empty(),
                 args -> args.add(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_LONG_NAME, bamout));
+        Assert.assertTrue(bamout.exists());
+    }
+
+    @Test
+    public void testAdaptivePrunerForMicrobial() {
+        final File mtb_bam = new File(MICROBIAL_DIR + "/D1CLVACXX.1.Solexa-125092.aligned.bam");
+        final File interval = new File(MICROBIAL_DIR + "/2074300-2074800.interval_list");
+
+        final File outputVcf = createTempFile("output", ".vcf");
+        final File bamout = createTempFile("bamout", ".bam");
+
+        runMutect2(mtb_bam, outputVcf, "gi|395136682|gb|CP003248.1|:2074300-2074800", mtbReference, Optional.empty(),
+                args -> args.add(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_LONG_NAME, bamout),
+                args -> args.add("num-matching-bases-in-dangling-end-to-recover", 1), // TODO add string constant for this option
+                args -> args.add(AssemblyRegionArgumentCollection.MAX_STARTS_LONG_NAME, 75),
+                args -> args.add("debug-assembly", true),
+                args -> args.add("graph-output", "graph-2074300-2074800")
+                );
         Assert.assertTrue(bamout.exists());
     }
 

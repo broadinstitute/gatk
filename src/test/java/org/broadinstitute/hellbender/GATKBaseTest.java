@@ -57,6 +57,7 @@ public abstract class GATKBaseTest extends BaseTest {
     // Source: /seq/references/Homo_sapiens_assembly38/v0/ in the Broad Institute filesystem.
     public static final String hg38Reference = largeFileTestDir + "Homo_sapiens_assembly38.fasta.gz";
 
+
     // All of chromosomes 20 and 21 from the b37 reference
     public static final String b37_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.fasta";
 
@@ -91,6 +92,7 @@ public abstract class GATKBaseTest extends BaseTest {
     public static final String WGS_B37_CH20_1M_1M1K_BAM = "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
     public static final String DBSNP_138_B37_CH20_1M_1M1K_VCF = "dbsnp_138.b37.excluding_sites_after_129.ch20.1m-1m1k.vcf";
 
+
     /**
      * END OF LARGE FILES FOR TESTING
      */
@@ -124,6 +126,8 @@ public abstract class GATKBaseTest extends BaseTest {
 
     public static final String DREAM_BAMS_DIR = publicTestDir + "large/mutect/dream_synthetic_bams";
     public static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs";
+
+    public static final String mtbReference = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/microbial/Mycobacterium_tuberculosis_H37Rv.fasta";
 
     public static final String thousandGenomes = largeFileTestDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf";
 
