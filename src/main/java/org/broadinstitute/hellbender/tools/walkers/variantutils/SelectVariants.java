@@ -843,11 +843,6 @@ public final class SelectVariants extends VariantWalker {
         final Set<VCFHeaderLine> headerLines = VCFUtils.smartMergeHeaders(vcfHeaders.values(), true);
         headerLines.addAll(getDefaultToolVCFHeaderLines());
 
-        // need AC, AN and AF since output if set filtered genotypes to no-call
-        if (setFilteredGenotypesToNocall) {
-            GATKVariantContextUtils.addChromosomeCountsToHeader(headerLines);
-        }
-
         if (keepOriginalChrCounts) {
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.ORIGINAL_AC_KEY));
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.ORIGINAL_AF_KEY));
@@ -857,7 +852,12 @@ public final class SelectVariants extends VariantWalker {
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.ORIGINAL_DP_KEY));
         }
 
-        headerLines.addAll(Arrays.asList(ChromosomeCounts.descriptions));
+        for (final String key : ChromosomeCounts.keyNames) {
+            headerLines.removeIf(line->line instanceof VCFInfoHeaderLine && ((VCFInfoHeaderLine)line).getID().equals(VCFConstants.DEPTH_KEY));
+            headerLines.add(VCFStandardHeaderLines.getInfoLine(key));
+        }
+
+        headerLines.removeIf(line->line instanceof VCFInfoHeaderLine && ((VCFInfoHeaderLine)line).getID().equals(VCFConstants.DEPTH_KEY));
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));
 
         //remove header lines for info field and genotype annotations being dropped
