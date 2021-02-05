@@ -7,8 +7,9 @@ from collections import defaultdict
 from typing import List, Optional, Dict, Tuple, Iterator
 
 from ml4h.TensorMap import TensorMap
-from ml4h.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators, \
-    check_no_bottleneck, make_paired_autoencoder_model
+from ml4h.models.train import train_model_from_generators
+from ml4h.models.legacy_models import make_multimodal_multitask_model, parent_sort, BottleneckType
+from ml4h.models.legacy_models import ACTIVATION_FUNCTIONS, MODEL_EXT, check_no_bottleneck, make_paired_autoencoder_model
 from ml4h.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
 from ml4h.test_utils import LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX
 

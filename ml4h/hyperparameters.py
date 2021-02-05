@@ -5,7 +5,6 @@ import gc
 import os
 import logging
 import numpy as np
-from collections import Counter
 from timeit import default_timer as timer
 
 import hyperopt
@@ -22,7 +21,7 @@ from ml4h.arguments import parse_args
 from ml4h.plots import plot_metric_history
 from ml4h.tensor_maps_by_script import TMAPS
 from ml4h.defines import IMAGE_EXT, MODEL_EXT
-from ml4h.models import train_model_from_generators, make_multimodal_multitask_model
+from ml4h.models.legacy_models import train_model_from_generators, make_multimodal_multitask_model
 from ml4h.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 
 MAX_LOSS = 9e9

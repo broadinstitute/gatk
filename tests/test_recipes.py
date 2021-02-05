@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 from ml4h.recipes import inference_file_name, _hidden_file_name
-from ml4h.recipes import train_multimodal_multitask, compare_multimodal_multitask_models
+from ml4h.recipes import train_multimodal_multitask, train_block
 from ml4h.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
 from ml4h.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
 from ml4h.explorations import _continuous_explore_header, _categorical_explore_header, _should_error_detect, explore
@@ -19,6 +19,10 @@ from ml4h.TensorMap import TensorMap, Interpretation
 class TestRecipes:
     def test_train(self, default_arguments):
         train_multimodal_multitask(default_arguments)
+
+# TODO: make this work!
+#     def test_train_block(self, default_arguments):
+#         train_block(default_arguments)
 
     def test_test(self, default_arguments):
         tst_multimodal_multitask(default_arguments)
