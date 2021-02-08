@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools;
 
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.WorkflowProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.SimpleOutputCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -34,6 +36,9 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 public final class CountReads extends ReadWalker {
 
     private long count = 0;
+
+    @ArgumentCollection
+    final public SimpleOutputCollection out = new SimpleOutputCollection();
     @Override
     public void apply( final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
         ++count;
@@ -42,6 +47,8 @@ public final class CountReads extends ReadWalker {
     @Override
     public Object onTraversalSuccess() {
         logger.info("CountReads counted " + count + " total reads");
+        out.writeToOutput(count);
+
         return count;
     }
 }

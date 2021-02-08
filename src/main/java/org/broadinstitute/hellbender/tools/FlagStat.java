@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools;
 
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.WorkflowProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.SimpleOutputCollection;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -45,6 +47,8 @@ public final class FlagStat extends ReadWalker {
 
     private final FlagStatus sum = new FlagStatus();
 
+    @ArgumentCollection
+    final public SimpleOutputCollection out = new SimpleOutputCollection();
     @Override
     public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
         sum.add(read);
@@ -52,6 +56,7 @@ public final class FlagStat extends ReadWalker {
 
     @Override
     public Object onTraversalSuccess() {
+        out.writeToOutput(sum);
         return sum;
     }
 

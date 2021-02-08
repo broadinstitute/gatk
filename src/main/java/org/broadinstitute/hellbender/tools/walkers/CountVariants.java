@@ -1,13 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.SimpleOutputCollection;
+import org.broadinstitute.hellbender.engine.*;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.VariantWalker;
 
 /**
  *
@@ -38,13 +37,16 @@ public final class CountVariants extends VariantWalker {
             "Because it counts the number of rows in the VCF, it does not necessarily reflect the number of variant " +
             "alleles. The count is returned at the end of the standard out.";
 
+    @ArgumentCollection
+    final public SimpleOutputCollection out = new SimpleOutputCollection();
     @Override
-    public void apply( final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
+    public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         count++;
     }
 
     @Override
     public Object onTraversalSuccess() {
+        out.writeToOutput(count);
         return count;
     }
 }

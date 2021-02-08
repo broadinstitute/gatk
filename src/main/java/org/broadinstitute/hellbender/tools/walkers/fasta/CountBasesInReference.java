@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.fasta;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.SimpleOutputCollection;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -16,22 +18,29 @@ import picard.cmdline.programgroups.ReferenceProgramGroup;
         programGroup = ReferenceProgramGroup.class
 )
 public class CountBasesInReference extends ReferenceWalker {
+    @ArgumentCollection
+    final public SimpleOutputCollection out = new SimpleOutputCollection();
+
     @VisibleForTesting
     final long[] baseCounts = new long[256];
 
     @Override
     public void apply(ReferenceContext referenceContext, ReadsContext read, FeatureContext featureContext) {
-      baseCounts[referenceContext.getBase()]++;
+        baseCounts[referenceContext.getBase()]++;
     }
 
     @Override
-    public Object onTraversalSuccess(){
+    public Object onTraversalSuccess() {
+        final StringBuilder sb = new StringBuilder();
         for (int i = 0; i < baseCounts.length; i++) {
             final long count = baseCounts[i];
-            if (count > 0){
-                System.out.println((char)i + " : " + count );
+            if (count > 0) {
+                sb.append((char) i).append(" : ").append(count).append("\n");
             }
         }
+        out.writeToOutput(sb.toString().getBytes());
+        System.out.print(sb.toString());
+
         return 0;
     }
 }
