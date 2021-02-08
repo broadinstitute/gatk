@@ -17,20 +17,12 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
     private static final String sample_map_file = "test_sample_map.tsv";
     private static final File outputDir = createTempDir("output_dir");
 
-    // TODO why can't I run Collections.sort() here?
-//    final List<String> expectedOutputFiles = new ArrayList<>(Arrays.asList(
-//            "metadata_001_NA12878.tsv",
-//            "pet_001_NA12878.tsv",
-//            "vet_001_NA12878.tsv"));
-//    Collections.sort(expectedOutputFiles);
-
     @Test
     public void testPetTsvIsCreated() throws Exception {
         final List<String> expectedOutputFiles = new ArrayList<>(Arrays.asList(
                 getToolTestDataDir() + "expected.metadata_001_NA12878.tsv",
                 getToolTestDataDir() + "expected.pet_001_NA12878.tsv",
                 getToolTestDataDir() + "expected.vet_001_NA12878.tsv"));
-        Collections.sort(expectedOutputFiles);
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args
