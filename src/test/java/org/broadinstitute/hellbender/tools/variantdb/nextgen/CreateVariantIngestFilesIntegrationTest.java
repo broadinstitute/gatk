@@ -12,13 +12,12 @@ import static htsjdk.samtools.ValidationStringency.STRICT;
 
 public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramTest {
 
-    private static final String input_vcf_file = "NA12878.haplotypeCalls.reblocked.chr20.100k.vcf.gz";
-    private static final String interval_list_file = "wgs_calling_regions.hg38.chr20.100k.interval_list";
-    private static final String sample_map_file = "test_sample_map.tsv";
-    private static final File outputDir = createTempDir("output_dir");
-
     @Test
     public void testPetTsvIsCreated() throws Exception {
+        final String input_vcf_file = "NA12878.haplotypeCalls.reblocked.chr20.100k.vcf.gz";
+        final String interval_list_file = "wgs_calling_regions.hg38.chr20.100k.interval_list";
+        final String sample_map_file = "test_sample_map.tsv";
+        final File outputDir = createTempDir("output_dir");
         final List<String> expectedOutputFiles = new ArrayList<>(Arrays.asList(
                 getToolTestDataDir() + "expected.metadata_001_NA12878.tsv",
                 getToolTestDataDir() + "expected.pet_001_NA12878.tsv",
