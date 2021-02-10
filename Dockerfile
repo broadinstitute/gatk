@@ -6,7 +6,7 @@ RUN ls .
 ADD . /gatk
 WORKDIR /gatk
 
-RUN add-apt-repository universe && apt update
+RUN add-apt-repository --allow-unauthenticated universe && apt --allow-unauthenticated update
 RUN apt-get --assume-yes install git-lfs
 RUN git lfs install
 
