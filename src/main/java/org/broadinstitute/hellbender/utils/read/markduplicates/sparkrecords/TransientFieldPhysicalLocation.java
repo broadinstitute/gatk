@@ -9,6 +9,8 @@ import picard.sam.util.PhysicalLocation;
  *       contained in this class to mirror {@link PhysicalLocation}
  */
 public abstract class TransientFieldPhysicalLocation extends PairedEnds implements PhysicalLocation {
+    private static final long serialVersionUID = 0L;
+
     // Information used to detect optical dupes
     protected short readGroupIndex = -1;
     protected transient short tile = -1;

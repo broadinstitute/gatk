@@ -22,6 +22,8 @@ import java.util.Map;
  */
 @DefaultSerializer(Pair.Serializer.class)
 public final class Pair extends TransientFieldPhysicalLocation {
+    private static final long serialVersionUID = 0L;
+
     protected transient ReadsKey key;
 
     private final boolean isRead1ReverseStrand;
