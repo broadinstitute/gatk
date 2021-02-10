@@ -18,6 +18,8 @@ import java.util.Map;
  * during the processing step of MarkDuplicatesSpark
  */
 public class Fragment extends TransientFieldPhysicalLocation {
+    private static final long serialVersionUID = 0L;
+
     protected transient ReadsKey key;
 
     private final boolean R1R;
