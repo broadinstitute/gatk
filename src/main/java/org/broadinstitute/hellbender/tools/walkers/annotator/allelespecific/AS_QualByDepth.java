@@ -121,12 +121,12 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
     public Map<String, Object> finalizeRawData(VariantContext vc, VariantContext originalVC) {
         //we need to use the AS_QUAL value that was added to the VC by the GenotypingEngine
         if ( !vc.hasAttribute(GATKVCFConstants.AS_QUAL_KEY) && !vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
-            return null;
+            return new HashMap<>();
         }
 
         final GenotypesContext genotypes = vc.getGenotypes();
         if ( genotypes == null || genotypes.isEmpty() ) {
-            return null;
+            return new HashMap<>();
         }
 
         final List<Integer> standardDepth;
@@ -137,7 +137,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
             standardDepth = getAlleleDepths(genotypes);
         }
         if (standardDepth == null) { //all no-calls and homRefs
-            return null;
+            return new HashMap<>();
         }
 
         List<Integer> alleleQualList = parseQualList(vc);
