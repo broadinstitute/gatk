@@ -8,7 +8,6 @@ import copy
 import logging
 import operator
 import datetime
-from operator import itemgetter
 from functools import reduce
 from itertools import combinations
 from collections import defaultdict, Counter, OrderedDict
@@ -24,11 +23,11 @@ import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 
-from ml4h.models import make_multimodal_multitask_model
+from ml4h.models.legacy_models import make_multimodal_multitask_model
 from ml4h.TensorMap import TensorMap, Interpretation, decompress_data
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4h.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference, SUBPLOT_SIZE
+from ml4h.plots import plot_histograms_in_pdf, plot_heatmap, SUBPLOT_SIZE
 from ml4h.plots import evaluate_predictions, subplot_rocs, subplot_scatters, plot_categorical_tmap_over_time
 from ml4h.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4h.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT

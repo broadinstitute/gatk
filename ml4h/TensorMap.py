@@ -242,6 +242,9 @@ class TensorMap(object):
     def input_name(self):
         return JOIN_CHAR.join(['input', self.name, str(self.interpretation)])
 
+    def embed_name(self):
+        return JOIN_CHAR.join(['embed', self.name, str(self.interpretation)])
+
     def is_categorical(self):
         """For most cases categorical and discretized TensorMaps should be handled in the same way.
         The two main differences are:
