@@ -13,7 +13,7 @@ workflows:
    - name: cnv_somatic_pair_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl
-     testParameterFiles: 
+     testParameterFiles:
      -  /scripts/cnv_cromwell_tests/somatic/cnv_somatic_pair_wes_do-gc_workflow.json
    - name: cnv_somatic_panel_workflow
      subclass: WDL
@@ -30,6 +30,9 @@ workflows:
      primaryDescriptorPath: /scripts/cnn_variant_wdl/cram2model.wdl
      testParameterFiles:
      - /scripts/cnn_variant_wdl/jsons/cram2model.json
+   - name: ImportGenomes
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/ImportGenomes.wdl
    - name: funcotator
      subclass: WDL
      primaryDescriptorPath: /scripts/funcotator_wdl/funcotator.wdl
