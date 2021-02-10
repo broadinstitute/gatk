@@ -4,7 +4,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.WorkflowProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.SimpleOutputCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalTextOutputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * Calculate and print to the standard output the overall number of reads in a SAM/BAM/CRAM file
+ * Calculate and print to the standard output (and optionally a file) the overall number of reads in a SAM/BAM/CRAM file.
  *
  * <h3>Input</h3>
  * <ul>
@@ -27,7 +27,18 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  * </pre>
  */
 @CommandLineProgramProperties(
-	summary = "Count reads in a SAM/BAM/CRAM file.",
+	summary = "Calculate and print to the standard output (and optionally a file) the overall number of reads in a SAM/BAM/CRAM file.\n" +
+            "\n" +
+            "<h3>Input</h3>\n" +
+            "<ul>\n" +
+            "    <li>A single BAM file</li>\n" +
+            "</ul>\n" +
+            "\n" +
+            "<h3>Example</h3>\n" +
+            "<pre>\n" +
+            "  gatk CountReads \\\n" +
+            "    -I input_reads.bam\n" +
+            "</pre>",
 	oneLineSummary = "Count reads in a SAM/BAM/CRAM file",
     programGroup = CoverageAnalysisProgramGroup.class
 )
@@ -38,7 +49,8 @@ public final class CountReads extends ReadWalker {
     private long count = 0;
 
     @ArgumentCollection
-    final public SimpleOutputCollection out = new SimpleOutputCollection();
+    final public OptionalTextOutputArgumentCollection out = new OptionalTextOutputArgumentCollection();
+
     @Override
     public void apply( final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
         ++count;
@@ -47,7 +59,7 @@ public final class CountReads extends ReadWalker {
     @Override
     public Object onTraversalSuccess() {
         logger.info("CountReads counted " + count + " total reads");
-        out.writeToOutput(count);
+        out.print(count);
 
         return count;
     }

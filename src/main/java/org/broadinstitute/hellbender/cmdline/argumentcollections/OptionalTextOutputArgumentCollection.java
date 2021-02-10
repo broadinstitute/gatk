@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -27,7 +28,7 @@ import java.nio.file.StandardOpenOption;
  * <p>
  * The code will only attempt to write to the output if -o (or --output) has been assigned on the commandline.
  */
-public class SimpleOutputCollection implements Serializable {
+public class OptionalTextOutputArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -36,15 +37,24 @@ public class SimpleOutputCollection implements Serializable {
             optional = true)
     public GATKPath output = null;
 
-
-    public void writeToOutput(Object value) {
+    /**
+     * Print value (value.toString()) to the output path, if output is not null
+     */
+    public void print(Object value) {
         if (output != null) {
             try {
                 Files.write(output.toPath(), value.toString().getBytes());
-                Files.write(output.toPath(), "\n".getBytes(), StandardOpenOption.APPEND);
             } catch (IOException e) {
-                e.printStackTrace();
+                throw new UserException.CouldNotCreateOutputFile(output.toString(), e);
             }
         }
+    }
+
+    /**
+     * Print value (value.toString() + "\n") to the output path, if output is not null
+     */
+    public void println(Object value) {
+        print(value);
+        print("\n");
     }
 }

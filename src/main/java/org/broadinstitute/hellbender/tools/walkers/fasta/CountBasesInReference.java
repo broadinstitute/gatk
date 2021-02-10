@@ -4,7 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.SimpleOutputCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalTextOutputArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -14,12 +14,14 @@ import picard.cmdline.programgroups.ReferenceProgramGroup;
 @DocumentedFeature
 @CommandLineProgramProperties(
         oneLineSummary = "Count the numbers of each base in a reference file",
-        summary = "Count the number of times each individual base occurs in a reference file.",
+        summary = "Count the number of times each individual base occurs in a reference file and output to stadard out " +
+                "(and optionally a file).",
         programGroup = ReferenceProgramGroup.class
 )
 public class CountBasesInReference extends ReferenceWalker {
+
     @ArgumentCollection
-    final public SimpleOutputCollection out = new SimpleOutputCollection();
+    final public OptionalTextOutputArgumentCollection out = new OptionalTextOutputArgumentCollection();
 
     @VisibleForTesting
     final long[] baseCounts = new long[256];
@@ -38,7 +40,7 @@ public class CountBasesInReference extends ReferenceWalker {
                 sb.append((char) i).append(" : ").append(count).append("\n");
             }
         }
-        out.writeToOutput(sb.toString().getBytes());
+        out.print(sb);
         System.out.print(sb.toString());
 
         return 0;
