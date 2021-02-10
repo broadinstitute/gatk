@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * Calculate and print to the standard output (and optionally a file) the overall number of reads in a SAM/BAM/CRAM file.
+ * Count and print to standard output (and optionally to a file) the total number of reads in a SAM/BAM/CRAM file.
  *
  * <h3>Input</h3>
  * <ul>
@@ -27,18 +27,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  * </pre>
  */
 @CommandLineProgramProperties(
-	summary = "Calculate and print to the standard output (and optionally a file) the overall number of reads in a SAM/BAM/CRAM file.\n" +
-            "\n" +
-            "<h3>Input</h3>\n" +
-            "<ul>\n" +
-            "    <li>A single BAM file</li>\n" +
-            "</ul>\n" +
-            "\n" +
-            "<h3>Example</h3>\n" +
-            "<pre>\n" +
-            "  gatk CountReads \\\n" +
-            "    -I input_reads.bam\n" +
-            "</pre>",
+	summary = "Count and print to standard output (and optionally to a file) the total number of reads in a SAM/BAM/CRAM file",
 	oneLineSummary = "Count reads in a SAM/BAM/CRAM file",
     programGroup = CoverageAnalysisProgramGroup.class
 )

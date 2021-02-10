@@ -17,7 +17,7 @@ import java.text.NumberFormat;
 
 /**
  * Accumulate flag statistics given a BAM file, e.g. total number of reads with QC failure flag set, number of
- * duplicates, percentage mapped etc. and output summary to standard output (and optionally a file.)
+ * duplicates, percentage mapped etc. and output summary to standard output (and optionally to a file.)
  *
  * <h3>Input</h3>
  * <ul>
@@ -37,23 +37,7 @@ import java.text.NumberFormat;
  */
 @CommandLineProgramProperties(
 	summary = "Accumulate flag statistics given a BAM file, e.g. total number of reads with QC failure flag set, number of\n" +
-            "duplicates, percentage mapped etc. and output summary to standard output (and optionally a file.)\n" +
-            "\n" +
-            "<h3>Input</h3>\n" +
-            "<ul>\n" +
-            "    <li>A BAM file containing aligned read data</li>\n" +
-            "</ul>\n" +
-            "\n" +
-            "<h3>Output</h3>\n" +
-            "<ul>\n" +
-            "    <li>Accumulated flag statistics</li>\n" +
-            "</ul>\n" +
-            "\n" +
-            "<h3>Example Usage</h3>\n" +
-            "<pre>\n" +
-            "  gatk FlagStat \\\n" +
-            "    -I input.bam\n" +
-            "</pre>",
+            "duplicates, percentage mapped etc. and output summary to standard output (and optionally to a file).",
 	oneLineSummary = "Accumulate flag statistics given a BAM file",
     programGroup = DiagnosticsAndQCProgramGroup.class
 )

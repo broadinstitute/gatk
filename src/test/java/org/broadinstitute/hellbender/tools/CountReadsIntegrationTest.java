@@ -9,22 +9,42 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.file.Files;
 
 public final class CountReadsIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "filenames")
     public void testCountReads(final String fileIn, final String referenceName) throws Exception {
-        final File ORIG_BAM = new File(getTestDataDir(), fileIn);
+        final File input = new File(getTestDataDir(), fileIn);
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addRaw("--input");
-        args.addRaw(ORIG_BAM.getAbsolutePath());
+
+        args.addInput(input);
         if (null != referenceName) {
-            final File REF = new File(getTestDataDir(), referenceName);
-            args.addRaw("-R");
-            args.addRaw(REF.getAbsolutePath());
+            final File ref = new File(getTestDataDir(), referenceName);
+            args.addReference(ref);
         }
-        final Object res = this.runCommandLine(args.getArgsArray());
+
+        final Object res = runCommandLine(args);
         Assert.assertEquals(res, 8l);
+    }
+
+    @Test(dataProvider = "filenames")
+    public void testCountReadsWithOutputFile(final String fileIn, final String referenceName) throws Exception {
+        final File input = new File(getTestDataDir(), fileIn);
+        final File output = createTempFile("testCountReadsWithOutputFile", ".txt");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+
+        args.addInput(input);
+        args.addOutput(output);
+        if (null != referenceName) {
+            final File ref = new File(getTestDataDir(), referenceName);
+            args.addReference(ref);
+        }
+
+        final Object res = runCommandLine(args);
+        Assert.assertEquals(res, 8l);
+        Assert.assertEquals(Files.readAllBytes(output.toPath()), "8".getBytes());
     }
 
     @DataProvider(name="filenames")

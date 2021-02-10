@@ -11,11 +11,26 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceWalker;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 
+/**
+ * Counts the number of times each base occurs in a reference, and prints the counts to standard output
+ * (and optionally to a file).
+ *
+ * <h3> Input </h3>
+ * <ul>
+ *     <li> A single reference file. </li>
+ * </ul>
+ *
+ * <h3> Usage example: </h3>
+ * <pre>
+ *  gatk CountBasesInReference \
+ *       -R reference.fasta
+ * </pre>
+ */
 @DocumentedFeature
 @CommandLineProgramProperties(
         oneLineSummary = "Count the numbers of each base in a reference file",
-        summary = "Count the number of times each individual base occurs in a reference file and output to stadard out " +
-                "(and optionally a file).",
+        summary = "Count the number of times each individual base occurs in a reference file and print to standard output " +
+                "(and optionally to a file).",
         programGroup = ReferenceProgramGroup.class
 )
 public class CountBasesInReference extends ReferenceWalker {
