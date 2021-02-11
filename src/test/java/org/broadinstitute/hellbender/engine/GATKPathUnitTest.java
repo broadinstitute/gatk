@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import htsjdk.io.IOPath;
 import org.apache.commons.lang3.SystemUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -120,35 +121,35 @@ public class GATKPathUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "validPathSpecifiers")
     public void testPathSpecifier(final String referenceString, final String expectedURIString, final boolean hasFileSystemProvider, final boolean isPath) {
-        final PathURI pathURI = new GATKPath(referenceString);
-        Assert.assertNotNull(pathURI);
-        Assert.assertEquals(pathURI.getURI().toString(), expectedURIString);
+        final IOPath ioPath = new GATKPath(referenceString);
+        Assert.assertNotNull(ioPath);
+        Assert.assertEquals(ioPath.getURI().toString(), expectedURIString);
     }
 
     @Test(dataProvider = "validPathSpecifiers")
     public void testIsNIO(final String referenceString, final String expectedURIString, final boolean hasFileSystemProvider, final boolean isPath) {
-        final PathURI pathURI = new GATKPath(referenceString);
-        Assert.assertEquals(pathURI.hasFileSystemProvider(), hasFileSystemProvider);
+        final IOPath ioPath = new GATKPath(referenceString);
+        Assert.assertEquals(ioPath.hasFileSystemProvider(), hasFileSystemProvider);
     }
 
     @Test(dataProvider = "validPathSpecifiers")
     public void testIsPath(final String referenceString, final String expectedURIString, final boolean hasFileSystemProvider, final boolean isPath) {
-        final PathURI pathURI = new GATKPath(referenceString);
+        final IOPath ioPath = new GATKPath(referenceString);
         if (isPath) {
-            Assert.assertEquals(pathURI.isPath(), isPath, pathURI.getToPathFailureReason());
+            Assert.assertEquals(ioPath.isPath(), isPath, ioPath.getToPathFailureReason());
         } else {
-            Assert.assertEquals(pathURI.isPath(), isPath);
+            Assert.assertEquals(ioPath.isPath(), isPath);
         }
     }
 
     @Test(dataProvider = "validPathSpecifiers")
     public void testToPath(final String referenceString, final String expectedURIString, final boolean hasFileSystemProvider, final boolean isPath) {
-        final PathURI pathURI = new GATKPath(referenceString);
+        final IOPath ioPath = new GATKPath(referenceString);
         if (isPath) {
-            final Path path = pathURI.toPath();
-            Assert.assertEquals(path != null, isPath, pathURI.getToPathFailureReason());
+            final Path path = ioPath.toPath();
+            Assert.assertEquals(path != null, isPath, ioPath.getToPathFailureReason());
         } else {
-            Assert.assertEquals(pathURI.isPath(), isPath);
+            Assert.assertEquals(ioPath.isPath(), isPath);
         }
     }
 
@@ -191,15 +192,15 @@ public class GATKPathUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "invalidPath")
     public void testIsPathInvalid(final String invalidPathString) {
-        final PathURI htsURI = new GATKPath(invalidPathString);
-        Assert.assertFalse(htsURI.isPath());
+        final IOPath ioPath = new GATKPath(invalidPathString);
+        Assert.assertFalse(ioPath.isPath());
     }
 
     @Test(dataProvider = "invalidPath", expectedExceptions = {
             IllegalArgumentException.class, FileSystemNotFoundException.class,ProviderNotFoundException.class})
     public void testToPathInvalid(final String invalidPathString) {
-        final PathURI htsURI = new GATKPath(invalidPathString);
-        htsURI.toPath();
+        final IOPath ioPath = new GATKPath(invalidPathString);
+        ioPath.toPath();
     }
 
     @Test
@@ -236,9 +237,9 @@ public class GATKPathUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "inputStreamSpecifiers")
     public void testGetInputStream(final String referenceString, final String expectedFileContents) throws IOException {
-        final PathURI htsURI = new GATKPath(referenceString);
+        final IOPath ioPath = new GATKPath(referenceString);
 
-        try (final InputStream is = htsURI.getInputStream();
+        try (final InputStream is = ioPath.getInputStream();
              final DataInputStream dis = new DataInputStream(is)) {
             final byte[] actualFileContents = new byte[expectedFileContents.length()];
             dis.readFully(actualFileContents);
@@ -263,11 +264,11 @@ public class GATKPathUnitTest extends GATKBaseTest {
 
     @Test
     public void testStdIn() throws IOException {
-        final PathURI htsURI = new GATKPath(
+        final IOPath ioPath = new GATKPath(
                 SystemUtils.IS_OS_WINDOWS ?
                         "-" :
                         "/dev/stdin");
-        try (final InputStream is = htsURI.getInputStream();
+        try (final InputStream is = ioPath.getInputStream();
              final DataInputStream dis = new DataInputStream(is)) {
             final byte[] actualFileContents = new byte[0];
             dis.readFully(actualFileContents);
@@ -282,8 +283,8 @@ public class GATKPathUnitTest extends GATKBaseTest {
             // stdout is not addressable as a device in the file system namespace on Windows, so skip
             throw new SkipException(("No stdout test on Windows"));
         } else {
-            final PathURI pathURI = new GATKPath("/dev/stdout");
-            try (final OutputStream os = pathURI.getOutputStream();
+            final IOPath ioPath = new GATKPath("/dev/stdout");
+            try (final OutputStream os = ioPath.getOutputStream();
                  final DataOutputStream dos = new DataOutputStream(os)) {
                 dos.write("some stuff".getBytes());
             }
@@ -650,14 +651,14 @@ public class GATKPathUnitTest extends GATKBaseTest {
     private void doStreamRoundTrip(final String referenceString) throws IOException {
         final String expectedFileContents = "Test contents";
 
-        final PathURI pathURI = new GATKPath(referenceString);
-        try (final OutputStream os = pathURI.getOutputStream();
+        final IOPath ioPath = new GATKPath(referenceString);
+        try (final OutputStream os = ioPath.getOutputStream();
              final DataOutputStream dos = new DataOutputStream(os)) {
             dos.write(expectedFileContents.getBytes());
         }
 
         // read it back in and make sure it matches expected contents
-        try (final  InputStream is = pathURI.getInputStream();
+        try (final  InputStream is = ioPath.getInputStream();
              final DataInputStream dis = new DataInputStream(is)) {
             final byte[] actualFileContents = new byte[expectedFileContents.length()];
             dis.readFully(actualFileContents);

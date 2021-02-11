@@ -158,7 +158,7 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
         runCommandLine(arguments);
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = RuntimeException.class)
     public void testNonExistentSequenceDictionaryFile() {
         final File outputDir = createTempDir("testDir");
         final String[] arguments = {
