@@ -1,17 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalTextOutputArgumentCollection;
+import org.broadinstitute.hellbender.engine.*;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.VariantWalker;
 
 /**
  *
- * Count variant records in a VCF file, regardless of filter status. The tool gives the count at end of the standard out.
+ * Count variant records in a VCF file, regardless of filter status. The tool prints the count to standard output
+ * (and can optionally write it to a file).
  *
  * <h3> Input </h3>
  * <ul>
@@ -36,15 +36,19 @@ public final class CountVariants extends VariantWalker {
     static final String USAGE_ONE_LINE_SUMMARY = "Counts variant records in a VCF file, regardless of filter status.";
     static final String USAGE_SUMMARY = "This tool counts the variant records in a VCF file, regardless of filter status. " +
             "Because it counts the number of rows in the VCF, it does not necessarily reflect the number of variant " +
-            "alleles. The count is returned at the end of the standard out.";
+            "alleles. The count is printed to standard output (and may optionally be written to a file)";
+
+    @ArgumentCollection
+    final public OptionalTextOutputArgumentCollection out = new OptionalTextOutputArgumentCollection();
 
     @Override
-    public void apply( final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
+    public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         count++;
     }
 
     @Override
     public Object onTraversalSuccess() {
+        out.print(count);
         return count;
     }
 }
