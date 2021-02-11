@@ -42,7 +42,7 @@ public class IngestUtils {
             br.close();
             if (sampleId == null) {
                 // sampleId not found
-                throw new UserException("Sample " + sampleId + " could not be found in sample mapping file");
+                throw new UserException("Sample " + sampleName + " could not be found in sample mapping file");
             }
         } catch (final IOException ioe) { // FileNotFoundException e,
             throw new UserException("Could not find sample mapping file");
