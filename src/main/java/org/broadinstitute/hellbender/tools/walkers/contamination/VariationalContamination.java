@@ -20,7 +20,12 @@ public class VariationalContamination {
         this.errorRate = errorRate;
     }
 
+    private static int MINIMUM_REQUIRED_NUM_SITES = 1;
     public Pair<Double, Double> calculateContaminationFromHoms(List<PileupSummary> sites){
+        if (sites.size() < MINIMUM_REQUIRED_NUM_SITES){
+            return new ImmutablePair<>(-1.0, -1.0); // Sato: Need to augment the output file with other information like number of sites, posterior beta parameters, etc.
+        }
+
         int allBases = sites.stream().mapToInt(s -> s.getTotalCount()).sum();
         if (errorRate == 0.0){
             errorRate = 1.0/allBases; // If the reported sequencing error rate is 0

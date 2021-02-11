@@ -588,7 +588,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(region, allVariationEvents, referenceContext);
 
-        if ( ! trimmingResult.isVariationPresent() && ! hcArgs.disableOptimizations ) {
+        if ( ! trimmingResult.isVariationPresent() && ! hcArgs.disableOptimizations ) { // sato: disable opti
             return referenceModelForNoVariation(region, false, VCpriors);
         }
 
