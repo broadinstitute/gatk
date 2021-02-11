@@ -198,7 +198,6 @@ def compare_sample_data(e1, e2):
                 return
 
             # If the genotypes are different BUT they have the same PL, they are effectively eqivalent.  
-
             if 'PL' in sd1[sample_id] and 'PL' in sd2[sample_id]:
                 pl1 = get_pl_for_gt(sd1[sample_id]['GT'], sd1[sample_id]['PL'])
                 pl2 = get_pl_for_gt(sd2[sample_id]['GT'], sd2[sample_id]['PL'])
@@ -261,9 +260,9 @@ with open(vcf_file_1) as file1, open(vcf_file_2) as file2:
                 log_difference(key, e1, e2) 
 
         # TODO: temporary until we decide what to do with spanning deletions
-#        if ('*' in e1['alt']):
-#            print(f"Dropping {e1['chrom']}:{e1['pos']} due to * allele")
-#            continue
+        if ('*' in e1['alt']):
+            #print(f"Dropping {e1['chrom']}:{e1['pos']} due to * allele")
+            continue
             
         # compare the minimized version of ref/alt
         compare_alts(e1['alt'], e2['alt'])

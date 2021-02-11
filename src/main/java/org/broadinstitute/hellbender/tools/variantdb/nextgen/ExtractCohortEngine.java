@@ -90,7 +90,8 @@ public class ExtractCohortEngine {
                                final double vqsLodINDELThreshold,
                                final ProgressMeter progressMeter,
                                final ExtractCohort.QueryMode queryMode,
-                               final String filterSetName) {
+                               final String filterSetName,
+                               final boolean emitPLs) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -113,7 +114,7 @@ public class ExtractCohortEngine {
         this.filterSetName = filterSetName;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
-        this.gnarlyGenotyper = new GnarlyGenotyperEngine(false, 30, false, false, true);
+        this.gnarlyGenotyper = new GnarlyGenotyperEngine(false, 30, false, emitPLs, true);
 
     }
 
@@ -297,24 +298,19 @@ public class ExtractCohortEngine {
 
         String s = o.toString();
 
-        // TODO: KCIBUL -- unclear how QUALapproxes are summed from non-ref alleles... replicating what I saw but need to confirm with Laura
+        // Non-AS QualApprox (used for qualapprox filter) is simply the sum of the AS values (see GnarlyGenotyper)
         if (s.contains("|")) {
 
-            // take the average of all non-* alleles
+            // take the sum of all non-* alleles
             // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part            
             String[] alleles = sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString().split(",");
             String[] parts = s.split("\\|");
 
-            double total = 0;
-            int count = 0;
             for (int i=0; i < alleles.length; i++) {
                 if (!"*".equals(alleles[i])) {
-                    total += (double) Long.parseLong(parts[i]);
-                    count++;
+                    qa += (double) Long.parseLong(parts[i]);
                 }
             }
-
-            qa = total / (double) count;
         } else {
             qa = (double) Long.parseLong(s);
         }
