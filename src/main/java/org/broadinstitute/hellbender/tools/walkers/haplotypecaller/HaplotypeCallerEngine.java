@@ -585,13 +585,32 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
+        // sato: made unfinal...not ideal.
+        AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(region, allVariationEvents, referenceContext);
 
-        final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(region, allVariationEvents, referenceContext);
-
-        if ( ! trimmingResult.isVariationPresent() && ! hcArgs.disableOptimizations ) {
+        if ( ! trimmingResult.isVariationPresent() && ! hcArgs.disableOptimizations ) { // sato: in other words, this is the optimization.
             return referenceModelForNoVariation(region, false, VCpriors);
         }
 
+        if ( ! trimmingResult.isVariationPresent()){
+            // Variant is not present within the active region. This might be that the isActive() triggered but, after assembly,
+            // it turned out the variation is no longer present (Q: how does assembly identify events without a genotyping model? A: EventMap
+            // in Haplotype.) Or we are at a site specified in the -L argument with force active enabled.
+            // This code path sould be cleaned much better.
+            // Come on, don't make excuses! Do better.
+            // If SNP, then just a one-base interval.
+            final SimpleInterval variantSpan = region.getSpan(); // Should check if this contains more than one base.
+            if (variantSpan.getLengthOnReference() > 1){
+                throw new UserException("eh");
+            }
+            // sato: eventually, share code with the trimmer
+            final int paddingForSnp = 20;
+            final SimpleInterval paddedActiveRegion = new SimpleInterval(variantSpan.getContig(),
+                    variantSpan.getStart() - paddingForSnp, variantSpan.getEnd() + paddingForSnp); // Must watch out for ends of contigs
+            trimmingResult = trimmer.trimNoVariations(region,variantSpan, paddedActiveRegion);
+        }
+
+        // sato: If we reached here, we are not optimizing. Need to produce a bamout. Still want to trim.
         final AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();

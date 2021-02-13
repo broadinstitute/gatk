@@ -149,7 +149,7 @@ public final class AssemblyRegionTrimmer {
 
     /**
      * Returns a trimming result object from which the variant trimmed region and flanking non-variant sections
-     * can be recovered latter.
+     * can be recovered later.
      *
      * @param region the genome location range to trim.
      * @param variants list of variants contained in the trimming location. Variants therein
@@ -161,7 +161,7 @@ public final class AssemblyRegionTrimmer {
         if (assemblyRegionArgs.enableLegacyAssemblyRegionTrimming) {
             return trimLegacy(region, variants);
         }
-
+        // sato: AssemblyRegion's defining (w.c.) interval is the active region. Inconsistencies....
         final List<VariantContext> variantsInRegion = variants.stream().filter(region::overlaps).collect(Collectors.toList());
 
         if ( variantsInRegion.isEmpty() ) {
@@ -197,6 +197,9 @@ public final class AssemblyRegionTrimmer {
         return new Result(region, variantSpan, paddedVariantSpan);
     }
 
+    public Result trimNoVariations(final AssemblyRegion region, final SimpleInterval variantSpan, final SimpleInterval paddedVariantSpan){
+        return new Result(region, variantSpan, paddedVariantSpan);
+    }
 
     /**
      * Returns a trimming result object from which the variant trimmed region and flanking non-variant sections
