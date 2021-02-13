@@ -161,6 +161,11 @@ public final class AssemblyRegionTrimmer {
         if (assemblyRegionArgs.enableLegacyAssemblyRegionTrimming) {
             return trimLegacy(region, variants);
         }
+
+        if (variants.isEmpty()){
+            return null; // Move the code for trimming around active region here.
+        }
+
         // sato: AssemblyRegion's defining (w.c.) interval is the active region. Inconsistencies....
         final List<VariantContext> variantsInRegion = variants.stream().filter(region::overlaps).collect(Collectors.toList());
 

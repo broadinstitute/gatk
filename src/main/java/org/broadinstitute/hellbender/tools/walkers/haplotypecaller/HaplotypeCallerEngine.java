@@ -585,7 +585,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
-        // sato: made unfinal...not ideal.
+        // sato: made unfinal...not ideal. It's probably better to check for allVariationEvents.empty() inside trim().
         AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(region, allVariationEvents, referenceContext);
 
         if ( ! trimmingResult.isVariationPresent() && ! hcArgs.disableOptimizations ) { // sato: in other words, this is the optimization.
