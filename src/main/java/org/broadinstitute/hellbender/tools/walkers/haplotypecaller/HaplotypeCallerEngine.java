@@ -601,7 +601,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             // If SNP, then just a one-base interval.
             final SimpleInterval variantSpan = region.getSpan(); // Should check if this contains more than one base.
             if (variantSpan.getLengthOnReference() > 1){
-                throw new UserException("eh");
+                logger.info("Active region of length greater than 1 at: " + variantSpan.toString());
             }
             // sato: eventually, share code with the trimmer
             final int paddingForSnp = 20;
