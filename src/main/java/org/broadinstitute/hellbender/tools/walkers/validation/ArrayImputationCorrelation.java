@@ -94,9 +94,21 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 //            optional = true
 //    )
 //    private GATKPath outputIncorrectSitesFile = null;
+    @Argument(
+            optional = true
+    )
+    private int nBins = 14;
 
-    final int nBins = 14;
-    final double firstBinRightEdge = 0.0005;
+    @Argument(
+            optional = true
+    )
+    private double firstBinRightEdge = 0.0005;
+
+    @Argument(
+            optional = true
+    )
+    private double minAfForAccuracyMetrics = 0;
+
     final List<List<AFCorrelationAggregator>> aggregators = new ArrayList<>();
     final List<AccuracyMetrics> snpMetrics = new ArrayList<>();
     final List<AccuracyMetrics> indelMetrics = new ArrayList<>();
@@ -248,10 +260,14 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
                 final int evalAltCount = evalGenotype.getPloidy() - evalGenotype.countAllele(evalVC.getReference());
                 if (evalVC.isSNP()) {
                     aggregators.get(i).get(bin).snp_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
-                    snpMetrics.get(i).incrementMetrics(evalAltCount, truthAltCount);
+                    if (af > minAfForAccuracyMetrics) {
+                        snpMetrics.get(i).incrementMetrics(evalAltCount, truthAltCount);
+                    }
                 } else if (evalVC.isIndel()) {
                     aggregators.get(i).get(bin).indel_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
-                    indelMetrics.get(i).incrementMetrics(evalAltCount, truthAltCount);
+                    if (af > minAfForAccuracyMetrics) {
+                        indelMetrics.get(i).incrementMetrics(evalAltCount, truthAltCount);
+                    }
                 }
             }
 
