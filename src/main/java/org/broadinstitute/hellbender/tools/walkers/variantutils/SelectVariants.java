@@ -853,7 +853,7 @@ public final class SelectVariants extends VariantWalker {
         }
 
         for (final String key : ChromosomeCounts.keyNames) {
-            headerLines.removeIf(line->line instanceof VCFInfoHeaderLine && ((VCFInfoHeaderLine)line).getID().equals(VCFConstants.DEPTH_KEY));
+            headerLines.removeIf(line->line instanceof VCFInfoHeaderLine && ((VCFInfoHeaderLine)line).getID().equals(key));
             headerLines.add(VCFStandardHeaderLines.getInfoLine(key));
         }
 
