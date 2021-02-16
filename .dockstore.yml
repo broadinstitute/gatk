@@ -13,7 +13,7 @@ workflows:
    - name: cnv_somatic_pair_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl
-     testParameterFiles: 
+     testParameterFiles:
      -  /scripts/cnv_cromwell_tests/somatic/cnv_somatic_pair_wes_do-gc_workflow.json
    - name: cnv_somatic_panel_workflow
      subclass: WDL
@@ -35,6 +35,9 @@ workflows:
      primaryDescriptorPath: /scripts/funcotator_wdl/funcotator.wdl
      testParameterFiles:
      - /scripts/funcotator_wdl/funcotator.json
+   - name: import_genomes
+       subclass: WDL
+       primaryDescriptorPath: /scripts/import_genomes_wdl/import_genomes.wdl
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
