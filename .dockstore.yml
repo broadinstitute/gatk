@@ -36,8 +36,8 @@ workflows:
      testParameterFiles:
      - /scripts/funcotator_wdl/funcotator.json
    - name: import_genomes
-       subclass: WDL
-       primaryDescriptorPath: /scripts/import_genomes_wdl/import_genomes.wdl
+     subclass: WDL
+     primaryDescriptorPath: /scripts/import_genomes_wdl/import_genomes.wdl
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
