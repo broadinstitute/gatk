@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+#
+# Build (and optionally push) a GATK docker image.
+#
+# If you are pushing an image to our release repositories, be sure that you've followed
+# the setup instructions here:
+# https://github.com/broadinstitute/gatk/wiki/How-to-release-GATK4#setup_docker
+# and here:
+# https://github.com/broadinstitute/gatk/wiki/How-to-release-GATK4#setup_gcloud
+#
 
 # Have script stop if there is an error
 set -e
