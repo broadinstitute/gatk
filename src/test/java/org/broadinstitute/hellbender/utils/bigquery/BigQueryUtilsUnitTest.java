@@ -95,6 +95,27 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(rowCount, expectedNamesAndAges.size(), "Size of returned results does not match expected.");
     }
 
+    @Test(groups = {"cloud"})
+    public void testQueryWithEmptyDatasetStorageAPI() {
+        final Map<String, String> expectedNamesAndAges = getAllExpectedNamesAndAges();
+
+        final String query = String.format("SELECT * FROM `%s` WHERE false", BIGQUERY_FULLY_QUALIFIED_TABLE);
+
+        final List<String> fieldsToRetrieve = new LinkedList<>();
+        fieldsToRetrieve.add("name");
+
+        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT);
+
+        int rowCount = 0;
+        final Set<String> retrievedNames = new HashSet<>();
+
+        while( result.hasNext() ) {
+            Assert.fail("No Result expected");
+        }
+
+        Assert.assertTrue(retrievedNames.isEmpty(), "No Result expected");
+    }
+
     private Map<String, String> getAllExpectedNamesAndAges() {
         final Map<String, String> expectedNamesAndAges = new HashMap<>();
         expectedNamesAndAges.put("Fred", "35");
