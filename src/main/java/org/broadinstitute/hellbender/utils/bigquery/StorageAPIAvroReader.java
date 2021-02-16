@@ -80,25 +80,27 @@ public class StorageAPIAvroReader implements GATKAvroReader {
                     .setFormat(Storage.DataFormat.AVRO);
 
             final Storage.ReadSession session = client.createReadSession(builder.build());
-            Preconditions.checkState(session.getStreamsCount() > 0);
 
-            this.schema = new org.apache.avro.Schema.Parser().parse(session.getAvroSchema().getSchema());
+            if (session.getStreamsCount() > 0) {
 
-            this.datumReader = new GenericDatumReader<>(
-                    new org.apache.avro.Schema.Parser().parse(session.getAvroSchema().getSchema()));
+                this.schema = new org.apache.avro.Schema.Parser().parse(session.getAvroSchema().getSchema());
 
-            // Use the first stream to perform reading.
-            Storage.StreamPosition readPosition = Storage.StreamPosition.newBuilder()
-                    .setStream(session.getStreams(0))
-                    .build();
+                this.datumReader = new GenericDatumReader<>(
+                        new org.apache.avro.Schema.Parser().parse(session.getAvroSchema().getSchema()));
 
-            Storage.ReadRowsRequest readRowsRequest = Storage.ReadRowsRequest.newBuilder()
-                    .setReadPosition(readPosition)
-                    .build();
+                // Use the first stream to perform reading.
+                Storage.StreamPosition readPosition = Storage.StreamPosition.newBuilder()
+                        .setStream(session.getStreams(0))
+                        .build();
 
-            this.serverStream = client.readRowsCallable().call(readRowsRequest).iterator();
+                Storage.ReadRowsRequest readRowsRequest = Storage.ReadRowsRequest.newBuilder()
+                        .setReadPosition(readPosition)
+                        .build();
 
-            loadNextRow();
+                this.serverStream = client.readRowsCallable().call(readRowsRequest).iterator();
+
+                loadNextRow();
+            }
         } catch ( IOException e ) {
             throw new GATKException("I/O Error", e);
         }
