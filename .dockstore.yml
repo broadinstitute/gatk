@@ -38,6 +38,8 @@ workflows:
    - name: import_genomes
      subclass: WDL
      primaryDescriptorPath: /scripts/import_genomes_wdl/import_genomes.wdl
+     testParameterFiles:
+     - empty.json
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
@@ -61,3 +63,8 @@ workflows:
      primaryDescriptorPath: /scripts/pathseq/wdl/pathseq_pipeline.wdl
      testParameterFiles:
      - /scripts/pathseq/wdl/pathseq_pipeline_template.json
+   - name: reblock-gvcf-BQ
+       subclass: WDL
+       primaryDescriptorPath: /scripts/reblock_gvcf_bq_wdl/reblock_gvcf_bq.wdl
+       testParameterFiles:
+         - empty.json
