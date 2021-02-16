@@ -64,7 +64,7 @@ workflows:
      testParameterFiles:
      - /scripts/pathseq/wdl/pathseq_pipeline_template.json
    - name: reblock-gvcf-BQ
-       subclass: WDL
-       primaryDescriptorPath: /scripts/reblock_gvcf_bq_wdl/reblock_gvcf_bq.wdl
-       testParameterFiles:
-         - empty.json
+     subclass: WDL
+     primaryDescriptorPath: /scripts/reblock_gvcf_bq_wdl/reblock_gvcf_bq.wdl
+     testParameterFiles:
+      - empty.json
