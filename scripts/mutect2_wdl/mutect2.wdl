@@ -60,12 +60,13 @@ version 1.0
 ## - Successfully tested on v34
 ##
 ## LICENSING :
-## This script is released under the WDL source code license (BSD-3) (see LICENSE in
-## https://github.com/broadinstitute/wdl). Note however that the programs it calls may
+## This script is released under the GATK source code license (Apache 2.0) (see LICENSE in
+## https://github.com/broadinstitute/gatk). Note however that the programs it calls may
 ## be subject to different licenses. Users are responsible for checking that they are
-## authorized to run all programs before running this script. Please see the docker
+## authorized to run all programs before running this script.  Please see the docker
 ## pages at https://hub.docker.com/r/broadinstitute/* for detailed licensing information
 ## pertaining to the included programs.
+
 
 struct Runtime {
     String gatk_docker

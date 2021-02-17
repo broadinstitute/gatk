@@ -907,7 +907,7 @@ def basePomConfiguration = {
 
     licenses {
         license {
-            name 'BSD 3-Clause'
+            name 'Apache 2.0'
             url 'https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT'
             distribution 'repo'
         }
