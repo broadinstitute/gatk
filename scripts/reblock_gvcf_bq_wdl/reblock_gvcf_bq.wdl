@@ -27,8 +27,8 @@ workflow ReblockGVCF {
     }
 
     output {
-        Reblock.output_vcf
-        Reblock.output_vcf_index
+        File reblocked_vcf = Reblock.output_vcf
+        File reblocked_vcf_index = Reblock.output_vcf_index
     }
 }
 
