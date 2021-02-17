@@ -14,7 +14,7 @@ workflow ReblockGVCF {
     String sub_sub = sub(sub(gvcf, sub_strip_path, ""), sub_strip_gvcf, "")
     String gatk_docker = "us.gcr.io/broad-dsde-methods/update_reblocking@sha256:3f7fe2a45656260c5a678f3f0e77174d6ec0305056e5fc05e62a3ca38b1f828d"
 
-    call Reblock {
+    call reblock {
         input:
             gvcf = gvcf,
             gvcf_index = gvcf + ".tbi",
@@ -27,12 +27,12 @@ workflow ReblockGVCF {
     }
 
     output {
-        File reblocked_vcf = Reblock.output_vcf
-        File reblocked_vcf_index = Reblock.output_vcf_index
+        File reblocked_vcf = reblock.output_vcf
+        File reblocked_vcf_index = reblock.output_vcf_index
     }
 }
 
-task Reblock {
+task reblock {
     input {
         File gvcf
         File gvcf_index
