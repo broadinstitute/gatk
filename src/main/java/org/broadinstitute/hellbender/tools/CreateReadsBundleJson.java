@@ -2,13 +2,25 @@ package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.SamFiles;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.bundle.ReadsBundle;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import picard.cmdline.programgroups.OtherProgramGroup;
 
+/**
+ * Create a JSON bundle file for use with GATK tools.
+ */
+@DocumentedFeature
+@CommandLineProgramProperties(
+        summary = "Create JSON bundle files for use with GATK tool",
+        oneLineSummary = "Create JSON bundle files for use with GATK tools",
+        programGroup = OtherProgramGroup.class
+)
 public class CreateReadsBundleJson extends CommandLineProgram {
     public static final String NO_INDEX_FULL_NAME = "no-index";
 

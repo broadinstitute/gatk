@@ -34,7 +34,7 @@ public class ReadsBundleTest extends BaseTest {
         final String json = EXPECTED_JSON_STRING;
         final ReadsBundle readsBundle1 = ReadsBundle.fromJson(json);
         final GATKPath path = new GATKPath("a file");
-        path.setTagAttributes(Collections.singletonMap("FILE_TYPE", "bam"));
+        path.setTagAttributes(Collections.singletonMap(ReadsBundle.FILE_TYPE_KEY, "bam"));
         Assert.assertEquals(readsBundle1.getReads(), path);
     }
 
@@ -43,7 +43,7 @@ public class ReadsBundleTest extends BaseTest {
         final GATKPath json = getTestFileGATKPath("reads1.json");
         final ReadsBundle readsBundle1 = ReadsBundle.fromPath(json);
         final GATKPath path = new GATKPath("a file");
-        path.setTagAttributes(Collections.singletonMap("FILE_TYPE", "bam"));
+        path.setTagAttributes(Collections.singletonMap(ReadsBundle.FILE_TYPE_KEY, "bam"));
         Assert.assertEquals(readsBundle1.getReads(), path);
     }
 
