@@ -34,7 +34,7 @@ workflows:
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/ImportGenomes.wdl
      testParameterFiles:
-       - empty.json
+       - /scripts/variantstore/wdl/ImportGenomes.example.inputs.json
    - name: funcotator
      subclass: WDL
      primaryDescriptorPath: /scripts/funcotator_wdl/funcotator.wdl
