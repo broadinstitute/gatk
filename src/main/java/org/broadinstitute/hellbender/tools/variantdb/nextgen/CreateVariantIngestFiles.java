@@ -86,9 +86,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public CommonCode.ModeEnum mode = CommonCode.ModeEnum.EXOMES;
 
-    @Argument(fullName = "output-type", 
-            shortName = "ot", 
-            doc = "[Experimental] Output file format: TSV, ORC or PARQUET [default=TSV].", 
+    @Argument(fullName = "output-type",
+            shortName = "ot",
+            doc = "[Experimental] Output file format: TSV, ORC or PARQUET [default=TSV].",
             optional = true)
     public CommonCode.OutputType outputType = CommonCode.OutputType.TSV;
 
@@ -202,7 +202,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         try {
-            petTsvCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
+            petTsvCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet, outputType);
         } catch (IOException ioe) {
             throw new GATKException("Error writing missing intervals", ioe);
         }
