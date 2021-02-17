@@ -1,6 +1,11 @@
 version: 1.2
 
 workflows:
+  - name: calculate_MQband_histogram
+    subclass: WDL
+    primaryDescriptorPath: /scripts/calculate_MQband_wdl/calculate_MQband_histogram.wdl
+    testParameterFiles:
+    - empty.json
   - name: cnv_germline_case_workflow
     subclass: WDL
     primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl
