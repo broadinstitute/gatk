@@ -474,7 +474,9 @@ public class CalibrateDragstrModel extends GATKTool {
         final List<SimpleInterval> shards = shardIntervals(intervals, shardSize);
 
         // Specify the reference here in case we are supplied a CRAM input. NOTE: this tool requires a reference input to begin with, thus we needn't assert that one is provided
-        try (final ReadsDataSourcePool readsDataSourcePool = new ReadsDataSourcePool(readArguments.getReadPaths(), referenceArguments.getReferencePath())) {
+        try (final ReadsDataSourcePool readsDataSourcePool = new ReadsDataSourcePool(
+                readArguments.getReadPaths(),
+                referenceArguments.getReferenceSpecifier())) {
 
             final AtomicLong numberBasesProcessed = new AtomicLong(0);
             return Utils.runInParallel(threads, () ->

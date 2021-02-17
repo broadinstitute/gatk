@@ -5,6 +5,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -57,8 +58,7 @@ public class IntervalPileupUnitTest extends GATKBaseTest {
                 final int start = Math.max(1, position - margin); // it should not go below 1 due to the telomere_skip but just being paranoic.
                 final int end = Math.min(sequenceRecord.getSequenceLength(), position + margin);
                 final SimpleInterval interval = new SimpleInterval(sequenceRecord.getSequenceName(), start, end);
-                final Path alignment = IOUtils.getPath(TEST_ALIGNMENT_FILE);
-                final ReadsDataSource readsDataSource = new ReadsPathDataSource(alignment);
+                final ReadsDataSource readsDataSource = new ReadsPathDataSource(new GATKPath(TEST_ALIGNMENT_FILE));
                 final List<GATKRead> reads = Utils.stream(readsDataSource.query(interval)).collect(Collectors.toList());
                 final ReferenceBases refBases = new ReferenceBases(ref.queryAndPrefetch(interval).getBases(), interval);
                 result.add(new Object[] { interval, reads, refBases});
@@ -130,8 +130,7 @@ public class IntervalPileupUnitTest extends GATKBaseTest {
     public Object[][] fixedIntervalData() {
         final Path reference = IOUtils.getPath(TEST_REFERENCE_FILE);
         final ReferenceDataSource ref = new ReferenceFileSource(reference);
-        final Path alignment = IOUtils.getPath(TEST_ALIGNMENT_FILE);
-        final ReadsDataSource readsDataSource = new ReadsPathDataSource(alignment);
+        final ReadsDataSource readsDataSource = new ReadsPathDataSource(new GATKPath(TEST_ALIGNMENT_FILE));
         return Arrays.stream(FIXED_TEST_INTERVALS)
                 .map(si -> new Object[] {si, Utils.stream(readsDataSource.query(si)).collect(Collectors.toList()),  new ReferenceBases(ref.queryAndPrefetch(si).getBases(), si)})
                 .toArray(Object[][]::new);
