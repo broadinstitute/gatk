@@ -66,13 +66,13 @@ workflows:
       branches:
         - wdl_loc_opt
   - name: import_genomes
-      subclass: WDL
-      primaryDescriptorPath: /scripts/import_genomes_wdl/import_genomes.wdl
-      testParameterFiles:
+    subclass: WDL
+    primaryDescriptorPath: /scripts/import_genomes_wdl/import_genomes.wdl
+    testParameterFiles:
         - empty.json
-      filters:
-        branches:
-          - wdl_loc_opt
+    filters:
+      branches:
+        - wdl_loc_opt
   - name: MitochondriaPipeline
     subclass: WDL
     primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
@@ -112,10 +112,10 @@ workflows:
       branches:
         - wdl_loc_opt
   - name: reblock-gvcf-BQ
-      subclass: WDL
-      primaryDescriptorPath: /scripts/reblock_gvcf_bq_wdl/reblock_gvcf_bq.wdl
-      testParameterFiles:
-        - empty.json
-      filters:
-        branches:
-          - wdl_loc_opt
+    subclass: WDL
+    primaryDescriptorPath: /scripts/reblock_gvcf_bq_wdl/reblock_gvcf_bq.wdl
+    testParameterFiles:
+      - empty.json
+    filters:
+      branches:
+        - wdl_loc_opt
