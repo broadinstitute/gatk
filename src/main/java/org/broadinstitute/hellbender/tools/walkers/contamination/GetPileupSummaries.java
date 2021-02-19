@@ -4,8 +4,12 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -30,7 +34,6 @@ import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.*;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -178,6 +181,11 @@ public class GetPileupSummaries extends LocusWalker {
     private GATKPath badReadsBam = null;
     GATKReadWriter badBamWriter;
 
+    public static final String PONJ_TSV_NAME = "bad-sites";
+    @Argument(fullName = PONJ_TSV_NAME, optional = true)
+    private GATKPath badSites = null;
+    PrintWriter badSitesWriter;
+
     @Argument(fullName = "counts", optional = true)
     private GATKPath countsFile = null;
 
@@ -258,6 +266,18 @@ public class GetPileupSummaries extends LocusWalker {
             badBamWriter = createSAMWriter(badReadsBam, false);
         }
 
+        if (badSites != null){
+            List<String> header = Arrays.asList("yo", "yo");
+            StringJoiner joiner = new StringJoiner( "\t");
+            header.forEach(s -> joiner.add(s));
+            try {
+                badSitesWriter = new PrintWriter(badSites.toString());
+                badSitesWriter.println(joiner.toString());
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
         M2ArgumentCollection MTAC = new M2ArgumentCollection();
         MTAC.likelihoodArgs.pairHMM = PairHMM.Implementation.ORIGINAL;
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs, true);
@@ -273,6 +293,7 @@ public class GetPileupSummaries extends LocusWalker {
         }
         final VariantContext vc = vcs.get(0); // sato: this is the variant in exac
 
+        int numShouldBeAltButRefAtLocus = 0;
         if (vc.isBiallelic() && vc.isSNP() && alleleFrequencyInRange(vc)) {
             final ReadPileup rawPileup = alignmentContext.getBasePileup();
             final Predicate<PileupElement> mqFilter = pe -> pe.getRead().getMappingQuality() >= minMappingQuality;
@@ -286,6 +307,7 @@ public class GetPileupSummaries extends LocusWalker {
 
             final byte altBase = vc.getAlternateAllele(0).getBases()[0];
             final byte refBase = vc.getReference().getBases()[0];
+
             for (PileupElement elem : pileup) {
                 if (elem.getBase() == refBase || elem.isDeletion()) {
                     // Get a new pileup element, using the realigned read.
@@ -346,7 +368,7 @@ public class GetPileupSummaries extends LocusWalker {
                     } else if (elem.getBase() == refBase) {
                         numRefAllele++;
                         if (refLikelihood < altLikelihood) {
-                            numShouldBeAltButRef++;
+                            numShouldBeAltButRefAtLocus++;
                             if (badBamWriter != null){
                                 badBamWriter.addRead(elem.getRead());
                             }
@@ -362,6 +384,22 @@ public class GetPileupSummaries extends LocusWalker {
                         }
                     }
                 }
+            }
+
+            numShouldBeAltButRef += numShouldBeAltButRefAtLocus;
+            if (numShouldBeAltButRefAtLocus > 0){
+                int padding = 10; // get this many bases to either side of the locus
+                String contig = pileup.getLocation().getContig();
+                int start = pileup.getLocation().getStart();
+                int end = pileup.getLocation().getEnd();
+                String refBases = new String(referenceContext.getBases(new SimpleInterval(contig, start, end)));
+                StringJoiner sj = new StringJoiner("\t");
+                sj.add(pileup.getLocation().getContig());
+                sj.add(String.valueOf(start));
+                sj.add(String.valueOf(end));
+                sj.add(String.valueOf(numShouldBeAltButRefAtLocus));
+                sj.add(refBases);
+                badSitesWriter.println(sj.toString());
             }
 
             pileupSummaries.add(new PileupSummary(vc, pileup));
@@ -393,13 +431,6 @@ public class GetPileupSummaries extends LocusWalker {
         }
     }
 
-    private void filterPileupElementBeta(final PileupElement pe){
-        final GATKRead read = pe.getRead();
-        // AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype();
-        // AlignmentUtils.createReadAlignedToRef();
-
-    }
-
     @Override
     public void closeTool(){
         likelihoodCalculationEngine.close();
@@ -426,6 +457,10 @@ public class GetPileupSummaries extends LocusWalker {
                 e.printStackTrace();
             }
         }
+
+        if (badSitesWriter != null){
+            badSitesWriter.close();
+        }
     }
 
     @Override
@@ -438,7 +473,7 @@ public class GetPileupSummaries extends LocusWalker {
 
 
         // For good measure
-        System.out.println("Total_ref_count_in_hom_alt," + numRefAllele);
+        System.out.println("Total_ref_count," + numRefAllele);
         System.out.println("Ref_should_be_alt," + numShouldBeAltButRef);
         System.out.println("Total_deletion_count_in_hom_alt," + numDeletions);
         System.out.println("Deletion_should_be_alt," + numShouldBeAltButDel);
