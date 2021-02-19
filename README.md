@@ -1,13 +1,13 @@
 [![Build Status](https://travis-ci.com/broadinstitute/gatk.svg?branch=master)](https://travis-ci.com/broadinstitute/gatk)
 [![Maven Central](https://img.shields.io/maven-central/v/org.broadinstitute/gatk.svg)](https://maven-badges.herokuapp.com/maven-central/org.broadinstitute/gatk)
-[![License (3-Clause BSD)](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ***Please see the [GATK website](http://www.broadinstitute.org/gatk), where you can download a precompiled executable, read documentation, ask questions, and receive technical support. For GitHub basics, see [here](https://software.broadinstitute.org/gatk/documentation/article?id=23405).***
 
 ### GATK 4
 
 This repository contains the next generation of the Genome Analysis Toolkit (GATK). The contents
-of this repository are 100% open source and released under the BSD 3-Clause license (see [LICENSE.TXT](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT)).
+of this repository are 100% open source and released under the Apache 2.0 license (see [LICENSE.TXT](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT)).
 
 GATK4 aims to bring together well-established tools from the [GATK](http://www.broadinstitute.org/gatk) and
 [Picard](http://broadinstitute.github.io/picard/) codebases under a streamlined framework,
@@ -368,7 +368,7 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
 
 * **Try to keep datafiles under 100kb in size.** Larger test files should go into `src/test/resources/large` (and subdirectories) so that they'll be stored and tracked by git-lfs as described [above](#lfs).
 
-* GATK4 is BSD licensed.  The license is in the top level LICENSE.TXT file.  Do not add any additional license text or accept files with a license included in them.
+* GATK4 is Apache 2.0 licensed.  The license is in the top level LICENSE.TXT file.  Do not add any additional license text or accept files with a license included in them.
 
 * Each tool should have at least one good end-to-end integration test with a check for expected output, plus high-quality unit tests for all non-trivial utility methods/classes used by the tool. Although we have no specific coverage target, coverage should be extensive enough that if tests pass, the tool is guaranteed to be in a usable state.
 
@@ -643,4 +643,4 @@ The authors list is maintained in the [AUTHORS](https://github.com/broadinstitut
 See also the [Contributors](https://github.com/broadinstitute/gatk/graphs/contributors) list at github. 
 
 ## <a name="license">License</a>
-Licensed under the BSD License. See the [LICENSE.txt](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT) file.
+Licensed under the Apache 2.0 License. See the [LICENSE.txt](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT) file.
