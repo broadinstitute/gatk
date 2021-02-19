@@ -49,8 +49,10 @@ public class FixContaminationVcf extends VariantWalker { // or, the bed
     public void apply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         if (! variant.getReference().basesMatch(referenceContext.getBases())){
             badSitesWriter.add(variant);
+        } else {
+            vcfWriter.add(variant);
         }
-        vcfWriter.add(variant);
+
     }
 
     @Override
