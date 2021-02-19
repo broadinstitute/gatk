@@ -395,7 +395,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             }
         }
     }
-    
+
     // test that the dont-use-soft-clips option actually does something
     @Test
     public void testDontUseSoftClips() {
