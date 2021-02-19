@@ -392,7 +392,7 @@ public class GetPileupSummaries extends LocusWalker {
                 String contig = pileup.getLocation().getContig();
                 int start = pileup.getLocation().getStart();
                 int end = pileup.getLocation().getEnd();
-                String refBases = new String(referenceContext.getBases(new SimpleInterval(contig, start, end)));
+                String refBases = new String(referenceContext.getBases(new SimpleInterval(contig, start - padding, end + padding)));
                 StringJoiner sj = new StringJoiner("\t");
                 sj.add(pileup.getLocation().getContig());
                 sj.add(String.valueOf(start));
@@ -475,14 +475,14 @@ public class GetPileupSummaries extends LocusWalker {
         // For good measure
         System.out.println("Total_ref_count," + numRefAllele);
         System.out.println("Ref_should_be_alt," + numShouldBeAltButRef);
-        System.out.println("Total_deletion_count_in_hom_alt," + numDeletions);
+        System.out.println("Total_deletion_count," + numDeletions);
         System.out.println("Deletion_should_be_alt," + numShouldBeAltButDel);
 
         if (countsFile != null){
             try (PrintWriter memoWriter = new PrintWriter(countsFile.toString())){
-                memoWriter.println("Total_ref_count_in_hom_alt," + numRefAllele);
+                memoWriter.println("Total_ref_count," + numRefAllele);
                 memoWriter.println("Ref_should_be_alt," + numShouldBeAltButRef);
-                memoWriter.println("Total_deletion_count_in_hom_alt," + numDeletions);
+                memoWriter.println("Total_deletion_count," + numDeletions);
                 memoWriter.println("Deletion_should_be_alt," + numShouldBeAltButDel);
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
