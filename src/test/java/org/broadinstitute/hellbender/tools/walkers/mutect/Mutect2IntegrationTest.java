@@ -396,6 +396,27 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         }
     }
 
+
+    @Test()
+    public void testThing() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConcordantWithGATK3Results", ".vcf");
+
+        final String[] args = {
+                "-I", "gs://broad-dsp-spec-ops/scratch/andrea/mtb/D1CLVACXX.1.Solexa-125092.aligned.bam",
+                "-R", "gs://broad-dsp-spec-ops/scratch/andrea/mtb/Mycobacterium_tuberculosis_H37Rv.fasta",
+                "-O", output.getAbsolutePath(),
+                "--num-matching-bases-in-dangling-end-to-recover", "1",
+                "--max-reads-per-alignment-start", "75"
+        };
+
+        runCommandLine(args);
+
+        Assert.assertTrue(1 >= 0.99, "Concordance with GATK 3.8 in VCF mode is < 99% (" +  10 + ")");
+    }
+
+
     // test that the dont-use-soft-clips option actually does something
     @Test
     public void testDontUseSoftClips() {
