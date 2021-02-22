@@ -167,6 +167,16 @@ public enum VetFieldEnum {
         }
     },
 
+    QUALapprox { // Required
+        public String getColumnValue(final VariantContext variant) {
+            String out = getAttribute(variant, "QUALapprox", null);
+            if (out == null) {
+                throw new UserException("Cannot be missing required value for QUALapprox at site: " + variant.toString());
+            }
+            return out;
+        }
+    },
+
     AS_QUALapprox { // Required
         public String getColumnValue(final VariantContext variant) {
             //TODO find a constant for "AS_QUALapprox"
