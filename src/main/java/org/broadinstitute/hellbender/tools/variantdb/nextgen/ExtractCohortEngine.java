@@ -263,26 +263,51 @@ public class ExtractCohortEngine {
 
         sortingCollection.printTempFileStats();
 
-        final List<GenericRecord> currentPositionRecords = new ArrayList<>(sampleNames.size() * 2);
+        // KCIBUL: I think in order to solve the "overlapping deletions that overlap variants/ref(?) this should be turned into
+        // some kind of hashmap instead with a rule about conflicts.  It'll slow down the code but I think it's necessary
+        // final List<GenericRecord> currentPositionRecords = new ArrayList<>(sampleNames.size() * 2);
+        final Map<String, GenericRecord> currentPositionRecords = new HashMap<>(sampleNames.size() * 2);
+
         long currentLocation = -1;
 
         for ( final GenericRecord sortedRow : sortingCollection ) {
             final long location = Long.parseLong(sortedRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
+            final String sampleName = sortedRow.get(SchemaUtils.SAMPLE_NAME_FIELD_NAME).toString();
 
             if ( location != currentLocation && currentLocation != -1 ) {
                 ++totalNumberOfSites;
-                processSampleRecordsForLocation(currentLocation, currentPositionRecords, columnNames, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), columnNames, fullVqsLodMap, fullYngMap, noFilteringRequested);
 
                 currentPositionRecords.clear();
             }
 
-            currentPositionRecords.add(sortedRow);
+            currentPositionRecords.merge(sampleName, sortedRow, this::mergeSampleRecord);
             currentLocation = location;
         }
 
         if ( ! currentPositionRecords.isEmpty() ) {
             ++totalNumberOfSites;
-            processSampleRecordsForLocation(currentLocation, currentPositionRecords, columnNames, fullVqsLodMap, fullYngMap, noFilteringRequested);
+            processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), columnNames, fullVqsLodMap, fullYngMap, noFilteringRequested);
+        }
+    }
+
+    private GenericRecord mergeSampleRecord(GenericRecord r1, GenericRecord r2) {
+        logger.info("In SampleRecord Merge Logic for " + r1 + " and " + r2);
+
+        final String r1State = r1.get(SchemaUtils.STATE_FIELD_NAME).toString();
+        final String r2State = r1.get(SchemaUtils.STATE_FIELD_NAME).toString();
+
+        // Valid states are m, 1-6 (ref), v, *
+
+        // KCIBUL: thinking out loud... is precedence v, reference, *, missing?
+
+        // TODO: for now, just handle cases where '*' should be dropped in favor anything besides missing...
+        if (r1State.equals("*") && !r2State.equals("m")) {
+            return r2;
+        } else if (r2State.equals("*") && !r1State.equals("m")) {
+            return r1;
+        } else {
+            return r2;
         }
     }
 
@@ -412,9 +437,11 @@ public class ExtractCohortEngine {
 
         // same qualapprox check as Gnarly
         final boolean isIndel = !hasSnpAllele;
-        // System.out.println("KCIBUL -- in the qualapprox w/ " + totalAsQualApprox + " for isIndel " + isIndel + " and SNP:" + SNP_QUAL_THRESHOLD + " and INDEL:" + INDEL_QUAL_THRESHOLD);
+        System.out.println("KCIBUL -- in the qualapprox w/ " + totalAsQualApprox + " for isIndel " + isIndel + " and SNP:" + SNP_QUAL_THRESHOLD + " and INDEL:" + INDEL_QUAL_THRESHOLD);
         if((isIndel && totalAsQualApprox < INDEL_QUAL_THRESHOLD) || (!isIndel && totalAsQualApprox < SNP_QUAL_THRESHOLD)) {
-            // logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
+            if ( printDebugInformation ) {
+                logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
+            }
             return;
         }
 

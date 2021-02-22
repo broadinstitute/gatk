@@ -1,4 +1,6 @@
 import sys
+import gzip
+
 
 def get_next_line(i):
     for line in i:
@@ -193,9 +195,6 @@ def compare_sample_data(e1, e2):
         
         if (set(a1) != set(a2)):
             
-            # TODO: hack to work around myriad of errors where overlapping reference blocks incorrectly report ./. in classic pipeline
-            if ( sd1[sample_id]['GT'] == "./." and sd2[sample_id]['GT'] == "0/0"):
-                return
 
             # If the genotypes are different BUT they have the same PL, they are effectively eqivalent.  
             if 'PL' in sd1[sample_id] and 'PL' in sd2[sample_id]:
@@ -207,7 +206,7 @@ def compare_sample_data(e1, e2):
                     return
 
             # special case where WARP drops PLs, we accept both being GQ0 as equivalent
-            if 'PL' not in sd1[sample_id] and int(sd1[sample_id]['GQ']) == 0 and int(sd2[sample_id]['GQ']) == 0:
+            if 'PL' not in sd1[sample_id] and ('GQ' in sd1[sample_id] and int(sd1[sample_id]['GQ']) == 0) and ('GQ' in sd2[sample_id] and int(sd2[sample_id]['GQ']) == 0):
                 return
 
             log_difference('Genotypes', e1, e2, sample_id) 
@@ -222,7 +221,7 @@ if (len(sys.argv) == 4):
         exclude_list = [x.strip() for x in f.readlines()]
 
 lines = 0
-with open(vcf_file_1) as file1, open(vcf_file_2) as file2:
+with gzip.open(vcf_file_1, 'rt') as file1, gzip.open(vcf_file_2, 'rt') as file2:
 
     while True:
         line1 = get_next_line(file1)
@@ -271,6 +270,8 @@ with open(vcf_file_1) as file1, open(vcf_file_2) as file2:
         compare_sample_data(e1, e2)
         
         lines = lines + 1
+        if (lines % 100000 == 0):
+            print(f"Compared {lines} positions")
         
         
 print(f"Compared {lines} positions")
