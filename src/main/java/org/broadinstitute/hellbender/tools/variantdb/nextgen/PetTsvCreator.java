@@ -180,21 +180,18 @@ public final class PetTsvCreator {
 
     }
 
-    public void writeMissingIntervals(GenomeLocSortedSet intervalArgumentGenomeLocSortedSet, CommonCode.OutputType outputType) throws IOException {
+    public void writeMissingIntervals(GenomeLocSortedSet intervalArgumentGenomeLocSortedSet) throws IOException {
         GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(coverageLocSortedSet);
         logger.info("MISSING_GREP_HERE:" + uncoveredIntervals.coveredSize());
         logger.info("MISSING_PERCENTAGE_GREP_HERE:" + (1.0 * uncoveredIntervals.coveredSize()) / intervalArgumentGenomeLocSortedSet.coveredSize());
         // for each block of uncovered locations
         for (GenomeLoc genomeLoc : uncoveredIntervals) {
             final String contig = genomeLoc.getContig();
-            // write the position to the XSV
-            int blocksize = genomeLoc.getEnd() - genomeLoc.getStart();
-            logger.info("about to create missing TSV - starting from " + genomeLoc.getStart() + ", total # " + blocksize);
+            // write all positions in this block to the pet output
             createMissingTSV(
                     SchemaUtils.encodeLocation(contig, genomeLoc.getStart()),
                     SchemaUtils.encodeLocation(contig, genomeLoc.getEnd()),
-                    sampleId,
-                    outputType
+                    sampleId
             );
         }
         logger.info("done creating missing TSV");
@@ -273,7 +270,7 @@ public final class PetTsvCreator {
         return rows;
     }
 
-    public void createMissingTSV(long start, long end, String sampleName, CommonCode.OutputType outputType) throws IOException {
+    public void createMissingTSV(long start, long end, String sampleName) throws IOException {
         for (long position = start; position <= end; position ++){
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(position));

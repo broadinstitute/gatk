@@ -202,7 +202,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         try {
-            petTsvCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet, outputType);
+            petTsvCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
         } catch (IOException ioe) {
             throw new GATKException("Error writing missing intervals", ioe);
         }
