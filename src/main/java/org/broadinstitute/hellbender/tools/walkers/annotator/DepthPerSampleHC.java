@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
@@ -41,7 +40,7 @@ import java.util.stream.Collectors;
  *
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Depth of informative coverage for each sample (DP)")
-public final class DepthPerSampleHC extends GenotypeAnnotation implements StandardHCAnnotation, StandardMutectAnnotation {
+public final class DepthPerSampleHC implements GenotypeAnnotation, StandardHCAnnotation, StandardMutectAnnotation {
     private final static Logger logger = LogManager.getLogger(DepthPerSampleHC.class);
 
     @Override

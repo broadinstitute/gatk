@@ -17,7 +17,7 @@ import java.util.*;
 /**
  * Abstract root for all RankSum based annotations
  */
-public abstract class RankSumTest extends InfoFieldAnnotation implements Annotation {
+public abstract class RankSumTest implements InfoFieldAnnotation, Annotation {
     protected final static double INVALID_ELEMENT_FROM_READ = Double.NEGATIVE_INFINITY;
 
     @Override

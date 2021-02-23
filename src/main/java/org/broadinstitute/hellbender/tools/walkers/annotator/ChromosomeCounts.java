@@ -33,7 +33,7 @@ import java.util.*;
  *
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Counts and frequency of alleles in called genotypes (AC, AF, AN)")
-public final class ChromosomeCounts extends InfoFieldAnnotation implements StandardAnnotation {
+public final class ChromosomeCounts implements InfoFieldAnnotation, StandardAnnotation {
 
     public static final String[] keyNames = {
             VCFConstants.ALLELE_NUMBER_KEY,
