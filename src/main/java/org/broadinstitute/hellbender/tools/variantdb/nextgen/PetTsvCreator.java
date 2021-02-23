@@ -194,7 +194,6 @@ public final class PetTsvCreator {
                     sampleId
             );
         }
-        logger.info("done creating missing TSV");
     }
 
     private void setCoveredInterval(String variantChr, int start, int end) {
