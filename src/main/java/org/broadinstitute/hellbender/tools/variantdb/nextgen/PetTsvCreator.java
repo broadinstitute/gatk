@@ -273,13 +273,14 @@ public final class PetTsvCreator {
         return rows;
     }
 
-    public void createMissingTSV(long start, long end, String sampleName, CommonCode.OutputType outputType) {
+    public void createMissingTSV(long start, long end, String sampleName, CommonCode.OutputType outputType) throws IOException {
         for (long position = start; position <= end; position ++){
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(position));
             row.add(sampleName);
             row.add(GQStateEnum.MISSING.value);
 
+            // TODO refactor - this only needs to be done for non-TSV outputTypes
             long location = Long.parseLong(row.get(0));
             long sampleId = Long.parseLong(row.get(1));
             String state = row.get(2);
@@ -288,15 +289,15 @@ public final class PetTsvCreator {
                 case TSV:
                     petTsvWriter.getNewLineBuilder().setRow(row).write();
                     break;
-//                case ORC:
-//                    petOrcWriter.addRow(location, sampleId, state);
-//                    break;
-//                case AVRO:
-//                    petAvroWriter.addRow(location, sampleId, state);
-//                    break;
-//                case PARQUET:
-//                    petParquetWriter.addRow(location, sampleId, state);
-//                    break;
+                case ORC:
+                    petOrcWriter.addRow(location, sampleId, state);
+                    break;
+                case AVRO:
+                    petAvroWriter.addRow(location, sampleId, state);
+                    break;
+                case PARQUET:
+                    petParquetWriter.addRow(location, sampleId, state);
+                    break;
             }
         }
     }

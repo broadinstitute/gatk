@@ -144,7 +144,7 @@ task CreateImportTsvs {
     description: "Creates a tsv file for imort into BigQuery"
     volatile: true
   }
-  
+
   parameter_meta {
     input_vcf: {
       localization_optional: true
@@ -168,17 +168,17 @@ task CreateImportTsvs {
         --mode GENOMES \
         -SNM ~{sample_map} \
         --ref-version 38
-        
+
       gsutil cp metadata_*.tsv ~{output_directory}/metadata_tsvs/
       gsutil cp pet_*.tsv ~{output_directory}/pet_tsvs/
       gsutil cp vet_*.tsv ~{output_directory}/vet_tsvs/
   >>>
   runtime {
       docker: docker
-      memory: "10 GB"
+      memory: "3.75 GB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
-      cpu: 2
+      cpu: 1
   }
   output {
       String done = "true"
