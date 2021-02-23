@@ -175,10 +175,10 @@ task CreateImportTsvs {
   >>>
   runtime {
       docker: docker
-      memory: "3.75 GB"
+      memory: "10 GB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
-      cpu: 1
+      cpu: 2
   }
   output {
       String done = "true"
