@@ -60,6 +60,11 @@ public class ContaminationFilter extends Mutect2AlleleFilter {
             final double[] logContaminantLikelihoodPerAllele = new double[alleleFrequencies.length];
             final double[] logOddsOfRealVsContaminationPerAllele = new double[alleleFrequencies.length];
             final double[] posteriorProbOfContaminationPerAllele = new double[alleleFrequencies.length];
+
+            if (altADs.length != alleleFrequencies.length || singleContaminantLikelihoodPerAllele.length != alleleFrequencies.length) {
+                int h = 90;
+            }
+
             new IndexRange(0,alleleFrequencies.length).forEach(i -> {
                 singleContaminantLikelihoodPerAllele[i] = 2 * alleleFrequencies[i] * (1 - alleleFrequencies[i]) * MathUtils.binomialProbability(totalAD,  altADs[i], contamination /2)
                         + MathUtils.square(alleleFrequencies[i]) * MathUtils.binomialProbability(totalAD,  altADs[i], contamination);
