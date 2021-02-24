@@ -1141,4 +1141,33 @@ public final class MathUtils {
         final double product = p * (1 - p);
         return product * (11 + 33 * product) / (2 + 20 * product);
     }
+
+    // find zero of a monotonic function with binary search
+    public static OptionalDouble binarySearchFindZero(final DoubleUnaryOperator func, final double lower,
+                                                      final double upper, final double precision) {
+        double bottom = lower;
+        double top = upper;
+        while (top - bottom > precision) {
+            final double mid = (bottom + top)/2;
+            final double bottomVal = func.applyAsDouble(bottom);
+            final double topVal = func.applyAsDouble(top);
+            final double midVal = func.applyAsDouble(mid);
+
+            // if top and bottom are same sign, there may be a zero between them, but the assumption of monotonicity
+            // does not hold
+            if (FastMath.signum(bottomVal) == FastMath.signum(topVal)) {
+                return OptionalDouble.empty();
+            }
+
+
+            // bracket the zero
+            if (FastMath.signum(bottomVal) == FastMath.signum(midVal)) {
+                bottom = mid;
+            } else {
+                top = mid;
+            }
+        }
+        return OptionalDouble.of((bottom+top)/2);
+
+    }
 }

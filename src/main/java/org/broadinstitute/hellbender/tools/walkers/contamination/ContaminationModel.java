@@ -152,11 +152,10 @@ public class ContaminationModel {
 
         final long totalDepth = homs.stream().mapToLong(PileupSummary::getTotalCount).sum();
 
-        // total reaad count of ref in hom alt or alt in hom ref, as the case may be
+        // total read count of ref in hom alt or alt in hom ref, as the case may be
         final long oppositeDepth = homs.stream().mapToLong(oppositeCount::applyAsInt).sum();
         final long errorDepth = Math.round(totalDepth * tumorErrorRate / 3);
         final long contaminationOppositeDepth = Math.max(oppositeDepth - errorDepth, 0);
-
 
         final double totalDepthWeightedByOppositeFrequency = homs.stream()
                 .mapToDouble(ps -> ps.getTotalCount() * oppositeAlleleFrequency.applyAsDouble(ps))
@@ -164,6 +163,9 @@ public class ContaminationModel {
 
         final double contaminationEstimate = contaminationOppositeDepth / totalDepthWeightedByOppositeFrequency;
 
+        // coeff1 and coeff2 are the sums of (1-f)*d and f*(1-f)*d^2, respectively, over all hom alts, where f is
+        // population allele frequency and d is total read depth.  When using hom refs as a backup strategy we replace
+        // 1-f with f in coeff1.
         final double coeff1 = homs.stream().mapToDouble(ps -> oppositeAlleleFrequency.applyAsDouble(ps) * ps.getTotalCount()).sum();
         final double coeff2 = homs.stream().mapToDouble(ps ->
                 oppositeAlleleFrequency.applyAsDouble(ps)*(1 - oppositeAlleleFrequency.applyAsDouble(ps)) * MathUtils.square(ps.getTotalCount())
@@ -171,38 +173,29 @@ public class ContaminationModel {
 
         final DoubleUnaryOperator errorFunc = c -> homs.isEmpty() ? 1 : Math.sqrt(coeff1*c*(1-c) + coeff2*c*c) / totalDepthWeightedByOppositeFrequency;
 
-        // we're going to binary search to find the largest contamination whose expected standard error brings it within range of
-        // our estimate.  That is, suppose we estimate a contamination of 0.03 and the standard error of 0.05 is 0.02.  Then 0.05 is
-        // the upper end of our 1-sigma confidence interval.
-        // this binary search is far from optimized (in fact we could solve this explicitly with a messy closed-form solution)
+        // {@code errorFunc} is a formula for the standard error (see docs/mutect/mutect.pdf) of the contamination estimate,
+        // but it depends on the true (unknown) contamination, not the estimate.  For low contaminations simply plugging in
+        // the estimated contamination to the formula does not work.  In particular, an estimate of 0 yields a standard error
+        // of 0.  A more principled approach is to find a range of contaminations that is consistent with the error estimate.
+        //  For example, suppose our error estimate is 0.0.  If the standard error as a function of contamination = 0.02 is 0.01,
+        // then 0.02 is not consistent with an estimate of 0.0.  If the standard error as a function of contamination = 0.005
+        // is 0.005, then it is consistent with our estimate of 0.0, and furthermore because {@code errorFunc} is monotonic we
+        // know it is the largest true contamination that would be consistent.
+        // More precisely, if our contamination estimate is e then the highest consistent contamination is c such that
+        // c = e + errorFunc(c), which we find via binary search.  The lowest consistent contmination is found similarly,
+        // and our improved standard error is max(highest - e, e - lowest).  The binary search is far from optimized (in fact we could solve this explicitly with a messy closed-form solution)
         // but it converges to a precision of 1e-6 in 20 iterations of the square root of a linear function.  This is fast enough.
-        double top = 1.0;
-        double bottom = contaminationEstimate;
-        do {
-            final double mid = (top + bottom)/2;
-            final double error = errorFunc.applyAsDouble(mid);
-            if (contaminationEstimate < mid - error) {
-                top = mid;
-            } else {
-                bottom = mid;
-            }
-        } while(top - bottom > PRECISION_FOR_STANDARD_ERROR);
-        final double upperEstimate = (top + bottom)/2;
 
-        top = contaminationEstimate;
-        bottom = 0.0;
-        do {
-            final double mid = (top + bottom)/2;
-            final double error = errorFunc.applyAsDouble(mid);
-            if (mid < contaminationEstimate - error) {
-                bottom = mid;
-            } else {
-                top = mid;
-            }
-        } while(top - bottom > PRECISION_FOR_STANDARD_ERROR);
-        final double lowerEstimate = (top + bottom)/2;
+        final OptionalDouble upperEstimate = MathUtils.binarySearchFindZero(c -> c - errorFunc.applyAsDouble(c) - contaminationEstimate,
+                contaminationEstimate, 1.0, PRECISION_FOR_STANDARD_ERROR);
+        final OptionalDouble lowerEstimate = MathUtils.binarySearchFindZero(c -> c + errorFunc.applyAsDouble(c) - contaminationEstimate,
+                0.0, contaminationEstimate, PRECISION_FOR_STANDARD_ERROR);
 
-        final double stdError = Math.max(upperEstimate - contaminationEstimate, contaminationEstimate - lowerEstimate);
+        // if for some reason the binary search failed -- and if my math is to believed it should never fail -- we use
+        // the standard error formula with the estimated contamination
+        final double stdError = (upperEstimate.isPresent() && lowerEstimate.isPresent()) ?
+                Math.max(upperEstimate.getAsDouble() - contaminationEstimate, contaminationEstimate - lowerEstimate.getAsDouble()) :
+                errorFunc.applyAsDouble(contaminationEstimate);
 
         return Pair.of(Math.min(contaminationEstimate, 1.0), stdError);
     }
