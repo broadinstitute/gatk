@@ -4,6 +4,7 @@ workflow ImportGenomes {
 
   input {
     Array[File] input_vcfs
+    Array[File] input_vcf_indexes
     File interval_list
     String output_directory
     File sample_map
@@ -12,6 +13,7 @@ workflow ImportGenomes {
     File pet_schema
     File vet_schema
     File metadata_schema
+    File? service_account_json
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
 
@@ -71,11 +73,22 @@ workflow ImportGenomes {
   }
 
   scatter (i in range(length(input_vcfs))) {
+    if (defined(service_account_json)) {
+      call LocalizeVCFWithIndex {
+        input:
+          vcf_path = input_vcfs[i],
+          index_path = input_vcf_indexes[i],
+          service_account_json = select_first([service_account_json]),
+          disk_size = 1000
+      }
+    }
+
     call CreateImportTsvs {
       input:
-        input_vcf = input_vcfs[i],
+        input_vcf = select_first([LocalizeVCFWithIndex.output_vcf_file, input_vcfs[i]]),
         interval_list = interval_list,
         sample_map = sample_map,
+        service_account_json = service_account_json,
         drop_state = drop_state,
         drop_state_includes_greater_than = drop_state_includes_greater_than,
         output_directory = output_directory,
@@ -97,6 +110,7 @@ workflow ImportGenomes {
         schema = metadata_schema,
         table_creation_done = CreateMetadataTables.done,
         tsv_creation_done = CreateImportTsvs.done,
+        service_account_json = service_account_json,
         docker = docker_final
     }
   }
@@ -113,6 +127,7 @@ workflow ImportGenomes {
       schema = pet_schema,
       table_creation_done = CreatePetTables.done,
       tsv_creation_done = CreateImportTsvs.done,
+      service_account_json = service_account_json,
       docker = docker_final
     }
   }
@@ -129,6 +144,7 @@ workflow ImportGenomes {
       schema = vet_schema,
       table_creation_done = CreateVetTables.done,
       tsv_creation_done = CreateImportTsvs.done,
+      service_account_json = service_account_json,
       docker = docker_final
     }
   }
@@ -166,6 +182,7 @@ task CreateImportTsvs {
     File interval_list
     String output_directory
     File sample_map
+    File? service_account_json
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
 
@@ -173,10 +190,14 @@ task CreateImportTsvs {
     Int? preemptible_tries
     File? gatk_override
     String docker
+
+    String? for_testing_only
   }
 
   Int multiplier = if defined(drop_state) then 4 else 10
-  Int disk_size = ceil(size(input_vcf, "GB") * multiplier) + 20
+  #TODO if the files aren't localized can we do this?
+  Int disk_size = 1000 #ceil(size(input_vcf, "GB") * multiplier) + 20
+  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
   meta {
     description: "Creates a tsv file for import into BigQuery"
@@ -195,6 +216,7 @@ task CreateImportTsvs {
       export TMPDIR=/tmp
 
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+      ~{for_testing_only}
 
       gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
         -V ~{input_vcf} \
@@ -204,6 +226,10 @@ task CreateImportTsvs {
         --mode GENOMES \
         -SNM ~{sample_map} \
         --ref-version 38
+
+      if [ ~{has_service_account_file} = 'true' ]; then
+        gcloud auth activate-service-account --key-file='~{service_account_json}'
+      fi
 
       gsutil -m cp metadata_*.tsv ~{output_directory}/metadata_tsvs/
       gsutil -m cp pet_*.tsv ~{output_directory}/pet_tsvs/
@@ -236,15 +262,22 @@ task CreateTables {
       String superpartitioned
       String partitioned
       String uuid
+      File? service_account_json
 
       # runtime
       Int? preemptible_tries
       String docker
     }
 
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
   command <<<
     set -x
     set -e
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gcloud auth activate-service-account --key-file='~{service_account_json}'
+    fi
 
     PREFIX=""
     if [ -n "~{uuid}" ]; then
@@ -306,15 +339,22 @@ task LoadTable {
     String datatype
     String superpartitioned
     File schema
+    File? service_account_json
     String table_creation_done
     Array[String] tsv_creation_done
 
     String docker
   }
 
+  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
   command <<<
     set -x
     set -e
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gcloud auth activate-service-account --key-file='~{service_account_json}'
+    fi
 
     DIR="~{storage_location}/~{datatype}_tsvs/"
 
@@ -340,5 +380,34 @@ task LoadTable {
     disks: "local-disk 10 HDD"
     preemptible: 0
     cpu: 1
+  }
+}
+task LocalizeVCFWithIndex {
+  input {
+    String vcf_path
+    String index_path
+    File service_account_json
+    Int disk_size
+  }
+
+  command {
+    set -euo pipefail
+
+    gcloud auth activate-service-account --key-file='~{service_account_json}'
+    gsutil cp '~{vcf_path}' .
+    gsutil cp '~{index_path}' .
+
+  }
+
+  output {
+    File output_vcf_file = basename(vcf_path)
+    File output_vcf_index_file = basename(index_path)
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "3.75 GiB"
+    cpu: "1"
+    disks: "local-disk ~{disk_size} HDD"
   }
 }
