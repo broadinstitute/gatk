@@ -319,6 +319,8 @@ task CreateImportTsvs {
   }
 
   Int disk_size = if defined(drop_state) then 30 else 75
+  }
+
   String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
   # if we are doing a manual localization, we need to set the filename
   String updated_input_vcf = if (defined(service_account_json)) then basename(input_vcf) else input_vcf
