@@ -86,9 +86,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public CommonCode.ModeEnum mode = CommonCode.ModeEnum.EXOMES;
 
-    @Argument(fullName = "output-type",
-            shortName = "ot",
-            doc = "[Experimental] Output file format: TSV, ORC or PARQUET [default=TSV].",
+    @Argument(fullName = "output-type", 
+            shortName = "ot", 
+            doc = "[Experimental] Output file format: TSV, ORC or PARQUET [default=TSV].", 
             optional = true)
     public CommonCode.OutputType outputType = CommonCode.OutputType.TSV;
 

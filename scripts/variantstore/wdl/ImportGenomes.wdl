@@ -144,7 +144,7 @@ task CreateImportTsvs {
     description: "Creates a tsv file for imort into BigQuery"
     volatile: true
   }
-
+  
   parameter_meta {
     input_vcf: {
       localization_optional: true
@@ -168,7 +168,7 @@ task CreateImportTsvs {
         --mode GENOMES \
         -SNM ~{sample_map} \
         --ref-version 38
-
+        
       gsutil cp metadata_*.tsv ~{output_directory}/metadata_tsvs/
       gsutil cp pet_*.tsv ~{output_directory}/pet_tsvs/
       gsutil cp vet_*.tsv ~{output_directory}/vet_tsvs/
