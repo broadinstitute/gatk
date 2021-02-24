@@ -188,7 +188,7 @@ public final class PetTsvCreator {
         for (GenomeLoc genomeLoc : uncoveredIntervals) {
             final String contig = genomeLoc.getContig();
             // write all positions in this block to the pet output
-            createMissingTSV(
+            writeMissingPositions(
                     SchemaUtils.encodeLocation(contig, genomeLoc.getStart()),
                     SchemaUtils.encodeLocation(contig, genomeLoc.getEnd()),
                     sampleId
@@ -269,8 +269,8 @@ public final class PetTsvCreator {
         return rows;
     }
 
-    public void createMissingTSV(long start, long end, String sampleName) throws IOException {
-        for (long position = start; position <= end; position ++){
+    public void writeMissingPositions(long start, long end, String sampleName) throws IOException {
+        for (long position = start; position <= end; position++){
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(position));
             row.add(sampleName);
