@@ -48,7 +48,7 @@ public final class PetTsvCreator {
        try {
             final File petOutputFile = new File(outputDirectory, PET_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + "." + outputType.toString().toLowerCase());
             switch (outputType) {
-                case TSV:                
+                case TSV:
                     List<String> petHeader = PetTsvCreator.getHeaders();
                     petTsvWriter = new SimpleXSVWriter(petOutputFile.toPath(), IngestConstants.SEPARATOR);
                     petTsvWriter.setHeaderLine(petHeader);
@@ -157,21 +157,21 @@ public final class PetTsvCreator {
                     String state = TSVLineToCreatePet.get(2);
 
                     switch (outputType) {
-                        case TSV:                
+                        case TSV:
                             petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
                             break;
-                        case TSV2:                
-                            petTsv2Writer.addRow(location, sampleId, state);        
+                        case TSV2:
+                            petTsv2Writer.addRow(location, sampleId, state);
                             break;
                         case ORC:
-                            petOrcWriter.addRow(location, sampleId, state);        
+                            petOrcWriter.addRow(location, sampleId, state);
                             break;
                         case AVRO:
-                            petAvroWriter.addRow(location, sampleId, state);        
+                            petAvroWriter.addRow(location, sampleId, state);
                             break;
                         case PARQUET:
-                            petParquetWriter.addRow(location, sampleId, state);        
-                            break;                            
+                            petParquetWriter.addRow(location, sampleId, state);
+                            break;
                     }
                 }
             }
@@ -184,33 +184,15 @@ public final class PetTsvCreator {
         GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(coverageLocSortedSet);
         logger.info("MISSING_GREP_HERE:" + uncoveredIntervals.coveredSize());
         logger.info("MISSING_PERCENTAGE_GREP_HERE:" + (1.0 * uncoveredIntervals.coveredSize()) / intervalArgumentGenomeLocSortedSet.coveredSize());
+        // for each block of uncovered locations
         for (GenomeLoc genomeLoc : uncoveredIntervals) {
             final String contig = genomeLoc.getContig();
-            // write the position to the XSV
-            for (List<String> TSVLineToCreatePet : PetTsvCreator.createMissingTSV(
+            // write all positions in this block to the pet output
+            writeMissingPositions(
                     SchemaUtils.encodeLocation(contig, genomeLoc.getStart()),
                     SchemaUtils.encodeLocation(contig, genomeLoc.getEnd()),
                     sampleId
-            )) {
-                long location = Long.parseLong(TSVLineToCreatePet.get(0));
-                long sampleId = Long.parseLong(TSVLineToCreatePet.get(1));
-                String state = TSVLineToCreatePet.get(2);
-
-                switch (outputType) {
-                    case TSV:                
-                        petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
-                        break;
-                    case ORC:
-                        petOrcWriter.addRow(location, sampleId, state);        
-                        break;
-                    case AVRO:
-                        petAvroWriter.addRow(location, sampleId, state);        
-                        break;
-                    case PARQUET:
-                        petParquetWriter.addRow(location, sampleId, state);        
-                        break;                            
-                }
-            }
+            );
         }
     }
 
@@ -287,18 +269,33 @@ public final class PetTsvCreator {
         return rows;
     }
 
-    public static List<List<String>> createMissingTSV(long start, long end, String sampleName) {
-        List<List<String>> rows = new ArrayList<>();
-
-        for (long position = start; position <= end; position ++){
+    public void writeMissingPositions(long start, long end, String sampleName) throws IOException {
+        for (long position = start; position <= end; position++){
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(position));
             row.add(sampleName);
             row.add(GQStateEnum.MISSING.value);
-            rows.add(row);
-        }
 
-        return rows;
+            // TODO refactor - this only needs to be done for non-TSV outputTypes
+            long location = Long.parseLong(row.get(0));
+            long sampleId = Long.parseLong(row.get(1));
+            String state = row.get(2);
+
+            switch (outputType) {
+                case TSV:
+                    petTsvWriter.getNewLineBuilder().setRow(row).write();
+                    break;
+                case ORC:
+                    petOrcWriter.addRow(location, sampleId, state);
+                    break;
+                case AVRO:
+                    petAvroWriter.addRow(location, sampleId, state);
+                    break;
+                case PARQUET:
+                    petParquetWriter.addRow(location, sampleId, state);
+                    break;
+            }
+        }
     }
 
     public static GQStateEnum getGQStateEnum(int GQ){
@@ -326,7 +323,7 @@ public final class PetTsvCreator {
         Set<GQStateEnum> ret = new HashSet<GQStateEnum>();
 
         switch (s) {
-            case ZERO:                
+            case ZERO:
                 ret.add(GQStateEnum.TEN);
                 ret.add(GQStateEnum.TWENTY);
                 ret.add(GQStateEnum.THIRTY);
@@ -334,14 +331,14 @@ public final class PetTsvCreator {
                 ret.add(GQStateEnum.FIFTY);
                 ret.add(GQStateEnum.SIXTY);
                 break;
-            case TEN:                
+            case TEN:
                 ret.add(GQStateEnum.TWENTY);
                 ret.add(GQStateEnum.THIRTY);
                 ret.add(GQStateEnum.FORTY);
                 ret.add(GQStateEnum.FIFTY);
                 ret.add(GQStateEnum.SIXTY);
                 break;
-            case TWENTY:                
+            case TWENTY:
                 ret.add(GQStateEnum.THIRTY);
                 ret.add(GQStateEnum.FORTY);
                 ret.add(GQStateEnum.FIFTY);
@@ -363,7 +360,7 @@ public final class PetTsvCreator {
 
         return ret;
     }
-    
+
     public static List<String> getHeaders() {
         return Arrays.stream(PetFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
     }
@@ -371,7 +368,7 @@ public final class PetTsvCreator {
     public void closeTool() {
         try {
             switch (outputType) {
-                case TSV:   
+                case TSV:
                     if (petTsvWriter != null) petTsvWriter.close();
                     break;
                 case ORC:
