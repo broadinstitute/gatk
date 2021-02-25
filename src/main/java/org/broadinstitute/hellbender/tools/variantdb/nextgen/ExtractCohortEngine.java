@@ -295,7 +295,7 @@ public class ExtractCohortEngine {
         logger.info("In SampleRecord Merge Logic for " + r1 + " and " + r2);
 
         final String r1State = r1.get(SchemaUtils.STATE_FIELD_NAME).toString();
-        final String r2State = r1.get(SchemaUtils.STATE_FIELD_NAME).toString();
+        final String r2State = r2.get(SchemaUtils.STATE_FIELD_NAME).toString();
 
         // Valid states are m, 1-6 (ref), v, *
 
@@ -314,6 +314,14 @@ public class ExtractCohortEngine {
     private double getQUALapproxFromSampleRecord(GenericRecord sampleRecord) {
         double qa = 0;
 
+        Object o1 = sampleRecord.get(SchemaUtils.QUALapprox);
+
+        // prefer QUALapprox over allele specific version
+        if (o1 != null) {
+            return Double.parseDouble(o1.toString());
+        }
+
+        // now try with AS version
         Object o = sampleRecord.get(SchemaUtils.AS_QUALapprox);
 
         // gracefully handle records without a QUALapprox (like the ones generated in the PET from a deletion)
@@ -446,10 +454,10 @@ public class ExtractCohortEngine {
         }
 
 
-        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele, vqsLodMap, yngMap, noFilteringRequested);
+        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele, vqsLodMap, yngMap, noFilteringRequested, totalAsQualApprox);
     }
 
-    private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls, final Set<String> currentVariantSamplesSeen, final boolean currentPositionHasVariant, final String contig, final long start, final Allele refAllele, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean noFilteringRequested) {
+    private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls, final Set<String> currentVariantSamplesSeen, final boolean currentPositionHasVariant, final String contig, final long start, final Allele refAllele, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean noFilteringRequested, double qualApprox) {
         // If there were no variants at this site, we don't emit a record and there's nothing to do here
         if ( ! currentPositionHasVariant ) {
             return;
@@ -477,8 +485,12 @@ public class ExtractCohortEngine {
                 false,
                 true);
 
+        final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
+        builder.getAttributes().put("QUALapprox", Integer.toString((int) qualApprox));
+        final VariantContext mergedVC2 = builder.make();
 
-        final VariantContext genotypedVC = disableGnarlyGenotyper ? mergedVC : gnarlyGenotyper.finalizeGenotype(mergedVC);
+
+        final VariantContext genotypedVC = disableGnarlyGenotyper ? mergedVC2 : gnarlyGenotyper.finalizeGenotype(mergedVC2);
         final VariantContext finalVC = noFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? genotypedVC : filterVariants(genotypedVC, vqsLodMap, yngMap);
 
         if ( finalVC != null ) {

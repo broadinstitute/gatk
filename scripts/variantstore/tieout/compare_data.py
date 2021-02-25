@@ -1,6 +1,6 @@
 import sys
 import gzip
-
+import itertools
 
 def get_next_line(i):
     for line in i:
@@ -9,7 +9,7 @@ def get_next_line(i):
         else:
             parts = line.strip().split("\t")
             loc = f"{parts[0]}:{parts[1]}"
-            if (loc in exclude_list):
+            if (loc in exclude_set):
 #                print(f"Skipping {loc}")
                 pass;
             else:
@@ -173,7 +173,7 @@ def compare_sample_data(e1, e2):
     for sample_id in sd1.keys():
         # if either has a GQ... compare it!
         if 'GQ' in sd1[sample_id] or 'GQ' in sd2[sample_id]:
-            if not equals_int(sd1[sample_id], sd2[sample_id], 'GQ', 2):
+            if not equals_int(sd1[sample_id], sd2[sample_id], 'GQ', 0):
                 log_difference('GQ', e1, e2, sample_id) 
 
         # if both have RGQ compare it (unlikely)
@@ -211,6 +211,10 @@ def compare_sample_data(e1, e2):
 
             log_difference('Genotypes', e1, e2, sample_id) 
 
+def unroll_interval_range(r):
+    (chrom, range_string) = r.split(":")
+    (start, end) = range_string.split("-")
+    return [ f"{chrom}:{x}" for x in range(int(start), int(end)+1) ]
     
 vcf_file_1 = sys.argv[1]
 vcf_file_2 = sys.argv[2]
@@ -218,7 +222,15 @@ vcf_file_2 = sys.argv[2]
 exclude_list = []
 if (len(sys.argv) == 4):
     with open(sys.argv[3]) as f:
-        exclude_list = [x.strip() for x in f.readlines()]
+        for x in f.readlines():
+            if "-" not in x:
+                exclude_list.append(x)
+            else:
+                exclude_list.extend(unroll_interval_range(x.strip()))
+exclude_set = set(exclude_list)
+
+
+print(f"Excluding {len(exclude_set)} loci")
 
 lines = 0
 with gzip.open(vcf_file_1, 'rt') as file1, gzip.open(vcf_file_2, 'rt') as file2:
