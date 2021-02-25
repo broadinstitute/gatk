@@ -263,9 +263,6 @@ public class ExtractCohortEngine {
 
         sortingCollection.printTempFileStats();
 
-        // KCIBUL: I think in order to solve the "overlapping deletions that overlap variants/ref(?) this should be turned into
-        // some kind of hashmap instead with a rule about conflicts.  It'll slow down the code but I think it's necessary
-        // final List<GenericRecord> currentPositionRecords = new ArrayList<>(sampleNames.size() * 2);
         final Map<String, GenericRecord> currentPositionRecords = new HashMap<>(sampleNames.size() * 2);
 
         long currentLocation = -1;
@@ -298,10 +295,7 @@ public class ExtractCohortEngine {
         final String r2State = r2.get(SchemaUtils.STATE_FIELD_NAME).toString();
 
         // Valid states are m, 1-6 (ref), v, *
-
-        // KCIBUL: thinking out loud... is precedence v, reference, *, missing?
-
-        // TODO: for now, just handle cases where '*' should be dropped in favor anything besides missing...
+        // For now, just handle cases where '*' should be dropped in favor anything besides missing...
         if (r1State.equals("*") && !r2State.equals("m")) {
             return r2;
         } else if (r2State.equals("*") && !r1State.equals("m")) {
@@ -445,7 +439,6 @@ public class ExtractCohortEngine {
 
         // same qualapprox check as Gnarly
         final boolean isIndel = !hasSnpAllele;
-        System.out.println("KCIBUL -- in the qualapprox w/ " + totalAsQualApprox + " for isIndel " + isIndel + " and SNP:" + SNP_QUAL_THRESHOLD + " and INDEL:" + INDEL_QUAL_THRESHOLD);
         if((isIndel && totalAsQualApprox < INDEL_QUAL_THRESHOLD) || (!isIndel && totalAsQualApprox < SNP_QUAL_THRESHOLD)) {
             if ( printDebugInformation ) {
                 logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
@@ -485,12 +478,13 @@ public class ExtractCohortEngine {
                 false,
                 true);
 
+        // need to insert QUALapprox into the variant context
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
         builder.getAttributes().put("QUALapprox", Integer.toString((int) qualApprox));
-        final VariantContext mergedVC2 = builder.make();
+        final VariantContext qualapproxVC = builder.make();
 
 
-        final VariantContext genotypedVC = disableGnarlyGenotyper ? mergedVC2 : gnarlyGenotyper.finalizeGenotype(mergedVC2);
+        final VariantContext genotypedVC = disableGnarlyGenotyper ? qualapproxVC : gnarlyGenotyper.finalizeGenotype(qualapproxVC);
         final VariantContext finalVC = noFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? genotypedVC : filterVariants(genotypedVC, vqsLodMap, yngMap);
 
         if ( finalVC != null ) {
