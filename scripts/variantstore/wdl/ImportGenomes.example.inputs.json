@@ -10,7 +10,7 @@
 
   "ImportGenomes.project_id": "spec-ops-aou",
   "ImportGenomes.dataset_name": "kc_import_test1",
-  
+
   "ImportGenomes.output_directory": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/testrun2_importdir",
   "ImportGenomes.sample_map": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/test_sample_map.csv"
 }
