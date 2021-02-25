@@ -169,7 +169,6 @@ task CreateImportTsvs {
         -SNM ~{sample_map} \
         --ref-version 38
 
-      # gsutil -m cp will error out if there's an issue with one or more uploads
       gsutil -m cp metadata_*.tsv ~{output_directory}/metadata_tsvs/
       gsutil -m cp pet_*.tsv ~{output_directory}/pet_tsvs/
       gsutil -m cp vet_*.tsv ~{output_directory}/vet_tsvs/
