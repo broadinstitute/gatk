@@ -5,7 +5,7 @@ import "https://api.firecloud.org/ga4gh/v1/tools/synthetic-microarray-gen:LoadBi
 workflow ImportGenomes {
 
   input {
-    File input_vcfs_list
+    Array[File] input_vcfs
     Array[File]? input_metrics
     File interval_list
     String output_directory
@@ -24,7 +24,6 @@ workflow ImportGenomes {
   }
 
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
-  Array[String] input_vcfs = read_lines(input_vcfs_list)
 
   call GetMaxTableId {
     input:
