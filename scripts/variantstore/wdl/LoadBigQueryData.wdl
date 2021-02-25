@@ -159,7 +159,12 @@ task CreateTables {
         TABLE="~{dataset_name}.${PREFIX}~{datatype}${PADDED_TABLE_ID}"
 
         # Checks that the table has not been created yet
-        if [ ! -f table_dir_files.csv ] || [ "$(cat table_dir_files.csv | cut -d, -f1 | grep -c $TABLE)" = "0" ]; then
+        # if [ ! -f table_dir_files.csv ] || [ "$(cat table_dir_files.csv | cut -d, -f1 | grep -c $TABLE)" = "0" ]; then
+        set +e
+        bq show --project_id ~{project_id} $TABLE > /dev/null
+        BQ_SHOW_RC=$?
+        set -e
+        if [ $BQ_SHOW_RC -ne 0 ]; then
           echo "making table $TABLE"
           bq --location=US mk ${PARTITION_STRING} --project_id=~{project_id} $TABLE ~{schema}
         fi

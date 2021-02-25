@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://api.firecloud.org/ga4gh/v1/tools/synthetic-microarray-gen:LoadBigQueryData/versions/7/plain-WDL/descriptor" as LoadBigQueryData
+import "https://raw.githubusercontent.com/broadinstitute/gatk/mmt_vcf_inputs/scripts/variantstore/wdl/LoadBigQueryData.wdl" as LoadBigQueryData
 
 workflow ImportGenomes {
 
