@@ -4,11 +4,13 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMProgramRecord;
 import htsjdk.samtools.SAMReadGroupRecord;
 
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Utility class that allows easy creation of destinations for the HaplotypeBAMWriters
@@ -16,7 +18,7 @@ import java.util.List;
  */
 public abstract class HaplotypeBAMDestination {
     private final SAMFileHeader bamOutputHeader;
-    private final String haplotypeReadGroupID;
+    private final Optional<String> haplotypeReadGroupID;
     private final static String haplotypeSampleTag = "HC";
 
     /**
@@ -25,7 +27,7 @@ public abstract class HaplotypeBAMDestination {
      * @param sourceHeader SAMFileHeader used to seed the output SAMFileHeader for this destination.
      * @param haplotypeReadGroupID read group ID used when writing haplotypes as reads
      */
-    protected HaplotypeBAMDestination(SAMFileHeader sourceHeader, final String haplotypeReadGroupID) {
+    protected HaplotypeBAMDestination(SAMFileHeader sourceHeader, final Optional<String> haplotypeReadGroupID) {
         Utils.nonNull(sourceHeader, "sourceHeader cannot be null");
         Utils.nonNull(haplotypeReadGroupID, "haplotypeReadGroupID cannot be null");
         this.haplotypeReadGroupID = haplotypeReadGroupID;
@@ -38,10 +40,13 @@ public abstract class HaplotypeBAMDestination {
         readGroups.addAll(sourceHeader.getReadGroups()); // include the original read groups
 
         // plus an artificial read group for the haplotypes
-        final SAMReadGroupRecord rgRec = new SAMReadGroupRecord(getHaplotypeReadGroupID());
-        rgRec.setSample(haplotypeSampleTag);
-        rgRec.setSequencingCenter("BI");
-        readGroups.add(rgRec);
+        if (haplotypeReadGroupID.isPresent()){ // sato: replace true with haplotypeReadGroupID exists.
+            final SAMReadGroupRecord rgRec = new SAMReadGroupRecord(getHaplotypeReadGroupID());
+            rgRec.setSample(haplotypeSampleTag);
+            rgRec.setSequencingCenter("BI");
+            readGroups.add(rgRec);
+        }
+
         bamOutputHeader.setReadGroups(readGroups);
         final List<SAMProgramRecord> programRecords = new ArrayList<>(sourceHeader.getProgramRecords());
         programRecords.add(new SAMProgramRecord("HaplotypeBAMWriter"));
@@ -60,8 +65,13 @@ public abstract class HaplotypeBAMDestination {
      *
      * @return read group ID
      */
-    public String getHaplotypeReadGroupID() { return haplotypeReadGroupID; }
-
+    public String getHaplotypeReadGroupID() {
+        if (!haplotypeReadGroupID.isPresent()) {
+            throw new UserException("haplotypeReadGroupID was requested but is not defined.");
+        } else {
+            return haplotypeReadGroupID.get();
+        }
+    }
     /**
      * Get the sample tag that is used by this writer when writing halpotypes as reads.
      *

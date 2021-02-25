@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -75,8 +76,8 @@ public class HaplotypeBAMWriter implements AutoCloseable {
             final boolean createBamOutIndex,
             final boolean createBamOutMD5,
             final SAMFileHeader sourceHeader) {
-
-        this(type, new SAMFileDestination(outputPath, createBamOutIndex, createBamOutMD5, sourceHeader, DEFAULT_HAPLOTYPE_READ_GROUP_ID));
+        this(type, new SAMFileDestination(outputPath, createBamOutIndex, createBamOutMD5, sourceHeader,
+                type == WriterType.NO_HAPLOTYPES ? Optional.empty() : Optional.of(DEFAULT_HAPLOTYPE_READ_GROUP_ID)));
     }
 
     /**

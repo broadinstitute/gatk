@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
+import java.util.Optional;
 
 /**
  * Class used to direct output from a HaplotypeBAMWriter to a bam/sam file.
@@ -29,7 +30,7 @@ public final class SAMFileDestination extends HaplotypeBAMDestination {
             final boolean createBamOutIndex,
             final boolean createBamOutMD5,
             final SAMFileHeader sourceHeader,
-            final String haplotypeReadGroupID)
+            final Optional<String> haplotypeReadGroupID)
     {
         super(sourceHeader, haplotypeReadGroupID);
         samWriter = new SAMFileGATKReadWriter(ReadUtils.createCommonSAMWriter(
