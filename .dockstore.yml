@@ -5,56 +5,101 @@ workflows:
      primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl
      testParameterFiles:
      -  /scripts/cnv_cromwell_tests/germline/cnv_germline_case_scattered_workflow.json
+     filters:
+       branches:
+        - master
    - name: cnv_germline_cohort_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_cohort_workflow.wdl
      testParameterFiles:
      -  /scripts/cnv_cromwell_tests/germline/cnv_germline_cohort_workflow.json
+     filters:
+       branches:
+         - master
    - name: cnv_somatic_pair_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl
-     testParameterFiles: 
+     testParameterFiles:
      -  /scripts/cnv_cromwell_tests/somatic/cnv_somatic_pair_wes_do-gc_workflow.json
+     filters:
+       branches:
+         - master
    - name: cnv_somatic_panel_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/somatic/cnv_somatic_panel_workflow.wdl
      testParameterFiles:
      -  /scripts/cnv_cromwell_tests/somatic/cnv_somatic_panel_wes_do-gc_workflow.json
+     filters:
+       branches:
+         - master
    - name: cram2filtered
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/cram2filtered.wdl
      testParameterFiles:
      - /scripts/cnn_variant_wdl/jsons/cram2filtered.json
+     filters:
+       branches:
+         - master
    - name: cram2model
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/cram2model.wdl
      testParameterFiles:
      - /scripts/cnn_variant_wdl/jsons/cram2model.json
+     filters:
+       branches:
+         - master
+   - name: ImportGenomes
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/ImportGenomes.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/ImportGenomes.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
    - name: funcotator
      subclass: WDL
      primaryDescriptorPath: /scripts/funcotator_wdl/funcotator.wdl
      testParameterFiles:
      - /scripts/funcotator_wdl/funcotator.json
+     filters:
+       branches:
+         - master
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
      testParameterFiles:
      -  /scripts/mitochondria_m2_wdl/test_mitochondria_m2_wdl.json
+     filters:
+       branches:
+         - master
    - name: mutect2
      subclass: WDL
      primaryDescriptorPath: /scripts/mutect2_wdl/mutect2.wdl
      testParameterFiles:
      - /scripts/m2_cromwell_tests/mutect2.inputs.json
+     filters:
+       branches:
+         - master
    - name: mutect2_pon
      subclass: WDL
      primaryDescriptorPath: /scripts/mutect2_wdl/mutect2_pon.wd
+     filters:
+       branches:
+         - master
    - name: run_happy
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/run_happy.wdl
      testParameterFiles:
      - /scripts/cnn_variant_wdl/jsons/run_happy.json
+     filters:
+       branches:
+         - master
    - name: pathseq_pipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/pathseq/wdl/pathseq_pipeline.wdl
      testParameterFiles:
      - /scripts/pathseq/wdl/pathseq_pipeline_template.json
+     filters:
+       branches:
+         - master

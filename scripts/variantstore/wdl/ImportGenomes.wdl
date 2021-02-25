@@ -141,10 +141,10 @@ task CreateImportTsvs {
   Int disk_size = ceil(size(input_vcf, "GB") * multiplier) + 20
 
   meta {
-    description: "Creates a tsv file for imort into BigQuery"
+    description: "Creates a tsv file for import into BigQuery"
     volatile: true
   }
-  
+
   parameter_meta {
     input_vcf: {
       localization_optional: true
@@ -153,7 +153,7 @@ task CreateImportTsvs {
   command <<<
       set -e
 
-      #workaround for https://github.com/broadinstitute/cromwell/issues/3647
+      # workaround for https://github.com/broadinstitute/cromwell/issues/3647
       export TMPDIR=/tmp
 
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
@@ -168,10 +168,10 @@ task CreateImportTsvs {
         --mode GENOMES \
         -SNM ~{sample_map} \
         --ref-version 38
-        
-      gsutil cp metadata_*.tsv ~{output_directory}/metadata_tsvs/
-      gsutil cp pet_*.tsv ~{output_directory}/pet_tsvs/
-      gsutil cp vet_*.tsv ~{output_directory}/vet_tsvs/
+
+      gsutil -m cp metadata_*.tsv ~{output_directory}/metadata_tsvs/
+      gsutil -m cp pet_*.tsv ~{output_directory}/pet_tsvs/
+      gsutil -m cp vet_*.tsv ~{output_directory}/vet_tsvs/
   >>>
   runtime {
       docker: docker
