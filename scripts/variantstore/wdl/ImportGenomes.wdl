@@ -153,7 +153,7 @@ task CreateImportTsvs {
   command <<<
       set -e
 
-      #workaround for https://github.com/broadinstitute/cromwell/issues/3647
+      # workaround for https://github.com/broadinstitute/cromwell/issues/3647
       export TMPDIR=/tmp
 
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
@@ -169,6 +169,7 @@ task CreateImportTsvs {
         -SNM ~{sample_map} \
         --ref-version 38
 
+      # gsutil -m cp will error out if there's an issue with one or more uploads
       gsutil -m cp metadata_*.tsv ~{output_directory}/metadata_tsvs/
       gsutil -m cp pet_*.tsv ~{output_directory}/pet_tsvs/
       gsutil -m cp vet_*.tsv ~{output_directory}/vet_tsvs/
