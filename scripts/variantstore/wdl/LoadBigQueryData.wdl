@@ -76,7 +76,7 @@ task LoadTable {
 
     #load should be false if using Google Storage Transfer so that the tables will be created by this script, but no data will be uploaded.
     if [ ~{load} = true ]; then
-      bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema}
+      bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema} || exit 1
       echo "ingested ${FILES} file from $DIR into table $TABLE"
       gsutil mv $DIR$FILES ${DIR}done/
     else
@@ -159,7 +159,6 @@ task CreateTables {
         TABLE="~{dataset_name}.${PREFIX}~{datatype}${PADDED_TABLE_ID}"
 
         # Checks that the table has not been created yet
-        # if [ ! -f table_dir_files.csv ] || [ "$(cat table_dir_files.csv | cut -d, -f1 | grep -c $TABLE)" = "0" ]; then
         set +e
         bq show --project_id ~{project_id} $TABLE > /dev/null
         BQ_SHOW_RC=$?
