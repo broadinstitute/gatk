@@ -28,7 +28,7 @@ workflow ImportGenomes {
       sample_map = sample_map
   }
 
-  # create tables only requires GetMaxTableId
+  # CreateTables requires GetMaxTableId to have completed
   call CreateTables as CreateMetadataTables {
   	input:
       project_id = project_id,
@@ -74,7 +74,7 @@ workflow ImportGenomes {
       docker = docker_final
   }
 
-  # create the VCFs
+  # create the pet, vet, and metadata TSVs to be imported to BQ
   scatter (i in range(length(input_vcfs))) {
     if (defined(input_metrics)) {
       File input_metric = select_first([input_metrics])[i]
@@ -95,7 +95,7 @@ workflow ImportGenomes {
     }
   }
 
-  # loading tables requires create tables and create import tsvs to be done
+  # LoadTable requires CreateTables and CreateImportTsvs to be completed
   scatter (table_dir_files_str in CreateMetadataTables.table_dir_files_list) {
     call LoadTable as LoadMetadataTable {
       input:

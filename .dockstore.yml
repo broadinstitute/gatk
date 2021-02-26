@@ -66,14 +66,6 @@ workflows:
      filters:
        branches:
          - master
-   - name: LoadBigQueryData
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/LoadBigQueryData.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - mmt_vcf_inputs
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
