@@ -105,7 +105,7 @@ workflow ImportGenomes {
         schema = metadata_schema,
         load = "true",
         preemptible_tries = preemptible_tries,
-        docker = docker
+        docker = docker_final
     }
   }
 
@@ -118,7 +118,7 @@ workflow ImportGenomes {
         schema = pet_schema,
         load = "true",
         preemptible_tries = preemptible_tries,
-        docker = docker
+        docker = docker_final
     }
   }
 
@@ -131,7 +131,7 @@ workflow ImportGenomes {
         schema = vet_schema,
         load = "true",
         preemptible_tries = preemptible_tries,
-        docker = docker
+        docker = docker_final
     }
   }
 }
