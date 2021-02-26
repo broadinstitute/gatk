@@ -1,7 +1,5 @@
 version 1.0
 
-import "LoadBigQueryData.wdl" as LoadBigQueryData
-
 workflow ImportGenomes {
 
   input {
@@ -30,6 +28,56 @@ workflow ImportGenomes {
       sample_map = sample_map
   }
 
+  # create tables only requires GetMaxTableId
+  call CreateTables as CreateMetadataTables {
+  	input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      storage_location = output_directory,
+      datatype = "metadata",
+      max_table_id = GetMaxTableId.max_table_id,
+      schema = metadata_schema,
+      numbered = "false",
+      partitioned = "false",
+      uuid = "",
+      preemptible_tries = preemptible_tries,
+      docker = docker_final,
+      for_testing_only = for_testing_only
+  }
+
+  call CreateTables as CreatePetTables {
+  	input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      storage_location = output_directory,
+      datatype = "pet",
+      max_table_id = GetMaxTableId.max_table_id,
+      schema = pet_schema,
+      numbered = "false",
+      partitioned = "false",
+      uuid = "",
+      preemptible_tries = preemptible_tries,
+      docker = docker_final,
+      for_testing_only = for_testing_only
+  }
+
+  call CreateTables as CreateVetTables {
+  	input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      storage_location = output_directory,
+      datatype = "vet",
+      max_table_id = GetMaxTableId.max_table_id,
+      schema = vet_schema,
+      numbered = "false",
+      partitioned = "false",
+      uuid = "",
+      preemptible_tries = preemptible_tries,
+      docker = docker_final,
+      for_testing_only = for_testing_only
+  }
+
+  # create the VCFs
   scatter (i in range(length(input_vcfs))) {
     if (defined(input_metrics)) {
       File input_metric = select_first([input_metrics])[i]
@@ -50,46 +98,45 @@ workflow ImportGenomes {
     }
   }
 
-  call LoadBigQueryData.LoadBigQueryData as LoadMetadataTsvs {
-    input:
-      done = CreateImportTsvs.done,
-      project_id = project_id,
-      dataset_name = dataset_name,
-      storage_location = output_directory,
-      datatype = "metadata",
-      numbered = "false",
-      partitioned = "false",
-      max_table_id = GetMaxTableId.max_table_id,
-      schema = metadata_schema,
-      preemptible_tries = preemptible_tries,
-      docker = docker_final
-  }
-
-  call LoadBigQueryData.LoadBigQueryData as LoadPetTsvs {
-    input:
-      done = CreateImportTsvs.done,
-      project_id = project_id,
-      dataset_name = dataset_name,
-      storage_location = output_directory,
-      datatype = "pet",
-      max_table_id = GetMaxTableId.max_table_id,
-      schema = pet_schema,
-      preemptible_tries = preemptible_tries,
-      docker = docker_final
-  }
-
-  call LoadBigQueryData.LoadBigQueryData as LoadVetTsvs {
-    input:
-      done = CreateImportTsvs.done,
-      project_id = project_id,
-      dataset_name = dataset_name,
-      storage_location = output_directory,
-      datatype = "vet",
-      max_table_id = GetMaxTableId.max_table_id,
-      schema = vet_schema,
-      preemptible_tries = preemptible_tries,
-      docker = docker_final
+  # loading tables requires create tables and create import tsvs to be done
+  scatter (table_dir_files_str in CreateMetadataTables.table_dir_files_list) {
+    call LoadTable as LoadMetadataTable {
+      input:
+        done = CreateImportTsvs.done,
+        table_dir_files_str = table_dir_files_str,
+        project_id = project_id,
+        schema = metadata_schema,
+        load = "true",
+        preemptible_tries = preemptible_tries,
+        docker = docker
     }
+  }
+
+  scatter (table_dir_files_str in CreatePetTables.table_dir_files_list) {
+    call LoadTable as LoadPetTable {
+      input:
+        done = CreateImportTsvs.done,
+        table_dir_files_str = table_dir_files_str,
+        project_id = project_id,
+        schema = pet_schema,
+        load = "true",
+        preemptible_tries = preemptible_tries,
+        docker = docker
+    }
+  }
+
+  scatter (table_dir_files_str in CreateVetTables.table_dir_files_list) {
+    call LoadTable as LoadVetTable {
+      input:
+        done = CreateImportTsvs.done,
+        table_dir_files_str = table_dir_files_str,
+        project_id = project_id,
+        schema = vet_schema,
+        load = "true",
+        preemptible_tries = preemptible_tries,
+        docker = docker
+    }
+  }
 }
 
 task GetMaxTableId {
@@ -184,3 +231,134 @@ task CreateImportTsvs {
   }
 }
 
+# Creates all the tables necessary for the LoadData operation
+# As an optimization, I also generate a (table, dir, files) csv file which contains
+# most of inputs necessary for the following LoadTable task.
+task CreateTables {
+	meta {
+    	volatile: true
+  	}
+
+	input {
+      String project_id
+      String dataset_name
+      String storage_location
+      String datatype
+      Int max_table_id
+      File schema
+      String numbered
+      String partitioned
+      String uuid
+
+      # runtime
+      Int? preemptible_tries
+      String docker
+
+      String? for_testing_only
+    }
+
+  command <<<
+    set -x
+    set -e
+    ~{for_testing_only}
+
+    DIR="~{storage_location}/~{datatype}_tsvs/"
+
+    for TABLE_ID in $(seq 1 ~{max_table_id}); do
+      PARTITION_STRING=""
+      if [ ~{partitioned} == "true" ]; then
+        let "PARTITION_START=(${TABLE_ID}-1)*4000+1"
+        let "PARTITION_END=$PARTITION_START+3999"
+        let "PARTITION_STEP=1"
+        PARTITION_FIELD="sample_id"
+        PARTITION_STRING="--range_partitioning=$PARTITION_FIELD,$PARTITION_START,$PARTITION_END,$PARTITION_STEP"
+      fi
+
+      printf -v PADDED_TABLE_ID "_%03d" ${TABLE_ID}
+      FILES="~{datatype}${PADDED_TABLE_ID}_*"
+
+      NUM_FILES=$(gsutil ls $DIR$FILES | wc -l)
+
+      # create the table
+      PREFIX=""
+      if [ -n "~{uuid}" ]; then
+          PREFIX="~{uuid}_"
+      fi
+
+      if [ $NUM_FILES -gt 0 ]; then
+        if [ ~{numbered} != "true" ]; then
+          PADDED_TABLE_ID=""  #override table id to empty string, but it is needed to get the files
+        fi
+
+        TABLE="~{dataset_name}.${PREFIX}~{datatype}${PADDED_TABLE_ID}"
+
+        # Check that the table has not been created yet
+        set +e
+        bq show --project_id ~{project_id} $TABLE > /dev/null
+        BQ_SHOW_RC=$?
+        set -e
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+          echo "making table $TABLE"
+          bq --location=US mk ${PARTITION_STRING} --project_id=~{project_id} $TABLE ~{schema}
+        fi
+
+        echo "$TABLE,$DIR,$FILES" >> table_dir_files.csv
+      else
+        echo "no ${FILES} files to process"
+      fi
+
+    #done
+  >>>
+
+  output {
+    Array[String] table_dir_files_list = read_lines("table_dir_files.csv")
+  }
+
+  runtime {
+    docker: docker
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: select_first([preemptible_tries, 5])
+    cpu: 1
+  }
+}
+
+task LoadTable {
+  meta {
+    volatile: true
+  }
+
+  input {
+    String table_dir_files_str
+    String project_id
+    File schema
+    String load
+    String done
+
+    Int? preemptible_tries
+    String docker
+  }
+
+  command <<<
+    TABLE=$(echo ~{table_dir_files_str} | cut -d, -f1)
+    DIR=$(echo ~{table_dir_files_str} | cut -d, -f2)
+    FILES=$(echo ~{table_dir_files_str} | cut -d, -f3)
+
+    #load should be false if using Google Storage Transfer so that the tables will be created by this script, but no data will be uploaded.
+    if [ ~{load} = true ]; then
+      bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema} || exit 1
+      echo "ingested ${FILES} file from $DIR into table $TABLE"
+      gsutil mv $DIR$FILES ${DIR}done/
+    else
+      echo "${FILES} will be ingested from $DIR by Google Storage Transfer"
+    fi
+  >>>
+
+  runtime {
+    docker: docker
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: select_first([preemptible_tries, 5])
+    cpu: 1
+  }
+}
