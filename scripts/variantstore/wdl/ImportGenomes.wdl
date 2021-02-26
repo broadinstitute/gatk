@@ -28,52 +28,6 @@ workflow ImportGenomes {
       sample_map = sample_map
   }
 
-  # CreateTables requires GetMaxTableId to have completed
-  call CreateTables as CreateMetadataTables {
-  	input:
-      project_id = project_id,
-      dataset_name = dataset_name,
-      storage_location = output_directory,
-      datatype = "metadata",
-      max_table_id = GetMaxTableId.max_table_id,
-      schema = metadata_schema,
-      numbered = "false",
-      partitioned = "false",
-      uuid = "",
-      preemptible_tries = preemptible_tries,
-      docker = docker_final
-  }
-
-  call CreateTables as CreatePetTables {
-  	input:
-      project_id = project_id,
-      dataset_name = dataset_name,
-      storage_location = output_directory,
-      datatype = "pet",
-      max_table_id = GetMaxTableId.max_table_id,
-      schema = pet_schema,
-      numbered = "false",
-      partitioned = "false",
-      uuid = "",
-      preemptible_tries = preemptible_tries,
-      docker = docker_final
-  }
-
-  call CreateTables as CreateVetTables {
-  	input:
-      project_id = project_id,
-      dataset_name = dataset_name,
-      storage_location = output_directory,
-      datatype = "vet",
-      max_table_id = GetMaxTableId.max_table_id,
-      schema = vet_schema,
-      numbered = "false",
-      partitioned = "false",
-      uuid = "",
-      preemptible_tries = preemptible_tries,
-      docker = docker_final
-  }
-
   # create the pet, vet, and metadata TSVs to be imported to BQ
   scatter (i in range(length(input_vcfs))) {
     if (defined(input_metrics)) {
@@ -95,11 +49,60 @@ workflow ImportGenomes {
     }
   }
 
+  # CreateTables requires GetMaxTableId and CreateImportTSVs to have completed
+  call CreateTables as CreateMetadataTables {
+  	input:
+  	  tsv_creation_done = CreateImportTsvs.done,
+      project_id = project_id,
+      dataset_name = dataset_name,
+      storage_location = output_directory,
+      datatype = "metadata",
+      max_table_id = GetMaxTableId.max_table_id,
+      schema = metadata_schema,
+      numbered = "false",
+      partitioned = "false",
+      uuid = "",
+      preemptible_tries = preemptible_tries,
+      docker = docker_final
+  }
+
+  call CreateTables as CreatePetTables {
+  	input:
+  	  tsv_creation_done = CreateImportTsvs.done,
+      project_id = project_id,
+      dataset_name = dataset_name,
+      storage_location = output_directory,
+      datatype = "pet",
+      max_table_id = GetMaxTableId.max_table_id,
+      schema = pet_schema,
+      numbered = "false",
+      partitioned = "false",
+      uuid = "",
+      preemptible_tries = preemptible_tries,
+      docker = docker_final
+  }
+
+  call CreateTables as CreateVetTables {
+  	input:
+  	  tsv_creation_done = CreateImportTsvs.done,
+      project_id = project_id,
+      dataset_name = dataset_name,
+      storage_location = output_directory,
+      datatype = "vet",
+      max_table_id = GetMaxTableId.max_table_id,
+      schema = vet_schema,
+      numbered = "false",
+      partitioned = "false",
+      uuid = "",
+      preemptible_tries = preemptible_tries,
+      docker = docker_final
+  }
+
   # LoadTable requires CreateTables and CreateImportTsvs to be completed
   scatter (table_dir_files_str in CreateMetadataTables.table_dir_files_list) {
     call LoadTable as LoadMetadataTable {
       input:
-        done = CreateImportTsvs.done,
+        tsv_creation_done = CreateImportTsvs.done,
         table_dir_files_str = table_dir_files_str,
         project_id = project_id,
         schema = metadata_schema,
@@ -112,7 +115,7 @@ workflow ImportGenomes {
   scatter (table_dir_files_str in CreatePetTables.table_dir_files_list) {
     call LoadTable as LoadPetTable {
       input:
-        done = CreateImportTsvs.done,
+        tsv_creation_done = CreateImportTsvs.done,
         table_dir_files_str = table_dir_files_str,
         project_id = project_id,
         schema = pet_schema,
@@ -125,7 +128,7 @@ workflow ImportGenomes {
   scatter (table_dir_files_str in CreateVetTables.table_dir_files_list) {
     call LoadTable as LoadVetTable {
       input:
-        done = CreateImportTsvs.done,
+        tsv_creation_done = CreateImportTsvs.done,
         table_dir_files_str = table_dir_files_str,
         project_id = project_id,
         schema = vet_schema,
@@ -243,6 +246,7 @@ task CreateTables {
       String numbered
       String partitioned
       String uuid
+      Array[String] tsv_creation_done
 
       # runtime
       Int? preemptible_tries
@@ -323,7 +327,7 @@ task LoadTable {
     String project_id
     File schema
     String load
-    Array[String] done
+    Array[String] tsv_creation_done
 
     Int? preemptible_tries
     String docker
