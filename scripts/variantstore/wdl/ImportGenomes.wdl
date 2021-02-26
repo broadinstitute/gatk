@@ -297,8 +297,6 @@ task CreateTables {
       else
         echo "no ${FILES} files to process"
       fi
-
-    #done
   >>>
 
   output {
