@@ -4,7 +4,10 @@ import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQuality;
 import org.broadinstitute.hellbender.tools.walkers.annotator.FragmentLength;
 import org.broadinstitute.hellbender.tools.walkers.annotator.MappingQuality;
-import org.broadinstitute.hellbender.tools.walkers.annotator.MaxPositionDifference;
+import org.broadinstitute.hellbender.tools.walkers.annotator.MaxStartPositionDifference;
+import org.broadinstitute.hellbender.tools.walkers.annotator.MaxEndPositionDifference;
+import org.broadinstitute.hellbender.tools.walkers.annotator.MinEndPositionDifference;
+import org.broadinstitute.hellbender.tools.walkers.annotator.MinStartPositionDifference;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ReadPosition;
 import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -215,6 +218,10 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(UNITIG_SIZES_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Sizes of reassembled unitigs"));
         addInfoLine(new VCFInfoHeaderLine(JOINT_ALIGNMENT_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Number of joint alignments"));
         addInfoLine(new VCFInfoHeaderLine(ALIGNMENT_SCORE_DIFFERENCE_KEY, 1, VCFHeaderLineType.Integer, "Difference in alignment score between best and next-best alignment"));
-        addInfoLine(new MaxPositionDifference().getDescriptions().get(0));
+        addInfoLine(new MaxStartPositionDifference().getDescriptions().get(0));
+        addInfoLine(new MaxEndPositionDifference().getDescriptions().get(0));
+        addInfoLine(new MinStartPositionDifference().getDescriptions().get(0));
+        addInfoLine(new MinEndPositionDifference().getDescriptions().get(0));
+
     }
 }

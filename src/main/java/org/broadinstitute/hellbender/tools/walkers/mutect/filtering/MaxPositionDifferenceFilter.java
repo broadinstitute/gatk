@@ -4,6 +4,8 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -14,15 +16,27 @@ public class MaxPositionDifferenceFilter extends HardFilter {
     }
 
     @Override
-    public ErrorType errorType() { return ErrorType.ARTIFACT; }
+    public ErrorType errorType() {
+        return ErrorType.ARTIFACT;
+    }
 
     @Override
     public boolean isArtifact(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
-        final List<Integer> readPositionMaxDiff = vc.getAttributeAsIntList(GATKVCFConstants.READ_POSITION_MAX_DIFF_KEY, 0);
+        final List<Integer> startPositionMaxDiff = vc.getAttributeAsIntList(GATKVCFConstants.READ_START_POSITION_MAX_DIFF_KEY, 0);
+        final List<Integer> endPositionMaxDiff = vc.getAttributeAsIntList(GATKVCFConstants.READ_END_POSITION_MAX_DIFF_KEY, 0);
+        final List<Integer> startPositionMinDiff = vc.getAttributeAsIntList(GATKVCFConstants.READ_START_POSITION_MIN_DIFF_KEY, 0);
+        final List<Integer> endPositionMinDiff = vc.getAttributeAsIntList(GATKVCFConstants.READ_END_POSITION_MIN_DIFF_KEY, 0);
+
         final double[] tumorLods = Mutect2FilteringEngine.getTumorLogOdds(vc);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
-        return readPositionMaxDiff.get(indexOfMaxTumorLod) == 1;
+        final int threshold = 3;
+        if (startPositionMaxDiff.get(indexOfMaxTumorLod) <= threshold && endPositionMaxDiff.get(indexOfMaxTumorLod) <= threshold &&
+            startPositionMinDiff.get(indexOfMaxTumorLod) <= threshold && endPositionMinDiff.get(indexOfMaxTumorLod) <= threshold) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Override
@@ -31,5 +45,10 @@ public class MaxPositionDifferenceFilter extends HardFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.READ_POSITION_MAX_DIFF_KEY); }
+    protected List<String> requiredAnnotations() {
+        return new ArrayList<>(Arrays.asList(GATKVCFConstants.READ_START_POSITION_MAX_DIFF_KEY,
+                                             GATKVCFConstants.READ_END_POSITION_MAX_DIFF_KEY,
+                                             GATKVCFConstants.READ_START_POSITION_MIN_DIFF_KEY,
+                                             GATKVCFConstants.READ_END_POSITION_MIN_DIFF_KEY));
+    }
 }

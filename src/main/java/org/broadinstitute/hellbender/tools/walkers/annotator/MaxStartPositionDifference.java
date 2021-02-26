@@ -28,7 +28,7 @@ import static java.lang.Math.min;
  * <p>This annotation is useful for filtering alignment artifacts.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median distance of variant starts from ends of reads supporting each allele (MPOS)")
-public class MaxPositionDifference extends PerAlleleAnnotation implements StandardMutectAnnotation {
+public class MaxStartPositionDifference extends PerAlleleAnnotation implements StandardMutectAnnotation {
 
     // we don't want a GGA mode allele with no reads to prejudice us against a site so we assign a non-suspicious value
     private static final int VALUE_FOR_NO_READS = 50;
@@ -36,7 +36,7 @@ public class MaxPositionDifference extends PerAlleleAnnotation implements Standa
     @Override
     protected int aggregate(final List<Integer> values) {
         List<Integer> positiveValues = values.stream()
-                .filter(v -> v >= 0)
+                .filter(v -> v != 0)
                 .collect(Collectors.toList());
 
         if (positiveValues.isEmpty()) {
@@ -45,18 +45,16 @@ public class MaxPositionDifference extends PerAlleleAnnotation implements Standa
 
         int positiveMax = MathUtils.arrayMax(Ints.toArray(positiveValues)) - MathUtils.arrayMin(Ints.toArray(positiveValues));
 
-        System.out.println("positiveMax = " + positiveMax);
 
-        if(positiveMax == 1) {
-            return 1;
-        }
-        else {
-            return values.isEmpty() ? VALUE_FOR_NO_READS : positiveMax;
-        }
+        System.out.println("max start difference = " + positiveMax);
+        System.out.println(positiveValues);
+        System.out.println();
+
+        return values.isEmpty() ? VALUE_FOR_NO_READS : positiveMax;
     }
 
     @Override
-    protected String getVcfKey() { return GATKVCFConstants.READ_POSITION_MAX_DIFF_KEY; }
+    protected String getVcfKey() { return GATKVCFConstants.READ_START_POSITION_MAX_DIFF_KEY; }
 
     @Override
     protected String getDescription() { return "median distance from end of read"; }
@@ -67,7 +65,10 @@ public class MaxPositionDifference extends PerAlleleAnnotation implements Standa
             return OptionalInt.empty();
         }
 
-        final OptionalInt valueAsInt = OptionalInt.of(read.getFragmentLength());
+        final OptionalInt valueAsInt;
+
+        valueAsInt = OptionalInt.of(Math.max(read.getStart(), read.getMateStart()));
+
         return valueAsInt.isPresent() ? valueAsInt : OptionalInt.empty();
     }
 }

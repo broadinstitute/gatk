@@ -111,7 +111,10 @@ public final class GATKVCFConstants {
     public static final String UNITIG_SIZES_KEY = "UNITIGS";
     public static final String ALIGNMENT_SCORE_DIFFERENCE_KEY = "ALIGN_DIFF";
     public static final String JOINT_ALIGNMENT_COUNT_KEY = "NALIGNS";
-    public static final String READ_POSITION_MAX_DIFF_KEY = "RPMD";
+    public static final String READ_START_POSITION_MAX_DIFF_KEY = "RSPMAXD";
+    public static final String READ_END_POSITION_MAX_DIFF_KEY = "REPMAXD";
+    public static final String READ_START_POSITION_MIN_DIFF_KEY = "RSPMIND";
+    public static final String READ_END_POSITION_MIN_DIFF_KEY = "REPMIND";
 
     // Methylation-specific INFO Keys
     public static final String UNCONVERTED_BASE_COVERAGE_KEY =      "UNCONVERTED_BASE_COV";
