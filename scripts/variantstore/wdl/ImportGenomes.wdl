@@ -324,7 +324,7 @@ task LoadTable {
     String project_id
     File schema
     String load
-    String done
+    Array[String] done
 
     Int? preemptible_tries
     String docker
