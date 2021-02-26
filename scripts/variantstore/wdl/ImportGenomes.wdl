@@ -41,8 +41,7 @@ workflow ImportGenomes {
       partitioned = "false",
       uuid = "",
       preemptible_tries = preemptible_tries,
-      docker = docker_final,
-      for_testing_only = for_testing_only
+      docker = docker_final
   }
 
   call CreateTables as CreatePetTables {
@@ -57,8 +56,7 @@ workflow ImportGenomes {
       partitioned = "false",
       uuid = "",
       preemptible_tries = preemptible_tries,
-      docker = docker_final,
-      for_testing_only = for_testing_only
+      docker = docker_final
   }
 
   call CreateTables as CreateVetTables {
@@ -73,8 +71,7 @@ workflow ImportGenomes {
       partitioned = "false",
       uuid = "",
       preemptible_tries = preemptible_tries,
-      docker = docker_final,
-      for_testing_only = for_testing_only
+      docker = docker_final
   }
 
   # create the VCFs
@@ -179,8 +176,6 @@ task CreateImportTsvs {
     Int? preemptible_tries
     File? gatk_override
     String docker
-
-    String? for_testing_only
   }
 
   Int multiplier = if defined(drop_state) then 4 else 10
@@ -203,7 +198,6 @@ task CreateImportTsvs {
       export TMPDIR=/tmp
 
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-      ~{for_testing_only}
 
       gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
         -V ~{input_vcf} \
@@ -253,14 +247,11 @@ task CreateTables {
       # runtime
       Int? preemptible_tries
       String docker
-
-      String? for_testing_only
     }
 
   command <<<
     set -x
     set -e
-    ~{for_testing_only}
 
     DIR="~{storage_location}/~{datatype}_tsvs/"
 
