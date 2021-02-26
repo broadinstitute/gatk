@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk/mmt_vcf_inputs/scripts/variantstore/wdl/LoadBigQueryData.wdl" as LoadBigQueryData
+import "LoadBigQueryData.wdl" as LoadBigQueryData
 
 workflow ImportGenomes {
 
