@@ -27,8 +27,10 @@ workflow ImportGenomes {
       sample_map = sample_map
   }
 
+  # CreateTables requires GetMaxTableId to have completed
   call CreateTables as CreateMetadataTables {
   	input:
+  	  tsv_creation_done = CreateImportTsvs.done,
       project_id = project_id,
       dataset_name = dataset_name,
       datatype = "metadata",
@@ -43,6 +45,7 @@ workflow ImportGenomes {
 
   call CreateTables as CreatePetTables {
   	input:
+  	  tsv_creation_done = CreateImportTsvs.done,
       project_id = project_id,
       dataset_name = dataset_name,
       datatype = "pet",
@@ -57,6 +60,7 @@ workflow ImportGenomes {
 
   call CreateTables as CreateVetTables {
   	input:
+  	  tsv_creation_done = CreateImportTsvs.done,
       project_id = project_id,
       dataset_name = dataset_name,
       datatype = "vet",
@@ -235,6 +239,7 @@ task CreateTables {
       String superpartitioned
       String partitioned
       String uuid
+      Array[String] tsv_creation_done
 
       # runtime
       Int? preemptible_tries
