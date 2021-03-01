@@ -1,0 +1,71 @@
+# ACMG35 Feature Extract Tieout
+
+The goal is to compare data from the WARP pipeline going into VQSR with the BigQuery approach
+
+## Data
+
+The 35 sample gVCF used for this analysis are listed in `warp_samples.tsv`
+
+Get a shard of pre-hard filtered extracted data from the WARP run:
+
+```bash
+WORFLOW_ID=feeca595-85a8-4d2b-b1ef-7f6dc64d714c
+gsutil cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORFLOW_ID}/call-TotallyRadicalGatherVcfs/shard-0/*.gnarly.vcf.gz bq_validation_35.0.gnarly.vcf.gz
+gunzip bq_validation_35.0.gnarly.vcf.gz
+```
+
+Extract the same region from BQ (using the `spec-ops-aou.kc_acmg_tieout_v6` which was loaded with spanning deletions in the VET for tieout purposes).  The interval below is the same interval as shard-0 from gnarly.
+
+```bash
+gatk --java-options "-Xmx4g" \
+    ExtractFeatures \
+        --ref-version 38  \
+        -R /Users/kcibul/projects/references/hg38/v0/Homo_sapiens_assembly38.fasta  \
+        -O acmg_feature_extract_debug.vcf.gz \
+        --local-sort-max-records-in-ram 1000000 \
+        --sample-table spec-ops-aou.kc_acmg_tieout_v6.metadata \
+        --alt-allele-table  spec-ops-aou.kc_acmg_tieout_v6.alt_allele \
+        --min-location 1000000000000 --max-location 1000035055462 \
+        --project-id spec-ops-aou
+```
+
+From there WARP pipeline, there are two places we could get our source files from with different caveats:
+
+
+1. The input to VQSR -- this is sites-only and the final input, so it would be perfect EXCEPT that it has had hard-filtering applied also which includes ExcessHet which is not currently part of the BQ process
+
+2. The inputs to the scatered HardFilterAndMakeSitesOnlyVcf, which is not sites-only (which just makes it bigger) and is scattered... but has not been hard filtered yet.  Interestingly enough... this is turns out to be the same file that we used to compare the cohort extract.
+
+We are starting with option (2) which can be found at the following path:
+
+gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORKFLOW_ID}/call-TotallyRadicalGatherVcfs/shard-0/bq_validation_v5_35.0.gnarly.vcf.gz
+
+## Comparison
+
+NOTE: WARP currently has 1 row per SITE with multiple alleles (and values per allele).  BQ breaks this out to one row per allele.  Question out to Laura if this is equivalent... if it is we just need to fix up the tieout scripts.  If it's not, we need to combine these in the Java code.  Currently we just ignore multi-allelic sites.
+
+To run the script:
+
+```bash
+python compare_feature_data.py <first-vcf> <second-vcf> [<intervals-to-exclude>]
+```
+
+So for example,
+
+```bash
+python compare_feature_data.py bq_validation_v5_35.0.gnarly.vcf.gz acmg_feature_extract_debug.vcf.gz
+```
+
+## Debugging
+
+The query that calculates the base data for the metrics is in `src/main/resources/org/broadinstitute/hellbender/tools/variantdb/nextgen/feature_extract.sql`.  Running that against a single position will gather the raw data used to calculate.
+
+
+
+
+
+
+ 
+
+
+
