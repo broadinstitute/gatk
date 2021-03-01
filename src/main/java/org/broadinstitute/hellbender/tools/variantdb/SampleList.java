@@ -21,6 +21,9 @@ public class SampleList {
     private Map<String, Long> sampleNameMap;
 
     public SampleList(String sampleTableName, File sampleFile, boolean printDebugInformation) {
+        sampleIdMap = new HashMap<>();
+        sampleNameMap = new HashMap<>();
+
         if (sampleTableName != null) {
             initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), printDebugInformation);
         } else if (sampleFile != null) {
@@ -69,9 +72,6 @@ public class SampleList {
 
 
     protected void initializeMaps(TableReference sampleTable, boolean printDebugInformation) {
-
-        sampleIdMap = new HashMap<>();
-        sampleNameMap = new HashMap<>();
         TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "", printDebugInformation);
 
         // Add our samples to our map:
@@ -90,8 +90,6 @@ public class SampleList {
                 .forEach(tokens -> {
                     long id = Long.parseLong(tokens[0]);
                     String name = tokens[1];
-                    System.out.println(id);
-                    System.out.println(name);
                     sampleIdMap.put(id, name);
                     sampleNameMap.put(name, id);
                 });
