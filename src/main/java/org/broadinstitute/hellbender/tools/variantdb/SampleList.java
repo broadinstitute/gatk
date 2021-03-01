@@ -26,7 +26,7 @@ public class SampleList {
         } else if (sampleFile != null) {
             initializeMaps(sampleFile);
         } else {
-            throw new IllegalArgumentException("--cohort-sample-names or --cohort-sample-table must be provided.");
+            throw new IllegalArgumentException("--sample-file or --sample-table must be provided.");
         }
     }
 
@@ -90,6 +90,8 @@ public class SampleList {
                 .forEach(tokens -> {
                     long id = Long.parseLong(tokens[0]);
                     String name = tokens[1];
+                    System.out.println(id);
+                    System.out.println(name);
                     sampleIdMap.put(id, name);
                     sampleNameMap.put(name, id);
                 });
