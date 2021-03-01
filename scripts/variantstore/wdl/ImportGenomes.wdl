@@ -91,7 +91,7 @@ workflow ImportGenomes {
     call LoadTable as LoadMetadataTable {
       input:
         project_id = project_id,
-        table_id = i,
+        table_id = i + 1,
         dataset_name = dataset_name,
         storage_location = output_directory,
         datatype = "metadata",
@@ -107,7 +107,7 @@ workflow ImportGenomes {
     call LoadTable as LoadPetTable {
     input:
       project_id = project_id,
-      table_id = i,
+      table_id = i + 1,
       dataset_name = dataset_name,
       storage_location = output_directory,
       datatype = "pet",
@@ -123,7 +123,7 @@ workflow ImportGenomes {
     call LoadTable as LoadVetTable {
     input:
       project_id = project_id,
-      table_id = i,
+      table_id = i + 1,
       dataset_name = dataset_name,
       storage_location = output_directory,
       datatype = "vet",
