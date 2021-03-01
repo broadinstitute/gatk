@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_S
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -52,10 +53,16 @@ public abstract class ExtractTool extends GATKTool {
     @Argument(
             fullName = "sample-table",
             doc = "Fully qualified name of a bigquery table containing a single column `sample` that describes the full list of samples to extract",
-            optional = false
+            optional = true
     )
     protected String sampleTableName = null;
 
+    @Argument(
+            fullName = "sample-file",
+            doc = "Alternative to `sample-table`. Pass in a (sample_id,sample_name) CSV that describes the full list of samples to extract. No header",
+            optional = true
+    )
+    protected File sampleFileName = null;
 
     @Argument(
             fullName = "print-debug-information",
@@ -115,7 +122,7 @@ public abstract class ExtractTool extends GATKTool {
         doc = "When extracting data, only include locations <= this value",
         optional = true
     )
-    protected Long maxLocation = null;    
+    protected Long maxLocation = null;
 
     @Override
     public boolean requiresReference() {

@@ -48,7 +48,7 @@ public final class BigQueryUtils {
      * @return A {@link TableResult} object containing the results of the query executed.
      */
     public static TableResult executeQuery(final String queryString) {
-        return executeQuery(getBigQueryEndPoint(), queryString, false);
+        return executeQuery(getBigQueryEndPoint(), queryString, false, null);
     }
 
     /**
@@ -60,7 +60,7 @@ public final class BigQueryUtils {
      * @return A {@link TableResult} object containing the results of the query executed.
      */
     public static TableResult executeQuery(final String queryString, final boolean runQueryInBatchMode) {
-        return executeQuery(getBigQueryEndPoint(), queryString, runQueryInBatchMode);
+        return executeQuery(getBigQueryEndPoint(), queryString, runQueryInBatchMode, null);
     }
 
     /**
@@ -72,8 +72,7 @@ public final class BigQueryUtils {
      * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
      * @return A {@link TableResult} object containing the results of the query executed.
      */
-    public static TableResult executeQuery(final BigQuery bigQuery, final String queryString, final boolean runQueryInBatchMode) {
-
+    public static TableResult executeQuery(final BigQuery bigQuery, final String queryString, final boolean runQueryInBatchMode, final String readProjectId) {
         // Create a query configuration we can run based on our query string:
         final QueryJobConfiguration queryConfig =
                 QueryJobConfiguration.newBuilder( queryString )
