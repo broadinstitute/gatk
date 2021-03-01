@@ -73,6 +73,11 @@ public class MinEndPositionDifference extends PerAlleleAnnotation implements Sta
         final int mateOffset = read.isReverseStrand() ? -read.getLength() : read.getLength();
         valueAsInt = OptionalInt.of(Math.min(read.getEnd(), read.getMateStart() + mateOffset));
 
+        System.out.println("MinEndPositionDifference " + read.getName());
+        System.out.println("End = " + read.getEnd());
+        System.out.println("MateStart = " + read.getMateStart() + " MateOffset = " + mateOffset);
+        System.out.println("MateEnd = " + valueAsInt);
+
         return valueAsInt.isPresent() ? valueAsInt : OptionalInt.empty();
     }
 }

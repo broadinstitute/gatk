@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.OptionalInt;
 import java.util.stream.Collectors;
 
+import static java.lang.Math.min;
 
 /**
  * Median distance of variant starts from ends of reads supporting each alt allele.
@@ -27,7 +28,7 @@ import java.util.stream.Collectors;
  * <p>This annotation is useful for filtering alignment artifacts.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median distance of variant starts from ends of reads supporting each allele (MPOS)")
-public class MaxEndPositionDifference extends PerAlleleAnnotation implements StandardMutectAnnotation {
+public class InsertSizeDifference extends PerAlleleAnnotation implements StandardMutectAnnotation {
 
     // we don't want a GGA mode allele with no reads to prejudice us against a site so we assign a non-suspicious value
     private static final int VALUE_FOR_NO_READS = 50;
@@ -44,7 +45,7 @@ public class MaxEndPositionDifference extends PerAlleleAnnotation implements Sta
 
         int positiveMax = MathUtils.arrayMax(Ints.toArray(positiveValues)) - MathUtils.arrayMin(Ints.toArray(positiveValues));
 
-        System.out.println("max end difference = " + positiveMax);
+        System.out.println("fragment length = " + positiveMax);
         System.out.println(positiveValues);
         System.out.println();
 
@@ -52,14 +53,10 @@ public class MaxEndPositionDifference extends PerAlleleAnnotation implements Sta
     }
 
     @Override
-    protected String getVcfKey() {
-        return GATKVCFConstants.READ_END_POSITION_MAX_DIFF_KEY;
-    }
+    protected String getVcfKey() { return GATKVCFConstants.INSERT_SIZE_DIFF_KEY; }
 
     @Override
-    protected String getDescription() {
-        return "median distance from end of read";
-    }
+    protected String getDescription() { return "fragment length"; }
 
     @Override
     protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
@@ -68,13 +65,10 @@ public class MaxEndPositionDifference extends PerAlleleAnnotation implements Sta
         }
 
         final OptionalInt valueAsInt;
-        final int mateOffset = read.isReverseStrand() ? -read.getLength() : read.getLength();
-        valueAsInt = OptionalInt.of(Math.max(read.getEnd(), read.getMateStart() + mateOffset));
 
-        System.out.println("MaxEndPositionDifference " + read.getName());
-        System.out.println("End = " + read.getEnd());
-        System.out.println("MateStart = " + read.getMateStart() + " MateOffset = " + mateOffset);
-        System.out.println("MateEnd = " + valueAsInt);
+        System.out.println("InsertSizeDifference " + read.getName());
+        System.out.println("InsertSize = " + read.getFragmentLength());
+        valueAsInt = OptionalInt.of(Math.abs(read.getFragmentLength()));
 
         return valueAsInt.isPresent() ? valueAsInt : OptionalInt.empty();
     }

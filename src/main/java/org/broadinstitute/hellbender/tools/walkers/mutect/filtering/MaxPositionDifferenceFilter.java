@@ -26,13 +26,16 @@ public class MaxPositionDifferenceFilter extends HardFilter {
         final List<Integer> endPositionMaxDiff = vc.getAttributeAsIntList(GATKVCFConstants.READ_END_POSITION_MAX_DIFF_KEY, 0);
         final List<Integer> startPositionMinDiff = vc.getAttributeAsIntList(GATKVCFConstants.READ_START_POSITION_MIN_DIFF_KEY, 0);
         final List<Integer> endPositionMinDiff = vc.getAttributeAsIntList(GATKVCFConstants.READ_END_POSITION_MIN_DIFF_KEY, 0);
+        final List<Integer> insertSizeDiff = vc.getAttributeAsIntList(GATKVCFConstants.INSERT_SIZE_DIFF_KEY, 0);
 
         final double[] tumorLods = Mutect2FilteringEngine.getTumorLogOdds(vc);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
         final int threshold = 3;
-        if (startPositionMaxDiff.get(indexOfMaxTumorLod) <= threshold && endPositionMaxDiff.get(indexOfMaxTumorLod) <= threshold &&
-            startPositionMinDiff.get(indexOfMaxTumorLod) <= threshold && endPositionMinDiff.get(indexOfMaxTumorLod) <= threshold) {
+
+        //startPositionMinDiff.get(indexOfMaxTumorLod) <= threshold && endPositionMinDiff.get(indexOfMaxTumorLod) <= threshold) {
+        if (startPositionMaxDiff.get(indexOfMaxTumorLod) <= threshold && startPositionMinDiff.get(indexOfMaxTumorLod) <= threshold &&
+            insertSizeDiff.get(indexOfMaxTumorLod) <= threshold) {
             return true;
         } else {
             return false;
@@ -49,6 +52,7 @@ public class MaxPositionDifferenceFilter extends HardFilter {
         return new ArrayList<>(Arrays.asList(GATKVCFConstants.READ_START_POSITION_MAX_DIFF_KEY,
                                              GATKVCFConstants.READ_END_POSITION_MAX_DIFF_KEY,
                                              GATKVCFConstants.READ_START_POSITION_MIN_DIFF_KEY,
-                                             GATKVCFConstants.READ_END_POSITION_MIN_DIFF_KEY));
+                                             GATKVCFConstants.READ_END_POSITION_MIN_DIFF_KEY,
+                                             GATKVCFConstants.INSERT_SIZE_DIFF_KEY));
     }
 }

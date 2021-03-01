@@ -69,7 +69,11 @@ public class MinStartPositionDifference extends PerAlleleAnnotation implements S
         }
 
         final OptionalInt valueAsInt;
-        valueAsInt = OptionalInt.of(Math.min(read.getEnd(), read.getMateStart()));
+        valueAsInt = OptionalInt.of(Math.min(read.getStart(), read.getMateStart()));
+
+        System.out.println("MinStartPositionDifference " + read.getName());
+        System.out.println("Start = " + read.getStart());
+        System.out.println("MateStart = " + read.getMateStart());
 
         return valueAsInt.isPresent() ? valueAsInt : OptionalInt.empty();
     }

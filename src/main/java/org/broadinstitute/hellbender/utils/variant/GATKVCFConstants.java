@@ -115,6 +115,7 @@ public final class GATKVCFConstants {
     public static final String READ_END_POSITION_MAX_DIFF_KEY = "REPMAXD";
     public static final String READ_START_POSITION_MIN_DIFF_KEY = "RSPMIND";
     public static final String READ_END_POSITION_MIN_DIFF_KEY = "REPMIND";
+    public static final String INSERT_SIZE_DIFF_KEY = "ISD";
 
     // Methylation-specific INFO Keys
     public static final String UNCONVERTED_BASE_COVERAGE_KEY =      "UNCONVERTED_BASE_COV";

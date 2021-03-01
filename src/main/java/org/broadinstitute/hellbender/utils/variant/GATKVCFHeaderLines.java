@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.variant;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQuality;
 import org.broadinstitute.hellbender.tools.walkers.annotator.FragmentLength;
+import org.broadinstitute.hellbender.tools.walkers.annotator.InsertSizeDifference;
 import org.broadinstitute.hellbender.tools.walkers.annotator.MappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.annotator.MaxStartPositionDifference;
 import org.broadinstitute.hellbender.tools.walkers.annotator.MaxEndPositionDifference;
@@ -222,6 +223,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new MaxEndPositionDifference().getDescriptions().get(0));
         addInfoLine(new MinStartPositionDifference().getDescriptions().get(0));
         addInfoLine(new MinEndPositionDifference().getDescriptions().get(0));
+        addInfoLine(new InsertSizeDifference().getDescriptions().get(0));
 
     }
 }
