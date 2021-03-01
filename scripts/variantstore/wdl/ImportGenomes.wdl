@@ -265,7 +265,8 @@ task CreateTables {
       fi
 
       if [ ~{superpartitioned} = "true" ]; then
-        TABLE="~{dataset_name}.${PREFIX}~{datatype}_${TABLE_ID}"
+        printf -v PADDED_TABLE_ID "%03d" ${TABLE_ID}
+        TABLE="~{dataset_name}.${PREFIX}~{datatype}_${PADDED_TABLE_ID}"
       else
         TABLE="~{dataset_name}.${PREFIX}~{datatype}"
       fi
@@ -321,7 +322,8 @@ task LoadTable {
     DIR="~{storage_location}/~{datatype}_tsvs/"
 
     if [ ~{superpartitioned} = "true" ]; then
-      TABLE="~{dataset_name}.${PREFIX}~{datatype}_~{table_id}"
+      printf -v PADDED_TABLE_ID "%03d" ~{table_id}
+      TABLE="~{dataset_name}.${PREFIX}~{datatype}_~{PADDED_TABLE_ID}"
       FILES=
     else
       TABLE="~{dataset_name}.${PREFIX}~{datatype}"
