@@ -323,14 +323,14 @@ task LoadTable {
 
     if [ ~{superpartitioned} = "true" ]; then
       printf -v PADDED_TABLE_ID "%03d" ~{table_id}
-      TABLE="~{dataset_name}.${PREFIX}~{datatype}_~{PADDED_TABLE_ID}"
+      TABLE="~{dataset_name}.${PREFIX}~{datatype}_${PADDED_TABLE_ID}"
       FILES=
     else
       TABLE="~{dataset_name}.${PREFIX}~{datatype}"
     fi
 
     # even for non-superpartitioned data (e.g. metadata), the TSVs do have the suffix
-    FILES="~{datatype}_~{table_id}_*"
+    FILES="~{datatype}_${PADDED_TABLE_ID}_*"
 
     bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema} || exit 1
     echo "ingested ${FILES} file from $DIR into table $TABLE"
