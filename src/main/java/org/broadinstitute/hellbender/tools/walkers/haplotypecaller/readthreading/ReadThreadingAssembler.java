@@ -260,7 +260,7 @@ public final class ReadThreadingAssembler {
                             for (Haplotype h : assembledResult.getDiscoveredHaplotypes()) {
                                 resultSet.add(h, assembledResult);
                             }
-                            hasAdequatelyAssembledGraph = true;
+                            hasAdequatelyAssembledGraph = !assembledResult.referenceHasNonUniqueKmers() || isLastCycle;
                         }
                     }
 
@@ -436,20 +436,20 @@ public final class ReadThreadingAssembler {
         }
     }
 
-    private AssemblyResult getResultSetForRTGraph(final AbstractReadThreadingGraph rtGraph) {
+    private AssemblyResult getResultSetForRTGraph(final AbstractReadThreadingGraph rtGraph, final boolean referenceHasNonUniqueKmers) {
 
         // The graph has degenerated in some way, so the reference source and/or sink cannot be id'd.  Can
         // happen in cases where for example the reference somehow manages to acquire a cycle, or
         // where the entire assembly collapses back into the reference sequence.
         if ( rtGraph.getReferenceSourceVertex() == null || rtGraph.getReferenceSinkVertex() == null ) {
-            return new AssemblyResult(AssemblyResult.Status.JUST_ASSEMBLED_REFERENCE, null, rtGraph);
+            return new AssemblyResult(AssemblyResult.Status.JUST_ASSEMBLED_REFERENCE, referenceHasNonUniqueKmers,null, rtGraph);
         }
 
-        return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, null, rtGraph);
+        return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, referenceHasNonUniqueKmers,null, rtGraph);
     }
 
     // Performs the various transformations necessary on a sequence graph
-    private AssemblyResult cleanupSeqGraph(final SeqGraph seqGraph, final Haplotype refHaplotype) {
+    private AssemblyResult cleanupSeqGraph(final SeqGraph seqGraph, final Haplotype refHaplotype, final boolean referenceHasNonUniqueKmers) {
         if (debugGraphTransformations) {
             printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.0.non_ref_removed.dot");
         }
@@ -475,7 +475,7 @@ public final class ReadThreadingAssembler {
         // happen in cases where for example the reference somehow manages to acquire a cycle, or
         // where the entire assembly collapses back into the reference sequence.
         if ( seqGraph.getReferenceSourceVertex() == null || seqGraph.getReferenceSinkVertex() == null ) {
-            return new AssemblyResult(AssemblyResult.Status.JUST_ASSEMBLED_REFERENCE, seqGraph, null);
+            return new AssemblyResult(AssemblyResult.Status.JUST_ASSEMBLED_REFERENCE, referenceHasNonUniqueKmers, seqGraph, null);
         }
 
         seqGraph.removePathsNotConnectedToRef();
@@ -492,7 +492,7 @@ public final class ReadThreadingAssembler {
         if (debugGraphTransformations) {
             printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.4.final.dot");
         }
-        return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, seqGraph, null);
+        return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, referenceHasNonUniqueKmers, seqGraph, null);
     }
 
     /**
@@ -607,10 +607,11 @@ public final class ReadThreadingAssembler {
                                        final SmithWatermanAligner aligner) {
         if ( refHaplotype.length() < kmerSize ) {
             // happens in cases where the assembled region is just too small
-            return new AssemblyResult(AssemblyResult.Status.FAILED, null, null);
+            return new AssemblyResult(AssemblyResult.Status.FAILED, false,null, null);
         }
 
-        if ( !allowNonUniqueKmersInRef && !ReadThreadingGraph.determineNonUniqueKmers(new ReadThreadingGraph.SequenceForKmers("ref", refHaplotype.getBases(), 0, refHaplotype.getBases().length, 1, true), kmerSize).isEmpty() ) {
+        final boolean referenceHasNonUniqueKmers = !ReadThreadingGraph.determineNonUniqueKmers(new ReadThreadingGraph.SequenceForKmers("ref", refHaplotype.getBases(), 0, refHaplotype.getBases().length, 1, true), kmerSize).isEmpty();
+        if ( !allowNonUniqueKmersInRef && referenceHasNonUniqueKmers ) {
             if ( debug ) {
                 logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because reference contains non-unique kmers");
             }
@@ -661,7 +662,7 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        final AssemblyResult result = getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner);
+        final AssemblyResult result = getAssemblyResult(refHaplotype, kmerSize, referenceHasNonUniqueKmers, rtgraph, aligner);
         // check whether recovering dangling ends created cycles
         if (recoverAllDanglingBranches && rtgraph.hasCycles()) {
             return null;
@@ -669,7 +670,7 @@ public final class ReadThreadingAssembler {
         return result;
     }
 
-    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final AbstractReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
+    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final boolean referenceHasNonUnqueKmers, final AbstractReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
         if (!pruneBeforeCycleCounting) {
             chainPruner.pruneLowWeightChains(rtgraph);
         }
@@ -703,7 +704,7 @@ public final class ReadThreadingAssembler {
 
             // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
             if (justReturnRawGraph) {
-                return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, initialSeqGraph, null);
+                return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, referenceHasNonUnqueKmers, initialSeqGraph, null);
             }
 
             if (debug) {
@@ -714,24 +715,24 @@ public final class ReadThreadingAssembler {
             }
             initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
-            final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph, refHaplotype);
+            final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph, refHaplotype, referenceHasNonUnqueKmers);
             final AssemblyResult.Status status = cleaned.getStatus();
-            return new AssemblyResult(status, cleaned.getSeqGraph(), rtgraph);
+            return new AssemblyResult(status, referenceHasNonUnqueKmers, cleaned.getSeqGraph(), rtgraph);
 
         } else {
 
             // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
             if (justReturnRawGraph) {
-                return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, null, rtgraph);
+                return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, referenceHasNonUnqueKmers, null, rtgraph);
             }
 
             if (debug) {
                 logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
             }
 
-            final AssemblyResult cleaned = getResultSetForRTGraph(rtgraph);
+            final AssemblyResult cleaned = getResultSetForRTGraph(rtgraph, referenceHasNonUnqueKmers);
             final AssemblyResult.Status status = cleaned.getStatus();
-            return new AssemblyResult(status, null , cleaned.getThreadingGraph());
+            return new AssemblyResult(status, referenceHasNonUnqueKmers,null , cleaned.getThreadingGraph());
         }
     }
 

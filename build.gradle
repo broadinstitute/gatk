@@ -1,4 +1,7 @@
+
 //Note: this section 'buildscript` is only for the dependencies of the buildscript itself.
+
+
 // See the second 'repositories' section below for the actual dependencies of GATK itself
 buildscript {
     repositories {
@@ -27,6 +30,7 @@ import javax.tools.ToolProvider
 import java.time.format.DateTimeFormatter
 import java.time.ZonedDateTime
 
+gradle.startParameter.showStacktrace = org.gradle.api.logging.configuration.ShowStacktrace.ALWAYS_FULL
 mainClassName = "org.broadinstitute.hellbender.Main"
 
 //Note: the test suite must use the same defaults. If you change system properties in this list you must also update the one in the test task
