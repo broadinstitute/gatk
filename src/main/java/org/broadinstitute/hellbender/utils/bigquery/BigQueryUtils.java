@@ -73,6 +73,7 @@ public final class BigQueryUtils {
      * @return A {@link TableResult} object containing the results of the query executed.
      */
     public static TableResult executeQuery(final BigQuery bigQuery, final String queryString, final boolean runQueryInBatchMode) {
+
         // Create a query configuration we can run based on our query string:
         final QueryJobConfiguration queryConfig =
                 QueryJobConfiguration.newBuilder( queryString )
