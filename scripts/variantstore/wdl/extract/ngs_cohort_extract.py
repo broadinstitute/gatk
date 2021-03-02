@@ -232,7 +232,7 @@ def do_extract(fq_pet_vet_dataset,
   try:
     global client
     client = bigquery.Client(project=query_project,
-                               default_query_job_config=QueryJobConfig(labels={ "id" : f"test_cohort_export_{output_table_prefix}"}, priority="INTERACTIVE", use_query_cache=False ))
+                             default_query_job_config=QueryJobConfig(labels={ "id" : f"test_cohort_export_{output_table_prefix}"}, priority="INTERACTIVE", use_query_cache=False ))
 
     ## TODO -- provide a cmdline arg to override this (so we can simulat smaller datasets)
     global PET_VET_TABLE_COUNT
@@ -246,7 +246,7 @@ def do_extract(fq_pet_vet_dataset,
 
     create_position_table(fq_temp_table_dataset, min_variant_samples)
     make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort)
-    populate_final_extract_table(fq_temp_table_dataset,fq_destination_dataset, destination_table, fq_sample_mapping_table)
+    populate_final_extract_table(fq_temp_table_dataset, fq_destination_dataset, destination_table, fq_sample_mapping_table)
   finally:
     dump_job_stats()
 
