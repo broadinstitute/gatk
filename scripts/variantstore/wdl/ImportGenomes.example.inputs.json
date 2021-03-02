@@ -6,13 +6,12 @@
   "ImportGenomes.drop_state": "SIXTY",
   "ImportGenomes.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.1.8.1-153-g9c3b338-SNAPSHOT-local.jar",
 
+  "ImportGenomes.input_vcfs": "this.samples.hg38_reblocked_gvcf",
+
   "ImportGenomes.project_id": "spec-ops-aou",
   "ImportGenomes.dataset_name": "kc_import_test1",
 
-  "ImportGenomes.sample_map": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/test_sample_map.csv",
-
-  "ImportGenomes.input_vcfs_list": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/input_vcfs.txt",
-
-  "ImportGenomes.output_directory": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/testrun2_importdir"
+  "ImportGenomes.output_directory": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/testrun2_importdir",
+  "ImportGenomes.sample_map": "gs://fc-50fc04ca-572b-4cba-82d5-4af10722cdc7/test_sample_map.csv"
 }
 
