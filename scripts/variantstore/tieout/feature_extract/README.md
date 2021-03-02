@@ -60,7 +60,28 @@ python compare_feature_data.py bq_validation_v5_35.0.gnarly.vcf.gz acmg_feature_
 
 The query that calculates the base data for the metrics is in `src/main/resources/org/broadinstitute/hellbender/tools/variantdb/nextgen/feature_extract.sql`.  Running that against a single position will gather the raw data used to calculate.
 
+### Genomics DB
 
+Download the GenomicsDB TAR for this shard
+
+```bash
+WORKFLOW_ID=68026724-7fdc-4a0e-bcfa-6a5e4a86cc0a
+gsutil cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORKFLOW_ID}/call-ImportGVCFs/shard-0/attempt-2/genomicsdb.tar .
+
+tar -xf genomicsdb.tar
+WORKSPACE=genomicsdb
+
+reference="/Users/kcibul/projects/references/hg38/v0/Homo_sapiens_assembly38.fasta"
+
+gatk --java-options "-Xms8g -Xdebug -Xrunjdwp:transport=dt_socket,address=5005,server=y,suspend=n" \
+  GnarlyGenotyper \
+  -R $reference \
+  -O debug_warp.vcf \
+  -V gendb://$WORKSPACE \
+  --only-output-calls-starting-in-intervals \
+  -stand-call-conf 10 \
+  -L chr1:602222
+```
 
 
 
