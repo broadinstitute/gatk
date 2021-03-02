@@ -32,7 +32,6 @@ client = None
 VET_DISTINCT_POS_TABLE = f"{output_table_prefix}_vet_distinct_pos"
 PET_NEW_TABLE = f"{output_table_prefix}_pet_new"
 VET_NEW_TABLE = f"{output_table_prefix}_vet_new"
-COHORT_EXTRACT_TABLE = f"{output_table_prefix}_cohort_extract"
 
 def utf8len(s):
     return len(s.encode('utf-8'))
