@@ -32,7 +32,6 @@ client = None
 VET_DISTINCT_POS_TABLE = f"{output_table_prefix}_vet_distinct_pos"
 PET_NEW_TABLE = f"{output_table_prefix}_pet_new"
 VET_NEW_TABLE = f"{output_table_prefix}_vet_new"
-COHORT_EXTRACT_TABLE = f"{output_table_prefix}_cohort_extract"
 
 def utf8len(s):
     return len(s.encode('utf-8'))
@@ -229,10 +228,9 @@ def do_extract(fq_pet_vet_dataset,
                min_variant_samples,
                fq_sample_mapping_table
               ):
-  try:  
-      
+  try:
     global client
-    client = bigquery.Client(project=query_project, 
+    client = bigquery.Client(project=query_project,
                              default_query_job_config=QueryJobConfig(labels={ "id" : f"test_cohort_export_{output_table_prefix}"}, priority="INTERACTIVE", use_query_cache=False ))
 
     ## TODO -- provide a cmdline arg to override this (so we can simulat smaller datasets)
@@ -245,13 +243,12 @@ def do_extract(fq_pet_vet_dataset,
 
     make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort)
 
-    create_position_table(fq_temp_table_dataset, min_variant_samples)  
+    create_position_table(fq_temp_table_dataset, min_variant_samples)
     make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort)
     populate_final_extract_table(fq_temp_table_dataset, fq_destination_dataset, destination_table, fq_sample_mapping_table)
-  except Exception as err:
-    print(err)
+  finally:
+    dump_job_stats()
 
-  dump_job_stats()
   print(f"\nFinal cohort extract written to {fq_destination_dataset}.{destination_table}\n")
 
 if __name__ == '__main__':
