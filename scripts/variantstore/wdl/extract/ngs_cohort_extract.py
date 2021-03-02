@@ -229,26 +229,27 @@ def do_extract(fq_pet_vet_dataset,
                min_variant_samples,
                fq_sample_mapping_table
               ):
-      
-  global client
-  client = bigquery.Client(project=query_project,
-                           default_query_job_config=QueryJobConfig(labels={ "id" : f"test_cohort_export_{output_table_prefix}"}, priority="INTERACTIVE", use_query_cache=False ))
+  try:
+    global client
+    client = bigquery.Client(project=query_project,
+                               default_query_job_config=QueryJobConfig(labels={ "id" : f"test_cohort_export_{output_table_prefix}"}, priority="INTERACTIVE", use_query_cache=False ))
 
-  ## TODO -- provide a cmdline arg to override this (so we can simulat smaller datasets)
-  global PET_VET_TABLE_COUNT
-  PET_VET_TABLE_COUNT = max_tables
-  print(f"Using {PET_VET_TABLE_COUNT} PET tables in {fq_pet_vet_dataset}...")
+    ## TODO -- provide a cmdline arg to override this (so we can simulat smaller datasets)
+    global PET_VET_TABLE_COUNT
+    PET_VET_TABLE_COUNT = max_tables
+    print(f"Using {PET_VET_TABLE_COUNT} PET tables in {fq_pet_vet_dataset}...")
 
-  cohort = get_all_samples(fq_cohort_sample_names, fq_sample_mapping_table)
-  print(f"Discovered {len(cohort)} samples in {fq_cohort_sample_names}...")
+    cohort = get_all_samples(fq_cohort_sample_names, fq_sample_mapping_table)
+    print(f"Discovered {len(cohort)} samples in {fq_cohort_sample_names}...")
 
-  make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort)
+    make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort)
 
-  create_position_table(fq_temp_table_dataset, min_variant_samples)
-  make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort)
-  populate_final_extract_table(fq_temp_table_dataset,fq_destination_dataset, destination_table, fq_sample_mapping_table)
+    create_position_table(fq_temp_table_dataset, min_variant_samples)
+    make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort)
+    populate_final_extract_table(fq_temp_table_dataset,fq_destination_dataset, destination_table, fq_sample_mapping_table)
+  finally:
+    dump_job_stats()
 
-  dump_job_stats()
   print(f"\nFinal cohort extract written to {fq_destination_dataset}.{destination_table}\n")
 
 if __name__ == '__main__':
