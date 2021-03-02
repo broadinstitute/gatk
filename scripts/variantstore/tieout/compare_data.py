@@ -216,6 +216,10 @@ def unroll_interval_range(r):
     (start, end) = range_string.split("-")
     return [ f"{chrom}:{x}" for x in range(int(start), int(end)+1) ]
     
+if len(sys.argv) < 3: 
+    print("Usage: python3 compare_data.py <warp-vcf-gz> <gvs-vcf-gz> [file-of-intervals-to-exclude]")
+    sys.exit(1)
+
 vcf_file_1 = sys.argv[1]
 vcf_file_2 = sys.argv[2]
 
@@ -228,7 +232,6 @@ if (len(sys.argv) == 4):
             else:
                 exclude_list.extend(unroll_interval_range(x.strip()))
 exclude_set = set(exclude_list)
-
 
 print(f"Excluding {len(exclude_set)} loci")
 
@@ -270,7 +273,7 @@ with gzip.open(vcf_file_1, 'rt') as file1, gzip.open(vcf_file_2, 'rt') as file2:
             if not equals(e1, e2, key):
                 log_difference(key, e1, e2) 
 
-        # TODO: temporary until we decide what to do with spanning deletions
+        # TODO: temporary until we decide what to do with spanning deletions (see https://github.com/broadinstitute/dsp-spec-ops/issues/143)
         if ('*' in e1['alt']):
             #print(f"Dropping {e1['chrom']}:{e1['pos']} due to * allele")
             continue
