@@ -14,7 +14,7 @@ RETURNS STRING
     """;
     
 CREATE OR REPLACE TABLE
-  `spec-ops-aou.ccdg_7596_benchmark.alt_allele`
+  `spec-ops-aou.kc_acmg_tieout_v6.alt_allele`
 PARTITION BY
    RANGE_BUCKET(location, GENERATE_ARRAY(0, 25000000000000, 1000000000000))  
 CLUSTER BY location, sample_id
@@ -22,10 +22,10 @@ AS
   -- data will be in 3 positions: 0, 1, 2
   -- we need the position 1 data from GTs that are 0/1 and 1/2
 WITH
-  position1 as (select * from `spec-ops-aou.ccdg_7596_benchmark.vet_001` where call_GT in ("0/1", "1/1", "0|1", "1|1")),
+  position1 as (select * from `spec-ops-aou.kc_acmg_tieout_v6.vet_001` where call_GT in ("0/1", "1/0", "1/1", "0|1", "1|0", "1|1")),
   -- we only need position 2 data from GTs that are 0/2
   -- QUESTION what about 0/2?
-  position2 as (select * from `spec-ops-aou.ccdg_7596_benchmark.vet_001` where call_GT IN ("1/2", "1|2"))
+  position2 as (select * from `spec-ops-aou.kc_acmg_tieout_v6.vet_001` where call_GT IN ("1/2", "1|2"))
 
 
 -- we don't really need to save data for spanning deletions (i.e. allele = '*')
