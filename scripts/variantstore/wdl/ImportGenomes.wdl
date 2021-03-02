@@ -244,6 +244,10 @@ task CreateImportTsvs {
   }
   output {
       String done = "true"
+      # we need these outputs for call caching to work
+      File metadata_tsv = glob("metadata_*.tsv")[0]	
+      File pet_tsv = glob("pet_*.tsv")[0] 	
+      File vet_tsv = glob("vet_*.tsv")[0]
   }
 }
 
