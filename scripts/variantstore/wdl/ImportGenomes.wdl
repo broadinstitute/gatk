@@ -232,7 +232,6 @@ task CreateTables {
 	input {
       String project_id
       String dataset_name
-      String storage_location
       String datatype
       Int max_table_id
       File schema
