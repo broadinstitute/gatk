@@ -31,7 +31,6 @@ workflow ImportGenomes {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
-      storage_location = output_directory,
       datatype = "metadata",
       max_table_id = GetMaxTableId.max_table_id,
       schema = metadata_schema,
@@ -46,7 +45,6 @@ workflow ImportGenomes {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
-      storage_location = output_directory,
       datatype = "pet",
       max_table_id = GetMaxTableId.max_table_id,
       schema = pet_schema,
@@ -61,7 +59,6 @@ workflow ImportGenomes {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
-      storage_location = output_directory,
       datatype = "vet",
       max_table_id = GetMaxTableId.max_table_id,
       schema = vet_schema,
