@@ -40,6 +40,7 @@ workflow ImportGenomes {
       superpartitioned = "false",
       partitioned = "false",
       uuid = "",
+      service_account_json = service_account_json,
       preemptible_tries = preemptible_tries,
       docker = docker_final
   }
@@ -54,6 +55,7 @@ workflow ImportGenomes {
       superpartitioned = "true",
       partitioned = "true",
       uuid = "",
+      service_account_json = service_account_json,
       preemptible_tries = preemptible_tries,
       docker = docker_final
   }
@@ -68,6 +70,7 @@ workflow ImportGenomes {
       superpartitioned = "true",
       partitioned = "true",
       uuid = "",
+      service_account_json = service_account_json,
       preemptible_tries = preemptible_tries,
       docker = docker_final
   }
@@ -244,10 +247,6 @@ task CreateImportTsvs {
   }
   output {
       String done = "true"
-      # we need these outputs for call caching to work
-      File metadata_tsv = glob("metadata_*.tsv")[0]	
-      File pet_tsv = glob("pet_*.tsv")[0] 	
-      File vet_tsv = glob("vet_*.tsv")[0]
   }
 }
 
@@ -281,6 +280,7 @@ task CreateTables {
 
     if [ ~{has_service_account_file} = 'true' ]; then
       gcloud auth activate-service-account --key-file='~{service_account_json}'
+      gcloud config set project ~{project_id}
     fi
 
     PREFIX=""
@@ -358,6 +358,7 @@ task LoadTable {
 
     if [ ~{has_service_account_file} = 'true' ]; then
       gcloud auth activate-service-account --key-file='~{service_account_json}'
+      gcloud config set project ~{project_id}
     fi
 
     DIR="~{storage_location}/~{datatype}_tsvs/"
