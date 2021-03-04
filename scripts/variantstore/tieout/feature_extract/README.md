@@ -9,8 +9,8 @@ The 35 sample gVCF used for this analysis are listed in `warp_samples.tsv`
 Get a shard of pre-hard filtered extracted data from the WARP run:
 
 ```bash
-WORFLOW_ID=feeca595-85a8-4d2b-b1ef-7f6dc64d714c
-gsutil cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORFLOW_ID}/call-TotallyRadicalGatherVcfs/shard-0/*.gnarly.vcf.gz bq_validation_35.0.gnarly.vcf.gz
+WORFLOW_ID=68026724-7fdc-4a0e-bcfa-6a5e4a86cc0a
+gsutil cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORKFLOW_ID}/call-TotallyRadicalGatherVcfs/shard-0/*.gnarly.vcf.gz bq_validation_35.0.gnarly.vcf.gz
 gunzip bq_validation_35.0.gnarly.vcf.gz
 ```
 
