@@ -333,7 +333,7 @@ task LoadTable {
     if [ $NUM_FILES -gt 0 ]; then
         bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema} || exit 1
         echo "ingested ${FILES} file from $DIR into table $TABLE"
-        gsutil mv $DIR$FILES ${DIR}done/
+        gsutil -m mv $DIR$FILES ${DIR}done/
     else
         echo "no ${FILES} files to process in $DIR"
     fi
