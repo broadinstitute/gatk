@@ -64,6 +64,7 @@ public class ExtractCohortEngine {
     private int totalNumberOfSites = 0;
 
     private final String filterSetName;
+    private final String Avrofilepath;
 
     /**
      * The conf threshold above which variants are not included in the position tables.
@@ -90,7 +91,8 @@ public class ExtractCohortEngine {
                                final double vqsLodINDELThreshold,
                                final ProgressMeter progressMeter,
                                final ExtractCohort.QueryMode queryMode,
-                               final String filterSetName) {
+                               final String filterSetName,
+                               final String Avrofilepath) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -111,6 +113,7 @@ public class ExtractCohortEngine {
         this.queryMode = queryMode;
 
         this.filterSetName = filterSetName;
+        this.Avrofilepath = Avrofilepath;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
         this.gnarlyGenotyper = new GnarlyGenotyperEngine(false, 30, false, false, true);
@@ -163,8 +166,14 @@ public class ExtractCohortEngine {
                     logger.debug("using storage api with local sort");
                 }
                 logger.debug("Initializing Reader");
-                final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
-                createVariantsFromUngroupedTableResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                if (Avrofilepath == null){
+                    final StorageAPIAvroReader StorageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
+                    createVariantsFromUngroupedTableResult(StorageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                }
+                else {
+                    final AvroFileReader AvroFileReader = new AvroFileReader(Avrofilepath);
+                    createVariantsFromUngroupedTableResult(AvroFileReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                 }
                 logger.debug("Finished Initializing Reader");
                 break;
             case QUERY:
@@ -301,7 +310,7 @@ public class ExtractCohortEngine {
         if (s.contains("|")) {
 
             // take the average of all non-* alleles
-            // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part            
+            // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part
             String[] alleles = sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString().split(",");
             String[] parts = s.split("\\|");
 
@@ -366,7 +375,7 @@ public class ExtractCohortEngine {
 
                     totalAsQualApprox += getQUALapproxFromSampleRecord(sampleRecord);
 
-                    // hasSnpAllele should be set to true if any sample has at least one snp (gnarly definition here)                    
+                    // hasSnpAllele should be set to true if any sample has at least one snp (gnarly definition here)
                     boolean thisHasSnp = vc.getAlternateAlleles().stream().anyMatch(allele -> allele != Allele.SPAN_DEL && allele.length() == vc.getReference().length());
 //                    logger.info("\t" + contig + ":" + currentPosition + ": calculated thisHasSnp of " + thisHasSnp + " from " + vc.getAlternateAlleles() + " and ref " + vc.getReference());
                     hasSnpAllele = hasSnpAllele || thisHasSnp;
