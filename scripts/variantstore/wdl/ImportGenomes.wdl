@@ -210,10 +210,10 @@ task CreateImportTsvs {
   >>>
   runtime {
       docker: docker
-      memory: "10 GB"
+      memory: "3.75 GB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
-      cpu: 2
+      cpu: 1
   }
   output {
       String done = "true"
@@ -322,15 +322,22 @@ task LoadTable {
     # even for non-superpartitioned tables (e.g. metadata), the TSVs do have the suffix
     FILES="~{datatype}_${PADDED_TABLE_ID}_*"
 
+    NUM_FILES=$(gsutil ls "${DIR}${FILES}" | wc -l)
+
     if [ ~{superpartitioned} = "true" ]; then
       TABLE="~{dataset_name}.${PREFIX}~{datatype}_${PADDED_TABLE_ID}"
     else
       TABLE="~{dataset_name}.${PREFIX}~{datatype}"
     fi
 
-    bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema} || exit 1
-    echo "ingested ${FILES} file from $DIR into table $TABLE"
-    gsutil mv $DIR$FILES ${DIR}done/
+    if [ $NUM_FILES -gt 0 ]; then
+        bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema} || exit 1
+        echo "ingested ${FILES} file from $DIR into table $TABLE"
+        gsutil mv $DIR$FILES ${DIR}done/
+    else
+        echo "no ${FILES} files to process in $DIR"
+    fi
+
   >>>
 
   runtime {
