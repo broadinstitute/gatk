@@ -44,7 +44,20 @@ gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORKFLOW_ID}/call-T
 
 NOTE: WARP currently has 1 row per SITE with multiple alleles (and values per allele).  BQ breaks this out to one row per allele.  Question out to Laura if this is equivalent... if it is we just need to fix up the tieout scripts.  If it's not, we need to combine these in the Java code.  Currently we just ignore multi-allelic sites.
 
-To run the script:
+First you have to clean each of the VCFs to split up multiallelics and normalize alleles
+
+```bash
+./clean_vcf.sh <reference-fasta> <input-vcf> <output-prefix>
+```
+
+For example
+
+```bash
+./clean_vcf.sh /Users/kcibul/projects/references/hg38/v0/Homo_sapiens_assembly38.fasta bq_validation_v5_35.0.gnarly.vcf.gz warp
+./clean_vcf.sh /Users/kcibul/projects/references/hg38/v0/Homo_sapiens_assembly38.fasta acmg_feature_extract_debug.vcf.gz bq
+```
+
+The to run the comparisonscript:
 
 ```bash
 python compare_feature_data.py <first-vcf> <second-vcf> [<intervals-to-exclude>]
@@ -53,7 +66,7 @@ python compare_feature_data.py <first-vcf> <second-vcf> [<intervals-to-exclude>]
 So for example,
 
 ```bash
-python compare_feature_data.py bq_validation_v5_35.0.gnarly.vcf.gz acmg_feature_extract_debug.vcf.gz
+python compare_feature_data.py warp.clean.vcf.gz bq.clean.vcf.gz
 ```
 
 ## Debugging
