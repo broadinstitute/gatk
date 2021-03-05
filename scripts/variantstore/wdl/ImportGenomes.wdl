@@ -29,7 +29,6 @@ workflow ImportGenomes {
       sample_map = sample_map
   }
 
-  # CreateTables requires GetMaxTableId to have completed
   call CreateTables as CreateMetadataTables {
   	input:
       project_id = project_id,
@@ -76,19 +75,10 @@ workflow ImportGenomes {
   }
 
   scatter (i in range(length(input_vcfs))) {
-    if (defined(service_account_json)) {
-      call LocalizeVCFWithIndex {
-        input:
-          vcf_path = input_vcfs[i],
-          index_path = input_vcf_indexes[i],
-          service_account_json = select_first([service_account_json]),
-          disk_size = 1000
-      }
-    }
-
     call CreateImportTsvs {
       input:
-        input_vcf = select_first([LocalizeVCFWithIndex.output_vcf_file, input_vcfs[i]]),
+        input_vcf = input_vcfs[i],
+        input_vcf_index = input_vcf_indexes[i],
         interval_list = interval_list,
         sample_map = sample_map,
         service_account_json = service_account_json,
@@ -182,6 +172,7 @@ task GetMaxTableId {
 task CreateImportTsvs {
   input {
     File input_vcf
+    File input_vcf_index
     File interval_list
     String output_directory
     File sample_map
@@ -201,6 +192,7 @@ task CreateImportTsvs {
   #TODO if the files aren't localized can we do this?
   Int disk_size = 1000 #ceil(size(input_vcf, "GB") * multiplier) + 20
   String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+  String local_input_vcf = basename(input_vcf)
 
   meta {
     description: "Creates a tsv file for import into BigQuery"
@@ -209,6 +201,9 @@ task CreateImportTsvs {
 
   parameter_meta {
     input_vcf: {
+      localization_optional: true
+    }
+    input_vcf_index: {
       localization_optional: true
     }
   }
@@ -221,18 +216,20 @@ task CreateImportTsvs {
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
       ~{for_testing_only}
 
+      if [ ~{has_service_account_file} = 'true' ]; then
+        gcloud auth activate-service-account --key-file='~{service_account_json}'
+        gsutil cp ~{input_vcf} .
+        gsutil cp ~{input_vcf_index} .
+      fi
+      
       gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
-        -V ~{input_vcf} \
+        -V ~{local_input_vcf} \
         -L ~{interval_list} \
         ~{"-IG " + drop_state} \
         --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
         --mode GENOMES \
         -SNM ~{sample_map} \
         --ref-version 38
-
-      if [ ~{has_service_account_file} = 'true' ]; then
-        gcloud auth activate-service-account --key-file='~{service_account_json}'
-      fi
 
       gsutil -m cp metadata_*.tsv ~{output_directory}/metadata_tsvs/
       gsutil -m cp pet_*.tsv ~{output_directory}/pet_tsvs/
@@ -394,32 +391,4 @@ task LoadTable {
     cpu: 1
   }
 }
-task LocalizeVCFWithIndex {
-  input {
-    String vcf_path
-    String index_path
-    File service_account_json
-    Int disk_size
-  }
 
-  command {
-    set -euo pipefail
-
-    gcloud auth activate-service-account --key-file='~{service_account_json}'
-    gsutil cp '~{vcf_path}' .
-    gsutil cp '~{index_path}' .
-
-  }
-
-  output {
-    File output_vcf_file = basename(vcf_path)
-    File output_vcf_index_file = basename(index_path)
-  }
-
-  runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
-    memory: "3.75 GiB"
-    cpu: "1"
-    disks: "local-disk ~{disk_size} HDD"
-  }
-}
