@@ -340,18 +340,10 @@ workflow CNVGermlineCohortWorkflow {
                 allosomal_contigs = allosomal_contigs,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
                 sample_index = sample_index,
-                gatk4_jar_override = gatk4_jar_override,
-                gatk_docker = gatk_docker,
-                preemptible_attempts = preemptible_attempts
-        }
-
-        call CNVTasks.CollectSampleQualityMetrics {
-            input:
-                genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf,
-                entity_id = CollectCounts.entity_id[sample_index],
                 maximum_number_events = maximum_number_events_per_sample,
                 maximum_number_pass_events = maximum_number_pass_events_per_sample,
-                bash_docker = gatk_docker,
+                gatk4_jar_override = gatk4_jar_override,
+                gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts
         }
     }
@@ -433,8 +425,8 @@ workflow CNVGermlineCohortWorkflow {
         File genotyped_segments_vcf_indexes_path_list = WriteSegmentIndexes.path_list
 
         Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
-        Array[File] sample_qc_status_files = CollectSampleQualityMetrics.qc_status_file
-        Array[String] sample_qc_status_strings = CollectSampleQualityMetrics.qc_status_string
+        Array[File] sample_qc_status_files = PostprocessGermlineCNVCalls.qc_status_file
+        Array[String] sample_qc_status_strings = PostprocessGermlineCNVCalls.qc_status_string
         File model_qc_status_file = CollectModelQualityMetrics.qc_status_file
         String model_qc_string = CollectModelQualityMetrics.qc_status_string
         Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
