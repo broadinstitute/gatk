@@ -11,7 +11,8 @@ def get_next_line(i):
         else:
             parts = line.strip().split("\t")
             loc = f"{parts[0]}:{parts[1]}"
-            if (loc in exclude_set):
+            alts = parts[4]
+            if ("*" in alts or loc in exclude_set):
 #                print(f"Skipping {loc}")
                 pass;
             else:
@@ -51,66 +52,7 @@ def parseline(e, header):
 
 def equals(e1, e2, key):
     return (key in e1 and key in e2 and e1[key] == e2[key])
-
-def compare_float(e1, e2, key, tolerance, location):
-    # compare directly first, also handles '.' case
-    # TODO: deal with multi allelics properly
-    s1 = e1[key].split(",")[0] if "," in e1[key] else e1[key]
-    s2 = e2[key]
-
-    if (s1 != s2):
-        if ("." == s1 or "." == s2):
-            print(f"DIFF on {key} at {location} with values of {s1} and {s2}")
-            print(f"{e1}")
-            print(f"{e2}")
-            print("--------------")
-
-        else:
-            v1 = float(s1)
-            v2 = float(s2)
-
-            delta = abs(v2 - v1)
-            if delta > tolerance:
-                print(f"DIFF on {key} at {location} of {delta}")
-                print(f"{e1}")
-                print(f"{e2}")
-                print("--------------")
-                
-
-# need to sort, order doesn't matter (at this point)
-def compare_alts(e1, e2):
-    p1 = [x for x in e1.split(",") if x != '*']
-    p1.sort()
-    
-    p2 = [x for x in e2.split(",") if x != '*']
-    p2.sort()
-    
-    s1 = ",".join(p1)
-    s2 = ",".join(p2)
-
-    if (s1 != s2):
-        print(f"DIFF on ALTS")
-        print(f"{s1}")
-        print(f"{s2}")
-
-def get_gt_indexes(gt):
-    delim = "|" if "|" in gt else "/"
-    
-    gt1 = gt.split(delim)[0]
-    gt2 = gt.split(delim)[1]
-    return (gt1, gt2)
-
-def get_gt_alleles(gt, ref, alts):
-    alleles = [ref] + alts.split(",")
-    
-    (gt1, gt2) = get_gt_indexes(gt)
-        
-    a1 = alleles[int(gt1)] if gt1 != "." else "."        
-    a2 = alleles[int(gt2)] if gt2 != "." else "."
-
-    # TODO: for now, ignore phasing...
-    return [a1,a2]
-
+            
 def log_difference(key, e1, e2, sample_id = None):
     if sample_id:
         sd1 = e1['sample_data']
@@ -133,10 +75,14 @@ def compare_features(e1, e2):
     i1 = e1['info_data']
     i2 = e2['info_data']
     
-    # TODO: deal with multi-allelics eventually...
-    for key in ANNOTATIONS:
-        compare_float(i1, i2, key, 0.0, f"{e1['chrom']}:{e1['pos']}")
-        
+    errors = [ key for key in ANNOTATIONS if not equals(i1, i2, key) ]
+    if len(errors) > 0:
+        error_fields = ",".join(errors)
+        print(f"DIFF on {error_fields} {e1['chrom']}:{e1['pos']} for {e1['ref']}/{e1['alt']} and {e2['ref']}/{e2['alt']}")
+        print(i1)
+        print(i2)
+        print("--------------")
+                
 def unroll_interval_range(r):
     (chrom, range_string) = r.split(":")
     (start, end) = range_string.split("-")
@@ -176,11 +122,6 @@ with gzip.open(vcf_file_1, 'rt') as file1, gzip.open(vcf_file_2, 'rt') as file2:
         e1 = parseline(line1, None)
         e2 = parseline(line2, None)
 
-        # skipping multi-alleleics for now
-        if (len(e1['alt'].replace(",","").replace("*","")) > 1):
-            print(f"Skipping {e1['chrom']}:{e1['pos']} since it is multiallelic")
-            continue;
-
         while (e1['pos'] != e2['pos']):
             if (e1['pos'] < e2['pos']):
                 print(f"DIFF on position {e1['chrom']}:{e1['pos']} is MISSING in file 2.  Advancing")
@@ -195,16 +136,16 @@ with gzip.open(vcf_file_1, 'rt') as file1, gzip.open(vcf_file_2, 'rt') as file2:
 
         
         # do the comparison of exact matches at the position level
-        for key in ['chrom','pos','id', 'ref']:
+        for key in ['chrom','pos','id', 'ref', 'alt']:
             if not equals(e1, e2, key):
                 log_difference(key, e1, e2) 
 
         compare_features(e1, e2)
         
         # compare the minimized version of ref/alt
-        compare_alts(e1['alt'], e2['alt'])
+#        compare_alts(e1['alt'], e2['alt'])
 
-        print(f"Success comparing {e1['pos']}")
+#        print(f"Success comparing {e1['pos']}")
 #        sys.exit(0)
         
         
