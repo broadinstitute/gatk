@@ -86,23 +86,26 @@ public final class AlleleSubsettingUtils {
                     newLog10GQ = GenotypeLikelihoods.getGQLog10FromLikelihoods(PLindex, newLikelihoods);
                 }
 
+            } else if (g.hasGQ()) {
+                newLog10GQ = -0.1*g.getGQ();
             }
 
             final boolean useNewLikelihoods = emitEmptyPLs ||
                     (newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods)));
 
             final GenotypeBuilder gb = new GenotypeBuilder(g);
-
-            if (useNewLikelihoods) {
+            if (newLog10GQ != -1) {
                 final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
-                gb.PL(newLikelihoods).log10PError(newLog10GQ);
+                gb.log10PError(newLog10GQ);
                 attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
                 //TODO: remove other G-length attributes, although that may require header parsing
                 attributes.remove(VCFConstants.GENOTYPE_POSTERIORS_KEY);
                 attributes.remove(GATKVCFConstants.GENOTYPE_PRIOR_KEY);
                 gb.noAttributes().attributes(attributes);
             }
-            else {
+            if (useNewLikelihoods) {
+                gb.PL(newLikelihoods);
+            } else {
                 gb.noPL().noGQ();
             }
 

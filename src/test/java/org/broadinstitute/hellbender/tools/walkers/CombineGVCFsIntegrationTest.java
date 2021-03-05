@@ -4,6 +4,8 @@ import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.vcf.VCFCodec;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.codec.digest.DigestUtils;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -553,6 +555,55 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
             }
 
         }
+    }
+
+    @Test
+    public void testCombineReblockedGVCFs() {
+        final File output = createTempFile("combinegvcfs", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(b37Reference))
+        .addOutput(output)
+        .addVCF("src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/ReblockGVCF/expected.NA12878.AS.chr20snippet.reblocked.hiRes.g.vcf")
+        .addVCF(getTestFile("NA12892.test.rb.g.vcf"))
+        .add(CombineGVCFs.CALL_GENOTYPES_LONG_NAME, true);
+        runCommandLine(args);
+        final List<VariantContext> variants = VariantContextTestUtils.streamVcf(output).collect(Collectors.toList());
+
+        //first variant is a 0/1 and 0/2 call
+        int variantIndex = 0;
+        Genotype g0 = variants.get(variantIndex).getGenotype(0);
+        Genotype g1 = variants.get(variantIndex).getGenotype(1);
+        Assert.assertTrue(g0.isHet());
+        Assert.assertTrue(g0.getAlleles().contains(Allele.create("CAG")));
+        Assert.assertTrue(g1.isHet());
+        Assert.assertTrue(g1.getAlleles().contains(Allele.create("CAGAGAG")));
+
+        //variant is 0/0 and ./.
+        variantIndex = 10;
+        g0 = variants.get(variantIndex).getGenotype(0);
+        g1 = variants.get(variantIndex).getGenotype(1);
+        Assert.assertTrue(g0.isNoCall());
+        Assert.assertFalse(g0.hasPL());
+        Assert.assertFalse(g0.hasGQ());
+        Assert.assertFalse(g0.hasExtendedAttribute(VCFConstants.DEPTH_KEY));
+        Assert.assertTrue(g1.isHomRef());
+        Assert.assertFalse(g1.hasPL());
+        Assert.assertEquals(g1.getGQ(), 0);
+        Assert.assertEquals(g1.getAnyAttribute(VCFConstants.DEPTH_KEY), 34);
+
+        //third variant is 0/0 and 0/0
+        variantIndex = 2;
+        g0 = variants.get(variantIndex).getGenotype(0);
+        g1 = variants.get(variantIndex).getGenotype(1);
+        Assert.assertTrue(g0.isHomRef());
+        Assert.assertFalse(g0.hasPL());
+        Assert.assertEquals(g0.getGQ(), 50);
+        Assert.assertEquals(g0.getAnyAttribute(VCFConstants.DEPTH_KEY), 35);
+        Assert.assertTrue(g1.isHomRef());
+        Assert.assertFalse(g1.hasPL());
+        Assert.assertEquals(g1.getGQ(), 50);
+        Assert.assertEquals(g1.getAnyAttribute(VCFConstants.DEPTH_KEY), 38);
+
     }
 
 }

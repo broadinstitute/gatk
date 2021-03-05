@@ -422,6 +422,11 @@ public final class SelectVariants extends VariantWalker {
             doc="Suppress reference path in output for test result differencing")
     private boolean suppressReferencePath = false;
 
+    @Hidden
+    @Argument(fullName="call-genotypes-from-gdb", optional=true,
+            doc="Output called genotypes from GenomicsDB-derived GVCF")
+    private boolean callGenotypesInGDB = false;
+
     @ArgumentCollection
     private GenomicsDBArgumentCollection genomicsdbArgs = new GenomicsDBArgumentCollection();
 
@@ -458,6 +463,9 @@ public final class SelectVariants extends VariantWalker {
 
     @Override
     protected GenomicsDBOptions getGenomicsDBOptions() {
+        if (callGenotypesInGDB) {
+            genomicsdbArgs.callGenotypes = true;
+        }
         if (genomicsDBOptions == null) {
             genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs);
         }

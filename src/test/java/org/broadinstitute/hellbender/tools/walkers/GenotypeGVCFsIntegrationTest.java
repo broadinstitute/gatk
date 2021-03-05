@@ -7,6 +7,7 @@ import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -45,7 +46,7 @@ import java.util.stream.Stream;
 public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
     // If true, update the expected outputs in tests that assert an exact match vs. prior output,
-    // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=GenotypeGVCFsIntegrationTest"
+    // instead of actually running the tests. Can be used with "./gradlew test --tests org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFsIntegrationTest"
     // to update all of the exact-match tests at once. After you do this, you should look at the
     // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
     private static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
@@ -143,14 +144,6 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                         getTestFile( "expected/includeLowQualSites.vcf"),
                         Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,012,730-10,012,740"),
                         b37_reference_20_21}
-        };
-    }
-
-    @DataProvider(name = "gvcfWithPPs")
-    public Object[][] gvcfWithPPs() {
-        return new Object[][] {
-                {getTestFile("../../GenomicsDBImport/expected.testGVCFMode.gatk4.posteriors.g.vcf"),
-                        getTestFile( "expected.posteriors.genotyped.vcf"), NO_EXTRA_ARGS, b37_reference_20_21}
         };
     }
 
@@ -334,11 +327,6 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     private void assertGenotypesMatch(File input, File expected, List<String> additionalArguments, String reference) throws IOException {
         runGenotypeGVCFSAndAssertSomething(input, expected, additionalArguments, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes,
                 reference);
-    }
-
-    @Test(dataProvider = "gvcfWithPPs")
-    public void assertPPsAreStripped(File input, File expected, List<String> extraArgs, String reference) throws IOException {
-        runGenotypeGVCFSAndAssertSomething(input, expected, extraArgs, VariantContextTestUtils::assertGenotypePosteriorsAttributeWasRemoved, reference);
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
@@ -680,5 +668,46 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         for (final int n : new int[] {1, 2, 3}) {
             Assert.assertTrue(actualVC.get(n).getAlternateAlleles().stream().anyMatch(a -> a == Allele.SPAN_DEL));
         }
+    }
+
+    @Test
+    public void testWithReblockedGVCF() {
+        final File reblockedGVCF = new File("src/test/resources/org/broadinstitute/hellbender/tools/walkers/GenotypeGVCFs/twoReblocked.g.vcf");
+        final File output = createTempFile("reblockedAndGenotyped", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(b37_reference_20_21)
+                .addVCF(reblockedGVCF)
+                .addOutput(output);
+        /*runCommandLine(args);
+
+        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
+        Assert.assertTrue(actualVC.stream().anyMatch(vc -> vc.getGenotype(1).isHomRef() && !vc.getGenotype(1).hasPL()));  //second sample has a bunch of 0/0s
+*/
+        final File bigCombinedReblockedGVCF = new File("src/test/resources/org/broadinstitute/hellbender/tools/walkers/GenotypeGVCFs/combineReblocked.g.vcf");
+        final File cohortOutput = createTempFile("biggerCohort.rb", ".vcf");
+
+        final ArgumentsBuilder args2 = new ArgumentsBuilder();
+        args2.addReference(hg38Reference)
+                .addVCF(bigCombinedReblockedGVCF)
+                .addOutput(cohortOutput);
+        runCommandLine(args2);
+
+        final List<VariantContext> outputVCs = VariantContextTestUtils.getVariantContexts(cohortOutput);
+        final VariantContext vc0 = outputVCs.get(0);
+        Assert.assertTrue(vc0.getAttributeAsDouble(GATKVCFConstants.EXCESS_HET_KEY, 1000.0) < 10.0);
+        Assert.assertTrue(vc0.hasAttribute(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY));  //will get dropped if homRefs aren't counted
+        Assert.assertEquals(vc0.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0), 362);
+        Assert.assertEquals(vc0.getAlternateAlleles().size(), 1);  //had another low quality alt
+        Assert.assertEquals(vc0.getAlternateAllele(0).getBaseString(), "G");
+        Assert.assertTrue(vc0.getGenotypes().stream().allMatch(g -> g.isCalled() && g.hasGQ() && g.hasDP()));
+
+        final VariantContext vc1 = outputVCs.get(1);
+        Assert.assertTrue(vc1.getAttributeAsDouble(GATKVCFConstants.EXCESS_HET_KEY, 1000.0) < 10.0); //will be ~72 if homRefs aren't counted
+        Assert.assertTrue(vc1.hasAttribute(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY));
+        Assert.assertEquals(vc1.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0), 362);
+        Assert.assertEquals(vc1.getAlternateAlleles().size(), 3);
+        Assert.assertTrue(vc1.isIndel());
+        Assert.assertTrue(vc0.getGenotypes().stream().allMatch(g -> g.isCalled() && g.hasGQ() && g.hasDP()));
     }
 }
