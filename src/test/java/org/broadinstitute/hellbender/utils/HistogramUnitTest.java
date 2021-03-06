@@ -52,6 +52,15 @@ public class HistogramUnitTest {
     }
 
     @Test
+    public void testMedianEnsureNotHashcodeDependent() throws Exception {
+        Histogram bimodalHist = new Histogram(1d);
+        bimodalHist.add(1.0,2);
+        bimodalHist.add(2.0,2);
+        bimodalHist.add(16.0,2);
+        Assert.assertEquals(bimodalHist.median(), 2.0, EPSILON, "");
+    }
+
+    @Test
     public void testMedianOfOdds() throws Exception {
         Histogram bimodalHist = new Histogram();
         for (int i = 0; i < 10; i++) {
