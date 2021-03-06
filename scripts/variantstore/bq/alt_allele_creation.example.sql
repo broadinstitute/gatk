@@ -38,6 +38,7 @@ cast(SPLIT(as_raw_mq,"|")[OFFSET(1)] as int64) raw_mq,
 as_raw_mqranksum,
 SAFE_cast(SAFE_cast(SPLIT(as_raw_mqranksum,",")[SAFE_OFFSET(0)] as float64) * 10.0 as int64) as raw_mqranksum_x_10, # KC:11-06-20 it seems the leading | has been stripped off, so it's offset(0) for the ALT.  We also have some NaNs (safe_cast)
 as_qualapprox,
+qualapprox,
 cast(SPLIT(as_qualapprox,"|")[OFFSET(0)] as int64) as qual, # KC:11-06-20 it seems the leading | has been stripped off, so it's offset(0) for the ALT
 as_raw_readposranksum,
 SAFE_cast(SAFE_cast(SPLIT(as_raw_readposranksum,",")[SAFE_OFFSET(0)] as float64) * 10.0 as int64) as raw_readposranksum_x_10, # KC:11-06-20 it seems the leading | has been stripped off, so it's offset(0) for the ALT.    We also have some NaNs 
@@ -63,6 +64,7 @@ cast(SPLIT(as_raw_mq,"|")[OFFSET(1)] as int64) raw_mq,
 as_raw_mqranksum,
 SAFE_cast(SAFE_cast(SPLIT(as_raw_mqranksum,",")[SAFE_OFFSET(0)] as float64) * 10.0 as int64) as raw_mqranksum_x_10,  # KC:11-06-20 it seems the leading | has been stripped off, so it's offset(0) for the ALT.  We also have some NaNs 
 as_qualapprox,
+qualapprox,
 cast(SPLIT(as_qualapprox,"|")[OFFSET(0)] as int64) as qual,  # KC:11-06-20 it seems the leading | has been stripped off, so it's offset(0) for the ALT.  We also have some NaNs 
 as_raw_readposranksum,
 SAFE_cast(SAFE_cast(SPLIT(as_raw_readposranksum,",")[SAFE_OFFSET(0)] as float64) * 10.0 as int64) as raw_readposranksum_x_10,  # KC:11-06-20 it seems the leading | has been stripped off, so it's offset(0) for the ALT.  We also have some NaNs 
@@ -87,6 +89,7 @@ cast(SPLIT(as_raw_mq,"|")[OFFSET(2)] as int64) raw_mq,
 as_raw_mqranksum,
 SAFE_cast(SAFE_cast(SPLIT(as_raw_mqranksum,",")[SAFE_OFFSET(1)] as float64) * 10.0 as int64) as raw_mqranksum_x_10,  # KC:11-06-20 it seems the leading | has been stripped off, so it's offset(1) for the ALT.  We also have some NaNs 
 as_qualapprox,
+qualapprox,
 cast(SPLIT(as_qualapprox,"|")[OFFSET(1)] as int64) as qual,  # KC:11-06-20 it seems the leading | has been stripped off, so it's offset(1) for the ALT.  We also have some NaNs 
 as_raw_readposranksum,
 SAFE_cast(SAFE_cast(SPLIT(as_raw_readposranksum,",")[SAFE_OFFSET(1)] as float64) * 10.0 as int64) as raw_readposranksum_x_10,  # KC:11-06-20 it seems the leading | has been stripped off, so it's offset(1) for the ALT.  We also have some aNs 
