@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 public final class GermlineCNVNamingConstants {
     public final static String COPY_NUMBER_POSTERIOR_FILE_NAME = "log_q_c_tc.tsv";
     public final static String COPY_NUMBER_SEGMENTS_FILE_NAME = "copy_number_segments.tsv";
+    public final static String LOG_LIKELIHOOD_FILE_NAME = "log_likelihood.txt";
     public final static String BASELINE_COPY_NUMBER_FILE_NAME = "baseline_copy_number_t.tsv";
     public final static String SAMPLE_NAME_TXT_FILE = "sample_name.txt";
     public final static String COPY_NUMBER_TABLE_COLUMN_PREFIX = "COPY_NUMBER_";

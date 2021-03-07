@@ -115,6 +115,9 @@ class ViterbiSegmentationEngine:
         self.get_copy_number_hmm_specs = HHMMClassAndCopyNumberBasicCaller\
             .get_compiled_copy_number_hmm_specs_theano_func()
 
+        # initialize log likelihood
+        self.log_likelihood = 0.
+
     def _viterbi_segments_generator(self) -> Generator[IntegerCopyNumberSegment, None, None]:
         """Performs Viterbi segmentation and segment quality calculation for a single sample in
         the call-set and returns a generator for segments.
@@ -171,6 +174,7 @@ class ViterbiSegmentationEngine:
             log_data_likelihood = fb_result.log_data_likelihood
             alpha_tc = fb_result.alpha_tc
             beta_tc = fb_result.beta_tc
+            self.log_likelihood += log_data_likelihood
 
             # initialize the segment quality calculator
             segment_quality_calculator: HMMSegmentationQualityCalculator = HMMSegmentationQualityCalculator(
@@ -222,7 +226,7 @@ class ViterbiSegmentationEngine:
 
                 yield segment
 
-    def write_copy_number_segments(self):
+    def write_results(self):
         """Performs Viterbi segmentation and segment quality calculation for a single sample in
         the call-set and saves the results to disk.
 
@@ -255,6 +259,10 @@ class ViterbiSegmentationEngine:
             # add segments
             for segment in self._viterbi_segments_generator():
                 of.write(repr(segment) + '\n')
+
+        log_likelihood_file = os.path.join(sample_output_path, io_consts.default_log_likelihood_txt_filename)
+        with open(log_likelihood_file, 'w') as of:
+            of.write(repr(self.log_likelihood) + '\n')
 
     @staticmethod
     def _validate_args(model_shards_paths: List[str],

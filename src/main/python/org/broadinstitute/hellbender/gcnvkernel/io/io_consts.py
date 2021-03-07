@@ -120,6 +120,7 @@ default_copy_number_log_emission_tsv_filename = "log_c_emission_tc.tsv"
 default_class_log_posterior_tsv_filename = "log_q_tau_tk.tsv"
 default_baseline_copy_number_tsv_filename = "baseline_copy_number_t.tsv"
 default_copy_number_segments_tsv_filename = "copy_number_segments.tsv"
+default_log_likelihood_txt_filename = "log_likelihood.txt"
 default_denoised_copy_ratios_mean_tsv_filename = "mu_denoised_copy_ratio_t.tsv"
 default_denoised_copy_ratios_std_tsv_filename = "std_denoised_copy_ratio_t.tsv"
 

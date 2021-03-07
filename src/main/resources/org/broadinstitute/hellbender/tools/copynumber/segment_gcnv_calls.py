@@ -46,7 +46,7 @@ group.add_argument("--output_path",
                    type=str,
                    required=True,
                    default=argparse.SUPPRESS,
-                   help="Output path to write segmented calls")
+                   help="Output path to write results")
 
 group.add_argument("--sample_index",
                    type=int,
@@ -90,4 +90,4 @@ if __name__ == "__main__":
     viterbi_engine = gcnvkernel.ViterbiSegmentationEngine(
         args.model_shards, args.calls_shards, sample_metadata_collection, args.sample_index, args.output_path,
         args.intervals_vcf, args.clustered_vcf)
-    viterbi_engine.write_copy_number_segments()
+    viterbi_engine.write_results()

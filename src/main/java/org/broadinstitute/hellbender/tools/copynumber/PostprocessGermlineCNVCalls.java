@@ -3,11 +3,11 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import org.apache.commons.io.FileUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
-import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -36,7 +36,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -154,6 +157,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     public static final String OUTPUT_INTERVALS_VCF_LONG_NAME = "output-genotyped-intervals";
     public static final String OUTPUT_SEGMENTS_VCF_LONG_NAME = "output-genotyped-segments";
     public static final String OUTPUT_DENOISED_COPY_RATIOS_LONG_NAME = "output-denoised-copy-ratios";
+    public static final String OUTPUT_LOG_LIKELIHOOD_LONG_NAME = "output-log-likelihood";
     public static final String AUTOSOMAL_REF_COPY_NUMBER_LONG_NAME = "autosomal-ref-copy-number";
     public static final String ALLOSOMAL_CONTIG_LONG_NAME = "allosomal-contig";
     public static final String INPUT_INTERVALS_LONG_NAME = "input-intervals-vcf";
@@ -210,14 +214,14 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
             fullName = INPUT_INTERVALS_LONG_NAME,
             optional = true
     )
-    private File combinedIntervalsVCFFile = null;
+    private File inputCombinedIntervalsVCFFile = null;
 
     @Argument(
             doc = "VCF with clustered breakpoints and copy number calls for all samples, can be generated with GATK JointGermlineCNVSegmentation tool",
             fullName = CLUSTERED_FILE_LONG_NAME,
             optional = true
     )
-    private File clusteredBreakpointsVCFFile = null;
+    private File inputClusteredBreakpointsVCFFile = null;
 
     @Argument(
             doc = "Output intervals VCF file.",
@@ -236,6 +240,12 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
             fullName = OUTPUT_DENOISED_COPY_RATIOS_LONG_NAME
     )
     private File outputDenoisedCopyRatioFile;
+
+    @Argument(
+            doc = "Output log-likelihood file.",
+            fullName = OUTPUT_LOG_LIKELIHOOD_LONG_NAME
+    )
+    private File outputLogLikelihoodFile;
 
     @Argument(
             doc = "Filter out heterozygous deletions with quality lower than this.",
@@ -430,11 +440,15 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
 
         inputUnsortedCallsShardPaths.forEach(CopyNumberArgumentValidationUtils::validateInputs);
         inputUnsortedModelShardPaths.forEach(CopyNumberArgumentValidationUtils::validateInputs);
-        CopyNumberArgumentValidationUtils.validateInputs(inputContigPloidyCallsPath);
+        CopyNumberArgumentValidationUtils.validateInputs(
+                inputContigPloidyCallsPath,
+                inputCombinedIntervalsVCFFile,
+                inputClusteredBreakpointsVCFFile);
         CopyNumberArgumentValidationUtils.validateOutputFiles(
                 outputIntervalsVCFFile,
                 outputSegmentsVCFFile,
-                outputDenoisedCopyRatioFile);
+                outputDenoisedCopyRatioFile,
+                outputLogLikelihoodFile);
     }
 
     @Override
@@ -474,20 +488,29 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         final File pythonScriptOutputPath = IOUtils.createTempDir("gcnv-segmented-calls");
         final boolean pythonScriptSucceeded = executeSegmentGermlineCNVCallsPythonScript(
                 sampleIndex, inputContigPloidyCallsPath, sortedCallsShardPaths, sortedModelShardPaths,
-                combinedIntervalsVCFFile, clusteredBreakpointsVCFFile, pythonScriptOutputPath);
+                inputCombinedIntervalsVCFFile, inputClusteredBreakpointsVCFFile, pythonScriptOutputPath);
         if (!pythonScriptSucceeded) {
             throw new UserException("Python return code was non-zero.");
         }
 
-        /* parse segments */
         logger.info("Parsing Python output...");
+
+        final File logLikelihoodFile = getSampleLogLikelihoodFile(pythonScriptOutputPath, sampleIndex);
+        logger.info(String.format("Writing log-likelihood file to %s...", outputLogLikelihoodFile.getAbsolutePath()));
+        try {
+            FileUtils.copyFile(logLikelihoodFile, outputLogLikelihoodFile);
+        } catch (final IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(outputLogLikelihoodFile, e);
+        }
+
+        /* parse segments */
         final File copyNumberSegmentsFile = getCopyNumberSegmentsFile(pythonScriptOutputPath, sampleIndex);
 
         final List<IntegerCopyNumberSegment> records;
         //if we supply a breakpoints file, then allow overlapping segments
         final AbstractRecordCollection<SampleLocatableMetadata, IntegerCopyNumberSegment> integerCopyNumberSegmentCollection;
         final String sampleNameFromSegmentCollection;
-        if (clusteredBreakpointsVCFFile == null) {
+        if (inputClusteredBreakpointsVCFFile == null) {
             integerCopyNumberSegmentCollection
                     = new IntegerCopyNumberSegmentCollection(copyNumberSegmentsFile);
             sampleNameFromSegmentCollection= integerCopyNumberSegmentCollection
@@ -514,7 +537,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                         refAutosomalIntegerCopyNumberState, allosomalContigSet,
                         referenceArguments.getReferenceSpecifier() == null ? null :
                                 ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier()),
-                        dupeQSThreshold, hetDelQSThreshold, homDelQSThreshold, siteFrequencyThreshold, clusteredBreakpointsVCFFile);
+                        dupeQSThreshold, hetDelQSThreshold, homDelQSThreshold, siteFrequencyThreshold, inputClusteredBreakpointsVCFFile);
         germlineCNVSegmentVariantComposer.composeVariantContextHeader(sequenceDictionary, getDefaultToolVCFHeaderLines());
         germlineCNVSegmentVariantComposer.writeAll(records);
         segmentsVCFWriter.close();
@@ -675,6 +698,16 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                 callShardPath.getAbsolutePath(),
                 GermlineCNVNamingConstants.SAMPLE_PREFIX + sampleIndex,
                 GermlineCNVNamingConstants.DENOISED_COPY_RATIO_MEAN_FILE_NAME).toFile();
+    }
+
+    /**
+     * Gets the log-likelihood file from the shard directory given sample index.
+     */
+    private static File getSampleLogLikelihoodFile(final File callShardPath, final int sampleIndex) {
+        return Paths.get(
+                callShardPath.getAbsolutePath(),
+                GermlineCNVNamingConstants.SAMPLE_PREFIX + sampleIndex,
+                GermlineCNVNamingConstants.LOG_LIKELIHOOD_FILE_NAME).toFile();
     }
     /**
      * Gets the interval list file from the shard directory.

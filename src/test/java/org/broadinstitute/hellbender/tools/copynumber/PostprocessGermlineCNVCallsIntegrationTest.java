@@ -108,13 +108,14 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
      * the tool will only generate intervals VCF output (which is the expected behavior).
      */
     private ArgumentsBuilder getArgsForSingleSample(final List<String> callShards,
-                                        final List<String> modelShards,
-                                        final int sampleIndex,
-                                        final File intervalsOutputVCF,
-                                        final File segmentsOutputVCF,
-                                        final File denoisedCopyRatiosOutput,
-                                        final List<String> allosomalContigs,
-                                        final int refAutosomalCopyNumber) {
+                                                    final List<String> modelShards,
+                                                    final int sampleIndex,
+                                                    final File intervalsOutputVCF,
+                                                    final File segmentsOutputVCF,
+                                                    final File denoisedCopyRatiosOutput,
+                                                    final File logLikelihoodOutput,
+                                                    final List<String> allosomalContigs,
+                                                    final int refAutosomalCopyNumber) {
         final ArgumentsBuilder argumentsBuilder = new ArgumentsBuilder();
         argumentsBuilder.add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE,
                 "false");
@@ -142,6 +143,9 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
         argumentsBuilder.add(PostprocessGermlineCNVCalls.OUTPUT_DENOISED_COPY_RATIOS_LONG_NAME,
                 denoisedCopyRatiosOutput.getAbsolutePath());
 
+        argumentsBuilder.add(PostprocessGermlineCNVCalls.OUTPUT_LOG_LIKELIHOOD_LONG_NAME,
+                logLikelihoodOutput.getAbsolutePath());
+
         //TODO: fix the sequence dictionaries in the test data interval_list files so we don't have to skip validation
         argumentsBuilder.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);
         //supply a good sequence dictionary so output is legit
@@ -156,11 +160,12 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
                                         final File intervalsOutputVCF,
                                         final File segmentsOutputVCF,
                                         final File denoisedCopyRatiosOutput,
+                                        final File logLikelihoodOutput,
                                         final List<String> allosomalContigs,
                                         final int refAutosomalCopyNumber,
                                         final File combinedIntervalsVCF,
                                         final File clusteredVCF, File reference) {
-        ArgumentsBuilder args = getArgsForSingleSample(callShards, modelShards, sampleIndex, intervalsOutputVCF, segmentsOutputVCF, denoisedCopyRatiosOutput, allosomalContigs, refAutosomalCopyNumber);
+        ArgumentsBuilder args = getArgsForSingleSample(callShards, modelShards, sampleIndex, intervalsOutputVCF, segmentsOutputVCF, denoisedCopyRatiosOutput, logLikelihoodOutput, allosomalContigs, refAutosomalCopyNumber);
         args.add(PostprocessGermlineCNVCalls.CLUSTERED_FILE_LONG_NAME, clusteredVCF);
         args.add(PostprocessGermlineCNVCalls.INPUT_INTERVALS_LONG_NAME, combinedIntervalsVCF);
         if (reference != null) {
@@ -180,11 +185,12 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
         final File segmentsIndex = new File(actualSegmentsOutputVCF.getAbsolutePath() + FileExtensions.TRIBBLE_INDEX);
         Assert.assertFalse(segmentsIndex.exists());
         final File actualDenoisedCopyRatiosOutput = createTempFile("denoised-copy-ratios-output-" + sampleIndex, ".tsv");
+        final File actualLogLikelihoodOutput = createTempFile("log-likelihood-output-" + sampleIndex, ".txt");
         final File expectedIntervalsOutputVCF = INTERVALS_VCF_CORRECT_OUTPUTS.get(sampleIndex);
         final File expectedSegmentsOutputVCF = SEGMENTS_VCF_CORRECT_OUTPUTS.get(sampleIndex);
         final File expectedDenoisedCopyRatiosOutput = DENOISED_COPY_RATIOS_OUTPUTS.get(sampleIndex);
         final ArgumentsBuilder args = getArgsForSingleSample(callShards, modelShards, sampleIndex,
-                actualIntervalsOutputVCF, actualSegmentsOutputVCF, actualDenoisedCopyRatiosOutput,
+                actualIntervalsOutputVCF, actualSegmentsOutputVCF, actualDenoisedCopyRatiosOutput, actualLogLikelihoodOutput,
                 ALLOSOMAL_CONTIGS, AUTOSOMAL_REF_COPY_NUMBER);
         runCommandLine(args);
 
@@ -207,6 +213,7 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
                 createTempFile("intervals-output-vcf", ".vcf"),
                 createTempFile("segments-output-vcf", ".vcf"),
                 createTempFile("denoised-copy-ratios-output", ".tsv"),
+                createTempFile("log-likelihood-output", ".txt"),
                 ALLOSOMAL_CONTIGS, AUTOSOMAL_REF_COPY_NUMBER);
         runCommandLine(args);
     }
@@ -217,6 +224,7 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
                 createTempFile("intervals-output-vcf", ".vcf"),
                 createTempFile("segments-output-vcf", ".vcf"),
                 createTempFile("denoised-copy-ratios-output", ".tsv"),
+                createTempFile("log-likelihood-output", ".txt"),
                 Collections.singletonList("Z"), /* unknown contig */
                 AUTOSOMAL_REF_COPY_NUMBER);
         runCommandLine(args);
@@ -230,6 +238,7 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
                 createTempFile("intervals-output-vcf", ".vcf"),
                 segmentsOutput,
                 createTempFile("denoised-copy-ratios-output", ".tsv"),
+                createTempFile("log-likelihood-output", ".txt"),
                 ALLOSOMAL_CONTIGS, 2, new File(TEST_SUB_DIR, "intervals_output_SAMPLE_000.vcf.gz"), CLUSTERED_VCF, null);
         runCommandLine(args);
 
@@ -239,6 +248,7 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
                 createTempFile("intervals-output-vcf", ".vcf"),
                 segmentsOutput2,
                 createTempFile("denoised-copy-ratios-output", ".tsv"),
+                createTempFile("log-likelihood-output", ".txt"),
                 ALLOSOMAL_CONTIGS, 2, new File(TEST_SUB_DIR, "intervals_output_SAMPLE_001.vcf.gz"), CLUSTERED_VCF, null);
         runCommandLine(args2);
 
@@ -338,6 +348,7 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
                 createTempFile("intervals-output-vcf", ".vcf"),
                 segmentsOutput3,
                 createTempFile("denoised-copy-ratios-output", ".tsv"),
+                createTempFile("log-likelihood-output", ".txt"),
                 ALLOSOMAL_CONTIGS, 2, new File(TEST_SUB_DIR, "intervals_output_SAMPLE_001.vcf.gz"), CLUSTERED_VCF, new File(GATKBaseTest.b37Reference));
         runCommandLine(args3);
 
