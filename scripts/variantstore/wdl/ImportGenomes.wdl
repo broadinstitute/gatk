@@ -192,7 +192,8 @@ task CreateImportTsvs {
   #TODO does this affect the memory allocation for the disk?
   Int disk_size = 1000
   String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
-  String local_input_vcf = basename(input_vcf)
+  # if we are doing a manual localization, we need to set the filename
+  String updated_input_vcf = if (defined(service_account_json)) then basename(input_vcf) else input_vcf
 
   meta {
     description: "Creates a tsv file for import into BigQuery"
@@ -223,7 +224,7 @@ task CreateImportTsvs {
       fi
       
       gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
-        -V ~{local_input_vcf} \
+        -V ~{updated_input_vcf} \
         -L ~{interval_list} \
         ~{"-IG " + drop_state} \
         --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
