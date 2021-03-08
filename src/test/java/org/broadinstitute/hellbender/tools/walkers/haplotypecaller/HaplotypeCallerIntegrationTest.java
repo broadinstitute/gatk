@@ -334,6 +334,37 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    /*
+     * Tests that there are no regressions with the '--disableOptimizations' engine argument for GVCF mode.
+     */
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testDisableOptimizationsIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testGVCFModeIsConsistentWithPastResults", ".g.vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testGVCFMode.gatk4.g.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "--disable-optimizations",
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString(),
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
 
     /*
      * Minimal test that the non-seq graph haplotype detection code is equivalent using either seq graphs or kmer graphs
