@@ -189,8 +189,8 @@ task CreateImportTsvs {
   }
 
   Int multiplier = if defined(drop_state) then 4 else 10
-  #TODO if the files aren't localized can we do this?
-  Int disk_size = 1000 #ceil(size(input_vcf, "GB") * multiplier) + 20
+  #TODO does this affect the memory allocation for the disk?
+  Int disk_size = 1000
   String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
   String local_input_vcf = basename(input_vcf)
 
