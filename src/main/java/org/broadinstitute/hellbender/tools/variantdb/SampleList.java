@@ -17,13 +17,10 @@ import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 public class SampleList {
     static final Logger logger = LogManager.getLogger(SampleList.class);
 
-    private Map<Long, String> sampleIdMap;
-    private Map<String, Long> sampleNameMap;
+    private Map<Long, String> sampleIdMap = new HashMap<>();
+    private Map<String, Long> sampleNameMap = new HashMap<>();
 
     public SampleList(String sampleTableName, File sampleFile, boolean printDebugInformation) {
-        sampleIdMap = new HashMap<>();
-        sampleNameMap = new HashMap<>();
-
         if (sampleTableName != null) {
             initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), printDebugInformation);
         } else if (sampleFile != null) {
