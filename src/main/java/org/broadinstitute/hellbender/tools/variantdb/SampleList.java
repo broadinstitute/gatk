@@ -17,8 +17,8 @@ import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 public class SampleList {
     static final Logger logger = LogManager.getLogger(SampleList.class);
 
-    private Map<Long, String> sampleIdMap;
-    private Map<String, Long> sampleNameMap;
+    private Map<Long, String> sampleIdMap = new HashMap<>();
+    private Map<String, Long> sampleNameMap = new HashMap<>();
 
     public SampleList(String sampleTableName, File sampleFile, boolean printDebugInformation) {
         if (sampleTableName != null) {
@@ -26,7 +26,7 @@ public class SampleList {
         } else if (sampleFile != null) {
             initializeMaps(sampleFile);
         } else {
-            throw new IllegalArgumentException("--cohort-sample-names or --cohort-sample-table must be provided.");
+            throw new IllegalArgumentException("--sample-file or --sample-table must be provided.");
         }
     }
 
@@ -69,9 +69,6 @@ public class SampleList {
 
 
     protected void initializeMaps(TableReference sampleTable, boolean printDebugInformation) {
-
-        sampleIdMap = new HashMap<>();
-        sampleNameMap = new HashMap<>();
         TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "", printDebugInformation);
 
         // Add our samples to our map:
