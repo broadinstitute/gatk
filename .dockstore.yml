@@ -57,6 +57,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - mmt_lock_load
    - name: funcotator
      subclass: WDL
      primaryDescriptorPath: /scripts/funcotator_wdl/funcotator.wdl

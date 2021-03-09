@@ -359,6 +359,18 @@ task LoadTable {
 
     DIR="~{storage_location}/~{datatype}_tsvs/"
 
+    # check for load lock
+    LOCKFILE="loadlock"
+    HAS_LOCKFILE=$(gsutil ls "${DIR}${LOCKFILE}" | wc -l)
+    if [ $HAS_LOCKFILE -gt 0 ]; then
+      echo "ERROR: load lock in place. Check whether a load is in progress or a previous load had an error."
+      exit 1
+    else  # put the lock file in place
+      echo "Setting load lock"
+      touch $LOCKFILE
+      gsutil cp $LOCKFILE "${DIR}${LOCKFILE}" || exit 1
+    fi
+
     printf -v PADDED_TABLE_ID "%03d" ~{table_id}
 
     # even for non-superpartitioned tables (e.g. metadata), the TSVs do have the suffix
@@ -380,6 +392,9 @@ task LoadTable {
         echo "no ${FILES} files to process in $DIR"
     fi
 
+    # remove load lock
+    echo "Removing load lock"
+    gsutil rm "${DIR}${LOCKFILE}" || exit 1
   >>>
 
   runtime {
