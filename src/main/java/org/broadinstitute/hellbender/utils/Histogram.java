@@ -4,6 +4,7 @@ package org.broadinstitute.hellbender.utils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.util.Arrays;
+import java.util.TreeSet;
 
 /**
  * Class used for storing a list of doubles as a run length encoded histogram that compresses the data into bins spaced
@@ -110,8 +111,8 @@ public class Histogram {
 
         int counter = 0;
         Double firstMedian = null;
-        for(final Integer key : dataList.valueCounts.keySet()) {
-            counter += dataList.valueCounts.get(key);
+        for(final Integer key : new TreeSet<>(dataList.valueCounts.keySet())) {
+                counter += dataList.valueCounts.get(key);
             if( counter > medianIndex) {
                 if (firstMedian == null) {
                     return key * binSize;
