@@ -21,13 +21,12 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
     private static final String BIGQUERY_FULLY_QUALIFIED_TABLE = String.format("%s.%s.%s",
             BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, BIGQUERY_TEST_TABLE);
 
-    private static final UID run_uid = new UID();
+    private static final UUID run_uid = UUID.randomUUID();
 
     @Test(groups = {"cloud"})
     public void testExecuteQueryAllRecords() {
         final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
         Map<String, String> labels = new HashMap<String, String>();
-        String test = run_uid.toString();
         labels.put("test_query", "get_all_records" + run_uid.toString() );
         final TableResult result = BigQueryUtils.executeQuery(query, labels);
 
@@ -121,6 +120,15 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         }
 
         Assert.assertTrue(retrievedNames.isEmpty(), "No Result expected");
+    }
+
+    @Test(groups = {"cloud"})
+    public void testQueryWithNullLabel() {
+        final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
+        Map<String, String> labels = null;
+        final TableResult result = BigQueryUtils.executeQuery(query, labels);
+
+        checkQueryResults(result, getAllExpectedNamesAndAges(), query);
     }
 
     private Map<String, String> getAllExpectedNamesAndAges() {

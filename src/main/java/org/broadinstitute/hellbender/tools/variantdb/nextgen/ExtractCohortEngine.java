@@ -172,7 +172,7 @@ public class ExtractCohortEngine {
                     logger.debug("using query api with order by");
                 }
                 // create the query string
-                UID run_uid = new UID();
+                UUID run_uid = UUID.randomUUID();
                 Map<String, String> labels = new HashMap<String, String>();
                 labels.put("query", "extract_cohort_"+ run_uid.toString());
                 String q = "SELECT " + StringUtils.join(SchemaUtils.COHORT_FIELDS,",") + " FROM " + cohortTableRef.getFQTableName() + " ORDER BY " + SchemaUtils.LOCATION_FIELD_NAME;

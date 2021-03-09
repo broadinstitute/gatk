@@ -13,7 +13,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
-import org.broadinstitute.hellbender.utils.bigquery.UID;
+
 
 public class SampleList {
     static final Logger logger = LogManager.getLogger(SampleList.class);
@@ -120,7 +120,7 @@ public class SampleList {
 
     // Create labels
     private TableResult querySampleTable(String fqSampleTableName, String whereClause, boolean printDebugInformation) {
-        UID run_uid = new UID();
+        UUID run_uid = UUID.randomUUID();
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("query", "Run_SampleTable_" + run_uid.toString() );
         TableResult result = querySampleTable(fqSampleTableName, whereClause, printDebugInformation, labels);
