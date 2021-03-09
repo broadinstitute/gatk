@@ -112,7 +112,7 @@ public class Histogram {
         int counter = 0;
         Double firstMedian = null;
         for(final Integer key : new TreeSet<>(dataList.valueCounts.keySet())) {
-            counter += dataList.valueCounts.get(key);
+                counter += dataList.valueCounts.get(key);
             if( counter > medianIndex) {
                 if (firstMedian == null) {
                     return key * binSize;

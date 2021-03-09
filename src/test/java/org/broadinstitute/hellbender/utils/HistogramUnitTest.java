@@ -42,34 +42,45 @@ public class HistogramUnitTest {
 
     @Test
     public void testMedianOfEvens() throws Exception {
-        Histogram bimodalHist = new Histogram();
+        Histogram bimodalHist = new Histogram(1d);
         for (int i = 0; i < 10; i++) {
-            bimodalHist.add(10.0);
-            bimodalHist.add(20.0);
+            bimodalHist.add(1.0);
+            bimodalHist.add(16.0);
         }
 
-        Assert.assertEquals(bimodalHist.median(), 15.0, EPSILON, "");
+        Assert.assertEquals(bimodalHist.median(), 8.5, EPSILON, "");
     }
 
+    /**
+     * A previous implementation of Histogram used a HashMap().keySet(), assuming
+     * sorting, to determine median.  Unfortunately, that isn't guaranteed to be ordered but
+     * appears that way for small sets of small numbers.  It is effectively ordered by the 
+     * mod16 of the hashcode of the key until there are > 16 keys or there is a collision. 
+     * Most tests use a small number of small values so it appears to work.  By using values
+     * of 16 we can see that 16 comes before 1 since 16 mod 16 is zero.
+     * 
+     * This happens with Doubles here because internally Histogram stores these as Integers
+     */
     @Test
     public void testMedianEnsureNotHashcodeDependent() throws Exception {
         Histogram bimodalHist = new Histogram(1d);
         bimodalHist.add(1.0,2);
         bimodalHist.add(2.0,2);
         bimodalHist.add(16.0,2);
+
         Assert.assertEquals(bimodalHist.median(), 2.0, EPSILON, "");
     }
 
     @Test
     public void testMedianOfOdds() throws Exception {
-        Histogram bimodalHist = new Histogram();
+        Histogram bimodalHist = new Histogram(1d);
         for (int i = 0; i < 10; i++) {
-            bimodalHist.add(10.0);
-            bimodalHist.add(20.0);
+            bimodalHist.add(1.0);
+            bimodalHist.add(16.0);
         }
-        bimodalHist.add(20.0);
+        bimodalHist.add(8.0);
 
-        Assert.assertEquals(bimodalHist.median(), 20.0, EPSILON, "");
+        Assert.assertEquals(bimodalHist.median(), 8.0, EPSILON, "");
     }
 
     @Test
