@@ -64,7 +64,7 @@ public class ExtractCohortEngine {
     private int totalNumberOfSites = 0;
 
     private final String filterSetName;
-    private final String Avrofilepath;
+    private final String cohortAvroFileName;
 
     /**
      * The conf threshold above which variants are not included in the position tables.
@@ -82,6 +82,7 @@ public class ExtractCohortEngine {
                                final Set<String> sampleNames,
                                final CommonCode.ModeEnum mode,
                                final String cohortTableName,
+                               final String cohortAvroFileName,
                                final Long minLocation,
                                final Long maxLocation,
                                final String filteringTableName,
@@ -91,8 +92,8 @@ public class ExtractCohortEngine {
                                final double vqsLodINDELThreshold,
                                final ProgressMeter progressMeter,
                                final ExtractCohort.QueryMode queryMode,
-                               final String filterSetName,
-                               final String Avrofilepath) {
+                               final String filterSetName
+                               ) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -102,6 +103,7 @@ public class ExtractCohortEngine {
         this.mode = mode;
 
         this.cohortTableRef = new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
+        this.cohortAvroFileName = cohortAvroFileName;
         this.minLocation = minLocation;
         this.maxLocation = maxLocation;
         this.filteringTableRef = filteringTableName == null || "".equals(filteringTableName) ? null : new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
@@ -113,7 +115,6 @@ public class ExtractCohortEngine {
         this.queryMode = queryMode;
 
         this.filterSetName = filterSetName;
-        this.Avrofilepath = Avrofilepath;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
         this.gnarlyGenotyper = new GnarlyGenotyperEngine(false, 30, false, false, true);
@@ -166,13 +167,13 @@ public class ExtractCohortEngine {
                     logger.debug("using storage api with local sort");
                 }
                 logger.debug("Initializing Reader");
-                if (Avrofilepath == null){
+                if (cohortAvroFileName == null){
                     final StorageAPIAvroReader StorageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
                     createVariantsFromUngroupedTableResult(StorageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
                 }
                 else {
-                    final AvroFileReader AvroFileReader = new AvroFileReader(Avrofilepath);
-                    createVariantsFromUngroupedTableResult(AvroFileReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                    final AvroFileReader avroFileReader = new AvroFileReader(cohortAvroFileName);
+                    createVariantsFromUngroupedTableResult(avroFileReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
                  }
                 logger.debug("Finished Initializing Reader");
                 break;

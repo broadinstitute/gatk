@@ -15,32 +15,26 @@ import java.util.*;
 public class AvroFileReaderUnitTest extends GATKBaseTest {
 
     private static final String avroFileURI = "gs://broad-dsp-spec-ops/kcibul/acmg.35.chr20.1mb.cohort.extract.avro";
-    private static final AvroFileReader AvroFile = new AvroFileReader(avroFileURI);
+    private static final AvroFileReader avroFile = new AvroFileReader(avroFileURI);
 
     @Test()
     public void testGetSchema() {
-        Schema AvroFileSchema = AvroFile.getSchema();
-        String  TestAvroFileSchema  = "{\"type\":\"record\",\"name\":\"Root\",\"fields\":[{\"name\":\"location\",\"type\":[\"null\",\"long\"]},{\"name\":\"sample_name\",\"type\":[\"null\",\"string\"]},{\"name\":\"state\",\"type\":[\"null\",\"string\"]},{\"name\":\"ref\",\"type\":[\"null\",\"string\"]},{\"name\":\"alt\",\"type\":[\"null\",\"string\"]},{\"name\":\"call_GT\",\"type\":[\"null\",\"string\"]},{\"name\":\"call_GQ\",\"type\":[\"null\",\"long\"]},{\"name\":\"call_RGQ\",\"type\":[\"null\",\"long\"]},{\"name\":\"QUALapprox\",\"type\":[\"null\",\"string\"]},{\"name\":\"AS_QUALapprox\",\"type\":[\"null\",\"string\"]},{\"name\":\"call_PL\",\"type\":[\"null\",\"string\"]}]}";
-        Assert.assertEquals(AvroFileSchema.toString(), TestAvroFileSchema, "AvroFileSchema did not match.");
+        Schema avroFileSchema = avroFile.getSchema();
+        String  testAvroFileSchema  = "{\"type\":\"record\",\"name\":\"Root\",\"fields\":[{\"name\":\"location\",\"type\":[\"null\",\"long\"]},{\"name\":\"sample_name\",\"type\":[\"null\",\"string\"]},{\"name\":\"state\",\"type\":[\"null\",\"string\"]},{\"name\":\"ref\",\"type\":[\"null\",\"string\"]},{\"name\":\"alt\",\"type\":[\"null\",\"string\"]},{\"name\":\"call_GT\",\"type\":[\"null\",\"string\"]},{\"name\":\"call_GQ\",\"type\":[\"null\",\"long\"]},{\"name\":\"call_RGQ\",\"type\":[\"null\",\"long\"]},{\"name\":\"QUALapprox\",\"type\":[\"null\",\"string\"]},{\"name\":\"AS_QUALapprox\",\"type\":[\"null\",\"string\"]},{\"name\":\"call_PL\",\"type\":[\"null\",\"string\"]}]}";
+        Assert.assertEquals(avroFileSchema.toString(), testAvroFileSchema, "AvroFileSchema did not match.");
     }
 
     @Test()
     public void testAvroFileHasNext() {
-        boolean AvroFileHasNext = AvroFile.hasNext();
-        Assert.assertTrue(AvroFileHasNext, "Arvo File Reader didn't detect");
+        boolean avroFileHasNext = avroFile.hasNext();
+        Assert.assertTrue(avroFileHasNext, "Arvo File Reader didn't detect");
     }
 
     @Test()
     public void testAvroFileNext() {
-        GenericRecord AvroFileNext = AvroFile.next();
-        String  TestAvroFileNext  =   "{\"location\": 20000000060998, \"sample_name\": \"SM-GXZUY\", \"state\": \"0\", \"ref\": null, \"alt\": null, \"call_GT\": null, \"call_GQ\": null, \"call_RGQ\": null, \"QUALapprox\": null, \"AS_QUALapprox\": null, \"call_PL\": null}";
-        Assert.assertEquals(AvroFileNext.toString(), TestAvroFileNext, "AvroFile Next did not match.");
-    }
-
-    @Test()
-    public void testiterator() {
-        Iterator<GenericRecord> AvroFileTest = AvroFile.iterator();
-        Assert.assertEquals(AvroFile, AvroFileTest, "AvroFile did not match.");
+        GenericRecord avroFileNext = avroFile.next();
+        String  testAvroFileNext  =   "{\"location\": 20000000060998, \"sample_name\": \"SM-GXZUY\", \"state\": \"0\", \"ref\": null, \"alt\": null, \"call_GT\": null, \"call_GQ\": null, \"call_RGQ\": null, \"QUALapprox\": null, \"AS_QUALapprox\": null, \"call_PL\": null}";
+        Assert.assertEquals(avroFileNext.toString(), testAvroFileNext, "AvroFile Next did not match.");
     }
 
 }

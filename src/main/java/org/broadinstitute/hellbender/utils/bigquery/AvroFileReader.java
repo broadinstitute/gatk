@@ -17,17 +17,15 @@ import java.nio.file.Path;
 import java.util.Iterator;
 
 public class AvroFileReader implements GATKAvroReader {
+    private DatumReader<GenericRecord> datumReader;
+    private DataFileStream<GenericRecord> dataFileStream;
+    private org.apache.avro.Schema schema;
 
-        private DatumReader<GenericRecord> datumReader;
-        private DataFileStream<GenericRecord> dataFileStream;
-        private org.apache.avro.Schema schema;
-    // Decoder object will be reused to avoid re-allocation and too much garbage
-    // collection.
+    // Decoder object will be reused to avoid re-allocation and too much garbage collection.
     private BinaryDecoder decoder = null;
 
     // GenericRecord object will be reused.
     private GenericRecord nextRow = null;
-
 
     public AvroFileReader(final String avroFileURI ) {
         try {
@@ -70,7 +68,4 @@ public class AvroFileReader implements GATKAvroReader {
         return this;
     }
 
-    public static void main(String[] args){
-
-    }
     }

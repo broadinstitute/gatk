@@ -76,6 +76,7 @@ public class ExtractCohort extends ExtractTool {
                 sampleNames,
                 mode,
                 cohortTable,
+                null,
                 minLocation,
                 maxLocation,
                 filteringFQTableName,
@@ -85,8 +86,8 @@ public class ExtractCohort extends ExtractTool {
                 vqsLodINDELThreshold,
                 progressMeter,
                 queryMode,
-                filterSetName,
-                null);
+                filterSetName)
+                ;
         vcfWriter.writeHeader(header);
     }
 
