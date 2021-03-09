@@ -100,7 +100,7 @@ public class ExtractFeaturesEngine {
         final String featureQueryString =
 
         ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, sampleListTable, minLocation, maxLocation, trainingSitesOnly, SNP_QUAL_THRESHOLD, INDEL_QUAL_THRESHOLD);
-        UID run_uid = new UID();
+        UUID run_uid = UUID.randomUUID();
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("query", "extract_features_"+ run_uid.toString());
         logger.info(featureQueryString);

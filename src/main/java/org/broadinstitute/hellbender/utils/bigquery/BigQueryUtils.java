@@ -54,6 +54,7 @@ public final class BigQueryUtils {
      * Will block until results are returned.
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>.  Must contain Job label and gatk_execution_id.
      * @return A {@link TableResult} object containing the results of the query executed.
      */
     public static TableResult executeQuery(final String queryString, final Map<String, String> labels) {
@@ -65,14 +66,10 @@ public final class BigQueryUtils {
      * Will block until results are returned.
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>.  Must contain Job label and gatk_execution_id.
      * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
      * @return A {@link TableResult} object containing the results of the query executed.
      */
-
-    // TODO: add Collections.EMPTY_MAP
-//    public static TableResult executeQuery(final String queryString, final boolean runQueryInBatchMode) {
-//        return executeQuery(getBigQueryEndPoint(), queryString, runQueryInBatchMode, Collections.EMPTY_MAP);
-//    }
 
     public static TableResult executeQuery(final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
         return executeQuery(getBigQueryEndPoint(), queryString, runQueryInBatchMode, labels);
@@ -369,14 +366,13 @@ public final class BigQueryUtils {
         return result;
     }
 
-    private static long getQueryCostBytesProcessedEstimate(String queryString, Map<String, String> labels) {
+    private static long getQueryCostBytesProcessedEstimate(String queryString) {
         final QueryJobConfiguration dryRunQueryConfig =
                 QueryJobConfiguration.newBuilder( queryString )
                         .setUseLegacySql(false)
                         .setDryRun(true)
                         .setUseQueryCache(false)
                         .setPriority(QueryJobConfiguration.Priority.INTERACTIVE)
-                        .setLabels(labels)
                         .build();
 
         Job dryRunJob = getBigQueryEndPoint().create(JobInfo.newBuilder(dryRunQueryConfig).build());
@@ -394,7 +390,7 @@ public final class BigQueryUtils {
         final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
         final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
 
-        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString, labels);
+        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString);
         logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
 
         final String queryStringIntoTempTable = "CREATE TABLE `" + tempTableFullyQualified + "`\n" +
@@ -402,8 +398,6 @@ public final class BigQueryUtils {
                 "  expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)\n" +
                 ") AS\n" +
                 queryString;
-
-        // TODO: add label
 
         executeQuery(queryStringIntoTempTable, runQueryInBatchMode, labels);
 
