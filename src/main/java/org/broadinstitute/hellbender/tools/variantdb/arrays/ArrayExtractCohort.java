@@ -198,7 +198,7 @@ public class ArrayExtractCohort extends GATKTool {
 
         vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
 
-        SampleList sampleIdMap = new SampleList(sampleTableName, cohortSampleFile, printDebugInformation);
+        SampleList sampleIdMap = new SampleList(sampleTableName, cohortSampleFile, readProjectID, printDebugInformation);
 //        Map<Integer, String> sampleIdMap;
         VCFHeader header = CommonCode.generateRawArrayVcfHeader(new HashSet<>(sampleIdMap.getSampleNames()), reference.getSequenceDictionary());
 

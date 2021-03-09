@@ -64,7 +64,7 @@ public final class CreateImputedIngestFiles extends VariantWalker {
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
         TableReference sampleTable = new TableReference(sampleListFQTablename, SchemaUtils.SAMPLE_FIELDS);
-        sampleNameMap = new SampleList(sampleListFQTablename, null, printDebugInformation);
+        sampleNameMap = new SampleList(sampleListFQTablename, null, null, printDebugInformation);
         tableToCreatorMap = new HashMap<>();
 
         Map<Integer, Set<String>> tableNumberToSampleList = new HashMap<>();
