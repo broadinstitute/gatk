@@ -47,7 +47,7 @@ import java.util.Set;
  * <p><b>ExcessHet</b> also describes the heterozygosity of the called samples, giving a probability of excess heterozygosity being observed</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Likelihood-based test for the consanguinity among samples (InbreedingCoeff)")
-public final class InbreedingCoeff extends PedigreeAnnotation implements StandardAnnotation {
+public final class InbreedingCoeff extends PedigreeAnnotation implements InfoFieldAnnotation, StandardAnnotation {
 
     private static final OneShotLogger oneShotLogger = new OneShotLogger(InbreedingCoeff.class);
     private static final int MIN_SAMPLES = 10;

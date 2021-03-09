@@ -9,7 +9,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.KmerSearchableGraph;
@@ -493,19 +492,20 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         int readIdx = path2.length - 1;
 
         // NOTE: this only works when the last cigar element has a sufficient number of M bases, so no indels within min-mismatches of the edge.
+        cigarLoop:
         for (final CigarElement ce : Lists.reverse(cigarElements)) {
             if (!(ce.getOperator().consumesReadBases() && ce.getOperator().consumesReferenceBases())) {
                 break;
             }
             for (int j = 0; j < ce.getLength(); j++, refIdx--, readIdx--) {
                 if (path1[refIdx] != path2[readIdx]) {
-                    break;
+                    break cigarLoop;
                 }
             }
         }
 
         final int matches = path2.length - 1 - readIdx;
-        return matches < minMismatchingBases ? Pair.of(-1,-1) : Pair.of(readIdx, refIdx);
+        return matches < minMismatchingBases ? Pair.of(-1,-1) : Pair.of(refIdx, readIdx);
     }
 
     /**
@@ -608,7 +608,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
         // but we can manipulate the dangling path if we need to
         if (indexesToMerge >= danglingHeadMergeResult.danglingPath.size() &&
-                !extendDanglingPathAgainstReference(danglingHeadMergeResult, indexesToMerge - danglingHeadMergeResult.danglingPath.size() + 2)) {
+                !extendDanglingPathAgainstReference(danglingHeadMergeResult, indexesToMerge - danglingHeadMergeResult.danglingPath.size() + 2, elements)) {
             return 0;
         }
 
@@ -643,11 +643,11 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
         // but we can manipulate the dangling path if we need to
         if ( indexesToMerge.getValue() >= danglingHeadMergeResult.danglingPath.size() &&
-                ! extendDanglingPathAgainstReference(danglingHeadMergeResult, indexesToMerge.getValue() - danglingHeadMergeResult.danglingPath.size() + 2) ) {
+                ! extendDanglingPathAgainstReference(danglingHeadMergeResult, indexesToMerge.getValue() - danglingHeadMergeResult.danglingPath.size() + 2, elements) ) {
             return 0;
         }
 
-        addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge.getKey()), danglingHeadMergeResult.danglingPath.get(indexesToMerge.getValue()), ((MyEdgeFactory)getEdgeFactory()).createEdge(false, 1));
+        addEdge(danglingHeadMergeResult.referencePath.get(indexesToMerge.getKey() + 1), danglingHeadMergeResult.danglingPath.get(indexesToMerge.getValue()), ((MyEdgeFactory)getEdgeFactory()).createEdge(false, 1));
 
         return 1;
     }
@@ -898,10 +898,11 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         return maxMismatchesInDanglingHead > 0 ? maxMismatchesInDanglingHead : Math.max(1, (lengthOfDanglingBranch / kmerSize));
     }
 
-    private boolean extendDanglingPathAgainstReference(final DanglingChainMergeHelper danglingHeadMergeResult, final int numNodesToExtend) {
+    private boolean extendDanglingPathAgainstReference(final DanglingChainMergeHelper danglingHeadMergeResult, final int numNodesToExtend, List<CigarElement> elements) {
 
         final int indexOfLastDanglingNode = danglingHeadMergeResult.danglingPath.size() - 1;
-        final int indexOfRefNodeToUse = indexOfLastDanglingNode + numNodesToExtend;
+        final int offsetForRefEndToDanglingEnd = elements.stream().mapToInt(ce -> (ce.getOperator().consumesReferenceBases()? ce.getLength() : 0) - (ce.getOperator().consumesReadBases()? ce.getLength() : 0)).sum();
+        final int indexOfRefNodeToUse = indexOfLastDanglingNode + offsetForRefEndToDanglingEnd + numNodesToExtend;
         if (indexOfRefNodeToUse >= danglingHeadMergeResult.referencePath.size()) {
             return false;
         }

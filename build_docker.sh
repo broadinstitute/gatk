@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+#
+# Build (and optionally push) a GATK docker image.
+#
+# If you are pushing an image to our release repositories, be sure that you've followed
+# the setup instructions here:
+# https://github.com/broadinstitute/gatk/wiki/How-to-release-GATK4#setup_docker
+# and here:
+# https://github.com/broadinstitute/gatk/wiki/How-to-release-GATK4#setup_gcloud
+#
 
 # Have script stop if there is an error
 set -e
@@ -115,9 +124,9 @@ fi
 
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
 if [ -n "${IS_PUSH}" ]; then
-    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --squash .
+    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE}  --squash .
 else
-    docker build -t ${REPO_PRJ}:${GITHUB_TAG} .
+    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg RELEASE=${RELEASE} .
 fi
 # Since we build the docker image with stages, the first build stage for GATK will be leftover in
 # the local docker context after executing the above commands. This step reclaims that space automatically
@@ -151,18 +160,18 @@ if [ -n "${IS_PUSH}" ]; then
 	echo "Pushing to ${REPO_PRJ}"
 	docker push ${REPO_PRJ}:${GITHUB_TAG}
 
-	echo "Pushing to ${GCR_REPO}"
+	echo "Pushing to ${GCR_REPO} (if this fails, run \"gcloud auth configure-docker\" and try again)"
 	docker tag ${REPO_PRJ}:${GITHUB_TAG} ${GCR_REPO}:${GITHUB_TAG}
-	gcloud docker -- push ${GCR_REPO}:${GITHUB_TAG}
+	docker push ${GCR_REPO}:${GITHUB_TAG}
 
 	if [ -z "${IS_NOT_LATEST}" ] && [ -z "${IS_HASH}" ] ; then
 		echo "Updating latest tag in ${REPO_PRJ}"
 		docker tag ${REPO_PRJ}:${GITHUB_TAG} ${REPO_PRJ}:latest
 		docker push ${REPO_PRJ}:latest
 		
-		echo "Updating latest tag in ${GCR_REPO}"
+		echo "Updating latest tag in ${GCR_REPO} (if this fails, run \"gcloud auth configure-docker\" and try again)"
 		docker tag ${GCR_REPO}:${GITHUB_TAG} ${GCR_REPO}:latest
-		gcloud docker -- push ${GCR_REPO}:latest
+		docker push ${GCR_REPO}:latest
 	fi
 
 else

@@ -128,7 +128,7 @@ public class SampleDBUnitTest extends GATKBaseTest {
         Assert.assertEquals(testPEDSamples, db.getSamples());
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = RuntimeException.class)
     public void loadNonExistentFile() {
         builder.addSamplesFromPedigreeFiles(Arrays.asList(
                 GATKBaseTest.getSafeNonExistentGATKPath("non-existence-file.txt")));

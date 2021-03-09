@@ -80,6 +80,7 @@ public class FuncotatorTestConstants {
     public static final double FUNCOTATOR_DOUBLE_COMPARISON_EPSILON = 0.0001;
 
     public static final String HG19_CHR19_REFERENCE_FILE_NAME = FUNCOTATOR_LARGE_FILES_DIR + "GRCh37.p13.chr19.tar.gz";
+    public static final String HG19_CHR17_REFERENCE_FILE_NAME = FUNCOTATOR_LARGE_FILES_DIR + "GRCh37.p13.chr17.tar.gz";
     public static final String HG19_CHR3_REFERENCE_FILE_NAME  = FUNCOTATOR_LARGE_FILES_DIR + "GRCh37.p13.chr3.tar.gz";
     public static final String HG19_3_REFERENCE_FILE_NAME     = FUNCOTATOR_LARGE_FILES_DIR + "b37.3.tar.gz";
     public static final String HG38_3_REFERENCE_FILE_NAME     = FUNCOTATOR_LARGE_FILES_DIR + "hg38.3.tar.gz";
@@ -95,6 +96,13 @@ public class FuncotatorTestConstants {
     // A PIK3CA-only datasource that contains all transcripts:
     public static final String PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_LARGE_FILES_DIR + "pik3ca_muc16_all_transcripts_ds" + File.separator + "gencode_pik3ca" + File.separator + "hg19" + File.separator + "gencode.v19.PIK3CA.gtf";
     public static final String PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_LARGE_FILES_DIR + "pik3ca_muc16_all_transcripts_ds" + File.separator + "gencode_pik3ca" + File.separator + "hg19" + File.separator + "gencode.v19.PIK3CA_transcript.fasta";
+
+
+    // A TP53-only datasource for hg19 that contains all transcripts with subunits in numerical order, not the order
+    // in which they are transcribed.  This is for testing the fix for
+    // https://github.com/broadinstitute/gatk/issues/7051 and ensuring it does not revert:
+    public static final String TP53_REVERSE_ORDER_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_LARGE_FILES_DIR + "small_ds_order_bugfix_7051_tests" + File.separator + "gencode_tp53" + File.separator + "hg19" + File.separator + "gencode.v34lift37.annotation.REORDERED.TP53.gtf";
+    public static final String TP53_REVERSE_ORDER_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_LARGE_FILES_DIR + "small_ds_order_bugfix_7051_tests" + File.separator + "gencode_tp53" + File.separator + "hg19" + File.separator + "gencode.v34lift37.pc_transcripts.TP53.fa";
 
     /*
      * MUC16 info:

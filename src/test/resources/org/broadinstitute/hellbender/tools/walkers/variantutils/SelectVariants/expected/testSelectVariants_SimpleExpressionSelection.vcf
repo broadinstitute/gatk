@@ -5,7 +5,6 @@
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
-##INFO=<ID=DP,Number=1,Type=Integer,Description="read depth">
 ##contig=<ID=1,length=16000,assembly=hg19mini.fasta>
 ##contig=<ID=2,length=16000,assembly=hg19mini.fasta>
 ##contig=<ID=3,length=16000,assembly=hg19mini.fasta>

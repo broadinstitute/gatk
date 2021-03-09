@@ -25,6 +25,7 @@ public class FuncotatorReferenceTestUtils {
     private FuncotatorReferenceTestUtils() {} // Cannot instantiate this class.
     private static Lazy<String> hg19Chr3Ref;
     private static Lazy<String> hg19Chr19Ref;
+    private static Lazy<String> hg19Chr17Ref;
     private static Lazy<String> b37Chr3Ref;
     private static Lazy<String> b37Chr2Ref;
     private static Lazy<String> hg38Chr3Ref;
@@ -34,6 +35,7 @@ public class FuncotatorReferenceTestUtils {
     static {
         hg19Chr3Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME)));
         hg19Chr19Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME)));
+        hg19Chr17Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_CHR17_REFERENCE_FILE_NAME)));
         b37Chr3Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_3_REFERENCE_FILE_NAME)));
         b37Chr2Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_2_REFERENCE_FILE_NAME)));
         hg38Chr3Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG38_3_REFERENCE_FILE_NAME)));
@@ -106,6 +108,13 @@ public class FuncotatorReferenceTestUtils {
      */
     public static String retrieveHg19Chr19Ref() {
         return hg19Chr19Ref.get();
+    }
+
+    /**
+     * @return a path (as String) to the hg19 chromosome 17 only reference.  ("chr17")
+     */
+    public static String retrieveHg19Chr17Ref() {
+        return hg19Chr17Ref.get();
     }
 
     /**

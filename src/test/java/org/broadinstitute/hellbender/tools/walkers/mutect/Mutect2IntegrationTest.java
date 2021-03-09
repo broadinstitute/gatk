@@ -135,7 +135,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<File> normals = normal.isPresent() ? Collections.singletonList(normal.get()) : Collections.emptyList();
         runMutect2(Collections.singletonList(tumor), normals, unfilteredVcf, CHROMOSOME_20, b37Reference, Optional.of(GNOMAD),
                 args -> args.addMask(mask).add(M2ArgumentCollection.F1R2_TAR_GZ_NAME, f1r2Counts),
-                        args -> errorCorrectReads ? args.add(ReadThreadingAssemblerArgumentCollection.PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME, 3.0) : args
+                args -> errorCorrectReads ? args.add(ReadThreadingAssemblerArgumentCollection.PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME, 3.0) : args
         );
 
         // verify that alleles contained in likelihoods matrix but dropped from somatic calls do not show up in annotations
@@ -316,7 +316,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(altAllelesByPosition.get(10020042).basesMatch(Allele.ALT_C)); //tumor G->C, normal G->A
         Assert.assertTrue(altAllelesByPosition.get(10020124).basesMatch(Allele.ALT_G)); //tumor A->G, normal A->T
     }
-    
+
     // test on an artificial bam with several contrived MNPs
     @Test
     public void testMnps() {
@@ -762,7 +762,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 .filter(key -> variantMap.containsKey(key) && variantMap2.containsKey(key))
                 .collect(Collectors.toList());
         Assert.assertFalse(refBlockKeys.isEmpty());
-        
+
         refBlockKeys.forEach(key -> Assert.assertTrue(onlyNonRefTlodsChange(variantMap.get(key), variantMap2.get(key), minAF)));
     }
 
@@ -873,8 +873,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
     @SafeVarargs
     final private void runMutect2(final List<File> tumors, final List<File> normals, final File output,
-                            final String interval, final String reference,
-                            final Optional<File> gnomad, final Function<ArgumentsBuilder, ArgumentsBuilder>... appendExtraArguments) {
+                                  final String interval, final String reference,
+                                  final Optional<File> gnomad, final Function<ArgumentsBuilder, ArgumentsBuilder>... appendExtraArguments) {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addOutput(output)
                 .addReference(reference);
@@ -901,19 +901,19 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
     @SafeVarargs
     final private void runMutect2(final File tumor, final File normal, final File output, final String interval, final String reference,
-                            final Optional<File> gnomad, final Function<ArgumentsBuilder, ArgumentsBuilder>... appendExtraArguments) {
+                                  final Optional<File> gnomad, final Function<ArgumentsBuilder, ArgumentsBuilder>... appendExtraArguments) {
         runMutect2(Collections.singletonList(tumor), Collections.singletonList(normal), output, interval, reference, gnomad, appendExtraArguments);
     }
 
     @SafeVarargs
     final private void runMutect2(final File tumor, final File output, final String interval, final String reference,
-                            final Optional<File> gnomad, final Function<ArgumentsBuilder, ArgumentsBuilder>... appendExtraArguments) {
+                                  final Optional<File> gnomad, final Function<ArgumentsBuilder, ArgumentsBuilder>... appendExtraArguments) {
         runMutect2(Collections.singletonList(tumor), Collections.emptyList(), output, interval, reference, gnomad, appendExtraArguments);
     }
 
     @SafeVarargs
     final private void runFilterMutectCalls(final File unfilteredVcf, final File filteredVcf, final String reference,
-                                      final Function<ArgumentsBuilder, ArgumentsBuilder>... appendExtraArguments) {
+                                            final Function<ArgumentsBuilder, ArgumentsBuilder>... appendExtraArguments) {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(unfilteredVcf)
                 .addOutput(filteredVcf)

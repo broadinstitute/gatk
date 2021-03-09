@@ -35,7 +35,7 @@ import java.util.stream.IntStream;
  *
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Count of all reads with MAPQ = 0 across all samples (MQ0)")
-public final class MappingQualityZero extends InfoFieldAnnotation {
+public final class MappingQualityZero implements InfoFieldAnnotation {
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,

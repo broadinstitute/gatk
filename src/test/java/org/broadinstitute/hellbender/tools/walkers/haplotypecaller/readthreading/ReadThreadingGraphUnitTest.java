@@ -502,6 +502,12 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AYCGGTTACGT", "7M", true, -1});         // very little data
         tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "YCCGGTTACGT", "6M", true, -1});         // begins in mismatch
 
+        //Testing new behavior with indels long enough to confuse the code
+        tests.add(new Object[]{"XXXXXXXAACBBBBBBCGGTTACGT", "AACCGGTTACGT", "5M6D3M", true, 1});     // long deletion
+        tests.add(new Object[]{"XXXXXXXAACCBBBBBBGGTTACGT", "ATCCGGTTACGT", "5M6D4M", true, 1});     // long deletion plus close snp
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "XAACYYYYYYYCGGTTACGT", "5M7I4M", true, 1});   // 7 base insertion
+        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "XTACYYYYYYYCGGTTACGT", "5M7I4M", true, 1});   // 7 base with snp (NOTE: This triggers extendDanglingPathAgainstReference but should fail unless the cigar is used to predict the correct reference vertex to use for merging)
+
         return tests.toArray(new Object[][]{});
     }
 
@@ -554,6 +560,13 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         final SeqGraph seqGraph = rtgraph.toSequenceGraph();
         final List<KBestHaplotype<SeqVertex, BaseEdge>> paths = new GraphBasedKBestHaplotypeFinder<>(seqGraph, seqGraph.getReferenceSourceVertex(), seqGraph.getReferenceSinkVertex()).findBestHaplotypes();
         Assert.assertEquals(paths.size(), shouldBeMerged ? 2 : 1);
+
+        // Asserting the contents of the path are reasonable
+        final List<String> pathsConverted = paths.stream().map(p -> new String(p.getBases())).collect(Collectors.toList());
+        Assert.assertTrue(pathsConverted.contains(ref));
+        if (shouldBeMerged == true) {
+            Assert.assertTrue(pathsConverted.stream().anyMatch(p -> p.contains(alt)));
+        }
     }
 
     /**

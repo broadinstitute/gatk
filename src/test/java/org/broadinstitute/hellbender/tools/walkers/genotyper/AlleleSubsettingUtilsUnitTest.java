@@ -137,11 +137,6 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
     public void testUpdatePLsAndADData(final VariantContext originalVC,
                                        final VariantContext selectedVC,
                                        final List<Genotype> expectedGenotypes) {
-        // initialize cache of allele anyploid indices
-        for (final Genotype genotype : originalVC.getGenotypes()) {
-            GenotypeLikelihoods.initializeAnyploidPLIndexToAlleleIndices(originalVC.getNAlleles() - 1, genotype.getPloidy());
-        }
-
         final VariantContext selectedVCwithGTs = new VariantContextBuilder(selectedVC).genotypes(originalVC.getGenotypes()).make();
 
         final GenotypesContext oldGs = selectedVCwithGTs.getGenotypes();
