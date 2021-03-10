@@ -6,8 +6,6 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.FragmentLength;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InsertSizeDifference;
 import org.broadinstitute.hellbender.tools.walkers.annotator.MappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.annotator.MaxStartPositionDifference;
-import org.broadinstitute.hellbender.tools.walkers.annotator.MaxEndPositionDifference;
-import org.broadinstitute.hellbender.tools.walkers.annotator.MinEndPositionDifference;
 import org.broadinstitute.hellbender.tools.walkers.annotator.MinStartPositionDifference;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ReadPosition;
 import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
@@ -220,9 +218,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(JOINT_ALIGNMENT_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Number of joint alignments"));
         addInfoLine(new VCFInfoHeaderLine(ALIGNMENT_SCORE_DIFFERENCE_KEY, 1, VCFHeaderLineType.Integer, "Difference in alignment score between best and next-best alignment"));
         addInfoLine(new MaxStartPositionDifference().getDescriptions().get(0));
-        addInfoLine(new MaxEndPositionDifference().getDescriptions().get(0));
         addInfoLine(new MinStartPositionDifference().getDescriptions().get(0));
-        addInfoLine(new MinEndPositionDifference().getDescriptions().get(0));
         addInfoLine(new InsertSizeDifference().getDescriptions().get(0));
 
     }

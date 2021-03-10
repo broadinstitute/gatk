@@ -45,10 +45,6 @@ public class InsertSizeDifference extends PerAlleleAnnotation implements Standar
 
         int positiveMax = MathUtils.arrayMax(Ints.toArray(positiveValues)) - MathUtils.arrayMin(Ints.toArray(positiveValues));
 
-        System.out.println("fragment length = " + positiveMax);
-        System.out.println(positiveValues);
-        System.out.println();
-
         return values.isEmpty() ? VALUE_FOR_NO_READS : positiveMax;
     }
 
@@ -65,9 +61,6 @@ public class InsertSizeDifference extends PerAlleleAnnotation implements Standar
         }
 
         final OptionalInt valueAsInt;
-
-        System.out.println("InsertSizeDifference " + read.getName());
-        System.out.println("InsertSize = " + read.getFragmentLength());
         valueAsInt = OptionalInt.of(Math.abs(read.getFragmentLength()));
 
         return valueAsInt.isPresent() ? valueAsInt : OptionalInt.empty();
