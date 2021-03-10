@@ -1,4 +1,6 @@
 import sys
+import gzip
+import itertools
 
 def get_next_line(i):
     for line in i:
@@ -7,7 +9,7 @@ def get_next_line(i):
         else:
             parts = line.strip().split("\t")
             loc = f"{parts[0]}:{parts[1]}"
-            if (loc in exclude_list):
+            if (loc in exclude_set):
 #                print(f"Skipping {loc}")
                 pass;
             else:
@@ -171,7 +173,7 @@ def compare_sample_data(e1, e2):
     for sample_id in sd1.keys():
         # if either has a GQ... compare it!
         if 'GQ' in sd1[sample_id] or 'GQ' in sd2[sample_id]:
-            if not equals_int(sd1[sample_id], sd2[sample_id], 'GQ', 2):
+            if not equals_int(sd1[sample_id], sd2[sample_id], 'GQ', 0):
                 log_difference('GQ', e1, e2, sample_id) 
 
         # if both have RGQ compare it (unlikely)
@@ -193,12 +195,8 @@ def compare_sample_data(e1, e2):
         
         if (set(a1) != set(a2)):
             
-            # TODO: hack to work around myriad of errors where overlapping reference blocks incorrectly report ./. in classic pipeline
-            if ( sd1[sample_id]['GT'] == "./." and sd2[sample_id]['GT'] == "0/0"):
-                return
 
             # If the genotypes are different BUT they have the same PL, they are effectively eqivalent.  
-
             if 'PL' in sd1[sample_id] and 'PL' in sd2[sample_id]:
                 pl1 = get_pl_for_gt(sd1[sample_id]['GT'], sd1[sample_id]['PL'])
                 pl2 = get_pl_for_gt(sd2[sample_id]['GT'], sd2[sample_id]['PL'])
@@ -208,22 +206,37 @@ def compare_sample_data(e1, e2):
                     return
 
             # special case where WARP drops PLs, we accept both being GQ0 as equivalent
-            if 'PL' not in sd1[sample_id] and int(sd1[sample_id]['GQ']) == 0 and int(sd2[sample_id]['GQ']) == 0:
+            if 'PL' not in sd1[sample_id] and ('GQ' in sd1[sample_id] and int(sd1[sample_id]['GQ']) == 0) and ('GQ' in sd2[sample_id] and int(sd2[sample_id]['GQ']) == 0):
                 return
 
             log_difference('Genotypes', e1, e2, sample_id) 
 
+def unroll_interval_range(r):
+    (chrom, range_string) = r.split(":")
+    (start, end) = range_string.split("-")
+    return [ f"{chrom}:{x}" for x in range(int(start), int(end)+1) ]
     
+if len(sys.argv) < 3: 
+    print("Usage: python3 compare_data.py <warp-vcf-gz> <gvs-vcf-gz> [file-of-intervals-to-exclude]")
+    sys.exit(1)
+
 vcf_file_1 = sys.argv[1]
 vcf_file_2 = sys.argv[2]
 
 exclude_list = []
 if (len(sys.argv) == 4):
     with open(sys.argv[3]) as f:
-        exclude_list = [x.strip() for x in f.readlines()]
+        for x in f.readlines():
+            if "-" not in x:
+                exclude_list.append(x)
+            else:
+                exclude_list.extend(unroll_interval_range(x.strip()))
+exclude_set = set(exclude_list)
+
+print(f"Excluding {len(exclude_set)} loci")
 
 lines = 0
-with open(vcf_file_1) as file1, open(vcf_file_2) as file2:
+with gzip.open(vcf_file_1, 'rt') as file1, gzip.open(vcf_file_2, 'rt') as file2:
 
     while True:
         line1 = get_next_line(file1)
@@ -260,10 +273,10 @@ with open(vcf_file_1) as file1, open(vcf_file_2) as file2:
             if not equals(e1, e2, key):
                 log_difference(key, e1, e2) 
 
-        # TODO: temporary until we decide what to do with spanning deletions
-#        if ('*' in e1['alt']):
-#            print(f"Dropping {e1['chrom']}:{e1['pos']} due to * allele")
-#            continue
+        # TODO: temporary until we decide what to do with spanning deletions (see https://github.com/broadinstitute/dsp-spec-ops/issues/143)
+        if ('*' in e1['alt']):
+            #print(f"Dropping {e1['chrom']}:{e1['pos']} due to * allele")
+            continue
             
         # compare the minimized version of ref/alt
         compare_alts(e1['alt'], e2['alt'])
@@ -272,6 +285,8 @@ with open(vcf_file_1) as file1, open(vcf_file_2) as file2:
         compare_sample_data(e1, e2)
         
         lines = lines + 1
+        if (lines % 100000 == 0):
+            print(f"Compared {lines} positions")
         
         
 print(f"Compared {lines} positions")

@@ -47,6 +47,13 @@ public class ExtractCohort extends ExtractTool {
     )
     private String filterSetName = null;
 
+    @Argument(
+            fullName = "emit-pls",
+            doc = "Should PLs be emitted in output VCF",
+            optional = true
+    )
+    private boolean emitPLs = false;
+
     @Override
     protected void onStartup() {
         super.onStartup();
@@ -85,7 +92,8 @@ public class ExtractCohort extends ExtractTool {
                 vqsLodINDELThreshold,
                 progressMeter,
                 queryMode,
-                filterSetName);
+                filterSetName,
+                emitPLs);
         vcfWriter.writeHeader(header);
     }
 

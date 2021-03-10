@@ -1,50 +1,71 @@
 # ACMG35 Tieout
 
-The goal is to compare data from the WARP pipeline (from Gnarly from GenomicsDB but before hard-filtering) and compare the fields that will be included in a _cohort export_ (position, alleles, GT, GQ, RGQ).  
+There are many challenges in comparing two VCFs -- at a high level, there are two complexities arising from flexibility in the VCF specification around samples and alleles.  There is no defined ordering.  For samples this isn't so bad we just need to compare FORMAT field data based on the appropriate sample (not the column number).  For alleles, since ordering is not defined it means two different GTs (e.g. 0/1 and 0/2) may actually resolve to the exact same genotype because the alleles that they reference may be in a different order.  The code has to handle this as well.
+
+## Comparison Details
+
+### Global comparison
+
+- Skip all `##` header lines
+- Verify both VCFs have the same set of samples
+- Compare each site
+
+### Site-level comparison**
+
+- assert identical chrom, position, id and ref fields
+- SKIP any position with a `*` allele in the ALT of the WARP VCF
+- assert set of ALT alleles is the same
+- Compare sample-level data
+
+### Sample-level Comparison
+
+- if both have a GQ, assert it is identical
+- if both have an RGQ, assert it is identical
+- if WARP has a PL, and BQ has an RGQ, assert PL[0] == RGQ
+- compare GT alleles (after deconvoluting).  EITHER they are an exact match OR they are different but with equivalent PLs OR warp has no PL but both have GQ == 0
 
 ## Data
 
-The 35 sample gVCF used for this analysis are listed in `warp_samples.tsv`
+The tieout was performed using the data in the "ACMG_Cell_Line_Validation_specops_reblock_v2" workspace with 35 reblocked gVCFs.
 
-Get a shard of pre-hard filtered extracted data from the WARP run:
+## Regions
+
+GVCFs are generated using the calling region defined in `gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list`.  The Genomic Variant Store also loads and processes data using that same interval list.
+
+While the WARP pipeline uses those same GVCFs, it processes using a different set of intervals which are defined in `gs://gcp-public-data--broad-references/hg38/v0/hg38.even.handcurated.20k.intervals`.  This list of intervals is largely the same as the GVCF but was trimmed down and subdivided by hand for better performance.  There are two sets of differences:
+
+Sites in WARP but not in GVCF
+The WARP intervals include regions where the reference is N, whereas the GVCFs do not attempt to call in these regions.  Thus these extra regions will never contain variants in a WARP callset.
+
+Sites in GVCF but not in WARP:
+Initially the WARP intervals completely excluded chrY for performance reasons, and then had selected sites added back in due to user demand.  The GVCFs however call in the majority of the calling regions.  
+
+Therefore we exclude these additional chrY sites from the comparison since there will be valid, valuable data there but WARP is not calling it.
+
+To obtain the list of sites to be excluded:
 
 ```bash
-WORFLOW_ID=feeca595-85a8-4d2b-b1ef-7f6dc64d714c
-gsutil cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORFLOW_ID}/call-TotallyRadicalGatherVcfs/shard-0/*.gnarly.vcf.gz bq_validation_35.0.gnarly.vcf.gz
-gunzip bq_validation_35.0.gnarly.vcf.gz
+gatk IntervalListTools \
+--ACTION SUBTRACT \
+-I wgs_calling_regions.hg38.interval_list \
+-SI hg38.even.handcurated.20k.interval_list \
+-O wgs_not_in_handcurated.interval_list
+
+cat wgs_not_in_handcurated.interval_list | grep -v "@" | awk '{ print $1":"$2"-"$3 }' > chrY.excludes.intervals
 ```
 
-Extract the same region from BQ (using the `spec-ops-aou.kc_acmg_tieout` which was loaded with spanning deletions in the VET for tieout purposes).  The interval below is the same interval as shard-0 from gnarly.
-
-```bash
-gatk ExtractCohort --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT -R ~/projects/references/hg38/v0/Homo_sapiens_assembly38.fasta \
-  -O acmg_35_chr1.vcf --local-sort-max-records-in-ram 1000000 --sample-table spec-ops-aou.kc_acmg_tieout_v2.metadata  --project-id spec-ops-aou \
-    --cohort-extract-table spec-ops-aou.kc_acmg_tieout_v2.exported_cohort_35_test_pl \
-      -L chr1:1-35055461
-```
-
-## Comparison
-
-### Allele / Genotype Comparison
-
-The code in this python script is iterative, and a bit janky.  As we find cases we understand we can exclude them from the comparison with a TODO note about what the difference is.
-
-For example, we are currently ignoring:
-
-* spaning deletions (possibly incorrectly)
-* phasing (e.g. 0/1 vs 0|1)
-
+## Running the Comparison
 
 To run the script:
 
 ```bash
-python compare_data.py <first-vcf> <second-vcf>
+python compare_data.py <first-vcf> <second-vcf> <file-of-excluded-intervals>
 ```
 
 So for example,
 
 ```bash
-python compare_data.py bq_validation_35.0.gnarly.vcf acmg_35_chr1.vcf
+python compare_data.py bq_validation_35.0.gnarly.vcf.gz acmg_35_chr1.vcf.gz chrY.excludes.intervals
 ```
 
 The output has grown organically to help with debugging discrepancies.  It will look something like this for a difference:
@@ -64,17 +85,57 @@ DIFF on Genotypes for SM-GXZUP at chr1:960406 with A and A
 
 Where each discrepancy is separated by `------------`
 
-## Notes
+## Gathering WGS Data
 
-* the order of samples in the VCFs is different... why would this be?  Shouldn't the be lexically sorted?
-* the order of alleles in the VCFs is different... same question as above?
+Since the data set is small enough we can gather together all the shards into a single gVCF for each pipeline to compare results.  For GVS, this is straighforward because we can just gather the final outputs.  For WARP however, the final output also has hard filtering and VQSR applied to the results, so we need to grab an earlier output specifically from the `TotallyRadicalGatherVcfs` tasks.  The instructions below assume the pipelines were run on the SpecOps Cromwell server which outputs to the `gs://broad-dsp-spec-ops-cromwell-execution` bucket.
+
+### Gather WARP pipeline results
+
+```bash
+WORKFLOW_ID=68026724-7fdc-4a0e-bcfa-6a5e4a86cc0a
+
+gsutil ls gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORKFLOW_ID}/call-TotallyRadicalGatherVcfs/shard-*/*.gnarly.vcf.gz > warp_vcfs.list
+
+# sort by shard number
+cat warp_vcfs.list  | rev | cut -d"." -f4 | rev | paste - warp_vcfs.list | sort -n | cut -f2 > warp_vcfs.sorted.list
+
+# block gather
+~/gatk --java-options -Xms6g GatherVcfsCloud --ignore-safety-checks --gather-type BLOCK \
+-I warp_vcfs.sorted.list \
+--output warp.vcf.gz
+
+#index
+tabix warp.vcf.gz
+```
+
+### Gather GVS pipeline results
+
+```bash
+WORKFLOW_ID=76d21253-d0f5-42f0-a6f1-068bcd3e4e4b
+gsutil ls gs://broad-dsp-spec-ops-cromwell-execution/NgsCohortExtract/${WORKFLOW_ID}/call-ExtractTask/shard-*/acmg_35_*.vcf.gz > gvs_vcfs.list
+
+# sort by shard number
+cat gvs_vcfs.list  | rev | cut -d"." -f3 | cut -d_ -f1 | rev | paste - gvs_vcfs.list | sort -n | cut -f2 > gvs_vcfs.sorted.list
+
+# block gather
+~/gatk --java-options -Xms6g GatherVcfsCloud --ignore-safety-checks --gather-type BLOCK \
+-I gvs_vcfs.sorted.list \
+--output gvs.vcf.gz
+
+#index
+tabix gvs.vcf.gz
+```
 
 ## Debugging Tips
 
-Download the GenomicsDB TAR for this shard
+### Running GnarlyGenotyper against GenomicsDB
+
+Download the GenomicsDB TAR for a shard, and run GnarlyGenotyper
 
 ```bash
-gsutil cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/feeca595-85a8-4d2b-b1ef-7f6dc64d714c/call-ImportGVCFs/shard-0/genomicsdb.tar .
+WORKFLOW_ID=68026724-7fdc-4a0e-bcfa-6a5e4a86cc0a
+
+gsutil cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORKFLOW_ID}/call-ImportGVCFs/shard-0/genomicsdb.tar .
 
 tar -xf genomicsdb.tar
 WORKSPACE=genomicsdb
@@ -88,19 +149,23 @@ gatk --java-options "-Xms8g -Xdebug -Xrunjdwp:transport=dt_socket,address=5005,s
   -V gendb://$WORKSPACE \
   --only-output-calls-starting-in-intervals \
   -stand-call-conf 10 \
-  -L chr1:602222
+  -L chr1:1020061
 ```
 
-```
-dataset="spec-ops-aou.kc_acmg_tieout_v2"
+### Running ExtractCohort against BQ
 
-gatk --java-options "-Xms8g -Xdebug -Xrunjdwp:transport=dt_socket,address=5005,server=y,suspend=n" \
+```bash
+reference="/Users/kcibul/projects/references/hg38/v0/Homo_sapiens_assembly38.fasta"
+dataset="spec-ops-aou.kc_acmg_tieout_v6"
+
+gatk --java-options "-Xms2g -Xdebug -Xrunjdwp:transport=dt_socket,address=5005,server=y,suspend=n" \
   ExtractCohort --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT \
   -R $reference \
   -O acmg_35_debug.vcf \
   --local-sort-max-records-in-ram 1000000 \
+  --print-debug-information \
   --sample-table ${dataset}.metadata  \
   --project-id spec-ops-aou \
-  --cohort-extract-table ${dataset}.exported_cohort_35_test_pl \
-  -L chr1:602222
+  --cohort-extract-table ${dataset}.exported_cohort_35_test \
+  -L chr1:55398671
 ```
