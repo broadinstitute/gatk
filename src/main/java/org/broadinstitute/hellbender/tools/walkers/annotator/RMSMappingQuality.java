@@ -278,13 +278,20 @@ public final class RMSMappingQuality implements InfoFieldAnnotation, StandardAnn
 
         } else {
             final List<Long> SSQMQandDP = parseRawDataString(rawMQdata);
-            final double rms = Math.sqrt(SSQMQandDP.get(SUM_OF_SQUARES_INDEX) / (double)SSQMQandDP.get(TOTAL_DEPTH_INDEX));
-            final String finalizedRMSMAppingQuality = formattedValue(rms);
-            return new VariantContextBuilder(vc)
-                    .rmAttribute(getDeprecatedRawKeyName())   //some old GVCFs that were reblocked for gnomAD have both
-                    .rmAttributes(getRawKeyNames())
-                    .attribute(getKeyNames().get(0), finalizedRMSMAppingQuality)
-                    .make();
+            if (SSQMQandDP.get(TOTAL_DEPTH_INDEX) > 0) {
+                final double rms = Math.sqrt(SSQMQandDP.get(SUM_OF_SQUARES_INDEX) / (double) SSQMQandDP.get(TOTAL_DEPTH_INDEX));
+                final String finalizedRMSMAppingQuality = formattedValue(rms);
+                return new VariantContextBuilder(vc)
+                        .rmAttribute(getDeprecatedRawKeyName())   //some old GVCFs that were reblocked for gnomAD have both
+                        .rmAttributes(getRawKeyNames())
+                        .attribute(getKeyNames().get(0), finalizedRMSMAppingQuality)
+                        .make();
+            } else {
+                return new VariantContextBuilder(vc)
+                        .rmAttribute(getDeprecatedRawKeyName())   //some old GVCFs that were reblocked for gnomAD have both
+                        .rmAttributes(getRawKeyNames())
+                        .make();
+            }
         }
         return vc;
     }
