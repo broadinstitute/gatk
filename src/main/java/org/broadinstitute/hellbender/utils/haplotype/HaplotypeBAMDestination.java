@@ -40,7 +40,7 @@ public abstract class HaplotypeBAMDestination {
         readGroups.addAll(sourceHeader.getReadGroups()); // include the original read groups
 
         // plus an artificial read group for the haplotypes
-        if (haplotypeReadGroupID.isPresent()){ // sato: replace true with haplotypeReadGroupID exists.
+        if (haplotypeReadGroupID.isPresent()){
             final SAMReadGroupRecord rgRec = new SAMReadGroupRecord(getHaplotypeReadGroupID());
             rgRec.setSample(haplotypeSampleTag);
             rgRec.setSequencingCenter("BI");

@@ -36,7 +36,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
 
     private final HaplotypeBAMDestination output;
     private WriterType writerType;
-    private boolean writeHaplotypes = true;
+
     /**
      * Possible modes for writing haplotypes to BAMs
      */
@@ -57,7 +57,6 @@ public class HaplotypeBAMWriter implements AutoCloseable {
          * With this option, haplotypes will not be included in the output bam.
          */
         NO_HAPLOTYPES
-
     }
 
     /**
@@ -186,10 +185,8 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         Utils.nonNull(bestHaplotypes, "bestHaplotypes cannot be null");
         Utils.nonNull(paddedReferenceLoc, "paddedReferenceLoc cannot be null");
 
-        if (writeHaplotypes) {
-            for (final Haplotype haplotype : haplotypes) {
-                writeHaplotype(haplotype, paddedReferenceLoc, bestHaplotypes.contains(haplotype), callableRegion);
-            }
+        for (final Haplotype haplotype : haplotypes) {
+            writeHaplotype(haplotype, paddedReferenceLoc, bestHaplotypes.contains(haplotype), callableRegion);
         }
     }
 
@@ -226,13 +223,5 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         }
 
         output.add(new SAMRecordToGATKReadAdapter(record));
-    }
-
-    /**
-     * Set the HaplotypeBAMWriter to write out the haplotypes as reads.
-     * @param writeHaplotypes true if haplotypes should be written as reads
-     */
-    public void setWriteHaplotypes(final boolean writeHaplotypes) {
-        this.writeHaplotypes = writeHaplotypes;
     }
 }
