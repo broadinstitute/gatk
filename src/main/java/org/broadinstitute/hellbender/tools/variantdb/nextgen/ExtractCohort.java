@@ -58,7 +58,7 @@ public class ExtractCohort extends ExtractTool {
     protected void onStartup() {
         super.onStartup();
 
-        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, printDebugInformation);
+        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
         Set<String> sampleNames = new HashSet<>(sampleList.getSampleNames());
 
         VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary());

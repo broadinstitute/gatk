@@ -7,8 +7,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
-import java.util.stream.Collectors;
-import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
@@ -20,9 +18,9 @@ public class SampleList {
     private Map<Long, String> sampleIdMap = new HashMap<>();
     private Map<String, Long> sampleNameMap = new HashMap<>();
 
-    public SampleList(String sampleTableName, File sampleFile, boolean printDebugInformation) {
+    public SampleList(String sampleTableName, File sampleFile, String executionProjectId, boolean printDebugInformation) {
         if (sampleTableName != null) {
-            initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), printDebugInformation);
+            initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), executionProjectId, printDebugInformation);
         } else if (sampleFile != null) {
             initializeMaps(sampleFile);
         } else {
@@ -50,26 +48,8 @@ public class SampleList {
         return sampleIdMap;
     }
 
-//    protected Map<String, Integer> getSampleNameMap(TableReference sampleTable, List<String> samples, boolean printDebugInformation) {
-//        Map<String, Integer> results = new HashMap<>();
-//        // create optional where clause
-//        String whereClause = "";
-//        if (samples != null && samples.size() > 0) {
-//            whereClause = " WHERE " + SchemaUtils.SAMPLE_NAME_FIELD_NAME + " in (\'" + StringUtils.join(samples, "\',\'") + "\') ";
-//        }
-//
-//        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), whereClause, printDebugInformation);
-//
-//        // Add our samples to our map:
-//        for (final FieldValueList row : queryResults.iterateAll()) {
-//            results.put(row.get(1).getStringValue(), (int) row.get(0).getLongValue());
-//        }
-//        return results;
-//    }
-
-
-    protected void initializeMaps(TableReference sampleTable, boolean printDebugInformation) {
-        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "", printDebugInformation);
+    protected void initializeMaps(TableReference sampleTable, String executionProjectId, boolean printDebugInformation) {
+        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "", executionProjectId, printDebugInformation);
 
         // Add our samples to our map:
         for (final FieldValueList row : queryResults.iterateAll()) {
@@ -95,15 +75,14 @@ public class SampleList {
         }
     }
 
-    private TableResult querySampleTable(String fqSampleTableName, String whereClause, boolean printDebugInformation) {
+    private TableResult querySampleTable(String fqSampleTableName, String whereClause, String executionProjectId, boolean printDebugInformation) {
         // Get the query string:
         final String sampleListQueryString =
                 "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME +
-                        " FROM `" + fqSampleTableName + "`" + whereClause;
+                " FROM `" + fqSampleTableName + "`" + whereClause;
 
-
-        // Execute the query:
-        final TableResult result = BigQueryUtils.executeQuery(sampleListQueryString);
+        // Execute the query:        
+        final TableResult result = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(executionProjectId) , sampleListQueryString, false);
 
         // Show our pretty results:
         if (printDebugInformation) {
