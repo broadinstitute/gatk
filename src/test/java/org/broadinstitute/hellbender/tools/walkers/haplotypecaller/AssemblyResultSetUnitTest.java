@@ -126,7 +126,7 @@ public final class AssemblyResultSetUnitTest extends GATKBaseTest {
         for (final Haplotype h : haplotypes)
             rtg.addSequence("seq-" + Math.abs(h.hashCode()), h.getBases(), h.isReference());
         final SeqGraph seqGraph = rtg.toSequenceGraph();
-        final AssemblyResult ar = new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION,seqGraph, rtg);
+        final AssemblyResult ar = new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, false, seqGraph, rtg);
         final Map<Haplotype,AssemblyResult> result =
                 new HashMap<>();
         for (final Haplotype h : haplotypes)
@@ -145,7 +145,7 @@ public final class AssemblyResultSetUnitTest extends GATKBaseTest {
 
         for (int i = 0; i < THREE_KS_GRAPH_AND_HAPLOTYPES.length; i++) {
             final ReadThreadingGraph rtg = new TestingReadThreadingGraph((String) THREE_KS_GRAPH_AND_HAPLOTYPES[i][0]);
-            final AssemblyResult ar = new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION,rtg.toSequenceGraph(), rtg);
+            final AssemblyResult ar = new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, false, rtg.toSequenceGraph(), rtg);
             final Object[] haplotypeStrings = (Object[]) THREE_KS_GRAPH_AND_HAPLOTYPES[i][1];
             final Haplotype[] haplotypes = new Haplotype[haplotypeStrings.length];
             for (int j = 0; j < haplotypeStrings.length; j++) {
@@ -155,7 +155,7 @@ public final class AssemblyResultSetUnitTest extends GATKBaseTest {
             result[i] = new Object[] { Collections.singletonList(ar), Arrays.asList(Arrays.asList(haplotypes))};
             for (int j = 0; j < TEN_KS_GRAPH_AND_HAPLOTYPES.length; j++) {
                 final ReadThreadingGraph rtg10 = new TestingReadThreadingGraph((String) TEN_KS_GRAPH_AND_HAPLOTYPES[j][0]);
-                final AssemblyResult ar10 = new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION,rtg10.toSequenceGraph(),rtg10);
+                final AssemblyResult ar10 = new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, false, rtg10.toSequenceGraph(),rtg10);
                 final Object[] haplotypeStrings10 = (Object[]) TEN_KS_GRAPH_AND_HAPLOTYPES[j][1];
                 final Haplotype[] haplotype10 = new Haplotype[haplotypeStrings10.length];
                 for (int k = 0; k < haplotypeStrings10.length; k++) {

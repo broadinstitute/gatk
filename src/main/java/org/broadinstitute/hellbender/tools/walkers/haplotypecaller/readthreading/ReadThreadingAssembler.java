@@ -40,7 +40,7 @@ public final class ReadThreadingAssembler {
     /** The min and max kmer sizes to try when building the graph. */
     private final List<Integer> kmerSizes;
     private final boolean dontIncreaseKmerSizesForCycles;
-    private final boolean allowNonUniqueKmersInRef;
+    private final NonUniqueKmerPolicy allowNonUniqueKmersInRefPolicy;
     private final boolean generateSeqGraph;
     private boolean recoverHaplotypesFromEdgesNotCoveredInJunctionTrees = true;
     private final int numPruningSamples;
@@ -75,7 +75,7 @@ public final class ReadThreadingAssembler {
     private Histogram kmersUsedHistogram = null;
 
     public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes,
-                                  final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
+                                  final boolean dontIncreaseKmerSizesForCycles, final NonUniqueKmerPolicy allowNonUniqueKmersInRefPolicy,
                                   final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
                                   final double pruningSeedingLogOddsThreshold, final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs,
@@ -83,7 +83,7 @@ public final class ReadThreadingAssembler {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes.stream().sorted(Integer::compareTo).collect(Collectors.toList());
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
-        this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
+        this.allowNonUniqueKmersInRefPolicy = allowNonUniqueKmersInRefPolicy;
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
         this.generateSeqGraph = !useLinkedDebruijnGraphs;
@@ -100,7 +100,7 @@ public final class ReadThreadingAssembler {
 
     @VisibleForTesting
     ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final int pruneFactor) {
-        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, 2, Integer.MAX_VALUE, false, false, 3);
+        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, NonUniqueKmerPolicy.ALLOWED, 1, pruneFactor, false, 0.001, 2, 2, Integer.MAX_VALUE, false, false, 3);
     }
 
     @VisibleForTesting
@@ -230,7 +230,7 @@ public final class ReadThreadingAssembler {
             final int kmerSize = kmersToTry.get(i);
             final boolean isLastCycle = i == kmersToTry.size() - 1;
             if (!hasAdequatelyAssembledGraph) {
-                AssemblyResult assembledResult = createGraph(correctedReads, refHaplotype, kmerSize, isLastCycle || dontIncreaseKmerSizesForCycles, isLastCycle || allowNonUniqueKmersInRef, header, aligner);
+                AssemblyResult assembledResult = createGraph(correctedReads, refHaplotype, kmerSize, isLastCycle || dontIncreaseKmerSizesForCycles, isLastCycle || allowNonUniqueKmersInRefPolicy != NonUniqueKmerPolicy.NOT_ALLOWED, header, aligner);
                 if (assembledResult != null && assembledResult.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION) {
                     // do some QC on the graph
                     sanityCheckGraph(assembledResult.getThreadingGraph(), refHaplotype);
@@ -546,7 +546,7 @@ public final class ReadThreadingAssembler {
 
         // first, try using the requested kmer sizes
         for ( final int kmerSize : kmerSizes ) {
-            addResult(results, createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, header, aligner));
+            addResult(results, createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRefPolicy != NonUniqueKmerPolicy.NOT_ALLOWED, header, aligner));
         }
 
         // if none of those worked, iterate over larger sizes if allowed to do so

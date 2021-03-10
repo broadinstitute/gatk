@@ -101,11 +101,10 @@ public abstract class VariantWalker extends VariantWalkerBase {
         getTransformedVariantStream( makeVariantFilter() )
                 .forEach(variant -> {
                     final SimpleInterval variantInterval = new SimpleInterval(variant);
-                    apply(variant,
-                            new ReadsContext(reads, variantInterval, readFilter),
-                            new ReferenceContext(reference, variantInterval),
-                            new FeatureContext(features, variantInterval));
-
+                        apply(variant,
+                                new ReadsContext(reads, variantInterval, readFilter),
+                                new ReferenceContext(reference, variantInterval),
+                                new FeatureContext(features, variantInterval));
                     progressMeter.update(variantInterval);
                 });
     }

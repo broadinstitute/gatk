@@ -22,7 +22,7 @@ public class SomaticLikelihoodsEngine {
      * @param logLikelihoods matrix of alleles x reads
      * @param priorPseudocounts
      */
-    public static double[] alleleFractionsPosterior(final RealMatrix logLikelihoods, final double[] priorPseudocounts) {
+    public static double[] alleleFractionsPosterior(final RealMatrix logLikelihoods, final double[] priorPseudocounts, final double[] weights) {
         final int numberOfAlleles = logLikelihoods.getRowDimension();
         Utils.validateArg(numberOfAlleles == priorPseudocounts.length, "Must have one pseudocount per allele.");
 
@@ -31,7 +31,7 @@ public class SomaticLikelihoodsEngine {
 
         while(!converged) {
             // alleleCounts = \sum_r \bar{z}_r, where \bar{z}_r is an a-dimensional vector of the expectation of z_r with respect to q(f)
-            final double[] alleleCounts = getEffectiveCounts(logLikelihoods, dirichletPosterior);
+            final double[] alleleCounts = getEffectiveCounts(logLikelihoods, dirichletPosterior, weights);
             final double[] newDirichletPosterior = MathArrays.ebeAdd(alleleCounts, priorPseudocounts);
             converged = MathArrays.distance1(dirichletPosterior, newDirichletPosterior)/MathUtils.sum(newDirichletPosterior) < CONVERGENCE_THRESHOLD;
             dirichletPosterior = newDirichletPosterior;
@@ -39,20 +39,33 @@ public class SomaticLikelihoodsEngine {
 
         return dirichletPosterior;
     }
-    
-    /**
-     * Given data log likelihoods and a Dirichlet prior for a categorical distribution, obtain the array of total
-     * responsibilities for each category
-     * @param logLikelihoods
-     * @param dirichletPrior
-     * @return
-     */
+
+    public static double[] alleleFractionsPosterior(final RealMatrix logLikelihoods, final double[] priorPseudocounts) {
+        return alleleFractionsPosterior(logLikelihoods, priorPseudocounts, null);
+    }
+
+
+        /**
+         * Given data log likelihoods and a Dirichlet prior for a categorical distribution, obtain the array of total
+         * responsibilities for each category
+         * @param logLikelihoods
+         * @param dirichletPrior
+         * @return
+         */
     @VisibleForTesting
-    protected static double[] getEffectiveCounts(RealMatrix logLikelihoods, double[] dirichletPrior) {
+    protected static double[] getEffectiveCounts(RealMatrix logLikelihoods, double[] dirichletPrior, final double[] weights) {
         final double[] effectiveLogWeights = new Dirichlet(dirichletPrior).effectiveLogMultinomialWeights();
         return MathUtils.sumArrayFunction(0, logLikelihoods.getColumnDimension(),
-                read -> NaturalLogUtils.posteriors(effectiveLogWeights, logLikelihoods.getColumn(read)));
+                read -> {
+                    final double[] unweighted = NaturalLogUtils.posteriors(effectiveLogWeights, logLikelihoods.getColumn(read));
+                    return weights == null ? unweighted : MathUtils.applyToArrayInPlace(unweighted, d -> d * weights[read]);
+                });
     }
+
+    protected static double[] getEffectiveCounts(RealMatrix logLikelihoods, double[] dirichletPrior) {
+        return getEffectiveCounts(logLikelihoods, dirichletPrior, null);
+    }
+
 
         /**
          * @param logLikelihoods matrix of alleles x reads (NOTE: NON_REF allele is assumed to be last)

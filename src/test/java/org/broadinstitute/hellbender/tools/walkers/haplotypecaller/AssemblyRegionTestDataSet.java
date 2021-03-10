@@ -76,7 +76,7 @@ public final class AssemblyRegionTestDataSet {
 
             assemblyResultSet = new AssemblyResultSet();
             final AssemblyResult ar = new AssemblyResult((haplotypeList.size() > 1 ?
-                    AssemblyResult.Status.ASSEMBLED_SOME_VARIATION : AssemblyResult.Status.JUST_ASSEMBLED_REFERENCE),rtg.toSequenceGraph(), rtg);
+                    AssemblyResult.Status.ASSEMBLED_SOME_VARIATION : AssemblyResult.Status.JUST_ASSEMBLED_REFERENCE), false, rtg.toSequenceGraph(), rtg);
 
             for (final Haplotype h : haplotypeList)
                 assemblyResultSet.add(h, ar);

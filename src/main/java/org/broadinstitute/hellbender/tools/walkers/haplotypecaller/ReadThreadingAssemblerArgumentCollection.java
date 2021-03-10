@@ -5,6 +5,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.NonUniqueKmerPolicy;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.MathUtils;
 
@@ -52,8 +53,8 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * this check may cause problems in the assembly graph.
      */
     @Advanced
-    @Argument(fullName="allow-non-unique-kmers-in-ref", doc="Allow graphs that have non-unique kmers in the reference", optional = true)
-    public boolean allowNonUniqueKmersInRef = false;
+    @Argument(fullName="non-unique-kmer-polidy", doc="Allow graphs that have non-unique kmers in the reference", optional = true)
+    public NonUniqueKmerPolicy nonUniqueKmerPolicy = NonUniqueKmerPolicy.NOT_ALLOWED;
 
     /**
      * If fewer samples than the specified number pass the minPruning threshold for a given path, that path will be eliminated from the graph.

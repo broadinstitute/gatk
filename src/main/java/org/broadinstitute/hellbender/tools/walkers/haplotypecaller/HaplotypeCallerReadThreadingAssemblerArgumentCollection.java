@@ -36,7 +36,7 @@ public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends Rea
     @Override
     public ReadThreadingAssembler makeReadThreadingAssembler() {
         final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(maxNumHaplotypesInPopulation, Collections.unmodifiableList(kmerSizes),
-                dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, numPruningSamples, useAdaptivePruning ? 0 : minPruneFactor,
+                dontIncreaseKmerSizesForCycles, nonUniqueKmerPolicy, numPruningSamples, useAdaptivePruning ? 0 : minPruneFactor,
                 useAdaptivePruning, initialErrorRateForPruning, pruningLogOddsThreshold, pruningSeedingLogOddsThreshold, maxUnprunedVariants, useLinkedDeBruijnGraph,
                 enableLegacyGraphCycleDetection, minMatchingBasesToDanglingEndRecovery);
         assemblyEngine.setDebugGraphTransformations(debugGraphTransformations);
