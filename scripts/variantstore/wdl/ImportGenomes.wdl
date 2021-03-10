@@ -24,6 +24,13 @@ workflow ImportGenomes {
 
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
 
+  call SetLoadLock {
+    input:
+      output_directory = output_directory,
+      preemptible_tries = preemptible_tries,
+      docker = docker_final
+  }
+
   call GetMaxTableId {
     input:
       sample_map = sample_map
@@ -87,7 +94,8 @@ workflow ImportGenomes {
         output_directory = output_directory,
         gatk_override = gatk_override,
         docker = docker_final,
-        preemptible_tries = preemptible_tries
+        preemptible_tries = preemptible_tries,
+        run_uuid = SetLoadLock.run_uuid
     }
   }
 
@@ -104,7 +112,8 @@ workflow ImportGenomes {
         table_creation_done = CreateMetadataTables.done,
         tsv_creation_done = CreateImportTsvs.done,
         service_account_json = service_account_json,
-        docker = docker_final
+        docker = docker_final,
+        run_uuid = SetLoadLock.run_uuid
     }
   }
 
@@ -121,7 +130,8 @@ workflow ImportGenomes {
       table_creation_done = CreatePetTables.done,
       tsv_creation_done = CreateImportTsvs.done,
       service_account_json = service_account_json,
-      docker = docker_final
+      docker = docker_final,
+      run_uuid = SetLoadLock.run_uuid
     }
   }
 
@@ -138,9 +148,115 @@ workflow ImportGenomes {
       table_creation_done = CreateVetTables.done,
       tsv_creation_done = CreateImportTsvs.done,
       service_account_json = service_account_json,
-      docker = docker_final
+      docker = docker_final,
+      run_uuid = SetLoadLock.run_uuid
     }
   }
+
+  call ReleaseLoadLock {
+    input:
+      run_uuid = SetLoadLock.run_uuid,
+      output_directory = output_directory,
+      load_metadata_done = LoadMetadataTable.done,
+      load_pet_done = LoadPetTable.done,
+      load_vet_done = LoadVetTable.done,
+      preemptible_tries = preemptible_tries,
+      docker = docker_final
+  }
+}
+
+# we create a load lock file in the output directory with a uuid for this run of ImportGenomes.
+# other tasks (TSV creation, bq load) check that the lock file exists and contains the run_uuid
+# specific to this task.
+task SetLoadLock {
+  meta {
+    volatile: true
+  }
+
+  input {
+    String output_directory
+
+    # runtime
+    Int? preemptible_tries
+    String docker
+  }
+
+  command <<<
+    set -x
+    set -e
+    # generate uuid for this run
+    RUN_UUID=$(dbus-uuidgen)
+    echo $RUN_UUID | tee RUN_UUID_STRING
+
+    DIR="~{output_directory}/"
+
+    # check for existing load lock
+    LOCKFILE="loadlock"
+    HAS_LOCKFILE=$(gsutil ls "${DIR}${LOCKFILE}" | wc -l)
+    if [ $HAS_LOCKFILE -gt 0 ]; then
+      echo "ERROR: load lock in place. Check whether another run of ImportGenomes with this output directory is in progress or a previous run had an error." 1>&2
+      exit 1
+    else  # put the lock file in place
+      echo "Setting load lock with UUID ${RUN_UUID}"
+      echo $RUN_UUID > $LOCKFILE
+      gsutil cp $LOCKFILE "${DIR}${LOCKFILE}" || { echo "Error uploading lockfile to ${DIR}${LOCKFILE}" 1>&2 ; exit 1; }
+    fi
+  >>>
+
+  # TODO can this be smaller/cheaper?
+  runtime {
+    docker: docker
+    memory: "1 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: select_first([preemptible_tries, 5])
+    cpu: 1
+  }
+
+  output {
+    String run_uuid = read_string("RUN_UUID_STRING")
+  }
+}
+
+task ReleaseLoadLock {
+  meta {
+    volatile: true
+  }
+
+  input {
+    String run_uuid
+    String output_directory
+    Array[String] load_metadata_done
+    Array[String] load_pet_done
+    Array[String] load_vet_done
+
+    # runtime
+    Int? preemptible_tries
+    String docker
+  }
+
+  command <<<
+    set -x
+    set -e
+    LOCKFILE="~{output_directory}/loadlock"
+    EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE})
+    CURRENT_RUN_ID="~{run_uuid}"
+
+    if [ ${EXISTING_LOCK_ID} = ${CURRENT_RUN_ID} ]; then
+      gsutil rm $LOCKFILE
+    else
+      echo "ERROR: found mismatched lockfile containing run ${EXISTING_LOCK_ID}, which does not match this run ${CURRENT_RUN_ID}." 1>&2
+      exit 1
+    fi
+  >>>
+
+    # TODO can this be smaller/cheaper?
+    runtime {
+      docker: docker
+      memory: "1 GB"
+      disks: "local-disk 10 HDD"
+      preemptible: select_first([preemptible_tries, 5])
+      cpu: 1
+    }
 }
 
 task GetMaxTableId {
@@ -186,6 +302,7 @@ task CreateImportTsvs {
     String docker
 
     String? for_testing_only
+    String run_uuid
   }
 
   Int disk_size = if defined(drop_state) then 30 else 75
@@ -208,6 +325,16 @@ task CreateImportTsvs {
   }
   command <<<
       set -e
+
+      # check for existence of the correct lockfile
+      LOCKFILE="~{output_directory}/loadlock"
+      EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
+      CURRENT_RUN_ID="~{run_uuid}"
+
+      if [ ${EXISTING_LOCK_ID} != ${CURRENT_RUN_ID} ]; then
+        echo "ERROR: found mismatched lockfile containing run ${EXISTING_LOCK_ID}, which does not match this run ${CURRENT_RUN_ID}." 1>&2
+        exit 1
+      fi
 
       # workaround for https://github.com/broadinstitute/cromwell/issues/3647
       export TMPDIR=/tmp
@@ -342,6 +469,7 @@ task LoadTable {
     File? service_account_json
     String table_creation_done
     Array[String] tsv_creation_done
+    String run_uuid
 
     String docker
   }
@@ -358,18 +486,17 @@ task LoadTable {
     fi
 
     DIR="~{storage_location}/~{datatype}_tsvs/"
+    # check for existence of the correct lockfile
+    LOCKFILE="~{storage_location}/loadlock"
+    EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
+    CURRENT_RUN_ID="~{run_uuid}"
 
-    # check for load lock
-    LOCKFILE="loadlock"
-    HAS_LOCKFILE=$(gsutil ls "${DIR}${LOCKFILE}" | wc -l)
-    if [ $HAS_LOCKFILE -gt 0 ]; then
-      echo "ERROR: load lock in place. Check whether a load is in progress or a previous load had an error."
-      exit 1
-    else  # put the lock file in place
-      echo "Setting load lock"
-      touch $LOCKFILE
-      gsutil cp $LOCKFILE "${DIR}${LOCKFILE}" || exit 1
+    if [ "${EXISTING_LOCK_ID}" != "${CURRENT_RUN_ID}" ]; then
+    echo "ERROR: found mismatched lockfile containing run ${EXISTING_LOCK_ID}, which does not match this run ${CURRENT_RUN_ID}." 1>&2
+    exit 1
     fi
+
+    DIR="~{storage_location}/~{datatype}_tsvs/"
 
     printf -v PADDED_TABLE_ID "%03d" ~{table_id}
 
@@ -391,10 +518,6 @@ task LoadTable {
     else
         echo "no ${FILES} files to process in $DIR"
     fi
-
-    # remove load lock
-    echo "Removing load lock"
-    gsutil rm "${DIR}${LOCKFILE}" || exit 1
   >>>
 
   runtime {
@@ -403,6 +526,10 @@ task LoadTable {
     disks: "local-disk 10 HDD"
     preemptible: 0
     cpu: 1
+  }
+
+  output {
+    String done = "true"
   }
 }
 
