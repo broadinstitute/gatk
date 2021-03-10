@@ -1,14 +1,8 @@
 package org.broadinstitute.hellbender.utils.haplotype;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.TextCigarCodec;
-import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.SamFiles;
 
 import java.nio.file.Path;
 import org.broadinstitute.hellbender.GATKBaseTest;
