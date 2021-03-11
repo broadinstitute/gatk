@@ -23,9 +23,7 @@ public class SampleList {
 
     public SampleList(String sampleTableName, File sampleFile, boolean printDebugInformation) {
         if (sampleTableName != null) {
-            Map<String, String> labels = new HashMap<String, String>();
-            labels.put("query", "sample_list");
-            initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), printDebugInformation, labels);
+            initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), printDebugInformation);
         } else if (sampleFile != null) {
             initializeMaps(sampleFile);
         } else {
@@ -71,9 +69,9 @@ public class SampleList {
 //    }
 
 
-    protected void initializeMaps(TableReference sampleTable, boolean printDebugInformation, Map<String, String> labels) {
-        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "", printDebugInformation, labels);
-        
+    protected void initializeMaps(TableReference sampleTable, boolean printDebugInformation) {
+        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "", printDebugInformation);
+
         // Add our samples to our map:
         for (final FieldValueList row : queryResults.iterateAll()) {
             long id = row.get(0).getLongValue();
@@ -98,7 +96,7 @@ public class SampleList {
         }
     }
 
-    private TableResult querySampleTable(String fqSampleTableName, String whereClause, boolean printDebugInformation,  Map<String, String> labels) {
+    private TableResult querySampleTable(String fqSampleTableName, String whereClause, boolean printDebugInformation) {
         // Get the query string:
         final String sampleListQueryString =
                 "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME +
@@ -106,7 +104,7 @@ public class SampleList {
 
 
         // Execute the query:
-        final TableResult result = BigQueryUtils.executeQuery(sampleListQueryString, labels);
+        final TableResult result = BigQueryUtils.executeQuery(sampleListQueryString, null);
 
         // Show our pretty results:
         if (printDebugInformation) {
@@ -115,15 +113,6 @@ public class SampleList {
             logger.info("\n" + prettyQueryResults);
         }
 
-        return result;
-    }
-
-    // Create labels
-    private TableResult querySampleTable(String fqSampleTableName, String whereClause, boolean printDebugInformation) {
-        UUID run_uid = UUID.randomUUID();
-        Map<String, String> labels = new HashMap<String, String>();
-        labels.put("query", "Run_SampleTable_" + run_uid.toString() );
-        TableResult result = querySampleTable(fqSampleTableName, whereClause, printDebugInformation, labels);
         return result;
     }
 

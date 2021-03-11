@@ -100,11 +100,8 @@ public class ExtractFeaturesEngine {
         final String featureQueryString =
 
         ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, sampleListTable, minLocation, maxLocation, trainingSitesOnly, SNP_QUAL_THRESHOLD, INDEL_QUAL_THRESHOLD);
-        UUID run_uid = UUID.randomUUID();
-        Map<String, String> labels = new HashMap<String, String>();
-        labels.put("query", "extract_features_"+ run_uid.toString());
         logger.info(featureQueryString);
-        final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, SchemaUtils.FEATURE_EXTRACT_FIELDS, projectID, useBatchQueries, labels);
+        final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, SchemaUtils.FEATURE_EXTRACT_FIELDS, projectID, useBatchQueries, null);
 
         createVQSRInputFromTableResult(storageAPIAvroReader);
     }
