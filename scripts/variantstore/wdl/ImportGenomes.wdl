@@ -4,6 +4,7 @@ workflow ImportGenomes {
 
   input {
     Array[File] input_vcfs
+    Array[File] input_vcf_indexes
     File interval_list
     String output_directory
     File sample_map
@@ -12,6 +13,7 @@ workflow ImportGenomes {
     File pet_schema
     File vet_schema
     File metadata_schema
+    File? service_account_json
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
 
@@ -37,6 +39,7 @@ workflow ImportGenomes {
       superpartitioned = "false",
       partitioned = "false",
       uuid = "",
+      service_account_json = service_account_json,
       preemptible_tries = preemptible_tries,
       docker = docker_final
   }
@@ -51,6 +54,7 @@ workflow ImportGenomes {
       superpartitioned = "true",
       partitioned = "true",
       uuid = "",
+      service_account_json = service_account_json,
       preemptible_tries = preemptible_tries,
       docker = docker_final
   }
@@ -65,6 +69,7 @@ workflow ImportGenomes {
       superpartitioned = "true",
       partitioned = "true",
       uuid = "",
+      service_account_json = service_account_json,
       preemptible_tries = preemptible_tries,
       docker = docker_final
   }
@@ -73,8 +78,10 @@ workflow ImportGenomes {
     call CreateImportTsvs {
       input:
         input_vcf = input_vcfs[i],
+        input_vcf_index = input_vcf_indexes[i],
         interval_list = interval_list,
         sample_map = sample_map,
+        service_account_json = service_account_json,
         drop_state = drop_state,
         drop_state_includes_greater_than = drop_state_includes_greater_than,
         output_directory = output_directory,
@@ -96,6 +103,7 @@ workflow ImportGenomes {
         schema = metadata_schema,
         table_creation_done = CreateMetadataTables.done,
         tsv_creation_done = CreateImportTsvs.done,
+        service_account_json = service_account_json,
         docker = docker_final
     }
   }
@@ -112,6 +120,7 @@ workflow ImportGenomes {
       schema = pet_schema,
       table_creation_done = CreatePetTables.done,
       tsv_creation_done = CreateImportTsvs.done,
+      service_account_json = service_account_json,
       docker = docker_final
     }
   }
@@ -128,6 +137,7 @@ workflow ImportGenomes {
       schema = vet_schema,
       table_creation_done = CreateVetTables.done,
       tsv_creation_done = CreateImportTsvs.done,
+      service_account_json = service_account_json,
       docker = docker_final
     }
   }
@@ -162,9 +172,11 @@ task GetMaxTableId {
 task CreateImportTsvs {
   input {
     File input_vcf
+    File input_vcf_index
     File interval_list
     String output_directory
     File sample_map
+    File? service_account_json
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
 
@@ -172,10 +184,14 @@ task CreateImportTsvs {
     Int? preemptible_tries
     File? gatk_override
     String docker
+
+    String? for_testing_only
   }
 
-  Int multiplier = if defined(drop_state) then 4 else 10
-  Int disk_size = ceil(size(input_vcf, "GB") * multiplier) + 20
+  Int disk_size = if defined(drop_state) then 30 else 75
+  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+  # if we are doing a manual localization, we need to set the filename
+  String updated_input_vcf = if (defined(service_account_json)) then basename(input_vcf) else input_vcf
 
   meta {
     description: "Creates a tsv file for import into BigQuery"
@@ -186,6 +202,9 @@ task CreateImportTsvs {
     input_vcf: {
       localization_optional: true
     }
+    input_vcf_index: {
+      localization_optional: true
+    }
   }
   command <<<
       set -e
@@ -194,9 +213,16 @@ task CreateImportTsvs {
       export TMPDIR=/tmp
 
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+      ~{for_testing_only}
 
+      if [ ~{has_service_account_file} = 'true' ]; then
+        gcloud auth activate-service-account --key-file='~{service_account_json}'
+        gsutil cp ~{input_vcf} .
+        gsutil cp ~{input_vcf_index} .
+      fi
+      
       gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
-        -V ~{input_vcf} \
+        -V ~{updated_input_vcf} \
         -L ~{interval_list} \
         ~{"-IG " + drop_state} \
         --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
@@ -235,15 +261,23 @@ task CreateTables {
       String superpartitioned
       String partitioned
       String uuid
+      File? service_account_json
 
       # runtime
       Int? preemptible_tries
       String docker
     }
 
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
   command <<<
     set -x
     set -e
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gcloud auth activate-service-account --key-file='~{service_account_json}'
+      gcloud config set project ~{project_id}
+    fi
 
     PREFIX=""
     if [ -n "~{uuid}" ]; then
@@ -305,15 +339,23 @@ task LoadTable {
     String datatype
     String superpartitioned
     File schema
+    File? service_account_json
     String table_creation_done
     Array[String] tsv_creation_done
 
     String docker
   }
 
+  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
   command <<<
     set -x
     set -e
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gcloud auth activate-service-account --key-file='~{service_account_json}'
+      gcloud config set project ~{project_id}
+    fi
 
     DIR="~{storage_location}/~{datatype}_tsvs/"
 
@@ -348,3 +390,4 @@ task LoadTable {
     cpu: 1
   }
 }
+
