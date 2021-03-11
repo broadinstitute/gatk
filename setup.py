@@ -11,6 +11,7 @@ setup(
     description='Machine Learning for Health python package',
     url='https://github.com/broadinstitute/ml4h',
     python_requires='>=3.6',
-    install_requires=requirements,
+    install_requires=requirements+\
+                     "ml4ht @ git+https://github.com/broadinstitute/torch_ml4h",
     packages=find_packages(),
 )

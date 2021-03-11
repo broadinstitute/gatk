@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from ml4h.test_utils import TMAPS_UP_TO_4D, build_hdf5s
 from ml4h.ml4ht_integration.tensor_map import TensorMapSampleGetter, tensor_map_from_data_description
-from ml4h.models import make_multimodal_multitask_model, BottleneckType
+from ml4h.models.legacy_models import make_multimodal_multitask_model, BottleneckType
 from ml4h.TensorMap import Interpretation
 from ml4ht.data.data_loader import numpy_collate_fn, SampleGetterIterableDataset
 from ml4ht.data.data_description import DataDescription

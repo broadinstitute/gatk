@@ -1010,6 +1010,7 @@ def make_multimodal_multitask_model(
     conv_x = conv_x or [3]
     conv_y = conv_y or [3]
     conv_z = conv_y or [1]
+    conv_width = conv_width or [3]
 
     # list of filter dimensions should match the number of convolutional layers = len(dense_blocks) + [ + len(conv_layers) if convolving input tensors]
     num_dense = len(dense_blocks)

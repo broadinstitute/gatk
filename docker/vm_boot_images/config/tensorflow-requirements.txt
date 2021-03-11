@@ -32,4 +32,4 @@ plotnine
 vega
 ipycanvas==0.7.0
 ipyannotations==0.2.1
-git+git://github.com/broadinstitute/torch_ml4h@main#egg=ml4ht
+torch
