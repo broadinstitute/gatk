@@ -27,8 +27,7 @@ workflow ImportGenomes {
   call SetLock {
     input:
       output_directory = output_directory,
-      preemptible_tries = preemptible_tries,
-      docker = docker_final
+      preemptible_tries = preemptible_tries
   }
 
   call GetMaxTableId {
@@ -160,8 +159,7 @@ workflow ImportGenomes {
       load_metadata_done = LoadMetadataTable.done,
       load_pet_done = LoadPetTable.done,
       load_vet_done = LoadVetTable.done,
-      preemptible_tries = preemptible_tries,
-      docker = docker_final
+      preemptible_tries = preemptible_tries
   }
 }
 
@@ -178,7 +176,6 @@ task SetLock {
 
     # runtime
     Int? preemptible_tries
-    String docker
   }
 
   command <<<
@@ -230,7 +227,6 @@ task ReleaseLock {
 
     # runtime
     Int? preemptible_tries
-    String docker
   }
 
   command <<<
