@@ -41,6 +41,15 @@ public final class BigQueryUtils {
     }
 
     /**
+     * @param executionProjectId The google project that should be used to execute this query
+     *
+     * @return A {@link BigQuery} object that can be used to interact with a BigQuery data set.
+     */
+    public static BigQuery getBigQueryEndPoint(String executionProjectId) {
+        return (executionProjectId != null) ? BigQueryOptions.newBuilder().setProjectId(executionProjectId).build().getService() : getBigQueryEndPoint();
+    }
+
+    /**
      * Executes the given {@code queryString} on the default instance of {@link BigQuery} as created by {@link #getBigQueryEndPoint()}.
      * Will block until results are returned.
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/

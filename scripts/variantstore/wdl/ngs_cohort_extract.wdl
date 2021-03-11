@@ -15,6 +15,7 @@ workflow NgsCohortExtract {
         String query_project
         String? fq_filter_set_table
         String? filter_set_name
+        Boolean? emit_pls = false
     
         String output_file_base_name
         File? gatk_override
@@ -42,6 +43,7 @@ workflow NgsCohortExtract {
                 read_project_id          = query_project,
                 fq_filter_set_table      = fq_filter_set_table,
                 filter_set_name          = filter_set_name,
+                emit_pls                 = emit_pls,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz"
         }
     }
@@ -71,6 +73,8 @@ task ExtractTask {
         String? fq_filter_set_table
         String? filter_set_name
         
+        Boolean? emit_pls
+
         # Runtime Options:
         File? gatk_override
         
@@ -96,6 +100,7 @@ task ExtractTask {
                 --cohort-extract-table ~{fq_cohort_extract_table} \
                 -L ~{intervals} \
                 --project-id ~{read_project_id} \
+                ~{true='--emit-pls' false='' emit_pls} \
                 ~{"--variant-filter-table " + fq_filter_set_table} \
                 ~{"--filter-set-name " + filter_set_name}
     >>>
@@ -120,17 +125,32 @@ task ExtractTask {
  }
 
  task SplitIntervals {
-     input {
-       File? intervals
-       File ref_fasta
-       File ref_fai
-       File ref_dict
-       Int scatter_count
-       String? split_intervals_extra_args
+    input {
+        File intervals
+        File ref_fasta
+        File ref_fai
+        File ref_dict
+        Int scatter_count
+        String? split_intervals_extra_args
 
-       File? gatk_override
+        File? gatk_override
+    }
+
+    parameter_meta {
+        intervals: {
+            localization_optional: true
+        }
+        ref_fasta: {
+            localization_optional: true
+        }
+        ref_fai: {
+            localization_optional: true
+        }
+        ref_dict: {
+            localization_optional: true
+        }
      }
-
+	
      command {
          set -e
          export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
