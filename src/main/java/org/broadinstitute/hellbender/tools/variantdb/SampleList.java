@@ -21,9 +21,7 @@ public class SampleList {
 
     public SampleList(String sampleTableName, File sampleFile, String executionProjectId, boolean printDebugInformation) {
         if (sampleTableName != null) {
-            Map<String, String> labels = new HashMap<String, String>();
-            labels.put("query", "sample_list");
-            initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), executionProjectId, printDebugInformation, labels);
+            initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), executionProjectId, printDebugInformation);
         } else if (sampleFile != null) {
             initializeMaps(sampleFile);
         } else {
@@ -51,9 +49,9 @@ public class SampleList {
         return sampleIdMap;
     }
 
-    protected void initializeMaps(TableReference sampleTable, String executionProjectId, boolean printDebugInformation, Map<String, String> labels) {
-        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "", executionProjectId, printDebugInformation, labels);
-        
+    protected void initializeMaps(TableReference sampleTable, String executionProjectId, boolean printDebugInformation) {
+        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "", executionProjectId, printDebugInformation);
+
         // Add our samples to our map:
         for (final FieldValueList row : queryResults.iterateAll()) {
             long id = row.get(0).getLongValue();
@@ -78,7 +76,7 @@ public class SampleList {
         }
     }
 
-    private TableResult querySampleTable(String fqSampleTableName, String whereClause, String executionProjectId, boolean printDebugInformation,  Map<String, String> labels) {
+    private TableResult querySampleTable(String fqSampleTableName, String whereClause, String executionProjectId, boolean printDebugInformation) {
         // Get the query string:
         final String sampleListQueryString =
                 "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME +
