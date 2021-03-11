@@ -24,7 +24,7 @@ workflow ImportGenomes {
 
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
 
-  call SetLoadLock {
+  call SetLock {
     input:
       output_directory = output_directory,
       preemptible_tries = preemptible_tries,
@@ -95,7 +95,7 @@ workflow ImportGenomes {
         gatk_override = gatk_override,
         docker = docker_final,
         preemptible_tries = preemptible_tries,
-        run_uuid = SetLoadLock.run_uuid
+        run_uuid = SetLock.run_uuid
     }
   }
 
@@ -113,7 +113,7 @@ workflow ImportGenomes {
         tsv_creation_done = CreateImportTsvs.done,
         service_account_json = service_account_json,
         docker = docker_final,
-        run_uuid = SetLoadLock.run_uuid
+        run_uuid = SetLock.run_uuid
     }
   }
 
@@ -131,7 +131,7 @@ workflow ImportGenomes {
       tsv_creation_done = CreateImportTsvs.done,
       service_account_json = service_account_json,
       docker = docker_final,
-      run_uuid = SetLoadLock.run_uuid
+      run_uuid = SetLock.run_uuid
     }
   }
 
@@ -149,13 +149,13 @@ workflow ImportGenomes {
       tsv_creation_done = CreateImportTsvs.done,
       service_account_json = service_account_json,
       docker = docker_final,
-      run_uuid = SetLoadLock.run_uuid
+      run_uuid = SetLock.run_uuid
     }
   }
 
-  call ReleaseLoadLock {
+  call ReleaseLock {
     input:
-      run_uuid = SetLoadLock.run_uuid,
+      run_uuid = SetLock.run_uuid,
       output_directory = output_directory,
       load_metadata_done = LoadMetadataTable.done,
       load_pet_done = LoadPetTable.done,
@@ -165,10 +165,10 @@ workflow ImportGenomes {
   }
 }
 
-# we create a load lock file in the output directory with a uuid for this run of ImportGenomes.
+# we create a lock file in the output directory with a uuid for this run of ImportGenomes.
 # other tasks (TSV creation, bq load) check that the lock file exists and contains the run_uuid
 # specific to this task.
-task SetLoadLock {
+task SetLock {
   meta {
     volatile: true
   }
@@ -190,22 +190,21 @@ task SetLoadLock {
 
     DIR="~{output_directory}/"
 
-    # check for existing load lock
-    LOCKFILE="loadlock"
+    # check for existing lock file
+    LOCKFILE="LOCKFILE"
     HAS_LOCKFILE=$(gsutil ls "${DIR}${LOCKFILE}" | wc -l)
     if [ $HAS_LOCKFILE -gt 0 ]; then
-      echo "ERROR: load lock in place. Check whether another run of ImportGenomes with this output directory is in progress or a previous run had an error." 1>&2
+      echo "ERROR: lock file in place. Check whether another run of ImportGenomes with this output directory is in progress or a previous run had an error. If you would like to proceed, run `gsutil rm ${DIR}${LOCKFILE}` and re-run the workflow." 1>&2
       exit 1
     else  # put the lock file in place
-      echo "Setting load lock with UUID ${RUN_UUID}"
+      echo "Setting lock file with UUID ${RUN_UUID}"
       echo $RUN_UUID > $LOCKFILE
       gsutil cp $LOCKFILE "${DIR}${LOCKFILE}" || { echo "Error uploading lockfile to ${DIR}${LOCKFILE}" 1>&2 ; exit 1; }
     fi
   >>>
 
-  # TODO can this be smaller/cheaper?
   runtime {
-    docker: docker
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: select_first([preemptible_tries, 5])
@@ -217,7 +216,7 @@ task SetLoadLock {
   }
 }
 
-task ReleaseLoadLock {
+task ReleaseLock {
   meta {
     volatile: true
   }
@@ -237,7 +236,7 @@ task ReleaseLoadLock {
   command <<<
     set -x
     set -e
-    LOCKFILE="~{output_directory}/loadlock"
+    LOCKFILE="~{output_directory}/LOCKFILE"
     EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE})
     CURRENT_RUN_ID="~{run_uuid}"
 
@@ -249,9 +248,8 @@ task ReleaseLoadLock {
     fi
   >>>
 
-    # TODO can this be smaller/cheaper?
     runtime {
-      docker: docker
+      docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
       memory: "1 GB"
       disks: "local-disk 10 HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -327,7 +325,7 @@ task CreateImportTsvs {
       set -e
 
       # check for existence of the correct lockfile
-      LOCKFILE="~{output_directory}/loadlock"
+      LOCKFILE="~{output_directory}/LOCKFILE"
       EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
       CURRENT_RUN_ID="~{run_uuid}"
 
@@ -487,7 +485,7 @@ task LoadTable {
 
     DIR="~{storage_location}/~{datatype}_tsvs/"
     # check for existence of the correct lockfile
-    LOCKFILE="~{storage_location}/loadlock"
+    LOCKFILE="~{storage_location}/LOCKFILE"
     EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
     CURRENT_RUN_ID="~{run_uuid}"
 
