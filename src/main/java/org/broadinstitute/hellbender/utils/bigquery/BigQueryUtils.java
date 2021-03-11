@@ -54,7 +54,7 @@ public final class BigQueryUtils {
      * Will block until results are returned.
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
-     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>.  Must contain Job label and gatk_execution_id.
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
      * @return A {@link TableResult} object containing the results of the query executed.
      */
     public static TableResult executeQuery(final String queryString, final Map<String, String> labels) {
@@ -66,7 +66,7 @@ public final class BigQueryUtils {
      * Will block until results are returned.
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
-     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>.  Must contain Job label and gatk_execution_id.
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
      * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
      * @return A {@link TableResult} object containing the results of the query executed.
      */
@@ -82,6 +82,7 @@ public final class BigQueryUtils {
      * @param bigQuery The {@link BigQuery} instance against which to execute the given {@code queryString}.
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
      * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
      * @return A {@link TableResult} object containing the results of the query executed.
      */
     public static TableResult executeQuery(final BigQuery bigQuery, final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
@@ -108,6 +109,7 @@ public final class BigQueryUtils {
      * @param projectID The BigQuery {@code project ID} containing the {@code dataSet} and table from which to query data.
      * @param dataSet The BigQuery {@code dataSet} containing the table from which to query data.
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table ID in the `FROM` clause for the table from which to retrieve data.
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
      * @return A {@link TableResult} object containing the results of the query executed.
      */
     public static TableResult executeQuery(final BigQuery bigQuery,
