@@ -1,6 +1,6 @@
 {
-  "schemaType": "ReadsBundle",
+  "schemaName": "htsbundle",
   "schemaVersion": "0.1.0",
-  "reads":{"path":"a file", "fileType":"bam"},
-  "index":{"path":"an index", "fileType":"bai"}
+  "READS":{"path":"reads.bam", "fileType":"BAM"},
+  "INDEX":{"path":"reads.bai", "fileType":"BAI"}
 }

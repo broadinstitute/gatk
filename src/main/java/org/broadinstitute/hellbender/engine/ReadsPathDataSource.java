@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.engine;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.MergingSamRecordIterator;
-import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -14,7 +13,7 @@ import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadIndexPair;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadsBundle;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -37,6 +36,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -106,7 +106,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      * @param samPath SAM/BAM file, not null.
      */
     public ReadsPathDataSource( final GATKPath samPath ) {
-        this(samPath != null ? Collections.singletonList(ReadIndexPair.guessPairFromReads(samPath)) : null, null);
+        this(samPath != null ? Collections.singletonList(ReadsBundle.guessPairFromReads(samPath)) : null, null);
     }
 
     /**
@@ -117,14 +117,14 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      *                               stringency SILENT is used.
      */
     public ReadsPathDataSource( final GATKPath samPath, SamReaderFactory customSamReaderFactory ) {
-        this(samPath != null ? Collections.singletonList(ReadIndexPair.guessPairFromReads(samPath)) : null, customSamReaderFactory);
+        this(samPath != null ? Collections.singletonList(ReadsBundle.guessPairFromReads(samPath)) : null, customSamReaderFactory);
     }
 
-    public ReadsPathDataSource(final ReadIndexPair samAndIndexPaths) {
+    public ReadsPathDataSource(final ReadsBundle samAndIndexPaths) {
         this(Collections.singletonList(samAndIndexPaths), null, 0, 0);
     }
 
-    public ReadsPathDataSource(final List<ReadIndexPair> samAndIndexPaths) {
+    public ReadsPathDataSource(final List<ReadsBundle> samAndIndexPaths) {
         this(samAndIndexPaths, null, 0, 0);
     }
 
@@ -136,7 +136,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
      *                               stringency SILENT is used.
      */
-    public ReadsPathDataSource(final List<ReadIndexPair> samAndIndexPaths, SamReaderFactory customSamReaderFactory) {
+    public ReadsPathDataSource(final List<ReadsBundle> samAndIndexPaths, SamReaderFactory customSamReaderFactory) {
         this(samAndIndexPaths, customSamReaderFactory, 0, 0);
     }
 
@@ -150,7 +150,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      * @param cloudPrefetchBuffer MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      */
-    public ReadsPathDataSource(final List<ReadIndexPair> samAndIndexPaths,
+    public ReadsPathDataSource(final List<ReadsBundle> samAndIndexPaths,
                            SamReaderFactory customSamReaderFactory,
                            int cloudPrefetchBuffer, int cloudIndexPrefetchBuffer) {
         this(samAndIndexPaths, customSamReaderFactory,
@@ -169,7 +169,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      * @param cloudWrapper caching/prefetching wrapper for the data, if on Google Cloud.
      * @param cloudIndexWrapper caching/prefetching wrapper for the index, if on Google Cloud.
      */
-    public ReadsPathDataSource(final List<ReadIndexPair> samPaths,
+    public ReadsPathDataSource(final List<ReadsBundle> samPaths,
                            SamReaderFactory customSamReaderFactory,
                            Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
                            Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
@@ -185,14 +185,14 @@ public final class ReadsPathDataSource implements ReadsDataSource {
                         SamReaderFactory.makeDefault().validationStringency(ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY) :
                         customSamReaderFactory;
 
-        for ( final ReadIndexPair samAndIndexPath : samPaths ) {
+        for ( final ReadsBundle samAndIndexPath : samPaths ) {
             final Path samPath = samAndIndexPath.getReads().toPath();
-            final Path indexPath = IOUtils.toPath(samAndIndexPath.getIndex());
+            final Optional<GATKPath> indexPath = samAndIndexPath.getIndex();
 
             // Ensure each file can be read
             IOUtils.assertFileIsReadable(samPath);
-            if ( indexPath != null ){
-                IOUtil.assertFileIsReadable(indexPath);
+            if ( indexPath.isPresent() ){
+                IOUtil.assertFileIsReadable(indexPath.get().toPath());
             }
 
             final Function<SeekableByteChannel, SeekableByteChannel> wrapper =
@@ -200,15 +200,14 @@ public final class ReadsPathDataSource implements ReadsDataSource {
                             ? cloudWrapper
                             : Function.identity();
 
-
             final SamInputResource samResource = SamInputResource.of(samPath, wrapper);
 
-            if( indexPath != null) {
+            if( indexPath.isPresent()) {
                 final Function<SeekableByteChannel, SeekableByteChannel> indexWrapper =
-                        BucketUtils.isEligibleForPrefetching(indexPath)
+                        BucketUtils.isEligibleForPrefetching(indexPath.get().toPath())
                                 ? cloudIndexWrapper
                                 : Function.identity();
-                samResource.index(indexPath, indexWrapper);
+                samResource.index(indexPath.get().toPath(), indexWrapper);
             }
 
             final SamReader reader = samReaderFactory.open(samResource);

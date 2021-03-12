@@ -1,18 +1,14 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import htsjdk.samtools.ValidationStringency;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.bundle.ReadsBundle;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -50,7 +46,7 @@ public abstract class ReadInputArgumentCollection implements Serializable {
     protected boolean dontInferBamIndexes = false;
 
     //Lazily computed the first time it is requested
-    private List<ReadIndexPair> readIndexPairs = null;
+    private List<ReadsBundle> readsInputs = null;
 
     /**
      * Get the raw list of BAM/SAM/CRAM inputs specified at the command line.
@@ -65,16 +61,16 @@ public abstract class ReadInputArgumentCollection implements Serializable {
      * GATKPath is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
     public List<GATKPath> getReadPaths(){
-        return getReadIndexPairs().stream().map(ReadIndexPair::getReads).collect(Collectors.toList());
+        return getReadIndexPairs().stream().map(ReadsBundle::getReads).collect(Collectors.toList());
     }
 
 
     /**
      * Get the matched pairs of BAM/SAM/CRAM and resolved indexes that were specified on the command line
      */
-    public List<ReadIndexPair> getReadIndexPairs() {
+    public List<ReadsBundle> getReadIndexPairs() {
         //check if it's already been cached
-        if( readIndexPairs == null){
+        if( readsInputs == null){
             //compute it if necessary
             final List<GATKPath> rawReadPathSpecifiers = getRawReadPathSpecifiers();
             final int numberOfReadSourcesSpecified = rawReadPathSpecifiers.size();
@@ -92,33 +88,32 @@ public abstract class ReadInputArgumentCollection implements Serializable {
                 }
             }
 
-            final List<ReadIndexPair> pairs = new ArrayList<>(numberOfReadIndexesSpecified);
+            final List<ReadsBundle> pairs = new ArrayList<>(numberOfReadIndexesSpecified);
             for( int i = 0; i < numberOfReadSourcesSpecified ; i++){
                 //TODO This has the problem where we can't identify a .json that doesn't have the right extension
                 final GATKPath rawReadPath = rawReadPathSpecifiers.get(i);
-                final ReadIndexPair pair;
+                final ReadsBundle pair;
                 if(ReadsBundle.looksLikeAReadsBundle(rawReadPath)){
                     //if it looks like a bundle, load it
-                    final ReadsBundle readsBundle = ReadsBundle.fromPath(rawReadPath);
-                    pair = new ReadIndexPair(readsBundle.getReads(), readsBundle.getIndex());
+                    pair = ReadsBundle.getReadsBundleFromJSON(rawReadPath);
                 } else if (!readIndices.isEmpty()) {
                     //if it isn't a bundle and we have read indexes provided than get it from the list
-                    pair = new ReadIndexPair(rawReadPath, readIndices.get(i));
+                    pair = new ReadsBundle(rawReadPath, readIndices.get(i));
                 } else {
                     //otherwise we have to decide to infer the index path or not
                     if(dontInferBamIndexes) {
                         //in this case we explicitly set the index to null since it wasn't specified
-                        pair = new ReadIndexPair(rawReadPath, null);
+                        pair = new ReadsBundle(rawReadPath, null);
                     } else {
                         //otherwise we try to guess
-                        pair = ReadIndexPair.guessPairFromReads(rawReadPath);
+                        pair = ReadsBundle.guessPairFromReads(rawReadPath);
                     }
                 }
                 pairs.add(pair);
             }
-            readIndexPairs = Collections.unmodifiableList(pairs);
+            readsInputs = Collections.unmodifiableList(pairs);
         }
-        return readIndexPairs;
+        return readsInputs;
     }
 
     /**
