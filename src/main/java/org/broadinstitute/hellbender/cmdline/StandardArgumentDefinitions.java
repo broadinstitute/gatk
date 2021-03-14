@@ -85,6 +85,13 @@ public final class StandardArgumentDefinitions {
     public static final String METRICS_FILE_LONG_NAME = "metrics-file";
     public static final String METRICS_FILE_SHORT_NAME = "M";
 
+    // Constants for use as companion attributes in WDL WorkflowInput/WorkflowOutput annotations. These values
+    // are used by the WDL generator to emit separate task/workflow input and output arguments for companion files.
+    public static final String INPUT_INDEX_COMPANION = INPUT_LONG_NAME + "Index";
+    public static final String OUTPUT_INDEX_COMPANION = OUTPUT_LONG_NAME + "Index";
+    public static final String REFERENCE_INDEX_COMPANION = REFERENCE_LONG_NAME + "Index";
+    public static final String REFERENCE_DICTIONARY_COMPANION = REFERENCE_LONG_NAME + "Dictionary";
+
     /**
      * The option specifying a main configuration file.
      * This is used in {@link org.broadinstitute.hellbender.Main} to control which config file is loaded.

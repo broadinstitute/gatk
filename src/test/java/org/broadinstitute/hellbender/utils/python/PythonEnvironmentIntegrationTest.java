@@ -24,11 +24,16 @@ public class PythonEnvironmentIntegrationTest {
                 { "scipy",          "1.0.0" },
                 { "pymc3",          "3.1" },
                 { "keras",          "2.2.4" },
+                { "h5py",           "2.10.0" },
                 { "sklearn",        "0.22.2.post1" },
                 { "matplotlib",     "3.2.1" },
                 { "pandas",         "1.0.3" },
                 { "argparse",       null },
-                { "gcnvkernel",     null }
+                { "gcnvkernel",     null },
+
+                // R packages
+                // Commented out since we can't check versions of R packages in this test
+                // { "r-backports",    "1.1.10" },
         };
     }
 

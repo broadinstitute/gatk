@@ -61,19 +61,22 @@ repositories {
     mavenLocal()
 }
 
-final htsjdkVersion = System.getProperty('htsjdk.version','2.23.0')
-final picardVersion = System.getProperty('picard.version','2.22.8')
-final barclayVersion = System.getProperty('barclay.version','3.0.0')
+final htsjdkVersion = System.getProperty('htsjdk.version','2.24.0')
+final picardVersion = System.getProperty('picard.version','2.25.0')
+final barclayVersion = System.getProperty('barclay.version','4.0.1')
 final sparkVersion = System.getProperty('spark.version', '2.4.5')
 final scalaVersion = System.getProperty('scala.version', '2.11')
-final hadoopVersion = System.getProperty('hadoop.version', '2.8.2')
+final hadoopVersion = System.getProperty('hadoop.version', '3.2.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
-final genomicsdbVersion = System.getProperty('genomicsdb.version','1.3.0')
+final genomicsdbVersion = System.getProperty('genomicsdb.version','1.3.2')
+final bigQueryVersion = System.getProperty('bigQuery.version', '1.117.1')
+final guavaVersion = System.getProperty('guava.version', '27.1-jre')
 final testNGVersion = '7.0.0'
+
 // Using the shaded version to avoid conflicts between its protobuf dependency
 // and that of Hadoop/Spark (either the one we reference explicitly, or the one
 // provided by dataproc).
-final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.107.0-alpha:shaded'
+final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.117.0-alpha:shaded'
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
@@ -175,11 +178,10 @@ if (versionOverridden) {
 configurations.all {
     resolutionStrategy {
         // the snapshot folder contains a dev version of guava, we don't want to use that.
-        force 'com.google.guava:guava:18.0'
+        force 'com.google.guava:guava:' + guavaVersion
         // force the htsjdk version so we don't get a different one transitively
         force 'com.github.samtools:htsjdk:' + htsjdkVersion
-        // later versions explode Hadoop
-        force 'com.google.protobuf:protobuf-java:3.0.0-beta-1'
+        force 'com.google.protobuf:protobuf-java:3.8.0'
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
@@ -263,18 +265,21 @@ dependencies {
         exclude module: 'protobuf-java'
     }
     compile 'com.opencsv:opencsv:3.4'
-    compile 'com.google.guava:guava:18.0'
+    compile 'com.google.guava:guava:' + guavaVersion
     compile 'com.github.samtools:htsjdk:'+ htsjdkVersion
     compile(googleCloudNioDependency) {
         transitive = false
     }
+
+    compile 'com.google.cloud:google-cloud-bigquery:' + bigQueryVersion
+    compile 'com.google.cloud:google-cloud-bigquerystorage:1.5.1'
 
     compile "gov.nist.math.jama:gov.nist.math.jama:1.1.1"
 
     // this comes built-in when running on Google Dataproc, but the library
     // allows us to read from GCS also when testing locally (or on non-Dataproc clusters,
     // should we want to)
-    compile 'com.google.cloud.bigdataoss:gcs-connector:1.6.3-hadoop2'
+    compile 'com.google.cloud.bigdataoss:gcs-connector:1.9.4-hadoop3'
 
     compile 'org.apache.logging.log4j:log4j-api:2.3'
     compile 'org.apache.logging.log4j:log4j-core:2.3'
@@ -367,6 +372,7 @@ dependencies {
 
     // natural sort
     compile('net.grey-panther:natural-comparator:1.1')
+    compile('com.fasterxml.jackson.module:jackson-module-scala_' + scalaVersion + ':2.9.8')
 
     testUtilsCompile sourceSets.main.output
     testUtilsCompile 'org.testng:testng:' + testNGVersion
@@ -421,7 +427,8 @@ tasks.withType(Jar) {
                 'Toolkit-Short-Name' : 'GATK',
                 'Main-Class': project.mainClassName,
                 'Picard-Version': picardVersion,
-                'htsjdk-Version': htsjdkVersion
+                'htsjdk-Version': htsjdkVersion,
+                'Spark-Version': sparkVersion
     }
 }
 
@@ -746,7 +753,7 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
     options.addStringOption("caller-post-arg-max-occurs", "1 1 1 1 1 1 1 1 1 1")
 }
 
-def getWLDInputJSONTestFileNameFromWDLName(File wdlName) {
+def getWDLInputJSONTestFileNameFromWDLName(File wdlName) {
     String fileWithoutExt = wdlName.name.take(wdlName.name.lastIndexOf('.'))
     return new File (wdlName.getParentFile(), fileWithoutExt + "Inputs.json").getAbsolutePath()
 }
@@ -758,7 +765,7 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
     doFirst {
         // make sure the output folder exists or we can create it
         if (!gatkWDLDir.exists() && !gatkWDLDir.mkdirs()) {
-            throw new GradleException(String.format("Failure creating folder (%s) for GATK DL output in task (%s)",
+            throw new GradleException(String.format("Failure creating folder (%s) for GATK WDL output in task (%s)",
                     gatkWDLDir.getAbsolutePath(),
                     it.name));
         }
@@ -788,10 +795,18 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
 
     // the wdl doclet will populate the test JSON input files with the name of a dummy
     // file in this location, in order to satisfy cromwell's attempts to localize inputs and outputs
-    options.addStringOption("build-dir", System.getenv("TRAVIS_BUILD_DIR") ?: ".")
+    options.addStringOption("build-dir", System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath())
 }
 
 task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
+    doFirst {
+        // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
+        // WOMTOOL_JAR set to the jar locations
+        if (System.getenv('CROMWELL_JAR') == null || System.getenv('WOMTOOL_JAR') == null) {
+            throw new GradleException("Running this task requires the CROMWELL_JAR and WOMTOOL_JAR environment variables to be set")
+        }
+    }
+
     def execWDLValidation = { validateWDL ->
         println "Executing: $validateWDL"
         try {
@@ -811,8 +826,8 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
         def wdlFiles = fileTree(dir: wdlGenFolder).filter {
             f -> !f.getAbsolutePath().endsWith(".html") && !f.getAbsolutePath().endsWith(".json")
         }
+        final womtoolLocation = System.getenv('WOMTOOL_JAR')
         wdlFiles.any() { wdlFile ->
-            final womtoolLocation = System.getenv('WOMTOOL_JAR')
             final validateWDLCommand = "java -jar $womtoolLocation validate $wdlFile"
             execWDLValidation(validateWDLCommand)
         }
@@ -821,16 +836,25 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
         wdlFiles = fileTree(dir: wdlGenFolder).filter {
             f -> f.getAbsolutePath().endsWith("AllArgsTest.wdl")
         }
-        wdlFiles.any() { wdlFile ->
-            final cromwellLocation = System.getenv('CROMWELL_JAR')
-            final testInputJSON = getWLDInputJSONTestFileNameFromWDLName(wdlFile)
-            final runWDLCommand = "java -jar $cromwellLocation run --inputs $testInputJSON $wdlFile"
-            // the test JSON input file is populated by the WDL gen process with this dummy file name
-            // to satisfy cromwell's attempt to de/localize input files
-            def buildDir = System.getenv("TRAVIS_BUILD_DIR") ?: "."
-            final createDummyTestInputFile = "touch $buildDir/dummyWDLTestFile"
-            execWDLValidation(createDummyTestInputFile)
-            execWDLValidation(runWDLCommand)
+
+        // the test JSON input file is populated by the WDL gen process with the name of this dummy file
+        // to satisfy cromwell's attempt to de/localize input/output files
+        def buildDir = System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath()
+        final dummyWDLTestFileName = "$buildDir/dummyWDLTestFile"
+        final File dummyWDLTestFile = file(dummyWDLTestFileName)
+        final cromwellLocation = System.getenv('CROMWELL_JAR')
+        try {
+            wdlFiles.any() { wdlFile ->
+                final testInputJSON = getWDLInputJSONTestFileNameFromWDLName(wdlFile)
+                final runWDLCommand = "java -jar $cromwellLocation run --inputs $testInputJSON $wdlFile"
+                execWDLValidation("touch $dummyWDLTestFileName")
+                execWDLValidation(runWDLCommand)
+            }
+        } finally {
+            // delete the dummy test file and the 'cromwell-executions' directory left behind by cromwell
+            dummyWDLTestFile.delete()
+            file("$buildDir/cromwell-executions").deleteDir()
+            file("$buildDir/cromwell-workflow-logs").deleteDir()
         }
     }
 
@@ -883,7 +907,7 @@ def basePomConfiguration = {
 
     licenses {
         license {
-            name 'BSD 3-Clause'
+            name 'Apache 2.0'
             url 'https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT'
             distribution 'repo'
         }

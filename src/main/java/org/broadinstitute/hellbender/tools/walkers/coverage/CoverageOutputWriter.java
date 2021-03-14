@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.codecs.refseq.RefSeqFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.*;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.util.*;
@@ -61,7 +62,8 @@ public class CoverageOutputWriter implements Closeable {
     private DEPTH_OF_COVERAGE_OUTPUT_FORMAT outputFormat;
     private boolean omitDepthOutput;
     private List<Integer> coverageThresholds;
-    final static DecimalFormat DOUBLE_FORMAT = new DecimalFormat("0.00");
+    private final DecimalFormat DOUBLE_FORMAT_2PLACES = new DecimalFormat("0.00");
+    private final DecimalFormat DOUBLE_FORMAT_1PLACE = new DecimalFormat("0.0");
 
     public enum DEPTH_OF_COVERAGE_OUTPUT_FORMAT {
         TABLE,
@@ -101,6 +103,9 @@ public class CoverageOutputWriter implements Closeable {
                                 final boolean omitSampleSummary,
                                 final boolean omitLocusTable,
                                 final List<Integer> coverageThresholds) throws IOException {
+        // NOTE: we have to set the rounding mode here in order to preserve rounding behavior to match test results based on GATK3 which uses HALF_UP rounding
+        DOUBLE_FORMAT_2PLACES.setRoundingMode(RoundingMode.HALF_UP);
+        DOUBLE_FORMAT_1PLACE.setRoundingMode(RoundingMode.HALF_UP);
         this.outputFormat = outputFormat;
         this.partitions = partitionsToCover;
         this.includeGeneOutput = includeGeneOutputPerSample;
@@ -130,7 +135,7 @@ public class CoverageOutputWriter implements Closeable {
                 DoCOutputType intervalSummaryBypartition = new DoCOutputType(partition, DoCOutputType.Aggregation.interval, DoCOutputType.FileType.summary);
                 outputs.put(intervalSummaryBypartition, getOutputStream(outputBaseName, intervalSummaryBypartition, separator));
 
-                // Create an interval summary output sink
+                // Create an interval statistics output sink
                 DoCOutputType intervalStatisticsByPartition = new DoCOutputType(partition, DoCOutputType.Aggregation.interval, DoCOutputType.FileType.statistics);
                 outputs.put(intervalStatisticsByPartition, getOutputStream(outputBaseName, intervalStatisticsByPartition, separator));
             }
@@ -141,6 +146,10 @@ public class CoverageOutputWriter implements Closeable {
             // Create a special output sink for gene data if provided
             DoCOutputType geneSummaryOut = new DoCOutputType(DoCOutputType.Partition.sample, DoCOutputType.Aggregation.gene, DoCOutputType.FileType.summary);
             outputs.put(geneSummaryOut, getOutputStream(outputBaseName, geneSummaryOut, separator));
+
+            // Create an gene statistics output sink
+            DoCOutputType geneStatisticsByPartition = new DoCOutputType(DoCOutputType.Partition.sample, DoCOutputType.Aggregation.gene, DoCOutputType.FileType.statistics);
+            outputs.put(geneStatisticsByPartition, getOutputStream(outputBaseName, geneStatisticsByPartition, separator));
         }
 
         if (!omitSampleSummary) {
@@ -175,7 +184,7 @@ public class CoverageOutputWriter implements Closeable {
 
     // Helper method to generate an output stream given a DoCOutputType Object and the base name
     private static SimpleCSVWriterWrapperWithHeader getOutputStream(String outputBaseName, DoCOutputType depthSummaryByLocus, char separator) throws IOException {
-        return new SimpleCSVWriterWrapperWithHeader(new OutputStreamWriter(Files.newOutputStream((IOUtils.getPath(depthSummaryByLocus.getFilePath(outputBaseName))))), separator);
+        return new SimpleCSVWriterWrapperWithHeader(Files.newBufferedWriter((IOUtils.getPath(depthSummaryByLocus.getFilePath(outputBaseName)))), separator);
     }
 
     /**
@@ -282,7 +291,7 @@ public class CoverageOutputWriter implements Closeable {
         // Add the total depth and summary information to the line
         lineBuilder.setColumn(0, locus.getContig() + ":" + locus.getStart()).setColumn(1, Integer.toString(tDepth));
         for (DoCOutputType.Partition type : partitions) { //Note that this is a deterministic traversal since the underlying set is an EnumSet
-            lineBuilder.setColumn("Average_Depth_" + type.toString(), String.format("%.2f", (double) tDepth / identifiersByType.get(type).size()));
+            lineBuilder.setColumn("Average_Depth_" + type.toString(), DOUBLE_FORMAT_2PLACES.format( (double) tDepth / identifiersByType.get(type).size()));
         }
         lineBuilder.buildAndWriteLine();
     }
@@ -355,6 +364,19 @@ public class CoverageOutputWriter implements Closeable {
         printIntervalTable(output, nTargetsByAvgCvgBySample, binEndpoints);
     }
 
+    /**
+     * Write out the gene statistics. Note that this method expects as input that the provided table has had
+     * {@link CoverageUtils#updateTargetTable(int[][], DepthOfCoverageStats)} called on it exactly once for each interval
+     * summarized in this traversal.
+     *
+     * @param nTargetsByAvgCvgBySample Target sample coverage histogram for the given partition to be written out
+     * @param binEndpoints             Bins endpoints used in the construction of of the provided histogram
+     */
+    public void writeOutputGeneStatistics(final int[][] nTargetsByAvgCvgBySample, final int[] binEndpoints) {
+        SimpleCSVWriterWrapperWithHeader output = getCorrectOutputWriter(DoCOutputType.Partition.sample, DoCOutputType.Aggregation.gene, DoCOutputType.FileType.statistics);
+        printIntervalTable(output, nTargetsByAvgCvgBySample, binEndpoints);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // File writing methods
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -399,7 +421,7 @@ public class CoverageOutputWriter implements Closeable {
         // Fill out the lines of the table to the writer based on the source tables
         for (int row = 0; row < samples; row++) {
             SimpleCSVWriterWrapperWithHeader.SimpleCSVWriterLineBuilder lineBuilder = countsOutput.getNewLineBuilder();
-            lineBuilder.setColumn(0, "NSamples_" + String.format("%d", row + 1));
+            lineBuilder.setColumn(0, "NSamples_" + Integer.toString( row + 1));
             for (int col = 0; col < baseCoverageCumDist[0].length; col++) {
                 lineBuilder.setColumn(col + 1, Long.toString(baseCoverageCumDist[row][col]));
             }
@@ -411,7 +433,7 @@ public class CoverageOutputWriter implements Closeable {
             lineBuilder.setColumn(0, sample);
             double[] coverageDistribution = stats.getCoverageProportions(sample);
             for (int bin = 0; bin < coverageDistribution.length; bin++) {
-                lineBuilder.setColumn(bin + 1, String.format("%.2f", coverageDistribution[bin]));
+                lineBuilder.setColumn(bin + 1, DOUBLE_FORMAT_2PLACES.format( coverageDistribution[bin]));
             }
             lineBuilder.buildAndWriteLine();
         }
@@ -458,7 +480,7 @@ public class CoverageOutputWriter implements Closeable {
 
         lineBuilder.setColumn(0, locusName)
                 .setColumn("total_coverage", Long.toString(stats.getTotalCoverage()))
-                .setColumn("average_coverage", String.format("%.2f", stats.getTotalMeanCoverage()));
+                .setColumn("average_coverage", DOUBLE_FORMAT_2PLACES.format(stats.getTotalMeanCoverage()));
 
         // each sample is in the order +[sample_total_cvg, sample_mean_cvg, sample_granular_Q1, sample_granular_median, sample_granular_Q3] so we set colums accordingly
         for (String s : sortedSamples) {
@@ -467,13 +489,13 @@ public class CoverageOutputWriter implements Closeable {
             int q1 = CoverageUtils.getQuantile(stats.getHistograms().get(s), 0.25);
             int q3 = CoverageUtils.getQuantile(stats.getHistograms().get(s), 0.75);
             lineBuilder.setColumn(sIdx, Long.toString(stats.getTotals().get(s)))
-                    .setColumn(sIdx + 1, String.format("%.2f", stats.getMeans().get(s)))
+                    .setColumn(sIdx + 1, DOUBLE_FORMAT_2PLACES.format(stats.getMeans().get(s)))
                     .setColumn(sIdx + 2, formatBin(bins, q1))
                     .setColumn(sIdx + 3, formatBin(bins, median))
                     .setColumn(sIdx + 4, formatBin(bins, q3));
 
             for (int thresh : coverageThresholds) {
-                lineBuilder.setColumn(s + "_%_above_" + thresh, String.format("%.1f", CoverageUtils.getPctBasesAbove(stats.getHistograms().get(s), stats.value2bin(thresh))));
+                lineBuilder.setColumn(s + "_%_above_" + thresh, DOUBLE_FORMAT_1PLACE.format(CoverageUtils.getPctBasesAbove(stats.getHistograms().get(s), stats.value2bin(thresh))));
             }
         }
         lineBuilder.buildAndWriteLine();
@@ -548,13 +570,13 @@ public class CoverageOutputWriter implements Closeable {
 
             lineBuilder.setColumn(0, sample)
                     .setColumn(1, Long.toString(totals.get(sample)))
-                    .setColumn(2, DOUBLE_FORMAT.format(means.get(sample)))
+                    .setColumn(2, DOUBLE_FORMAT_2PLACES.format(means.get(sample)))
                     .setColumn(3, Integer.toString(leftEnds[q3]))
                     .setColumn(4, Integer.toString(leftEnds[median]))
                     .setColumn(5, Integer.toString(leftEnds[q1]));
 
             for (int thresh : coverageThresholds) {
-                lineBuilder.setColumn("%_bases_above_" + thresh, String.format("%.1f", CoverageUtils.getPctBasesAbove(histogram, stats.value2bin(thresh))));
+                lineBuilder.setColumn("%_bases_above_" + thresh, DOUBLE_FORMAT_1PLACE.format(CoverageUtils.getPctBasesAbove(histogram, stats.value2bin(thresh))));
             }
 
             lineBuilder.buildAndWriteLine();
@@ -564,7 +586,7 @@ public class CoverageOutputWriter implements Closeable {
         SimpleCSVWriterWrapperWithHeader.SimpleCSVWriterLineBuilder lineBuilder = output.getNewLineBuilder();
         lineBuilder.setColumn(0, "Total")
                 .setColumn(1, Long.toString(stats.getTotalCoverage()))
-                .setColumn(2, DOUBLE_FORMAT.format(stats.getTotalMeanCoverage()))
+                .setColumn(2, DOUBLE_FORMAT_2PLACES.format(stats.getTotalMeanCoverage()))
                 .fill("N/A").buildAndWriteLine();
     }
 
@@ -599,7 +621,7 @@ public class CoverageOutputWriter implements Closeable {
         // Fill out the lines of the table to the writer based on the source tables
         for (int row = 0; row < intervalTable.length; row++) {
             SimpleCSVWriterWrapperWithHeader.SimpleCSVWriterLineBuilder lineBuilder = output.getNewLineBuilder();
-            lineBuilder.setColumn(0, "At_least_" + String.format("%d", row + 1) + "_samples");
+            lineBuilder.setColumn(0, "At_least_" + Integer.toString( row + 1) + "_samples");
             for (int col = 0; col < intervalTable[0].length; col++) {
                 lineBuilder.setColumn(col + 1, Integer.toString(intervalTable[row][col]));
             }
@@ -609,11 +631,11 @@ public class CoverageOutputWriter implements Closeable {
 
     private String formatBin(int[] bins, int quartile) {
         if (quartile >= bins.length) {
-            return String.format(">%d", bins[bins.length - 1]);
+            return ">" + Integer.toString(bins[bins.length - 1]);
         } else if (quartile < 0) {
-            return String.format("<%d", bins[0]);
+            return "<" + Integer.toString(bins[0]);
         } else {
-            return String.format("%d", bins[quartile]);
+            return Integer.toString(bins[quartile]);
         }
     }
 

@@ -43,7 +43,7 @@ public final class JoinReadsWithVariants {
         return reads.mapPartitionsToPair((PairFlatMapFunction<Iterator<GATKRead>, GATKRead, Iterable<GATKVariant>>) gatkReadIterator -> {
             List<FeatureDataSource<VariantContext>> variantSources = variantsFileNames.stream().map(fileName -> openFeatureSource(SparkFiles.get(fileName))).collect(Collectors.toList());
             Iterator<Tuple2<GATKRead, Iterable<GATKVariant>>> iterator = Iterators.transform(gatkReadIterator, read -> getVariantsOverlappingRead(read, variantSources));
-            return new CloseAtEndIterator<>(iterator, new AutoCloseableCollection(variantSources)); // close FeatureDataSource at end of iteration
+            return new CloseAtEndIterator<>(iterator, new AutoCloseableCollection<>(variantSources)); // close FeatureDataSource at end of iteration
         });
     }
 

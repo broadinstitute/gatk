@@ -79,6 +79,10 @@ public class UserException extends RuntimeException {
             super(String.format("Couldn't read file %s. Error was: %s", file.toAbsolutePath().toUri(), message), cause);
         }
 
+        public CouldNotReadInputFile(String source, String message, Throwable cause) {
+            super(String.format("Couldn't read file %s. Error was: %s", source, message), cause);
+        }
+
         public CouldNotReadInputFile(String file, String message) {
             super(String.format("Couldn't read file %s. Error was: %s", file, message));
         }
@@ -337,9 +341,13 @@ public class UserException extends RuntimeException {
 
     public static class MissingContigInSequenceDictionary extends UserException {
         private static final long serialVersionUID = 1L;
-        public MissingContigInSequenceDictionary(String contigName, SAMSequenceDictionary dict1) {
-            super(String.format("Contig %s not present in the sequence dictionary %s\n",
-                    contigName, ReadUtils.prettyPrintSequenceRecords(dict1)));
+        public MissingContigInSequenceDictionary(String message){
+            super(message);
+        }
+
+        public MissingContigInSequenceDictionary(String contigName, SAMSequenceDictionary dict) {
+            this(String.format("Contig %s not present in the sequence dictionary %s\n",
+                    contigName, ReadUtils.prettyPrintSequenceRecords(dict)));
         }
     }
 

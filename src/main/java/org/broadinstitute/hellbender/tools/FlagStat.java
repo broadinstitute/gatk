@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.tools;
 
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalTextOutputArgumentCollection;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -14,7 +17,7 @@ import java.text.NumberFormat;
 
 /**
  * Accumulate flag statistics given a BAM file, e.g. total number of reads with QC failure flag set, number of
- * duplicates, percentage mapped etc.
+ * duplicates, percentage mapped etc. and output summary to standard output (and optionally to a file.)
  *
  * <h3>Input</h3>
  * <ul>
@@ -32,16 +35,20 @@ import java.text.NumberFormat;
  *     -I input.bam
  * </pre>
  */
-@DocumentedFeature
 @CommandLineProgramProperties(
-	summary = "Accumulate flag statistics given a BAM file, e.g. total number of reads with QC failure flag set, " +
-            "number of duplicates, percentage mapped etc.",
+	summary = "Accumulate flag statistics given a BAM file, e.g. total number of reads with QC failure flag set, number of\n" +
+            "duplicates, percentage mapped etc. and output summary to standard output (and optionally to a file).",
 	oneLineSummary = "Accumulate flag statistics given a BAM file",
     programGroup = DiagnosticsAndQCProgramGroup.class
 )
+@DocumentedFeature
+@WorkflowProperties
 public final class FlagStat extends ReadWalker {
 
     private final FlagStatus sum = new FlagStatus();
+
+    @ArgumentCollection
+    final public OptionalTextOutputArgumentCollection out = new OptionalTextOutputArgumentCollection();
 
     @Override
     public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
@@ -50,6 +57,7 @@ public final class FlagStat extends ReadWalker {
 
     @Override
     public Object onTraversalSuccess() {
+        out.print(sum);
         return sum;
     }
 

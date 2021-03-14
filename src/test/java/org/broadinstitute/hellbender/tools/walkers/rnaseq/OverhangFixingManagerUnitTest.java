@@ -202,6 +202,20 @@ public final class OverhangFixingManagerUnitTest extends GATKBaseTest {
     }
 
     @Test
+    // Test asserting that the failure found in https://github.com/broadinstitute/gatk/issues/6776 has been fixed
+    public void testIncidentalMatchFromReportedFailure() {
+        GATKRead read1 = ArtificialReadUtils.createArtificialRead(hg19Header, "RR.6123", 1, 3500, 100);
+        read1.setIsFirstOfPair();
+        GATKRead read2 = ArtificialReadUtils.createArtificialUnmappedRead(hg19Header, new byte[]{(byte)'A'}, new byte[]{(byte)'A'});
+        read2.setName("RR.6123135");
+        read2.setIsSecondOfPair();
+
+        // Asserting that in the case of reads that end with widely ranged numbers it is no longer possible to incidentally overlap in key generation
+        Assert.assertNotEquals( OverhangFixingManager.makeKey(read1.getName(), read1.isFirstOfPair(), read1.getStart()),
+                                OverhangFixingManager.makeKey(read2.getName(), read2.isFirstOfPair(), read2.getStart()));
+    }
+
+    @Test
     public void testMappingReadMateRepairNoMCTag() {
         final OverhangFixingManager manager = new OverhangFixingManagerAlwaysSplit10000Reads(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false, false);
         GATKRead read1a = ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 1, 10000, "AAAAAA".getBytes(), "AAAAAA".getBytes(), "6M");

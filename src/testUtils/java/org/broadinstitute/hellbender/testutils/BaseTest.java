@@ -4,6 +4,7 @@ import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.Main;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
@@ -191,6 +192,14 @@ public abstract class BaseTest {
     }
 
     /**
+     * @param fileName the name of a file
+     * @return a File resolved using getToolTestDataDir as the parent and fileName
+     */
+    public GATKPath getTestFileGATKPath(String fileName) {
+        return new GATKPath(String.format("%s/%s", getToolTestDataDir(), fileName));
+    }
+
+    /**
      * Simple generic utility class to creating TestNG data providers:
      *
      * 1: inherit this class, as in
@@ -296,7 +305,17 @@ public abstract class BaseTest {
      * @return Path object representing a file that is guaranteed not to exist
      */
     public static Path getSafeNonExistentPath(final String fileNameWithExtension) {
-        return getSafeNonExistentFile(fileNameWithExtension).toPath();
+        return getSafeNonExistentGATKPath(fileNameWithExtension).toPath();
+    }
+
+    /**
+     * Return a GATKPath object representing a file with the given name and extension that is guaranteed not to exist.
+     * @param fileNameWithExtension
+     * @return Path object representing a file that is guaranteed not to exist
+     */
+    public static GATKPath getSafeNonExistentGATKPath(final String fileNameWithExtension) {
+        final File tempDir = createTempDir("nonExistentFileHolder");
+        return new GATKPath(String.format("%s/%s", tempDir.getAbsolutePath(), fileNameWithExtension));
     }
 
     /**
@@ -367,6 +386,14 @@ public abstract class BaseTest {
                     + " not within tolerance " + tolerance
                     + (message == null ? "" : "message: " + message));
         }
+    }
+
+    public static void assertEqualsIntSmart(final int actual, final int expected, final int tolerance, final String message) {
+        final double delta = Math.abs(actual - expected);
+        final double ratio = Math.abs(actual / expected - 1.0);
+        Assert.assertTrue(delta < tolerance || ratio < tolerance, "expected = " + expected + " actual = " + actual
+                + " not within tolerance " + tolerance
+                + (message == null ? "" : "message: " + message));
     }
 
 

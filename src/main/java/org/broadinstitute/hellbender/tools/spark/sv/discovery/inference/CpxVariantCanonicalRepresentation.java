@@ -75,7 +75,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConsta
  * </ul>
  */
 @DefaultSerializer(CpxVariantCanonicalRepresentation.Serializer.class)
-final class CpxVariantCanonicalRepresentation {
+public final class CpxVariantCanonicalRepresentation {
 
     // used for indicating a part of the assembly contig is uncovered by any (high quality) mappings.
     public static final String UNMAPPED_INSERTION = "UINS";

@@ -5,6 +5,6 @@ if [ ! -d $HOME/gcloud/google-cloud-sdk ]; then
     wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz --directory-prefix=$HOME/gcloud &&
     cd $HOME/gcloud &&
     tar xzf google-cloud-sdk.tar.gz &&
-    printf '\ny\n\ny\ny\n' | ./google-cloud-sdk/install.sh &&
+    ./google-cloud-sdk/install.sh --quiet --path-update true &&
     cd $TRAVIS_BUILD_DIR;
 fi

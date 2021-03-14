@@ -47,10 +47,13 @@ public final class FragmentUtils {
         final Pair<Integer, CigarOperator> offsetAndOperator = ReadUtils.getReadIndexForReferenceCoordinate(firstRead, secondRead.getStart());
         final CigarOperator operator = offsetAndOperator.getRight();
         final int offset = offsetAndOperator.getLeft();
-        if (offset == ReadUtils.READ_INDEX_NOT_FOUND) { // no overlap
+        if (offset == ReadUtils.READ_INDEX_NOT_FOUND || operator.isClipping()) { // no overlap or only overlap in clipped region
             return;
         }
 
+        // Compute the final aligned base indexes for both since there might be right base softclips
+        final int firstReadEndBase = ReadUtils.getReadIndexForReferenceCoordinate(firstRead, firstRead.getEnd()).getLeft();
+        final int secondReadEndBase = ReadUtils.getReadIndexForReferenceCoordinate(secondRead, secondRead.getEnd()).getLeft();
 
         // TODO: we should be careful about the case where {@code operator} is a deletion; that is, when the second read start falls in a deletion of the first read
         // TODO: however, the issue is bigger than simply getting the start correctly, because the code below assumes that all bases of both reads are aligned in their overlap.
@@ -58,7 +61,8 @@ public final class FragmentUtils {
         // TODO: in their overlap and correct the double-counting for all aligned bases.
         // TODO: a cheaper solution would be to cap all quals in the overlap region by half of the PCR qual.
         final int firstReadStop = offset;
-        final int numOverlappingBases = Math.min(firstRead.getLength() - firstReadStop, secondRead.getLength());
+        final int secondOffset = ReadUtils.getReadIndexForReferenceCoordinate(secondRead, secondRead.getStart()).getLeft(); //This operation handles softclipped bases in the qual/base array
+        final int numOverlappingBases = Math.min(firstReadEndBase - firstReadStop, secondReadEndBase - secondOffset) + 1; // Add 1 here because if R1 ends on the same base that R2 starts then there is 1 base of overlap not 0
 
         final byte[] firstReadBases = firstRead.getBases();
         final byte[] firstReadQuals = firstRead.getBaseQualities();
@@ -70,19 +74,20 @@ public final class FragmentUtils {
         for (int i = 0; i < numOverlappingBases; i++) {
 
             final int firstReadIndex = firstReadStop + i;
+            final int secondReadIndex = secondOffset + i;
             final byte firstReadBase = firstReadBases[firstReadIndex];
-            final byte secondReadBase = secondReadBases[i];
+            final byte secondReadBase = secondReadBases[secondReadIndex];
 
             if (firstReadBase == secondReadBase) {
                 firstReadQuals[firstReadIndex] = (byte) Math.min(firstReadQuals[firstReadIndex], halfOfPcrErrorQual);
-                secondReadQuals[i] = (byte) Math.min(secondReadQuals[i], halfOfPcrErrorQual);
+                secondReadQuals[secondReadIndex] = (byte) Math.min(secondReadQuals[secondReadIndex], halfOfPcrErrorQual);
             } else if (setConflictingToZero) {
                 // If downstream processing forces read pairs to support the same haplotype, setConflictingToZero should be false
                 // because the original base qualities of conflicting bases, when pegged to the same haplotype, will
                 // automatically weaken the strength of one another's evidence.  Furthermore, if one base if low quality
                 // and one is high it will essentially ignore the low quality base without compromising the high-quality base
                 firstReadQuals[firstReadIndex] = 0;
-                secondReadQuals[i] = 0;
+                secondReadQuals[secondReadIndex] = 0;
             }
         }
         firstRead.setBaseQualities(firstReadQuals);
@@ -91,16 +96,17 @@ public final class FragmentUtils {
         if (halfOfPcrIndelQual.isPresent()) {
             final int maxIndelQual = halfOfPcrIndelQual.getAsInt();
             final byte[] firstReadInsertionQuals = ReadUtils.getBaseInsertionQualities(firstRead);
-            final byte[] firstReadDeletionQuals = ReadUtils.getBaseInsertionQualities(firstRead);
+            final byte[] firstReadDeletionQuals = ReadUtils.getBaseDeletionQualities(firstRead);
             final byte[] secondReadInsertionQuals = ReadUtils.getBaseInsertionQualities(secondRead);
-            final byte[] secondReadDeletionQuals = ReadUtils.getBaseInsertionQualities(secondRead);
+            final byte[] secondReadDeletionQuals = ReadUtils.getBaseDeletionQualities(secondRead);
 
             for (int i = 0; i < numOverlappingBases; i++) {
                 final int firstReadIndex = firstReadStop + i;
+                final int secondReadIndex = secondOffset + i;
                 firstReadDeletionQuals[firstReadIndex] = (byte) Math.min(firstReadDeletionQuals[firstReadIndex], maxIndelQual);
                 firstReadInsertionQuals[firstReadIndex] = (byte) Math.min(firstReadInsertionQuals[firstReadIndex], maxIndelQual);
-                secondReadDeletionQuals[i] = (byte) Math.min(secondReadDeletionQuals[i], maxIndelQual);
-                secondReadInsertionQuals[i] = (byte) Math.min(secondReadInsertionQuals[i], maxIndelQual);
+                secondReadDeletionQuals[secondReadIndex] = (byte) Math.min(secondReadDeletionQuals[secondReadIndex], maxIndelQual);
+                secondReadInsertionQuals[secondReadIndex] = (byte) Math.min(secondReadInsertionQuals[secondReadIndex], maxIndelQual);
             }
 
             ReadUtils.setDeletionBaseQualities(firstRead, firstReadDeletionQuals);

@@ -54,6 +54,19 @@ group.add_argument("--sample_index",
                    default=argparse.SUPPRESS,
                    help="Sample index to process")
 
+# add optional args
+opt_group = parser.add_argument_group(title="Optional arguments")
+
+opt_group.add_argument("--intervals_vcf",
+                       type=str,
+                       required=False,
+                       help="VCF with combined intervals and calls for each sample")
+
+opt_group.add_argument("--clustered_vcf",
+                       type=str,
+                       required=False,
+                       help="VCF with clustered breakpoints and calls for each sample")
+
 if __name__ == "__main__":
 
     # parse arguments
@@ -75,5 +88,6 @@ if __name__ == "__main__":
     logger.debug("Calls shards path(s): {0}".format(repr(args.model_shards)))
 
     viterbi_engine = gcnvkernel.ViterbiSegmentationEngine(
-        args.model_shards, args.calls_shards, sample_metadata_collection, args.sample_index, args.output_path)
+        args.model_shards, args.calls_shards, sample_metadata_collection, args.sample_index, args.output_path,
+        args.intervals_vcf, args.clustered_vcf)
     viterbi_engine.write_copy_number_segments()

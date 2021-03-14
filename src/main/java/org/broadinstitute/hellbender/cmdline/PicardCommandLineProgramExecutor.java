@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.cmdline;
 
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.SpecialArgumentsCollection;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.PicardNonZeroExitException;
 
@@ -15,6 +18,15 @@ public class PicardCommandLineProgramExecutor extends CommandLineProgram {
 
     public PicardCommandLineProgramExecutor(final picard.cmdline.CommandLineProgram picardCommandLineProgram) {
         this.picardCommandLineProgram = picardCommandLineProgram;
+    }
+
+    /**
+     * Validate command line arguments.
+     * @return true if program args are valid, otherwise false
+     * @throws CommandLineException if command line argument validation fails
+     */
+    protected boolean validateArgs(final String[] argv) {
+        return picardCommandLineProgram.getCommandLineParser().parseArguments(System.out, argv);
     }
 
     /**

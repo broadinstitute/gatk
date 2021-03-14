@@ -12,6 +12,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -155,13 +156,13 @@ public final class AlleleLikelihoodsUnitTest {
         }
     }
 
-    private AlleleLikelihoods<GATKRead, Allele> makeGoodAndBadLikelihoods(String[] samples, Allele[] alleles, Map<String, List<GATKRead>> reads) {
+    private AlleleLikelihoods<GATKRead, Allele> makeGoodAndBadLikelihoods(String[] samples, Allele[] alleles, Map<String, List<GATKRead>> reads, Predicate<Integer> readsToSkip) {
         final AlleleLikelihoods<GATKRead, Allele> original = new AlleleLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
 
         for (int s = 0; s < samples.length; s++) {
             final int sampleReadCount = original.sampleEvidenceCount(s);
             for (int r = 0; r < sampleReadCount; r++) {
-                if ((r & 1) == 0) continue;
+                if (readsToSkip.test(r)) continue;
                 for (int a = 0; a < alleles.length; a++)
                     original.sampleMatrix(s).set(a,r,-10000);
             }
@@ -171,9 +172,9 @@ public final class AlleleLikelihoodsUnitTest {
 
     @Test(dataProvider = "dataSets")
     public void testFilterPoorlyModeledReads(final String[] samples, final Allele[] alleles, final Map<String,List<GATKRead>> reads) {
-        final AlleleLikelihoods<GATKRead, Allele> original = makeGoodAndBadLikelihoods(samples, alleles, reads);
+        final AlleleLikelihoods<GATKRead, Allele> original = makeGoodAndBadLikelihoods(samples, alleles, reads, r -> (r & 1) == 0); // even reads are skipped
 
-        final AlleleLikelihoods<GATKRead, Allele> result = makeGoodAndBadLikelihoods(samples, alleles, reads);
+        final AlleleLikelihoods<GATKRead, Allele> result = makeGoodAndBadLikelihoods(samples, alleles, reads, r -> (r & 1) == 0); // even reads are skipped
 
         checkEvidenceToIndexMapIsCorrect(result);
 
@@ -185,6 +186,7 @@ public final class AlleleLikelihoodsUnitTest {
             final int oldSampleReadCount = original.sampleEvidenceCount(s);
             final int newSampleReadCount = result.sampleEvidenceCount(s);
             Assert.assertEquals(newSampleReadCount, (oldSampleReadCount + 1) / 2);
+            Assert.assertEquals(newSampleReadCount + result.filteredEvidenceBySampleIndex.get(s).size(), oldSampleReadCount); // assert the correct number of reads were saved int the filtered pool
             final LikelihoodMatrix<GATKRead, Allele> newSampleMatrix = result.sampleMatrix(s);
             final LikelihoodMatrix<GATKRead, Allele> oldSampleMatrix = original.sampleMatrix(s);
             for (int r = 0 ; r < newSampleReadCount; r++) {
@@ -222,7 +224,43 @@ public final class AlleleLikelihoodsUnitTest {
         testLikelihoodMatrixQueries(samples,result,newLikelihoods);
     }
 
+    // This test asserts that when we call filterPoorlyModeledEvidence -> retainEvidence that the filtered reads have had the
+    // predicate applied to them as well.
     @Test(dataProvider = "dataSets")
+    public void testFilterReadToOverlap(final String[] samples, final Allele[] alleles, final Map<String,List<GATKRead>> reads) {
+        final AlleleLikelihoods<GATKRead, Allele> original = makeGoodAndBadLikelihoods(samples, alleles, reads, r -> (r & 2) == 0); // alternate skipping in blocks of 2
+
+        final AlleleLikelihoods<GATKRead, Allele> result = makeGoodAndBadLikelihoods(samples, alleles, reads, r -> (r & 2) == 0); // alternate skipping in blocks of 2
+
+        final SimpleInterval evenReadOverlap = new SimpleInterval(SAM_HEADER.getSequenceDictionary().getSequences().get(0).getSequenceName(), EVEN_READ_START, EVEN_READ_START);
+
+        result.filterPoorlyModeledEvidence(read -> -100);
+
+        checkEvidenceToIndexMapIsCorrect(result);
+        result.retainEvidence(evenReadOverlap::overlaps);
+        checkEvidenceToIndexMapIsCorrect(result);
+
+        final double[][][] newLikelihoods = new double[samples.length][alleles.length][];
+        for (int s = 0; s < samples.length ; s++) {
+            Assert.assertEquals(result.sampleEvidenceCount(s) + result.filteredEvidenceBySampleIndex.get(s).size(),(original.sampleEvidenceCount(s) + 1) / 2);
+
+            for (int a = 0; a < alleles.length; a++) {
+                newLikelihoods[s][a] = new double[(((original.sampleEvidenceCount(s) + 1) / 2) + 1) / 2];
+                final LikelihoodMatrix<GATKRead, Allele> sampleMatrix = original.sampleMatrix(s);
+                for (int r = 0; r < newLikelihoods[s][a].length; r++) {
+                    if (r % 2 == 0) {
+                        Assert.assertEquals(result.evidenceIndex(s, sampleMatrix.getEvidence(r << 2)), r);
+                        newLikelihoods[s][a][r] = sampleMatrix.get(a, r << 2);
+                    } else {
+                        Assert.assertEquals(result.evidenceIndex(s, sampleMatrix.getEvidence(r << 1)), -1);
+                    }
+                }
+            }
+        }
+        testLikelihoodMatrixQueries(samples,result,newLikelihoods);
+    }
+
+        @Test(dataProvider = "dataSets")
     public void testContaminationDownsamplingDoesntDoBadThingsToEvidenceToIndexCache(final String[] samples, final Allele[] alleles, final Map<String,List<GATKRead>> reads) {
         final AlleleLikelihoods<GATKRead, Allele> original = new AlleleLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
         final AlleleLikelihoods<GATKRead, Allele> result = new AlleleLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
@@ -297,7 +335,7 @@ public final class AlleleLikelihoodsUnitTest {
         final AlleleLikelihoods<GATKRead, Allele> result = new AlleleLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
         final double[][][] originalLikelihoods = fillWithRandomLikelihoods(samples,alleles,original, result);
 
-        result.normalizeLikelihoods(- 0.001);
+        result.normalizeLikelihoods(- 0.001, true);
         testAlleleQueries(alleles,result);
         final int numberOfAlleles = alleles.length;
         final double[][][] newLikelihoods = new double[originalLikelihoods.length][alleles.length][];

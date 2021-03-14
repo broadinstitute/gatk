@@ -1,13 +1,13 @@
 version 1.0
 
 <#--- Store positional args in a WDL arg called "positionalArgs"--->
-<#assign positionalArgs="positionalArgs"/>
+<#assign positionalArgs="--positionalArgs"/>
 <#if beta?? && beta == true>
-# Run ${name} (**BETA**) (WDL auto generated from: GATK Version ${version})
+# Run ${name} (**BETA**) (WDL auto generated from GATK Version ${version})
 <#elseif experimental?? && experimental == true>
-# Run ${name} **EXPERIMENTAL** ${name} (WDL auto generated from: GATK Version ${version})
+# Run ${name} **EXPERIMENTAL** ${name} (WDL auto generated from GATK Version ${version})
 <#else>
-# Run ${name} (WDL auto generated from: GATK Version ${version})
+# Run ${name} (WDL auto generated from GATK Version ${version})
 </#if>
 #
 # ${summary}
@@ -90,6 +90,20 @@ workflow ${name} {
   output {
     <@defineWorkflowOutputs heading="Workflow Outputs" outputs=runtimeOutputs/>
   }
+
+  parameter_meta {
+    dockerImage: { description: "Docker image for this task" }
+    gatk: { description: "Location of gatk to run for this task" }
+    memoryRequirements: { description: "Runtime memory requirements for this task" }
+    diskRequirements: { description: "Runtime disk requirements for this task" }
+    cpuRequirements: { description: "Runtime CPU count for this task" }
+    preemptibleRequirements: { description: "Runtime preemptible count for this task" }
+    bootdisksizegbRequirements: { description: "Runtime boot disk size for this task" }
+    <@defineParamMeta heading="Positional Arguments" argsToUse=arguments.positional/>
+    <@defineParamMeta heading="Required Arguments" argsToUse=arguments.required/>
+    <@defineParamMeta heading="Optional Tool Arguments" argsToUse=arguments.optional/>
+    <@defineParamMeta heading="Optional Common Arguments" argsToUse=arguments.common/>
+  }
 }
 
 task ${name} {
@@ -118,7 +132,7 @@ task ${name} {
 
   >>>
 
-  <#if runtimeProperties?? && runtimeProperties?size != 0>
+  <#if workflowProperties?? && workflowProperties?size != 0>
   runtime {
       docker: dockerImage
       memory: memoryRequirements
@@ -132,7 +146,21 @@ task ${name} {
   output {
     <@defineTaskOutputs heading="Task Outputs" outputs=runtimeOutputs/>
   }
- }
+
+  parameter_meta {
+    dockerImage: { description: "Docker image for this task" }
+    gatk: { description: "Location of gatk to run for this task" }
+    memoryRequirements: { description: "Runtime memory requirements for this task" }
+    diskRequirements: { description: "Runtime disk requirements for this task" }
+    cpuRequirements: { description: "Runtime CPU count for this task" }
+    preemptibleRequirements: { description: "Runtime preemptible count for this task" }
+    bootdisksizegbRequirements: { description: "Runtime boot disk size for this task" }
+    <@defineParamMeta heading="Positional Arguments" argsToUse=arguments.positional/>
+    <@defineParamMeta heading="Required Arguments" argsToUse=arguments.required/>
+    <@defineParamMeta heading="Optional Tool Arguments" argsToUse=arguments.optional/>
+    <@defineParamMeta heading="Optional Common Arguments" argsToUse=arguments.common/>
+  }
+}
 
 <#--------------------------------------->
 <#-- Macros -->
@@ -142,17 +170,104 @@ task ${name} {
 #  ${heading}
         <#list argsToUse as arg>
             <#if heading?starts_with("Positional")>
-#    ${positionalArgs?right_pad(50)} ${arg.summary?right_pad(60)[0..*80]}
-                <#if companionResources?? && companionResources[positionalArgs]??>
-                    <#list companionResources[positionalArgs] as companion>
-#    ${companion.name?substring(2)?right_pad(50)} ${arg.summary?right_pad(60)[0..*80]}
+#    ${positionalArgs?substring(2)?right_pad(50)} ${arg.summary?right_pad(60)[0..*80]}
+                <#if requiredCompanions?? && requiredCompanions[positionalArgs]??>
+                    <#list requiredCompanions[positionalArgs] as companion>
+#    ${companion.name?substring(2)?right_pad(50)} ${companion.summary?right_pad(60)[0..*80]}
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[positionalArgs]??>
+                    <#list optionalCompanions[positionalArgs] as companion>
+#    ${companion.name?substring(2)?right_pad(50)} Optional ${companion.summary?right_pad(60)[0..*80]}
                     </#list>
                 </#if>
             <#else>
 #    ${arg.name?substring(2)?right_pad(50)} ${arg.summary?right_pad(60)[0..*80]}
-                <#if companionResources?? && companionResources[arg.name]??>
-                    <#list companionResources[arg.name] as companion>
-#    ${companion.name?substring(2)?right_pad(50)} ${arg.summary?right_pad(60)[0..*80]}
+                <#if requiredCompanions?? && requiredCompanions[arg.name]??>
+                    <#list requiredCompanions[arg.name] as companion>
+#    ${companion.name?substring(2)?right_pad(50)} ${companion.summary?right_pad(60)[0..*80]}
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+                    <#list optionalCompanions[arg.name] as companion>
+#    ${companion.name?substring(2)?right_pad(50)} Optional ${companion.summary?right_pad(60)[0..*80]}
+                    </#list>
+                </#if>
+            </#if>
+        </#list>
+    </#if>
+</#macro>
+
+
+<#macro defineParamMeta heading argsToUse>
+    <#if argsToUse?size != 0>
+
+    # ${heading}
+        <#list argsToUse as arg>
+            <#if heading?starts_with("Positional")>
+                <#if localizationOptional?seq_contains(positionalArgs)>
+    ${positionalArgs?substring(2)}<#noparse>: {
+      description: "</#noparse>${arg.summary[0..*80]}<#noparse>",</#noparse>
+      localization_optional : true <#noparse>
+    }</#noparse>
+                <#else>
+    ${positionalArgs?substring(2)}<#noparse>: { description: "</#noparse>${arg.summary[0..*80]}<#noparse>" }</#noparse>
+                </#if>
+                <#if requiredCompanions?? && requiredCompanions[positionalArgs]??>
+                    <#list requiredCompanions[positionalArgs] as companion>
+                        <#if localizationOptional?seq_contains(positionalArgs)>
+    ${companion.name?substring(2)}<#noparse>: {
+      description: "</#noparse>${companion.summary[0..*80]}<#noparse>",</#noparse>
+      localization_optional : true <#noparse>
+    }</#noparse>
+                        <#else>
+    ${companion.name?substring(2)}<#noparse>: { description: "</#noparse>${companion.summary[0..*80]}<#noparse>" }</#noparse>
+                        </#if>
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[positionalArgs]??>
+                    <#list optionalCompanions[positionalArgs] as companion>
+                        <#if localizationOptional?seq_contains(positionalArgs)>
+    ${companion.name?substring(2)}<#noparse>: {
+      description: "</#noparse>${arg.summary[0..*80]}<#noparse>",</#noparse>
+      localization_optional : true <#noparse>
+    }</#noparse>
+                        <#else>
+    ${companion.name?substring(2)}<#noparse>: { description: "</#noparse>${companion.summary(60)[0..*80]}<#noparse>" }</#noparse>
+                        </#if>
+                    </#list>
+                </#if>
+            <#else>
+                <#if localizationOptional?seq_contains(arg.name)>
+    ${arg.name?substring(2)}<#noparse>: {
+      description: "</#noparse>${arg.summary[0..*80]}<#noparse>",</#noparse>
+      localization_optional : true <#noparse>
+    }</#noparse>
+                <#else>
+    ${arg.name?substring(2)}<#noparse>: { description: "</#noparse>${arg.summary[0..*80]}<#noparse>" }</#noparse>
+                </#if>
+                <#if requiredCompanions?? && requiredCompanions[arg.name]??>
+                    <#list requiredCompanions[arg.name] as companion>
+                        <#if localizationOptional?seq_contains(companion.name)>
+    ${companion.name?substring(2)}<#noparse>: {
+      description: "</#noparse>${companion.summary[0..*80]}<#noparse>",</#noparse>
+      localization_optional : true <#noparse>
+    }</#noparse>
+                        <#else>
+    ${companion.name?substring(2)}<#noparse>: { description: "</#noparse>${companion.summary[0..*80]}<#noparse>" }</#noparse>
+                        </#if>
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+                    <#list optionalCompanions[arg.name] as companion>
+                        <#if localizationOptional?seq_contains(companion.name)>
+    ${companion.name?substring(2)}<#noparse>: {
+      description: "</#noparse>${companion.summary[0..*80]}<#noparse>",</#noparse>
+      localization_optional : true <#noparse>
+    }</#noparse>
+                        <#else>
+    ${companion.name?substring(2)}<#noparse>: { description: "</#noparse>${companion.summary[0..*80]}<#noparse>" }</#noparse>
+                        </#if>
                     </#list>
                 </#if>
             </#if>
@@ -166,17 +281,27 @@ task ${name} {
     # ${heading}
         <#list argsToUse as arg>
             <#if heading?starts_with("Positional")>
-    ${arg.wdlinputtype} ${positionalArgs}
-                <#if companionResources?? && companionResources[positionalArgs]??>
-                    <#list companionResources[positionalArgs] as companion>
+    ${arg.wdlinputtype} ${positionalArgs?substring(2)}
+                <#if requiredCompanions?? && requiredCompanions[positionalArgs]??>
+                    <#list requiredCompanions[positionalArgs] as companion>
     ${arg.wdlinputtype} ${companion.name?substring(2)}
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[positionalArgs]??>
+                    <#list optionalCompanions[positionalArgs] as companion>
+    ${arg.wdlinputtype}? ${companion.name?substring(2)}
                     </#list>
                 </#if>
             <#else>
     ${arg.wdlinputtype}<#if !heading?starts_with("Required")>?</#if> ${arg.name?substring(2)}
-                <#if companionResources?? && companionResources[arg.name]??>
-                    <#list companionResources[arg.name] as companion>
-    ${arg.wdlinputtype}<#if !heading?starts_with("Required")>?</#if> ${companion.name?substring(2)}
+                <#if requiredCompanions?? && requiredCompanions[arg.name]??>
+                    <#list requiredCompanions[arg.name] as companion>
+    ${arg.wdlinputtype} ${companion.name?substring(2)}
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+                    <#list optionalCompanions[arg.name] as companion>
+    ${arg.wdlinputtype}? ${companion.name?substring(2)}
                     </#list>
                 </#if>
             </#if>
@@ -190,16 +315,26 @@ task ${name} {
         # ${heading}
         <#list argsToUse as arg>
             <#if heading?starts_with("Positional")>
-        ${positionalArgs?right_pad(50)} = ${positionalArgs},
-                <#if companionResources?? && companionResources[positionalArgs]??>
-                    <#list companionResources[positionalArgs] as companion>
+        ${positionalArgs?substring(2)?right_pad(50)} = ${positionalArgs?substring(2)},
+                <#if requiredCompanions?? && requiredCompanions[positionalArgs]??>
+                    <#list requiredCompanions[positionalArgs] as companion>
+        ${companion.name?substring(2)?right_pad(50)} = ${companion.name?substring(2)},
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[positionalArgs]??>
+                    <#list optionalCompanions[positionalArgs] as companion>
         ${companion.name?substring(2)?right_pad(50)} = ${companion.name?substring(2)},
                     </#list>
                 </#if>
             <#else>
         ${arg.name?substring(2)?right_pad(50)} = ${arg.name?substring(2)},
-                <#if companionResources?? && companionResources[arg.name]??>
-                    <#list companionResources[arg.name] as companion>
+                <#if requiredCompanions?? && requiredCompanions[arg.name]??>
+                    <#list requiredCompanions[arg.name] as companion>
+        ${companion.name?substring(2)?right_pad(50)} = ${companion.name?substring(2)},
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+                    <#list optionalCompanions[arg.name] as companion>
         ${companion.name?substring(2)?right_pad(50)} = ${companion.name?substring(2)},
                     </#list>
                 </#if>
@@ -212,17 +347,27 @@ task ${name} {
     <#if argsToUse?size != 0>
         <#list argsToUse as arg>
             <#if heading?starts_with("Positional")>
-    ${arg.wdlinputtype} ${positionalArgs}
-                <#if companionResources?? && companionResources[arg.name]??>
-                    <#list companionResources[positionalArgs] as companion>
+    ${arg.wdlinputtype} ${positionalArgs?substring(2)}
+                <#if requiredCompanions?? && requiredCompanions[arg.name]??>
+                    <#list requiredCompanions[positionalArgs] as companion>
     ${arg.wdlinputtype} Positional_${companion.name?substring(2)}
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+                    <#list optionalCompanions[positionalArgs] as companion>
+    ${arg.wdlinputtype}? Positional_${companion.name?substring(2)}
                     </#list>
                 </#if>
             <#else>
     ${arg.wdlinputtype}<#if !heading?starts_with("Required")>?</#if> ${arg.name?substring(2)}
-                <#if companionResources?? && companionResources[arg.name]??>
-                    <#list companionResources[arg.name] as companion>
-    ${arg.wdlinputtype}<#if !heading?starts_with("Required")>?</#if> ${companion.name?substring(2)}
+                <#if requiredCompanions?? && requiredCompanions[arg.name]??>
+                    <#list requiredCompanions[arg.name] as companion>
+    ${arg.wdlinputtype} ${companion.name?substring(2)}
+                    </#list>
+                </#if>
+                <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+                    <#list optionalCompanions[arg.name] as companion>
+    ${arg.wdlinputtype}? ${companion.name?substring(2)}
                     </#list>
                 </#if>
             </#if>
@@ -235,12 +380,11 @@ task ${name} {
     <#if outputs?size == 0>
     File ${name}results = ${name}.${name}_results
     <#else>
-        <#list outputs as outputName, outputType>
-    ${outputType} ${name}${outputName?substring(2)} = ${name}.${name}_${outputName?substring(2)}
-            <#if companionResources?? && companionResources[outputName]??>
-                <#list companionResources[outputName] as companion>
-    ${companion.type} ${name}${companion.name?substring(2)} = ${name}.${name}_${companion.name?substring(2)}
-                </#list>
+        <#list outputs?keys as key>
+            <#if requiredOutputs[key]??>
+    ${outputs[key]} ${name}${key?substring(2)} = ${name}.${name}_${key?substring(2)}
+            <#else>
+    ${outputs[key]}? ${name}${key?substring(2)} = ${name}.${name}_${key?substring(2)}
             </#if>
         </#list>
     </#if>
@@ -251,12 +395,11 @@ task ${name} {
     <#if outputs?size == 0>
     File ${name}_results = stdout()
     <#else>
-        <#list outputs as outputName, outputType>
-    ${outputType} ${name}_${outputName?substring(2)} = <#noparse>"${</#noparse>${outputName?substring(2)}<#noparse>}"</#noparse>
-            <#if companionResources?? && companionResources[outputName]??>
-                <#list companionResources[outputName] as companion>
-    ${companion.type} ${name}_${companion.name?substring(2)} = <#noparse>"${</#noparse>${companion.name?substring(2)}<#noparse>}"</#noparse>
-                </#list>
+        <#list outputs?keys as key>
+            <#if requiredOutputs[key]??>
+    ${outputs[key]} ${name}_${key?substring(2)} = ${key?substring(2)}
+            <#else>
+    ${outputs[key]}? ${name}_${key?substring(2)} = ${key?substring(2)}
             </#if>
         </#list>
     </#if>
@@ -266,7 +409,7 @@ task ${name} {
     <#if argsToUse?size != 0>
         <#list argsToUse as arg>
             <#if heading?starts_with("Positional")>
-    <#noparse>~{sep=' ' </#noparse>${positionalArgs}<#noparse>}</#noparse> \
+    <#noparse>~{sep=' ' </#noparse>${positionalArgs?substring(2)}<#noparse>}</#noparse> \
             <#elseif heading?starts_with("Required")>
     ${arg.actualArgName} <#noparse>~{sep=' </#noparse>${arg.actualArgName} <#noparse>' </#noparse>${arg.name?substring(2)}<#noparse>}</#noparse> \
             <#else>

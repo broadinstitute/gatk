@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
@@ -15,7 +16,6 @@ import org.broadinstitute.hellbender.utils.samples.MendelianViolation;
 import org.broadinstitute.hellbender.utils.samples.Trio;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.io.File;
 import java.util.*;
 
 /**
@@ -34,7 +34,7 @@ import java.util.*;
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Existence of a de novo mutation in at least one of the given families (hiConfDeNovo, loConfDeNovo)")
-public final class PossibleDeNovo extends PedigreeAnnotation {
+public final class PossibleDeNovo extends PedigreeAnnotation implements InfoFieldAnnotation {
     protected final Logger warning = LogManager.getLogger(this.getClass());
     private final MendelianViolation mendelianViolation;
     private Set<Trio> trios;
@@ -46,7 +46,7 @@ public final class PossibleDeNovo extends PedigreeAnnotation {
         mendelianViolation = new MendelianViolation(minGenotypeQualityP);
     }
 
-    public PossibleDeNovo(final File pedigreeFile){
+    public PossibleDeNovo(final GATKPath pedigreeFile){
         super(pedigreeFile);
         mendelianViolation = new MendelianViolation(DEFAULT_MIN_GENOTYPE_QUALITY_P);
     }
@@ -57,7 +57,7 @@ public final class PossibleDeNovo extends PedigreeAnnotation {
     }
 
     @Override
-    void validateArguments(Collection<String> founderIds, File pedigreeFile) {
+    void validateArguments(Collection<String> founderIds, GATKPath pedigreeFile) {
         if (pedigreeFile == null) {
             if ((founderIds != null && !founderIds.isEmpty())) {
                 warning.warn("PossibleDenovo annotation will not be calculated, must provide a valid PED file (-ped). Founder-id arguments cannot be used for this annotation");

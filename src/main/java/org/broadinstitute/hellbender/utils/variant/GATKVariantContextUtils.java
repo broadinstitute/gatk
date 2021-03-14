@@ -11,13 +11,14 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -161,7 +162,7 @@ public final class GATKVariantContextUtils {
         if (ref1.equals(ref2)) {
             return altList.contains(alt1);
         } else {
-            commonRef = determineReferenceAllele(ref1, ref2);
+                commonRef = determineReferenceAllele(ref1, ref2);
         }
         final Map<Allele, Allele> alleleMap;
         if (ref1.equals(commonRef)) {
@@ -190,8 +191,8 @@ public final class GATKVariantContextUtils {
                 final Allele myRef = vc.getReference();
                 try {
                     ref = determineReferenceAllele(ref, myRef);
-                } catch (TribbleException e) {
-                    throw new TribbleException(String.format("The provided variant file(s) have inconsistent references " +
+                } catch (IllegalStateException e) {
+                    throw new IllegalStateException(String.format("The provided variant file(s) have inconsistent references " +
                             "for the same position(s) at %s:%d, %s vs. %s", vc.getContig(), vc.getStart(), ref, myRef));
                 }
             }
@@ -206,7 +207,7 @@ public final class GATKVariantContextUtils {
             return ref1;
         }
         else if ( ref1.length() == ref2.length() && ! ref1.equals(ref2) ) {
-            throw new TribbleException(String.format("The provided reference alleles do not appear to represent the same position, %s vs. %s", ref1, ref2));
+            throw new IllegalStateException(String.format("The provided reference alleles do not appear to represent the same position, %s vs. %s", ref1, ref2));
         } else {  //the lengths are the same and they're equal, so we could return ref1 or ref2
             return ref1;
         }
@@ -276,7 +277,8 @@ public final class GATKVariantContextUtils {
                                         final GenotypeAssignmentMethod assignmentMethod,
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse,
-                                        final List<Allele> originalGT) {
+                                        final List<Allele> originalGT,
+                                        final GenotypePriorCalculator gpc) {
         if(originalGT == null && assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
             throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
         }
@@ -292,7 +294,7 @@ public final class GATKVariantContextUtils {
 
                 final List<Allele> finalAlleles = alleleCounts.asAlleleList(allelesToUse);
                 if (finalAlleles.contains(Allele.NON_REF_ALLELE)) {
-                    gb.alleles(GATKVariantContextUtils.noCallAlleles(originalGT.size()));
+                    gb.alleles(GATKVariantContextUtils.noCallAlleles(ploidy));
                     gb.PL(new int[genotypeLikelihoods.length]);
                 } else {
                     gb.alleles(finalAlleles);
@@ -310,21 +312,98 @@ public final class GATKVariantContextUtils {
             for (final Allele originalAllele : originalGT) {
                 best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
             }
-            if (best.contains(Allele.NON_REF_ALLELE)) {
-                gb.alleles(GATKVariantContextUtils.noCallAlleles(2));
-                gb.PL(new int[genotypeLikelihoods.length]);
+            gb.alleles(best);
+        } else if (assignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
+            if (gpc == null) {
+                throw new GATKException("cannot uses posteriors without an genotype prior calculator present");
             } else {
-                gb.alleles(best);
+                // Calculate posteriors.
+                final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, allelesToUse.size());
+                final double[] log10Priors = gpc.getLog10Priors(glCalc, allelesToUse);
+                final double[] log10Posteriors = MathUtils.ebeAdd(log10Priors, genotypeLikelihoods);
+                final double[] normalizedLog10Posteriors = MathUtils.scaleLogSpaceArrayForNumericalStability(log10Posteriors);
+                // Update GP and PG annotations:
+                gb.attribute(VCFConstants.GENOTYPE_POSTERIORS_KEY, Arrays.stream(normalizedLog10Posteriors)
+                        .map(v -> v == 0.0 ? 0.0 : v * -10) // the reason for the == 0.0 is to avoid a signed 0 output "-0.0"
+                        .mapToObj(GATKVariantContextUtils::formatGP).toArray());
+                gb.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, Arrays.stream(log10Priors)
+                        .map(v -> v == 0.0 ? 0.0 : v * -10)
+                        .mapToObj(GATKVariantContextUtils::formatGP).toArray());
+                // Set the GQ accordingly
+                final int maxPosteriorIndex = MathUtils.maxElementIndex(log10Posteriors);
+                if ( allelesToUse.size() > 0 ) {
+                    gb.log10PError(getGQLog10FromPosteriors(maxPosteriorIndex, normalizedLog10Posteriors));
+                }
+                // Finally we update the genotype alleles.
+                gb.alleles(glCalc.genotypeAlleleCountsAt(maxPosteriorIndex).asAlleleList(allelesToUse));
             }
         }
+    }
+
+    private static double getGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] /**/log10Posteriors) {
+        if (bestGenotypeIndex < 0) {
+            return CommonInfo.NO_LOG10_PERROR;
+        } else {
+            switch (log10Posteriors.length) {
+                case 0:
+                case 1: return CommonInfo.NO_LOG10_PERROR;
+                case 2: return bestGenotypeIndex == 0 ? log10Posteriors[1] : log10Posteriors[0];
+                case 3: return Math.min(0, MathUtils.log10SumLog10(
+                                 log10Posteriors[ bestGenotypeIndex == 0 ? 2 : bestGenotypeIndex - 1],
+                                 log10Posteriors[ bestGenotypeIndex == 2 ? 0 : bestGenotypeIndex + 1]));
+                default:
+                    if (bestGenotypeIndex == 0) {
+                        return MathUtils.log10SumLog10(log10Posteriors, 1, log10Posteriors.length);
+                    } else if (bestGenotypeIndex == log10Posteriors.length - 1) {
+                        return MathUtils.log10SumLog10(log10Posteriors, 0, bestGenotypeIndex);
+                    } else {
+                        return Math.min(0.0, MathUtils.log10SumLog10(
+                                MathUtils.log10sumLog10(log10Posteriors, 0, bestGenotypeIndex),
+                                MathUtils.log10sumLog10(log10Posteriors, bestGenotypeIndex + 1, log10Posteriors.length)
+                        ));
+                    }
+            }
+        }
+    }
+
+    private static String formatGP(final double gp) {
+        final String formatted = String.format("%.2f", gp);
+        int last = formatted.length() - 1;
+        if (formatted.charAt(last) == '0') {
+            if (formatted.charAt(--last) == '0') {
+                return formatted.substring(0, --last); // exclude the '.' as-well.
+            } else {
+                return formatted.substring(0, ++last);
+            }
+        } else {
+            return formatted;
+        }
+    }
+
+    /**
+     *
+     * @param ploidy
+     * @param allele
+     * @return (return a single no-call allele for ploidy 0, as on Y for females)
+     */
+    public static List<Allele> makePloidyLengthAlleleList(final int ploidy, final Allele allele) {
+        if (ploidy == 0) {
+            return Arrays.asList(Allele.NO_CALL);
+        }
+        final List<Allele> repeatedList = new ArrayList<>();
+        for (int i = 0; i < ploidy; i++) {
+            repeatedList.add(allele);
+        }
+        return repeatedList;
     }
 
     public static void makeGenotypeCall(final int ploidy,
                                         final GenotypeBuilder gb,
                                         final GenotypeAssignmentMethod assignmentMethod,
                                         final double[] genotypeLikelihoods,
-                                        final List<Allele> allelesToUse){
-        makeGenotypeCall(ploidy,gb,assignmentMethod,genotypeLikelihoods,allelesToUse,null);
+                                        final List<Allele> allelesToUse,
+                                        final GenotypePriorCalculator gpc){
+        makeGenotypeCall(ploidy,gb,assignmentMethod,genotypeLikelihoods,allelesToUse,null, gpc);
     }
 
     /**
@@ -593,6 +672,18 @@ public final class GATKVariantContextUtils {
         final byte[] pileupBaseQualities = ArrayUtils.subarray(pileupElement.getRead().getBaseQualities(), pileupElement.getOffset(), pileupElement.getOffset() + alleleBases.length);
         final OptionalInt minQuality = IntStream.range(0, pileupBaseQualities.length).map(i -> Byte.toUnsignedInt(pileupBaseQualities[i])).min();
         return minQuality.orElse(-1);
+    }
+
+    public static boolean containsInlineIndel(final VariantContext vc) {
+        final List<Allele> alleles = vc.getAlleles();
+        final int refLength = alleles.get(0).length();
+        for (int i = 1; i < alleles.size(); i++) {
+            final Allele alt = alleles.get(i);
+            if (!alt.isSymbolic() && alt != Allele.SPAN_DEL && alt.length() != refLength) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public enum GenotypeMergeType {
@@ -1547,7 +1638,7 @@ public final class GATKVariantContextUtils {
                         genotypeAssignmentMethodUsed != GenotypeAssignmentMethod.SET_TO_NO_CALL)
                     AlleleSubsettingUtils.addInfoFieldAnnotations(vc, builder, keepOriginalChrCounts);
 
-                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(), alleles, genotypeAssignmentMethodUsed,vc.getAttributeAsInt("DP",0)));
+                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(), alleles, null, genotypeAssignmentMethodUsed,vc.getAttributeAsInt("DP",0)));
                 final VariantContext trimmed = trimAlleles(builder.make(), trimLeft, true);
                 biallelics.add(trimmed);
             }

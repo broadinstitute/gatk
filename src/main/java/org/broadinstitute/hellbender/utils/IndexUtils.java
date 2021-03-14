@@ -12,9 +12,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 public final class IndexUtils {
@@ -26,16 +31,17 @@ public final class IndexUtils {
      * Load a Tribble .idx index from disk, checking for out of date indexes and old versions
      * @return an Index, or null if we're unable to load
      */
-    public static Index loadTribbleIndex(final File featureFile) {
+    public static Index loadTribbleIndex(final Path featureFile) {
         Utils.nonNull(featureFile);
-        final File indexFile = Tribble.indexFile(featureFile);
-        if (! indexFile.canRead()) {
+        final String indexFile = Tribble.indexFile(featureFile.toString());
+        final Path indexPath = IOUtils.getPath(indexFile);
+        if (! Files.isReadable(indexPath)) {
             return null;
         }
         logger.debug("Loading Tribble index from disk for file " + featureFile);
         try {
-            final Index index = IndexFactory.loadIndex(indexFile.getAbsolutePath());
-            checkIndexVersionAndModificationTime(featureFile, indexFile, index);
+            final Index index = IndexFactory.loadIndex(indexFile);
+            checkIndexVersionAndModificationTime(featureFile, indexPath, index);
             return index;
         } catch (final RuntimeException e){
             return null;
@@ -46,10 +52,10 @@ public final class IndexUtils {
      * Try to load the tabix index from disk, checking for out of date indexes and old versions
      * @return an Index, or null if we're unable to load
      */
-    public static Index loadTabixIndex(final File featureFile) {
+    public static Index loadTabixIndex(final Path featureFile) {
         Utils.nonNull(featureFile);
         try {
-            final String path = featureFile.getAbsolutePath();
+            final String path = featureFile.toUri().toString();
             final boolean isTabix = new AbstractFeatureReader.ComponentMethods().isTabix(path, null);
             if (! isTabix){
                 return null;
@@ -57,7 +63,7 @@ public final class IndexUtils {
             final String indexPath = ParsingUtils.appendToPath(path, FileExtensions.TABIX_INDEX);
             logger.debug("Loading tabix index from disk for file " + featureFile);
             final Index index = IndexFactory.loadIndex(indexPath);
-            final File indexFile = new File(indexPath);
+            final Path indexFile = IOUtils.getPath(indexPath);
             checkIndexVersionAndModificationTime(featureFile, indexFile, index);
             return index;
         } catch (final IOException | RuntimeException e) {
@@ -69,15 +75,19 @@ public final class IndexUtils {
      * @throws UserException the index is not the current version.
      * Prints a warning if the index is not up-to date (ie older than the feature file)
      */
-    public static void checkIndexVersionAndModificationTime(final File featureFile, final File indexFile, final Index index) {
+    public static void checkIndexVersionAndModificationTime(final Path featureFile, final Path indexFile, final Index index) {
         Utils.nonNull(featureFile, "feature-file");
         Utils.nonNull(indexFile, "indexFile");
         Utils.nonNull(index, "index");
         if (! index.isCurrentVersion()) {
             // we've loaded an old version of the index, we want to remove it
             throw new UserException("Index file " + indexFile + " is out of date (old version). Use " + IndexFeatureFile.class.getSimpleName() +  " to make an index.");
-        } else if (indexFile.lastModified() < featureFile.lastModified()) {
-            logger.warn("Index file " + indexFile + " is out of date (index older than input file). Use " + IndexFeatureFile.class.getSimpleName() +  " to make a new index.");
+        } else try {
+            if (Files.getLastModifiedTime(indexFile).compareTo(Files.getLastModifiedTime(featureFile)) < 0) {
+                logger.warn("Index file " + indexFile + " is out of date (index older than input file). Use " + IndexFeatureFile.class.getSimpleName() +  " to make a new index.");
+            }
+        } catch (IOException e) {
+            logger.warn("Could not validate index modification time.  Assuming index is up-to-date.");
         }
     }
 
@@ -87,13 +97,13 @@ public final class IndexUtils {
      * Note: this method is specifically designed for getting sequence dictionaries from indices on Feature files (tribble or tabix indices)
      * @return a SAMSequenceDictionary or null if the index cannot be loaded or there are no contigs in the index
      */
-    public static SAMSequenceDictionary createSequenceDictionaryFromFeatureIndex(final File featureFile) {
+    public static SAMSequenceDictionary createSequenceDictionaryFromFeatureIndex(final Path featureFile) {
         Utils.nonNull(featureFile);
         logger.warn(
                 String.format(
                     "Feature file \"%s\" appears to contain no sequence dictionary. " +
                     "Attempting to retrieve a sequence dictionary from the associated index file",
-                    featureFile.getAbsolutePath())
+                    featureFile.toAbsolutePath().toUri().toString())
         );
         final Index index = loadIndex(featureFile);
         return index == null ? null : getSamSequenceDictionaryFromIndex(index);
@@ -116,7 +126,7 @@ public final class IndexUtils {
      * Loads and returns the index of the feature file or null if there is no index.
      * First it tries to load the tribble index and then to load the tabix index.
      */
-    public static Index loadIndex(final File featureFile){
+    public static Index loadIndex(final Path featureFile){
         Utils.nonNull(featureFile);
         final Index tribbleIndex = loadTribbleIndex(featureFile);
         if (tribbleIndex != null) {

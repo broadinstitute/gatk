@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
@@ -20,9 +21,8 @@ import java.util.Set;
 public abstract class GermlineCNVVariantComposer<DATA extends Locatable> {
     static final String VARIANT_PREFIX = "CNV";
     static final Allele REF_ALLELE = Allele.create("N", true);
-    static final Allele DEL_ALLELE = Allele.create("<DEL>", false);
-    static final Allele DUP_ALLELE = Allele.create("<DUP>", false);
-    static final List<Allele> ALL_ALLELES = Arrays.asList(REF_ALLELE, DEL_ALLELE, DUP_ALLELE);
+
+    static final List<Allele> ALL_ALLELES = Arrays.asList(REF_ALLELE, GATKSVVCFConstants.DEL_ALLELE, GATKSVVCFConstants.DUP_ALLELE);
 
     protected final VariantContextWriter outputWriter;
     protected final String sampleName;

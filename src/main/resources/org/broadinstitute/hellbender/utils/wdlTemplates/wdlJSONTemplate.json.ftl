@@ -1,30 +1,30 @@
 {
 <#--- Store positional args in a WDL arg called "positionalArgs"--->
-<#assign positionalArgs="positionalArgs"/>
+<#assign positionalArgs="--positionalArgs"/>
   "${name}.dockerImage": "broadinstitute/gatk:${version}",
   "${name}.gatk": "gatk",
-<#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.memoryRequirements != "">
-  "${name}.memoryRequirements": "${runtimeProperties.memoryRequirements}",
+<#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.memoryRequirements != "">
+  "${name}.memoryRequirements": "${workflowProperties.memoryRequirements}",
 <#else>
   "${name}.memoryRequirements": "String",
 </#if>
-<#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.diskRequirements != "">
-  "${name}.diskRequirements": "${runtimeProperties.diskRequirements}",
+<#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.diskRequirements != "">
+  "${name}.diskRequirements": "${workflowProperties.diskRequirements}",
 <#else>
   "${name}.diskRequirements": "String",
 </#if>
-<#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.cpuRequirements != "">
-  "${name}.cpuRequirements": "${runtimeProperties.cpuRequirements}",
+<#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.cpuRequirements != "">
+  "${name}.cpuRequirements": "${workflowProperties.cpuRequirements}",
 <#else>
   "${name}.cpuRequirements": "String",
 </#if>
-<#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.preemptibleRequirements != "">
-  "${name}.preemptibleRequirements": "${runtimeProperties.preemptibleRequirements}",
+<#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.preemptibleRequirements != "">
+  "${name}.preemptibleRequirements": "${workflowProperties.preemptibleRequirements}",
 <#else>
   "${name}.preemptibleRequirements": "String",
 </#if>
-<#if runtimeProperties?? && runtimeProperties?size != 0 && runtimeProperties.bootdisksizegbRequirements != "">
-  "${name}.bootdisksizegbRequirements": "${runtimeProperties.bootdisksizegbRequirements}",
+<#if workflowProperties?? && workflowProperties?size != 0 && workflowProperties.bootdisksizegbRequirements != "">
+  "${name}.bootdisksizegbRequirements": "${workflowProperties.bootdisksizegbRequirements}",
 <#else>
   "${name}.bootdisksizegbRequirements": "String",
 </#if>
@@ -38,29 +38,36 @@
 <#macro taskinput heading argsToUse remainingCount>
   <#if argsToUse?size != 0>
     <#list argsToUse as arg>
-      <#if companionResources?? && companionResources[arg.name]??>
-            <#list companionResources[arg.name] as companion>
-<#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: null,
-            </#list>
-      </#if>
-  <#if heading?starts_with("Positional")>
-<#noparse>  "</#noparse>${name}.${positionalArgs}<#noparse>"</#noparse>: <#rt/>
+      <#if heading?starts_with("Positional")>
+          <#if requiredCompanions?? && requiredCompanions[positionalArgs]??>
+              <#list requiredCompanions[positionalArgs] as companion>
+<#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: "${arg.wdlinputtype}",
+              </#list>
+          </#if>
+          <#if optionalCompanions?? && optionalCompanions[positionalArgs]??>
+              <#list optionalCompanions[positionalArgs] as companion>
+<#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: "${arg.wdlinputtype}",
+              </#list>
+          </#if>
+<#noparse>  "</#noparse>${name}.${positionalArgs?substring(2)}<#noparse>"</#noparse>:<#rt/>
       <#else>
-<#noparse>  "</#noparse>${name}.${arg.name?substring(2)}<#noparse>"</#noparse>: <#rt/>
+          <#if requiredCompanions?? && requiredCompanions[arg.name]??>
+              <#list requiredCompanions[arg.name] as companion>
+<#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: "${arg.wdlinputtype}",
+              </#list>
+          </#if>
+          <#if optionalCompanions?? && optionalCompanions[arg.name]??>
+              <#list optionalCompanions[arg.name] as companion>
+<#noparse>  "</#noparse>${name}.${companion.name?substring(2)}<#noparse>"</#noparse>: "${arg.wdlinputtype}",
+              </#list>
+          </#if>
+<#noparse>  "</#noparse>${name}.${arg.name?substring(2)}<#noparse>"</#noparse>:<#rt/>
       </#if>
-      <#if heading?starts_with("Required") || heading?starts_with("Positional")>
-<#noparse>"</#noparse>${arg.wdlinputtype}<#noparse>"</#noparse><#if !arg?is_last || remainingCount != 0>,
-      </#if>
-      <#else>
-        <#if arg.defaultValue == "\"\"" || arg.defaultValue == "null">
-null<#if !arg?is_last || remainingCount != 0>,</#if>
-        <#else>
-${arg.defaultValue}<#if !arg?is_last || remainingCount != 0>,</#if>
-        </#if>
-      </#if>
+<#noparse> "</#noparse>${arg.wdlinputtype}<#noparse>"</#noparse><#if !arg?is_last || remainingCount != 0>,
+    </#if>
       <#if arg?is_last && remainingCount != 0>
 
       </#if>
     </#list>
-</#if>
+  </#if>
 </#macro>

@@ -35,6 +35,7 @@ final class HomRefBlock extends GVCFBlock {
 
     private int[] minPLs = null;
     private int[] minPPs = null;
+    private int minGQ = -1;
 
     /**
      * Create a new HomRefBlock
@@ -63,8 +64,10 @@ final class HomRefBlock extends GVCFBlock {
         final int[] minPLs = getMinPLs();
         final int[] minPPs = getMinPPs();
         if (!floorBlocks) {
-            gb.PL(minPLs);
-            gb.GQ(GATKVariantContextUtils.calculateGQFromPLs(minPPs != null ? minPPs : minPLs));
+            if (minPLs != null) {
+                gb.PL(minPLs);
+            }
+            gb.GQ(getMinGQ());
             gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, getMinDP());
         }
         else {
@@ -88,7 +91,6 @@ final class HomRefBlock extends GVCFBlock {
     @Override
     public void add(final int pos, final int newEnd, final Genotype genotype) {
         Utils.nonNull(genotype, "genotype cannot be null");
-        if ( ! genotype.hasPL() ) { throw new IllegalArgumentException("genotype must have PL field");}
         if ( pos != end + 1 ) { throw new IllegalArgumentException("adding genotype at pos " + pos + " isn't contiguous with previous end " + end); }
         if ( genotype.getPloidy() != ploidy) { throw new IllegalArgumentException("cannot add a genotype with a different ploidy: " + genotype.getPloidy() + " != " + ploidy); }
         // Make sure the GQ is within the bounds of this band. Treat GQs > 99 as 99.
@@ -102,11 +104,13 @@ final class HomRefBlock extends GVCFBlock {
         }
         else { // otherwise take the min with the provided genotype's PLs
             final int[] pls = genotype.getPL();
-            if (pls.length != minPLs.length) {
-                throw new GATKException("trying to merge different PL array sizes: " + pls.length + " != " + minPLs.length);
-            }
-            for (int i = 0; i < pls.length; i++) {
-                minPLs[i] = Math.min(minPLs[i], pls[i]);
+            if (pls != null) {
+                if (pls.length != minPLs.length) {
+                    throw new GATKException("trying to merge different PL array sizes: " + pls.length + " != " + minPLs.length);
+                }
+                for (int i = 0; i < pls.length; i++) {
+                    minPLs[i] = Math.min(minPLs[i], pls[i]);
+                }
             }
         }
 
@@ -123,6 +127,13 @@ final class HomRefBlock extends GVCFBlock {
                     minPPs[i] = Math.min(minPPs[i], pps[i]);
                 }
             }
+        }
+        if (minPPs != null) {
+            minGQ = GATKVariantContextUtils.calculateGQFromPLs(minPPs);
+        } else if (minPLs != null) {
+            minGQ = GATKVariantContextUtils.calculateGQFromPLs(minPLs);
+        } else {
+            minGQ = minGQ == -1 ? genotype.getGQ() : Math.min(minGQ, genotype.getGQ());
         }
 
         end = newEnd;
@@ -144,5 +155,9 @@ final class HomRefBlock extends GVCFBlock {
      */
     public int getPloidy() {
         return ploidy;
+    }
+
+    public int getMinGQ() {
+        return minGQ;
     }
 }

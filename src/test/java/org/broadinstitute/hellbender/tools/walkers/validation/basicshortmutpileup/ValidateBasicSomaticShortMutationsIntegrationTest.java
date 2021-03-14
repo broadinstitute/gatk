@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -65,7 +66,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         Assert.assertTrue(outputFile.exists());
         Assert.assertTrue(summaryFile.exists());
 
-        final List<BasicValidationResult> variantValidationResults = BasicValidationResult.read(outputFile);
+        final List<BasicValidationResult> variantValidationResults = BasicValidationResult.read(new GATKPath(outputFile.getAbsolutePath()));
 
         //final List<AnnotatedInterval> variantValidationResults =
         //        AnnotatedIntervalCollection.create(outputFile.toPath(), new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
@@ -132,7 +133,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         Assert.assertTrue(outputFile.exists());
         Assert.assertTrue(summaryFile.exists());
 
-        final List<BasicValidationResult> variantValidationResults = BasicValidationResult.read(outputFile);
+        final List<BasicValidationResult> variantValidationResults = BasicValidationResult.read(new GATKPath(outputFile.getAbsolutePath()));
 
         Assert.assertEquals(variantValidationResults.size(), 336);
 

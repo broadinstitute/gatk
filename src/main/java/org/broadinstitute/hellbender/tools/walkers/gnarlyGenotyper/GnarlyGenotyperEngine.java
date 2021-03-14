@@ -89,9 +89,23 @@ public final class GnarlyGenotyperEngine {
         //GenomicsDB or Evoquer merged all the annotations, but we still need to finalize MQ and QD annotations
         //return a VC with the finalized annotations and dbBuilder gets the raw annotations for the database
 
-        final double QUALapprox = variant.getAttributeAsInt(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0);
-        //Don't apply the indel prior to mixed sites if there's a SNP
-        final boolean hasSnpAllele = variant.getAlternateAlleles().stream().anyMatch(allele -> allele.length() == variant.getReference().length());
+        // Prefer non-AS QUALapprox, but if we only have AS QUALapprox sum the values
+        final double QUALapprox;
+        if (variant.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) {
+            QUALapprox = variant.getAttributeAsInt(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0);
+        }
+        else if (variant.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
+            List<Integer> alleleSpecificQualList = AS_QualByDepth.parseQualList(variant);
+            QUALapprox = alleleSpecificQualList.stream()
+                    .mapToInt(Integer::intValue)
+                    .sum();
+        }
+        else {
+            QUALapprox = 0;
+        }
+
+        //Don't apply the indel prior to mixed sites if there's a SNP, but don't count a '*' as a SNP
+        final boolean hasSnpAllele = variant.getAlternateAlleles().stream().anyMatch(allele -> allele != Allele.SPAN_DEL && allele.length() == variant.getReference().length());
         final boolean isIndel = !hasSnpAllele;
         final double sitePrior = isIndel ? HomoSapiensConstants.INDEL_HETEROZYGOSITY : HomoSapiensConstants.SNP_HETEROZYGOSITY;
         if((isIndel && QUALapprox < INDEL_QUAL_THRESHOLD) || (!isIndel && QUALapprox < SNP_QUAL_THRESHOLD)) {
@@ -135,9 +149,13 @@ public final class GnarlyGenotyperEngine {
         }
         vcfBuilder.attributes(annotationsToBeModified);
 
-        final int variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
-        final double QD = QUALapprox / (double)variantDP;
-        vcfBuilder.attribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY, QD).log10PError(QUALapprox/-10.0-Math.log10(sitePrior));
+        // tolerate lack of VarDP annotation
+        if ( variant.hasAttribute(GATKVCFConstants.VARIANT_DEPTH_KEY) ) {
+            final int variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
+            final double QD = QUALapprox / (double) variantDP;
+            vcfBuilder.attribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY, QD).log10PError(QUALapprox / -10.0 - Math.log10(sitePrior));
+        }
+
         if (!keepAllSites) {
             vcfBuilder.rmAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY);
         }

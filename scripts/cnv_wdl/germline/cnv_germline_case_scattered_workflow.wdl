@@ -13,6 +13,7 @@
 version 1.0
 
 import "cnv_germline_case_workflow.wdl" as GermlineCNVCaseWorkflow
+import "../cnv_common_tasks.wdl" as CNVTasks
 
 workflow CNVGermlineCaseScatteredWorkflow {
 
@@ -40,6 +41,9 @@ workflow CNVGermlineCaseScatteredWorkflow {
       File? gatk4_jar_override
       Int? preemptible_attempts
 
+      # Required if BAM/CRAM is in a requester pays bucket
+      String? gcs_project_for_requester_pays
+
       ####################################################
       #### optional arguments for PreprocessIntervals ####
       ####################################################
@@ -49,6 +53,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
       ##############################################
       #### optional arguments for CollectCounts ####
       ##############################################
+      Array[String]? disabled_read_filters_for_collect_counts
       String? collect_counts_format
       Boolean? collect_counts_enable_indexing
       Int? mem_gb_for_collect_counts
@@ -111,16 +116,17 @@ workflow CNVGermlineCaseScatteredWorkflow {
       #### arguments for QC ####
       ##########################
       Int maximum_number_events_per_sample
+      Int maximum_number_pass_events_per_sample
     }
 
-    call SplitInputArray as SplitInputBamsList {
+    call CNVTasks.SplitInputArray as SplitInputBamsList {
         input:
             input_array = normal_bams,
             num_inputs_in_scatter_block = num_samples_per_scatter_block,
             gatk_docker = gatk_docker
     }
-    
-    call SplitInputArray as SplitInputBaisList {
+
+    call CNVTasks.SplitInputArray as SplitInputBaisList {
         input:
             input_array = normal_bais,
             num_inputs_in_scatter_block = num_samples_per_scatter_block,
@@ -147,8 +153,10 @@ workflow CNVGermlineCaseScatteredWorkflow {
                 gatk_docker = gatk_docker,
                 gatk4_jar_override = gatk4_jar_override,
                 preemptible_attempts = preemptible_attempts,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays,
                 padding = padding,
                 bin_length = bin_length,
+                disabled_read_filters_for_collect_counts = disabled_read_filters_for_collect_counts,
                 collect_counts_format = collect_counts_format,
                 collect_counts_enable_indexing = collect_counts_enable_indexing,
                 mem_gb_for_collect_counts = mem_gb_for_collect_counts,
@@ -190,68 +198,25 @@ workflow CNVGermlineCaseScatteredWorkflow {
                 gcnv_disable_annealing = gcnv_disable_annealing,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
                 allosomal_contigs = allosomal_contigs,
-                maximum_number_events_per_sample = maximum_number_events_per_sample
+                maximum_number_events_per_sample = maximum_number_events_per_sample,
+                maximum_number_pass_events_per_sample = maximum_number_pass_events_per_sample
         }
     }
 
     output {
-        Array[File] preprocessed_intervals = CNVGermlineCaseWorkflow.preprocessed_intervals
-        Array[Array[File]] read_counts_entity_id = CNVGermlineCaseWorkflow.read_counts_entity_id
-        Array[Array[File]] read_counts = CNVGermlineCaseWorkflow.read_counts
-        Array[File] contig_ploidy_calls_tars = CNVGermlineCaseWorkflow.contig_ploidy_calls_tar
-        Array[Array[Array[File]]] gcnv_calls_tars = CNVGermlineCaseWorkflow.gcnv_calls_tars
-        Array[Array[File]] gcnv_tracking_tars = CNVGermlineCaseWorkflow.gcnv_tracking_tars
-        Array[Array[File]] genotyped_intervals_vcf = CNVGermlineCaseWorkflow.genotyped_intervals_vcf
-        Array[Array[File]] genotyped_segments_vcf = CNVGermlineCaseWorkflow.genotyped_segments_vcf
-        Array[Array[File]] qc_status_files = CNVGermlineCaseWorkflow.qc_status_files
-        Array[Array[String]] qc_status_strings = CNVGermlineCaseWorkflow.qc_status_strings
-        Array[Array[File]] denoised_copy_ratios = CNVGermlineCaseWorkflow.denoised_copy_ratios
+        File preprocessed_intervals = CNVGermlineCaseWorkflow.preprocessed_intervals[0]
+        Array[File] read_counts_entity_id = flatten(CNVGermlineCaseWorkflow.read_counts_entity_id)
+        Array[File] read_counts = flatten(CNVGermlineCaseWorkflow.read_counts)
+        Array[File] sample_contig_ploidy_calls_tars = flatten(CNVGermlineCaseWorkflow.sample_contig_ploidy_calls_tars)
+        Array[Array[File]] gcnv_calls_tars = flatten(CNVGermlineCaseWorkflow.gcnv_calls_tars)
+        Array[File] gcnv_tracking_tars = flatten(CNVGermlineCaseWorkflow.gcnv_tracking_tars)
+        Array[File] genotyped_intervals_vcfs = flatten(CNVGermlineCaseWorkflow.genotyped_intervals_vcfs)
+        Array[File] genotyped_intervals_vcf_indexes = flatten(CNVGermlineCaseWorkflow.genotyped_intervals_vcf_indexes)
+        Array[File] genotyped_segments_vcfs = flatten(CNVGermlineCaseWorkflow.genotyped_segments_vcfs)
+        Array[File] genotyped_segments_vcf_indexes = flatten(CNVGermlineCaseWorkflow.genotyped_segments_vcf_indexes)
+        Array[File] qc_status_files = flatten(CNVGermlineCaseWorkflow.qc_status_files)
+        Array[String] qc_status_strings = flatten(CNVGermlineCaseWorkflow.qc_status_strings)
+        Array[File] denoised_copy_ratios = flatten(CNVGermlineCaseWorkflow.denoised_copy_ratios)
     }
 }
 
-task SplitInputArray {
-    input {
-      Array[String] input_array
-      Int num_inputs_in_scatter_block
-      String gatk_docker
-
-      Int machine_mem_mb = 4000
-      Int disk_space_gb = 20
-      Int cpu = 1
-      Int? preemptible_attempts
-      Boolean use_ssd = false
-    }
-
-    File input_array_file = write_lines(input_array)
-
-    # This tasks takes as input an array of strings and number of columns (num_inputs_in_scatter_block)
-    # and outputs a 2-dimensional reshaped array with same contents and with width equal to num_inputs_in_scatter_block
-    # (with last row potentially having a smaller length than others)
-    command <<<
-        python <<CODE
-        import math
-        with open("~{input_array_file}", "r") as input_array_file:
-            input_array = input_array_file.read().splitlines()
-        num = ~{num_inputs_in_scatter_block}
-        values_to_write = [input_array[num*i:num*i+min(num, len(input_array)-num*i)] for i in range(int(math.ceil(len(input_array)/num)))]
-        with open('input_array_split.tsv', 'w') as outfile:
-            for i in range(len(values_to_write)):
-                current_sub_array = values_to_write[i]
-                for j in range(len(current_sub_array)):
-                    outfile.write(current_sub_array[j] + "\t")
-                outfile.write("\n")
-        CODE
-    >>>
-
-    runtime {
-        docker: gatk_docker
-        memory: machine_mem_mb + " MB"
-        disks: "local-disk " + disk_space_gb + if use_ssd then " SSD" else " HDD"
-        cpu: cpu
-        preemptible: select_first([preemptible_attempts, 5])
-    }
-
-    output {
-        Array[Array[String]] split_array = read_tsv("input_array_split.tsv")
-    }
-}

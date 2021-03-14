@@ -14,6 +14,7 @@ import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
@@ -26,7 +27,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -63,17 +63,17 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "The output file, which will be a validation table (tsv).")
-    protected String outputFile;
+    protected GATKPath outputFile;
 
     @Argument(fullName = ANNOTATED_VCF_LONG_NAME,
             doc = "Optional output vcf containing original variants annotated with validation info.",
             optional = true)
-    protected File annotatedVcf;
+    protected GATKPath annotatedVcf;
 
     @Argument(doc = "A table of summary statistics (true positives, sensitivity, etc.)",
             fullName = Concordance.SUMMARY_LONG_NAME,
             optional = true)
-    protected File summary;
+    protected GATKPath summary;
 
     @Argument(doc = "Minimum power for an unvalidated variant to be considered a false positive.",
             fullName = MIN_POWER_LONG_NAME,
@@ -244,7 +244,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess(){
-        BasicValidationResult.write(results, new File(outputFile));
+        BasicValidationResult.write(results, outputFile);
 
         if (summary != null) {
             try (ConcordanceSummaryRecord.Writer concordanceSummaryWriter = ConcordanceSummaryRecord.getWriter(summary)) {

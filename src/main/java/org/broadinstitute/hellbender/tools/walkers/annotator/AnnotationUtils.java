@@ -1,7 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+
 import java.util.*;
 
 public final class AnnotationUtils {
@@ -84,5 +90,17 @@ public final class AnnotationUtils {
             rawDataString = rawDataString.substring(1, rawDataString.length() - 1).replaceAll("\\s", "");
         }
         return Arrays.asList(rawDataString.split(ALLELE_SPECIFIC_SPLIT_REGEX));
+    }
+
+    static String generateMissingDataWarning(final VariantContext vc, final Genotype g, final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
+        final StringBuilder outString = new StringBuilder("Annotation will not be calculated at position " + vc.getContig() + ":" + vc.getStart() +
+                " and possibly subsequent");
+        if (!g.isCalled()) {
+            outString.append("; genotype for sample " + g.getSampleName() + " is not called");
+        }
+        if (likelihoods == null) {
+            outString.append("; alleleLikelihoodMap is null");
+        }
+        return outString.toString();
     }
 }

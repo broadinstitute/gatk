@@ -37,24 +37,24 @@ public class SVVCFWriterUnitTest extends GATKBaseTest {
 
         final VariantContext inversionOne = new VariantContextBuilder()
                 .chr(contig).start(pos).stop(end)
-                .alleles("G", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV))
+                .alleles("G", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_STRING_INV))
                 .attribute(GATKSVVCFConstants.INSERTED_SEQUENCE, insOne)
                 .make();
         final VariantContext inversionTwo = new VariantContextBuilder()
                 .chr(contig).start(pos).stop(end)
-                .alleles("G", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV))
+                .alleles("G", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_STRING_INV))
                 .attribute(GATKSVVCFConstants.INSERTED_SEQUENCE, insTwo)
                 .make();
 
         final VariantContext upstreamVariant = new VariantContextBuilder()
                 .chr(contig).start(pos-50).stop(end)
-                .alleles("T", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP))
+                .alleles("T", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_STRING_DUP))
                 .attribute(GATKSVVCFConstants.INSERTED_SEQUENCE, insOne)
                 .make();
 
         final VariantContext downstreamVariant = new VariantContextBuilder()
                 .chr(contig).start(pos+20).stop(end+20)
-                .alleles("C", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INS))
+                .alleles("C", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_STRING_INS))
                 .attribute(GATKSVVCFConstants.INSERTED_SEQUENCE, insOne)
                 .make();
 
@@ -82,6 +82,6 @@ public class SVVCFWriterUnitTest extends GATKBaseTest {
         final List<String> headerKeys = vcfHeader.getIDHeaderLines().stream().map(VCFIDHeaderLine::getID).sorted().collect(Collectors.toList());
         Assert.assertTrue(headerKeys.remove(VCFConstants.END_KEY));
         Assert.assertTrue(headerKeys.removeAll(refContigs));
-        Assert.assertEquals(headerKeys, GATKSVVCFUtilsUnitTest.expectedHeaderKeysInVCF);
+        Assert.assertEquals(headerKeys, GATKSVVCFUtilsUnitTest.allExpectedSVHeaderKeys);
     }
 }

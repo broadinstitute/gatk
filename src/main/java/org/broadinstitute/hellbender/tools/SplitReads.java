@@ -4,6 +4,8 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
@@ -55,12 +57,13 @@ import java.util.stream.Collectors;
  *     --split-library-name
  * </pre>
  */
-@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Outputs reads from a SAM/BAM/CRAM by read group, sample and library name",
         oneLineSummary = "Outputs reads from a SAM/BAM/CRAM by read group, sample and library name",
         programGroup = ReadDataManipulationProgramGroup.class
 )
+@DocumentedFeature
+@WorkflowProperties
 public final class SplitReads extends ReadWalker {
 
     public static final String SAMPLE_SHORT_NAME = "SM";
@@ -77,6 +80,7 @@ public final class SplitReads extends ReadWalker {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "The directory to output SAM/BAM/CRAM files."
     )
+    @WorkflowOutput
     public GATKPath OUTPUT_DIRECTORY;
 
     @Argument(

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.util.FileExtensions;
+import htsjdk.samtools.util.Log;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -88,7 +89,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", outputPath,
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--" + AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "2",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
 
@@ -99,7 +99,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             IntegrationTestSpec.assertEqualTextFiles(output, expected);
         }
     }
-
+    
     /*
      * Test that in JunctionTree mode we're consistent with past JunctionTree results (over non-complicated data)
      */
@@ -197,6 +197,75 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final double concordance = calculateConcordance(output, gatk3Output);
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in VCF mode is < 99% (" +  concordance + ")");
     }
+
+    /*
+     * Test that the this version of DRAGEN-GATK has not changed relative to the last version with the recommended arguments enabled
+     */
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testDRAGENDefaultArgIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testDragenSimpleModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk4.DRAGEN.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--dragen-mode",
+                // STRE arguments
+                "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+        };
+
+        runCommandLine(args);
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
+    /*
+     * Test that the this version of DRAGEN-GATK has not changed relative to the last version with the recommended arguments enabled
+     */
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testDRAGENGATKModeIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testDRAGENGATKModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk4.DRAGEN.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                // FRD arguments
+                "--apply-frd", "--transform-dragen-mapping-quality", "--mapping-quality-threshold-for-genotyping", "1", "--disable-cap-base-qualities-to-map-quality", "--minimum-mapping-quality", "1",
+                // BQD arguments
+                "--apply-bqd",  "--soft-clip-low-quality-ends",
+                // Dynamic read disqualification arguments"
+                "--enable-dynamic-read-disqualification-for-genotyping", "--expected-mismatch-rate-for-read-disqualification", "0.03",
+                // Genotyper arguments
+                "--genotype-assignment-method", "USE_POSTERIOR_PROBABILITIES",  "--standard-min-confidence-threshold-for-calling", "3", "--use-posteriors-to-calculate-qual",
+                // STRE arguments
+                "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
+                // misc arguments
+                "--enable-legacy-graph-cycle-detection", "--padding-around-indels", "150",
+                "--" + AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "1",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+        };
+
+        runCommandLine(args);
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
 
     /*
      * Test that in VCF mode we're >= 99% concordant with GATK3.8 results
@@ -370,6 +439,44 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final double concordance = calculateConcordance(output, gatk3Output);
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in GVCF mode is < 99% (" +  concordance + ")");
     }
+
+    /*
+     * Test that the this version of DRAGEN-GATK has not changed relative to the last version with the recommended arguments enabled
+     */
+    @Test
+    public void testFRDBQDDRAGENGATKOnDRAGENProcessedFile() throws Exception {
+        Utils.resetRandomGenerator();
+        final String inputFileName = largeFileTestDir + "DRAGENExampleBamSites.bam";
+        final String intervals = TEST_FILES_DIR + "DRAGENTestSites.bed";
+
+        final File output = createTempFile("testFRDBQDDRAGENGATKOnDRAGENProcessedFile", ".vcf");
+        final File expected = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk4.FRDBQD.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", b37Reference,
+                "-L", intervals,
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                // FRD arguments
+                "--apply-frd", "--transform-dragen-mapping-quality", "--mapping-quality-threshold-for-genotyping", "1", "--disable-cap-base-qualities-to-map-quality", "--minimum-mapping-quality", "1",
+                // BQD arguments
+                "--apply-bqd",  "--soft-clip-low-quality-ends",
+                // Dynamic read disqualification arguments"
+                "--enable-dynamic-read-disqualification-for-genotyping", "--expected-mismatch-rate-for-read-disqualification", "0.03",
+                // misc arguments
+                "--enable-legacy-graph-cycle-detection", "--padding-around-indels", "150",
+                "--" + AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "1",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+        };
+
+        runCommandLine(args);
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
 
     @Test(dataProvider="HaplotypeCallerTestInputs", enabled=false) //disabled after reference confidence change in #5172
     public void testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults(final String inputFileName, final String referenceFileName) throws Exception {
@@ -1319,6 +1426,34 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 .allMatch(vc -> vc.isBiallelic() && (vc.getReference().length() == 1 || vc.getAlternateAllele(0).length() == 1)));
     }
 
+    /*
+    Prior to IUPAC ReadTransformer fix, this test yields
+    java.lang.IllegalArgumentException: Unexpected base in allele bases 'ATTCATTTCACAAGGGTAAAGCTTTCTTTGGATTCAGCAGGTTGGAAAATCTGTTTTTCACCTTTCTGTGAATGGACGTTTGGGAGCTCATTGAGGCCAGTGRCAATAAAGGAGATATCTCAGGGTGAAAAATAAAAGACAGGAATGTGAGAATTGGCTTTGTGATGTGAGCATTCATTTCACAAAGTTAAACCTTTCTTTTCATTCAGCAGTTAGAAATCACTGGTTTTGTAGAATCTG'
+    where there's an R in that big long string representing the assembled haplotype.  The R is in the hg38 reference and
+    gets propagated into cram reads.
+     */
+    @Test
+    public void testAdjacentIUPACBasesinReads() {
+        final File bam = new File(TEST_FILES_DIR, "cramWithR.cram");
+        final String interval = "chr10:39239400-39239523";
+
+        final File output = createTempFile("output", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(bam)
+                .addReference(hg38Reference)
+                .addInterval(interval)
+                .addOutput(output)
+                //We can check the warning in the test log provided we're explicit about the logging level
+                .add(StandardArgumentDefinitions.VERBOSITY_NAME, Log.LogLevel.WARNING.name());
+        runCommandLine(args);
+
+        final List<VariantContext> outputVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+        Assert.assertEquals(outputVCs.size(), 1);
+        Assert.assertEquals(outputVCs.get(0).getStart(), 39239403);
+        Assert.assertEquals(outputVCs.get(0).getAlternateAllele(0).getBaseString(), "A");
+    }
+
     // this test has a reference with 8 repeats of a 28-mer and an alt with 7 repeats.  This deletion left-aligns to the
     // beginning of the padded assembly region, and an exception occurs if we carelessly drop the leading deletion from
     // the alt haplotype's cigar.  This is a regression test for https://github.com/broadinstitute/gatk/issues/6533.
@@ -1340,28 +1475,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 .anyMatch(vc -> vc.getStart() == 128361367 && vc.getAlternateAlleles().stream().anyMatch(a -> a.length() == vc.getReference().length() - 28));
 
         Assert.assertTrue(has28BaseDeletion);
-    }
-
-    @Test
-    public void testHaploidNoCall() {
-        final File bam = new File(TEST_FILES_DIR, "haploidNoCallSnippet.bam");
-
-        final File output = createTempFile("output", ".vcf");
-
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addInput(bam)
-                .addReference(hg38Reference)
-                .addInterval("chrY:11315390")
-                .add(AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString())
-                .add(GenotypeCalculationArgumentCollection.SAMPLE_PLOIDY_SHORT_NAME, 1)
-                .addOutput(output);
-        runCommandLine(args);
-
-        final boolean hasGQ0call = VariantContextTestUtils.streamVcf(output)
-                .anyMatch(vc -> vc.getStart() == 11315390 && vc.getGenotype(0).getPloidy() == 1 &&
-                        vc.getGenotype(0).hasGQ() && vc.getGenotype(0).getGQ() == 0);
-
-        Assert.assertTrue(hasGQ0call);
     }
 
     /**

@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.google.common.base.Strings;
+import htsjdk.samtools.CigarOperator;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.StandardPairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -24,6 +26,8 @@ public final class PairHMMUnitTest extends GATKBaseTest {
     final N2MemoryPairHMM exactHMM = new Log10PairHMM(true); // the log truth implementation
     final N2MemoryPairHMM originalHMM = new Log10PairHMM(false); // the reference implementation
     final N2MemoryPairHMM loglessHMM = new LoglessPairHMM();
+
+    private static final byte MASSIVE_QUAL = 100;
 
     @BeforeClass
     public void initialize() {
@@ -124,7 +128,7 @@ public final class PairHMMUnitTest extends GATKBaseTest {
 
             if( anchorIndel ) {
                 // initialize everything to MASSIVE_QUAL so it cannot be moved by HMM
-                Arrays.fill(phredQuals, (byte) 100);
+                Arrays.fill(phredQuals, MASSIVE_QUAL);
 
                 // update just the bases corresponding to the provided micro read with the quality scores
                 if( doGOP ) {
@@ -506,24 +510,24 @@ public final class PairHMMUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "JustHMMProvider")
     public void testLikelihoodsFromHaplotypes(final PairHMM hmm){
-        final int readSize= 10;
-        final int refSize = 20;
+        final int readSize = 10;
+        final int refSize  = 20;
         final byte[] readBases =  Utils.dupBytes((byte)'A', readSize);
         final byte[] refBases = Utils.dupBytes((byte) 'A', refSize);
         final byte baseQual = 20;
-        final byte insQual = 100;
-        final byte gcp = 100;
+        final byte insQual = MASSIVE_QUAL;
 
         final Haplotype refH= new Haplotype(refBases, true);
 
         final byte[] readQuals= Utils.dupBytes(baseQual, readBases.length);
-        final List<GATKRead> reads = Arrays.asList(ArtificialReadUtils.createArtificialRead(readBases, readQuals, readBases.length + "M"));
-        final Map<GATKRead, byte[]> gpcs = buildGapContinuationPenalties(reads, gcp);
+        final List<GATKRead> reads = Arrays.asList(ArtificialReadUtils.createArtificialRead(readBases, readQuals, readBases.length + CigarOperator.M.toString()));
 
-        hmm.computeLog10Likelihoods(matrix(Arrays.asList(refH)), Collections.emptyList(), gpcs);
+        final PairHMMInputScoreImputator inputScoreImputator = StandardPairHMMInputScoreImputator.newInstance(MASSIVE_QUAL);
+
+        hmm.computeLog10Likelihoods(matrix(Arrays.asList(refH)), Collections.emptyList(), inputScoreImputator);
         Assert.assertEquals(hmm.getLogLikelihoodArray(), null);
 
-        hmm.computeLog10Likelihoods(matrix(Arrays.asList(refH)), reads, gpcs);
+        hmm.computeLog10Likelihoods(matrix(Arrays.asList(refH)), reads, inputScoreImputator);
         final double expected = getExpectedMatchingLogLikelihood(readBases, refBases, baseQual, insQual);
         final double[] la = hmm.getLogLikelihoodArray();
 

@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class BaseQualityHistogram extends InfoFieldAnnotation {
+public class BaseQualityHistogram implements InfoFieldAnnotation {
 
     public static final String KEY = "BQHIST";
 

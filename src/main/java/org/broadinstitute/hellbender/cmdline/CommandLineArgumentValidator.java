@@ -23,8 +23,12 @@ public class CommandLineArgumentValidator extends CommandLineProgram {
      */
     @Override
     public Object instanceMain(final String[] argv) {
-        // just call parseArgs and then return
-        return targetCommandLineProgram.parseArgs(argv);
+        if (targetCommandLineProgram instanceof PicardCommandLineProgramExecutor) {
+            return ((PicardCommandLineProgramExecutor) targetCommandLineProgram).validateArgs(argv);
+        } else {
+            // just call parseArgs and then return
+            return targetCommandLineProgram.parseArgs(argv);
+        }
     }
 
     @Override

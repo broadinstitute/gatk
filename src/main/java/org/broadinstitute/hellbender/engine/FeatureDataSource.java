@@ -31,9 +31,11 @@ import org.genomicsdb.reader.GenomicsDBFeatureReader;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -427,7 +429,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             return dict;
         }
         if (hasIndex) {
-            return IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(featureInput.getFeaturePath()));
+            return IndexUtils.createSequenceDictionaryFromFeatureIndex(IOUtils.getPath(featureInput.getFeaturePath()));
         }
         return null;
     }

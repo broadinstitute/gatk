@@ -41,6 +41,7 @@ command <<<
         gatk --java-options "-Xmx${command_mem}m" \
         CNNScoreVariants \
         ${"-I " + bam_file} \
+        ${"--read-index " + bam_file_index} \
         -R ${reference_fasta} \
         -V ${input_vcf} \
         -O ${output_prefix}_cnn_annotated.vcf.gz \
@@ -104,6 +105,7 @@ task RunHC4 {
         HaplotypeCaller \
         -R ${reference_fasta} \
         -I ${input_bam} \
+        --read-index ${input_bam_index} \
         -O ${output_prefix}_hc4.vcf.gz \
         -L ${interval_list} \
         -bamout ${output_prefix}_bamout.bam \

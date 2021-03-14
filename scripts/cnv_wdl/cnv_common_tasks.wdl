@@ -188,9 +188,11 @@ task CollectCounts {
       File ref_fasta
       File ref_fasta_fai
       File ref_fasta_dict
+      Array[String]? disabled_read_filters
       Boolean? enable_indexing
       String? format
       File? gatk4_jar_override
+      String? gcs_project_for_requester_pays
 
       # Runtime parameters
       String gatk_docker
@@ -201,10 +203,21 @@ task CollectCounts {
       Int? preemptible_attempts
     }
 
+    parameter_meta {
+      bam: {
+        localization_optional: true
+      }
+      bam_idx: {
+        localization_optional: true
+      }
+    }
+
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
     Boolean enable_indexing_ = select_first([enable_indexing, false])
+
+    Array[String] disabled_read_filters_arr = if defined(disabled_read_filters) then prefix("--disable-read-filter ", select_first([disabled_read_filters])) else []
 
     # Sample name is derived from the bam filename
     String base_filename = basename(bam, ".bam")
@@ -257,7 +270,9 @@ task CollectCounts {
             --reference ~{ref_fasta} \
             --format ~{default="HDF5" hdf5_or_tsv_or_null_format} \
             --interval-merging-rule OVERLAPPING_ONLY \
-            --output ~{counts_filename_for_collect_read_counts}
+            --output ~{counts_filename_for_collect_read_counts} \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays} \
+            ~{sep=' ' disabled_read_filters_arr}
 
         if [ ~{do_block_compression} = "true" ]; then
             bgzip ~{counts_filename_for_collect_read_counts}
@@ -293,6 +308,7 @@ task CollectAllelicCounts {
       File ref_fasta_dict
       Int? minimum_base_quality
       File? gatk4_jar_override
+      String? gcs_project_for_requester_pays
 
       # Runtime parameters
       String gatk_docker
@@ -301,6 +317,15 @@ task CollectAllelicCounts {
       Boolean use_ssd = false
       Int? cpu
       Int? preemptible_attempts
+    }
+
+    parameter_meta {
+      bam: {
+        localization_optional: true
+      }
+      bam_idx: {
+        localization_optional: true
+      }
     }
 
     Int machine_mem_mb = select_first([mem_gb, 13]) * 1000
@@ -320,7 +345,8 @@ task CollectAllelicCounts {
             --input ~{bam} \
             --reference ~{ref_fasta} \
             --minimum-base-quality ~{default="20" minimum_base_quality} \
-            --output ~{allelic_counts_filename}
+            --output ~{allelic_counts_filename} \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
     >>>
 
     runtime {
@@ -426,6 +452,13 @@ task PostprocessGermlineCNVCalls {
       Array[String]? allosomal_contigs
       Int ref_copy_number_autosomal_contigs
       Int sample_index
+      File? intervals_vcf
+      File? intervals_vcf_index
+      File? clustered_vcf
+      File? clustered_vcf_index
+      File? reference_fasta
+      File? reference_fasta_fai
+      File? reference_dict
       File? gatk4_jar_override
 
       # Runtime parameters
@@ -448,7 +481,7 @@ task PostprocessGermlineCNVCalls {
 
     command <<<
         set -eu
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
+        ~{"export GATK_LOCAL_JAR=" + gatk4_jar_override}
 
         sharded_interval_lists_array=(~{sep=" " sharded_interval_lists})
 
@@ -493,7 +526,10 @@ task PostprocessGermlineCNVCalls {
             --sample-index ~{sample_index} \
             --output-genotyped-intervals ~{genotyped_intervals_vcf_filename} \
             --output-genotyped-segments ~{genotyped_segments_vcf_filename} \
-            --output-denoised-copy-ratios ~{denoised_copy_ratios_filename}
+            --output-denoised-copy-ratios ~{denoised_copy_ratios_filename} \
+            ~{"--input-intervals-vcf " + intervals_vcf} \
+            ~{"--clustered-breakpoints " + clustered_vcf} \
+            ~{"-R " + reference_fasta}
 
         rm -rf CALLS_*
         rm -rf MODEL_*
@@ -510,7 +546,9 @@ task PostprocessGermlineCNVCalls {
 
     output {
         File genotyped_intervals_vcf = genotyped_intervals_vcf_filename
+        File genotyped_intervals_vcf_index = genotyped_intervals_vcf_filename + ".tbi"
         File genotyped_segments_vcf = genotyped_segments_vcf_filename
+        File genotyped_segments_vcf_index = genotyped_segments_vcf_filename + ".tbi"
         File denoised_copy_ratios = denoised_copy_ratios_filename
     }
 }
@@ -520,9 +558,10 @@ task CollectSampleQualityMetrics {
       File genotyped_segments_vcf
       String entity_id
       Int maximum_number_events
+      Int maximum_number_pass_events
 
       # Runtime parameters
-      String gatk_docker
+      String bash_docker
       Int? mem_gb
       Int? disk_space_gb
       Boolean use_ssd = false
@@ -534,16 +573,23 @@ task CollectSampleQualityMetrics {
 
     command <<<
         set -eu
-        NUM_SEGMENTS=$(gunzip -c ~{genotyped_segments_vcf} | grep -v '#' | wc -l)
+        #use wc instead of grep -c so zero count isn't non-zero exit
+        #use grep -P to recognize tab character
+        NUM_SEGMENTS=$(zgrep '^[^#]' ~{genotyped_segments_vcf} | grep -v '0/0' | grep -v -P '\t0:1:' | grep '' | wc -l)
+        NUM_PASS_SEGMENTS=$(zgrep '^[^#]' ~{genotyped_segments_vcf} | grep -v '0/0' | grep -v -P '\t0:1:' | grep 'PASS' | wc -l)
         if [ $NUM_SEGMENTS -lt ~{maximum_number_events} ]; then
-            echo "PASS" >> ~{entity_id}.qcStatus.txt
-        else 
+            if [ $NUM_PASS_SEGMENTS -lt ~{maximum_number_pass_events} ]; then
+              echo "PASS" >> ~{entity_id}.qcStatus.txt
+            else
+              echo "EXCESSIVE_NUMBER_OF_PASS_EVENTS" >> ~{entity_id}.qcStatus.txt
+            fi
+        else
             echo "EXCESSIVE_NUMBER_OF_EVENTS" >> ~{entity_id}.qcStatus.txt
         fi
     >>>
 
     runtime {
-        docker: gatk_docker
+        docker: bash_docker
         memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 20]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 1])
@@ -603,5 +649,101 @@ task CollectModelQualityMetrics {
     output {
         File qc_status_file = "qcStatus.txt"
         String qc_status_string = read_string("qcStatus.txt")
+    }
+}
+
+task SplitInputArray {
+    input {
+      Array[String] input_array
+      Int num_inputs_in_scatter_block
+      String gatk_docker
+
+      Int machine_mem_mb = 4000
+      Int disk_space_gb = 20
+      Int cpu = 1
+      Int? preemptible_attempts
+      Boolean use_ssd = false
+    }
+
+    File input_array_file = write_lines(input_array)
+
+    # This tasks takes as input an array of strings and number of columns (num_inputs_in_scatter_block)
+    # and outputs a 2-dimensional reshaped array with same contents and with width equal to num_inputs_in_scatter_block
+    # (with last row potentially having a smaller length than others)
+    command <<<
+        python <<CODE
+        import math
+        with open("~{input_array_file}", "r") as input_array_file:
+            input_array = input_array_file.read().splitlines()
+        num = ~{num_inputs_in_scatter_block}
+        values_to_write = [input_array[num*i:num*i+min(num, len(input_array)-num*i)] for i in range(int(math.ceil(len(input_array)/num)))]
+        with open('input_array_split.tsv', 'w') as outfile:
+            for i in range(len(values_to_write)):
+                current_sub_array = values_to_write[i]
+                for j in range(len(current_sub_array)):
+                    outfile.write(current_sub_array[j] + "\t")
+                outfile.write("\n")
+        CODE
+    >>>
+
+    runtime {
+        docker: gatk_docker
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + disk_space_gb + if use_ssd then " SSD" else " HDD"
+        cpu: cpu
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        Array[Array[String]] split_array = read_tsv("input_array_split.tsv")
+    }
+}
+
+task ScatterPloidyCallsBySample {
+    input {
+      File contig_ploidy_calls_tar
+      Array[String] samples
+
+      # Runtime parameters
+      String docker
+      Int? mem_gb
+      Int? disk_space_gb
+      Boolean use_ssd = false
+      Int? cpu
+      Int? preemptible_attempts
+    }
+
+    Int num_samples = length(samples)
+    String out_dir = "calls_renamed"
+
+    command <<<
+      set -eu
+
+      # Extract ploidy calls
+      mkdir calls
+      tar xzf ~{contig_ploidy_calls_tar} -C calls/
+
+      # Archive call files by sample, renaming so they will be glob'd in order
+      sample_ids=(~{sep=" " samples})
+      num_samples=~{num_samples}
+      num_digits=${#num_samples}
+      for (( i=0; i<~{num_samples}; i++ ))
+      do
+        sample_id=${sample_ids[$i]}
+        padded_sample_index=$(printf "%0${num_digits}d" $i)
+        tar -czf sample_${padded_sample_index}.${sample_id}.contig_ploidy_calls.tar.gz -C calls/SAMPLE_${i} .
+      done
+    >>>
+
+    runtime {
+        docker: docker
+        memory: select_first([mem_gb, 2]) + " GiB"
+        disks: "local-disk " + select_first([disk_space_gb, 10]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        Array[File] sample_contig_ploidy_calls_tar = glob("sample_*.contig_ploidy_calls.tar.gz")
     }
 }

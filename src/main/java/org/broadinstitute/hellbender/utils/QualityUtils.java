@@ -140,7 +140,7 @@ public final class QualityUtils {
         return Math.pow(10.0, qual / -10.0);
     }
 
-    /**
+    /**v
      * Convert a phred-scaled quality score to its probability of being wrong (Q30 => 0.001)
      *
      * This is the Phred-style conversion, *not* the Illumina-style conversion.
@@ -187,7 +187,7 @@ public final class QualityUtils {
      */
     public static double qualToErrorProbLog10(final double qual) {
         Utils.validateArg( qual >= 0.0, () -> "qual must be >= 0.0 but got " + qual);
-        return qual / -10.0;
+        return qual * -0.1;
     }
 
     // ----------------------------------------------------------------------
@@ -368,6 +368,52 @@ public final class QualityUtils {
         return (byte) (Math.max(Math.min(qual, maxQual & 0xFF), 1) & 0xFF);
     }
 
+    /**
+     * Calculate the sum of phred scores.
+     * @param phreds the phred score values.
+     * @return the sum.
+     */
+    public static double phredSum(final double[] phreds) {
+        switch (phreds.length) {
+            case 0: return Double.MAX_VALUE;
+            case 1: return phreds[0];
+            case 2: return phredSum(phreds[0], phreds[1]);
+            case 3: return phredSum(phreds[0], phreds[1], phreds[2]);
+            default:
+            final double[] log10Vals = new double[phreds.length];
+            for (int i = 0; i < log10Vals.length; i++) {
+                log10Vals[i] = phreds[i] * -0.1;
+            }
+            return -10 * MathUtils.log10SumLog10(log10Vals);
+        }
+    }
+
+    /**
+     * Calculate the sum of two phred scores.
+     * <p>
+     *     As any sum, this operation is commutative.
+     * </p>
+     * @param a first phred score value.
+     * @param b second phred score value.
+     * @return the sum.
+     */
+    public static double phredSum(final double a, final double b) {
+        return -10 * MathUtils.log10SumLog10(a * -.1, b * -.1);
+    }
+
+    /**
+     * Calculate the sum of three phred scores.
+     * <p>
+     *     As any sum, this operation is commutative.
+     * </p>
+     * @param a first phred score value.
+     * @param b second phred score value.
+     * @param c thrid phred score value.
+     * @return the sum.
+     */
+    public static double phredSum(final double a, final double b, final double c) {
+        return -10 * MathUtils.log10SumLog10(a * -.1, b * -.1, c * -.1);
+    }
 }
 
 

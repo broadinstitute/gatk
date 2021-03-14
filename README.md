@@ -1,13 +1,13 @@
 [![Build Status](https://travis-ci.com/broadinstitute/gatk.svg?branch=master)](https://travis-ci.com/broadinstitute/gatk)
 [![Maven Central](https://img.shields.io/maven-central/v/org.broadinstitute/gatk.svg)](https://maven-badges.herokuapp.com/maven-central/org.broadinstitute/gatk)
-[![License (3-Clause BSD)](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ***Please see the [GATK website](http://www.broadinstitute.org/gatk), where you can download a precompiled executable, read documentation, ask questions, and receive technical support. For GitHub basics, see [here](https://software.broadinstitute.org/gatk/documentation/article?id=23405).***
 
 ### GATK 4
 
 This repository contains the next generation of the Genome Analysis Toolkit (GATK). The contents
-of this repository are 100% open source and released under the BSD 3-Clause license (see [LICENSE.TXT](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT)).
+of this repository are 100% open source and released under the Apache 2.0 license (see [LICENSE.TXT](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT)).
 
 GATK4 aims to bring together well-established tools from the [GATK](http://www.broadinstitute.org/gatk) and
 [Picard](http://broadinstitute.github.io/picard/) codebases under a streamlined framework,
@@ -41,6 +41,7 @@ releases of the toolkit.
     * [Building GATK4 Docker images](#docker_building)
     * [Releasing GATK4](#releasing_gatk)
     * [Generating GATK4 documentation](#gatkdocs)
+    * [Generating GATK4 WDL Wrappers](#gatkwdlgen)
     * [Using Zenhub to track github issues](#zenhub)
 * [Further Reading on Spark](#spark_further_reading)
 * [How to contribute to GATK](#contribute)
@@ -65,7 +66,7 @@ releases of the toolkit.
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater. Required to download the large files used to build GATK, and
       test files required to run the test suite. Run `git lfs install` after downloading, followed by `git lfs pull` from
       the root of your git clone to download all of the large files, including those required to run the test suite. The
-      full download is approximately 2 gigabytes. Alternatively, if you are just building GATK and not running the test
+      full download is approximately 5 gigabytes. Alternatively, if you are just building GATK and not running the test
       suite, you can skip this step since the build itself will use git-lfs to download the minimal set of large `lfs`
       resource files required to complete the build. The test resources will not be downloaded, but this greatly reduces
       the size of the download.
@@ -81,6 +82,8 @@ releases of the toolkit.
       includes the R dependencies used for plotting in some of the tools. The ```gatk``` environment 
       requires hardware with AVX support for tools that depend on TensorFlow (e.g. CNNScoreVariant). The GATK Docker image 
       comes with the ```gatk``` environment pre-configured.
+      	* At this time, the only supported platforms are 64-bit Linux distributions. The required Conda environment is not
+	  currently supported on OS X/macOS. 
     * To establish the environment when not using the Docker image, a conda environment must first be "created", and
       then "activated":
         * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed (Miniconda is sufficient).
@@ -365,7 +368,7 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
 
 * **Try to keep datafiles under 100kb in size.** Larger test files should go into `src/test/resources/large` (and subdirectories) so that they'll be stored and tracked by git-lfs as described [above](#lfs).
 
-* GATK4 is BSD licensed.  The license is in the top level LICENSE.TXT file.  Do not add any additional license text or accept files with a license included in them.
+* GATK4 is Apache 2.0 licensed.  The license is in the top level LICENSE.TXT file.  Do not add any additional license text or accept files with a license included in them.
 
 * Each tool should have at least one good end-to-end integration test with a check for expected output, plus high-quality unit tests for all non-trivial utility methods/classes used by the tool. Although we have no specific coverage target, coverage should be extensive enough that if tests pass, the tool is guaranteed to be in a usable state.
 
@@ -412,9 +415,7 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
     * Setting the environment variable `TEST_VERBOSITY=minimal` will produce much less output from the test suite 
 
 * To run a subset of tests, use gradle's test filtering (see [gradle doc](https://docs.gradle.org/current/userguide/java_plugin.html)):
-    * You can use `test.single` when you just want to run a specific test class:
-        * `./gradlew test -Dtest.single=SomeSpecificTestClass`
-    * You can also use `--tests` with a wildcard to run a specific test class, method, or to select multiple test classes:
+    * You can use `--tests` with a wildcard to run a specific test class, method, or to select multiple test classes:
         * `./gradlew test --tests *SomeSpecificTestClass`
         * `./gradlew test --tests *SomeTest.someSpecificTestMethod`
         * `./gradlew test --tests all.in.specific.package*`
@@ -443,7 +444,7 @@ We use [git-lfs](https://git-lfs.github.com/) to version and distribute test dat
     * This adds hooks to your git configuration that will cause git-lfs files to be checked out for you automatically in the future.
     
 * To manually retrieve the large test data, run `git lfs pull` from the root of your GATK git clone.
-    * The download is several hundred megabytes.
+    * The download size is approximately 5 gigabytes.
     
 * To add a new large file to be tracked by git-lfs, simply:
     * Put the new file(s) in `src/test/resources/large` (or a subdirectory)
@@ -555,6 +556,23 @@ To generate GATK documentation, run `./gradlew gatkDoc`
 
 * Generated docs will be in the `build/docs/gatkdoc` directory.
 
+#### <a name="gatkwdlgen">Generating GATK4 WDL Wrappers</a>
+
+* A WDL wrapper can be generated for any GATK4 tool that is annotated for WDL generation (see the wiki article
+[How to Prepare a GATK tool for WDL Auto Generation](https://github.com/broadinstitute/gatk/wiki/How-to-Prepare-a-GATK-tool-for-WDL-Auto-Generation))
+to learn more about WDL annotations.
+
+* To generate the WDL Wrappers, run `./gradlew gatkWDLGen`. The generated WDLs and accompanying JSON input files can
+be found in the `build/docs/wdlGen` folder.
+
+* To generate WDL Wrappers and validate the resulting outputs, run `./gradlew gatkWDLGenValidation`.
+Running this task requires a local [cromwell](https://github.com/broadinstitute/cromwell) installation, and environment
+variables `CROMWELL_JAR` and `WOMTOOL_JAR` to be set to the full pathnames of the `cromwell` and `womtool` jar files.
+If no local install is available, this task will run automatically on travis in a separate job whenever a PR is submitted.
+
+* WDL wrappers for each GATK release are published to the [gatk-tool-wdls](https://github.com/broadinstitute/gatk-tool-wdls) repository.
+Only tools that have been annotated for WDL generation will show up there. 
+
 #### <a name="zenhub">Using Zenhub to track github issues</a>
 
 We use [Zenhub](https://www.zenhub.com/) to organize and track github issues.
@@ -625,4 +643,4 @@ The authors list is maintained in the [AUTHORS](https://github.com/broadinstitut
 See also the [Contributors](https://github.com/broadinstitute/gatk/graphs/contributors) list at github. 
 
 ## <a name="license">License</a>
-Licensed under the BSD License. See the [LICENSE.txt](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT) file.
+Licensed under the Apache 2.0 License. See the [LICENSE.txt](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT) file.

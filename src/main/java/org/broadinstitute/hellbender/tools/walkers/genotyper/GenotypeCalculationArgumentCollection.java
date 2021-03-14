@@ -4,14 +4,13 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 
-public final class GenotypeCalculationArgumentCollection implements Serializable {
+public final class GenotypeCalculationArgumentCollection implements Serializable, Cloneable {
     private static final long serialVersionUID = 1L;
 
     public static final String SUPPORTING_CALLSET_LONG_NAME = "population-callset";
@@ -26,28 +25,42 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public static final int DEFAULT_MAX_ALTERNATE_ALLELES = 6;
     public static final int DEFAULT_MAX_GENOTYPE_COUNT = 1024;
 
+    @Argument(fullName="use-posteriors-to-calculate-qual", shortName="gp-qual", optional = true, doc = "if available, use the genotype posterior probabilities to calculate the site QUAL")
+    public boolean usePosteriorProbabilitiesToCalculateQual = false;
+
     /**
      * Creates a GenotypeCalculationArgumentCollection with default values.
      */
     public GenotypeCalculationArgumentCollection() {}
 
     /**
-     * Creates a GenotypeCalculationArgumentCollection with the values from other
-     *
-     * @param other GenotypeCalculationArgumentCollection from which to copy values
+     * Creates a new GenotypeCalculationArgumentCollection with the values from other instance.
+     * <p>
+     *     Changes in direct field members of the returned object won't affect the values in the original argument
+     *     collection.
+     * </p>
      */
-    public GenotypeCalculationArgumentCollection( final GenotypeCalculationArgumentCollection other ) {
-        Utils.nonNull(other);
-
-        this.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED = other.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED;
-        this.snpHeterozygosity = other.snpHeterozygosity;
-        this.indelHeterozygosity = other.indelHeterozygosity;
-        this.STANDARD_CONFIDENCE_FOR_CALLING = other.STANDARD_CONFIDENCE_FOR_CALLING;
-        this.MAX_ALTERNATE_ALLELES = other.MAX_ALTERNATE_ALLELES;
-        this.samplePloidy = other.samplePloidy;
-        this.supportVariants = other.supportVariants;
-        this.numRefIfMissing = other.numRefIfMissing;
+    @Override
+    public GenotypeCalculationArgumentCollection clone() {
+        try {
+            return (GenotypeCalculationArgumentCollection) super.clone();
+        } catch (final CloneNotSupportedException e) {
+            throw new GATKException("this line of code should not be reached");
+        }
     }
+
+    @Advanced
+    @Argument(fullName = "dont-use-dragstr-priors",
+              doc      = "Forfeit the use of the DRAGstr model to calculate genotype priors. " +
+                         "This argument does not have any effect in the absence of DRAGstr model parameters (--dragstr-model-params)", optional = true)
+    public boolean dontUseDragstrPriors = false;
+
+    /**
+     * As of version 4.1.0.0, this argument is no longer needed because the new qual score is now on by default. See GATK 3.3 release notes for more details.
+     */
+    @Deprecated
+    @Argument(fullName = "use-new-qual-calculator", shortName = "new-qual", doc = "Use the new AF model instead of the so-called exact model", optional = true)
+    public boolean useNewAFCalculator = true;
 
     /**
      * Depending on the value of the --max_alternate_alleles argument, we may genotype only a fraction of the alleles being sent on for genotyping.
@@ -167,4 +180,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      */
     @Argument(fullName= NUM_REF_SAMPLES_LONG_NAME,doc="Number of hom-ref genotypes to infer at sites not present in a panel",optional=true)
     public int numRefIfMissing = 0;
+
+    @Argument(fullName= "genotype-assignment-method", shortName = "gam", doc = "How we assign genotypes", optional = true)
+    public GenotypeAssignmentMethod genotypeAssignmentMethod = GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN;
 }

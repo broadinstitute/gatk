@@ -223,7 +223,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     protected M2ArgumentCollection MTAC = new M2ArgumentCollection();
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to which variants should be written")
-    public File outputVCF;
+    public GATKPath outputVCF;
 
     private VariantContextWriter vcfWriter;
 

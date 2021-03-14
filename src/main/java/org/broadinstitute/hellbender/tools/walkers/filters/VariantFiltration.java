@@ -19,7 +19,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -96,7 +95,7 @@ import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.AS_FI
  *    --filter-name "my_filter" \
  *    --filter-expression "AB < 0.2 || MQ0 > 50"
  *  </pre>
- * See this <a href="https://www.broadinstitute.org/gatk/guide/article?id=1255">article about using JEXL expressions</a>
+ * See this <a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions">article about using JEXL expressions</a>
  * for more information.
  */
 @CommandLineProgramProperties(
@@ -134,7 +133,7 @@ public final class VariantFiltration extends VariantWalker {
     public FeatureInput<Feature> mask;
 
     @Argument(doc="File to which variants should be written", fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, optional = false)
-    public String out = null;
+    public GATKPath out = null;
 
     /**
      * VariantFiltration accepts any number of JEXL expressions (so you can have two named filters by using
@@ -273,13 +272,13 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     private void initializeVcfWriter() {
-        writer = createVCFWriter(new File(out));
+        writer = createVCFWriter(out);
 
         // setup the header fields
         final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>();
         hInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
         if (applyForAllele) {
-            hInfo.add(new VCFInfoHeaderLine(AS_FILTER_STATUS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Filter status for each allele, as assessed by ApplyRecalibration. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles."));
+            hInfo.add(new VCFInfoHeaderLine(AS_FILTER_STATUS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Filter status for each allele, as assessed by ApplyVQSR. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles."));
         }
 
         // need AC, AN and AF since output if set filtered genotypes to no-call

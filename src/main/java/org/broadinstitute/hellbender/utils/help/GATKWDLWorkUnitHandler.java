@@ -7,9 +7,11 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.HelpDoclet;
+import org.broadinstitute.barclay.help.TemplateProperties;
 import org.broadinstitute.barclay.help.WDLWorkUnitHandler;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import picard.illumina.parser.ReadStructure;
 
@@ -31,6 +33,8 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
 
     // This must be kept in sync with the value used in build.gradle, where the file is created
     private final static String dummyWDLTestFileName = "dummyWDLTestFile";
+
+    private final static String WDL_TEST_VALUE_PROPERTY = "testValue";
 
     // Map of Java argument types that the WDL generator knows how to convert to a WDL type, along with the
     // corresponding string substitution that needs to be run on the (Barclay-generated) string that describes
@@ -106,10 +110,12 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             final List<Map<String, Object>> argMapList = args.get("all");
             argMapList.stream().forEach(
                     m -> {
-                        final String actualArgName = (String) m.get("actualArgName");
+                        final String actualArgName = (String) m.get(TemplateProperties.WDL_ARGUMENT_ACTUAL_NAME);
                         if (actualArgName != null && actualArgName.equals("--" + argDef.getLongName())) {
-                            final String newSummary = ((String) m.get("summary")).replace('\n', ' ');
-                            m.put("summary", newSummary);
+                            // the summary string must be suitable to embed in a quoted string in the param_meta section,
+                            // so remove any quotes and newlines
+                            final String newSummary = ((String) m.get(TemplateProperties.ARGUMENT_SUMMARY)).replaceAll("[\"\'\n]", "");
+                            m.put(TemplateProperties.ARGUMENT_SUMMARY, newSummary);
                         }
                     });
         }
@@ -121,12 +127,14 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             final NamedArgumentDefinition argDef,
             final String fieldCommentText) {
         final String argCategory = super.processNamedArgument(argBindings, argDef, fieldCommentText);
-        final String argType = (String) argBindings.get("type");
-        argBindings.put("testValue",
-                getInputValueForTest(
-                        argType,
-                        (String) argBindings.get("defaultValue"))
+        argBindings.put(WDL_TEST_VALUE_PROPERTY,
+                testValueAsJSON(
+                        argDef.getLongName(),
+                        argDef,
+                        (String) argBindings.get(TemplateProperties.ARGUMENT_TYPE),
+                        (String) argBindings.get(TemplateProperties.ARGUMENT_DEFAULT_VALUE))
         );
+
         return argCategory;
     }
 
@@ -135,42 +143,126 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             final CommandLineArgumentParser clp,
             final Map<String, List<Map<String, Object>>> args) {
         super.processPositionalArguments(clp, args);
-        final List<Map<String, Object>> positionalArgsList = args.get("positional");
+        final List<Map<String, Object>> positionalArgsList = args.get(TemplateProperties.ARGUMENTS_POSITIONAL);
         if (positionalArgsList != null && !positionalArgsList.isEmpty()) {
-            final Map<String, Object> positionalArgs = args.get("positional").get(0);
-            final String argType = (String) positionalArgs.get("type");
-            positionalArgs.put("testValue",
-                    getInputValueForTest(
-                            argType,
-                            (String) positionalArgs.get("defaultValue"))
+            final Map<String, Object> positionalArgs = args.get(TemplateProperties.ARGUMENTS_POSITIONAL).get(0);
+            positionalArgs.put(WDL_TEST_VALUE_PROPERTY,
+                    testValueAsJSON(
+                            WDLWorkUnitHandler.POSITIONAL_ARGS,
+                            clp.getPositionalArgumentDefinition(),
+                            (String) positionalArgs.get(TemplateProperties.ARGUMENT_TYPE),
+                            (String) positionalArgs.get(TemplateProperties.ARGUMENT_DEFAULT_VALUE))
             );
         }
     }
 
     /**
-     * Return a test input value for use in the WDL validation test inputs. If an option has WDL type
-     * File, then we need to provide the name of an actual file that exists so cromwell can localize it.
-     * "dummyWDLTestFileName" is a file that will be created by the test task.
+     * Return a test input value for use in the WDL validation test inputs.
+     *
+     * If an option has WDL type File, then we need to provide the name of an actual file that exists so cromwell
+     * can localize it: "dummyWDLTestFileName" is a file that will be created by the test task.
+     *
+     * @param longName the long name for this arg
+     * @param argDef the ArgumentDefinition for this arg
      * @param wdlType the wdl type for which an input value is needed
-     * @param defaultValue the default value for the argument for which an input value is required
+     * @param defaultWDLValue the default value for the argument for which an input value is required
      * @return a test input value that is either the default value, or the name of an actual test file
      * that will exist at test execution time
      */
-    protected String getInputValueForTest(final String wdlType, final String defaultValue) {
+    protected String testValueAsJSON(
+            final String longName,
+            final ArgumentDefinition argDef,
+            final String wdlType,
+            final String defaultWDLValue) {
+        final Argument argumentAnnotation = argDef.getUnderlyingField().getAnnotation(Argument.class);
+        final PositionalArguments positionalAnnotation = argDef.getUnderlyingField().getAnnotation(PositionalArguments.class);
+        final boolean isRequired =
+                (argumentAnnotation != null && !argumentAnnotation.optional())
+                || positionalAnnotation != null;
+        final String dummyWDLTestFile = ((GATKWDLDoclet) getDoclet()).getBuildDir() + "/" + dummyWDLTestFileName;
+
+        // Hack to resolve the mutex argument in GATKSparkTool; otherwise all spark tools will fail since all
+        // mutex args will have a value
+        if (longName.equals(GATKSparkTool.OUTPUT_SHARD_DIR_LONG_NAME)) {
+            return "null";
+        }
+
+        // first check the wdl type; for File we always want to use the name of the dummy file that is created by
+        // the test process that is used to ensure localization is handled correctly
         if (wdlType.equals("File")) {
-            return "\"" + ((GATKWDLDoclet) getDoclet()).getBuildDir() + "/" + dummyWDLTestFileName + "\"";
+            if (isRequired) {
+                return "\"" + dummyWDLTestFile + "\"";
+            } else {
+                return "null";
+            }
         } else if (wdlType.equals("Array[File]")) {
-            return "[\"" + ((GATKWDLDoclet) getDoclet()).getBuildDir() + "/" + dummyWDLTestFileName + "\"]";
-        } else if (defaultValue.equals("null")) {
-            return "\"\"";
-        } else if (defaultValue.equals("\"\"")) {
-            return defaultValue;
-        } else if (defaultValue.equals("[]")) {
-            return defaultValue;
-        } else if (defaultValue.startsWith("Array")) {
-            return defaultValue;
+            return String.format("[\"%s\", \"%s\"]", dummyWDLTestFile, dummyWDLTestFile);
+        }
+
+        // for other (non-File) types, use the default value and arg def to synthesize a value
+        if (defaultWDLValue.equals("null") || defaultWDLValue.equals("\"\"") || defaultWDLValue.equals("[]")) {
+            if (isRequired) {
+                if (wdlType.startsWith("Array")) {
+                    // we use two values to accommodate tools that take positional args, such as CompareSams that
+                    // require more than one arg
+                    return String.format("[\"%s\", \"%s\"]", getDefaultValueForType(argDef), getDefaultValueForType(argDef));
+                } else {
+                    return "\"" + getDefaultValueForType(argDef) + "\"";
+                }
+            } else {
+                return "null";
+            }
+        } else if (defaultWDLValue.startsWith("[")) {
+            // for required arrays, we need to provide SOME value in the array
+            if (isRequired) {
+                return defaultWDLValue;
+            } else {
+                return "null";
+            }
+        } else if (wdlType.equals("Float")) {
+            if (defaultWDLValue.equals("Infinity") || defaultWDLValue.equals("Nan")) {
+                // JSON does not recognize "Infinity" or "Nan" as valid float values (!), so we
+                // need to treat them as String values
+                return "\"" + defaultWDLValue + "\"";
+            }
+        }
+        return defaultWDLValue;
+    }
+
+    /**
+     * Return a value that will satisfy the constructor for argDef's underlying class.
+     * @param argDef
+     * @return a value that will satisfy the constructor for argDef's underlying class.
+     */
+    protected String getDefaultValueForType(final ArgumentDefinition argDef) {
+        final Class<?> clazz = argDef.getUnderlyingFieldClass();
+        if (clazz.isEnum()) {
+            // any enum constant for this enum will do
+            return argDef.getUnderlyingFieldClass().getEnumConstants()[0].toString();
         } else {
-            return "\"" + defaultValue + "\"";
+            // get a value that is formatted appropriately by calling toString() on the value
+            // on the underlying object if its not null, otherwise return a synthetic string
+            // suitable for the underlying type
+            final Object fieldDefaultValue = argDef.getArgumentValue();
+            if (fieldDefaultValue != null && !fieldDefaultValue.toString().equals("[]")) {
+                return fieldDefaultValue.toString();
+            } else if (clazz.isAssignableFrom(Boolean.class) ||
+                    clazz.isAssignableFrom(boolean.class)) {
+                return "true";
+            } else if (clazz.isAssignableFrom(Float.class) ||
+                    clazz.isAssignableFrom(float.class) ||
+                    clazz.isAssignableFrom(Double.class) ||
+                    clazz.isAssignableFrom(double.class)) {
+                return "0.0";
+            } else if (clazz.isAssignableFrom(Integer.class) ||
+                    clazz.isAssignableFrom(int.class) ||
+                    clazz.isAssignableFrom(Long.class) ||
+                    clazz.isAssignableFrom(long.class)) {
+                return "1";
+            } else {
+                // give up and return a String with a synthetic value
+                return "syntheticTestValue";
+            }
         }
     }
 
@@ -178,7 +270,7 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
      * Given a Java class representing the underlying field  type of an argument, and a human readable doc type,
      * convert the docType to a WDL type.
      *
-     * @param workflowResource the WorkflowResource associated with the instance of argumentClass, if any
+     * @param workflowOutput the WorkflowOutput associated with the instance of argumentClass, if any
      * @param argumentClass the Class for the underlying field of the argument being converted
      * @param docType a string representing the human readable type assigned by the Barclay doc system
      * @param sourceContext a String describing the context for this argument, used for error reporting
@@ -186,7 +278,7 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
      */
     @Override
     protected String convertJavaTypeToWDLType(
-            final WorkflowResource workflowResource,
+            final WorkflowOutput workflowOutput,
             final Class<?> argumentClass,
             final String docType,
             final String sourceContext) {
@@ -203,12 +295,12 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             final Pair<String, String> typeConversionPair = transformToWDLType(argumentClass);
             convertedWDLType = docType.replaceFirst("FeatureInput\\[[a-zA-Z0-9?]+\\]", typeConversionPair.getValue());
 
-            // finally, if this type is for an arg that is a WorkflowResource that is a workflow output, and its type
+            // finally, if this type is for an arg that is a WorkflowOutput that is a workflow output, and its type
             // is file, we need to use a different type (String) as the input type for this arg to prevent the workflow
             // manager from attempting to localize the (non-existent) output file when localizing inputs
-            return transformWorkflowResourceOutputTypeToInputType(workflowResource, convertedWDLType);
+            return transformWorkflowOutputTypeToInputType(workflowOutput, convertedWDLType);
         }
-        return super.convertJavaTypeToWDLType(workflowResource, argumentClass, docType, sourceContext);
+        return super.convertJavaTypeToWDLType(workflowOutput, argumentClass, docType, sourceContext);
     }
 
     /**
@@ -256,6 +348,9 @@ public class GATKWDLWorkUnitHandler extends WDLWorkUnitHandler {
             final CommandLineProgramProperties clpProperties = currentWorkUnit.getCommandLineProperties();
             currentWorkUnit.setProperty("picardsummary", clpProperties.summary());
         }
+
+        // add the buildDir as a property so it can be accessed by the test inputs JSON file
+        currentWorkUnit.setProperty("buildDir", ((GATKWDLDoclet)getDoclet()).getBuildDir());
     }
 
 }

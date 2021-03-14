@@ -8,6 +8,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.file.Files;
 
 public final class CountVariantsIntegrationTest extends CommandLineProgramTest {
 
@@ -21,8 +22,23 @@ public final class CountVariantsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder ab = new ArgumentsBuilder();
         ab.addVCF(fileIn);
         ab.addRaw(moreArgs);
-        final Object res = runCommandLine(ab.getArgsArray());
+        final Object res = runCommandLine(ab);
         Assert.assertEquals(res, expectedCount);
+    }
+
+    @Test(dataProvider = "countVariantsVCFInputs")
+    public void testCountVariantsWithOutputFile(final File fileIn, final String moreArgs, final long expectedCount) throws Exception {
+        final File output = createTempFile("testCountVariantsWithOutputFile", ".txt");
+
+        final ArgumentsBuilder ab = new ArgumentsBuilder();
+        ab.addVCF(fileIn);
+        ab.addOutput(output);
+        ab.addRaw(moreArgs);
+
+        final Object res = runCommandLine(ab);
+        Assert.assertEquals(res, expectedCount);
+
+        Assert.assertEquals(Files.readAllBytes(output.toPath()), Long.toString(expectedCount).getBytes());
     }
 
     @DataProvider(name="countVariantsVCFInputs")

@@ -422,9 +422,11 @@ public class OverhangFixingManager {
         }
     }
 
-    // Generates the string key to be used for
-    private static String makeKey(String name, boolean firstOfPair, int mateStart) {
-        return name + (firstOfPair ? 1 : 0) + mateStart;
+    // Generates the string key to be used for storing mates that had their cigar strings changed between iterations over the input reads
+    @VisibleForTesting
+    static String makeKey(String name, boolean firstOfPair, int mateStart) {
+        // NOTE: We use the '@' character here because it is explicitly forbidden for use in read names by the SAM Spec and we don't want to risk accidental matches across read pairs
+        return name + "@" +  (firstOfPair ? 1 : 0) + "@" + mateStart;
     }
     /**
      * Will edit the mate MC tag and mate start position field for given read if that read has been recorded being edited

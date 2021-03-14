@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 public class VariantDataManager {
@@ -35,7 +36,11 @@ public class VariantDataManager {
 
     public VariantDataManager( final List<String> annotationKeys, final VariantRecalibratorArgumentCollection VRAC ) {
         this.data = Collections.emptyList();
-        this.annotationKeys = new ArrayList<>( annotationKeys );
+        final List<String> uniqueAnnotations = annotationKeys.stream().distinct().collect(Collectors.toList());
+        if (annotationKeys.size() != uniqueAnnotations.size()) {
+            logger.warn("Ignoring duplicate annotations for recalibration %s.", Utils.getDuplicatedItems(annotationKeys));
+        }
+        this.annotationKeys = new ArrayList<>( uniqueAnnotations );
         this.VRAC = VRAC;
         meanVector = new double[this.annotationKeys.size()];
         varianceVector = new double[this.annotationKeys.size()];
@@ -416,7 +421,11 @@ public class VariantDataManager {
         if (datum.alternateAllele == null) {
             return true;
         }
-        return GATKVariantContextUtils.isAlleleInList(datum.referenceAllele, datum.alternateAllele, trainVC.getReference(), trainVC.getAlternateAlleles());
+        try {
+            return GATKVariantContextUtils.isAlleleInList(datum.referenceAllele, datum.alternateAllele, trainVC.getReference(), trainVC.getAlternateAlleles());
+        } catch (final IllegalStateException e) {
+            throw new IllegalStateException("Reference allele mismatch at position " + trainVC.getContig() + ":" + trainVC.getStart() + " : ", e);
+        }
     }
 
     protected static boolean checkVariationClass( final VariantContext evalVC, final VariantContext trainVC ) {

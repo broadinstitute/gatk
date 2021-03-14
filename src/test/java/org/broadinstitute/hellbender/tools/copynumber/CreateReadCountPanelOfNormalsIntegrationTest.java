@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
@@ -62,8 +63,12 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
 
     //we test only for filtering of samples and intervals with too many zeros
     private static final double MINIMUM_INTERVAL_MEDIAN_PERCENTILE = 0.;
-    private static final double MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE = 5.;
-    private static final double MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE = 5.;
+    //test filtering of 5 bad samples
+    private static final int NUM_ZEROS_IN_BAD_SAMPLE_FOR_SIMULATION = 20;
+    private static final double MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE = 19.5;              //chosen to guard against regression of an equality check fixed in https://github.com/broadinstitute/gatk/pull/6624
+    //test filtering of 5 bad intervals (applied after sample filter)
+    private static final int NUM_ADDITIONAL_ZEROS_IN_BAD_INTERVAL_FOR_SIMULATION = 15;  //these zeros are added only in remaining good, unfiltered samples
+    private static final double MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE = 14.5;            //chosen to guard against regression of an equality check fixed in https://github.com/broadinstitute/gatk/pull/6624
     private static final double EXTREME_SAMPLE_MEDIAN_PERCENTILE = 0.;
 
     //test that number of eigenvalues is recovered for a few different values using fraction of variance as a heuristic
@@ -163,24 +168,24 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
                 }
             });
 
-            //corrupt first NUM_BAD_SAMPLES_WITH_TOO_MANY_ZEROS samples by randomly adding zeros
-            //to 5 * MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE / 100. of intervals
+            //corrupt first NUM_BAD_SAMPLES_WITH_TOO_MANY_ZEROS samples by adding zeros
+            //to NUM_ZEROS_IN_BAD_SAMPLE_FOR_SIMULATION randomly chosen good intervals
             for (int sampleIndex = 0; sampleIndex < NUM_BAD_SAMPLES_WITH_TOO_MANY_ZEROS; sampleIndex++) {
-                for (int intervalIndex = 0; intervalIndex < NUM_INTERVALS; intervalIndex++) {
-                    if (rng.nextUniform(0., 1.) < 5 * MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE / 100.) {
-                        counts.setEntry(sampleIndex, intervalIndex, 0.);
-                    }
-                }
+                final List<Integer> intervalIndicesToZero = IntStream.range(NUM_BAD_INTERVALS_WITH_TOO_MANY_ZEROS, NUM_INTERVALS).boxed().collect(Collectors.toList());
+                Collections.shuffle(intervalIndicesToZero, new Random(sampleIndex));
+                final int si = sampleIndex;
+                intervalIndicesToZero.subList(0, NUM_ZEROS_IN_BAD_SAMPLE_FOR_SIMULATION)
+                        .forEach(intervalIndex -> counts.setEntry(si, intervalIndex, 0.));
             }
 
-            //corrupt first NUM_BAD_INTERVALS_WITH_TOO_MANY_ZEROS intervals by randomly adding zeros
-            //to 5 * MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE / 100. of samples
+            //corrupt first NUM_BAD_INTERVALS_WITH_TOO_MANY_ZEROS intervals by adding zeros
+            //to NUM_ADDITIONAL_ZEROS_IN_BAD_INTERVAL_FOR_SIMULATION randomly chosen from remaining good samples
             for (int intervalIndex = 0; intervalIndex < NUM_BAD_INTERVALS_WITH_TOO_MANY_ZEROS; intervalIndex++) {
-                for (int sampleIndex = 0; sampleIndex < NUM_SAMPLES; sampleIndex++) {
-                    if (rng.nextUniform(0., 1.) < 5 * MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE / 100.) {
-                        counts.setEntry(sampleIndex, intervalIndex, 0.);
-                    }
-                }
+                final List<Integer> sampleIndicesToZero = IntStream.range(NUM_BAD_SAMPLES_WITH_TOO_MANY_ZEROS, NUM_SAMPLES).boxed().collect(Collectors.toList()); //choose only from good samples
+                Collections.shuffle(sampleIndicesToZero, new Random(intervalIndex));
+                final int ii = intervalIndex;
+                sampleIndicesToZero.subList(0, NUM_ADDITIONAL_ZEROS_IN_BAD_INTERVAL_FOR_SIMULATION)
+                        .forEach(sampleIndex -> counts.setEntry(sampleIndex, ii, 0.));
             }
 
             //make input files from counts matrix
@@ -232,7 +237,7 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
     public void test(final List<File> inputFiles,
                      final File annotatedIntervalsFile,
                      final int expectedNumberOfEigenvalues) {
-        final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".tsv");
+        final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".hdf5");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
                 .add(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE))
@@ -252,7 +257,7 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
     public void testSingleSample(final List<File> inputFiles,
                                  final File annotatedIntervalsFile,
                                  final int expectedNumberOfEigenvalues) {   //ignored in this test
-        final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".tsv");
+        final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".hdf5");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
                 .add(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE))
@@ -271,7 +276,7 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
     public void testZeroEigensamples(final List<File> inputFiles,
                                      final File annotatedIntervalsFile,
                                      final int expectedNumberOfEigenvalues) {   //ignored in this test
-        final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".tsv");
+        final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".hdf5");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
                 .add(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE))

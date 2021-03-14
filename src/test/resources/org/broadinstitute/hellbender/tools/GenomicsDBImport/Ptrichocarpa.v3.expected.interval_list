@@ -1,0 +1,334 @@
+@HD	VN:1.6
+@SQ	SN:scaffold_3121	LN:2043
+@SQ	SN:scaffold_3427	LN:2622
+@SQ	SN:scaffold_3213	LN:1653
+@SQ	SN:scaffold_3050	LN:2317
+@SQ	SN:scaffold_3381	LN:1181
+@SQ	SN:scaffold_3123	LN:2033
+@SQ	SN:scaffold_3472	LN:1331
+@SQ	SN:scaffold_2907	LN:2749
+@SQ	SN:scaffold_3046	LN:2329
+@SQ	SN:scaffold_3412	LN:2813
+@SQ	SN:scaffold_3304	LN:1992
+@SQ	SN:scaffold_3332	LN:1283
+@SQ	SN:scaffold_3326	LN:2466
+@SQ	SN:scaffold_3230	LN:1594
+@SQ	SN:scaffold_3160	LN:1884
+@SQ	SN:scaffold_3403	LN:2418
+@SQ	SN:scaffold_2851	LN:2950
+@SQ	SN:scaffold_3416	LN:1094
+@SQ	SN:scaffold_3340	LN:2888
+@SQ	SN:scaffold_2911	LN:2734
+@SQ	SN:scaffold_3442	LN:1032
+@SQ	SN:scaffold_3681	LN:1022
+@SQ	SN:scaffold_2889	LN:2826
+@SQ	SN:scaffold_3305	LN:1337
+@SQ	SN:scaffold_3335	LN:1924
+@SQ	SN:scaffold_3316	LN:1314
+@SQ	SN:scaffold_3126	LN:2028
+@SQ	SN:scaffold_3363	LN:1230
+@SQ	SN:scaffold_2844	LN:2966
+@SQ	SN:scaffold_3388	LN:1155
+@SQ	SN:scaffold_3285	LN:2448
+@SQ	SN:scaffold_2968	LN:2573
+@SQ	SN:scaffold_3074	LN:2965
+@SQ	SN:scaffold_3436	LN:2815
+@SQ	SN:scaffold_3289	LN:2781
+@SQ	SN:scaffold_3264	LN:1441
+@SQ	SN:scaffold_2919	LN:2717
+@SQ	SN:scaffold_3422	LN:2139
+@SQ	SN:scaffold_3393	LN:1141
+@SQ	SN:scaffold_3387	LN:1156
+@SQ	SN:scaffold_3453	LN:1003
+@SQ	SN:scaffold_3171	LN:1840
+@SQ	SN:scaffold_3372	LN:1208
+@SQ	SN:scaffold_3389	LN:1153
+@SQ	SN:scaffold_3259	LN:1665
+@SQ	SN:scaffold_2930	LN:2674
+@SQ	SN:scaffold_3129	LN:2114
+@SQ	SN:scaffold_3044	LN:2336
+@SQ	SN:scaffold_3147	LN:2230
+@SQ	SN:scaffold_2885	LN:2936
+@SQ	SN:scaffold_3452	LN:1858
+@SQ	SN:scaffold_3202	LN:2247
+@SQ	SN:scaffold_3263	LN:1970
+@SQ	SN:scaffold_3354	LN:2537
+@SQ	SN:scaffold_3134	LN:2599
+@SQ	SN:scaffold_3255	LN:2564
+@SQ	SN:scaffold_3320	LN:2574
+@SQ	SN:scaffold_3523	LN:1130
+@SQ	SN:scaffold_3432	LN:1048
+@SQ	SN:scaffold_3239	LN:1965
+@SQ	SN:scaffold_3206	LN:1669
+@SQ	SN:scaffold_3437	LN:1040
+@SQ	SN:scaffold_2922	LN:2707
+@SQ	SN:scaffold_3136	LN:2710
+@SQ	SN:scaffold_3292	LN:1613
+@SQ	SN:scaffold_3391	LN:1147
+@SQ	SN:scaffold_3061	LN:2903
+@SQ	SN:scaffold_3250	LN:1485
+@SQ	SN:scaffold_3226	LN:1920
+@SQ	SN:scaffold_2857	LN:2929
+@SQ	SN:scaffold_3528	LN:2635
+@SQ	SN:scaffold_3325	LN:1298
+@SQ	SN:scaffold_3296	LN:1362
+@SQ	SN:scaffold_3298	LN:2443
+@SQ	SN:scaffold_2924	LN:2704
+@SQ	SN:scaffold_3157	LN:1898
+@SQ	SN:scaffold_2855	LN:2931
+@SQ	SN:scaffold_3275	LN:1417
+@SQ	SN:scaffold_3007	LN:2593
+@SQ	SN:scaffold_3306	LN:1470
+@SQ	SN:scaffold_3179	LN:2709
+@SQ	SN:scaffold_3060	LN:2290
+@SQ	SN:scaffold_3222	LN:1606
+@SQ	SN:scaffold_3648	LN:2796
+@SQ	SN:scaffold_3005	LN:2485
+@SQ	SN:scaffold_3020	LN:2530
+@SQ	SN:scaffold_3194	LN:2061
+@SQ	SN:scaffold_3328	LN:1293
+@SQ	SN:scaffold_3251	LN:2376
+@SQ	SN:scaffold_3547	LN:1702
+@SQ	SN:scaffold_3342	LN:2686
+@SQ	SN:scaffold_3139	LN:1964
+@SQ	SN:scaffold_3262	LN:1448
+@SQ	SN:scaffold_3210	LN:1863
+@SQ	SN:scaffold_2981	LN:2544
+@SQ	SN:scaffold_2933	LN:2669
+@SQ	SN:scaffold_3056	LN:2299
+@SQ	SN:scaffold_3413	LN:1105
+@SQ	SN:scaffold_3064	LN:2391
+@SQ	SN:scaffold_3353	LN:1243
+@SQ	SN:scaffold_2913	LN:2832
+@SQ	SN:scaffold_3445	LN:1028
+@SQ	SN:scaffold_3374	LN:1200
+@SQ	SN:scaffold_3214	LN:1641
+@SQ	SN:scaffold_3423	LN:1189
+@SQ	SN:scaffold_3095	LN:2137
+@SQ	SN:scaffold_2965	LN:2576
+@SQ	SN:scaffold_3357	LN:1239
+@SQ	SN:scaffold_3021	LN:2419
+@SQ	SN:scaffold_3228	LN:1597
+@SQ	SN:scaffold_3300	LN:2080
+@SQ	SN:scaffold_3042	LN:2357
+@SQ	SN:scaffold_3312	LN:1324
+@SQ	SN:scaffold_3537	LN:1011
+@SQ	SN:scaffold_3058	LN:2824
+@SQ	SN:scaffold_3425	LN:1075
+@SQ	SN:scaffold_3431	LN:1055
+@SQ	SN:scaffold_3368	LN:1220
+@SQ	SN:scaffold_2951	LN:2618
+@SQ	SN:scaffold_3356	LN:2921
+@SQ	SN:scaffold_3116	LN:2637
+@SQ	SN:scaffold_3257	LN:1463
+@SQ	SN:scaffold_3478	LN:2690
+@SQ	SN:scaffold_3068	LN:2254
+@SQ	SN:scaffold_3008	LN:2908
+@SQ	SN:scaffold_2893	LN:2797
+@SQ	SN:scaffold_3088	LN:2159
+@SQ	SN:scaffold_3269	LN:1431
+@SQ	SN:scaffold_3245	LN:2263
+@SQ	SN:scaffold_3190	LN:1726
+@SQ	SN:scaffold_3054	LN:2300
+@SQ	SN:scaffold_3383	LN:1162
+@SQ	SN:scaffold_3346	LN:1260
+@SQ	SN:scaffold_3223	LN:1705
+@SQ	SN:scaffold_3446	LN:1027
+@SQ	SN:scaffold_3370	LN:2985
+@SQ	SN:scaffold_3252	LN:1483
+@SQ	SN:scaffold_3053	LN:2603
+@SQ	SN:scaffold_3100	LN:2123
+@SQ	SN:scaffold_2838	LN:2988
+@SQ	SN:scaffold_3272	LN:1426
+@SQ	SN:scaffold_3384	LN:2287
+@SQ	SN:scaffold_2868	LN:2983
+@SQ	SN:scaffold_3398	LN:1131
+@SQ	SN:scaffold_3107	LN:2869
+@SQ	SN:scaffold_3014	LN:2633
+@SQ	SN:scaffold_3364	LN:2412
+@SQ	SN:scaffold_2987	LN:2534
+@SQ	SN:scaffold_3191	LN:2934
+@SQ	SN:scaffold_3076	LN:2214
+@SQ	SN:scaffold_3246	LN:1501
+@SQ	SN:scaffold_3011	LN:2971
+@SQ	SN:scaffold_3348	LN:1258
+@SQ	SN:scaffold_3231	LN:1591
+@SQ	SN:scaffold_3448	LN:1020
+@SQ	SN:scaffold_3360	LN:1235
+@SQ	SN:scaffold_3352	LN:2879
+@SQ	SN:scaffold_3294	LN:1369
+@SQ	SN:scaffold_2853	LN:2935
+@SQ	SN:scaffold_3024	LN:2408
+@SQ	SN:scaffold_3426	LN:1074
+@SQ	SN:scaffold_3379	LN:1639
+@SQ	SN:scaffold_3440	LN:1034
+@SQ	SN:scaffold_3550	LN:1938
+@SQ	SN:scaffold_2879	LN:2846
+@SQ	SN:scaffold_3362	LN:1482
+@SQ	SN:scaffold_3236	LN:1544
+scaffold_3074	1	2965	+	.
+scaffold_3014	1	2633	+	.
+scaffold_3116	1	2637	+	.
+scaffold_2922	1	2707	+	.
+scaffold_3426	1	1074	+	.
+scaffold_2930	1	2674	+	.
+scaffold_3446	1	1027	+	.
+scaffold_3379	1	1639	+	.
+scaffold_3312	1	1324	+	.
+scaffold_3061	1	2903	+	.
+scaffold_3202	1	2247	+	.
+scaffold_3393	1	1141	+	.
+scaffold_3095	1	2137	+	.
+scaffold_3064	1	2391	+	.
+scaffold_2924	1	2704	+	.
+scaffold_3445	1	1028	+	.
+scaffold_3236	1	1544	+	.
+scaffold_3008	1	2908	+	.
+scaffold_3191	1	2934	+	.
+scaffold_3362	1	1482	+	.
+scaffold_3453	1	1003	+	.
+scaffold_3437	1	1040	+	.
+scaffold_3298	1	2443	+	.
+scaffold_2889	1	2826	+	.
+scaffold_3275	1	1417	+	.
+scaffold_3364	1	2412	+	.
+scaffold_3478	1	2690	+	.
+scaffold_3388	1	1155	+	.
+scaffold_3296	1	1362	+	.
+scaffold_3292	1	1613	+	.
+scaffold_3360	1	1235	+	.
+scaffold_3425	1	1075	+	.
+scaffold_3348	1	1258	+	.
+scaffold_3547	1	1702	+	.
+scaffold_3368	1	1220	+	.
+scaffold_3537	1	1011	+	.
+scaffold_3398	1	1131	+	.
+scaffold_3523	1	1130	+	.
+scaffold_3053	1	2603	+	.
+scaffold_2851	1	2950	+	.
+scaffold_2965	1	2576	+	.
+scaffold_3214	1	1641	+	.
+scaffold_3432	1	1048	+	.
+scaffold_3206	1	1669	+	.
+scaffold_3325	1	1298	+	.
+scaffold_3387	1	1156	+	.
+scaffold_3058	1	2824	+	.
+scaffold_3179	1	2709	+	.
+scaffold_3050	1	2317	+	.
+scaffold_3326	1	2466	+	.
+scaffold_2857	1	2929	+	.
+scaffold_3374	1	1200	+	.
+scaffold_3213	1	1653	+	.
+scaffold_3088	1	2159	+	.
+scaffold_2868	1	2983	+	.
+scaffold_3007	1	2593	+	.
+scaffold_3134	1	2599	+	.
+scaffold_3332	1	1283	+	.
+scaffold_3056	1	2299	+	.
+scaffold_3136	1	2710	+	.
+scaffold_3440	1	1034	+	.
+scaffold_3403	1	2418	+	.
+scaffold_3044	1	2336	+	.
+scaffold_3472	1	1331	+	.
+scaffold_3389	1	1153	+	.
+scaffold_3340	1	2888	+	.
+scaffold_3306	1	1470	+	.
+scaffold_2893	1	2797	+	.
+scaffold_3304	1	1992	+	.
+scaffold_3427	1	2622	+	.
+scaffold_3157	1	1898	+	.
+scaffold_3363	1	1230	+	.
+scaffold_3011	1	2971	+	.
+scaffold_3222	1	1606	+	.
+scaffold_3245	1	2263	+	.
+scaffold_3147	1	2230	+	.
+scaffold_3528	1	2635	+	.
+scaffold_3228	1	1597	+	.
+scaffold_3335	1	1924	+	.
+scaffold_3252	1	1483	+	.
+scaffold_3054	1	2300	+	.
+scaffold_3076	1	2214	+	.
+scaffold_2885	1	2936	+	.
+scaffold_3413	1	1105	+	.
+scaffold_3381	1	1181	+	.
+scaffold_3550	1	1938	+	.
+scaffold_3648	1	2796	+	.
+scaffold_2968	1	2573	+	.
+scaffold_3239	1	1965	+	.
+scaffold_3246	1	1501	+	.
+scaffold_3257	1	1463	+	.
+scaffold_2919	1	2717	+	.
+scaffold_3255	1	2564	+	.
+scaffold_3100	1	2123	+	.
+scaffold_2987	1	2534	+	.
+scaffold_3259	1	1665	+	.
+scaffold_3024	1	2408	+	.
+scaffold_3190	1	1726	+	.
+scaffold_2933	1	2669	+	.
+scaffold_3383	1	1162	+	.
+scaffold_3264	1	1441	+	.
+scaffold_2913	1	2832	+	.
+scaffold_3422	1	2139	+	.
+scaffold_3356	1	2921	+	.
+scaffold_3452	1	1858	+	.
+scaffold_3316	1	1314	+	.
+scaffold_3353	1	1243	+	.
+scaffold_3005	1	2485	+	.
+scaffold_3160	1	1884	+	.
+scaffold_3269	1	1431	+	.
+scaffold_3320	1	2574	+	.
+scaffold_3352	1	2879	+	.
+scaffold_3262	1	1448	+	.
+scaffold_3107	1	2869	+	.
+scaffold_3423	1	1189	+	.
+scaffold_3194	1	2061	+	.
+scaffold_3210	1	1863	+	.
+scaffold_2838	1	2988	+	.
+scaffold_3346	1	1260	+	.
+scaffold_3126	1	2028	+	.
+scaffold_3171	1	1840	+	.
+scaffold_3391	1	1147	+	.
+scaffold_3442	1	1032	+	.
+scaffold_3370	1	2985	+	.
+scaffold_2981	1	2544	+	.
+scaffold_3272	1	1426	+	.
+scaffold_3372	1	1208	+	.
+scaffold_3431	1	1055	+	.
+scaffold_3230	1	1594	+	.
+scaffold_3354	1	2537	+	.
+scaffold_3263	1	1970	+	.
+scaffold_2844	1	2966	+	.
+scaffold_3681	1	1022	+	.
+scaffold_3226	1	1920	+	.
+scaffold_2853	1	2935	+	.
+scaffold_3139	1	1964	+	.
+scaffold_3121	1	2043	+	.
+scaffold_3305	1	1337	+	.
+scaffold_3046	1	2329	+	.
+scaffold_3068	1	2254	+	.
+scaffold_3250	1	1485	+	.
+scaffold_3231	1	1591	+	.
+scaffold_3357	1	1239	+	.
+scaffold_3294	1	1369	+	.
+scaffold_3223	1	1705	+	.
+scaffold_3129	1	2114	+	.
+scaffold_3448	1	1020	+	.
+scaffold_3042	1	2357	+	.
+scaffold_3342	1	2686	+	.
+scaffold_2855	1	2931	+	.
+scaffold_3416	1	1094	+	.
+scaffold_3020	1	2530	+	.
+scaffold_2911	1	2734	+	.
+scaffold_3060	1	2290	+	.
+scaffold_3285	1	2448	+	.
+scaffold_3021	1	2419	+	.
+scaffold_3289	1	2781	+	.
+scaffold_2907	1	2749	+	.
+scaffold_3328	1	1293	+	.
+scaffold_3412	1	2813	+	.
+scaffold_3300	1	2080	+	.
+scaffold_2879	1	2846	+	.
+scaffold_2951	1	2618	+	.
+scaffold_3436	1	2815	+	.
+scaffold_3384	1	2287	+	.
+scaffold_3251	1	2376	+	.

@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumen
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -32,7 +33,7 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         Arrays.stream(TEST_COUNT_FILES).forEach(argsBuilder::addInput);
         argsBuilder.add(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.COHORT.name())
-                .add("L", SIM_INTERVAL_LIST_SUBSET_FILE.getAbsolutePath())
+                .add("L", SIM_INTERVAL_LIST_SUBSET_FILE)
                 .add(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
                         CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
                 .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())

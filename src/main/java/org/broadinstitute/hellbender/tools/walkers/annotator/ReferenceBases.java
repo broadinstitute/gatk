@@ -27,7 +27,7 @@ import java.util.Map;
  *
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Annotate with local reference bases (REF_BASES)")
-public class ReferenceBases extends InfoFieldAnnotation {
+public class ReferenceBases implements InfoFieldAnnotation {
     public static final String REFERENCE_BASES_KEY = "REF_BASES";
 
     private int NUM_BASES_ON_EITHER_SIDE = 10;

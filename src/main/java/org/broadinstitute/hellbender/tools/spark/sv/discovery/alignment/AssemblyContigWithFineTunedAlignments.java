@@ -4,6 +4,8 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import htsjdk.samtools.SAMSequenceDictionary;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleChimera;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -14,7 +16,7 @@ import java.util.Set;
 
 /**
  * A wrapper around {@link AlignedContig} to represent mapped assembly contig whose alignments
- * went through {@link AssemblyContigAlignmentsConfigPicker} and may represent SV breakpoints.
+ * went through {@link AssemblyContigAlignmentsRDDProcessor} and may represent SV breakpoints.
  *
  * Example Contig:
  * ACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTG
@@ -43,19 +45,19 @@ public final class AssemblyContigWithFineTunedAlignments {
 
     /**
      * for signalling (i.e. not null) that the alignments went through the special treatment in
-     * {@link AssemblyContigAlignmentsConfigPicker#getBetterNonCanonicalMapping(Set, List, int)}
+     * {@link AlignedContig#getBetterNonCanonicalMapping(Set, List, int)}
      */
     private final String saTAGForGoodMappingToNonCanonicalChromosome;
 
     public enum AlignmentSignatureBasicType {
         NORMAL, // contigs with just one regular alignment
-        UNKNOWN, SIMPLE_CHIMERA, COMPLEX;
+        UNKNOWN, SIMPLE_CHIMERA, COMPLEX
     }
 
     public enum ReasonForAlignmentClassificationFailure {
         INCOMPLETE, // see hasIncompletePicture()
         AMBIGUOUS,  // two equally good configurations explain the contig alignments, hence ambiguous
-        UNINFORMATIVE; // the contig originally has more than one alignments assigned to it by aligner, but no or only one good alignment left after AssemblyContigAlignmentsConfigPicker
+        UNINFORMATIVE // the contig originally has more than one alignments assigned to it by aligner, but no or only one good alignment left after AssemblyContigAlignmentsConfigPicker
     }
 
     public AssemblyContigWithFineTunedAlignments(final AlignedContig contig) {
@@ -135,15 +137,23 @@ public final class AssemblyContigWithFineTunedAlignments {
     }
 
     /**
-     * See {@link AssemblyContigAlignmentsConfigPicker#getBetterNonCanonicalMapping(Set, List, int)}.
+     * See {@link AlignedContig#getBetterNonCanonicalMapping(Set, List, int)}.
      */
     public static final String NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME = "NONE";
     public final String getSAtagForGoodMappingToNonCanonicalChromosome() {
         return saTAGForGoodMappingToNonCanonicalChromosome;
     }
 
-    public final boolean hasOnly2GoodAlignments() {
-        return sourceTig.hasOnly2Alignments();
+    public SimpleChimera extractSimpleChimera(final SAMSequenceDictionary referenceDictionary) {
+        if ( !sourceTig.hasOnly2Alignments() )
+            throw new IllegalArgumentException("assembly contig sent to the wrong path: assumption that contig has only 2 good alignments is violated for\n" + this);
+
+        final List<AlignmentInterval> alignments = sourceTig.getAlignments();
+        final AlignmentInterval alignmentOne = alignments.get(0);
+        final AlignmentInterval alignmentTwo = alignments.get(1);
+
+        return new SimpleChimera(alignmentOne, alignmentTwo, insertionMappings, sourceTig.getContigName(),
+                                saTAGForGoodMappingToNonCanonicalChromosome, referenceDictionary);
     }
 
     public AlignmentSignatureBasicType getAlignmentSignatureBasicType() {
@@ -154,7 +164,7 @@ public final class AssemblyContigWithFineTunedAlignments {
                 return AlignmentSignatureBasicType.NORMAL;
             else
                 return AlignmentSignatureBasicType.UNKNOWN;
-        } else if ( hasOnly2GoodAlignments() ) {
+        } else if ( sourceTig.hasOnly2Alignments() ) {
             return AlignmentSignatureBasicType.SIMPLE_CHIMERA;
         } else {
             return AlignmentSignatureBasicType.COMPLEX;
@@ -195,7 +205,7 @@ public final class AssemblyContigWithFineTunedAlignments {
     final boolean hasIncompletePicture() {
         if ( ! hasChimericAlignments() )
             return false;
-        else if ( hasOnly2GoodAlignments() )
+        else if ( sourceTig.hasOnly2Alignments() )
             return hasIncompletePictureFromTwoAlignments(getHeadAlignment(), getTailAlignment());
         else
             return hasIncompletePictureFromMultipleAlignments();

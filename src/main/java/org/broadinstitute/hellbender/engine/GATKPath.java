@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.engine;
 
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
+
+import htsjdk.io.HtsPath;
+
 import org.broadinstitute.barclay.argparser.TaggedArgument;
 import org.broadinstitute.barclay.argparser.TaggedArgumentParser;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -22,7 +25,7 @@ import java.util.Objects;
  * GATK tool command line arguments that are input or output resources. These can
  * have an optional name supplied on the command line, as well as one or more optional tag/value pairs.
  */
-public class GATKPath extends PathSpecifier implements TaggedArgument, Serializable {
+public class GATKPath extends HtsPath implements TaggedArgument, Serializable {
     private static final long serialVersionUID = 1L;
 
     public static final String HDFS_SCHEME = "hdfs";
@@ -36,6 +39,23 @@ public class GATKPath extends PathSpecifier implements TaggedArgument, Serializa
      */
     public GATKPath(final String uriString) {
         super(uriString);
+    }
+
+    /**
+     * Create a GATKPath from an existing GATKPath. Propagates tag and tag attributes.
+     * @param sourceGATKPath
+     */
+    public GATKPath(final GATKPath sourceGATKPath) {
+        super(sourceGATKPath);
+
+        if (sourceGATKPath.getTag() != null) {
+            this.setTag(sourceGATKPath.getTag());
+        }
+
+        final Map<String, String> sourceTagMap = sourceGATKPath.getTagAttributes();
+        if (sourceTagMap != null) {
+            this.setTagAttributes(new HashMap<>(sourceTagMap));
+        }
     }
 
     @Override

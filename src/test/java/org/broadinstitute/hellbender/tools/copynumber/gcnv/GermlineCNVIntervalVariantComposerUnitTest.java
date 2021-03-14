@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyNumberPosteriorDistribution;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.IntervalCopyNumberGenotypingData;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
@@ -112,43 +113,43 @@ public final class GermlineCNVIntervalVariantComposerUnitTest extends CommandLin
                 /* if the contig of the genotyped interval is not contained in the allosomal contigs set
                  * (of if the latter is empty), the baseline copy-number state is ignored and the ref autosomal
                  * copy-number is used for allele determination */
-                {0, new HashSet<String>(), TEST_EXPECTED_MAP_CN - 1, GermlineCNVIntervalVariantComposer.DUP_ALLELE},
-                {0, new HashSet<String>(), TEST_EXPECTED_MAP_CN + 1, GermlineCNVIntervalVariantComposer.DUP_ALLELE},
-                {0, new HashSet<String>(), TEST_EXPECTED_MAP_CN, GermlineCNVIntervalVariantComposer.DUP_ALLELE},
-                {1, new HashSet<String>(), TEST_EXPECTED_MAP_CN - 1, GermlineCNVIntervalVariantComposer.DUP_ALLELE},
-                {1, new HashSet<String>(), TEST_EXPECTED_MAP_CN + 1, GermlineCNVIntervalVariantComposer.DUP_ALLELE},
-                {1, new HashSet<String>(), TEST_EXPECTED_MAP_CN, GermlineCNVIntervalVariantComposer.DUP_ALLELE},
+                {0, new HashSet<String>(), TEST_EXPECTED_MAP_CN - 1, GATKSVVCFConstants.DUP_ALLELE},
+                {0, new HashSet<String>(), TEST_EXPECTED_MAP_CN + 1, GATKSVVCFConstants.DUP_ALLELE},
+                {0, new HashSet<String>(), TEST_EXPECTED_MAP_CN, GATKSVVCFConstants.DUP_ALLELE},
+                {1, new HashSet<String>(), TEST_EXPECTED_MAP_CN - 1, GATKSVVCFConstants.DUP_ALLELE},
+                {1, new HashSet<String>(), TEST_EXPECTED_MAP_CN + 1, GATKSVVCFConstants.DUP_ALLELE},
+                {1, new HashSet<String>(), TEST_EXPECTED_MAP_CN, GATKSVVCFConstants.DUP_ALLELE},
                 {2, new HashSet<String>(), TEST_EXPECTED_MAP_CN - 1, GermlineCNVIntervalVariantComposer.REF_ALLELE},
                 {2, new HashSet<String>(), TEST_EXPECTED_MAP_CN + 1, GermlineCNVIntervalVariantComposer.REF_ALLELE},
                 {2, new HashSet<String>(), TEST_EXPECTED_MAP_CN, GermlineCNVIntervalVariantComposer.REF_ALLELE},
-                {3, new HashSet<String>(), TEST_EXPECTED_MAP_CN - 1, GermlineCNVIntervalVariantComposer.DEL_ALLELE},
-                {3, new HashSet<String>(), TEST_EXPECTED_MAP_CN + 1, GermlineCNVIntervalVariantComposer.DEL_ALLELE},
-                {3, new HashSet<String>(), TEST_EXPECTED_MAP_CN, GermlineCNVIntervalVariantComposer.DEL_ALLELE},
+                {3, new HashSet<String>(), TEST_EXPECTED_MAP_CN - 1, GATKSVVCFConstants.DEL_ALLELE},
+                {3, new HashSet<String>(), TEST_EXPECTED_MAP_CN + 1, GATKSVVCFConstants.DEL_ALLELE},
+                {3, new HashSet<String>(), TEST_EXPECTED_MAP_CN, GATKSVVCFConstants.DEL_ALLELE},
                 /* if the contig of the genotyped interval is contained in the allosomal contigs set,
                  * the baseline copy-number state is used for allele determination and the ref autosomal
                  * copy-number state is ignored */
                 {0, Collections.singleton(TEST_INTERVAL.getContig()), TEST_EXPECTED_MAP_CN - 1,
-                        GermlineCNVIntervalVariantComposer.DUP_ALLELE},
+                        GATKSVVCFConstants.DUP_ALLELE},
                 {0, Collections.singleton(TEST_INTERVAL.getContig()), TEST_EXPECTED_MAP_CN + 1,
-                        GermlineCNVIntervalVariantComposer.DEL_ALLELE},
+                        GATKSVVCFConstants.DEL_ALLELE},
                 {0, Collections.singleton(TEST_INTERVAL.getContig()), TEST_EXPECTED_MAP_CN,
                         GermlineCNVIntervalVariantComposer.REF_ALLELE},
                 {1, Collections.singleton(TEST_INTERVAL.getContig()), TEST_EXPECTED_MAP_CN - 1,
-                        GermlineCNVIntervalVariantComposer.DUP_ALLELE},
+                        GATKSVVCFConstants.DUP_ALLELE},
                 {1, Collections.singleton(TEST_INTERVAL.getContig()), TEST_EXPECTED_MAP_CN + 1,
-                        GermlineCNVIntervalVariantComposer.DEL_ALLELE},
+                        GATKSVVCFConstants.DEL_ALLELE},
                 {1, Collections.singleton(TEST_INTERVAL.getContig()), TEST_EXPECTED_MAP_CN,
                         GermlineCNVIntervalVariantComposer.REF_ALLELE},
                 {2, Collections.singleton(TEST_INTERVAL.getContig()), TEST_EXPECTED_MAP_CN - 1,
-                        GermlineCNVIntervalVariantComposer.DUP_ALLELE},
+                        GATKSVVCFConstants.DUP_ALLELE},
                 {2, Collections.singleton(TEST_INTERVAL.getContig()), TEST_EXPECTED_MAP_CN + 1,
-                        GermlineCNVIntervalVariantComposer.DEL_ALLELE},
+                        GATKSVVCFConstants.DEL_ALLELE},
                 {3, Collections.singleton(TEST_INTERVAL.getContig()), TEST_EXPECTED_MAP_CN,
                         GermlineCNVIntervalVariantComposer.REF_ALLELE},
                 {3, Collections.singleton(TEST_INTERVAL.getContig()), TEST_EXPECTED_MAP_CN - 1,
-                        GermlineCNVIntervalVariantComposer.DUP_ALLELE},
+                        GATKSVVCFConstants.DUP_ALLELE},
                 {3, Collections.singleton(TEST_INTERVAL.getContig()), TEST_EXPECTED_MAP_CN + 1,
-                        GermlineCNVIntervalVariantComposer.DEL_ALLELE},
+                        GATKSVVCFConstants.DEL_ALLELE},
                 {3, Collections.singleton(TEST_INTERVAL.getContig()), TEST_EXPECTED_MAP_CN,
                         GermlineCNVIntervalVariantComposer.REF_ALLELE}
         };

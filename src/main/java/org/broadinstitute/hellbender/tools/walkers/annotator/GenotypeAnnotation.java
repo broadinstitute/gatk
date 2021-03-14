@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * Represents an annotation that is computed for a single genotype.
  */
-public abstract class GenotypeAnnotation extends VariantAnnotation{
+public interface GenotypeAnnotation extends VariantAnnotation {
 
     /**
      * Computes the annotation for the given genotype and the likelihoods per read.
@@ -26,7 +26,7 @@ public abstract class GenotypeAnnotation extends VariantAnnotation{
      * @param g the genotype to annotate. May be null.
      * @param gb the builder to modify and annotations to. Not null.
      */
-    public abstract void annotate(final ReferenceContext ref,
+    public void annotate(final ReferenceContext ref,
                                   final VariantContext vc,
                                   final Genotype g,
                                   final GenotypeBuilder gb,
@@ -36,5 +36,5 @@ public abstract class GenotypeAnnotation extends VariantAnnotation{
      * Return the descriptions used for the VCF FORMAT meta field.
      * Subclasses must ensure that this list is not null and does not contain null.
      */
-    public abstract List<VCFFormatHeaderLine> getDescriptions();
+    public List<VCFFormatHeaderLine> getDescriptions();
 }

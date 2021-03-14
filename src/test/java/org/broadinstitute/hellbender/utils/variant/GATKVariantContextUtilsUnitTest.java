@@ -1370,6 +1370,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final double[] aRefPL = new double[]{0.9, 0.09, 0.01};
         final double[] cPL = new double[]{0.09, 0.9, 0.01};
         final double[] gPL = new double[]{0.01, 0.09, 0.9};
+        final double[] nonRefPL = gPL;
         final List<double[]> allHaploidPLs = Arrays.asList(aRefPL, cPL, gPL);
         final List<List<Allele>> allHaploidSubsetAlleles = Arrays.asList(Collections.singletonList(Aref), Collections.singletonList(G));
 
@@ -1408,9 +1409,11 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
         final List<Allele> originalHaploidGT = Collections.singletonList(Aref);
         final List<Allele> haploidAllelesToUse = Arrays.asList(Aref, C, G );
+        final List<Allele> haploidAllelesWithNonRef = Arrays.asList(Aref, C, Allele.NON_REF_ALLELE );
         tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, aRefPL, originalHaploidGT, haploidAllelesToUse, Collections.singletonList(Aref)});
         tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, cPL, originalHaploidGT, haploidAllelesToUse, Collections.singletonList(C)});
         tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, gPL, originalHaploidGT, haploidAllelesToUse, Collections.singletonList(G)});
+        tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, nonRefPL, originalHaploidGT, haploidAllelesWithNonRef, Collections.singletonList(Allele.NO_CALL)});
 
         for ( final List<Allele> originalGT : Arrays.asList(AA, AC, CC, AG, CG, GG) ) {
             tests.add(new Object[]{2, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, homRefPL, originalGT, AC, AA});
@@ -1446,9 +1449,10 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final GenotypeBuilder gb = new GenotypeBuilder("test");
         final double[] logLikelhoods = MathUtils.normalizeLog10(likelihoods);
 
-        GATKVariantContextUtils.makeGenotypeCall(originalGT.size(), gb, mode, logLikelhoods, allelesToUse);
+        GATKVariantContextUtils.makeGenotypeCall(originalGT.size(), gb, mode, logLikelhoods, allelesToUse, null);
 
         final Genotype g = gb.make();
+        Assert.assertEquals(g.getAlleles().size(), expectedAlleles.size());
         Assert.assertEquals(new LinkedHashSet<>(g.getAlleles()), new LinkedHashSet<>(expectedAlleles));
     }
 

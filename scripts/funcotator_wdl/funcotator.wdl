@@ -24,6 +24,7 @@
 #     Array[String]? annotation_overrides      - Override values for annotations (in the format <ANNOTATION>:<VALUE>).  Replaces existing annotations of the given name with given values.
 #     File? gatk4_jar_override                 - Override Jar file containing GATK 4.0.  Use this when overriding the docker JAR or when using a backend without docker.
 #     String? funcotator_extra_args            - Extra command-line arguments to pass through to Funcotator.  (e.g. " --exclude-field foo_field --exclude-field bar_field ")
+#     String? gcs_project_for_requester_pays   - GCS Project specifier if the input data are in a Requester Pays Bucket.
 #
 # This WDL needs to decide whether to use the ``gatk_jar`` or ``gatk_jar_override`` for the jar location.  As of cromwell-0.24,
 # this logic *must* go into each task.  Therefore, there is a lot of duplicated code.  This allows users to specify a jar file
@@ -49,32 +50,34 @@ workflow Funcotator {
     Array[String]? annotation_defaults
     Array[String]? annotation_overrides
     String? funcotator_extra_args
+    String? gcs_project_for_requester_pays
 
     File? gatk4_jar_override
 
     call Funcotate {
         input:
-            gatk_docker               = gatk_docker,
-            ref_fasta                 = ref_fasta,
-            ref_fasta_index           = ref_fasta_index,
-            ref_dict                  = ref_dict,
-            input_vcf                 = variant_vcf_to_funcotate,
-            input_vcf_idx             = variant_vcf_to_funcotate_index,
-            reference_version         = reference_version,
-            output_file_base_name     = output_file_base_name,
-            output_format             = output_format,
-            compress                  = compress,
-            use_gnomad                = use_gnomad,
+            gatk_docker                    = gatk_docker,
+            ref_fasta                      = ref_fasta,
+            ref_fasta_index                = ref_fasta_index,
+            ref_dict                       = ref_dict,
+            input_vcf                      = variant_vcf_to_funcotate,
+            input_vcf_idx                  = variant_vcf_to_funcotate_index,
+            reference_version              = reference_version,
+            output_file_base_name          = output_file_base_name,
+            output_format                  = output_format,
+            compress                       = compress,
+            use_gnomad                     = use_gnomad,
 
-            interval_list             = interval_list,
-            data_sources_tar_gz       = data_sources_tar_gz,
-            transcript_selection_mode = transcript_selection_mode,
-            transcript_selection_list = transcript_selection_list,
-            annotation_defaults       = annotation_defaults,
-            annotation_overrides      = annotation_overrides,
-            extra_args                = funcotator_extra_args,
+            interval_list                  = interval_list,
+            data_sources_tar_gz            = data_sources_tar_gz,
+            transcript_selection_mode      = transcript_selection_mode,
+            transcript_selection_list      = transcript_selection_list,
+            annotation_defaults            = annotation_defaults,
+            annotation_overrides           = annotation_overrides,
+            extra_args                     = funcotator_extra_args,
+            gcs_project_for_requester_pays = gcs_project_for_requester_pays,
 
-            gatk_override             = gatk4_jar_override
+            gatk_override                  = gatk4_jar_override
     }
 
     output {
@@ -122,6 +125,8 @@ task Funcotate {
 
     String? extra_args
 
+    String? gcs_project_for_requester_pays
+
     # ==============
     # Process input args:
 
@@ -143,6 +148,8 @@ task Funcotate {
     String interval_list_arg = if defined(interval_list) then " -L " else ""
 
     String extra_args_arg = select_first([extra_args, ""])
+
+    String requester_pays_arg = if defined(gcs_project_for_requester_pays)  then " --gcs-project-for-requester-pays " else ""
 
     # ==============
     # Runtime options:
@@ -229,7 +236,8 @@ task Funcotate {
             ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
             ${excluded_fields_args}${default="" sep=" --exclude-field " funcotator_excluded_fields} \
             ${filter_funcotations_args} \
-            ${extra_args_arg}
+            ${extra_args_arg} \
+            ${requester_pays_arg}${default="" gcs_project_for_requester_pays}
 
         # =======================================
         # Make sure we have a placeholder index for MAF files so this workflow doesn't fail:

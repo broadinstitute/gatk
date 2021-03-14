@@ -123,6 +123,7 @@ install:
 script:
 # run a basic sanity check to be sure that gatk doesn't explode
 # run tests
+# Because the docker build for GATK doesn't include the test code or the src files we have to manually collect them into a location to be mounted in for performing tests
 - if [[ $TRAVIS_EVENT_TYPE == cron ]]; then
     echo "Not running any tests for nightly builds";
   elif [[ $TEST_TYPE == wdlGen ]]; then
@@ -137,15 +138,15 @@ script:
     travis_wait 60 bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh CASE;
   elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
     echo "Running CNV somatic workflows";
-    bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
+    travis_wait 60 bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
   elif [[ $RUN_M2_WDL == true ]]; then
     echo "Deleting some unused files before running M2 WDL...";
     rm -Rf src/test/resources/large/VQSR;
     echo "Running M2 WDL";
-    sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
+    travis_wait 60 sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
   elif [[ $RUN_CNN_WDL == true ]]; then
     echo "Running CNN WDL";
-    sudo bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
+    travis_wait 60 sudo bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image and running appropriate tests..." ;
     if [ ${TRAVIS_PULL_REQUEST} != false ]; then
@@ -158,8 +159,13 @@ script:
     fi;
     sudo docker images;
     echo ${TEST_TYPE};
-    sudo mkdir -p build/reports/;
-    sudo chmod -R a+w build/reports/;
+    sudo ./gradlew clean shadowTestClassJar shadowTestJar;
+    mkdir ./testJars;
+    echo $( find ./build/libs/ -name "gatk*test.jar");
+    cp -r $( find ./build/libs/ -name "gatk*test.jar" ) ./testJars;
+    cp -r $( find ./build/libs/ -name "gatk*testDependencies.jar" ) ./testJars;
+    mkdir -p build/reports/;
+    chmod -R a+w build/reports/;
     cp scripts/docker/dockertest.gradle .;
     sudo docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e "scala.version=${SCALA_VERSION}" -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
     TEST_EXIT_VALUE=$?;
@@ -167,6 +173,7 @@ script:
     $( exit ${TEST_EXIT_VALUE} );
   else
     ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
+    export GATK_LAUNCH_SCRIPT="$(pwd)/gatk";
     travis_wait 50 ./gradlew -Dscala.version=${SCALA_VERSION} jacocoTestReport;
   fi;
 # This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
@@ -199,6 +206,7 @@ after_success:
     ./gradlew uploadArchives; 
   fi;
 after_failure:
+- test -f hs_err_*.log && cat hs_err_*.log
 - dmesg | tail -100
 - export FAILED=true
 after_script:

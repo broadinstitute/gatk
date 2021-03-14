@@ -69,7 +69,7 @@ final public class GencodeGtfCodec extends AbstractGtfCodec {
     /**
      * Maximum version of gencode that will not generate a warning.  This parser will still attempt to parse versions above this number, but a warning about potential errors will appear.
      */
-    private static final int GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE = 28;
+    private static final int GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE = 34;
 
     private int currentLineNum = 1;
     private final List<String> header = new ArrayList<>();

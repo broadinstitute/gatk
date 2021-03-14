@@ -62,7 +62,7 @@ view the following tutorial [(How to) Execute Workflows from the gatk-workflows 
 - The following material is provided by the Data Science Platforum group at the Broad Institute. Please direct any questions or concerns to one of our forum sites : [GATK](https://gatk.broadinstitute.org/hc/en-us/community/topics) or [Terra](https://support.terra.bio/hc/en-us/community/topics/360000500432).
 
 ### LICENSING :
- This script is released under the WDL source code license (BSD-3) (see LICENSE in
- https://github.com/broadinstitute/wdl). Note however that the programs it calls may
+ This script is released under the GATK source code license (Apache 2.0) (see LICENSE in
+ https://github.com/broadinstitute/gatk). Note however that the programs it calls may
  be subject to different licenses. Users are responsible for checking that they are
  authorized to run all programs before running this script.

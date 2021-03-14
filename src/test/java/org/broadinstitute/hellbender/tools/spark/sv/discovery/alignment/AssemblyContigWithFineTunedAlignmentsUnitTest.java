@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.Tuple2;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,9 +25,10 @@ public class AssemblyContigWithFineTunedAlignmentsUnitTest extends GATKBaseTest 
                 true);
         final AlignedContig sourceTig = new AlignedContig("asm002362:tig00002", "GTCCCTGAGGGGCACACCAGGCTCTCGCTCTCCCCATGGCCCAGCGCGGCGCCTGCACGAGGTCGGTCCAGCGCGGCGCCTGCACGAGGTCGGTCCAGGAGAGGCGCCTGCACGAGGTCTGTCCAGGAGAGGCGCCTGCACGAGGTCGGTCCAGGAGAGGCGCCTGCACGAGGTCTGTCCAGGAGAGGCGCCTGCGGGGTCTTCAAGGCTTCAGTCCCACGCGCCTTCCATGCTCGTCCCCACCCAAGGAGCACACAAATTCCCCAGCAT".getBytes(),
                 Arrays.asList(one, two));
-        final List<AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings> config = AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(sourceTig, new HashSet<>(Collections.singletonList("chr2")), 0.);
-        final AssemblyContigWithFineTunedAlignments tig = AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(new Tuple2<>(new Tuple2<>(sourceTig.getContigName(), sourceTig.getContigSequence()),
-                config)).next();
+        final AssemblyContigWithFineTunedAlignments tig =
+                sourceTig
+                    .reconstructContigFromBestConfiguration(new HashSet<>(Collections.singletonList("chr2")), 0.0)
+                    .get(0);
 
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final Output out = new Output(bos);

@@ -139,6 +139,10 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public boolean forceCallFiltered = false;
 
     @Advanced
+    @Argument(fullName = "soft-clip-low-quality-ends", doc = "If enabled will preserve low-quality read ends as softclips (used for DRAGEN-GATK BQD genotyper model)", optional = true)
+    public boolean softClipLowQualityEnds = false;
+
+    @Advanced
     @Argument(fullName = ALLELE_EXTENSION_LONG_NAME,
             doc = "Likelihood and read-based annotations will only take into consideration reads " +
                     "that overlap the variant or any base no further than this distance expressed in base pairs",

@@ -56,7 +56,7 @@ import java.util.stream.IntStream;
  *  *   -R ref_fasta.fa \
  *  *   -L adjacent_intervals.list \
  *  *   --scatter-count 10 \
- *  *   --interval-merge-rule OVERLAPPING_ONLY \
+ *  *   --interval-merging-rule OVERLAPPING_ONLY \
  *  *   --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW
  *  *   -O interval-files-folder
  *  * </pre>
@@ -64,7 +64,7 @@ import java.util.stream.IntStream;
  * <p>
  *     Note that adjacent intervals will be merged by default.  In cases where the desired behavior is to apportion a set
  *     of small adjacent intervals with nearly uniform runtime among X new interval lists, the argument
- *     `--interval-merge-rule OVERLAPPING_ONLY` should be included.
+ *     `--interval-merging-rule OVERLAPPING_ONLY` should be included.
  * </p>
  *
  * */

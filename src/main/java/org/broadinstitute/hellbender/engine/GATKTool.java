@@ -9,6 +9,7 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
+
 import java.io.File;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
@@ -43,10 +44,6 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-//TODO:
-//UserException overloads
-//VCF outs
-
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
  * the pre-packaged Walker traversals should feel free to extend this class directly. All other
@@ -66,9 +63,10 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
             shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
             doc = "Use the given sequence dictionary as the master/canonical sequence dictionary.  Must be a .dict file.", optional = true, common = true)
-    private String masterSequenceDictionaryFilename = null;
+    private GATKPath masterSequenceDictionaryFilename = null;
 
     public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "seconds-between-progress-updates";
+
     @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
     private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
@@ -606,7 +604,7 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     private void loadMasterSequenceDictionary() {
         if ( (masterSequenceDictionary == null) && (masterSequenceDictionaryFilename != null) ) {
-            masterSequenceDictionary = ReferenceUtils.loadFastaDictionary(new File(masterSequenceDictionaryFilename));
+            masterSequenceDictionary = ReferenceUtils.loadFastaDictionary(masterSequenceDictionaryFilename);
         }
     }
 
@@ -652,7 +650,7 @@ public abstract class GATKTool extends CommandLineProgram {
             return reads.getSequenceDictionary();
         } else if (hasFeatures()){
             final List<SAMSequenceDictionary> dictionaries = features.getVariantSequenceDictionaries();
-            //If there is just one, it clearly is the best. Otherwise, noone is best.
+            //If there is just one, it clearly is the best. Otherwise, none is best.
             if (dictionaries.size() == 1){
                 return dictionaries.get(0);
             }
@@ -716,8 +714,15 @@ public abstract class GATKTool extends CommandLineProgram {
 
         checkToolRequirements();
 
+        initializeProgressMeter(getProgressMeterRecordLabel());
+    }
+
+    /**
+     * Helper method to initialize the progress meter without exposing engine level arguements.
+     */
+    protected final void initializeProgressMeter(final String progressMeterRecordLabel) {
         progressMeter = new ProgressMeter(secondsBetweenProgressUpdates);
-        progressMeter.setRecordLabel(getProgressMeterRecordLabel());
+        progressMeter.setRecordLabel(progressMeterRecordLabel);
     }
 
     /**
@@ -775,12 +780,16 @@ public abstract class GATKTool extends CommandLineProgram {
 
         // Check all Feature dictionaries against the reference and/or reads dictionaries
         // TODO: pass file names associated with each sequence dictionary into validateDictionaries(); issue #660
+        final SAMSequenceDictionary bestDict = getBestAvailableSequenceDictionary();
         for ( final SAMSequenceDictionary featureDict : featureDicts ) {
             if (hasReference()){
                 SequenceDictionaryUtils.validateDictionaries("reference", refDict, "features", featureDict);
             }
             if (hasReads()) {
                 SequenceDictionaryUtils.validateDictionaries("reads", readDict, "features", featureDict);
+            }
+            if (bestDict != null) { //VariantWalkers will use DrivingVariants for best dictionary, then check all other FeatureInputs
+                SequenceDictionaryUtils.validateDictionaries("best available", bestDict, "features", featureDict);
             }
         }
 
@@ -1047,7 +1056,9 @@ public abstract class GATKTool extends CommandLineProgram {
             onTraversalStart();
             progressMeter.start();
             traverse();
-            progressMeter.stop();
+            if (!progressMeter.stopped()) {
+                progressMeter.stop();
+            }
             return onTraversalSuccess();
         } finally {
             closeTool();

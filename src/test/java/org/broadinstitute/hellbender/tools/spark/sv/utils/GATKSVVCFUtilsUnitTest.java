@@ -33,17 +33,21 @@ public class GATKSVVCFUtilsUnitTest extends GATKBaseTest {
     private static final Stream<String> expectedFormatHeaderKeysInVCF
             = Stream.of("CN", "CNQ");
     private static final Stream<String> expectedFilterHeaderKeysInVCF
-            = Stream.of("LOW_MQ", "SHORT_ALN");
+            = Stream.of(ASSEMBLY_BASED_VARIANT_MQ_FILTER_KEY, ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY);
+    private static final Stream<String> expectedGCNVFilterHeaderKeysInVCF
+            = Stream.of(LOW_QS_SCORE_FILTER_KEY, FREQUENCY_FILTER_KEY);
     static final List<String> expectedHeaderKeysInVCF
             = Stream.of(expectedAltAlleleHeaderKeysInVCF, expectedInfoHeaderKeysInVCF, expectedFormatHeaderKeysInVCF,
                         expectedFilterHeaderKeysInVCF)
             .flatMap(i->i).sorted().collect(Collectors.toList());
+    static final List<String> allExpectedSVHeaderKeys
+            = Stream.of(expectedHeaderKeysInVCF.stream(), expectedGCNVFilterHeaderKeysInVCF).flatMap(i->i).sorted().collect(Collectors.toList());
 
     @Test(groups = "sv")
     public void testVCFConstants() {
         Assert.assertEquals(expectedHeaderKeysInVCF,
-                Stream.of(SVTYPE, SVLEN, IMPRECISE, CIPOS, CIEND, BND_MATEID_STR, SYMB_ALT_ALLELE_INV, READ_PAIR_SUPPORT,
-                        SPLIT_READ_SUPPORT, SYMB_ALT_ALLELE_DEL, SYMB_ALT_ALLELE_INS, SYMB_ALT_ALLELE_DUP, SYMB_ALT_ALLELE_INVDUP,
+                Stream.of(SVTYPE, SVLEN, IMPRECISE, CIPOS, CIEND, BND_MATEID_STR, SYMB_ALT_STRING_INV, READ_PAIR_SUPPORT,
+                        SPLIT_READ_SUPPORT, SYMB_ALT_STRING_DEL, SYMB_ALT_STRING_INS, SYMB_ALT_STRING_DUP, SYMB_ALT_STRING_INVDUP,
                         CONTIG_NAMES, TOTAL_MAPPINGS, MAPPING_QUALITIES, HQ_MAPPINGS, ALIGN_LENGTHS, MAX_ALIGN_LENGTH,
                         SEQ_ALT_HAPLOTYPE, INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH, INSERTED_SEQUENCE_MAPPINGS, HOMOLOGY, HOMOLOGY_LENGTH,
                         DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_IMPRECISE_AFFECTED_RANGE,
@@ -64,7 +68,7 @@ public class GATKSVVCFUtilsUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(
                 Stream.of(infoHeaders, altAlleleHeaders, formatHeaders, filterHeaders).flatMap(i -> i).sorted().collect(Collectors.toList()),
-                expectedHeaderKeysInVCF);
+                allExpectedSVHeaderKeys);
     }
 
     @DataProvider(name = "svVcfFiles")

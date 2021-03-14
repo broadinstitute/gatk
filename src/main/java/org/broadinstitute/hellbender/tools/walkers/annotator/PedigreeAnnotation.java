@@ -4,11 +4,11 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
 import org.broadinstitute.hellbender.utils.samples.Trio;
 
-import java.io.File;
 import java.util.*;
 
 /**
@@ -22,9 +22,9 @@ import java.util.*;
  * Alternatively, if a pedigree file has been supplied (not founderIDs) then extending classes can call getTrios() to
  * return a set of Trio objects corresponding to a parsing of pedigree file.
  */
-public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
+public abstract class PedigreeAnnotation implements VariantAnnotation {
     private Collection<String> founderIds;
-    private File pedigreeFile = null;
+    private GATKPath pedigreeFile = null;
     private boolean hasAddedPedigreeFounders = false;
     protected transient final Logger logger = LogManager.getLogger(this.getClass());
 
@@ -40,7 +40,7 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
         this.founderIds = founderIds == null? new ArrayList<>() : new ArrayList<>(founderIds);
     }
 
-    public PedigreeAnnotation(final File pedigreeFile){
+    public PedigreeAnnotation(final GATKPath pedigreeFile){
         //If available, get the founder IDs and cache them. the IC will only be computed on founders then.
         this.pedigreeFile = pedigreeFile;
         initializeSampleDBAndSetFounders(pedigreeFile);
@@ -49,7 +49,7 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
     /**
      * Entry-point function to initialize the founders database from input data
      */
-    private void initializeSampleDBAndSetFounders(File pedigreeFile) {
+    private void initializeSampleDBAndSetFounders(GATKPath pedigreeFile) {
         final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
         sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
 
@@ -78,7 +78,7 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
      * Setter for pedigree file and founderIDs to be used by the GATKAnnotationPluginDescriptor to handle duplicated annotaiton
      * arguments between InbreedingCoeff and ExcessHet
      */
-    public void setPedigreeFile(File pedigreeFile) {
+    public void setPedigreeFile(GATKPath pedigreeFile) {
         this.pedigreeFile = pedigreeFile;
         hasAddedPedigreeFounders = false;
     }
@@ -96,7 +96,7 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
     public void validateArguments() {
         validateArguments(founderIds, pedigreeFile);
     }
-    void validateArguments(Collection<String> founderIds, File pedigreeFile) {
+    void validateArguments(Collection<String> founderIds, GATKPath pedigreeFile) {
         if ((founderIds == null || founderIds.isEmpty()) && pedigreeFile == null) {
             logger.warn(this.getClass().getSimpleName() + " annotation will not be calculated, no 'founder-id' or 'pedigree' arguments provided");
         }

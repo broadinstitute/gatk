@@ -12,6 +12,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
@@ -19,7 +20,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -40,7 +40,7 @@ public class NuMTFilterTool extends VariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output VCF file")
-    private String outputVcf = null;
+    private GATKPath outputVcf = null;
 
     @Argument(fullName = MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, optional = true, doc = "Median autosomal coverage for filtering potential NuMTs when calling on mitochondria.")
     public double medianAutosomalCoverage = DEFAULT_MEDIAN_AUTOSOMAL_COVERAGE;
@@ -58,7 +58,7 @@ public class NuMTFilterTool extends VariantWalker {
     public void onTraversalStart() {
         final VCFHeader header = getHeaderForVariants();
         header.addMetaDataLine(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME));
-        vcfWriter = createVCFWriter(new File(outputVcf));
+        vcfWriter = createVCFWriter(outputVcf);
         vcfWriter.writeHeader(header);
         if (maxNuMTAutosomalCopies > 0 && medianAutosomalCoverage > 0) {
             maxAltDepthCutoff = getMaxAltDepthCutoff(maxNuMTAutosomalCopies, medianAutosomalCoverage);

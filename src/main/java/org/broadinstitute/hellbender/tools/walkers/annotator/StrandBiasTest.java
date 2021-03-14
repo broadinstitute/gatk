@@ -8,7 +8,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -17,7 +16,7 @@ import java.util.*;
 /**
  * Class of tests to detect strand bias.
  */
-public abstract class StrandBiasTest extends InfoFieldAnnotation {
+public abstract class StrandBiasTest implements InfoFieldAnnotation {
 
     protected static final int ARRAY_DIM = 2;
     protected static final int ARRAY_SIZE = ARRAY_DIM * ARRAY_DIM;

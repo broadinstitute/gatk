@@ -5,11 +5,15 @@ import java.util.Collection;
 /**
  * An {@link AutoCloseable} collection that will automatically close all of its elements.
  */
-public class AutoCloseableCollection implements AutoCloseable {
-    private Collection<? extends AutoCloseable> autoCloseables;
+public class AutoCloseableCollection<C extends Collection<? extends AutoCloseable>> implements AutoCloseable {
+    protected C autoCloseables;
 
-    public AutoCloseableCollection(final Collection<? extends AutoCloseable> autoCloseables) {
+    public AutoCloseableCollection(final C autoCloseables) {
         this.autoCloseables = autoCloseables;
+    }
+
+    public int size() {
+        return autoCloseables.size();
     }
 
     @Override

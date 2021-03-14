@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.TreeSet;
 
 /**
  * A class to represent data as a list of <value,count> pairs.  For example, the list 2,2,2,2,2,2,3,4,4,4,5,5
@@ -25,7 +26,7 @@ public final class CompressedDataList<T>  implements Iterable<T> {
     @Override
     public Iterator<T> iterator(){
         Iterator<T> it = new Iterator<T>() {
-            private Iterator<T> keySetIterator = valueCounts.keySet().iterator();
+            private Iterator<T> keySetIterator = new TreeSet<>(valueCounts.keySet()).iterator();
             private T currentKey = valueCounts.isEmpty() ? null : keySetIterator.next();
             private int currentValueIndex = 0;
             private int currentValueSize = valueCounts.isEmpty() ? 0 : valueCounts.get(currentKey);

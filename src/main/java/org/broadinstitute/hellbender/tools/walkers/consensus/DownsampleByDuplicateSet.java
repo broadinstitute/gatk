@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.consensus;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.DuplicateSetWalker;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -13,11 +15,6 @@ import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.util.Random;
 
-@CommandLineProgramProperties(
-        summary = "Discard a set fraction of duplicate sets from a UMI-grouped bam",
-        oneLineSummary = "Discard a set fraction of duplicate sets from a UMI-grouped bam",
-        programGroup = ReadDataManipulationProgramGroup.class
-)
 /**
  * Given a bam grouped by the same unique molecular identifier (UMI), this tool drops a specified fraction of duplicate sets and returns a new bam.
  * A duplicate set refers to a group of reads whose fragments start and end at the same genomic coordinate _and_ share the same UMI.
@@ -55,9 +52,16 @@ import java.util.Random;
  * --fraction-to-keep 0.95 \
  * -O umiGrouped_0.95.bam
  **/
+@CommandLineProgramProperties(
+        summary = "Discard a set fraction of duplicate sets from a UMI-grouped bam",
+        oneLineSummary = "Discard a set fraction of duplicate sets from a UMI-grouped bam",
+        programGroup = ReadDataManipulationProgramGroup.class
+)
 @BetaFeature
+@WorkflowProperties
 public class DownsampleByDuplicateSet extends DuplicateSetWalker {
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output BAM file")
+    @WorkflowOutput(optionalCompanions = {StandardArgumentDefinitions.OUTPUT_INDEX_COMPANION})
     public GATKPath outputBam;
 
     public static final String FRACTION_TO_KEEP_NAME = "fraction-to-keep";

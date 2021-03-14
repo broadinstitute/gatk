@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import htsjdk.variant.variantcontext.Allele;
+
 public final class GATKSVVCFConstants {
 
     // todo: add these and the other standard SV info fields from the VCF spec to htsjdk VCFStandardHeaderLines
@@ -13,12 +15,16 @@ public final class GATKSVVCFConstants {
     public static final String BREAKEND_STR = "BND";
     public static final String BND_MATEID_STR = "MATEID";
 
+    // symbolic alt allele names
+    public static final String SYMB_ALT_STRING_INV = "INV";
+    public static final String SYMB_ALT_STRING_DEL = "DEL";
+    public static final String SYMB_ALT_STRING_INS = "INS";
+    public static final String SYMB_ALT_STRING_DUP = "DUP";
+    public static final String SYMB_ALT_STRING_INVDUP = "DUP:INV";
+
     // symbolic alt alleles
-    public static final String SYMB_ALT_ALLELE_INV = "INV";
-    public static final String SYMB_ALT_ALLELE_DEL = "DEL";
-    public static final String SYMB_ALT_ALLELE_INS = "INS";
-    public static final String SYMB_ALT_ALLELE_DUP = "DUP";
-    public static final String SYMB_ALT_ALLELE_INVDUP = "DUP:INV";
+    public static final Allele DEL_ALLELE = Allele.create("<DEL>", false);
+    public static final Allele DUP_ALLELE = Allele.create("<DUP>", false);
 
     // GATK-SV specific header lines
     // TODO: 10/3/17 the following comment is a goal we are trying to achieve
@@ -74,6 +80,11 @@ public final class GATKSVVCFConstants {
     public static final String DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING = "INS-DUPLICATION-TANDEM-EXPANSION";
     public static final String DUP_INV_INTERNAL_ID_START_STRING = "INS-DUPLICATION-INVERTED-EXPANSION";
 
+    // for breakpoint segmentation
+    public static final String ALGORITHMS_ATTRIBUTE = "ALGORITHMS";
+    public static final String STRANDS_ATTRIBUTE = "STRANDS";
+    public static final String DEPTH_ALGORITHM = "depth";
+    public static final String END_CONTIG_ATTRIBUTE = "CHR2";
 
     // format block
     public static final String COPY_NUMBER_FORMAT = "CN";
@@ -82,6 +93,8 @@ public final class GATKSVVCFConstants {
     // filter block
     public static final String ASSEMBLY_BASED_VARIANT_MQ_FILTER_KEY = "LOW_MQ";
     public static final String ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY = "SHORT_ALN";
+    public static final String LOW_QS_SCORE_FILTER_KEY = "LOW_QS";
+    public static final String FREQUENCY_FILTER_KEY = "FREQ";
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

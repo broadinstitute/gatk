@@ -15,6 +15,10 @@ import java.util.List;
 // because {@link ReadLikelihoods} implements AlleleList and SampleList and then size() would be ambiguous.
 public interface AlleleList<A extends Allele>{
 
+    static <A extends Allele> AlleleList<A> newList(final List<A> alleles) {
+        return new IndexedAlleleList<A>(alleles);
+    }
+
     /**
      * Returns the number of alleles in this AlleleList.
      */

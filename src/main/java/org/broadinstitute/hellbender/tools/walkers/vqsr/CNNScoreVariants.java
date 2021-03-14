@@ -2,9 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import java.util.*;
 import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.Files;
 import java.io.IOException;
 import java.util.stream.Collectors;
 import java.io.UnsupportedEncodingException;
@@ -27,10 +24,8 @@ import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
-import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriter;
 import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
@@ -149,7 +144,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output file")
-    private String outputFile;
+    private GATKPath outputFile;
 
     @Argument(fullName = "architecture", shortName = "architecture", doc = "Neural Net architecture configuration json file", optional = true)
     private String architecture;
@@ -221,7 +216,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     private int windowStart = windowSize / 2;
     private boolean waitforBatchCompletion = false;
 
-    private File scoreFile;
+    private File scoreFile; // use java.io.File here because python code needs to write to this
     private String scoreKey;
     private Scanner scoreScan;
     private VariantContextWriter vcfWriter;
@@ -307,7 +302,8 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
         // Execute Python code to open our output file, where it will write the contents of everything it reads
         // from the stream.
         try {
-            scoreFile = File.createTempFile(outputFile, ".temp");
+            // create a local temp that python code can write to
+            scoreFile = File.createTempFile(outputFile.getBaseName().get(), ".temp");
             if (!keepTempFile) {
                 scoreFile.deleteOnExit();
             } else {
@@ -351,7 +347,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
 
         try {
             scoreScan = new Scanner(scoreFile);
-            vcfWriter = createVCFWriter(new File(outputFile));
+            vcfWriter = createVCFWriter(outputFile);
             scoreScan.useDelimiter("\\n");
             writeVCFHeader(vcfWriter);
         } catch (IOException e) {

@@ -111,6 +111,7 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
                 {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0.1, 0.9, Arrays.asList(2, 3, 5)},
                 {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, Arrays.asList(2, 5)},
                 {intervalsFile, Collections.singletonList("20:1-10"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(1, 2, 3, 4, 5)},
+                {intervalsFile, Collections.singletonList("20:1-15"), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(2, 5)}, //regression test for https://github.com/broadinstitute/gatk/pull/7046
                 {intervalsFile, Arrays.asList("20:1-15", "20:35-45"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(2, 5)},
                 {intervalsFile, Collections.singletonList("20:25-50"), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1, 5)},
                 {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(0, 1, 2, 3, 4, 5)},

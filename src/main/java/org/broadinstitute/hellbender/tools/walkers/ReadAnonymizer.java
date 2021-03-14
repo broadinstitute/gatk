@@ -8,6 +8,8 @@ import org.apache.commons.lang.ArrayUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -44,19 +46,21 @@ import java.util.List;
  * Reads transformed in this way also have their CIGARs rewritten to match the new
  * sequence information.
  */
-@DocumentedFeature
-@ExperimentalFeature
 @CommandLineProgramProperties(
         summary = "Replace bases in reads with reference bases.",
         oneLineSummary = "Replace bases in reads with reference bases.",
         programGroup = OtherProgramGroup.class
 )
+@DocumentedFeature
+@ExperimentalFeature
+@WorkflowProperties
 public final class ReadAnonymizer extends ReadWalker {
 
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="Output bam file.")
+    @WorkflowOutput(optionalCompanions={StandardArgumentDefinitions.OUTPUT_INDEX_COMPANION})
     public GATKPath output;
 
     @Argument(

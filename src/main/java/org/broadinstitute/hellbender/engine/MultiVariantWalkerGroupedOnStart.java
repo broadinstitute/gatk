@@ -120,7 +120,7 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
      * This is the primary traversal for any MultiVariantWalkerGroupedOnStart walkers. Will traverse over input variant contexts
      * and call #apply() exactly once for each unique reference start position. All variants starting at each locus
      * across source files will be grouped and passed as a list of VariantContext objects.
-     *  @param variantContexts  VariantContexts from driving variants with matching start positon
+     *  @param variantContexts  VariantContexts from driving variants with matching start position
      *                         NOTE: This will never be empty
      * @param referenceContext  ReferenceContext object covering the reference of the longest spanning VariantContext
      * @param readsContexts

@@ -6,6 +6,9 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowInput;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
@@ -21,8 +24,6 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
-import java.io.File;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,6 +81,7 @@ import java.util.List;
         programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
+@WorkflowProperties
 public final class BaseRecalibrator extends ReadWalker {
     public static final String USAGE_ONE_LINE_SUMMARY = "Generates recalibration table for Base Quality Score Recalibration (BQSR)";
     public static final String USAGE_SUMMARY = "First pass of the Base Quality Score Recalibration (BQSR)" +
@@ -104,6 +106,7 @@ public final class BaseRecalibrator extends ReadWalker {
      * reflected those sites skipped by the -XL argument.
      */
     @Argument(fullName = KNOWN_SITES_ARG_FULL_NAME, doc = "One or more databases of known polymorphic sites used to exclude regions around known polymorphisms from analysis.", optional = false)
+    @WorkflowInput
     private List<FeatureInput<Feature>> knownSites;
 
     /**
@@ -113,7 +116,8 @@ public final class BaseRecalibrator extends ReadWalker {
      * and the raw empirical quality score calculated by phred-scaling the mismatch rate.   Use '/dev/stdout' to print to standard out.
      */
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, doc = "The output recalibration table file to create", optional = false)
-    private File recalTableFile = null;
+    @WorkflowOutput
+    private GATKPath recalTableFile = null;
 
     private BaseRecalibrationEngine recalibrationEngine;
 
@@ -210,11 +214,11 @@ public final class BaseRecalibrator extends ReadWalker {
     }
 
     private void generateReport() {
-        try ( PrintStream recalTableStream = new PrintStream(recalTableFile) ) {
+        try ( final PrintStream recalTableStream = new PrintStream(recalTableFile.getOutputStream()) ) {
+            if (recalTableStream.checkError()) {
+                throw new UserException.CouldNotCreateOutputFile(recalTableFile, "I/O stream error writing to output");
+            }
             RecalUtils.outputRecalibrationReport(recalTableStream, recalArgs, quantizationInfo, recalibrationEngine.getFinalRecalibrationTables(), recalibrationEngine.getCovariates());
-        }
-        catch (final IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(recalTableFile, e);
         }
     }
 }

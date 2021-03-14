@@ -177,7 +177,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
     private double minimumIntervalMedianPercentile = DEFAULT_MINIMUM_INTERVAL_MEDIAN_PERCENTILE;
 
     @Argument(
-            doc = "Samples with a fraction of zero-coverage genomic intervals above this percentage are filtered out.  " +
+            doc = "Samples with a fraction of zero-coverage genomic intervals greater than or equal to this percentage are filtered out.  " +
                     "(This is the second filter applied.)",
             fullName = MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME,
             minValue = 0.,
@@ -187,7 +187,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
     private double maximumZerosInSamplePercentage = DEFAULT_MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE;
 
     @Argument(
-            doc = "Genomic intervals with a fraction of zero-coverage samples above this percentage are filtered out.  " +
+            doc = "Genomic intervals with a fraction of zero-coverage samples greater than or equal to this percentage are filtered out.  " +
                     "(This is the third filter applied.)",
             fullName = MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME,
             minValue = 0.,
@@ -198,7 +198,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
 
     @Argument(
             doc = "Samples with a median (across genomic intervals) of fractional coverage normalized by genomic-interval medians  " +
-                    "below this percentile or above the complementary percentile are filtered out.  " +
+                    "strictly below this percentile or strictly above the complementary percentile are filtered out.  " +
                     "(This is the fourth filter applied.)",
             fullName = EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME,
             minValue = 0.,
@@ -217,7 +217,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
 
     @Argument(
             doc = "Fractional coverages normalized by genomic-interval medians that are " +
-                    "below this percentile or above the complementary percentile are set to the corresponding percentile value.  " +
+                    "strictly below this percentile or strictly above the complementary percentile are set to the corresponding percentile value.  " +
                     "(This is applied after all filters and imputation.)",
             fullName = EXTREME_OUTLIER_TRUNCATION_PERCENTILE_LONG_NAME,
             minValue = 0.,

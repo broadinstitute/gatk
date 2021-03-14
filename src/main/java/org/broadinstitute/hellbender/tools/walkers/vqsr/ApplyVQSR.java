@@ -101,7 +101,7 @@ import java.util.regex.Pattern;
  * </pre>
  * <p>Note that the tranches and recalibration files must have been produced by an allele-specific run of
  * VariantRecalibrator. Also note that the AS_culprit, AS_FilterStatus, and AS_VQSLOD fields will have placeholder
- * values (NA or NaN) for alleles of a type that have not yet been processed by ApplyRecalibration. The spanning
+ * values (NA or NaN) for alleles of a type that have not yet been processed by ApplyVQSR. The spanning
  * deletion allele (*) will not be recalibrated because it represents missing data. Its VQSLOD will remain NaN, and its
  * culprit and FilterStatus will be NA.</p>
  * <p>Each allele will be annotated by its corresponding entry in the AS_FilterStatus INFO field annotation.
@@ -138,7 +138,7 @@ public class ApplyVQSR extends MultiVariantWalker {
     /////////////////////////////
     // Inputs
     /////////////////////////////
-    @Argument(fullName="recal-file", doc="The input recal file used by ApplyRecalibration", optional=false)
+    @Argument(fullName="recal-file", doc="The input recal file used by ApplyVQSR", optional=false)
     private FeatureInput<VariantContext> recal;
 
     @Argument(fullName="tranches-file", doc="The input tranches file describing where to cut the data", optional=true)
@@ -291,7 +291,7 @@ public class ApplyVQSR extends MultiVariantWalker {
     }
 
     /**
-     * Check the filter declarations in the input VCF header to see if any ApplyRecalibration mode has been run
+     * Check the filter declarations in the input VCF header to see if any ApplyVQSR mode has been run
      * Here we assume that the tranches are named with a specific format: VQSRTranche[SNP|INDEL][lowerLimit]to[upperLimit]
      * @param inputHeaders
      */
@@ -370,8 +370,8 @@ public class ApplyVQSR extends MultiVariantWalker {
     }
 
     /**
-     * Generate the VCF filter string for this record based on the ApplyRecalibration modes run so far
-     * @param vc the input VariantContext (with at least one ApplyRecalibration mode already run)
+     * Generate the VCF filter string for this record based on the ApplyVQSR modes run so far
+     * @param vc the input VariantContext (with at least one ApplyVQSR mode already run)
      * @param bestLod best LOD from the alleles we've seen in this recalibration mode
      * @return the String to use as the VCF filter field
      */
@@ -479,9 +479,9 @@ public class ApplyVQSR extends MultiVariantWalker {
     /**
      *
      * @param altIndex current alt allele
-     * @param prevCulpritList culprits from previous ApplyRecalibration run
-     * @param prevLodList lods from previous ApplyRecalibration run
-     * @param prevASfiltersList AS_filters from previous ApplyRecalibration run
+     * @param prevCulpritList culprits from previous ApplyVQSR run
+     * @param prevLodList lods from previous ApplyVQSR run
+     * @param prevASfiltersList AS_filters from previous ApplyVQSR run
      * @param culpritString
      * @param lodString
      * @param AS_filterString
@@ -518,7 +518,7 @@ public class ApplyVQSR extends MultiVariantWalker {
         String[] prevLodList = null;
         String[] prevASfiltersList = null;
 
-        //get VQSR annotations from previous run of ApplyRecalibration, if applicable
+        //get VQSR annotations from previous run of ApplyVQSR, if applicable
         if(foundINDELTranches || foundSNPTranches) {
             final String prevCulprits = vc.getAttributeAsString(GATKVCFConstants.AS_CULPRIT_KEY,"");
             prevCulpritList = prevCulprits.isEmpty()? new String[0] : prevCulprits.split(listPrintSeparator);
@@ -549,7 +549,7 @@ public class ApplyVQSR extends MultiVariantWalker {
             if (!GATKVCFConstants.isSpanningDeletion(allele)) {
                 VariantContext recalDatum = getMatchingRecalVC(vc, recals, allele);
                 if (recalDatum == null) {
-                    throw new UserException("Encountered input allele which isn't found in the input recal file. Please make sure VariantRecalibrator and ApplyRecalibration were run on the same set of input variants with flag -AS. First seen at: " + vc);
+                    throw new UserException("Encountered input allele which isn't found in the input recal file. Please make sure VariantRecalibrator and ApplyVQSR were run on the same set of input variants with flag -AS. First seen at: " + vc);
                 }
 
                 //compare VQSLODs for all alleles in the current mode for filtering later
@@ -596,7 +596,7 @@ public class ApplyVQSR extends MultiVariantWalker {
     private String doSiteSpecificFiltering(final VariantContext vc, final List<VariantContext> recals, final VariantContextBuilder builder) {
         VariantContext recalDatum = getMatchingRecalVC(vc, recals, null);
         if( recalDatum == null ) {
-            throw new UserException("Encountered input variant which isn't found in the input recal file. Please make sure VariantRecalibrator and ApplyRecalibration were run on the same set of input variants. First seen at: " + vc );
+            throw new UserException("Encountered input variant which isn't found in the input recal file. Please make sure VariantRecalibrator and ApplyVQSR were run on the same set of input variants. First seen at: " + vc );
         }
 
         final String lodString = recalDatum.getAttributeAsString(GATKVCFConstants.VQS_LOD_KEY, null);

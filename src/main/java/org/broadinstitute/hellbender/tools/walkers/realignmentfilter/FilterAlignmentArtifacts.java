@@ -17,6 +17,7 @@ import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.MultiVariantWalkerGroupedOnStart;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -48,12 +49,12 @@ import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -114,7 +115,7 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="The output filtered VCF file", optional=false)
-    private final String outputVcf = null;
+    private final GATKPath outputVcf = null;
 
     public static final int DEFAULT_INDEL_START_TOLERANCE = 5;
     public static final String INDEL_START_TOLERANCE_LONG_NAME = "indel-start-tolerance";
@@ -173,7 +174,7 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
     @Override
     public void onTraversalStart() {
         realignmentEngine = new RealignmentEngine(realignmentArgumentCollection);
-        vcfWriter = createVCFWriter(new File(outputVcf));
+        vcfWriter = createVCFWriter(outputVcf);
 
         final VCFHeader inputHeader = getHeaderForVariants();
         final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeader.getMetaDataInSortedOrder());
@@ -186,9 +187,9 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
         vcfWriter.writeHeader(vcfHeader);
         bamHeader = getHeaderForReads();
         samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(bamHeader)));
-        referenceReader = AssemblyBasedCallerUtils.createReferenceReader(Utils.nonNull(referenceArguments.getReferenceSpecifier()));
+        referenceReader = ReferenceUtils.createReferenceReader(Utils.nonNull(referenceArguments.getReferenceSpecifier()));
         assemblyEngine = MTAC.createReadThreadingAssembler();
-        likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
+        likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs, true);
         haplotypeBAMWriter = bamOutputPath == null ? Optional.empty() :
                 Optional.of(new HaplotypeBAMWriter(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, IOUtils.getPath(bamOutputPath), true, false, getHeaderForSAMWriter()));
     }

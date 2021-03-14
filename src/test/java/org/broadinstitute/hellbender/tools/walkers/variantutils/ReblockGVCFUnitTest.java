@@ -25,7 +25,7 @@ public class ReblockGVCFUnitTest {
         reblocker.dropLowQuals = true;
         reblocker.doQualApprox = true;
 
-        final Genotype g0 = makeG("sample1", LONG_REF, DELETION, 41, 0, 37, 200, 100, 200, 400, 600, 800);
+        final Genotype g0 = makeG("sample1", LONG_REF, DELETION, 41, 0, 37, 200, 100, 200, 400, 600, 800, 1200);
         final Genotype g = addAD(g0,0,13,17,0);
         final VariantContext extraAlt0 = makeDeletionVC("lowQualVar", Arrays.asList(LONG_REF, DELETION, LONG_SNP, Allele.NON_REF_ALLELE), LONG_REF.length(), g);
         final Map<String, Object> attr = new HashMap<>();

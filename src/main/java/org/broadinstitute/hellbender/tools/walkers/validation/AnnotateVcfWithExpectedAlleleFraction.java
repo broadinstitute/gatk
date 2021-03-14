@@ -13,11 +13,12 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.io.File;
@@ -64,7 +65,7 @@ public class AnnotateVcfWithExpectedAlleleFraction extends VariantWalker {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "The output annotated VCF file",
             optional = false)
-    private final File outputVcf = null;
+    private final GATKPath outputVcf = null;
 
     @Argument(fullName = MIXING_FRACTIONS_TABLE_NAME,
             shortName = MIXING_FRACTIONS_TABLE_NAME,

@@ -6,8 +6,8 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -51,7 +51,7 @@ import java.util.List;
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of forward and reverse reads that support REF and ALT alleles (SB)")
-public final class StrandBiasBySample extends GenotypeAnnotation implements StandardMutectAnnotation {
+public final class StrandBiasBySample implements GenotypeAnnotation, StandardMutectAnnotation {
     private final static Logger logger = LogManager.getLogger(StrandBiasBySample.class);
 
     @Override
@@ -65,7 +65,7 @@ public final class StrandBiasBySample extends GenotypeAnnotation implements Stan
         Utils.nonNull(gb);
 
         if ( likelihoods == null || !g.isCalled() ) {
-            logger.warn("Annotation will not be calculated, genotype is not called or alleleLikelihoodMap is null");
+            logger.warn(AnnotationUtils.generateMissingDataWarning(vc, g, likelihoods));
             return;
         }
 
