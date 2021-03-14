@@ -3,13 +3,10 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GatkToolIntegrationTest;
-import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
-import org.broadinstitute.hellbender.tools.walkers.mutect.SomaticGenotypingEngine;
 import org.broadinstitute.hellbender.tools.walkers.mutect.SomaticLikelihoodsEngine;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -17,7 +14,7 @@ import java.io.File;
 import java.util.Arrays;
 
 /**
- * Integration tests for the {@link DirichletAlleleDepthAndFraction} annotator.
+ * Integration tests for the {@link AllelePseudoDepth} annotator.
  */
 public class DirichletAlleleDepthAndFractionIntegrationTest extends GatkToolIntegrationTest {
 
@@ -46,7 +43,7 @@ public class DirichletAlleleDepthAndFractionIntegrationTest extends GatkToolInte
                 "-I", inputFileName,
                 "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
-                "-A", DirichletAlleleDepthAndFraction.class.getSimpleName(),
+                "-A", AllelePseudoDepth.class.getSimpleName(),
                 "-O", outputPath,
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"

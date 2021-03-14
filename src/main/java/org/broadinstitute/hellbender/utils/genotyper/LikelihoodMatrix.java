@@ -123,7 +123,7 @@ public interface LikelihoodMatrix<EVIDENCE,A extends Allele> extends AlleleList<
     /**
      * Returns this matrix as a {@link RealMatrix}.
      * <p>
-     *     Changes int he return matrix will affect the content of this one.
+     *     Changes int he return matrix will affect the content of
      * </p>
      * @return never {@code null}.
      */

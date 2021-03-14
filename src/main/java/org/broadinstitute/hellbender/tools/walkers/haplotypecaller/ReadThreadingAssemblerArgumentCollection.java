@@ -53,7 +53,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * this check may cause problems in the assembly graph.
      */
     @Advanced
-    @Argument(fullName="non-unique-kmer-polidy", doc="Allow graphs that have non-unique kmers in the reference", optional = true)
+        @Argument(fullName="non-unique-kmer-polidy", doc="Allow graphs that have non-unique kmers in the reference", optional = true)
     public NonUniqueKmerPolicy nonUniqueKmerPolicy = NonUniqueKmerPolicy.NOT_ALLOWED;
 
     /**

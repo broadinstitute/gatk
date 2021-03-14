@@ -42,6 +42,10 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     protected boolean isNaturalLog = false;
     private SimpleInterval subsettedGenomicLoc;
 
+
+    public boolean isNaturalLog() {
+        return isNaturalLog;
+    }
     private double getInformativeThreshold() {
         return isNaturalLog ? NATURAL_LOG_INFORMATIVE_THRESHOLD : LOG_10_INFORMATIVE_THRESHOLD;
     }

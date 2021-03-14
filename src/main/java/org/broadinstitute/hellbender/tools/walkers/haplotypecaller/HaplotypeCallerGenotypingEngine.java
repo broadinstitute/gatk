@@ -556,9 +556,10 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
         // Skim the filtered map based on the location so that we do not add filtered read that are going to be removed
         // right after a few lines of code below.
-        final Map<String, List<GATKRead>> overlappingFilteredReads = overlappingFilteredReads(perSampleFilteredReadList, relevantReadsOverlap);
-
-        readAlleleLikelihoodsForAnnotations.addEvidence(overlappingFilteredReads,0);
+        if (hcArgs.useFilteredReadMapForAnnotations) {
+            final Map<String, List<GATKRead>> overlappingFilteredReads = overlappingFilteredReads(perSampleFilteredReadList, relevantReadsOverlap);
+            readAlleleLikelihoodsForAnnotations.addEvidence(overlappingFilteredReads,0);
+        }
 
         return readAlleleLikelihoodsForAnnotations;
     }
