@@ -3,7 +3,10 @@ package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeType;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -86,9 +89,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public CommonCode.ModeEnum mode = CommonCode.ModeEnum.EXOMES;
 
-    @Argument(fullName = "output-type", 
-            shortName = "ot", 
-            doc = "[Experimental] Output file format: TSV, ORC or PARQUET [default=TSV].", 
+    @Argument(fullName = "output-type",
+            shortName = "ot",
+            doc = "[Experimental] Output file format: TSV, ORC or PARQUET [default=TSV].",
             optional = true)
     public CommonCode.OutputType outputType = CommonCode.OutputType.TSV;
 
@@ -186,11 +189,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             return;
         }
 
-
-        // create VET output
-        if (!variant.isReferenceBlock()) {
+        // write to VET if NOT reference block and NOT a no call (set GQ to 0 for variant)
+        if (!variant.isReferenceBlock() && !variant.getGenotype(0).isNoCall()) {
             vetTsvCreator.apply(variant, readsContext, referenceContext, featureContext);
         }
+
         try {
             petTsvCreator.apply(variant, intervalsToWrite);
         } catch (IOException ioe) {
