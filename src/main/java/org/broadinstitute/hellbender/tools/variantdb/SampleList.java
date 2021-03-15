@@ -84,7 +84,7 @@ public class SampleList {
 
 
         // Execute the query:
-        final TableResult result = BigQueryUtils.executeQuery(sampleListQueryString, null);
+        final TableResult result = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(executionProjectId) , sampleListQueryString, false, null);
 
         // Show our pretty results:
         if (printDebugInformation) {

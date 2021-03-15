@@ -328,7 +328,7 @@ public class ExtractCohortEngine {
         // Non-AS QualApprox (used for qualapprox filter) is simply the sum of the AS values (see GnarlyGenotyper)
         if (s.contains("|")) {
 
-            // take the average of all non-* alleles
+            // take the sum of all non-* alleles
             // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part
             String[] alleles = sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString().split(",");
             String[] parts = s.split("\\|");
