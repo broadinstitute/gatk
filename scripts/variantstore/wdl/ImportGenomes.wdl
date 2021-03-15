@@ -27,6 +27,7 @@ workflow ImportGenomes {
   call SetLock {
     input:
       output_directory = output_directory,
+      service_account_json = service_account_json,
       preemptible_tries = preemptible_tries
   }
 
@@ -159,6 +160,7 @@ workflow ImportGenomes {
       load_metadata_done = LoadMetadataTable.done,
       load_pet_done = LoadPetTable.done,
       load_vet_done = LoadVetTable.done,
+      service_account_json = service_account_json,
       preemptible_tries = preemptible_tries
   }
 }
@@ -173,14 +175,22 @@ task SetLock {
 
   input {
     String output_directory
+    File? service_account_json
 
     # runtime
     Int? preemptible_tries
   }
 
+  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
   command <<<
     set -x
     set -e
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gcloud auth activate-service-account --key-file='~{service_account_json}'
+    fi
+
     # generate uuid for this run
     RUN_UUID=$(dbus-uuidgen)
     echo $RUN_UUID | tee RUN_UUID_STRING
@@ -224,14 +234,23 @@ task ReleaseLock {
     Array[String] load_metadata_done
     Array[String] load_pet_done
     Array[String] load_vet_done
+    File? service_account_json
 
     # runtime
     Int? preemptible_tries
   }
 
+  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
   command <<<
     set -x
     set -e
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gcloud auth activate-service-account --key-file='~{service_account_json}'
+    fi
+
+
     LOCKFILE="~{output_directory}/LOCKFILE"
     EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE})
     CURRENT_RUN_ID="~{run_uuid}"
