@@ -339,16 +339,6 @@ task CreateImportTsvs {
   command <<<
       set -e
 
-      # check for existence of the correct lockfile
-      LOCKFILE="~{output_directory}/LOCKFILE"
-      EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
-      CURRENT_RUN_ID="~{run_uuid}"
-
-      if [ ${EXISTING_LOCK_ID} != ${CURRENT_RUN_ID} ]; then
-        echo "ERROR: found mismatched lockfile containing run ${EXISTING_LOCK_ID}, which does not match this run ${CURRENT_RUN_ID}." 1>&2
-        exit 1
-      fi
-
       # workaround for https://github.com/broadinstitute/cromwell/issues/3647
       export TMPDIR=/tmp
 
@@ -359,6 +349,16 @@ task CreateImportTsvs {
         gcloud auth activate-service-account --key-file='~{service_account_json}'
         gsutil cp ~{input_vcf} .
         gsutil cp ~{input_vcf_index} .
+      fi
+
+      # check for existence of the correct lockfile
+      LOCKFILE="~{output_directory}/LOCKFILE"
+      EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
+      CURRENT_RUN_ID="~{run_uuid}"
+
+      if [ ${EXISTING_LOCK_ID} != ${CURRENT_RUN_ID} ]; then
+        echo "ERROR: found mismatched lockfile containing run ${EXISTING_LOCK_ID}, which does not match this run ${CURRENT_RUN_ID}." 1>&2
+        exit 1
       fi
       
       gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
