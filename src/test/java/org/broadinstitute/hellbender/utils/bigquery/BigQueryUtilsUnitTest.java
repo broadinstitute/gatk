@@ -110,7 +110,7 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         final List<String> fieldsToRetrieve = new LinkedList<>();
         fieldsToRetrieve.add("name");
         Map<String, String> labels = new HashMap<String, String>();
-        labels.put("gatktestquery", "teststorageapiwithemptydataset" + runUuid);
+        labels.put("gatktestquery", "testapiwithemptydata" + runUuid);
         final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, labels);
 
         int rowCount = 0;
