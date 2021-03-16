@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.broadinstitute.hellbender.tools.variantdb.nextgen.CreateVariantIngestFiles.isNoCall;
+
 public final class PetTsvCreator {
     private static final Logger logger = LogManager.getLogger(PetTsvCreator.class);
 
@@ -218,7 +220,7 @@ public final class PetTsvCreator {
         List<List<String>> rows = new ArrayList<>();
 
         // if the variant is no call, set the PET "state" to GQ ZERO
-        if (variant.getGenotype(0).isNoCall()) {
+        if (isNoCall(variant)) {
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(start));
             row.add(sampleId);

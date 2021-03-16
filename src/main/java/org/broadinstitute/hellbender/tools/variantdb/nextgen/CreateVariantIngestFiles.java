@@ -105,6 +105,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     private File outputDir = new File(".");
 
+    // getGenotypes() returns list of lists for all samples at variant
+    // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
+    public static boolean isNoCall(VariantContext variant) {
+        return variant.getGenotype(0).isNoCall();
+    }
 
     @Override
     public boolean requiresIntervals() {
@@ -188,10 +193,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         // write to VET if NOT reference block and NOT a no call
-        // getGenotypes() returns list of lists for all samples at variant
-        // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
-        final int SAMPLE_INDEX_NOCALL_CHECK = 0;
-        if (!variant.isReferenceBlock() && !variant.getGenotype(SAMPLE_INDEX_NOCALL_CHECK).isNoCall()) {
+        if (!variant.isReferenceBlock() && !isNoCall(variant)) {
             vetTsvCreator.apply(variant, readsContext, referenceContext, featureContext);
         }
 
