@@ -5,10 +5,10 @@ from typing import Dict, Tuple, Callable
 import h5py
 import numpy as np
 from tensorflow.keras.utils import to_categorical
-import cv2
-import blosc
+import cv2  # TODO: Add to ML4H docker image
+import blosc  # TODO: Add to ML4H docker image
 
-from ml4h.metrics import weighted_crossentropy
+from ml4h.metrics import weighted_crossentropy, asymmetric_outlier_mse
 from ml4h.normalizer import ZeroMeanStd1, Standardize, NonZeroNormalize, TopKNormalize, ImagenetNormalizeTorch
 from ml4h.TensorMap import TensorMap, Interpretation, make_range_validator
 from ml4h.tensormap.ukb.demographics import is_genetic_man, is_genetic_woman
@@ -1647,6 +1647,11 @@ adjusted_myocardium_mass_indexed = TensorMap(
     loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0}, path_prefix='continuous',
     normalization={'mean': 89.70, 'std': 24.80},
 )
+adjusted_myocardium_mass_asym_outlier = TensorMap(
+    'adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), path_prefix='continuous',
+    loss=asymmetric_outlier_mse, channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80},
+)
+
 lvh_from_indexed_lvm_parented = TensorMap(
     'lvh_from_indexed_lvm', Interpretation.CATEGORICAL, channel_map={'no_lvh': 0, 'left_ventricular_hypertrophy': 1},
     tensor_from_file=_make_lvh_from_lvm_tensor_from_file(
