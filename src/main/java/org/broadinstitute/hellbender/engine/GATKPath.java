@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
-
 import htsjdk.io.HtsPath;
 
 import org.broadinstitute.barclay.argparser.TaggedArgument;
