@@ -41,6 +41,7 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         final String query = String.format("SELECT * FROM `%s` WHERE name = 'Fred'", BIGQUERY_FULLY_QUALIFIED_TABLE);
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("gatktestquery", "testwhereclause" + runUuid);
+        System.out.print("testwhereclause" + runUuid);
         final TableResult result = BigQueryUtils.executeQuery(query, labels);
 
         checkQueryResults(result, expectedNamesAndAges, query);
@@ -109,7 +110,7 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         final List<String> fieldsToRetrieve = new LinkedList<>();
         fieldsToRetrieve.add("name");
         Map<String, String> labels = new HashMap<String, String>();
-        labels.put("gatktestquery", "test_storage_api_with_empty_dataset" + runUuid);
+        labels.put("gatktestquery", "teststorageapiwithemptydataset" + runUuid);
         final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, labels);
 
         int rowCount = 0;
