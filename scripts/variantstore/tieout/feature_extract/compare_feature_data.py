@@ -12,7 +12,8 @@ def get_next_line(i):
             parts = line.strip().split("\t")
             loc = f"{parts[0]}:{parts[1]}"
             alts = parts[4]
-            if ("*" in alts or loc in exclude_set):
+            is_indel = (len(parts[3]) != len(parts[4]))
+            if ("*" in alts or loc in exclude_set or is_indel):
 #                print(f"Skipping {loc}")
                 pass;
             else:
