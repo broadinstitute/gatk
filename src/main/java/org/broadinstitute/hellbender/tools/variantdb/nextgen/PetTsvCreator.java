@@ -217,7 +217,7 @@ public final class PetTsvCreator {
 
         List<List<String>> rows = new ArrayList<>();
 
-        // if the variant is no call, set the GQ to ZERO as "state" in PET table
+        // if the variant is no call, set the PET "state" to GQ ZERO
         if (variant.getGenotype(0).isNoCall()) {
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(start));

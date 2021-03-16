@@ -16,14 +16,15 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.variantdb.*;
+import org.broadinstitute.hellbender.tools.variantdb.ChromosomeEnum;
+import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
 import org.broadinstitute.hellbender.tools.variantdb.IngestUtils;
 import org.broadinstitute.hellbender.utils.*;
 
-import java.util.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Ingest variant walker
@@ -186,8 +187,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             return;
         }
 
-        // write to VET if NOT reference block and NOT a no call (set GQ to 0 for variant)
-        if (!variant.isReferenceBlock() && !variant.getGenotype(0).isNoCall()) {
+        // write to VET if NOT reference block and NOT a no call
+        // getGenotypes() returns list of lists for all samples at variant
+        // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
+        final int SAMPLE_INDEX_NOCALL_CHECK = 0;
+        if (!variant.isReferenceBlock() && !variant.getGenotype(SAMPLE_INDEX_NOCALL_CHECK).isNoCall()) {
             vetTsvCreator.apply(variant, readsContext, referenceContext, featureContext);
         }
 
