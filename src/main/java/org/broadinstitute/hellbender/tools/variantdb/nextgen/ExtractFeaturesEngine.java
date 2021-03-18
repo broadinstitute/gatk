@@ -24,7 +24,10 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_S
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.bigquery.*;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.bigquery.GATKAvroReader;
+import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
+import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollection;
 import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
@@ -97,9 +100,7 @@ public class ExtractFeaturesEngine {
     public void traverse() {
 
 
-        final String featureQueryString =
-
-        ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, sampleListTable, minLocation, maxLocation, trainingSitesOnly, SNP_QUAL_THRESHOLD, INDEL_QUAL_THRESHOLD);
+        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, sampleListTable, minLocation, maxLocation, trainingSitesOnly, SNP_QUAL_THRESHOLD, INDEL_QUAL_THRESHOLD);
         logger.info(featureQueryString);
         final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, SchemaUtils.FEATURE_EXTRACT_FIELDS, projectID, useBatchQueries, null);
 

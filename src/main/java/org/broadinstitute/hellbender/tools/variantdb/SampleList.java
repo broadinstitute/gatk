@@ -12,7 +12,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
-
 public class SampleList {
     static final Logger logger = LogManager.getLogger(SampleList.class);
 
@@ -82,7 +81,6 @@ public class SampleList {
                 "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME +
                 " FROM `" + fqSampleTableName + "`" + whereClause;
 
-
         // Execute the query:
         final TableResult result = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(executionProjectId) , sampleListQueryString, false, null);
 
@@ -95,4 +93,5 @@ public class SampleList {
 
         return result;
     }
+
 }
