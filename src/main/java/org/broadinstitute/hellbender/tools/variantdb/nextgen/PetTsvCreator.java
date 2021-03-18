@@ -5,20 +5,20 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+
 
 public final class PetTsvCreator {
     private static final Logger logger = LogManager.getLogger(PetTsvCreator.class);
@@ -217,7 +217,14 @@ public final class PetTsvCreator {
 
         List<List<String>> rows = new ArrayList<>();
 
-        if (!variant.isReferenceBlock()) {
+        // if the variant is no call, set the PET "state" to GQ ZERO
+        if (CreateVariantIngestFiles.isNoCall(variant)) {
+            List<String> row = new ArrayList<>();
+            row.add(String.valueOf(start));
+            row.add(sampleId);
+            row.add(GQStateEnum.ZERO.value);
+            rows.add(row);
+        } else if (!variant.isReferenceBlock()) {
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(start));
             row.add(sampleId);
