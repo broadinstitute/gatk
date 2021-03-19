@@ -113,7 +113,7 @@ public class ShiftFasta extends GATKTool {
             throw new UserException.BadInput("Reference length is too long");
         }
         List<SAMSequenceRecord> contigs = refSource.getSequenceDictionary().getSequences();
-        final ListIterator<Integer> shiftOffsetsIt = (shiftOffsets != null && shiftOffsets.size() == contigs.size()) ?
+        final ListIterator<Integer> shiftOffsetsIt = (shiftOffsets != null && !shiftOffsets.isEmpty() && shiftOffsets.size() == contigs.size()) ?
                 shiftOffsets.listIterator() : null;
         refSource.getSequenceDictionary().getSequences().forEach(seq -> shiftContig(seq, shiftOffsetsIt));
     }
