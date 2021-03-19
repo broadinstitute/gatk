@@ -44,7 +44,7 @@ public class M2FiltersArgumentCollection {
     public boolean mitochondria = false;
 
     /**
-     * Mitochondria mode excludes the filters {@link ClusteredEventsFilter}, {@link MultiallelicFilter},
+     * Microbial mode excludes the filters {@link ClusteredEventsFilter}, {@link MultiallelicFilter},
      * {@link FilteredHaplotypeFilter}, {@link FragmentLengthFilter}, and {@link GermlineFilter}
      */
     @Argument(fullName = M2ArgumentCollection.MICROBIAL_MODE_LONG_NAME, optional = true, doc = "Set filters to microbial defaults")
@@ -75,7 +75,6 @@ public class M2FiltersArgumentCollection {
     private static final int DEFAULT_MIN_MEDIAN_READ_POSITION = 1;
     private static final double DEFAULT_MAX_N_RATIO = Double.POSITIVE_INFINITY;
     private static final int DEFAULT_MIN_READS_ON_EACH_STRAND = 0;
-//    private static final double DEFAULT_MAX_NUMT_FRACTION = 0.85;
     private static final double DEFAULT_MIN_AF = 0;
 
     @Argument(fullName = MAX_EVENTS_IN_REGION_LONG_NAME, optional = true, doc = "Maximum events in a single assembly region.  Filter all variants if exceeded.")

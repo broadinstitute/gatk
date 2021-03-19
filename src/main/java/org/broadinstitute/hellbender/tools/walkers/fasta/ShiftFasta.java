@@ -41,7 +41,7 @@ import java.util.ListIterator;
  */
 @DocumentedFeature
 @CommandLineProgramProperties(
-        summary = "Create a new fasta starting at the shift-offset +1 position and a shift_back chain file that can be used with the Liftover tool",
+        summary = "Create a new fasta starting at the shift-offset +1 position and a shift_back chain file that can be used with the Liftover tool. It will shift all contigs by default.",
         oneLineSummary = "Creates a shifted fasta file and shift_back file",
         programGroup = ReferenceProgramGroup.class
 )
@@ -65,20 +65,20 @@ public class ShiftFasta extends GATKTool {
 
     public static final String INTERAL_FILE_NAME = "interval-file-name";
     @Argument(fullName = INTERAL_FILE_NAME,
-            doc="Base name for interval files. Intervals will be midway between beginning and computed offset. If not specified or if custom offsets are specified, no interval files will be written.", optional = true)
+            doc="Base name for interval files. Intervals will be midway between beginning and computed offset. If not specified, no interval files will be written.", optional = true)
     private String intervalFilename;
 
     public static final String LINE_WIDTH_LONG_NAME = "line-width";
     @Argument(fullName= LINE_WIDTH_LONG_NAME, doc="Maximum length of sequence to write per line", optional=true)
     public int basesPerLine = FastaReferenceWriter.DEFAULT_BASES_PER_LINE;
 
-    ReferenceDataSource refSource;
-    FastaReferenceWriter refWriter;
-    FileWriter chainFileWriter;
-    FileWriter intervalRegularWriter;
-    FileWriter intervalShiftedWriter;
+    private ReferenceDataSource refSource;
+    private FastaReferenceWriter refWriter;
+    private FileWriter chainFileWriter;
+    private FileWriter intervalRegularWriter;
+    private FileWriter intervalShiftedWriter;
 
-    int chainId = 0;
+    private int chainId = 0;
 
     @Override
     public boolean requiresReference() {
@@ -113,15 +113,22 @@ public class ShiftFasta extends GATKTool {
             throw new UserException.BadInput("Reference length is too long");
         }
         List<SAMSequenceRecord> contigs = refSource.getSequenceDictionary().getSequences();
-        final ListIterator<Integer> shiftOffsetsIt = (shiftOffsets != null && !shiftOffsets.isEmpty() && shiftOffsets.size() == contigs.size()) ?
-                shiftOffsets.listIterator() : null;
+        if (shiftOffsets != null && !shiftOffsets.isEmpty() && shiftOffsets.size() != contigs.size()) {
+            throw new UserException.BadInput("Shift offset list size " + shiftOffsets.size() + " must equal number of contigs in the reference " + contigs.size());
+        }
+        final ListIterator<Integer> shiftOffsetsIt = shiftOffsets != null && !shiftOffsets.isEmpty()  ? shiftOffsets.listIterator() : null;
         refSource.getSequenceDictionary().getSequences().forEach(seq -> shiftContig(seq, shiftOffsetsIt));
     }
 
+    /**
+     *
+     * @param seq The contig or sequence within the fasta file
+     * @param shiftOffsetsIt the iterator at the correct position to get the next offset or null if dividing contig by 2
+     */
     protected void shiftContig(SAMSequenceRecord seq, ListIterator<Integer> shiftOffsetsIt) {
-        int contigLength = seq.getSequenceLength();
+        final int contigLength = seq.getSequenceLength();
         int shiftOffset = shiftOffsetsIt == null ? contigLength/2 : shiftOffsetsIt.next();
-        if (shiftOffset != 0) {
+        if (shiftOffset > 0 && shiftOffset < contigLength) {
             byte[] bases = refSource.queryAndPrefetch(new SimpleInterval(seq.getSequenceName(), 1, contigLength)).getBases();
             byte[] basesAtEnd = Arrays.copyOfRange(bases, shiftOffset, bases.length);
             byte[] basesAtStart = Arrays.copyOf(bases, shiftOffset);
@@ -145,6 +152,8 @@ public class ShiftFasta extends GATKTool {
             } catch (IOException e) {
                 throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
             }
+        } else {
+            logger.info("not shifting config " + seq.getContig() + " because shift offset " + shiftOffset + " is not between 1-" + contigLength );
         }
     }
 
@@ -168,7 +177,6 @@ public class ShiftFasta extends GATKTool {
 
     @Override
     public Object onTraversalSuccess(){
-        // TODO is this right?
         return null;
     }
 
@@ -179,8 +187,6 @@ public class ShiftFasta extends GATKTool {
             if( refWriter != null ) {
                 refWriter.close();
             }
-        } catch (IllegalStateException e){
-            //sink this
         } catch (IOException e) {
             throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
         }
@@ -188,8 +194,6 @@ public class ShiftFasta extends GATKTool {
             if (chainFileWriter != null) {
                 chainFileWriter.close();
             }
-        } catch (IllegalStateException e){
-            //sink this
         } catch (IOException e) {
             throw new UserException("Failed to write chain file due to " + e.getMessage(), e);
         }
@@ -200,8 +204,6 @@ public class ShiftFasta extends GATKTool {
             if (intervalShiftedWriter != null) {
                 intervalShiftedWriter.close();
             }
-        } catch (IllegalStateException e){
-            //sink this
         } catch (IOException e) {
             throw new UserException("Failed to write intervals due to " + e.getMessage(), e);
         }
