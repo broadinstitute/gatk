@@ -81,8 +81,8 @@ public class SampleList {
                 "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME +
                 " FROM `" + fqSampleTableName + "`" + whereClause;
 
-        // Execute the query:        
-        final TableResult result = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(executionProjectId) , sampleListQueryString, false);
+        // Execute the query:
+        final TableResult result = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(executionProjectId) , sampleListQueryString, false, null);
 
         // Show our pretty results:
         if (printDebugInformation) {

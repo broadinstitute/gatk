@@ -174,7 +174,7 @@ public class ExtractCohortEngine {
                 }
                 // create the query string
                 String q = "SELECT " + StringUtils.join(SchemaUtils.COHORT_FIELDS,",") + " FROM " + cohortTableRef.getFQTableName() + " ORDER BY " + SchemaUtils.LOCATION_FIELD_NAME;
-                TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), cohortTableRef.tableProject, cohortTableRef.tableDataset, q);
+                TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), cohortTableRef.tableProject, cohortTableRef.tableDataset, q,  null);
                 createVariantsFromSortedTableResults(tr, fullVqsLodMap, fullYngMap, noFilteringRequested);
                 break;
         }
@@ -329,7 +329,7 @@ public class ExtractCohortEngine {
         if (s.contains("|")) {
 
             // take the sum of all non-* alleles
-            // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part            
+            // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part
             String[] alleles = sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString().split(",");
             String[] parts = s.split("\\|");
 
@@ -389,7 +389,7 @@ public class ExtractCohortEngine {
 
                     totalAsQualApprox += getQUALapproxFromSampleRecord(sampleRecord);
 
-                    // hasSnpAllele should be set to true if any sample has at least one snp (gnarly definition here)                    
+                    // hasSnpAllele should be set to true if any sample has at least one snp (gnarly definition here)
                     boolean thisHasSnp = vc.getAlternateAlleles().stream().anyMatch(allele -> allele != Allele.SPAN_DEL && allele.length() == vc.getReference().length());
 //                    logger.info("\t" + contig + ":" + currentPosition + ": calculated thisHasSnp of " + thisHasSnp + " from " + vc.getAlternateAlleles() + " and ref " + vc.getReference());
                     hasSnpAllele = hasSnpAllele || thisHasSnp;
