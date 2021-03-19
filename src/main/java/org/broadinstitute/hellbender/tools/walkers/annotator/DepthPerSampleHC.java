@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
  *
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Depth of informative coverage for each sample (DP)")
-public final class DepthPerSampleHC implements GenotypeAnnotation, StandardHCAnnotation, StandardMutectAnnotation {
+public final class  DepthPerSampleHC implements GenotypeAnnotation, StandardHCAnnotation, StandardMutectAnnotation {
     private final static Logger logger = LogManager.getLogger(DepthPerSampleHC.class);
 
     @Override
