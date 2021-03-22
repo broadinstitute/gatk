@@ -121,33 +121,32 @@ public class ShiftFasta extends GATKTool {
     }
 
     /**
-     *
+     * This method adds to a new fasta ref file that has been shifted by the amount indicated in the shiftOffsetsIt.
+     * This also adds to the supporting files: chainfile, interval list for both the shifted and unshifted fasta files
      * @param seq The contig or sequence within the fasta file
      * @param shiftOffsetsIt the iterator at the correct position to get the next offset or null if dividing contig by 2
      */
-    protected void shiftContig(SAMSequenceRecord seq, ListIterator<Integer> shiftOffsetsIt) {
+    protected final void shiftContig(SAMSequenceRecord seq, ListIterator<Integer> shiftOffsetsIt) {
         final int contigLength = seq.getSequenceLength();
+        final String seqName = seq.getSequenceName();
         int shiftOffset = shiftOffsetsIt == null ? contigLength/2 : shiftOffsetsIt.next();
         if (shiftOffset > 0 && shiftOffset < contigLength) {
-            byte[] bases = refSource.queryAndPrefetch(new SimpleInterval(seq.getSequenceName(), 1, contigLength)).getBases();
+            byte[] bases = refSource.queryAndPrefetch(new SimpleInterval(seqName, 1, contigLength)).getBases();
             byte[] basesAtEnd = Arrays.copyOfRange(bases, shiftOffset, bases.length);
             byte[] basesAtStart = Arrays.copyOf(bases, shiftOffset);
             int shiftBackOffset = bases.length - shiftOffset;
 
             try {
-                refWriter.startSequence(seq.getSequenceName(), basesPerLine);
+                refWriter.startSequence(seqName, basesPerLine);
                 refWriter.appendBases(basesAtEnd).appendBases(basesAtStart);
-                chainFileWriter.append(createChainString(seq.getSequenceName(), shiftBackOffset, contigLength, shiftOffset, bases.length, 0, shiftBackOffset, chainId++));
-                chainFileWriter.append("\n" + shiftBackOffset + "\n\n");
-                chainFileWriter.append(createChainString(seq.getSequenceName(), shiftOffset - 1, contigLength, 0, shiftOffset, shiftBackOffset, bases.length, chainId++));
-                chainFileWriter.append("\n" + shiftOffset + "\n\n");
+                writeChainFileLine(seqName, contigLength, shiftOffset, bases, shiftBackOffset);
                 if (intervalFilename != null && shiftOffsetsIt == null) {
                     int intervalStart = shiftOffset/2;
                     int intervalEnd = intervalStart + contigLength/2 - 1;
                     int shiftedIntervalStart = intervalStart;
                     int shiftedIntervalEnd = intervalEnd + contigLength % 2;
-                    intervalRegularWriter.append(seq.getSequenceName() + ":" + intervalStart + "-" + intervalEnd + "\n");
-                    intervalShiftedWriter.append(seq.getSequenceName() + ":" + shiftedIntervalStart + "-" + shiftedIntervalEnd + "\n");
+                    intervalRegularWriter.append(seqName + ":" + intervalStart + "-" + intervalEnd + "\n");
+                    intervalShiftedWriter.append(seqName + ":" + shiftedIntervalStart + "-" + shiftedIntervalEnd + "\n");
                 }
             } catch (IOException e) {
                 throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
@@ -155,6 +154,13 @@ public class ShiftFasta extends GATKTool {
         } else {
             logger.info("not shifting config " + seq.getContig() + " because shift offset " + shiftOffset + " is not between 1-" + contigLength );
         }
+    }
+
+    private void writeChainFileLine(String seqName, int contigLength, int shiftOffset, byte[] bases, int shiftBackOffset) throws IOException {
+        chainFileWriter.append(createChainString(seqName, shiftBackOffset, contigLength, shiftOffset, bases.length, 0, shiftBackOffset, chainId++));
+        chainFileWriter.append("\n" + shiftBackOffset + "\n\n");
+        chainFileWriter.append(createChainString(seqName, shiftOffset - 1, contigLength, 0, shiftOffset, shiftBackOffset, bases.length, chainId++));
+        chainFileWriter.append("\n" + shiftOffset + "\n\n");
     }
 
     private String createChainString(String name, int score, int length, int start, int end, int shiftBackStart, int shiftBackEnd, int id) {
