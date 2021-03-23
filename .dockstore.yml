@@ -8,7 +8,7 @@ workflows:
      filters:
        branches:
          - ah_var_store
-  - name: ImportGenomes_LoadTable
+   - name: ImportGenomes_LoadTable
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/ImportGenomes_LoadTable.wdl
      testParameterFiles:
