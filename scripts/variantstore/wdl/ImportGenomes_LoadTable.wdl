@@ -67,8 +67,8 @@ task LoadTable {
     DIR="~{storage_location}/~{datatype}_tsvs/"
     # check for existence of the correct lockfile
     #LOCKFILE="~{storage_location}/LOCKFILE"
-    #EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
-    #CURRENT_RUN_ID="~{run_uuid}"
+    # EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
+    # CURRENT_RUN_ID="{run_uuid}"
 
     #if [ "${EXISTING_LOCK_ID}" != "${CURRENT_RUN_ID}" ]; then
     #echo "ERROR: found mismatched lockfile containing run ${EXISTING_LOCK_ID}, which does not match this run ${CURRENT_RUN_ID}." 1>&2
