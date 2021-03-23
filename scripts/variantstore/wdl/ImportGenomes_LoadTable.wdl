@@ -11,7 +11,6 @@ workflow ImportGenomes {
     String superpartitioned
     File pet_schema
     String table_creation_done
-    Array[String] tsv_creation_done
     File? service_account_json
   }
 
@@ -27,7 +26,6 @@ workflow ImportGenomes {
       superpartitioned = superpartitioned,
       schema = pet_schema,
       table_creation_done = table_creation_done,
-      tsv_creation_done = tsv_creation_done,
       service_account_json = service_account_json,
       docker = docker
   }
@@ -48,7 +46,6 @@ task LoadTable {
     File schema
     File? service_account_json
     String table_creation_done
-    Array[String] tsv_creation_done
 
     String docker
   }
