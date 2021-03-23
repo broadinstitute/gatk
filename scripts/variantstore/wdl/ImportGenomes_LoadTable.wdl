@@ -139,7 +139,7 @@ task LoadTable {
 
 runtime {
     docker: docker
-    memory: "3 GB"
+    memory: "10 GB"
     disks: "local-disk 10 HDD"
     preemptible: 0
     cpu: 1
