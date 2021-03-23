@@ -108,7 +108,7 @@ task LoadTable {
         > tmp_~{datatype}_du.txt && mv tmp_~{datatype}_du.txt ~{datatype}_du.txt
 
         echo "Copying chunk $set data into separate directory."
-        cut -f2 "${set}"_files_to_load.txt | gsutil -m cp -I "${DIR}set_${set}/${FILES}" 2> gsutil_copy_files.log
+        cut -f2 "${set}"_files_to_load.txt | gsutil -m cp -I "${DIR}set_${set}/${FILES}"
 
         echo "Running BigQuery load for set $set."
         bq_job_id=$(bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
