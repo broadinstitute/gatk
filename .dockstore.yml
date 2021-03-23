@@ -12,7 +12,7 @@ workflows:
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/ImportGenomes_LoadTable.wdl
      testParameterFiles:
-       - /scripts/variantstore/wdl/ImportGenomes.example.inputs.json
+       - /scripts/variantstore/wdl/ImportGenomes_LoadTable.example.inputs.json
      filters:
        branches:
          - bq_15tb_limit

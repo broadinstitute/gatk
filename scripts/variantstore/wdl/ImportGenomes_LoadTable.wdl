@@ -12,28 +12,26 @@ workflow ImportGenomes {
     File pet_schema
     String table_creation_done
     Array[String] tsv_creation_done
-    String run_uuid
     File? service_account_json
   }
 
-  String docker = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
+  String docker="us.gcr.io/broad-gatk/gatk:4.1.7.0"
 
   call LoadTable {
     input:
       project_id = project_id,
       table_id = table_id,
       dataset_name = dataset_name,
-      storage_location = output_directory,
-      datatype = "pet",
-      superpartitioned = "false",
+      storage_location = storage_location,
+      datatype = datatype,
+      superpartitioned = superpartitioned,
       schema = pet_schema,
-      table_creation_done = ,
-      tsv_creation_done = ,
+      table_creation_done = table_creation_done,
+      tsv_creation_done = tsv_creation_done,
       service_account_json = service_account_json,
-      docker = docker_final,
-      run_uuid = 
+      docker = docker
   }
-
+}
 
 task LoadTable {
   meta {
@@ -51,7 +49,6 @@ task LoadTable {
     File? service_account_json
     String table_creation_done
     Array[String] tsv_creation_done
-    String run_uuid
 
     String docker
   }
@@ -69,16 +66,16 @@ task LoadTable {
 
     DIR="~{storage_location}/~{datatype}_tsvs/"
     # check for existence of the correct lockfile
-    LOCKFILE="~{storage_location}/LOCKFILE"
-    EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
-    CURRENT_RUN_ID="~{run_uuid}"
+    #LOCKFILE="~{storage_location}/LOCKFILE"
+    #EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
+    #CURRENT_RUN_ID="~{run_uuid}"
 
-    if [ "${EXISTING_LOCK_ID}" != "${CURRENT_RUN_ID}" ]; then
-    echo "ERROR: found mismatched lockfile containing run ${EXISTING_LOCK_ID}, which does not match this run ${CURRENT_RUN_ID}." 1>&2
-    exit 1
-    fi
+    #if [ "${EXISTING_LOCK_ID}" != "${CURRENT_RUN_ID}" ]; then
+    #echo "ERROR: found mismatched lockfile containing run ${EXISTING_LOCK_ID}, which does not match this run ${CURRENT_RUN_ID}." 1>&2
+    #exit 1
+    #fi
 
-    DIR="~{storage_location}/~{datatype}_tsvs/"
+    #DIR="~{storage_location}/~{datatype}_tsvs/"
 
     printf -v PADDED_TABLE_ID "%03d" ~{table_id}
 
@@ -138,7 +135,7 @@ task LoadTable {
         #bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema} || exit 1
         #echo "ingested ${FILES} file from $DIR into table $TABLE"
         gsutil -m mv $DIR$FILES ${DIR}done/
-
+    
     else
         echo "no ${FILES} files to process in $DIR"
     fi
