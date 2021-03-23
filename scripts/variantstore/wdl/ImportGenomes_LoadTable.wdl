@@ -10,7 +10,6 @@ workflow ImportGenomes {
     String datatype
     String superpartitioned
     File pet_schema
-    String table_creation_done
     File? service_account_json
   }
 
@@ -25,7 +24,6 @@ workflow ImportGenomes {
       datatype = datatype,
       superpartitioned = superpartitioned,
       schema = pet_schema,
-      table_creation_done = table_creation_done,
       service_account_json = service_account_json,
       docker = docker
   }
@@ -45,7 +43,6 @@ task LoadTable {
     String superpartitioned
     File schema
     File? service_account_json
-    String table_creation_done
 
     String docker
   }
@@ -94,8 +91,8 @@ task LoadTable {
 
         # get total memory in bytes
         echo "Calculating total files' size(bytes)."
-        TOTAL_FILE_SIZE=$(awk '{sum+=$1} END {print sum}' ~{datatype}_du.txt)
-        printf "%.14f" "$TOTAL_FILE_SIZE"
+        # TOTAL_FILE_SIZE=$(awk '{sum+=$1} END {print sum}' ~{datatype}_du.txt)
+        TOTAL_FILE_SIZE=$(awk '{print $1}' OFS="\t" ~{datatype}_du.txt| paste -sd+ - | bc)
         echo "$TOTAL_FILE_SIZE"
 
         # get number of iterations to loop through file - round up to get full set of files
@@ -111,7 +108,7 @@ task LoadTable {
         > tmp_~{datatype}_du.txt && mv tmp_~{datatype}_du.txt ~{datatype}_du.txt
 
         echo "Copying chunk $set data into separate directory."
-        cat "${set}"_files_to_load.txt | cut -f2 | gsutil -m cp -I "${DIR}set_${set}/${FILES}"
+        cut -f2 "${set}"_files_to_load.txt | gsutil -m cp -I "${DIR}set_${set}/${FILES}" 2> gsutil_copy_files.log
 
         echo "Running BigQuery load for set $set."
         bq_job_id=$(bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \

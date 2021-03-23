@@ -6,7 +6,6 @@
   "ImportGenomes.storage_location": "gs://fc-13e1680e-eb3d-4102-975a-be0142ee9618/mem_test",
   "ImportGenomes.datatype": "pet",
   "ImportGenomes.superpartitioned": "true",
-  "ImportGenomes.table_creation_done": "true",
   "ImportGenomes.service_account_json": ""
 }
 
