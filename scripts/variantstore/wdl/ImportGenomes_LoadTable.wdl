@@ -120,7 +120,7 @@ task LoadTable {
         # add job ID as key and gs path to the data set uploaded as value
         echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.txt
 
-        bq wait "$bq_job_id"
+        # bq wait "$bq_job_id"
         done
 
         # for each bq job submitted, run the bq wait command and capture output to log file
@@ -133,7 +133,7 @@ task LoadTable {
 
         # paste bq_load_details.txt bq_wait_details.txt > bq_final_job_statuses.txt
         
-        # gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/"
+        gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/"
     
     else
         echo "no ${FILES} files to process in $DIR"
