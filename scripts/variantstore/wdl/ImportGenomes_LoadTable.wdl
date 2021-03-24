@@ -114,7 +114,7 @@ task LoadTable {
         #bq_job_id=$(bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
         #            "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} | tr ":" "\t" | cut -f2)
         bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
-          "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
+          "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema}
 
         bq_job_id=$(awk '{print $1}' OFS="\t" status_bq_submission | sed 's/.*://')
         # add job ID as key and gs path to the data set uploaded as value
