@@ -272,7 +272,21 @@ public final class ReadThreadingAssembler {
 
         // This indicates that we have thrown everything away... we should go back and check that we weren't too conservative about assembly results that might otherwise be good
         if (!hasAdequatelyAssembledGraph) {
-            for (final AssemblyResult result : Lists.reverse(failOverAsseblyResults)) {
+            // search for the last haplotype set that had any results, if none are found just return me
+            // In this case we prefer the last meaningful kmer size if possible
+            for (AssemblyResult result : Lists.reverse(savedAssemblyResults)) {
+                if (result.getDiscoveredHaplotypes().size() > 1) {
+                    for (Haplotype h : result.getDiscoveredHaplotypes()) {
+                        resultSet.add(h, result);
+                    }
+                    hasAdequatelyAssembledGraph = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasAdequatelyAssembledGraph) {
+            for (final AssemblyResult result : failOverAsseblyResults) {
                 final AbstractReadThreadingGraph graph = result.getThreadingGraph();
                 findBestPaths(Collections.singletonList(graph), Collections.singletonMap(graph, result),
                         refHaplotype, refLoc, activeRegionExtendedLocation, null, aligner);
@@ -286,13 +300,15 @@ public final class ReadThreadingAssembler {
             }
         }
         if (!hasAdequatelyAssembledGraph) {
-            // search for the last haplotype set that had any results, if none are found just return me
-            // In this case we prefer the last meaningful kmer size if possible
-            for (AssemblyResult result : Lists.reverse(savedAssemblyResults)) {
-                if (result.getDiscoveredHaplotypes().size() > 1) {
+            for (final AssemblyResult result : Lists.reverse(failOverAsseblyResults)) {
+                final AbstractReadThreadingGraph graph = result.getThreadingGraph();
+                findBestPaths(Collections.singletonList(graph), Collections.singletonMap(graph, result),
+                        refHaplotype, refLoc, activeRegionExtendedLocation, null, aligner);
+                if (!result.getDiscoveredHaplotypes().isEmpty()) {
                     for (Haplotype h : result.getDiscoveredHaplotypes()) {
                         resultSet.add(h, result);
                     }
+                    hasAdequatelyAssembledGraph = true;
                     break;
                 }
             }
