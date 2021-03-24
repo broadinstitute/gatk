@@ -218,19 +218,23 @@ public final class ReadThreadingAssembler {
                                                              final SmithWatermanAligner aligner, final List<GATKRead> correctedReads,
                                                              final List<AbstractReadThreadingGraph> nonRefRTGraphs, final AssemblyResultSet resultSet,
                                                              final SimpleInterval activeRegionExtendedLocation) {
-        final Map<AbstractReadThreadingGraph,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
+        final Map<AbstractReadThreadingGraph, AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
         // create the graphs by calling our subclass assemble method
 
         final List<AssemblyResult> savedAssemblyResults = new ArrayList<>();
+        final List<AssemblyResult> failOverAsseblyResults = new ArrayList<>();
 
         boolean hasAdequatelyAssembledGraph = false;
         List<Integer> kmersToTry = getExpandedKmerList();
+
+        final boolean nonUniqueKmersInRefAllowInFirstRound = allowNonUniqueKmersInRefPolicy == NonUniqueKmerPolicy.ALLOWED
+                || allowNonUniqueKmersInRefPolicy == NonUniqueKmerPolicy.IN_ADDITION;
         // first, try using the requested kmer sizes
-        for ( int i = 0; i < kmersToTry.size(); i++ ) {
+        for (int i = 0; i < kmersToTry.size(); i++) {
             final int kmerSize = kmersToTry.get(i);
             final boolean isLastCycle = i == kmersToTry.size() - 1;
             if (!hasAdequatelyAssembledGraph) {
-                AssemblyResult assembledResult = createGraph(correctedReads, refHaplotype, kmerSize, isLastCycle || dontIncreaseKmerSizesForCycles, isLastCycle || allowNonUniqueKmersInRefPolicy != NonUniqueKmerPolicy.NOT_ALLOWED, header, aligner);
+                AssemblyResult assembledResult = createGraph(correctedReads, refHaplotype, kmerSize, isLastCycle || dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRefPolicy != NonUniqueKmerPolicy.NOT_ALLOWED, header, aligner);
                 if (assembledResult != null && assembledResult.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION) {
                     // do some QC on the graph
                     sanityCheckGraph(assembledResult.getThreadingGraph(), refHaplotype);
@@ -244,27 +248,21 @@ public final class ReadThreadingAssembler {
                     }
 
                     AbstractReadThreadingGraph graph = assembledResult.getThreadingGraph();
-                    findBestPaths(Collections.singletonList(graph), Collections.singletonMap(graph, assembledResult),
-                            refHaplotype, refLoc, activeRegionExtendedLocation, null, aligner);
-
-                    savedAssemblyResults.add(assembledResult);
-
-                    //TODO LOGIC PLAN HERE - we want to check if we have a trustworthy graph (i.e. no badly assembled haplotypes) if we do, emit it.
-                    //TODO                 - but if we failed to assemble due to excessive looping or did have badly assembled haplotypes then we expand kmer size.
-                    //TODO                 - If we get no variation
-
-                    // if asssembly didn't fail ( which is a degenerate case that occurs for some subset of graphs with difficult loops)
-                    if (! savedAssemblyResults.get(savedAssemblyResults.size() - 1).getDiscoveredHaplotypes().isEmpty()) {
-                        // we have found our workable kmer size so lets add the results and finish
-                        if (!assembledResult.containsSuspectHaplotypes()) {
+                    if (!assembledResult.referenceHasNonUniqueKmers() || nonUniqueKmersInRefAllowInFirstRound) {
+                        findBestPaths(Collections.singletonList(graph), Collections.singletonMap(graph, assembledResult),
+                                refHaplotype, refLoc, activeRegionExtendedLocation, null, aligner);
+                        if (!assembledResult.getDiscoveredHaplotypes().isEmpty() && !assembledResult.containsSuspectHaplotypes()) {
                             for (Haplotype h : assembledResult.getDiscoveredHaplotypes()) {
                                 resultSet.add(h, assembledResult);
                             }
-                            hasAdequatelyAssembledGraph = !assembledResult.referenceHasNonUniqueKmers() || isLastCycle;
+                            hasAdequatelyAssembledGraph = !assembledResult.referenceHasNonUniqueKmers()
+                                    || allowNonUniqueKmersInRefPolicy == NonUniqueKmerPolicy.ALLOWED;
                         }
+                        savedAssemblyResults.add(assembledResult);
+                    } else if (allowNonUniqueKmersInRefPolicy == NonUniqueKmerPolicy.FAIL_OVER_ONLY) {
+                        failOverAsseblyResults.add(assembledResult);
                     }
-
-                // if no variation is discoverd in the graph don't bother expanding the kmer size.
+                    // if no variation is discoverd in the graph don't bother expanding the kmer size.
                 } else if (assembledResult != null && assembledResult.getStatus() == AssemblyResult.Status.JUST_ASSEMBLED_REFERENCE) {
                     hasAdequatelyAssembledGraph = true;
                 }
@@ -273,6 +271,20 @@ public final class ReadThreadingAssembler {
 
 
         // This indicates that we have thrown everything away... we should go back and check that we weren't too conservative about assembly results that might otherwise be good
+        if (!hasAdequatelyAssembledGraph) {
+            for (final AssemblyResult result : Lists.reverse(failOverAsseblyResults)) {
+                final AbstractReadThreadingGraph graph = result.getThreadingGraph();
+                findBestPaths(Collections.singletonList(graph), Collections.singletonMap(graph, result),
+                        refHaplotype, refLoc, activeRegionExtendedLocation, null, aligner);
+                if (!result.getDiscoveredHaplotypes().isEmpty() && !result.containsSuspectHaplotypes()) {
+                    for (Haplotype h : result.getDiscoveredHaplotypes()) {
+                        resultSet.add(h, result);
+                    }
+                    hasAdequatelyAssembledGraph = true;
+                    break;
+                }
+            }
+        }
         if (!hasAdequatelyAssembledGraph) {
             // search for the last haplotype set that had any results, if none are found just return me
             // In this case we prefer the last meaningful kmer size if possible
