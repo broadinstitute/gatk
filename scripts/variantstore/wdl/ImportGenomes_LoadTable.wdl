@@ -148,7 +148,6 @@ runtime {
   }
 
   output {
-    String done = "true"
     File load_details = "bq_load_details.txt"
     File wait_details = "bq_wait_details.txt"
     File final_job_statuses = "bq_final_job_statuses.txt"
