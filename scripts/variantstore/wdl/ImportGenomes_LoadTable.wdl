@@ -111,9 +111,12 @@ task LoadTable {
         cut -f2 "${set}"_files_to_load.txt | gsutil -m cp -I "${DIR}set_${set}/" 2> gsutil_copy.log
 
         echo "Running BigQuery load for set $set."
-        bq_job_id=$(bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} | tr ":" "\t" | cut -f2)
+        #bq_job_id=$(bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
+        #            "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} | tr ":" "\t" | cut -f2)
+        bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
+          "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
 
-        echo "$bq_job_id"
+        bq_job_id=$(awk '{print $1}' OFS="\t" status_bq_submission | sed 's/.*://')
         # add job ID as key and gs path to the data set uploaded as value
         echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.txt
         done
