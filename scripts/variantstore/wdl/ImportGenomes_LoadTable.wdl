@@ -27,6 +27,12 @@ workflow ImportGenomes {
       service_account_json = service_account_json,
       docker = docker
   }
+
+  call bq_wait {
+    input:
+      job_id_details = LoadTable.load_details,
+      docker = docker
+  }
 }
 
 task LoadTable {
@@ -153,6 +159,35 @@ runtime {
     File load_details = "bq_load_details.txt"
     # File wait_details = "bq_wait_details.txt"
     # File final_job_statuses = "bq_final_job_statuses.txt"
+  }
+}
+
+task bq_wait {
+  input{
+    File job_id_details
+    String docker
+  }
+
+  command <<<
+
+  awk '{print $1}' OFS="\t" ~{job_id_details} > job_id_list.txt
+
+  while IFS="\t" read -r job_id
+    do
+      bq wait "$job_id" 
+  done < job_id_list.txt >> bq_wait_details.txt
+
+  >>>
+  runtime {
+    docker: docker
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 0
+    cpu: 1
+  }
+
+  output {
+    File bq_wait_details = "bq_wait_details.txt"
   }
 }
 
