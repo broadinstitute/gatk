@@ -1,6 +1,6 @@
 {
   "ImportGenomes.pet_schema": "gs://broad-dsp-spec-ops/scratch/andrea/schemas/pet_schema.json",
-  "ImportGenomes.project_id": "spec-ops-aou",
+  "ImportGenomes.project_id": "broad-dsp-spec-ops",
   "ImportGenomes.table_id": "1",
   "ImportGenomes.dataset_name": "15tb_upload_test",
   "ImportGenomes.storage_location": "gs://fc-13e1680e-eb3d-4102-975a-be0142ee9618/mem_test",
