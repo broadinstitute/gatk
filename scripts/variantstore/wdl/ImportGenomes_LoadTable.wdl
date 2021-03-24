@@ -91,12 +91,12 @@ task LoadTable {
 
         # get total memory in bytes
         echo "Calculating total files' size(bytes)."
-        # TOTAL_FILE_SIZE=$(awk '{sum+=$1} END {print sum}' ~{datatype}_du.txt)
         TOTAL_FILE_SIZE=$(awk '{print $1}' OFS="\t" ~{datatype}_du.txt| paste -sd+ - | bc)
         echo "$TOTAL_FILE_SIZE"
 
         # get number of iterations to loop through file - round up to get full set of files
         num_sets=$(((TOTAL_FILE_SIZE+16492674416639)/16492674416640))
+        echo "$num_sets"
 
         echo "Starting chunking of files."
         for set in $(seq 1 $num_sets)
