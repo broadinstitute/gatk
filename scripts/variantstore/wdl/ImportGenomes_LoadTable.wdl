@@ -128,10 +128,8 @@ task LoadTable {
         done < bq_load_details.txt >> bq_wait_details.txt
 
         paste bq_load_details.txt bq_wait_details.txt > bq_final_job_statuses.txt
-
-        #bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema} || exit 1
-        #echo "ingested ${FILES} file from $DIR into table $TABLE"
-        gsutil -m mv $DIR$FILES ${DIR}done/
+        
+        # gsutil -m mv $DIR$FILES ${DIR}done/
     
     else
         echo "no ${FILES} files to process in $DIR"
