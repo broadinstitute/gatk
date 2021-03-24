@@ -129,7 +129,7 @@ task LoadTable {
 
         paste bq_load_details.txt bq_wait_details.txt > bq_final_job_statuses.txt
         
-        # gsutil -m mv $DIR$FILES ${DIR}done/
+        gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/"
     
     else
         echo "no ${FILES} files to process in $DIR"
