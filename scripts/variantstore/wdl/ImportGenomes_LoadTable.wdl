@@ -124,7 +124,8 @@ task LoadTable {
         # for each bq job submitted, run the bq wait command and capture output to log file
         while IFS="\t" read -r job_id
         do
-        bq wait $(echo "$job_id" | cut -f1) | sed '5q;d' | tr " " "\t" | tr -s "\t" | cut -f3
+        bq wait $(echo "$job_id" | cut -f1) 
+        # | sed '5q;d' | tr " " "\t" | tr -s "\t" | cut -f3
         done < bq_load_details.txt >> bq_wait_details.txt
 
         paste bq_load_details.txt bq_wait_details.txt > bq_final_job_statuses.txt
@@ -147,6 +148,9 @@ runtime {
 
   output {
     String done = "true"
+    File load_details = "bq_load_details.txt"
+    File wait_details = "bq_wait_details.txt"
+    File final_job_statuses = "bq_final_job_statuses.txt"
   }
 }
 
