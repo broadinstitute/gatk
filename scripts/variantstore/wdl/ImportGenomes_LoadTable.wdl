@@ -119,19 +119,21 @@ task LoadTable {
         bq_job_id=$(sed 's/.*://' status_bq_submission)
         # add job ID as key and gs path to the data set uploaded as value
         echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.txt
+
+        bq wait "$bq_job_id"
         done
 
         # for each bq job submitted, run the bq wait command and capture output to log file
-        while IFS="\t" read -r job_id
-        do
-        bq wait $(echo "$job_id" | cut -f1) > bq_wait_status
-        wait_status=$(sed '5q;d' bq_wait_status | tr " " "\t" | tr -s "\t" | cut -f3) 
-        echo "$wait_status"
-        done < bq_load_details.txt >> bq_wait_details.txt
+        # while IFS="\t" read -r job_id
+        # do
+        # bq wait $(echo "$job_id" | cut -f1) > bq_wait_status
+        # wait_status=$(sed '5q;d' bq_wait_status | tr " " "\t" | tr -s "\t" | cut -f3) 
+        # echo "$wait_status"
+        # done < bq_load_details.txt >> bq_wait_details.txt
 
-        paste bq_load_details.txt bq_wait_details.txt > bq_final_job_statuses.txt
+        # paste bq_load_details.txt bq_wait_details.txt > bq_final_job_statuses.txt
         
-        gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/"
+        # gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/"
     
     else
         echo "no ${FILES} files to process in $DIR"
@@ -149,8 +151,8 @@ runtime {
 
   output {
     File load_details = "bq_load_details.txt"
-    File wait_details = "bq_wait_details.txt"
-    File final_job_statuses = "bq_final_job_statuses.txt"
+    # File wait_details = "bq_wait_details.txt"
+    # File final_job_statuses = "bq_final_job_statuses.txt"
   }
 }
 
