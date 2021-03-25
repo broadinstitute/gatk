@@ -105,8 +105,9 @@ task LoadTable {
           awk 'NR==FNR{a[$2]=$0;next}{$3=a[$2]}1' OFS="\t" "${set}"_files_to_load.txt ~{datatype}_du.txt | awk 'NF<3' | cut -f1-2 \
           > tmp_~{datatype}_du.txt && mv tmp_~{datatype}_du.txt ~{datatype}_du.txt
 
+          # TODO: CHANGE TO MV FROM CP once all the rest is fixed
           echo "Moving set $set data into separate directory."
-          cut -f2 "${set}"_files_to_load.txt | gsutil -m mv -I "${DIR}set_${set}/" 2> gsutil_cp_sets.log
+          cut -f2 "${set}"_files_to_load.txt | gsutil -m cp -I "${DIR}set_${set}/" 2> gsutil_cp_sets.log
 
           echo "Running BigQuery load for set $set."
           bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
