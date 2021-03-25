@@ -92,7 +92,7 @@ Since the data set is small enough we can gather together all the shards into a 
 ### Gather WARP pipeline results
 
 ```bash
-WORKFLOW_ID=68026724-7fdc-4a0e-bcfa-6a5e4a86cc0a
+WORKFLOW_ID=6d57ab66-8668-495f-8947-3b0ee7387389
 
 gsutil ls gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORKFLOW_ID}/call-TotallyRadicalGatherVcfs/shard-*/*.gnarly.vcf.gz > warp_vcfs.list
 

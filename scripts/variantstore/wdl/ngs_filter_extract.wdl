@@ -31,6 +31,8 @@ workflow NgsFilterExtract {
         Array[String] indel_recalibration_tranche_values
         Array[String] indel_recalibration_annotation_values
 
+        File? excluded_sites_bed
+
         File hapmap_resource_vcf
         File hapmap_resource_vcf_index
         File omni_resource_vcf
@@ -93,6 +95,7 @@ workflow NgsFilterExtract {
         tranches_filename = filter_set_name + ".indels.tranches",
         recalibration_tranche_values = indel_recalibration_tranche_values,
         recalibration_annotation_values = indel_recalibration_annotation_values,
+        excluded_sites_bed = excluded_sites_bed,
         mills_resource_vcf = mills_resource_vcf,
         mills_resource_vcf_index = mills_resource_vcf_index,
         axiomPoly_resource_vcf = axiomPoly_resource_vcf,
@@ -111,6 +114,7 @@ workflow NgsFilterExtract {
           tranches_filename = filter_set_name + ".snps.tranches",
           recalibration_tranche_values = snp_recalibration_tranche_values,
           recalibration_annotation_values = snp_recalibration_annotation_values,
+          excluded_sites_bed = excluded_sites_bed,
           hapmap_resource_vcf = hapmap_resource_vcf,
           hapmap_resource_vcf_index = hapmap_resource_vcf_index,
           omni_resource_vcf = omni_resource_vcf,
@@ -368,6 +372,7 @@ task IndelsVariantRecalibrator {
     File sites_only_variant_filtered_vcf
     File sites_only_variant_filtered_vcf_index
 
+    File? excluded_sites_bed
     File mills_resource_vcf
     File axiomPoly_resource_vcf
     File dbsnp_resource_vcf
@@ -387,7 +392,10 @@ task IndelsVariantRecalibrator {
     gatk --java-options -Xms24g \
       VariantRecalibrator \
       -V ~{sites_only_variant_filtered_vcf} \
+      ~{"-XL " + excluded_sites_bed} \
       -O ~{recalibration_filename} \
+      --output-model indels.model \
+      --rscript-file indels.Rscript \
       --tranches-file ~{tranches_filename} \
       --trust-all-polymorphic \
       -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
@@ -412,6 +420,8 @@ task IndelsVariantRecalibrator {
     File recalibration = "~{recalibration_filename}"
     File recalibration_index = "~{recalibration_filename}.idx"
     File tranches = "~{tranches_filename}"
+    File model = "indels.model"
+    File rscript = "indels.Rscript"
   }
 }
 
@@ -428,6 +438,7 @@ task SNPsVariantRecalibrator {
     File sites_only_variant_filtered_vcf
     File sites_only_variant_filtered_vcf_index
 
+    File? excluded_sites_bed
     File hapmap_resource_vcf
     File omni_resource_vcf
     File one_thousand_genomes_resource_vcf
@@ -466,7 +477,10 @@ task SNPsVariantRecalibrator {
     gatk --java-options -Xmx~{java_mem}g \
       VariantRecalibrator \
       -V ~{sites_only_variant_filtered_vcf} \
+      ~{"-XL " + excluded_sites_bed} \
       -O ~{recalibration_filename} \
+      --output-model snps.model \
+      --rscript-file snps.Rscript \
       --tranches-file ~{tranches_filename} \
       --trust-all-polymorphic \
       -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
@@ -494,6 +508,8 @@ task SNPsVariantRecalibrator {
     File recalibration = "~{recalibration_filename}"
     File recalibration_index = "~{recalibration_filename}.idx"
     File tranches = "~{tranches_filename}"
+    File model = "snps.model"
+    File rscript = "snps.Rscript"
   }
 }
 

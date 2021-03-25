@@ -2,14 +2,21 @@ import sys
 import gzip
 import itertools
 
+# Add new header for MAX_AS_VQSLOD
+
 with gzip.open(sys.argv[1], 'rt') as file1:
     for line in file1:
         line = line.strip()
 
-        if "#" in line:
+        if "##" in line:
             print(line)
             continue
-            
+        
+        if "#CHROM" in line:
+            print('##INFO=<ID=MAX_AS_VQSLOD,Number=1,Type=Float,Description="Maximum of AS_VQSLOD scores">')
+            print(line)
+            continue
+
         parts = line.split("\t")
         
         if (parts[6] == "ExcessHet"):
