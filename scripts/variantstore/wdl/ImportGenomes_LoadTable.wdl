@@ -127,8 +127,8 @@ task LoadTable {
             # determine SUCCESS or FAILURE and capture to variable --> echo to file
             # wait_status=$(sed '5q;d' bq_wait_status | tr " " "\t" | tr -s "\t" | cut -f3)
             # echo "$wait_status" 
-        done 
-        # < bq_load_details.tmp >> bq_wait_details.tmp
+        done < bq_load_details.tmp 
+        # >> bq_wait_details.tmp
 
         # combine job status and wait status into final report
         paste bq_load_details.txt bq_wait_details.tmp > bq_final_job_statuses.txt
