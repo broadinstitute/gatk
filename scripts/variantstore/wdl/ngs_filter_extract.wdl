@@ -26,6 +26,9 @@ workflow NgsFilterExtract {
         File dbsnp_vcf
         File dbsnp_vcf_index
 
+        File? snps_model
+        File? indels_model
+
         Array[String] snp_recalibration_tranche_values
         Array[String] snp_recalibration_annotation_values
         Array[String] indel_recalibration_tranche_values
@@ -91,6 +94,7 @@ workflow NgsFilterExtract {
         input:
         sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
         sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+        model_report = indels_model,
         recalibration_filename = filter_set_name + ".indels.recal",
         tranches_filename = filter_set_name + ".indels.tranches",
         recalibration_tranche_values = indel_recalibration_tranche_values,
@@ -110,6 +114,7 @@ workflow NgsFilterExtract {
       input:
           sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
           sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+          model_report = snps_model,
           recalibration_filename = filter_set_name + ".snps.recal",
           tranches_filename = filter_set_name + ".snps.tranches",
           recalibration_tranche_values = snp_recalibration_tranche_values,
@@ -365,6 +370,7 @@ task IndelsVariantRecalibrator {
   input {
     String recalibration_filename
     String tranches_filename
+    File? model_report
 
     Array[String] recalibration_tranche_values
     Array[String] recalibration_annotation_values
@@ -385,6 +391,8 @@ task IndelsVariantRecalibrator {
     Int disk_size
     String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.9.0"
   }
+
+  String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT " else ""
 
   command <<<
     set -euo pipefail
@@ -467,7 +475,7 @@ task SNPsVariantRecalibrator {
   Int java_mem = machine_mem - 5
 
 
-  String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT --output-tranches-for-scatter" else ""
+  String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT " else ""
 
   command <<<
     set -euo pipefail
