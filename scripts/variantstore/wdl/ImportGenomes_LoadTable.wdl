@@ -105,8 +105,8 @@ task LoadTable {
           awk 'NR==FNR{a[$2]=$0;next}{$3=a[$2]}1' OFS="\t" "${set}"_files_to_load.txt ~{datatype}_du.txt | awk 'NF<3' | cut -f1-2 \
           > tmp_~{datatype}_du.txt && mv tmp_~{datatype}_du.txt ~{datatype}_du.txt
 
-          echo "Copying set $set data into separate directory."
-          cut -f2 "${set}"_files_to_load.txt | gsutil -m cp -I "${DIR}set_${set}/" 2> gsutil_cp_sets.log
+          echo "Moving set $set data into separate directory."
+          cut -f2 "${set}"_files_to_load.txt | gsutil -m mv -I "${DIR}set_${set}/" 2> gsutil_cp_sets.log
 
           echo "Running BigQuery load for set $set."
           bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
@@ -115,23 +115,27 @@ task LoadTable {
           bq_job_id=$(sed 's/.*://' status_bq_submission)
 
           # add job ID as key and gs path to the data set uploaded as value
-          echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.txt
+          echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.tmp
         done
 
         # for each bq job submitted, run the bq wait command and capture success/failure to log file
         while IFS="\t" read -r line_bq_load
           do
             bq wait --project_id=~{project_id} $(echo "$line_bq_load" | cut -f1) > bq_wait_status
-            # determine SUCCESS or FAILURE and capture to variable
-            wait_status=$(sed '5q;d' bq_wait_status | tr " " "\t" | tr -s "\t" | cut -f3) 
-        done < bq_load_details.txt >> bq_wait_details.txt
 
-        paste bq_load_details.txt bq_wait_details.txt > bq_final_job_statuses.txt
+            # determine SUCCESS or FAILURE and capture to variable --> echo to file
+            wait_status=$(sed '5q;d' bq_wait_status | tr " " "\t" | tr -s "\t" | cut -f3)
+            echo "$wait_status" 
+        done < bq_load_details.tmp >> bq_wait_details.tmp
+
+        # combine job status and wait status into final report
+        paste bq_load_details.txt bq_wait_details.tmp > bq_final_job_statuses.txt
         
+        # move files from each set into set-level "done" directories
         gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/"
         # move all the files from original high level - non set - dir to done as well
         # gsutil -m mv "${DIR}$FILES" "${DIR}/done/""
-    
+
     else
         echo "no ${FILES} files to process in ${DIR}"
     fi
@@ -147,8 +151,6 @@ runtime {
   }
 
   output {
-    File load_details = "bq_load_details.txt"
-    File wait_details = "bq_wait_details.txt"
     File final_job_statuses = "bq_final_job_statuses.txt"
   }
 }
