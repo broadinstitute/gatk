@@ -87,7 +87,28 @@ workflows:
      filters:
        branches:
          - master
-   - name: run_happy
+   - name: ngs_filter_extract
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/ngs_filter_extract.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/ngs_filter_extract.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - kc_feature_tieout
+         - add_model_inputs
+   - name: ngs_cohort_extract
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/ngs_cohort_extract.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/ngs_cohort_extract.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - mmt_add_wdls_to_dockstore
+         - name: run_happy
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/run_happy.wdl
      testParameterFiles:
