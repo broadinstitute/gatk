@@ -397,6 +397,8 @@ task IndelsVariantRecalibrator {
   command <<<
     set -euo pipefail
 
+    MODEL_REPORT=~{model_report}
+
     gatk --java-options -Xms24g \
       VariantRecalibrator \
       -V ~{sites_only_variant_filtered_vcf} \
