@@ -122,12 +122,12 @@ task LoadTable {
         # for each bq job submitted, run the bq wait command and capture success/failure to log file
         while IFS="\t" read -r line_bq_load
           do
-            bq wait --project_id=~{project_id} $(echo "$line_bq_load" | cut -f1)
-
+            bq wait --project_id=~{project_id} $(echo "$line_bq_load" | cut -f1) > bq_wait_status
+            cat bq_wait_status            
             # determine SUCCESS or FAILURE and capture to variable --> echo to file
             # wait_status=$(sed '5q;d' bq_wait_status | tr " " "\t" | tr -s "\t" | cut -f3)
             # echo "$wait_status" 
-        done < bq_load_details.tmp 
+        done < bq_load_details.tmp >> bq_wait_details.tmp
         # >> bq_wait_details.tmp
 
         # combine job status and wait status into final report
@@ -154,5 +154,8 @@ runtime {
 
   output {
     File final_job_statuses = "bq_final_job_statuses.txt"
+    File bq_wait_status = "bq_wait_status"
+    File bq_wait_details = "bq_wait_details.tmp"
+    File bq_load_details = "bq_load_details.tmp"
   }
 }
