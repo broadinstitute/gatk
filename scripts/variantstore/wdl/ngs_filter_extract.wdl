@@ -410,6 +410,7 @@ task IndelsVariantRecalibrator {
       -an ~{sep=' -an ' recalibration_annotation_values} \
       ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
       -mode INDEL \
+       ~{model_report_arg} \
       --max-gaussians ~{max_gaussians} \
       -resource:mills,known=false,training=true,truth=true,prior=12 ~{mills_resource_vcf} \
       -resource:axiomPoly,known=false,training=true,truth=false,prior=10 ~{axiomPoly_resource_vcf} \
