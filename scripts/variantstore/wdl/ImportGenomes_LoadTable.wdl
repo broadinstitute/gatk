@@ -112,34 +112,27 @@ task LoadTable {
           > tmp_~{datatype}_du.txt && mv tmp_~{datatype}_du.txt ~{datatype}_du.txt
 
           echo "Copying set $set data into separate directory."
-          cut -f2 "${set}"_files_to_load.txt | gsutil -m cp -I "${DIR}set_${set}/"
+          cut -f2 "${set}"_files_to_load.txt | gsutil -m cp -I "${DIR}set_${set}/" 2> gsutil_cp_sets.log
 
           echo "Running BigQuery load for set $set."
-          #bq_job_id=$(bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
-          #            "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} | tr ":" "\t" | cut -f2)
           bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
             "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
 
           bq_job_id=$(sed 's/.*://' status_bq_submission)
-          echo "$bq_job_id"
-          
+
           # add job ID as key and gs path to the data set uploaded as value
           echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.txt
-
-          echo "bq wait ${bq_job_id}"
-          bq wait --project_id=~{project_id} "$bq_job_id"
-        
         done
 
-        # for each bq job submitted, run the bq wait command and capture output to log file
-        # while IFS="\t" read -r job_id
-        # do
-        # bq wait $(echo "$job_id" | cut -f1) > bq_wait_status
-        # wait_status=$(sed '5q;d' bq_wait_status | tr " " "\t" | tr -s "\t" | cut -f3) 
-        # echo "$wait_status"
-        # done < bq_load_details.txt >> bq_wait_details.txt
+        # for each bq job submitted, run the bq wait command and capture success/failure to log file
+        while IFS="\t" read -r line_bq_load
+          do
+            bq wait --project_id=~{project_id} $(echo "$line_bq_load" | cut -f1) > bq_wait_status
+            wait_status=$(sed '5q;d' bq_wait_status | tr " " "\t" | tr -s "\t" | cut -f3) 
+            echo "$wait_status"
+        done < bq_load_details.txt >> bq_wait_details.txt
 
-        # paste bq_load_details.txt bq_wait_details.txt > bq_final_job_statuses.txt
+        paste bq_load_details.txt bq_wait_details.txt > bq_final_job_statuses.txt
         
         gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/"
         # move all the files from original high level - non set - dir to done as well
@@ -161,37 +154,7 @@ runtime {
 
   output {
     File load_details = "bq_load_details.txt"
-    # File wait_details = "bq_wait_details.txt"
-    # File final_job_statuses = "bq_final_job_statuses.txt"
+    File wait_details = "bq_wait_details.txt"
+    File final_job_statuses = "bq_final_job_statuses.txt"
   }
 }
-
-task bq_wait {
-  input{
-    File job_id_details
-    String docker
-  }
-
-  command <<<
-
-  awk '{print $1}' OFS="\t" ~{job_id_details} > job_id_list.txt
-
-  while IFS="\t" read -r job_id
-    do
-      bq wait "$job_id" 
-  done < job_id_list.txt >> bq_wait_details.txt
-
-  >>>
-  runtime {
-    docker: docker
-    memory: "3 GB"
-    disks: "local-disk 10 HDD"
-    preemptible: 0
-    cpu: 1
-  }
-
-  output {
-    File bq_wait_details = "bq_wait_details.txt"
-  }
-}
-
