@@ -27,12 +27,6 @@ workflow ImportGenomes {
       service_account_json = service_account_json,
       docker = docker
   }
-
-  call bq_wait {
-    input:
-      job_id_details = LoadTable.load_details,
-      docker = docker
-  }
 }
 
 task LoadTable {
