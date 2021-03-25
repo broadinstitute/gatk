@@ -234,7 +234,7 @@ public final class ReadThreadingAssembler {
             final int kmerSize = kmersToTry.get(i);
             final boolean isLastCycle = i == kmersToTry.size() - 1;
             if (!hasAdequatelyAssembledGraph) {
-                AssemblyResult assembledResult = createGraph(correctedReads, refHaplotype, kmerSize, isLastCycle || dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRefPolicy != NonUniqueKmerPolicy.NOT_ALLOWED, header, aligner);
+                AssemblyResult assembledResult = createGraph(correctedReads, refHaplotype, kmerSize, isLastCycle || dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRefPolicy, header, aligner);
                 if (assembledResult != null && assembledResult.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION) {
                     // do some QC on the graph
                     sanityCheckGraph(assembledResult.getThreadingGraph(), refHaplotype);
@@ -570,27 +570,55 @@ public final class ReadThreadingAssembler {
      */
     @VisibleForTesting
     List<AssemblyResult> assemble(final List<GATKRead> reads, final Haplotype refHaplotype, final SAMFileHeader header, final SmithWatermanAligner aligner) {
-        final List<AssemblyResult> results = new LinkedList<>();
+        final List<AssemblyResult> standardResults = new LinkedList<>();
+        final List<AssemblyResult> nonUniqueKmerResults = new LinkedList<>();
+        final List<AssemblyResult> allResults = new LinkedList<>();
 
         // first, try using the requested kmer sizes
         for ( final int kmerSize : kmerSizes ) {
-            addResult(results, createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRefPolicy != NonUniqueKmerPolicy.NOT_ALLOWED, header, aligner));
+            final AssemblyResult assemblyResult = createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRefPolicy, header, aligner);
+            if (assemblyResult != null) {
+                allResults.add(assemblyResult);
+                if (assemblyResult.referenceHasNonUniqueKmers()) {
+                    nonUniqueKmerResults.add(assemblyResult);
+                } else {
+                    standardResults.add(assemblyResult);
+                }
+            }
         }
 
+        final List<AssemblyResult> sufficientSet = allowNonUniqueKmersInRefPolicy == NonUniqueKmerPolicy.NOT_ALLOWED
+                ? standardResults
+                : allowNonUniqueKmersInRefPolicy == NonUniqueKmerPolicy.ALLOWED
+                  ? allResults
+                  : standardResults;
         // if none of those worked, iterate over larger sizes if allowed to do so
-        if ( results.isEmpty() && !dontIncreaseKmerSizesForCycles ) {
+        if ( sufficientSet.isEmpty() && !dontIncreaseKmerSizesForCycles ) {
             int kmerSize = arrayMaxInt(kmerSizes) + KMER_SIZE_ITERATION_INCREASE;
             int numIterations = 1;
-            while ( results.isEmpty() && numIterations <= MAX_KMER_ITERATIONS_TO_ATTEMPT ) {
+            while ( sufficientSet.isEmpty() && numIterations <= MAX_KMER_ITERATIONS_TO_ATTEMPT ) {
                 // on the last attempt we will allow low complexity graphs
                 final boolean lastAttempt = numIterations == MAX_KMER_ITERATIONS_TO_ATTEMPT;
-                addResult(results, createGraph(reads, refHaplotype, kmerSize, lastAttempt, lastAttempt, header, aligner));
+                final AssemblyResult assemblyResult = createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRefPolicy, header, aligner);
+                if (assemblyResult != null) {
+                    allResults.add(assemblyResult);
+                    if (assemblyResult.referenceHasNonUniqueKmers()) {
+                        nonUniqueKmerResults.add(assemblyResult);
+                    } else {
+                        standardResults.add(assemblyResult);
+                    }
+                }
                 kmerSize += KMER_SIZE_ITERATION_INCREASE;
                 numIterations++;
             }
         }
-
-        return results;
+        if (standardResults.isEmpty() && allowNonUniqueKmersInRefPolicy == NonUniqueKmerPolicy.FAIL_OVER_ONLY) {
+            return nonUniqueKmerResults;
+        } else if (allowNonUniqueKmersInRefPolicy == NonUniqueKmerPolicy.IN_ADDITION) {
+            return allResults;
+        } else {
+            return sufficientSet;
+        }
     }
 
     /**
@@ -630,7 +658,7 @@ public final class ReadThreadingAssembler {
                                        final Haplotype refHaplotype,
                                        final int kmerSize,
                                        final boolean allowLowComplexityGraphs,
-                                       final boolean allowNonUniqueKmersInRef,
+                                       final NonUniqueKmerPolicy allowNonUniqueKmersInRef,
                                        final SAMFileHeader header,
                                        final SmithWatermanAligner aligner) {
         if ( refHaplotype.length() < kmerSize ) {
@@ -639,7 +667,7 @@ public final class ReadThreadingAssembler {
         }
 
         final boolean referenceHasNonUniqueKmers = !ReadThreadingGraph.determineNonUniqueKmers(new ReadThreadingGraph.SequenceForKmers("ref", refHaplotype.getBases(), 0, refHaplotype.getBases().length, 1, true), kmerSize).isEmpty();
-        if ( !allowNonUniqueKmersInRef && referenceHasNonUniqueKmers ) {
+        if ( allowNonUniqueKmersInRef == NonUniqueKmerPolicy.NOT_ALLOWED && referenceHasNonUniqueKmers ) {
             if ( debug ) {
                 logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because reference contains non-unique kmers");
             }
