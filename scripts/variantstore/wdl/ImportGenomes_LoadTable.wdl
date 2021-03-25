@@ -92,41 +92,43 @@ task LoadTable {
 
     if [ $NUM_FILES -gt 0 ]; then
         # get list of of pet files and their byte sizes
-        echo "Getting the file sizes(bytes) and path to each file."
+        echo "Getting load file sizes(bytes) and path to each file."
         gsutil du ${DIR}pet_001_* | tr " " "\t" | tr -s "\t" > ~{datatype}_du.txt
 
         # get total memory in bytes
         echo "Calculating total files' size(bytes)."
         TOTAL_FILE_SIZE=$(awk '{print $1}' OFS="\t" ~{datatype}_du.txt| paste -sd+ - | bc)
-        echo "$TOTAL_FILE_SIZE"
 
         # get number of iterations to loop through file - round up to get full set of files
         num_sets=$(((TOTAL_FILE_SIZE+16492674416639)/16492674416640))
-        echo "$num_sets"
 
-        echo "Starting chunking of files."
+        echo "Starting creation of $num_sets set(s) of load files totaling $TOTAL_FILE_SIZE bytes."
         for set in $(seq 1 $num_sets)
         do
-        # write set of data totaling 16000000000000 bytes to file labeled by set #
-        awk '{s+=$1}{print $1"\t"$2"\t"s}' ~{datatype}_du.txt | awk '$3 < 16000000000000 {print $1"\t"$2}' > "${set}"_files_to_load.txt
-        # subtract the files put into set file from full list
-        awk 'NR==FNR{a[$2]=$0;next}{$3=a[$2]}1' OFS="\t" "${set}"_files_to_load.txt ~{datatype}_du.txt | awk 'NF<3' | cut -f1-2 \
-        > tmp_~{datatype}_du.txt && mv tmp_~{datatype}_du.txt ~{datatype}_du.txt
+          # write set of data totaling 16000000000000 bytes to file labeled by set #
+          awk '{s+=$1}{print $1"\t"$2"\t"s}' ~{datatype}_du.txt | awk '$3 < 16000000000000 {print $1"\t"$2}' > "${set}"_files_to_load.txt
+          # subtract files in created set from the full list of files to load
+          awk 'NR==FNR{a[$2]=$0;next}{$3=a[$2]}1' OFS="\t" "${set}"_files_to_load.txt ~{datatype}_du.txt | awk 'NF<3' | cut -f1-2 \
+          > tmp_~{datatype}_du.txt && mv tmp_~{datatype}_du.txt ~{datatype}_du.txt
 
-        echo "Copying chunk $set data into separate directory."
-        cut -f2 "${set}"_files_to_load.txt | gsutil -m cp -I "${DIR}set_${set}/" 2> gsutil_copy.log
+          echo "Copying set $set data into separate directory."
+          cut -f2 "${set}"_files_to_load.txt | gsutil -m cp -I "${DIR}set_${set}/"
 
-        echo "Running BigQuery load for set $set."
-        #bq_job_id=$(bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
-        #            "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} | tr ":" "\t" | cut -f2)
-        bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
-          "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
+          echo "Running BigQuery load for set $set."
+          #bq_job_id=$(bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
+          #            "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} | tr ":" "\t" | cut -f2)
+          bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
+            "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
 
-        bq_job_id=$(sed 's/.*://' status_bq_submission)
-        # add job ID as key and gs path to the data set uploaded as value
-        echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.txt
+          bq_job_id=$(sed 's/.*://' status_bq_submission)
+          echo "$bq_job_id"
+          
+          # add job ID as key and gs path to the data set uploaded as value
+          echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.txt
 
-        # bq wait "$bq_job_id"
+          echo "bq wait ${bq_job_id}"
+          bq wait --project_id=~{project_id} "$bq_job_id"
+        
         done
 
         # for each bq job submitted, run the bq wait command and capture output to log file
@@ -140,9 +142,11 @@ task LoadTable {
         # paste bq_load_details.txt bq_wait_details.txt > bq_final_job_statuses.txt
         
         gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/"
+        # move all the files from original high level - non set - dir to done as well
+        # gsutil -m mv "${DIR}$FILES" "${DIR}/done/""
     
     else
-        echo "no ${FILES} files to process in $DIR"
+        echo "no ${FILES} files to process in ${DIR}"
     fi
   
 >>>
