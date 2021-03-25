@@ -13,7 +13,7 @@ vtk==8.1.2
 imageio==2.6.1
 ipywidgets==7.5.1
 bokeh
-Pillow==7.1.0
+Pillow==8.1.1
 notebook
 pytest
 tensorflow-addons==0.9.1
