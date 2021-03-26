@@ -109,8 +109,6 @@ workflow ImportGenomes {
         datatype = "metadata",
         superpartitioned = "false",
         schema = metadata_schema,
-        table_creation_done = CreateMetadataTables.done,
-        tsv_creation_done = CreateImportTsvs.done,
         service_account_json = service_account_json,
         docker = docker_final,
         run_uuid = SetLock.run_uuid
@@ -127,8 +125,6 @@ workflow ImportGenomes {
       datatype = "pet",
       superpartitioned = "true",
       schema = pet_schema,
-      table_creation_done = CreatePetTables.done,
-      tsv_creation_done = CreateImportTsvs.done,
       service_account_json = service_account_json,
       docker = docker_final,
       run_uuid = SetLock.run_uuid
@@ -145,8 +141,6 @@ workflow ImportGenomes {
       datatype = "vet",
       superpartitioned = "true",
       schema = vet_schema,
-      table_creation_done = CreateVetTables.done,
-      tsv_creation_done = CreateImportTsvs.done,
       service_account_json = service_account_json,
       docker = docker_final,
       run_uuid = SetLock.run_uuid
