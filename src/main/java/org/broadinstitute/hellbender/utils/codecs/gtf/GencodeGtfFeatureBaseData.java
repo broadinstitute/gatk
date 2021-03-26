@@ -38,9 +38,9 @@ final public class GencodeGtfFeatureBaseData {
      *
      * There is no restriction on which keywords can be used here, but some
      * known annotation sources are defined in their GTF parent objects:
-     *      {@link GencodeGtfCodec#GENCODE_ANNOTATION_SOURCE_ENSEMBL}
-     *      {@link GencodeGtfCodec#GENCODE_ANNOTATION_SOURCE_HAVANA}
-     *      {@link EnsemblGtfCodec#ENSEMBL_ANNOTATION_SOURCE_ENA}
+     *      {@link GencodeGtfFeature#ANNOTATION_SOURCE_ENSEMBL}
+     *      {@link GencodeGtfFeature#ANNOTATION_SOURCE_HAVANA}
+     *      {@link GencodeGtfFeature#ANNOTATION_SOURCE_ENA}
      */
     public String annotationSource;
 
@@ -64,9 +64,17 @@ final public class GencodeGtfFeatureBaseData {
     public String                                   geneId                  = null;
     public String                                   transcriptId            = null;
     public GencodeGtfFeature.GeneTranscriptStatus   geneStatus              = null;
-    public GencodeGtfFeature.GeneTranscriptType     geneType                = null;
+    /**
+     * There are no formal definitions for what can be a valid geneType and the
+     * number of possible values seem to increase as new versions of Gencode are released.
+     */
+    public String                                   geneType                = null;
     public String                                   geneName                = null;
-    public GencodeGtfFeature.GeneTranscriptType     transcriptType          = null;
+    /**
+     * There are no formal definitions for what can be a valid transcriptType and the
+     * number of possible values seem to increase as new versions of Gencode are released.
+     */
+    public String                                   transcriptType          = null;
     public GencodeGtfFeature.GeneTranscriptStatus   transcriptStatus        = null;
     public String                                   transcriptName          = null;
     public int                                      exonNumber              = GencodeGtfFeature.NO_EXON_NUMBER;
@@ -100,10 +108,10 @@ final public class GencodeGtfFeatureBaseData {
             final GencodeGtfFeature.GenomicPhase genomicPhase,
             final String geneId,
             final String transcriptId,
-            final GencodeGtfFeature.GeneTranscriptType geneType,
+            final String geneType,
             final GencodeGtfFeature.GeneTranscriptStatus geneStatus,
             final String geneName,
-            final GencodeGtfFeature.GeneTranscriptType transcriptType,
+            final String transcriptType,
             final GencodeGtfFeature.GeneTranscriptStatus transcriptStatus,
             final String transcriptName,
             final int exonNumber,
