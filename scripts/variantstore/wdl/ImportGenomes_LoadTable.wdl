@@ -107,7 +107,7 @@ task LoadTable {
 
           # TODO: CHANGE TO MV FROM CP once all the rest is fixed
           echo "Moving set $set data into separate directory."
-          cut -f2 "${set}"_files_to_load.txt | gsutil -m cp -I "${DIR}set_${set}/" 2> gsutil_cp_sets.log
+          cut -f2 "${set}"_files_to_load.txt | gsutil -m mv -I "${DIR}set_${set}/" 2> gsutil_mv_sets.log
 
           echo "Running BigQuery load for set $set."
           bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
@@ -132,9 +132,7 @@ task LoadTable {
         paste bq_load_details.tmp bq_wait_details.tmp > bq_final_job_statuses.txt
         
         # move files from each set into set-level "done" directories
-        gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/"
-        # move all the files from original high level - non set - dir to done as well
-        # gsutil -m mv "${DIR}$FILES" "${DIR}/done/""
+        gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/" 2> gsutil_mv_done.log
 
     else
         echo "no ${FILES} files to process in ${DIR}"
@@ -152,8 +150,5 @@ runtime {
 
   output {
     File final_job_statuses = "bq_final_job_statuses.txt"
-    File bq_wait_status = "bq_wait_status"
-    File bq_wait_details = "bq_wait_details.tmp"
-    File bq_load_details = "bq_load_details.tmp"
   }
 }
