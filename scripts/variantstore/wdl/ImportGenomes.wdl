@@ -201,7 +201,7 @@ task SetLock {
     LOCKFILE="LOCKFILE"
     HAS_LOCKFILE=$(gsutil ls "${DIR}${LOCKFILE}" | wc -l)
     if [ $HAS_LOCKFILE -gt 0 ]; then
-      echo "ERROR: lock file in place. Check whether another run of ImportGenomes with this output directory is in progress or a previous run had an error. If you would like to proceed, run `gsutil rm ${DIR}${LOCKFILE}` and re-run the workflow." && exit 1
+      echo "ERROR: lock file in place. Check whether another run of ImportGenomes with this output directory is in progress or a previous run had an error. If you would like to proceed, run '`gsutil rm ${DIR}${LOCKFILE}`' and re-run the workflow." && exit 1
     else  # put the lock file in place
       echo "Setting lock file with UUID ${RUN_UUID}"
       echo $RUN_UUID > $LOCKFILE
