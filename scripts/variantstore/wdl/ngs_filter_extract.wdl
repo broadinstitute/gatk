@@ -408,7 +408,7 @@ task IndelsVariantRecalibrator {
       -an ~{sep=' -an ' recalibration_annotation_values} \
       ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
       -mode INDEL \
-      ~{"--input model " + model_report} \
+      ~{"--input-model " + model_report} \
       --max-gaussians ~{max_gaussians} \
       -resource:mills,known=false,training=true,truth=true,prior=12 ~{mills_resource_vcf} \
       -resource:axiomPoly,known=false,training=true,truth=false,prior=10 ~{axiomPoly_resource_vcf} \
@@ -490,7 +490,7 @@ task SNPsVariantRecalibrator {
       ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
       -mode SNP \
       --sample-every-Nth-variant ~{downsampleFactor} \
-      ~{"--input model " + model_report} \
+      ~{"--input-model " + model_report} \
       --max-gaussians ~{max_gaussians} \
       -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
       -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
