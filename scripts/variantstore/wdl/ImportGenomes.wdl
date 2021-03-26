@@ -526,7 +526,7 @@ task LoadTable {
     if [ $NUM_FILES -gt 0 ]; then
         # get list of of pet files and their byte sizes
         echo "Getting load file sizes(bytes) and path to each file."
-        gsutil du ${DIR}pet_001_* | tr " " "\t" | tr -s "\t" > ~{datatype}_du.txt
+        gsutil du "${DIR}${FILES}"" | tr " " "\t" | tr -s "\t" > ~{datatype}_du.txt
 
         # get total memory in bytes
         echo "Calculating total files' size(bytes)."
