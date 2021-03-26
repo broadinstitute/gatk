@@ -392,12 +392,8 @@ task IndelsVariantRecalibrator {
     String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.9.0"
   }
 
-  String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT " else ""
-
   command <<<
     set -euo pipefail
-
-    MODEL_REPORT=~{model_report}
 
     gatk --java-options -Xms24g \
       VariantRecalibrator \
@@ -412,7 +408,7 @@ task IndelsVariantRecalibrator {
       -an ~{sep=' -an ' recalibration_annotation_values} \
       ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
       -mode INDEL \
-       ~{model_report_arg} \
+      ~{"--input model " + model_report} \
       --max-gaussians ~{max_gaussians} \
       -resource:mills,known=false,training=true,truth=true,prior=12 ~{mills_resource_vcf} \
       -resource:axiomPoly,known=false,training=true,truth=false,prior=10 ~{axiomPoly_resource_vcf} \
@@ -477,13 +473,8 @@ task SNPsVariantRecalibrator {
   Int machine_mem = select_first([machine_mem_gb, if auto_mem < 7 then 7 else auto_mem])
   Int java_mem = machine_mem - 5
 
-
-  String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT " else ""
-
   command <<<
     set -euo pipefail
-
-    MODEL_REPORT=~{model_report}
 
     gatk --java-options -Xmx~{java_mem}g \
       VariantRecalibrator \
@@ -499,7 +490,7 @@ task SNPsVariantRecalibrator {
       ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
       -mode SNP \
       --sample-every-Nth-variant ~{downsampleFactor} \
-       ~{model_report_arg} \
+      ~{"--input model " + model_report} \
       --max-gaussians ~{max_gaussians} \
       -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
       -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
