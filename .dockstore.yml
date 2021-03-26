@@ -8,6 +8,7 @@ workflows:
      filters:
        branches:
          - ah_var_store
+         - bq_15tb_limit
    - name: ImportGenomes_LoadTable
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/ImportGenomes_LoadTable.wdl
