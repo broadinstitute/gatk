@@ -108,7 +108,7 @@ workflows:
          - master
          - ah_var_store
          - mmt_add_wdls_to_dockstore
-         - name: run_happy
+   - name: run_happy
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/run_happy.wdl
      testParameterFiles:
