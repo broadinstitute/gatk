@@ -110,6 +110,8 @@ workflow ImportGenomes {
         superpartitioned = "false",
         schema = metadata_schema,
         service_account_json = service_account_json,
+        table_creation_done = CreateMetadataTables.done,
+        tsv_creation_done = CreateImportTsvs.done,
         docker = docker_final,
         run_uuid = SetLock.run_uuid
     }
@@ -126,6 +128,8 @@ workflow ImportGenomes {
       superpartitioned = "true",
       schema = pet_schema,
       service_account_json = service_account_json,
+      table_creation_done = CreatePetTables.done,
+      tsv_creation_done = CreateImportTsvs.done,
       docker = docker_final,
       run_uuid = SetLock.run_uuid
     }
@@ -142,6 +146,8 @@ workflow ImportGenomes {
       superpartitioned = "true",
       schema = vet_schema,
       service_account_json = service_account_json,
+      table_creation_done = CreateVetTables.done,
+      tsv_creation_done = CreateImportTsvs.done,
       docker = docker_final,
       run_uuid = SetLock.run_uuid
     }
@@ -474,6 +480,8 @@ task LoadTable {
     String superpartitioned
     File schema
     File? service_account_json
+    String table_creation_done
+    Array[String] tsv_creation_done
     String run_uuid
 
     String docker
