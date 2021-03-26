@@ -68,4 +68,4 @@ public class AvroFileReader implements GATKAvroReader {
         return this;
     }
 
-    }
+}

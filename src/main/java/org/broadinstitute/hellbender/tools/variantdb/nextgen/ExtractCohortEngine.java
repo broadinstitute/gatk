@@ -167,9 +167,9 @@ public class ExtractCohortEngine {
                     logger.debug("using storage api with local sort");
                 }
                 logger.debug("Initializing Reader");
-                if (cohortAvroFileName == null){
-                    final StorageAPIAvroReader StorageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
-                    createVariantsFromUngroupedTableResult(StorageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                if (cohortTableRef != null){
+                    final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
+                    createVariantsFromUngroupedTableResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
                 }
                 else {
                     final AvroFileReader avroFileReader = new AvroFileReader(cohortAvroFileName);

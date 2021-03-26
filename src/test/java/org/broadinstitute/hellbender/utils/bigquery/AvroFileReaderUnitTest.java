@@ -14,13 +14,15 @@ import java.util.*;
  */
 public class AvroFileReaderUnitTest extends GATKBaseTest {
 
-    private static final String avroFileURI = "gs://broad-dsp-spec-ops/kcibul/acmg.35.chr20.1mb.cohort.extract.avro";
-    private static final AvroFileReader avroFile = new AvroFileReader(avroFileURI);
+    private static final String avroFileName = "src/test/java/org/broadinstitute/hellbender/utils/bigquery/avro_test_avro_test_file.avro";
+    private static final AvroFileReader avroFile = new AvroFileReader(avroFileName);
 
     @Test()
     public void testGetSchema() {
         Schema avroFileSchema = avroFile.getSchema();
-        String  testAvroFileSchema  = "{\"type\":\"record\",\"name\":\"Root\",\"fields\":[{\"name\":\"location\",\"type\":[\"null\",\"long\"]},{\"name\":\"sample_name\",\"type\":[\"null\",\"string\"]},{\"name\":\"state\",\"type\":[\"null\",\"string\"]},{\"name\":\"ref\",\"type\":[\"null\",\"string\"]},{\"name\":\"alt\",\"type\":[\"null\",\"string\"]},{\"name\":\"call_GT\",\"type\":[\"null\",\"string\"]},{\"name\":\"call_GQ\",\"type\":[\"null\",\"long\"]},{\"name\":\"call_RGQ\",\"type\":[\"null\",\"long\"]},{\"name\":\"QUALapprox\",\"type\":[\"null\",\"string\"]},{\"name\":\"AS_QUALapprox\",\"type\":[\"null\",\"string\"]},{\"name\":\"call_PL\",\"type\":[\"null\",\"string\"]}]}";
+        System.out.println("avroFileSchema");
+        System.out.println(avroFileSchema);
+        String  testAvroFileSchema  = "{\"type\":\"record\",\"name\":\"Root\",\"fields\":[{\"name\":\"test_string\",\"type\":[\"null\",\"string\"]},{\"name\":\"test_float\",\"type\":[\"null\",\"double\"]},{\"name\":\"test_integer\",\"type\":[\"null\",\"long\"]}]}";
         Assert.assertEquals(avroFileSchema.toString(), testAvroFileSchema, "AvroFileSchema did not match.");
     }
 
@@ -33,7 +35,8 @@ public class AvroFileReaderUnitTest extends GATKBaseTest {
     @Test()
     public void testAvroFileNext() {
         GenericRecord avroFileNext = avroFile.next();
-        String  testAvroFileNext  =   "{\"location\": 20000000060998, \"sample_name\": \"SM-GXZUY\", \"state\": \"0\", \"ref\": null, \"alt\": null, \"call_GT\": null, \"call_GQ\": null, \"call_RGQ\": null, \"QUALapprox\": null, \"AS_QUALapprox\": null, \"call_PL\": null}";
+        System.out.println(avroFileNext);
+        String  testAvroFileNext  = "{\"test_string\": \"one\", \"test_float\": 1111111.0, \"test_integer\": 1}";
         Assert.assertEquals(avroFileNext.toString(), testAvroFileNext, "AvroFile Next did not match.");
     }
 
