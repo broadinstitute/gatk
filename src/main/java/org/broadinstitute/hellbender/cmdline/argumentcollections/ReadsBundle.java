@@ -93,7 +93,7 @@ public class ReadsBundle extends InputBundle implements Serializable {
                 .collect(Collectors.toList());
     }
 
-    public static ReadsBundle guessPairFromReads(GATKPath reads){
+    public static ReadsBundle resolveIndex(GATKPath reads){
         final Path index = SamFiles.findIndex(reads.toPath());
         if (index == null) {
             return new ReadsBundle(reads);

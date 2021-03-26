@@ -106,7 +106,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      * @param samPath SAM/BAM file, not null.
      */
     public ReadsPathDataSource( final GATKPath samPath ) {
-        this(samPath != null ? Collections.singletonList(ReadsBundle.guessPairFromReads(samPath)) : null, null);
+        this(samPath != null ? Collections.singletonList(ReadsBundle.resolveIndex(samPath)) : null, null);
     }
 
     /**
@@ -117,7 +117,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      *                               stringency SILENT is used.
      */
     public ReadsPathDataSource( final GATKPath samPath, SamReaderFactory customSamReaderFactory ) {
-        this(samPath != null ? Collections.singletonList(ReadsBundle.guessPairFromReads(samPath)) : null, customSamReaderFactory);
+        this(samPath != null ? Collections.singletonList(ReadsBundle.resolveIndex(samPath)) : null, customSamReaderFactory);
     }
 
     public ReadsPathDataSource(final ReadsBundle samAndIndexPaths) {

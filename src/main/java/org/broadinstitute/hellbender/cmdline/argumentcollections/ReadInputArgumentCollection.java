@@ -106,7 +106,7 @@ public abstract class ReadInputArgumentCollection implements Serializable {
                         pair = new ReadsBundle(rawReadPath, null);
                     } else {
                         //otherwise we try to guess
-                        pair = ReadsBundle.guessPairFromReads(rawReadPath);
+                        pair = ReadsBundle.resolveIndex(rawReadPath);
                     }
                 }
                 pairs.add(pair);

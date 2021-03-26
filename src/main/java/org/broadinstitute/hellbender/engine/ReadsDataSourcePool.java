@@ -72,7 +72,7 @@ public final class ReadsDataSourcePool extends GenericObjectPool<ReadsPathDataSo
                 factory.referenceSequence(referencePath.toPath());
             }
             return new ReadsPathDataSource(
-                    paths.stream().map(p -> ReadsBundle.guessPairFromReads(p)).collect(Collectors.toList()),
+                    paths.stream().map(p -> ReadsBundle.resolveIndex(p)).collect(Collectors.toList()),
                     factory);
         }
 

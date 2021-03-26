@@ -114,7 +114,7 @@ public final class ReadsPathDataSourceUnitTest extends GATKBaseTest {
     private static List<ReadsBundle> guessIndexesForPaths(final List<Path> inputs) {
         return inputs.stream()
                 .map(IOUtils::toGATKPath)
-                .map(ReadsBundle::guessPairFromReads)
+                .map(ReadsBundle::resolveIndex)
                 .collect(Collectors.toList());
     }
 
