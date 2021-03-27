@@ -68,7 +68,7 @@ final sparkVersion = System.getProperty('spark.version', '2.4.5')
 final scalaVersion = System.getProperty('scala.version', '2.11')
 final hadoopVersion = System.getProperty('hadoop.version', '3.2.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
-final genomicsdbVersion = System.getProperty('genomicsdb.version','1.3.2')
+final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.0-SNAPSHOT')
 final bigQueryVersion = System.getProperty('bigQuery.version', '1.117.1')
 final guavaVersion = System.getProperty('guava.version', '27.1-jre')
 final testNGVersion = '7.0.0'
@@ -259,8 +259,8 @@ dependencies {
     compile ('org.genomicsdb:genomicsdb:' + genomicsdbVersion)  {
         exclude module: 'log4j-api'
         exclude module: 'log4j-core'
-        exclude module: 'spark-core_2.11'
-        exclude module: 'spark-sql_2.11'
+        exclude module: 'spark-core_2.12'
+        exclude module: 'spark-sql_2.12'
         exclude module: 'htsjdk'
         exclude module: 'protobuf-java'
     }
