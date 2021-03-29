@@ -344,6 +344,7 @@ public final class ReadThreadingAssembler {
         // Validate that the graph is valid with extant source and sink before operating
         for( final BaseGraph<V, E> graph : graphs ) {
             final AssemblyResult assemblyResult = assemblyResultByGraph.get(graph);
+            final boolean nonUniqueRefKmers = assemblyResult.referenceHasNonUniqueKmers();
             final V source = graph.getReferenceSourceVertex();
             final V sink = graph.getReferenceSinkVertex();
             Utils.validateArg(source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
@@ -576,7 +577,7 @@ public final class ReadThreadingAssembler {
 
         // first, try using the requested kmer sizes
         for ( final int kmerSize : kmerSizes ) {
-            final AssemblyResult assemblyResult = createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRefPolicy, header, aligner);
+            final AssemblyResult assemblyResult = createGraph(reads, refHaplotype, kmerSize, false, allowNonUniqueKmersInRefPolicy, header, aligner);
             if (assemblyResult != null) {
                 allResults.add(assemblyResult);
                 if (assemblyResult.referenceHasNonUniqueKmers()) {
@@ -599,13 +600,13 @@ public final class ReadThreadingAssembler {
             while ( sufficientSet.isEmpty() && numIterations <= MAX_KMER_ITERATIONS_TO_ATTEMPT ) {
                 // on the last attempt we will allow low complexity graphs
                 final boolean lastAttempt = numIterations == MAX_KMER_ITERATIONS_TO_ATTEMPT;
-                final AssemblyResult assemblyResult = createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRefPolicy, header, aligner);
+                final AssemblyResult assemblyResult = createGraph(reads, refHaplotype, kmerSize, lastAttempt, NonUniqueKmerPolicy.ALLOWED, header, aligner);
                 if (assemblyResult != null) {
                     allResults.add(assemblyResult);
-                    if (assemblyResult.referenceHasNonUniqueKmers()) {
-                        nonUniqueKmerResults.add(assemblyResult);
-                    } else {
+                    if (!assemblyResult.referenceHasNonUniqueKmers() || lastAttempt) {
                         standardResults.add(assemblyResult);
+                    } else if (!lastAttempt) {
+                        nonUniqueKmerResults.add(assemblyResult);
                     }
                 }
                 kmerSize += KMER_SIZE_ITERATION_INCREASE;
@@ -721,6 +722,10 @@ public final class ReadThreadingAssembler {
         final AssemblyResult result = getAssemblyResult(refHaplotype, kmerSize, referenceHasNonUniqueKmers, rtgraph, aligner);
         // check whether recovering dangling ends created cycles
         if (recoverAllDanglingBranches && rtgraph.hasCycles()) {
+            return null;
+        }
+
+        if (result.getStatus() != AssemblyResult.Status.ASSEMBLED_SOME_VARIATION) {
             return null;
         }
         return result;
