@@ -23,9 +23,9 @@ workflow ImportGenomes {
   }
 
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
-  String metadata_inline_schema = if defined(metadata_schema) then "$metadata_schema" else "sample_name:STRING,sample_id:INTEGER,interval_list_blob:STRING,inferred_state:STRING"
-  String pet_inline_schema = if defined(pet_schema) then "$pet_schema" else "location:INTEGER,sample_id:INTEGER,state:STRING"
-  String vet_inline_schema = if defined(vet_schema) then "$vet_schema" else "sample_id:INTEGER,location:INTEGER,ref:STRING,alt:STRING,AS_RAW_MQ:STRING,AS_RAW_MQRankSum:STRING,AS_QUALapprox:STRING,AS_RAW_ReadPosRankSum:STRING,AS_SB_TABLE:STRING,AS_VarDP:STRING,call_GT:STRING,call_AD:STRING,call_GQ:INTEGER,call_PGT:STRING,call_PID:STRING,call_PL:STRING"
+  String metadata_inline_schema = if defined(metadata_schema) then "~{metadata_schema}" else "sample_name:STRING,sample_id:INTEGER,interval_list_blob:STRING,inferred_state:STRING"
+  String pet_inline_schema = if defined(pet_schema) then "~{pet_schema}" else "location:INTEGER,sample_id:INTEGER,state:STRING"
+  String vet_inline_schema = if defined(vet_schema) then "~{vet_schema}" else "sample_id:INTEGER,location:INTEGER,ref:STRING,alt:STRING,AS_RAW_MQ:STRING,AS_RAW_MQRankSum:STRING,AS_QUALapprox:STRING,AS_RAW_ReadPosRankSum:STRING,AS_SB_TABLE:STRING,AS_VarDP:STRING,call_GT:STRING,call_AD:STRING,call_GQ:INTEGER,call_PGT:STRING,call_PID:STRING,call_PL:STRING"
 
   call SetLock {
     input:
