@@ -92,8 +92,8 @@ public class ExtractCohortEngine {
                                final double vqsLodINDELThreshold,
                                final ProgressMeter progressMeter,
                                final ExtractCohort.QueryMode queryMode,
-                               final String filterSetName
-                               ) {
+                               final String filterSetName,
+                               final boolean emitPLs) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -310,7 +310,7 @@ public class ExtractCohortEngine {
         // TODO: KCIBUL -- unclear how QUALapproxes are summed from non-ref alleles... replicating what I saw but need to confirm with Laura
         if (s.contains("|")) {
 
-            // take the average of all non-* alleles
+            // take the sum of all non-* alleles
             // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part
             String[] alleles = sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString().split(",");
             String[] parts = s.split("\\|");
