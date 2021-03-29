@@ -1079,11 +1079,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Before we get started, check to see if this is a non-protein-coding feature.
         // If it is, we must handle it differently:
-        if ( transcript.getGeneType() != GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString()) {
-            return createCodingRegionFuncotationForNonProteinCodingFeature(variant, altAllele, reference, transcript, exon);
+        if ( transcript.getGeneType().equals(GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString()) ) {
+            return createCodingRegionFuncotationForProteinCodingFeature(variant, altAllele, reference, transcript, exon);
         }
         else {
-            return createCodingRegionFuncotationForProteinCodingFeature(variant, altAllele, reference, transcript, exon);
+            return createCodingRegionFuncotationForNonProteinCodingFeature(variant, altAllele, reference, transcript, exon);
         }
     }
 
@@ -1700,7 +1700,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         gencodeFuncotationBuilder.setReferenceContext(referenceBases.getBaseString(Strand.POSITIVE));
 
         // Set the VariantClassification:
-        if ( transcript.getGeneType() == GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString() ) {
+        if ( transcript.getGeneType().equals(GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString()) ) {
             gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.INTRON);
         }
         else {
