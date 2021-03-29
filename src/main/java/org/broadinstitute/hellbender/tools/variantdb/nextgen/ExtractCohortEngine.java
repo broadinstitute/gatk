@@ -505,7 +505,7 @@ public class ExtractCohortEngine {
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
         builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, relevantVqsLodMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
-        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, relevantYngMap.values());
+        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, relevantYngMap.values().stream().collect(Collectors.toList()));
 
         int refLength = mergedVC.getReference().length();
 
