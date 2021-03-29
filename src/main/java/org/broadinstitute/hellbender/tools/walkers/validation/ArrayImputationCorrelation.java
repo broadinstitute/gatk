@@ -109,6 +109,11 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     )
     private double minAfForAccuracyMetrics = 0;
 
+    @Argument(
+            optional = true
+    )
+    private Boolean missingIsHomRef = false;
+
     final List<List<AFCorrelationAggregator>> aggregators = new ArrayList<>();
     final List<AccuracyMetrics> snpMetrics = new ArrayList<>();
     final List<AccuracyMetrics> indelMetrics = new ArrayList<>();
@@ -197,13 +202,15 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
         final VariantContext truthVC;
         if (truthVersusEval.hasTruth() ) {
             truthVC = truthVersusEval.getTruth();
-            if (truthVC.getGenotype(0).isHomRef()) {
+            if (truthVC.isReferenceBlock()) {
                 currentReferenceBlockVC = truthVC;
             } else {
                 currentReferenceBlockVC = null;
             }
         } else if (currentReferenceBlockVC != null && currentReferenceBlockVC.overlaps(evalVC)) {
             truthVC = currentReferenceBlockVC;
+        } else if (missingIsHomRef) {
+            truthVC = null;
         } else {
             return;
         }
@@ -215,11 +222,11 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
 
 
 
-        if ((truthVC.getReference().equals(evalVC.getReference()) && (truthVC.getAlternateAllele(0).equals(evalVC.getAlternateAllele(0)) || truthVC.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE))) ||
+        if (truthVC == null || (truthVC.getReference().equals(evalVC.getReference()) && (truthVC.getAlternateAllele(0).equals(evalVC.getAlternateAllele(0)) || truthVC.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE))) ||
             truthVC == currentReferenceBlockVC) {
 
             VariantContext resourceVariant = null;
-            Integer iMAF=-1;
+            int iMAF=-1;
             for (final VariantContext vc : resourceFeatures) {
                 if (vc.getReference().equals(evalVC.getReference())) {
                     for (int i = 0; i < vc.getNAlleles() - 1; i++) {
@@ -234,8 +241,6 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
             if (resourceVariant == null) {
                 return;
             }
-            final Allele evalRefAllele = evalVC.getReference();
-            final Allele truthRefAllele = truthVC.getReference();
             for (int i=0; i<aggregators.size(); i++) {
                 final String sample = snpMetrics.get(i).sampleName;
                 final String mappedSample = getMappedSample(sample);
@@ -253,10 +258,10 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
                 }
                 final int bin = getBin(af);
                 final Genotype evalGenotype = evalVC.getGenotype(sample);
-                final Genotype truthGenotype = truthVC.getGenotype(mappedSample);
-                final double evalRefFrac = getDosageFrac(evalGenotype, evalRefAllele);
-                final double truthRefFrac = getDosageFrac(truthGenotype, truthRefAllele);
-                final int truthAltCount = truthGenotype.getPloidy() - truthGenotype.countAllele(truthVC.getReference());
+                final int ploidy = evalGenotype.getPloidy();
+                final double evalRefFrac = getDosageFrac(evalGenotype, evalVC.getReference());
+                final double truthRefFrac = truthVC == null ? 1d : getDosageFrac(truthVC.getGenotype(mappedSample), truthVC.getReference());
+                final int truthAltCount = truthVC == null ? 0 : (ploidy -  truthVC.getGenotype(mappedSample).countAllele(truthVC.getReference()));
                 final int evalAltCount = evalGenotype.getPloidy() - evalGenotype.countAllele(evalVC.getReference());
                 if (evalVC.isSNP()) {
                     aggregators.get(i).get(bin).snp_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
