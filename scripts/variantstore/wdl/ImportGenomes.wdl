@@ -33,6 +33,10 @@ workflow ImportGenomes {
                                                                              call_PGT:STRING,call_PID:STRING,call_PL:STRING"
   String metadata_inline_schema = if defined(metadata_schema) then "$metadata_schema" else "sample_name:STRING,sample_id:INTEGER, \
                                                                                             interval_list_blob:STRING,inferred_state:STRING"
+<<<<<<< HEAD
+=======
+
+>>>>>>> d60d458936e214797a6b9fb7840c7eaf1e0f4552
   call SetLock {
     input:
       output_directory = output_directory,
