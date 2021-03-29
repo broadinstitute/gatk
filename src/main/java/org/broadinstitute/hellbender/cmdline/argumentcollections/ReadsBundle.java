@@ -6,6 +6,10 @@ import htsjdk.plugin.bundle.InputBundle;
 import htsjdk.plugin.bundle.InputIOPathResource;
 import htsjdk.plugin.bundle.InputResource;
 import htsjdk.samtools.SamFiles;
+import htsjdk.utils.ValidationUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -19,6 +23,7 @@ import java.io.Serializable;
 import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -26,38 +31,42 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 //TODO:
-// reference input triplet
 // propagate GATKPath tag and attributes
-// Note: This class only handles *input* pairs. Output pairs would require a separate class since the
-// interface types for output bundle resources differ from input resources.
+// subContentType is always inferred, never explicitly provided...
+// only IOPath resources can be serialized
+// Note: This class only handles *input* bundles. Output bundles would require a separate class since the
+// interface types for output resources differ from input resources.
+// Barclay won’t be able to print out bundle contents in command line...
+// What if there is a clash between the attributes specified on a bundle input, and those specified IN the bundle ?
 
 /**
  * A reads bundle may optionally have an index, but its not required.
  */
 public class ReadsBundle extends InputBundle implements Serializable {
     private static final long serialVersionUID = 1L;
+    private static final Logger logger = LogManager.getLogger(ReadsBundle.class);
+
     public static final String BUNDLE_EXTENSION = ".json";
 
-    final private transient GATKPath cachedReadsPath;
+    private final GATKPath cachedReadsPath;
 
-    //TODO: bridge/propagate tag/attributes...
     public ReadsBundle(final GATKPath reads) {
-        super(Utils.nonNull(reads), BundleResourceType.READS);
+        super(Collections.singletonList(toInputResource(Utils.nonNull(reads), BundleResourceType.READS)));
         cachedReadsPath = getReadsPathFromBundle();
     }
 
     public ReadsBundle(final GATKPath reads, final GATKPath index) {
         super(Arrays.asList(
-                new InputIOPathResource(Utils.nonNull(reads), BundleResourceType.READS),
-                new InputIOPathResource(Utils.nonNull(index), BundleResourceType.INDEX)));
+                toInputResource(Utils.nonNull(reads), BundleResourceType.READS),
+                toInputResource(Utils.nonNull(index), BundleResourceType.INDEX)));
         cachedReadsPath = getReadsPathFromBundle();
     }
 
     public ReadsBundle(final String jsonString){
-        // GATKPath::new ensures that the IOPath resources in the resulting bundle
-        // contain GATKPath objects
         super(jsonString, GATKPath::new);
         cachedReadsPath = getReadsPathFromBundle();
+        //TODO: bridge/propagate the InputResource tag/attributes back to the GATKPath in this bundle...
+
     }
 
     public static ReadsBundle getReadsBundleFromJSON(final GATKPath jsonPath) {
@@ -68,9 +77,9 @@ public class ReadsBundle extends InputBundle implements Serializable {
 
     public Optional<GATKPath> getIndex() {
         final Supplier<GATKException> ex = () -> new GATKException("Index resource is present with a null path");
-        // its OK for there to be no index resource...
         final Optional<InputResource> inputResource = get(BundleResourceType.INDEX);
-        // ...but if there *is* an index resources, it must contain a non-null path...
+        // its OK for there to be no index resource, but if there *is* an index resource, it must contain
+        // a non-null path...
         return inputResource.isPresent() ?
                 Optional.of((GATKPath) inputResource.get().getIOPath().orElseThrow(ex)) :
                 Optional.empty();
@@ -116,6 +125,7 @@ public class ReadsBundle extends InputBundle implements Serializable {
     private static String getJSONStringFromPath(final GATKPath path) {
         try (final InputStream is = new BufferedInputStream(path.getInputStream())) {
             final StringWriter jsonStringWriter = new StringWriter();
+            //TODO: the UTF-8 encoding ofcthese should be codified somewhere else...
             org.apache.commons.io.IOUtils.copy(is, jsonStringWriter, "UTF-8");
             return jsonStringWriter.toString();
         } catch (final IOException e) {
@@ -123,18 +133,40 @@ public class ReadsBundle extends InputBundle implements Serializable {
         }
     }
 
-//    public GATKPath getReads() {
-//        return getPathSpecifierWithTypeTag(reads);
-//    }
-//
-//    public GATKPath getIndex() {
-//        return getPathSpecifierWithTypeTag(index);
-//    }
+    //TODO: move to htsjdk?
+    private static InputIOPathResource toInputResource(final GATKPath gatkPath, final String providedContentType) {
+        ValidationUtils.nonNull(gatkPath, "gatkPath");
+        final Optional<Pair<String, String>> typePair = getContentTypes(gatkPath);
+        if (typePair.isPresent()) {
+            if (providedContentType != null && !typePair.get().getLeft().equals(providedContentType)) {
+                logger.warn(String.format(
+                        "Provided content type \"%s\" for \"%s\" doesn't match derived content type \"%s\"",
+                        providedContentType,
+                        gatkPath.getRawInputString(),
+                        typePair.get().getLeft()));
+            }
+            return new InputIOPathResource(
+                    gatkPath,
+                    providedContentType,  // prefer the provided content type
+                    typePair.get().getRight(),
+                    gatkPath.getTag(),
+                    gatkPath.getTagAttributes());
+        } else {
+            return new InputIOPathResource(
+                    gatkPath,
+                    providedContentType,
+                    null,
+                    gatkPath.getTag(),
+                    gatkPath.getTagAttributes());
+        }
+    }
 
-//    private static GATKPath getPathSpecifierWithTypeTag(final BundleFile index) {
-//        final GATKPath path = new GATKPath(index.getPath());
-//        path.setTagAttributes(Collections.singletonMap(FILE_TYPE_KEY, index.getFileType()));
-//        return path;
-//    }
+    private static Optional<Pair<String, String>> getContentTypes(final GATKPath gatkPath) {
+        ValidationUtils.nonNull(gatkPath, "gatkPath");
+        final Optional<String> extension = gatkPath.getExtension();
+        if (extension.isPresent()) {
+        }
+        return Optional.empty();//TODO: finish this...
+    }
 
 }
