@@ -11,7 +11,7 @@ import java.util.*;
 
 /**
  * A class to test the functionality of {@link AvroFileReader}.
- */
+ */ 
 public class AvroFileReaderUnitTest extends GATKBaseTest {
 
     private static final String avroFileName = "src/test/java/org/broadinstitute/hellbender/utils/bigquery/avro_test_avro_test_file.avro";
