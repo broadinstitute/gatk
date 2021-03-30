@@ -1,7 +1,14 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.variant.vcf.*;
-import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.FragmentLength;
+import org.broadinstitute.hellbender.tools.walkers.annotator.InsertSizeDifference;
+import org.broadinstitute.hellbender.tools.walkers.annotator.MappingQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.MaxStartPositionDifference;
+import org.broadinstitute.hellbender.tools.walkers.annotator.MinStartPositionDifference;
+import org.broadinstitute.hellbender.tools.walkers.annotator.ReadPosition;
+import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -95,13 +102,11 @@ public class GATKVCFHeaderLines {
         addFilterLine(new VCFFilterHeaderLine(STRICT_STRAND_BIAS_FILTER_NAME, "Evidence for alt allele is not represented in both directions"));
         addFilterLine(new VCFFilterHeaderLine(N_RATIO_FILTER_NAME, "Ratio of N to alt exceeds specified ratio"));
         addFilterLine(new VCFFilterHeaderLine(ALLELE_FRACTION_FILTER_NAME, "Allele fraction is below specified threshold"));
+        addFilterLine(new VCFFilterHeaderLine(MAX_POSITION_DIFFERENCE_FILTER_NAME, "Max position difference in read start position"));
 
         //Mitochondrial M2-related filters
-        addFilterLine(new VCFFilterHeaderLine(POSSIBLE_NUMT_FILTER_NAME, "Allele depth is below expected coverage of NuMT in autosome"));
-        addFilterLine(new VCFFilterHeaderLine(LOW_HET_FILTER_NAME, "All low heteroplasmy sites are filtered when at least x low het sites pass all other filters"));
-        addFilterLine(new VCFFilterHeaderLine(FAIL, "Fail the site if all alleles fail but for different reasons."));
-        addFilterLine(new VCFFilterHeaderLine(SITE_LEVEL_FILTERS, "There are no allele specific filters that apply to this allele. Only site level filters apply."));
-        addFilterLine(new VCFFilterHeaderLine(LOW_HET_FILTER_NAME, "All low heteroplasmy sites are filtered when at least x low het sites pass all other filters"));
+        addFilterLine(new VCFFilterHeaderLine(CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME, "NuMT variant with too many ALT reads originally from autosome"));
+        addFilterLine(new VCFFilterHeaderLine(POTENTIAL_POLYMORPHIC_NUMT_FILTER_NAME, "Alt depth is below expected coverage of NuMT in autosome"));
 
         addFormatLine(new VCFFormatHeaderLine(ALLELE_BALANCE_KEY, 1, VCFHeaderLineType.Float, "Allele balance for each het genotype"));
         addFormatLine(new VCFFormatHeaderLine(MAPPING_QUALITY_ZERO_BY_SAMPLE_KEY, 1, VCFHeaderLineType.Integer, "Number of Mapping Quality Zero Reads per sample"));
@@ -130,7 +135,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(CLIPPING_RANK_SUM_KEY, 1, VCFHeaderLineType.Float, "Z-score From Wilcoxon rank sum test of Alt vs. Ref number of hard clipped bases"));
         addInfoLine(new VCFInfoHeaderLine(FISHER_STRAND_KEY, 1, VCFHeaderLineType.Float, "Phred-scaled p-value using Fisher's exact test to detect strand bias"));
         addInfoLine(new VCFInfoHeaderLine(AS_FISHER_STRAND_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "allele specific phred-scaled p-value using Fisher's exact test to detect strand bias of each alt allele"));
-        addInfoLine(new VCFInfoHeaderLine(AS_SB_TABLE_KEY, 1, VCFHeaderLineType.String, "Allele-specific forward/reverse read counts for strand bias tests. Includes the reference and alleles separated by |."));
+        addInfoLine(new VCFInfoHeaderLine(AS_SB_TABLE_KEY, 1, VCFHeaderLineType.String, "Allele-specific forward/reverse read counts for strand bias tests"));
         addInfoLine(new VCFInfoHeaderLine(NOCALL_CHROM_KEY, 1, VCFHeaderLineType.Integer, "Number of no-called samples"));
         addInfoLine(new VCFInfoHeaderLine(GQ_MEAN_KEY, 1, VCFHeaderLineType.Float, "Mean of all GQ values"));
         addInfoLine(new VCFInfoHeaderLine(GQ_STDEV_KEY, 1, VCFHeaderLineType.Float, "Standard deviation of all GQ values"));
@@ -149,7 +154,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(AS_RMS_MAPPING_QUALITY_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele-specific RMS Mapping Quality"));
         addInfoLine(new VCFInfoHeaderLine(AS_RAW_MAP_QUAL_RANK_SUM_KEY, 1, VCFHeaderLineType.String, "Allele-specfic raw data for Mapping Quality Rank Sum"));
         addInfoLine(new VCFInfoHeaderLine(AS_MAP_QUAL_RANK_SUM_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele-specific Mapping Quality Rank Sum"));
-        addInfoLine(new VCFInfoHeaderLine(AS_FILTER_STATUS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Filter status for each allele, as assessed by ApplyVQSR. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles."));
+        addInfoLine(new VCFInfoHeaderLine(AS_FILTER_STATUS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Filter status for each allele, as assessed by ApplyRecalibration. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles."));
         addInfoLine(new VCFInfoHeaderLine(AS_CULPRIT_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, the annotation which was the worst performing in the Gaussian mixture model, likely the reason why the variant was filtered out"));
         addInfoLine(new VCFInfoHeaderLine(AS_VQS_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, the log odds of being a true variant versus being false under the trained gaussian mixture model"));
 
@@ -172,7 +177,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(AS_STRAND_ODDS_RATIO_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele specific strand Odds Ratio of 2x|Alts| contingency table to detect allele specific strand bias"));
         addInfoLine(new VCFInfoHeaderLine(STR_PRESENT_KEY, 0, VCFHeaderLineType.Flag, "Variant is a short tandem repeat"));
         addInfoLine(new VCFInfoHeaderLine(REPEAT_UNIT_KEY, 1, VCFHeaderLineType.String, "Tandem repeat unit (bases)"));
-        addInfoLine(new VCFInfoHeaderLine(REPEATS_PER_ALLELE_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Number of times tandem repeat unit is repeated, for each allele (including reference)"));
+        addInfoLine(new VCFInfoHeaderLine(REPEATS_PER_ALLELE_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Number of times tandem repeat unit is repeated, for each allele (including reference)"));
         addInfoLine(new VCFInfoHeaderLine(NUMBER_OF_DISCOVERED_ALLELES_KEY, 1, VCFHeaderLineType.Integer, "Number of alternate alleles discovered (but not necessarily genotyped) at this site"));
         addInfoLine(new VCFInfoHeaderLine(ORIGINAL_AC_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Original AC"));
         addInfoLine(new VCFInfoHeaderLine(ORIGINAL_AF_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Original AF"));
@@ -204,14 +209,17 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(NORMAL_ARTIFACT_LOG_10_ODDS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Negative log 10 odds of artifact in normal with same allele fraction as tumor"));
         addInfoLine(new VCFInfoHeaderLine(ORIGINAL_CONTIG_MISMATCH_KEY, 1, VCFHeaderLineType.Integer, "Number of alt reads whose original alignment doesn't match the current contig."));
         addInfoLine(new VCFInfoHeaderLine(N_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Count of N bases in the pileup"));
-        addInfoLine(new VCFInfoHeaderLine(AS_UNIQUE_ALT_READ_SET_COUNT_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Number of reads with unique start and mate end positions for each alt at a variant site"));
+        addInfoLine(new VCFInfoHeaderLine(UNIQUE_ALT_READ_SET_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Number of ALT reads with unique start and mate end positions at a variant site"));
         addInfoLine(new BaseQuality().getDescriptions().get(0));
         addInfoLine(new FragmentLength().getDescriptions().get(0));
         addInfoLine(new MappingQuality().getDescriptions().get(0));
         addInfoLine(new ReadPosition().getDescriptions().get(0));
-        addInfoLine(new AS_StrandBiasMutectAnnotation().getDescriptions().get(0));
         addInfoLine(new VCFInfoHeaderLine(UNITIG_SIZES_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Sizes of reassembled unitigs"));
         addInfoLine(new VCFInfoHeaderLine(JOINT_ALIGNMENT_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Number of joint alignments"));
         addInfoLine(new VCFInfoHeaderLine(ALIGNMENT_SCORE_DIFFERENCE_KEY, 1, VCFHeaderLineType.Integer, "Difference in alignment score between best and next-best alignment"));
+        addInfoLine(new MaxStartPositionDifference().getDescriptions().get(0));
+        addInfoLine(new MinStartPositionDifference().getDescriptions().get(0));
+        addInfoLine(new InsertSizeDifference().getDescriptions().get(0));
+
     }
 }

@@ -103,7 +103,7 @@ public final class GATKVCFConstants {
     public static final String READ_ORIENTATION_QUAL_KEY =  "ROQ";
     public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "OCM";
     public static final String N_COUNT_KEY =                        "NCount";
-    public static final String AS_UNIQUE_ALT_READ_SET_COUNT_KEY = "AS_UNIQ_ALT_READ_COUNT";
+    public static final String UNIQUE_ALT_READ_SET_COUNT_KEY = "UNIQ_ALT_READ_COUNT";
     public static final String MEDIAN_BASE_QUALITY_KEY = "MBQ";
     public static final String MEDIAN_MAPPING_QUALITY_KEY = "MMQ";
     public static final String MEDIAN_FRAGMENT_LENGTH_KEY = "MFRL";
@@ -111,6 +111,9 @@ public final class GATKVCFConstants {
     public static final String UNITIG_SIZES_KEY = "UNITIGS";
     public static final String ALIGNMENT_SCORE_DIFFERENCE_KEY = "ALIGN_DIFF";
     public static final String JOINT_ALIGNMENT_COUNT_KEY = "NALIGNS";
+    public static final String READ_START_POSITION_MAX_DIFF_KEY = "RSPMAXD";
+    public static final String READ_START_POSITION_MIN_DIFF_KEY = "RSPMIND";
+    public static final String INSERT_SIZE_DIFF_KEY = "ISD";
 
     // Methylation-specific INFO Keys
     public static final String UNCONVERTED_BASE_COVERAGE_KEY =      "UNCONVERTED_BASE_COV";
@@ -161,12 +164,10 @@ public final class GATKVCFConstants {
     public final static String BAD_HAPLOTYPE_FILTER_NAME =                    "haplotype";
     public final static String STRICT_STRAND_BIAS_FILTER_NAME =               "strict_strand";
     public final static String N_RATIO_FILTER_NAME =                           "n_ratio";
+    public final static String CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME =       "numt_chimera"; //mitochondria
     public final static String ALLELE_FRACTION_FILTER_NAME =                   "low_allele_frac";
-    public static final String POSSIBLE_NUMT_FILTER_NAME =                     "possible_numt";
-    public static final String LOW_HET_FILTER_NAME =                           "mt_many_low_hets";
-    public static final String FAIL =                                           "FAIL";
-    public static final String SITE_LEVEL_FILTERS =                             "SITE";
-
+    public static final String POTENTIAL_POLYMORPHIC_NUMT_FILTER_NAME =        "numt_novel";
+    public static final String MAX_POSITION_DIFFERENCE_FILTER_NAME =           "max_pos_diff";
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(VCFConstants.PASSES_FILTERS_v4, POLYMERASE_SLIPPAGE,
             PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_EVIDENCE_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
@@ -174,10 +175,9 @@ public final class GATKVCFConstants {
             MEDIAN_BASE_QUALITY_FILTER_NAME, MEDIAN_MAPPING_QUALITY_FILTER_NAME,
             MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME,
             READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME, DUPLICATED_EVIDENCE_FILTER_NAME,
-            READ_ORIENTATION_ARTIFACT_FILTER_NAME, BAD_HAPLOTYPE_FILTER_NAME,
-            STRICT_STRAND_BIAS_FILTER_NAME, N_RATIO_FILTER_NAME, ALLELE_FRACTION_FILTER_NAME, POSSIBLE_NUMT_FILTER_NAME, FAIL);
-
-    public static final List<String> MUTECT_AS_FILTER_NAMES = Arrays.asList(AS_FILTER_STATUS_KEY);
+            READ_ORIENTATION_ARTIFACT_FILTER_NAME, BAD_HAPLOTYPE_FILTER_NAME, CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME,
+            STRICT_STRAND_BIAS_FILTER_NAME, N_RATIO_FILTER_NAME, ALLELE_FRACTION_FILTER_NAME, POTENTIAL_POLYMORPHIC_NUMT_FILTER_NAME,
+            MAX_POSITION_DIFFERENCE_FILTER_NAME);
 
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";

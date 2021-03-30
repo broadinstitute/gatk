@@ -7,18 +7,16 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import java.nio.file.Path;
-
 import org.apache.commons.lang3.mutable.MutableDouble;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.tools.walkers.mutect.MutectStats;
 import org.broadinstitute.hellbender.tools.walkers.mutect.clustering.SomaticClusteringModel;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.io.File;
@@ -30,7 +28,7 @@ public class Mutect2FilteringEngine {
 
     public static final double MIN_REPORTABLE_ERROR_PROBABILITY = 0.1;
 
-    private final List<Mutect2Filter> filters = new ArrayList<>();
+    private final List<Mutect2VariantFilter> filters = new ArrayList<>();
     private final Set<String> normalSamples;
 
     public static final List<String> STANDARD_MUTECT_INFO_FIELDS_FOR_FILTERING = Arrays.asList(
@@ -102,6 +100,14 @@ public class Mutect2FilteringEngine {
         return ADs;
     }
 
+    public int[] sumStrandCountsOverSamples(final VariantContext vc, final boolean includeTumor, final boolean includeNormal) {
+        final int[] result = new int[4];
+        vc.getGenotypes().stream().filter(g -> (includeTumor && isTumor(g)) || (includeNormal && isNormal(g)))
+                .filter(g -> g.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY))
+                .map(g -> StrandBiasTest.getStrandCounts(g)).forEach(sbbs -> new IndexRange(0, 4).forEach(n -> result[n] += sbbs[n]));
+        return result;
+    }
+
     public double[] weightedAverageOfTumorAFs(final VariantContext vc) {
         final MutableDouble totalWeight = new MutableDouble(0);
         final double[] AFs = new double[vc.getNAlleles() - 1];
@@ -140,16 +146,16 @@ public class Mutect2FilteringEngine {
         final int[] tumorADs = sumADsOverSamples(vc, true, false);
         final double[] tumorLogOdds = Mutect2FilteringEngine.getTumorLogOdds(vc);
 
-        somaticClusteringModel.record(tumorADs, tumorLogOdds, errorProbabilities.getTechnicalArtifactProbabilities(),
-                errorProbabilities.getNonSomaticProbabilities(), vc);
-        thresholdCalculator.addCombinedErrorProbabilites(errorProbabilities.getCombinedErrorProbabilities());
+        somaticClusteringModel.record(tumorADs, tumorLogOdds, errorProbabilities.getTechnicalArtifactProbability(),
+                errorProbabilities.getNonSomaticProbability(), vc);
+        thresholdCalculator.addArtifactProbability(errorProbabilities.getErrorProbability());
     }
 
     /**
      * Refine model parameters based on data acquired in a non-final pass of {@link FilterMutectCalls}
      */
     public void learnParameters() {
-        filters.forEach(Mutect2Filter::learnParametersAndClearAccumulatedData);
+        filters.forEach(Mutect2VariantFilter::learnParametersAndClearAccumulatedData);
         somaticClusteringModel.learnAndClearAccumulatedData();
         thresholdCalculator.relearnThresholdAndClearAcumulatedProbabilities();
 
@@ -170,103 +176,26 @@ public class Mutect2FilteringEngine {
         final ErrorProbabilities errorProbabilities = new ErrorProbabilities(filters, vc, this, referenceContext);
         filteringOutputStats.recordCall(errorProbabilities, getThreshold() - EPSILON);
 
-        // error probability must exceed threshold, and just in case threshold is bad, probabilities close to 1 must be filtered
-        // and probabilities close to 0 must not be filtered
-        double errorThreshold = Math.min(1 - EPSILON, Math.max(EPSILON, getThreshold()));
+        final boolean variantFailsFilters = errorProbabilities.getErrorProbability() > Math.min(1 - EPSILON, Math.max(EPSILON, getThreshold()));
+        final double maxErrorProb = errorProbabilities.getProbabilitiesByFilter().values().stream().mapToDouble(p->p).max().orElse(1);
 
-        Map<String, Double> siteFiltersWithErrorProb = new LinkedHashMap<>();
+        for (final Map.Entry<Mutect2VariantFilter, Double> entry : errorProbabilities.getProbabilitiesByFilter().entrySet()) {
+            final double errorProbability = entry.getValue();
 
-        // apply allele specific filters
-        List<List<String>> alleleStatusByFilter =
-                errorProbabilities.getProbabilitiesForAlleleFilters().entrySet().stream()
-                        .filter(entry -> !entry.getValue().isEmpty())
-                        .map(entry -> addFilterStrings(entry.getValue(), errorThreshold, entry.getKey().filterName())).collect(Collectors.toList());
+            entry.getKey().phredScaledPosteriorAnnotationName().ifPresent(annotation -> {
+                if (entry.getKey().requiredAnnotations().stream().allMatch(vc::hasAttribute)) {
+                    vcb.attribute(annotation, QualityUtils.errorProbToQual(errorProbability));
+                }
+            });
 
-        // for each allele, merge all allele specific filters
-        List<List<String>> filtersByAllele = ErrorProbabilities.transpose(alleleStatusByFilter);
-        List<List<String>> distinctFiltersByAllele = filtersByAllele.stream().map(this::getDistinctFiltersForAllele).collect(Collectors.toList());
-        ListIterator<String> mergedFilterStringByAllele = distinctFiltersByAllele.stream().map(AnnotationUtils::encodeStringList).collect(Collectors.toList()).listIterator();
-
-        List<String> orderedASFilterStrings = vc.getAlternateAlleles().stream().map(allele -> allele.isSymbolic() ?
-                GATKVCFConstants.SITE_LEVEL_FILTERS : mergedFilterStringByAllele.next()).collect(Collectors.toList());
-        String finalAttrString = AnnotationUtils.encodeAnyASListWithRawDelim(orderedASFilterStrings);
-
-        vcb.putAttributes(Collections.singletonMap(GATKVCFConstants.AS_FILTER_STATUS_KEY, finalAttrString));
-
-
-        // compute site-only filters
-        // from allele specific filters
-         alleleStatusByFilter.stream().forEachOrdered(alleleStatusForFilter -> {
-            if (!alleleStatusForFilter.isEmpty() && alleleStatusForFilter.stream().distinct().count() == 1 && !alleleStatusForFilter.contains(GATKVCFConstants.SITE_LEVEL_FILTERS)) {
-                siteFiltersWithErrorProb.put(alleleStatusForFilter.get(0), 1.0);
-            }
-        });
-
-
-        // from variant filters
-        errorProbabilities.getProbabilitiesForVariantFilters().entrySet().stream()
-                .forEach(entry -> {
-                    entry.getKey().phredScaledPosteriorAnnotationName().ifPresent(annotation -> {
-                        if (entry.getKey().requiredInfoAnnotations().stream().allMatch(vc::hasAttribute)) {
-                            vcb.attribute(annotation, QualityUtils.errorProbToQual(entry.getValue()));
-                        }
-                    });
-                    if (entry.getValue() > errorThreshold) {
-                        siteFiltersWithErrorProb.put(entry.getKey().filterName(), entry.getValue());
-                    }
-
-                });
-
-        // if all alleles have been filtered out, but for different reasons, fail the site.
-        // if the site is only ref and symbolic, no filters will be applied so don't fail
-        if (siteFiltersWithErrorProb.isEmpty() && !distinctFiltersByAllele.stream().allMatch(List::isEmpty)) {
-            List<List<String>> filtersNonSymbolicAlleles =  GATKVariantContextUtils.removeDataForSymbolicAltAlleles(vc, distinctFiltersByAllele);
-            // if any allele passed, don't fail the site
-            if (!filtersNonSymbolicAlleles.stream().anyMatch(filterList -> filterList.contains(GATKVCFConstants.SITE_LEVEL_FILTERS))) {
-                // we know the allele level filters exceeded their threshold - so set this prob to 1
-                siteFiltersWithErrorProb.put(GATKVCFConstants.FAIL, 1.0);
+            // error probability must exceed threshold, and just in case threshold is bad, probabilities close to 1 must be filtered
+            // and probabilities close to 0 must not be filtered
+            if (variantFailsFilters && errorProbability >= Math.min(maxErrorProb, MIN_REPORTABLE_ERROR_PROBABILITY)) {
+                vcb.filter(entry.getKey().filterName());
             }
         }
-
-        // this code limits the number of filters specified for any variant to the highest probability filters
-        // this will not change the status of whether a variant is actually filtered or not
-        final double maxErrorProb = siteFiltersWithErrorProb.values().stream().mapToDouble(p->p).max().orElse(1);
-        siteFiltersWithErrorProb.entrySet().stream().forEach(entry -> {
-            if (entry.getValue() >= Math.min(maxErrorProb, MIN_REPORTABLE_ERROR_PROBABILITY)) {
-                vcb.filter(entry.getKey());
-            }
-        });
 
         return vcb.make();
-    }
-
-    /**
-     * Creates a list of the string names of all the filters that apply to the allele, or the string "SITE" if it passed all allele filters
-     * @param filtersForAllele all the filters applied to the allele
-     * @return list of filter names that apply to the allele or SITE
-     */
-    private List<String> getDistinctFiltersForAllele(final List<String> filtersForAllele) {
-        final List<String> results = filtersForAllele.stream().distinct().collect(Collectors.toList());
-        if (results.size() > 1 && results.contains(GATKVCFConstants.SITE_LEVEL_FILTERS)) {
-            results.remove(GATKVCFConstants.SITE_LEVEL_FILTERS);
-        }
-        if (results.isEmpty()) {
-            results.add(GATKVCFConstants.SITE_LEVEL_FILTERS);
-        }
-        return results;
-    }
-
-    /**
-     * For each allele, determine whether the filter should be applied and return either the
-     * filter name or SITE. We use PASS as a place holder because the results are per alt allele.
-     * @param probabilities the probabilities computed by the filter for the alleles
-     * @param errorThreshold the theshold to use to determine whether filter applies
-     * @param filterName the name of the filter being evaluated
-     * @return List of filtername or "SITE" for each allele
-     */
-    private List<String> addFilterStrings(final List<Double> probabilities, final double errorThreshold, final String filterName) {
-        return probabilities.stream().map(value -> value > errorThreshold ?
-                        filterName : GATKVCFConstants.SITE_LEVEL_FILTERS).collect(Collectors.toList());
     }
 
     public static double roundFinitePrecisionErrors(final double probability) {
@@ -288,18 +217,13 @@ public class Mutect2FilteringEngine {
         filters.add(new DuplicatedAltReadFilter(MTFAC.uniqueAltReadCount));
         filters.add(new StrandArtifactFilter());
         filters.add(new ContaminationFilter(MTFAC.contaminationTables, MTFAC.contaminationEstimate));
+        filters.add(new PanelOfNormalsFilter());
+        filters.add(new NormalArtifactFilter(MTFAC.normalPileupPValueThreshold));
+        filters.add(new NRatioFilter(MTFAC.nRatio));
         filters.add(new StrictStrandBiasFilter(MTFAC.minReadsOnEachStrand));
         filters.add(new ReadPositionFilter(MTFAC.minMedianReadPosition));
         filters.add(new MinAlleleFractionFilter(MTFAC.minAf));
-
-        // convert to allele specific later
-        // Normal Artifact Filter doesn't apply to mitochondria because we are not comparing
-        // tumor and normal
-        filters.add(new NormalArtifactFilter(MTFAC.normalPileupPValueThreshold));
-        filters.add(new NRatioFilter(MTFAC.nRatio));
-
-        // filters that don't apply to specific alleles but can still be converted
-        filters.add(new PanelOfNormalsFilter());
+        filters.add(new MaxPositionDifferenceFilter());
 
         if (!MTFAC.readOrientationPriorTarGzs.isEmpty()) {
             final List<File> artifactTables = MTFAC.readOrientationPriorTarGzs.stream().flatMap(tarGz -> {
@@ -311,7 +235,10 @@ public class Mutect2FilteringEngine {
             filters.add(new ReadOrientationFilter(artifactTables));
         }
 
-        if (!MTFAC.mitochondria) {
+        if (MTFAC.mitochondria) {
+            filters.add(new ChimericOriginalAlignmentFilter(MTFAC.maxNuMTFraction));
+            filters.add(new PolymorphicNuMTFilter(MTFAC.medianAutosomalCoverage));
+        } else {
             filters.add(new ClusteredEventsFilter(MTFAC.maxEventsInRegion));
             filters.add(new MultiallelicFilter(MTFAC.numAltAllelesThreshold));
             filters.add(new FragmentLengthFilter(MTFAC.maxMedianFragmentLengthDifference));
