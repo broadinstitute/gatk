@@ -16,14 +16,15 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.variantdb.*;
+import org.broadinstitute.hellbender.tools.variantdb.ChromosomeEnum;
+import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.IngestConstants;
 import org.broadinstitute.hellbender.tools.variantdb.IngestUtils;
 import org.broadinstitute.hellbender.utils.*;
 
-import java.util.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Ingest variant walker
@@ -86,9 +87,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public CommonCode.ModeEnum mode = CommonCode.ModeEnum.EXOMES;
 
-    @Argument(fullName = "output-type", 
-            shortName = "ot", 
-            doc = "[Experimental] Output file format: TSV, ORC or PARQUET [default=TSV].", 
+    @Argument(fullName = "output-type",
+            shortName = "ot",
+            doc = "[Experimental] Output file format: TSV, ORC or PARQUET [default=TSV].",
             optional = true)
     public CommonCode.OutputType outputType = CommonCode.OutputType.TSV;
 
@@ -104,6 +105,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     private File outputDir = new File(".");
 
+    // getGenotypes() returns list of lists for all samples at variant
+    // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
+    public static boolean isNoCall(VariantContext variant) {
+        return variant.getGenotype(0).isNoCall();
+    }
 
     @Override
     public boolean requiresIntervals() {
@@ -186,11 +192,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             return;
         }
 
-
-        // create VET output
-        if (!variant.isReferenceBlock()) {
+        // write to VET if NOT reference block and NOT a no call
+        if (!variant.isReferenceBlock() && !isNoCall(variant)) {
             vetTsvCreator.apply(variant, readsContext, referenceContext, featureContext);
         }
+
         try {
             petTsvCreator.apply(variant, intervalsToWrite);
         } catch (IOException ioe) {

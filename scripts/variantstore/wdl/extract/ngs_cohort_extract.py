@@ -102,7 +102,7 @@ def get_table_count(fq_pet_vet_dataset):
 def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort):
   def get_subselect(fq_vet_table, samples, id):
     sample_stanza = ','.join([str(s) for s in samples])
-    sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_pl, AS_QUALapprox from `{fq_vet_table}` WHERE sample_id IN ({sample_stanza})), "
+    sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_pl, QUALapprox, AS_QUALapprox from `{fq_vet_table}` WHERE sample_id IN ({sample_stanza})), "
     return sql
    
   subs = {}
@@ -201,6 +201,7 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_dataset, 
             new_vet.call_GT,
             new_vet.call_GQ,
             cast(SPLIT(new_vet.call_pl,",")[OFFSET(0)] as int64) as call_RGQ,
+            new_vet.QUALapprox,
             new_vet.AS_QUALapprox,
             new_vet.call_PL
           FROM

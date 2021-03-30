@@ -14,7 +14,10 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
 
     @Test
     public void testPetTsvIsCreated() throws Exception {
-        final String input_vcf_file = "NA12878.haplotypeCalls.reblocked.chr20.100k.vcf.gz";
+        // *manual_nocalls.vcf.gz modified manually to introduce a no-call (./.) GT at chr20 61417
+        // no-call to test marking ./. as GQ 0 in PET and abstaining from putting variant into VET
+        // original GT at chr20 61417 = 0/1
+        final String input_vcf_file = "NA12878.haplotypeCalls.reblocked.chr20.100k.manual_nocall.vcf.gz";
         final String interval_list_file = "wgs_calling_regions.hg38.chr20.100k.interval_list";
         final String sample_map_file = "test_sample_map.tsv";
         final File outputDir = createTempDir("output_dir");

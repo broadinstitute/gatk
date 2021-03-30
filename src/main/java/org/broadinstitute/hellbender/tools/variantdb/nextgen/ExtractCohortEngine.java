@@ -90,7 +90,8 @@ public class ExtractCohortEngine {
                                final double vqsLodINDELThreshold,
                                final ProgressMeter progressMeter,
                                final ExtractCohort.QueryMode queryMode,
-                               final String filterSetName) {
+                               final String filterSetName,
+                               final boolean emitPLs) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -113,7 +114,7 @@ public class ExtractCohortEngine {
         this.filterSetName = filterSetName;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
-        this.gnarlyGenotyper = new GnarlyGenotyperEngine(false, 30, false, false, true);
+        this.gnarlyGenotyper = new GnarlyGenotyperEngine(false, 30, false, emitPLs, true);
 
     }
 
@@ -173,7 +174,7 @@ public class ExtractCohortEngine {
                 }
                 // create the query string
                 String q = "SELECT " + StringUtils.join(SchemaUtils.COHORT_FIELDS,",") + " FROM " + cohortTableRef.getFQTableName() + " ORDER BY " + SchemaUtils.LOCATION_FIELD_NAME;
-                TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), cohortTableRef.tableProject, cohortTableRef.tableDataset, q);
+                TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), cohortTableRef.tableProject, cohortTableRef.tableDataset, q,  null);
                 createVariantsFromSortedTableResults(tr, fullVqsLodMap, fullYngMap, noFilteringRequested);
                 break;
         }
@@ -262,32 +263,59 @@ public class ExtractCohortEngine {
 
         sortingCollection.printTempFileStats();
 
-        final List<GenericRecord> currentPositionRecords = new ArrayList<>(sampleNames.size() * 2);
+        final Map<String, GenericRecord> currentPositionRecords = new HashMap<>(sampleNames.size() * 2);
+
         long currentLocation = -1;
 
         for ( final GenericRecord sortedRow : sortingCollection ) {
             final long location = Long.parseLong(sortedRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
+            final String sampleName = sortedRow.get(SchemaUtils.SAMPLE_NAME_FIELD_NAME).toString();
 
             if ( location != currentLocation && currentLocation != -1 ) {
                 ++totalNumberOfSites;
-                processSampleRecordsForLocation(currentLocation, currentPositionRecords, columnNames, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), columnNames, fullVqsLodMap, fullYngMap, noFilteringRequested);
 
                 currentPositionRecords.clear();
             }
 
-            currentPositionRecords.add(sortedRow);
+            currentPositionRecords.merge(sampleName, sortedRow, this::mergeSampleRecord);
             currentLocation = location;
         }
 
         if ( ! currentPositionRecords.isEmpty() ) {
             ++totalNumberOfSites;
-            processSampleRecordsForLocation(currentLocation, currentPositionRecords, columnNames, fullVqsLodMap, fullYngMap, noFilteringRequested);
+            processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), columnNames, fullVqsLodMap, fullYngMap, noFilteringRequested);
+        }
+    }
+
+    private GenericRecord mergeSampleRecord(GenericRecord r1, GenericRecord r2) {
+        logger.info("In SampleRecord Merge Logic for " + r1 + " and " + r2);
+
+        final String r1State = r1.get(SchemaUtils.STATE_FIELD_NAME).toString();
+        final String r2State = r2.get(SchemaUtils.STATE_FIELD_NAME).toString();
+
+        // Valid states are m, 1-6 (ref), v, *
+        // For now, just handle cases where '*' should be dropped in favor anything besides missing...
+        if (r1State.equals("*") && !r2State.equals("m")) {
+            return r2;
+        } else if (r2State.equals("*") && !r1State.equals("m")) {
+            return r1;
+        } else {
+            return r2;
         }
     }
 
     private double getQUALapproxFromSampleRecord(GenericRecord sampleRecord) {
         double qa = 0;
 
+        Object o1 = sampleRecord.get(SchemaUtils.QUALapprox);
+
+        // prefer QUALapprox over allele specific version
+        if (o1 != null) {
+            return Double.parseDouble(o1.toString());
+        }
+
+        // now try with AS version
         Object o = sampleRecord.get(SchemaUtils.AS_QUALapprox);
 
         // gracefully handle records without a QUALapprox (like the ones generated in the PET from a deletion)
@@ -297,24 +325,19 @@ public class ExtractCohortEngine {
 
         String s = o.toString();
 
-        // TODO: KCIBUL -- unclear how QUALapproxes are summed from non-ref alleles... replicating what I saw but need to confirm with Laura
+        // Non-AS QualApprox (used for qualapprox filter) is simply the sum of the AS values (see GnarlyGenotyper)
         if (s.contains("|")) {
 
-            // take the average of all non-* alleles
-            // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part            
+            // take the sum of all non-* alleles
+            // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part
             String[] alleles = sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString().split(",");
             String[] parts = s.split("\\|");
 
-            double total = 0;
-            int count = 0;
             for (int i=0; i < alleles.length; i++) {
                 if (!"*".equals(alleles[i])) {
-                    total += (double) Long.parseLong(parts[i]);
-                    count++;
+                    qa += (double) Long.parseLong(parts[i]);
                 }
             }
-
-            qa = total / (double) count;
         } else {
             qa = (double) Long.parseLong(s);
         }
@@ -366,7 +389,7 @@ public class ExtractCohortEngine {
 
                     totalAsQualApprox += getQUALapproxFromSampleRecord(sampleRecord);
 
-                    // hasSnpAllele should be set to true if any sample has at least one snp (gnarly definition here)                    
+                    // hasSnpAllele should be set to true if any sample has at least one snp (gnarly definition here)
                     boolean thisHasSnp = vc.getAlternateAlleles().stream().anyMatch(allele -> allele != Allele.SPAN_DEL && allele.length() == vc.getReference().length());
 //                    logger.info("\t" + contig + ":" + currentPosition + ": calculated thisHasSnp of " + thisHasSnp + " from " + vc.getAlternateAlleles() + " and ref " + vc.getReference());
                     hasSnpAllele = hasSnpAllele || thisHasSnp;
@@ -416,17 +439,18 @@ public class ExtractCohortEngine {
 
         // same qualapprox check as Gnarly
         final boolean isIndel = !hasSnpAllele;
-        // System.out.println("KCIBUL -- in the qualapprox w/ " + totalAsQualApprox + " for isIndel " + isIndel + " and SNP:" + SNP_QUAL_THRESHOLD + " and INDEL:" + INDEL_QUAL_THRESHOLD);
         if((isIndel && totalAsQualApprox < INDEL_QUAL_THRESHOLD) || (!isIndel && totalAsQualApprox < SNP_QUAL_THRESHOLD)) {
-            // logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
+            if ( printDebugInformation ) {
+                logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
+            }
             return;
         }
 
 
-        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele, vqsLodMap, yngMap, noFilteringRequested);
+        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele, vqsLodMap, yngMap, noFilteringRequested, totalAsQualApprox);
     }
 
-    private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls, final Set<String> currentVariantSamplesSeen, final boolean currentPositionHasVariant, final String contig, final long start, final Allele refAllele, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean noFilteringRequested) {
+    private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls, final Set<String> currentVariantSamplesSeen, final boolean currentPositionHasVariant, final String contig, final long start, final Allele refAllele, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean noFilteringRequested, double qualApprox) {
         // If there were no variants at this site, we don't emit a record and there's nothing to do here
         if ( ! currentPositionHasVariant ) {
             return;
@@ -454,8 +478,13 @@ public class ExtractCohortEngine {
                 false,
                 true);
 
+        // need to insert QUALapprox into the variant context
+        final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
+        builder.getAttributes().put("QUALapprox", Integer.toString((int) qualApprox));
+        final VariantContext qualapproxVC = builder.make();
 
-        final VariantContext genotypedVC = disableGnarlyGenotyper ? mergedVC : gnarlyGenotyper.finalizeGenotype(mergedVC);
+
+        final VariantContext genotypedVC = disableGnarlyGenotyper ? qualapproxVC : gnarlyGenotyper.finalizeGenotype(qualapproxVC);
         final VariantContext finalVC = noFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? genotypedVC : filterVariants(genotypedVC, vqsLodMap, yngMap);
 
         if ( finalVC != null ) {
@@ -476,7 +505,7 @@ public class ExtractCohortEngine {
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
         builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, relevantVqsLodMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
-        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, relevantYngMap.values());
+        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, relevantYngMap.values().stream().collect(Collectors.toList()));
 
         int refLength = mergedVC.getReference().length();
 

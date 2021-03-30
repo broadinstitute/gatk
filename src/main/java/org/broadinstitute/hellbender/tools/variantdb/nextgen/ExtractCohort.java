@@ -47,11 +47,18 @@ public class ExtractCohort extends ExtractTool {
     )
     private String filterSetName = null;
 
+    @Argument(
+            fullName = "emit-pls",
+            doc = "Should PLs be emitted in output VCF",
+            optional = true
+    )
+    private boolean emitPLs = false;
+
     @Override
     protected void onStartup() {
         super.onStartup();
 
-        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, printDebugInformation);
+        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
         Set<String> sampleNames = new HashSet<>(sampleList.getSampleNames());
 
         VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary());
@@ -85,7 +92,8 @@ public class ExtractCohort extends ExtractTool {
                 vqsLodINDELThreshold,
                 progressMeter,
                 queryMode,
-                filterSetName);
+                filterSetName,
+                emitPLs);
         vcfWriter.writeHeader(header);
     }
 
