@@ -17,8 +17,10 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 
+// propagate GATKPath tag and attributes on JSON deserialization ?
+
 /**
- * Create a JSON bundle file for use with GATK tools.
+ * Create a JSON Reads bundle file for use with GATK tools.
  */
 @DocumentedFeature
 @CommandLineProgramProperties(

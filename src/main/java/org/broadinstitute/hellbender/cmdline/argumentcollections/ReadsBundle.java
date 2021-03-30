@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import htsjdk.io.IOPath;
-import htsjdk.plugin.bundle.BundleResourceType;
-import htsjdk.plugin.bundle.InputBundle;
-import htsjdk.plugin.bundle.InputIOPathResource;
-import htsjdk.plugin.bundle.InputResource;
+import htsjdk.beta.plugin.bundle.BundleResourceType;
+import htsjdk.beta.plugin.bundle.InputBundle;
+import htsjdk.beta.plugin.bundle.InputIOPathResource;
+import htsjdk.beta.plugin.bundle.InputResource;
 import htsjdk.samtools.SamFiles;
 import htsjdk.utils.ValidationUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -31,13 +31,11 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 //TODO:
-// propagate GATKPath tag and attributes
+// propagate GATKPath tag and attributes on JSON deserialization ?
 // subContentType is always inferred, never explicitly provided...
 // only IOPath resources can be serialized
-// Note: This class only handles *input* bundles. Output bundles would require a separate class since the
-// interface types for output resources differ from input resources.
-// Barclay won’t be able to print out bundle contents in command line...
-// What if there is a clash between the attributes specified on a bundle input, and those specified IN the bundle ?
+// Barclay won’t be able to print out bundle contents on the command line...
+// What if there is a clash between the attributes specified ON an bundle input, and those specified IN the bundle ?
 
 /**
  * A reads bundle may optionally have an index, but its not required.
