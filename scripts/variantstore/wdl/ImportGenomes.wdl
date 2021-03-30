@@ -10,9 +10,9 @@ workflow ImportGenomes {
     File sample_map
     String project_id
     String dataset_name
-    File pet_schema
-    File vet_schema
-    File metadata_schema
+    String? pet_schema = "location:INTEGER,sample_id:INTEGER,state:STRING"
+    String? vet_schema = "sample_id:INTEGER,location:INTEGER,ref:STRING,alt:STRING,AS_RAW_MQ:STRING,AS_RAW_MQRankSum:STRING,AS_QUALapprox:STRING,AS_RAW_ReadPosRankSum:STRING,AS_SB_TABLE:STRING,AS_VarDP:STRING,call_GT:STRING,call_AD:STRING,call_GQ:INTEGER,call_PGT:STRING,call_PID:STRING,call_PL:STRING"
+    String? metadata_schema = "sample_name:STRING,sample_id:INTEGER,interval_list_blob:STRING,inferred_state:STRING"
     File? service_account_json
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
@@ -397,7 +397,7 @@ task CreateTables {
       String dataset_name
       String datatype
       Int max_table_id
-      File schema
+      String? schema
       String superpartitioned
       String partitioned
       String uuid
@@ -478,7 +478,7 @@ task LoadTable {
     String storage_location
     String datatype
     String superpartitioned
-    File schema
+    String? schema
     File? service_account_json
     String table_creation_done
     Array[String] tsv_creation_done
