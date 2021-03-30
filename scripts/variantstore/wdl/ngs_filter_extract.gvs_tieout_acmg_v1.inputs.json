@@ -33,9 +33,9 @@
   "NgsFilterExtract.fq_alt_allele_table": "spec-ops-aou.gvs_tieout_acmg_v1.alt_allele",
   "NgsFilterExtract.query_project": "spec-ops-aou",
   
-  "NgsFilterExtract.excluded_sites_bed": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/excesshet/excess_het_sites.sorted.bed",   
+  "NgsFilterExtract.excluded_sites_bed": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/excess_het_sites.sorted.bed",
 
-  "NgsFilterExtract.filter_set_name": "gvs_tieout_acmg_v4_no_eh",
+  "NgsFilterExtract.filter_set_name": "gvs_tieout_acmg_v4new_no_eh",
   "NgsFilterExtract.output_file_base_name": "gvs_tieout_acmg_v1.sites_only",
 
   "NgsFilterExtract.fq_filter_set_info_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_info",
