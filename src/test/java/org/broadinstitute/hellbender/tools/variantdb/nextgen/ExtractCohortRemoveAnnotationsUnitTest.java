@@ -13,11 +13,11 @@ import java.util.List;
 
 public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
     private static final String ALLELE_SPECIFIC_DIRECTORY = toolsTestDir + "walkers/annotator/allelespecific";
-    private static final File TEST_FILE =  new File(ALLELE_SPECIFIC_DIRECTORY + "/GenotypeGVCFs.output.vcf");
+    private static final File ORIGINAL_TEST_FILE =  new File(ALLELE_SPECIFIC_DIRECTORY + "/GenotypeGVCFs.output.vcf");
 
     @Test
     public void testRemoveAnnotations() {
-        VCFHeader testVCFHeader = VariantContextTestUtils.getVCFHeader(TEST_FILE.getPath());
+        VCFHeader testVCFHeader = VariantContextTestUtils.getVCFHeader(ORIGINAL_TEST_FILE.getPath());
         ExtractCohortEngine engine = new ExtractCohortEngine(
                 null,
                 null,
@@ -38,10 +38,10 @@ public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
                 null,
                 null,
                 false);
-        List<VariantContext> variantContexts = VariantContextTestUtils.getVariantContexts(TEST_FILE); // list variantContexts from VCF file
-        VariantContext updatedVC = engine.removeAnnotations(variantContexts.get(0)); // single variantContext -- with annotations removed
-        Assert.assertFalse(updatedVC.hasAttribute(GATKVCFConstants.FISHER_STRAND_KEY), "removeAnnotations did not remove FS annotation.");
-        Assert.assertFalse(updatedVC.hasAttribute(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY), "removeAnnotations did not remove AS_QD annotation.");
-        Assert.assertFalse(updatedVC.hasAttribute(GATKVCFConstants.STRAND_ODDS_RATIO_KEY), "removeAnnotations did not remove SOR annotation.");
+        List<VariantContext> variantContexts = VariantContextTestUtils.getVariantContexts(ORIGINAL_TEST_FILE); // list variantContexts from VCF file
+        VariantContext expectedVC = engine.removeAnnotations(variantContexts.get(0)); // single variantContext -- with annotations removed
+        Assert.assertFalse(expectedVC.hasAttribute(GATKVCFConstants.FISHER_STRAND_KEY), "removeAnnotations did not remove FS annotation.");
+        Assert.assertFalse(expectedVC.hasAttribute(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY), "removeAnnotations did not remove AS_QD annotation.");
+        Assert.assertFalse(expectedVC.hasAttribute(GATKVCFConstants.STRAND_ODDS_RATIO_KEY), "removeAnnotations did not remove SOR annotation.");
     }
 }
