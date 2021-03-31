@@ -56,7 +56,9 @@ WITH
            aarsbi.SB_REF_PLUS as SB_REF_PLUS,
            aarsbi.SB_REF_MINUS as SB_REF_MINUS,
            SB_ALT_PLUS,
-           SB_ALT_MINUS
+           SB_ALT_MINUS,
+           num_het_samples,
+           num_homvar_samples
     FROM (
     SELECT aa.location,
            ref,
@@ -74,7 +76,9 @@ WITH
            IFNULL(SUM(SB_REF_PLUS),0)  as SB_REF_PLUS,
            IFNULL(SUM(SB_REF_MINUS),0) as SB_REF_MINUS,
            IFNULL(SUM(SB_ALT_PLUS),0)  as SB_ALT_PLUS,
-           IFNULL(SUM(SB_ALT_MINUS),0) as SB_ALT_MINUS
+           IFNULL(SUM(SB_ALT_MINUS),0) as SB_ALT_MINUS,
+           COUNT(distinct CASE WHEN call_GT IN ('0/1', '0|1', '1/0', '1|0', '0/2', '0|2', '2/0', '2|0') THEN sample_id ELSE NULL END) num_het_samples,
+           COUNT(distinct CASE WHEN call_GT IN ('1/1', '1|1', '1/2', '1|2', '2/1', '2|1') THEN sample_id ELSE NULL END) num_homvar_samples
     FROM `@altAllele` as aa
     WHERE allele != '*'
     AND sample_id in (SELECT sample_id from `@sample` )

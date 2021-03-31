@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
 import java.util.HashSet;
@@ -55,6 +56,7 @@ public class ExtractFeatures extends ExtractTool {
         super.onStartup();
 
         TableReference sampleTableRef = new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS);
+        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
 
         VCFHeader header = CommonCode.generateVcfHeader(new HashSet<>(), reference.getSequenceDictionary());
 
@@ -72,7 +74,8 @@ public class ExtractFeatures extends ExtractTool {
             localSortMaxRecordsInRam,
             printDebugInformation,
             useBatchQueries,
-            progressMeter);
+            progressMeter,
+            sampleList.size());
         vcfWriter.writeHeader(header);
 }
 

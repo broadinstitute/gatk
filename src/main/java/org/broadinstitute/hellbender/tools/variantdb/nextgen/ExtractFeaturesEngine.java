@@ -30,6 +30,7 @@ import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollection;
 import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.util.*;
@@ -57,6 +58,7 @@ public class ExtractFeaturesEngine {
     private final Long minLocation;
     private final Long maxLocation;
     private final boolean useBatchQueries;
+    private final int numSamples;
 
 //    /** Set of sample names seen in the variant data from BigQuery. */
 //    private final Set<String> sampleNames = new HashSet<>();
@@ -74,7 +76,8 @@ public class ExtractFeaturesEngine {
                                final int localSortMaxRecordsInRam,
                                final boolean printDebugInformation,
                                final boolean useBatchQueries,
-                               final ProgressMeter progressMeter) {
+                               final ProgressMeter progressMeter,
+                               final int numSamples) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -88,6 +91,7 @@ public class ExtractFeaturesEngine {
         this.progressMeter = progressMeter;
         this.minLocation = minLocation;
         this.maxLocation = maxLocation;
+        this.numSamples = numSamples;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
@@ -203,14 +207,29 @@ public class ExtractFeaturesEngine {
 
         double mq = Math.sqrt( raw_mq / raw_ad);
 
-        builder.attribute("AS_QD", String.format("%.2f", as_qd) );
-        builder.attribute("AS_FS", String.format("%.3f", fs));
-        builder.attribute("AS_MQ", String.format("%.2f", mq) );
-        builder.attribute("AS_MQRankSum", AS_MQRankSum==null?".":String.format("%.3f", AS_MQRankSum) );
-        builder.attribute("AS_ReadPosRankSum", AS_ReadPosRankSum==null?".":String.format("%.3f", AS_ReadPosRankSum));
-        builder.attribute("AS_SOR", String.format("%.3f", sor));
+        builder.attribute(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY, String.format("%.2f", as_qd) );
+        builder.attribute(GATKVCFConstants.AS_FISHER_STRAND_KEY, String.format("%.3f", fs));
+        builder.attribute(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY, String.format("%.2f", mq) );
+        builder.attribute(GATKVCFConstants.AS_MAP_QUAL_RANK_SUM_KEY, AS_MQRankSum==null?".":String.format("%.3f", AS_MQRankSum) );
+        builder.attribute(GATKVCFConstants.AS_READ_POS_RANK_SUM_KEY, AS_ReadPosRankSum==null?".":String.format("%.3f", AS_ReadPosRankSum));
+        builder.attribute(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY, String.format("%.3f", sor));
 
-        // TODO: add ExcessHet annotation and filter by it (config)
+//        From the warp JointGenotyping pipeline
+//        # ExcessHet is a phred-scaled p-value. We want a cutoff of anything more extreme
+//        # than a z-score of -4.5 which is a p-value of 3.4e-06, which phred-scaled is 54.69
+        double excess_het_threshold = 54.69;
+
+        int hets = Integer.valueOf(rec.get("num_het_samples").toString()).intValue();
+        int homvars = Integer.valueOf(rec.get("num_homvar_samples").toString()).intValue();
+
+        int samplesMinusVariants = numSamples - (hets + homvars);
+        GenotypeCounts gcApprox = new GenotypeCounts(samplesMinusVariants, hets, homvars);
+        double excessHetApprox = ExcessHet.calculateEH(gcApprox, numSamples).getRight();
+        if (excessHetApprox > excess_het_threshold) {
+            builder.filter(GATKVCFConstants.EXCESS_HET_KEY);
+        }
+        builder.attribute(GATKVCFConstants.EXCESS_HET_KEY, String.format("%.3f", excessHetApprox));
+
         VariantContext vc = builder.make();
         vcfWriter.add(vc);
         progressMeter.update(vc);
