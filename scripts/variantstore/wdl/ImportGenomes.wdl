@@ -608,7 +608,9 @@ task LoadTable {
 
   output {
     String done = "true"
-    File manifest_file = "~{datatype}_du.txt"
+    File manifest_file = "~{datatype}_du_sets.txt"
+    File load_details = "bq_load_details.tmp"
+    File wait_details = "bq_wait_details.tmp"
     File final_job_statuses = "bq_final_job_statuses.txt"
   }
 }
