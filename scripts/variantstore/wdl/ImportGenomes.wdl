@@ -533,7 +533,7 @@ task LoadTable {
         # tr to replace each space -> tab, squeeze (remove) "empty" tabs, 
         gsutil du "${DIR}${FILES}" | tr " " "\t" | tr -s "\t" | sed "/~{datatype}_tsvs\/$/d" | awk '{s+=$1}{print $1"\t"$2"\t"s"\t" (1+int(s / 16000000000000))}' >> ~{datatype}_du_sets.txt
 
-        # for each set
+        # per set, load table
         for set in $(sed 1d ~{datatype}_du_sets.txt | cut -f4 | sort | uniq)
         do
           # move set data into separate directory
