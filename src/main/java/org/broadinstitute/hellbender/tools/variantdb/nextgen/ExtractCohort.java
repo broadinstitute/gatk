@@ -41,6 +41,13 @@ public class ExtractCohort extends ExtractTool {
     private String cohortTable = null;
 
     @Argument(
+            fullName = "cohort-avro-file-name",
+            doc = "Path of the cohort avro file",
+            optional = true
+    )
+    private String cohortAvroFileName = null;
+
+    @Argument(
             fullName = "filter-set-name",
             doc = "Name in filter_set_name column of filtering table to use. Which training set should be applied in extract.",
             optional = true
@@ -83,6 +90,7 @@ public class ExtractCohort extends ExtractTool {
                 sampleNames,
                 mode,
                 cohortTable,
+                cohortAvroFileName,
                 minLocation,
                 maxLocation,
                 filteringFQTableName,

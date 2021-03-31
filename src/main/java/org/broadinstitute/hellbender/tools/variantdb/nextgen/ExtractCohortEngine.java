@@ -63,6 +63,7 @@ public class ExtractCohortEngine {
     private int totalNumberOfVariants = 0;
     private int totalNumberOfSites = 0;
 
+    private final String cohortAvroFileName;
     private final String filterSetName;
 
     /**
@@ -81,6 +82,7 @@ public class ExtractCohortEngine {
                                final Set<String> sampleNames,
                                final CommonCode.ModeEnum mode,
                                final String cohortTableName,
+                               final String cohortAvroFileName,
                                final Long minLocation,
                                final Long maxLocation,
                                final String filteringTableName,
@@ -101,6 +103,7 @@ public class ExtractCohortEngine {
         this.mode = mode;
 
         this.cohortTableRef = new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
+        this.cohortAvroFileName = cohortAvroFileName;
         this.minLocation = minLocation;
         this.maxLocation = maxLocation;
         this.filteringTableRef = filteringTableName == null || "".equals(filteringTableName) ? null : new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
@@ -164,8 +167,14 @@ public class ExtractCohortEngine {
                     logger.debug("using storage api with local sort");
                 }
                 logger.debug("Initializing Reader");
-                final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
-                createVariantsFromUngroupedTableResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                if (cohortTableRef != null){
+                    final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
+                    createVariantsFromUngroupedTableResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                }
+                else {
+                    final AvroFileReader avroFileReader = new AvroFileReader(cohortAvroFileName);
+                    createVariantsFromUngroupedTableResult(avroFileReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                }
                 logger.debug("Finished Initializing Reader");
                 break;
             case QUERY:
