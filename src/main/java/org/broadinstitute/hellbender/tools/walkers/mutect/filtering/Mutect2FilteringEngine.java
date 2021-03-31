@@ -291,6 +291,7 @@ public class Mutect2FilteringEngine {
         filters.add(new StrictStrandBiasFilter(MTFAC.minReadsOnEachStrand));
         filters.add(new ReadPositionFilter(MTFAC.minMedianReadPosition));
         filters.add(new MinAlleleFractionFilter(MTFAC.minAf));
+        filters.add(new MaxPositionDifferenceFilter());
 
         // convert to allele specific later
         // Normal Artifact Filter doesn't apply to mitochondria because we are not comparing

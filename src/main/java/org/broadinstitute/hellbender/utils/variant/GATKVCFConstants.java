@@ -111,6 +111,9 @@ public final class GATKVCFConstants {
     public static final String UNITIG_SIZES_KEY = "UNITIGS";
     public static final String ALIGNMENT_SCORE_DIFFERENCE_KEY = "ALIGN_DIFF";
     public static final String JOINT_ALIGNMENT_COUNT_KEY = "NALIGNS";
+    public static final String READ_START_POSITION_MAX_DIFF_KEY = "RSPMAXD";
+    public static final String READ_START_POSITION_MIN_DIFF_KEY = "RSPMIND";
+    public static final String INSERT_SIZE_DIFF_KEY = "ISD";
 
     // Methylation-specific INFO Keys
     public static final String UNCONVERTED_BASE_COVERAGE_KEY =      "UNCONVERTED_BASE_COV";
@@ -166,7 +169,7 @@ public final class GATKVCFConstants {
     public static final String LOW_HET_FILTER_NAME =                           "mt_many_low_hets";
     public static final String FAIL =                                           "FAIL";
     public static final String SITE_LEVEL_FILTERS =                             "SITE";
-
+    public static final String MAX_POSITION_DIFFERENCE_FILTER_NAME =           "max_pos_diff";
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(VCFConstants.PASSES_FILTERS_v4, POLYMERASE_SLIPPAGE,
             PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_EVIDENCE_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
