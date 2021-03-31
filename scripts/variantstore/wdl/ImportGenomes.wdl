@@ -533,12 +533,14 @@ task LoadTable {
         # tr to replace each space -> tab, squeeze (remove) "empty" tabs, 
         gsutil du "${DIR}${FILES}" | tr " " "\t" | tr -s "\t" | sed "/~{datatype}_tsvs\/$/d" | awk '{s+=$1}{print $1"\t"$2"\t"s"\t" (1+int(s / 16000000000000))}' >> ~{datatype}_du_sets.txt
 
-        # for each set, copy data into set dirs and run bq load command
+        # for each set
         for set in $(sed 1d ~{datatype}_du_sets.txt | cut -f4 | sort | uniq)
         do
+          # move set data into separate directory
           echo "Moving set $set data into separate directory."
-          awk '$4 == ${set}' ~{datatype}_du_sets.txt | cut -f2 | gsutil -m cp -I "${DIR}set_${set}/" 2> copy.log
-          
+          awk -v set="$set" '$4 == set' ~{datatype}_du_sets.txt | cut -f2 | gsutil -m cp -I "${DIR}set_${set}/" 2> copy.log
+
+          # execulte bq load command, get bq load job id, add details per set to tmp file
           echo "Running BigQuery load for set $set."
           bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
             "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
@@ -551,25 +553,7 @@ task LoadTable {
           cat bq_load_details.tmp
         done
 
-        # echo "Starting creation of $num_sets set(s) of load files totaling $TOTAL_FILE_SIZE bytes."
-        # for set in $(seq 1 $num_sets)
-        # do
-
-        #   # TODO: CHANGE TO MV FROM CP once all the rest is fixed
-        #   echo "Moving set $set data into separate directory."
-        #   cut -f2 "${set}"_files_to_load.txt | gsutil -m mv -I "${DIR}set_${set}/" 2> gsutil_mv_sets.log
-
-        #   echo "Running BigQuery load for set $set."
-        #   bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
-        #     "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
-
-        #   bq_job_id=$(sed 's/.*://' status_bq_submission)
-
-        #   # add job ID as key and gs path to the data set uploaded as value
-        #   echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.tmp
-        # done
-
-        # for each bq job submitted, run the bq wait command and capture success/failure to log file
+        # for each bq load job submitted, run bq wait, capture success/failure to tmp file
         while IFS="\t" read -r line_bq_load
           do
             bq wait --project_id=~{project_id} $(echo "$line_bq_load" | cut -f1) > bq_wait_status
@@ -578,7 +562,7 @@ task LoadTable {
             echo "$wait_status" >> bq_wait_details.tmp
         done < bq_load_details.tmp
 
-        # combine job status and wait status into final report
+        # combine load status and wait status into final report
         paste bq_load_details.tmp bq_wait_details.tmp > bq_final_job_statuses.txt
         
         # move files from each set into set-level "done" directories
