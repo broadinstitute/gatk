@@ -529,6 +529,8 @@ task LoadTable {
     if [ $NUM_FILES -gt 0 ]; then
         # get list of of pet files and their byte sizes
         echo "Getting load file sizes(bytes) and path to each file."
+        # tr used to modify output file of gsutil du
+        # replace each space with tab, then squeeze (remove) all "empty" tabs to get info cols
         gsutil du "${DIR}${FILES}" | tr " " "\t" | tr -s "\t" > ~{datatype}_du.txt
 
         # get total memory in bytes
@@ -536,7 +538,7 @@ task LoadTable {
         TOTAL_FILE_SIZE=$(awk '{print $1}' OFS="\t" ~{datatype}_du.txt| paste -sd+ - | bc)
 
         # get number of iterations to loop through file - round up to get full set of files
-        num_sets=$(((TOTAL_FILE_SIZE+16492674416639)/16492674416640))
+        num_sets=$(((TOTAL_FILE_SIZE+16000000000000)/16000000000000))
 
         echo "Starting creation of $num_sets set(s) of load files totaling $TOTAL_FILE_SIZE bytes."
         for set in $(seq 1 $num_sets)
