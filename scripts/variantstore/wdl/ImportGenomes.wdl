@@ -529,40 +529,31 @@ task LoadTable {
     if [ $NUM_FILES -gt 0 ]; then
         # get list of of pet files and their byte sizes
         echo "Getting file sizes(bytes), paths to each file, and determining sets for chunking."
-        
         echo -e "bytes\tfile_path\tsum_bytes\tset_number" > ~{datatype}_du_sets.txt
         # tr to replace each space -> tab, squeeze (remove) "empty" tabs, 
         gsutil du "${DIR}${FILES}" | tr " " "\t" | tr -s "\t" | sed "/~{datatype}_tsvs\/$/d" | awk '{s+=$1}{print $1"\t"$2"\t"s"\t" (1+int(s / 16000000000000))}' >> ~{datatype}_du_sets.txt
 
-        # get total memory in bytes
-        # echo "Calculating total files' size(bytes)."
-        # TOTAL_FILE_SIZE=$(awk '{print $1}' OFS="\t" ~{datatype}_du.txt| paste -sd+ - | bc)
-
-        # get number of iterations to loop through file - round up to get full set of files
-        # num_sets=$(((TOTAL_FILE_SIZE+16000000000000)/16000000000000))
-
+        # for each set, copy data into set dirs and run bq load command
         for set in $(sed 1d ~{datatype}_du_sets.txt | cut -f4 | sort | uniq)
         do
           echo "Moving set $set data into separate directory."
-          grep "$set" ~{datatype}_du_sets.txt | cut -f2 | gsutil -m cp -I "gs://fc-13e1680e-eb3d-4102-975a-be0142ee9618/PR_test_2020_03_31/pet_tsvs/set_${set}/" 2> copy.log
+          awk "$4 == ${set}" ~{datatype}_du_sets.txt | cut -f2 | gsutil -m cp -I "${DIR}set_${set}/" 2> copy.log
           
           echo "Running BigQuery load for set $set."
           bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
             "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
           
+          tee status_bq_submission
+          
           bq_job_id=$(sed 's/.*://' status_bq_submission)
           # add job ID as key and gs path to the data set uploaded as value
           echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.tmp
+          cat bq_load_details.tmp
         done
 
         # echo "Starting creation of $num_sets set(s) of load files totaling $TOTAL_FILE_SIZE bytes."
         # for set in $(seq 1 $num_sets)
         # do
-        #   # write set of data totaling 16000000000000 bytes to file labeled by set #
-        #   awk '{s+=$1}{print $1"\t"$2"\t"s}' ~{datatype}_du.txt | awk '$3 < 16000000000000 {print $1"\t"$2}' > "${set}"_files_to_load.txt
-        #   # subtract files in created set from the full list of files to load
-        #   awk 'NR==FNR{a[$2]=$0;next}{$3=a[$2]}1' OFS="\t" "${set}"_files_to_load.txt ~{datatype}_du.txt | awk 'NF<3' | cut -f1-2 \
-        #   > tmp_~{datatype}_du.txt && mv tmp_~{datatype}_du.txt ~{datatype}_du.txt
 
         #   # TODO: CHANGE TO MV FROM CP once all the rest is fixed
         #   echo "Moving set $set data into separate directory."
