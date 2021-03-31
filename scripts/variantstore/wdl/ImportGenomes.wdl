@@ -537,7 +537,7 @@ task LoadTable {
         for set in $(sed 1d ~{datatype}_du_sets.txt | cut -f4 | sort | uniq)
         do
           echo "Moving set $set data into separate directory."
-          awk "$4 == ${set}" ~{datatype}_du_sets.txt | cut -f2 | gsutil -m cp -I "${DIR}set_${set}/" 2> copy.log
+          awk '$4 == ${set}' ~{datatype}_du_sets.txt | cut -f2 | gsutil -m cp -I "${DIR}set_${set}/" 2> copy.log
           
           echo "Running BigQuery load for set $set."
           bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
