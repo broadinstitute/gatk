@@ -544,22 +544,20 @@ task LoadTable {
           echo "Running BigQuery load for set $set."
           bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
             "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
-          
-          tee status_bq_submission
-          
+
           bq_job_id=$(sed 's/.*://' status_bq_submission)
           # add job ID as key and gs path to the data set uploaded as value
           echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.tmp
-          cat bq_load_details.tmp
         done
 
         # for each bq load job submitted, run bq wait, capture success/failure to tmp file
         while IFS="\t" read -r line_bq_load
-          do
-            bq wait --project_id=~{project_id} $(echo "$line_bq_load" | cut -f1) > bq_wait_status
-            # determine SUCCESS or FAILURE and capture to variable --> echo to file
-            wait_status=$(sed '6q;d' bq_wait_status | tr " " "\t" | tr -s "\t" | cut -f3)
-            echo "$wait_status" >> bq_wait_details.tmp
+        do
+          bq wait --project_id=~{project_id} $(echo "$line_bq_load" | cut -f1) > bq_wait_status
+            
+          # capture SUCCESS or FAILURE, echo to file
+          wait_status=$(sed '6q;d' bq_wait_status | tr " " "\t" | tr -s "\t" | cut -f3)
+          echo "$wait_status" >> bq_wait_details.tmp
         done < bq_load_details.tmp
 
         # combine load status and wait status into final report
@@ -584,8 +582,6 @@ task LoadTable {
   output {
     String done = "true"
     File manifest_file = "~{datatype}_du_sets.txt"
-    File load_details = "bq_load_details.tmp"
-    File wait_details = "bq_wait_details.tmp"
     File final_job_statuses = "bq_final_job_statuses.txt"
   }
 }
