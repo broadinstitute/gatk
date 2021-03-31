@@ -532,7 +532,7 @@ task LoadTable {
         
         echo -e "bytes\tfile_path\tsum_bytes\tset_number" > ~{datatype}_du_sets.txt
         # tr to replace each space -> tab, squeeze (remove) "empty" tabs, 
-        gsutil du "${DIR}${FILES}" | tr " " "\t" | tr -s "\t" | sed "/~{datatype}_tsvs\/$/d" | awk '{s+=$1}{print $1"\t"$2"\t"s"\t" (1+int(s / 16000000000000))}' >> ~{datatype}_du.txt
+        gsutil du "${DIR}${FILES}" | tr " " "\t" | tr -s "\t" | sed "/_tsvs\/$/d" | awk '{s+=$1}{print $1"\t"$2"\t"s"\t" (1+int(s / 16000000000000))}' >> ~{datatype}_du.txt
 
         # get total memory in bytes
         # echo "Calculating total files' size(bytes)."
