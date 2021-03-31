@@ -225,7 +225,6 @@ public class ExtractFeaturesEngine {
         int hets = Integer.valueOf(rec.get("num_het_samples").toString()).intValue();
         int homvars = Integer.valueOf(rec.get("num_homvar_samples").toString()).intValue();
 
-        // gcApprox includes the missing calls (rawGenotypeCounts[3]) and the gq0 calls (rawGenotypeCounts[4]) this is the number we would get if we use sampleNum - variants
         int samplesMinusVariants = numSamples - (hets + homvars);
         GenotypeCounts gcApprox = new GenotypeCounts(samplesMinusVariants, hets, homvars);
         double excessHetApprox = ExcessHet.calculateEH(gcApprox, numSamples).getRight();
