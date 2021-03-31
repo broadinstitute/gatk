@@ -59,7 +59,7 @@ cat wgs_not_in_handcurated.interval_list | grep -v "@" | awk '{ print $1":"$2"-"
 To run the script:
 
 ```bash
-python compare_data.py <first-vcf> <second-vcf> <file-of-excluded-intervals>
+python compare_data.py <warp-vcf-gz> <gvs-vcf-gz> <file-of-excluded-intervals>
 ```
 
 So for example,
@@ -109,6 +109,8 @@ tabix warp.vcf.gz
 ```
 
 ### Gather GVS pipeline results
+
+NOTE: The CohortExtract should be run with the workflow setting `"NgsCohortExtract.emit_pls":"true"`
 
 ```bash
 WORKFLOW_ID=76d21253-d0f5-42f0-a6f1-068bcd3e4e4b
