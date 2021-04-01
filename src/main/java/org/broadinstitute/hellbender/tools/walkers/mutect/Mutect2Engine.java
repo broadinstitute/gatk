@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Genotype;
@@ -250,9 +251,12 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
 
+
         final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads);
         readLikelihoods.switchToNaturalLog();
 
+        Haplotype template = readLikelihoods.getAllele(0);
+        readLikelihoods.addMissingAlleles(Collections.singletonList(new Haplotype("GGCGTCGGCGATGCGTCGGCCGGCTTCGGGCTTGGTGATGCGCAGCCGGTTGGCCAGCGCGCAGC".getBytes(), false, template.getAlignmentStartHapwrtRef(), template.getCigar())), 0.5);
         final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner);
         readLikelihoods.changeEvidence(readRealignments);
 
