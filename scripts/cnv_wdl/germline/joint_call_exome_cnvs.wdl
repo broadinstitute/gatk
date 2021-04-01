@@ -13,7 +13,7 @@ workflow JointCallExomeCNVs {
       File intervals
       File? blacklist_intervals
 
-	  File contig_ploidy_calls_tar_path_list
+      File contig_ploidy_calls_tar_path_list
       File gcnv_calls_tars_path_list
       File genotyped_intervals_vcf_indexes_path_list
       File genotyped_intervals_vcfs_path_list
@@ -35,10 +35,10 @@ workflow JointCallExomeCNVs {
       File ref_fasta_fai
       File ref_fasta
       String x_contig_name
-      File  protein_coding_gtf
-      File  linc_rna_gtf
-      File  promoter_bed
-      File  noncoding_bed
+      File protein_coding_gtf
+      File linc_rna_gtf
+      File promoter_bed
+      File noncoding_bed
       String gatk_docker
       String gatk_docker_clustering
       String gatk_docker_qual_calc
@@ -124,34 +124,29 @@ workflow JointCallExomeCNVs {
               allosomal_contigs = allosomal_contigs,
               ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
               sample_index = scatter_index,
+              maximum_number_events = maximum_number_events,
+              maximum_number_pass_events = maximum_number_pass_events,
               intervals_vcf = intervals_vcfs[scatter_index],
               intervals_vcf_index = intervals_vcf_indexes[scatter_index],
               clustered_vcf = GatherJointSegmentation.clustered_vcf,
               clustered_vcf_index = GatherJointSegmentation.clustered_vcf_index,
               gatk_docker = gatk_docker_qual_calc
       }
-       call CNVTasks.CollectSampleQualityMetrics as SampleQC {
-        input:
-          genotyped_segments_vcf = RecalcQual.genotyped_segments_vcf,
-          entity_id = sub(sub(basename(intervals_vcfs[scatter_index]), ".vcf.gz", ""), "intervals_output_", ""),
-          maximum_number_events = maximum_number_events,
-          maximum_number_pass_events = maximum_number_pass_events
-      }
     }
 
     #only put samples that passed QC into the combined VCF
     scatter(idx in range(length(RecalcQual.genotyped_segments_vcf))) {
-      if (SampleQC.qc_status_string[idx] == "PASS") {
+      if (RecalcQual.qc_status_string[idx] == "PASS") {
         String subset = RecalcQual.genotyped_segments_vcf[idx]
         String subset_indexes = RecalcQual.genotyped_segments_vcf_index[idx]
       }
-      if (SampleQC.qc_status_string[idx] != "PASS") {
+      if (RecalcQual.qc_status_string[idx] != "PASS") {
         String failed = sub(sub(basename(RecalcQual.genotyped_segments_vcf[idx]), ".vcf.gz", ""), "segments_output_", "")
       }
     }
     Array[String] subset_arr = select_all(subset)
     Array[String] subset_index_arr = select_all(subset_indexes)
-    Array[String] failed_samples = select_all(failed)
+    Array[String] failed_qc_samples = select_all(failed)
 
     call FastCombine {
       input:
@@ -177,8 +172,8 @@ workflow JointCallExomeCNVs {
       File combined_calls_index = FastCombine.combined_vcf_index
       File annotated_vcf = Annotate.annotated_vcf
       File annotated_vcf_index = Annotate.annotated_vcf_idx
-      Array[String] sample_qc_status_strings = SampleQC.qc_status_string
-      Array[String] failed_samples = failed_samples
+      Array[String] sample_qc_status_strings = RecalcQual.qc_status_string
+      Array[String] failed_samples = failed_qc_samples
     }
 }
 
