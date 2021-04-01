@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import com.google.common.collect.Sets;
+import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -23,7 +24,6 @@ import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantCon
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper.GnarlyGenotyperEngine;
-import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.*;
 import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollectionCodec;
@@ -203,7 +203,7 @@ public class ExtractCohortEngine {
 
         Iterator<FieldValueList> reader = tr.iterateAll().iterator();
 
-        List<GenericRecord> sampleRecords = new ArrayList<>();
+        List<ExtractCohortRecord> sampleRecords = new ArrayList<>();
         long currentLocation = -1;
 
         while (reader.hasNext()) {
@@ -220,15 +220,15 @@ public class ExtractCohortEngine {
                     logger.info(currentLocation + ": processing records");
                 }
                 // TODO this should start a thread or something - i.e. scatter
-                processSampleRecordsForLocation(currentLocation, sampleRecords, new HashSet<>(SchemaUtils.ARRAY_COHORT_FIELDS), fullVqsLodMap, fullYngMap, noFilteringRequested);
+                processSampleRecordsForLocation(currentLocation, sampleRecords, fullVqsLodMap, fullYngMap, noFilteringRequested);
                 currentLocation = location;
                 sampleRecords = new ArrayList<>();
             }
 
-            sampleRecords.add(new QueryRecord(row));
+            sampleRecords.add(new ExtractCohortRecord( row ));
 
         }
-        processSampleRecordsForLocation(currentLocation, sampleRecords, new HashSet<>(SchemaUtils.ARRAY_COHORT_FIELDS), fullVqsLodMap, fullYngMap, noFilteringRequested);
+        processSampleRecordsForLocation(currentLocation, sampleRecords, fullVqsLodMap, fullYngMap, noFilteringRequested);
 
     }
 
@@ -252,11 +252,11 @@ public class ExtractCohortEngine {
 
         final org.apache.avro.Schema schema = avroReader.getSchema();
 
-        final Set<String> columnNames = new HashSet<>();
+//        final Set<String> columnNames = new HashSet<>();
 //        if ( schema.getField(SchemaUtils.POSITION_FIELD_NAME) == null ) {
 //            throw new UserException("Records must contain a position column");
 //        }
-        schema.getFields().forEach(field -> columnNames.add(field.name()));
+//        schema.getFields().forEach(field -> columnNames.add(field.name()));
 //        validateSchema(columnNames);
 
         SortingCollection<GenericRecord> sortingCollection =  getAvroSortingCollection(schema, localSortMaxRecordsInRam);
@@ -265,6 +265,7 @@ public class ExtractCohortEngine {
         long startTime = System.currentTimeMillis();
 
         for ( final GenericRecord queryRow : avroReader ) {
+
             sortingCollection.add(queryRow);
             if (recordsProcessed++ % 1000000 == 0) {
                 long endTime = System.currentTimeMillis();
@@ -275,36 +276,45 @@ public class ExtractCohortEngine {
 
         sortingCollection.printTempFileStats();
 
-        final Map<String, GenericRecord> currentPositionRecords = new HashMap<>(sampleNames.size() * 2);
+        final Map<String, ExtractCohortRecord> currentPositionRecords = new HashMap<>(sampleNames.size() * 2);
 
         long currentLocation = -1;
 
+        final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(traversalIntervals);
+
         for ( final GenericRecord sortedRow : sortingCollection ) {
-            final long location = Long.parseLong(sortedRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-            final String sampleName = sortedRow.get(SchemaUtils.SAMPLE_NAME_FIELD_NAME).toString();
+            // TODO: move this conversion from GenericRecord to ExtractCohortRecord up
+            final ExtractCohortRecord cohortRow = new ExtractCohortRecord( sortedRow );
 
-            if ( location != currentLocation && currentLocation != -1 ) {
-                ++totalNumberOfSites;
-                processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), columnNames, fullVqsLodMap, fullYngMap, noFilteringRequested);
+            if ( intervalsOverlapDetector.overlapsAny(cohortRow) ) {
+                final long location = cohortRow.getLocation();
+                final String sampleName = cohortRow.getSampleName();
 
-                currentPositionRecords.clear();
+                if (location != currentLocation && currentLocation != -1) {
+                    ++totalNumberOfSites;
+                    processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noFilteringRequested);
+
+                    currentPositionRecords.clear();
+                }
+
+                currentPositionRecords.merge(sampleName, cohortRow, this::mergeSampleRecord);
+                currentLocation = location;
             }
-
-            currentPositionRecords.merge(sampleName, sortedRow, this::mergeSampleRecord);
-            currentLocation = location;
         }
 
         if ( ! currentPositionRecords.isEmpty() ) {
             ++totalNumberOfSites;
-            processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), columnNames, fullVqsLodMap, fullYngMap, noFilteringRequested);
+            processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noFilteringRequested);
         }
     }
 
-    private GenericRecord mergeSampleRecord(GenericRecord r1, GenericRecord r2) {
-        logger.info("In SampleRecord Merge Logic for " + r1 + " and " + r2);
+    private ExtractCohortRecord mergeSampleRecord(ExtractCohortRecord r1, ExtractCohortRecord r2) {
+        if (printDebugInformation) {
+            logger.info("In SampleRecord Merge Logic for " + r1 + " and " + r2);
+        }
 
-        final String r1State = r1.get(SchemaUtils.STATE_FIELD_NAME).toString();
-        final String r2State = r2.get(SchemaUtils.STATE_FIELD_NAME).toString();
+        final String r1State = r1.getState();
+        final String r2State = r2.getState();
 
         // Valid states are m, 1-6 (ref), v, *
         // For now, just handle cases where '*' should be dropped in favor anything besides missing...
@@ -317,10 +327,10 @@ public class ExtractCohortEngine {
         }
     }
 
-    private double getQUALapproxFromSampleRecord(GenericRecord sampleRecord) {
+    private double getQUALapproxFromSampleRecord(ExtractCohortRecord sampleRecord) {
         double qa = 0;
 
-        Object o1 = sampleRecord.get(SchemaUtils.QUALapprox);
+        Object o1 = sampleRecord.getQUALApprox();
 
         // prefer QUALapprox over allele specific version
         if (o1 != null) {
@@ -328,7 +338,7 @@ public class ExtractCohortEngine {
         }
 
         // now try with AS version
-        Object o = sampleRecord.get(SchemaUtils.AS_QUALapprox);
+        Object o = sampleRecord.getAsQUALApprox();
 
         // gracefully handle records without a QUALapprox (like the ones generated in the PET from a deletion)
         if (o==null) {
@@ -342,7 +352,7 @@ public class ExtractCohortEngine {
 
             // take the sum of all non-* alleles
             // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part
-            String[] alleles = sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString().split(",");
+            String[] alleles = sampleRecord.getAltAllele().split(",");
             String[] parts = s.split("\\|");
 
             for (int i=0; i < alleles.length; i++) {
@@ -356,7 +366,7 @@ public class ExtractCohortEngine {
         return qa;
     }
 
-    private void processSampleRecordsForLocation(final long location, final Iterable<GenericRecord> sampleRecordsAtPosition, final Set<String> columnNames, HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap, boolean noFilteringRequested) {
+    private void processSampleRecordsForLocation(final long location, final Iterable<ExtractCohortRecord> sampleRecordsAtPosition, HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap, boolean noFilteringRequested) {
         final List<VariantContext> unmergedCalls = new ArrayList<>();
         final Set<String> currentPositionSamplesSeen = new HashSet<>();
         boolean currentPositionHasVariant = false;
@@ -384,8 +394,8 @@ public class ExtractCohortEngine {
         double totalAsQualApprox = 0;
         boolean hasSnpAllele = false;
 
-        for ( final GenericRecord sampleRecord : sampleRecordsAtPosition ) {
-            final String sampleName = sampleRecord.get(SchemaUtils.SAMPLE_NAME_FIELD_NAME).toString();
+        for ( final ExtractCohortRecord sampleRecord : sampleRecordsAtPosition ) {
+            final String sampleName = sampleRecord.getSampleName();
             currentPositionSamplesSeen.add(sampleName);
             ++numRecordsAtPosition;
 
@@ -393,10 +403,10 @@ public class ExtractCohortEngine {
                 logger.info("\t" + contig + ":" + currentPosition + ": found record for sample " + sampleName + ": " + sampleRecord);
             }
 
-            switch (sampleRecord.get(SchemaUtils.STATE_FIELD_NAME).toString()) {
+            switch (sampleRecord.getState()) {
                 case "v":   // Variant
                     ++totalNumberOfVariants;
-                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName, vqsLodMap, yngMap);
+                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, contig, currentPosition, sampleName, vqsLodMap, yngMap);
                     unmergedCalls.add(vc);
 
                     totalAsQualApprox += getQUALapproxFromSampleRecord(sampleRecord);
@@ -438,7 +448,7 @@ public class ExtractCohortEngine {
                     unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele));
                     break;
                 default:
-                    throw new GATKException("Unrecognized state: " + sampleRecord.get(SchemaUtils.STATE_FIELD_NAME).toString());
+                    throw new GATKException("Unrecognized state: " + sampleRecord.getState());
             }
 
         }
@@ -600,7 +610,7 @@ public class ExtractCohortEngine {
 
 
     // vqsLogMap and yngMap are in/out parameters for this method. i.e. they are modified by this method
-    private VariantContext createVariantContextFromSampleRecord(final GenericRecord sampleRecord, final Set<String> columnNames, final String contig, final long startPosition, final String sample, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {
+    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord, final String contig, final long startPosition, final String sample, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {
         final VariantContextBuilder builder = new VariantContextBuilder();
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
 
@@ -608,9 +618,9 @@ public class ExtractCohortEngine {
         builder.start(startPosition);
 
         final List<Allele> alleles = new ArrayList<>();
-        Allele ref = Allele.create(sampleRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME).toString(), true);
+        Allele ref = Allele.create(sampleRecord.getRefAllele(), true);
         alleles.add(ref);
-        List<Allele> altAlleles = Arrays.stream(sampleRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString().split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER))
+        List<Allele> altAlleles = Arrays.stream(sampleRecord.getAltAllele().split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER))
                 .map(altAllele -> Allele.create(altAllele, false)).collect(Collectors.toList());
 
         // NOTE: gnarly needs this it seems?
@@ -626,65 +636,115 @@ public class ExtractCohortEngine {
         yngMap.putIfAbsent(ref, new HashMap<>());
 
 
-        for ( final String columnName : columnNames ) {
-            if ( SchemaUtils.REQUIRED_FIELDS.contains(columnName) ||
-                    columnName.equals(SchemaUtils.LOCATION_FIELD_NAME)
-               ) {
-                continue;
-            }
+        // need to re-prepend the leading "|" to AS_QUALapprox for use in gnarly
+        builder.attribute(SchemaUtils.AS_QUALapprox, "|" + sampleRecord.getAsQUALApprox());
 
-            final Object columnValue = sampleRecord.get(columnName);
-            if ( columnValue == null ) {
-                continue;
-            }
-            String columnValueString = columnValue.toString();
-
-            // need to re-prepend the leading "|" to AS_QUALapprox for use in gnarly
-            if ( columnName.equals(SchemaUtils.AS_QUALapprox) ) {
-                columnValueString = "|" + columnValueString;
-            }
-
-            if ( columnName.startsWith(SchemaUtils.GENOTYPE_FIELD_PREFIX) ) {
-                final String genotypeAttributeName = columnName.substring(SchemaUtils.GENOTYPE_FIELD_PREFIX.length());
-
-                if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_KEY) ) {
-                    if ("./.".equals(columnValueString)) {
-                        genotypeBuilder.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
-
-                    } else {
-                        final List<Allele> genotypeAlleles =
-                            Arrays.stream(columnValueString.split("[/|]"))
-                                    .map(Integer::parseInt)
-                                    .map(alleleIndex -> alleles.get(alleleIndex))
-                                    .collect(Collectors.toList());
-                        genotypeBuilder.alleles(genotypeAlleles);
-                    }
-                } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_QUALITY_KEY) ) {
-                    genotypeBuilder.GQ(Integer.parseInt(columnValueString));
-                } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_PL_KEY) ) {
-                    genotypeBuilder.PL(Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
-                } else if ( genotypeAttributeName.equals(VCFConstants.DEPTH_KEY) ) {
-                    genotypeBuilder.DP(Integer.parseInt(columnValueString));
-                } else if ( genotypeAttributeName.equals(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY) ) {
-                    genotypeBuilder.attribute(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, Integer.parseInt(columnValueString));
-                } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS) ) {
-                    genotypeBuilder.AD(Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
-                } else if ( genotypeAttributeName.equals(GATKVCFConstants.AS_VQS_LOD_KEY) ) {
-                    HashMap<Allele, Double> innerVqslodMap = vqsLodMap.get(ref);
-                    double[] vqslodValues = Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToDouble(Double::parseDouble).toArray();
-                    // should we use put or putIfAbsent - this may insert the same value multiple times. same with YNG below
-                    new IndexRange(0, vqslodValues.length).forEach(i -> innerVqslodMap.put(altAlleles.get(i), vqslodValues[i]));
-                } else if ( genotypeAttributeName.equals("YNG_STATUS") ) {
-                    HashMap<Allele, String> innerYNGMap = yngMap.get(ref);
-                    String[] yngValues = columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER);
-                    new IndexRange(0, yngValues.length).forEach(i -> innerYNGMap.put(altAlleles.get(i), yngValues[i]));
-                } else {
-                    genotypeBuilder.attribute(genotypeAttributeName, columnValueString);
-                }
-            } else {
-                builder.attribute(columnName, columnValueString);
-            }
+        final String callGT = sampleRecord.getCallGT();
+        if ("./.".equals(callGT)) {
+            genotypeBuilder.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
+        } else {
+            final List<Allele> genotypeAlleles =
+                    Arrays.stream(callGT.split("[/|]"))
+                            .map(Integer::parseInt)
+                            .map(alleleIndex -> alleles.get(alleleIndex))
+                            .collect(Collectors.toList());
+            genotypeBuilder.alleles(genotypeAlleles);
         }
+
+        genotypeBuilder.GQ(sampleRecord.getCallGQ());
+        genotypeBuilder.PL(Arrays.stream(sampleRecord.getCallPL().split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
+
+        // no depth
+//         if ( genotypeAttributeName.equals(VCFConstants.DEPTH_KEY) ) {
+//            genotypeBuilder.DP(Integer.parseInt(columnValueString));
+
+        genotypeBuilder.attribute(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, sampleRecord.getCallRGQ());
+
+        // no AD
+//        if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS) ) {
+//            genotypeBuilder.AD(Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
+
+        // no VQSLOD - note this is currently a bug! looking for AS_AS_VQS_LOD !!
+//    } else if ( genotypeAttributeName.equals(GATKVCFConstants.AS_VQS_LOD_KEY) ) {
+//        HashMap<Allele, Double> innerVqslodMap = vqsLodMap.get(ref);
+//        double[] vqslodValues = Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToDouble(Double::parseDouble).toArray();
+//        // should we use put or putIfAbsent - this may insert the same value multiple times. same with YNG below
+//        new IndexRange(0, vqslodValues.length).forEach(i -> innerVqslodMap.put(altAlleles.get(i), vqslodValues[i]));
+
+        // no YNG
+//    } else if ( genotypeAttributeName.equals("YNG_STATUS") ) {
+//        HashMap<Allele, String> innerYNGMap = yngMap.get(ref);
+//        String[] yngValues = columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER);
+//        new IndexRange(0, yngValues.length).forEach(i -> innerYNGMap.put(altAlleles.get(i), yngValues[i]));
+
+
+
+
+
+
+
+        // OLD WAY
+
+//        for ( final String columnName : columnNames ) {
+//            if ( SchemaUtils.REQUIRED_FIELDS.contains(columnName) ||
+//                    columnName.equals(SchemaUtils.LOCATION_FIELD_NAME)
+//               ) {
+//                continue;
+//            }
+//
+//            final Object columnValue = sampleRecord.get(columnName);
+//            if ( columnValue == null ) {
+//                continue;
+//            }
+//            String columnValueString = columnValue.toString();
+//
+//            // need to re-prepend the leading "|" to AS_QUALapprox for use in gnarly
+//            if ( columnName.equals(SchemaUtils.AS_QUALapprox) ) {
+//                columnValueString = "|" + columnValueString;
+//            }
+
+            // i.e. call_
+//            if ( columnName.startsWith(SchemaUtils.GENOTYPE_FIELD_PREFIX) ) {
+//                final String genotypeAttributeName = columnName.substring(SchemaUtils.GENOTYPE_FIELD_PREFIX.length());
+
+//                if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_KEY) ) {
+//                    if ("./.".equals(columnValueString)) {
+//                        genotypeBuilder.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
+//
+//                    } else {
+//                        final List<Allele> genotypeAlleles =
+//                            Arrays.stream(columnValueString.split("[/|]"))
+//                                    .map(Integer::parseInt)
+//                                    .map(alleleIndex -> alleles.get(alleleIndex))
+//                                    .collect(Collectors.toList());
+//                        genotypeBuilder.alleles(genotypeAlleles);
+//                    }
+//                } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_QUALITY_KEY) ) {
+//                    genotypeBuilder.GQ(Integer.parseInt(columnValueString));
+//                } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_PL_KEY) ) {
+//                    genotypeBuilder.PL(Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
+//                } else if ( genotypeAttributeName.equals(VCFConstants.DEPTH_KEY) ) {
+//                    genotypeBuilder.DP(Integer.parseInt(columnValueString));
+//                } else if ( genotypeAttributeName.equals(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY) ) {
+//                    genotypeBuilder.attribute(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, Integer.parseInt(columnValueString));
+//                } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS) ) {
+//                    genotypeBuilder.AD(Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
+//                } else if ( genotypeAttributeName.equals(GATKVCFConstants.AS_VQS_LOD_KEY) ) {
+//                    HashMap<Allele, Double> innerVqslodMap = vqsLodMap.get(ref);
+//                    double[] vqslodValues = Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToDouble(Double::parseDouble).toArray();
+//                    // should we use put or putIfAbsent - this may insert the same value multiple times. same with YNG below
+//                    new IndexRange(0, vqslodValues.length).forEach(i -> innerVqslodMap.put(altAlleles.get(i), vqslodValues[i]));
+//                } else if ( genotypeAttributeName.equals("YNG_STATUS") ) {
+//                    HashMap<Allele, String> innerYNGMap = yngMap.get(ref);
+//                    String[] yngValues = columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER);
+//                    new IndexRange(0, yngValues.length).forEach(i -> innerYNGMap.put(altAlleles.get(i), yngValues[i]));
+//                } else {
+//                    genotypeBuilder.attribute(genotypeAttributeName, columnValueString);
+//                }
+//            } else {
+//                builder.attribute(columnName, columnValueString);
+//            }
+//        }
 
         builder.genotypes(genotypeBuilder.make());
 
