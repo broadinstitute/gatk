@@ -189,7 +189,8 @@ public final class AssemblyRegionTrimmer {
             maxEnd = Math.max(maxEnd, vc.getEnd() + padding);
         }
 
-        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region.getPaddedSpan());
+//        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region.getPaddedSpan());
+        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), 104811, 104875);
 
         if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             HaplotypeCallerGenotypingDebugger.println("Padded and trimmed the region to this span: "+ paddedVariantSpan);
