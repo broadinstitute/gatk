@@ -257,6 +257,8 @@ public class ExtractCohortEngine {
 //            throw new UserException("Records must contain a position column");
 //        }
 //        schema.getFields().forEach(field -> columnNames.add(field.name()));
+//        System.out.println("columnNames");
+//        System.out.println(columnNames);
 //        validateSchema(columnNames);
 
         SortingCollection<GenericRecord> sortingCollection =  getAvroSortingCollection(schema, localSortMaxRecordsInRam);
@@ -637,7 +639,10 @@ public class ExtractCohortEngine {
 
 
         // need to re-prepend the leading "|" to AS_QUALapprox for use in gnarly
-        builder.attribute(SchemaUtils.AS_QUALapprox, "|" + sampleRecord.getAsQUALApprox());
+        final String asQUALApprox = sampleRecord.getAsQUALApprox();
+        if ( asQUALApprox != null ) {
+            builder.attribute(SchemaUtils.AS_QUALapprox, "|" + asQUALApprox);
+        }
 
         final String callGT = sampleRecord.getCallGT();
         if ("./.".equals(callGT)) {
@@ -651,14 +656,25 @@ public class ExtractCohortEngine {
             genotypeBuilder.alleles(genotypeAlleles);
         }
 
-        genotypeBuilder.GQ(sampleRecord.getCallGQ());
-        genotypeBuilder.PL(Arrays.stream(sampleRecord.getCallPL().split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
+        final String callGQ = sampleRecord.getCallGQ();
+        if ( callGQ != null ) {
+            genotypeBuilder.GQ(Integer.parseInt(callGQ));
+        }
+
+        final String callPL = sampleRecord.getCallPL();
+        if ( callPL != null ) {
+            genotypeBuilder.PL(Arrays.stream(callPL.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
+        }
+
 
         // no depth
 //         if ( genotypeAttributeName.equals(VCFConstants.DEPTH_KEY) ) {
 //            genotypeBuilder.DP(Integer.parseInt(columnValueString));
 
-        genotypeBuilder.attribute(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, sampleRecord.getCallRGQ());
+        final String callRGQ = sampleRecord.getCallRGQ();
+        if ( callRGQ != null ) {
+            genotypeBuilder.attribute(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, callRGQ);
+        }
 
         // no AD
 //        if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS) ) {

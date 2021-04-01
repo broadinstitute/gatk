@@ -2,13 +2,14 @@ package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
 import com.google.cloud.bigquery.FieldValueList;
 import htsjdk.samtools.util.Locatable;
-import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 
-import com.google.common.collect.ImmutableSet;
-import java.util.Arrays;
-import java.util.Set;
+import java.util.Objects;
+
+//import com.google.common.collect.ImmutableSet;
+//import java.util.Arrays;
+//import java.util.Set;
 
 
 
@@ -24,25 +25,25 @@ public class ExtractCohortRecord implements Locatable {
     private final String refAllele;
     private final String altAllele;
     private final String callGT;
-    private final Integer callGQ;
-    private final Integer callRGQ;
+    private final String callGQ;
+    private final String callRGQ;
     private final String qualapprox;
     private final String asQualapprox;
     private final String callPL;
 
     // COHORT_FIELDS
-    public static final ImmutableSet<String> COHORT_FIELDS = ImmutableSet.of(
-            SchemaUtils.LOCATION_FIELD_NAME,
-            SchemaUtils.SAMPLE_NAME_FIELD_NAME,
-            SchemaUtils.STATE_FIELD_NAME,
-            SchemaUtils.REF_ALLELE_FIELD_NAME,
-            SchemaUtils.ALT_ALLELE_FIELD_NAME,
-            SchemaUtils.CALL_GT,
-            SchemaUtils.CALL_GQ,
-            SchemaUtils.CALL_RGQ,
-            SchemaUtils.QUALapprox,
-            SchemaUtils.AS_QUALapprox,
-            SchemaUtils.CALL_PL);//, AS_VarDP);
+//    public static final ImmutableSet<String> COHORT_FIELDS = ImmutableSet.of(
+//            SchemaUtils.LOCATION_FIELD_NAME,
+//            SchemaUtils.SAMPLE_NAME_FIELD_NAME,
+//            SchemaUtils.STATE_FIELD_NAME,
+//            SchemaUtils.REF_ALLELE_FIELD_NAME,
+//            SchemaUtils.ALT_ALLELE_FIELD_NAME,
+//            SchemaUtils.CALL_GT,
+//            SchemaUtils.CALL_GQ,
+//            SchemaUtils.CALL_RGQ,
+//            SchemaUtils.QUALapprox,
+//            SchemaUtils.AS_QUALapprox,
+//            SchemaUtils.CALL_PL);//, AS_VarDP);
 
 
     public ExtractCohortRecord(GenericRecord genericRecord) {
@@ -52,14 +53,16 @@ public class ExtractCohortRecord implements Locatable {
         this.start = SchemaUtils.decodePosition(location);
         this.end = start;
         this.state = genericRecord.get(SchemaUtils.STATE_FIELD_NAME).toString();
-        this.refAllele = genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME).toString();
-        this.altAllele = genericRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString();
-        this.callGT = genericRecord.get(SchemaUtils.CALL_GT).toString();
-        this.callGQ = Integer.parseInt(genericRecord.get(SchemaUtils.CALL_GQ).toString());
-        this.callRGQ = Integer.parseInt(genericRecord.get(SchemaUtils.CALL_RGQ).toString());
-        this.qualapprox = genericRecord.get(SchemaUtils.QUALapprox).toString();
-        this.asQualapprox = genericRecord.get(SchemaUtils.AS_QUALapprox).toString();
-        this.callPL = genericRecord.get(SchemaUtils.CALL_PL).toString();
+
+        // the rest are nullable
+        this.refAllele = Objects.toString(genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME), null);
+        this.altAllele = Objects.toString(genericRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME), null);
+        this.callGT = Objects.toString(genericRecord.get(SchemaUtils.CALL_GT), null);
+        this.callGQ = Objects.toString(genericRecord.get(SchemaUtils.CALL_GQ), null);
+        this.callRGQ = Objects.toString(genericRecord.get(SchemaUtils.CALL_RGQ), null);
+        this.qualapprox = Objects.toString(genericRecord.get(SchemaUtils.QUALapprox), null);
+        this.asQualapprox = Objects.toString(genericRecord.get(SchemaUtils.AS_QUALapprox), null);
+        this.callPL = Objects.toString(genericRecord.get(SchemaUtils.CALL_PL), null);
     }
 
     public ExtractCohortRecord(FieldValueList genericRecord) {
@@ -72,8 +75,8 @@ public class ExtractCohortRecord implements Locatable {
         this.refAllele = genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME).toString();
         this.altAllele = genericRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString();
         this.callGT = genericRecord.get(SchemaUtils.CALL_GT).toString();
-        this.callGQ = Integer.parseInt(genericRecord.get(SchemaUtils.CALL_GQ).toString());
-        this.callRGQ = Integer.parseInt(genericRecord.get(SchemaUtils.CALL_RGQ).toString());
+        this.callGQ = genericRecord.get(SchemaUtils.CALL_GQ).toString();
+        this.callRGQ = genericRecord.get(SchemaUtils.CALL_RGQ).toString();
         this.qualapprox = genericRecord.get(SchemaUtils.QUALapprox).toString();
         this.asQualapprox = genericRecord.get(SchemaUtils.AS_QUALapprox).toString();
         this.callPL = genericRecord.get(SchemaUtils.CALL_PL).toString();
@@ -128,11 +131,11 @@ public class ExtractCohortRecord implements Locatable {
         return this.callGT;
     }
 
-    public Integer getCallGQ() {
+    public String getCallGQ() {
         return this.callGQ;
     }
 
-    public Integer getCallRGQ() {
+    public String getCallRGQ() {
         return this.callRGQ;
     }
 
