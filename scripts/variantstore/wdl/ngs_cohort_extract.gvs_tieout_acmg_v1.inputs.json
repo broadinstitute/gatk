@@ -5,7 +5,7 @@
   "NgsCohortExtract.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
   "NgsCohortExtract.scatter_count": 50,
 
-  "NgsCohortExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.2.0.0-151-g0293a21-SNAPSHOT-local.jar",
+  "NgsCohortExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.2.0.0-300-g98a024d-SNAPSHOT-local.jar",
 
   "NgsCohortExtract.fq_sample_table": "spec-ops-aou.gvs_tieout_acmg_v1.metadata",
   "NgsCohortExtract.fq_cohort_extract_table": "spec-ops-aou.gvs_tieout_acmg_v1.exported_cohort_all_samples",
@@ -18,6 +18,6 @@
   
   "NgsCohortExtract.excluded_intervals": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/excess_het_sites.sorted.bed",
     
-  "NgsCohortExtract.emit_pls": "true",
+  "NgsCohortExtract.emit_pls": "true"
   
 }

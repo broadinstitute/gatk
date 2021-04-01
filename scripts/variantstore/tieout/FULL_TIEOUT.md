@@ -34,39 +34,35 @@ gsutil -m cp SYNDIP* gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/
 
 First, create a full cohort extract (as described in README.md) using the `gvs_tieout_acmg_v3` (baseline), or otherwise desired, filtering model.  
 
-~/gatk SelectVariants -V gvs.noeh.vcf.gz --sample-name SM-G947Y --select-type-to-exclude NO_VARIATION -O NA12878.bq.all.noeh.vcf.gz
+~/gatk SelectVariants -V gvs.bq.all.noeh.vcf.gz --sample-name SM-G947Y --select-type-to-exclude NO_VARIATION -O NA12878.bq.all.noeh.vcf.gz
 bcftools view -O z NA12878.bq.all.noeh.vcf.gz chr20 > NA12878.bq.all.noeh.chr20.vcf.gz
 tabix NA12878.bq.all.noeh.chr20.vcf.gz
 
-~/gatk SelectVariants -V gvs.noeh.vcf.gz --sample-name CHMI_CHMI3_WGS1 --select-type-to-exclude NO_VARIATION -O SYNDIP.bq.all.noeh.vcf.gz
+~/gatk SelectVariants -V gvs.bq.all.noeh.vcf.gz --sample-name CHMI_CHMI3_WGS1 --select-type-to-exclude NO_VARIATION -O SYNDIP.bq.all.noeh.vcf.gz
 bcftools view -O z SYNDIP.bq.all.noeh.vcf.gz chr20 > SYNDIP.bq.all.noeh.chr20.vcf.gz
 tabix SYNDIP.bq.all.noeh.chr20.vcf.gz
 
+gsutil -m cp gvs.bq.all.noeh.vcf.gz* gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/
 gsutil -m cp NA12878* gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/
 gsutil -m cp SYNDIP* gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/
 
-Then subset down to NA12878/CHM and chr20 as for WARP
-
 TODO:
- - gather results of e27fceae-4878-472d-abe6-342ec6e4d9eb
+ - gather results of 606449bd-5b1d-4111-9d2c-ffa3a3e6ae2b
  - subset to two samples
  - subset to chr20
  - push up to bucket
  
 
-gatk SelectVariants -V full.bq.all.noeh.chr20.vcf.gz --sample-name SM-G947Y --select-type-to-exclude NO_VARIATION -O NA12878.bq.all.noeh.chr20.vcf.gz
-gatk SelectVariants -V full.bq.all.noeh.chr20.vcf.gz --sample-name CHMI_CHMI3_WGS1 --select-type-to-exclude NO_VARIATION -O SYNDIP.bq.all.noeh.chr20.vcf.gz
-
-
 ## script to add "AS_MAX_VQSLOD" to VCFs
 ```
-python add_max_as_vqslod.py NA12878.bq.chr20.vcf.gz | bgzip > NA12878.bq.chr20.maxas.vcf.gz && tabix NA12878.bq.chr20.maxas.vcf.gz
+--python add_max_as_vqslod.py NA12878.bq.chr20.vcf.gz | bgzip > NA12878.bq.chr20.maxas.vcf.gz && tabix NA12878.bq.chr20.maxas.vcf.gz
+
 python add_max_as_vqslod.py NA12878.bq.all.chr20.vcf.gz | bgzip > NA12878.bq.all.chr20.maxas.vcf.gz && tabix NA12878.bq.all.chr20.maxas.vcf.gz
 python add_max_as_vqslod.py NA12878.bq.all.noeh.chr20.vcf.gz| bgzip > NA12878.bq.all.noeh.chr20.maxas.vcf.gz && tabix NA12878.bq.all.noeh.chr20.maxas.vcf.gz
-
 python add_max_as_vqslod.py NA12878.warp.chr20.vcf.gz | bgzip > NA12878.warp.chr20.maxas.vcf.gz && tabix NA12878.warp.chr20.maxas.vcf.gz
 
-python add_max_as_vqslod.py SYNDIP.bq.chr20.vcf.gz | bgzip > SYNDIP.bq.chr20.maxas.vcf.gz && tabix SYNDIP.bq.chr20.maxas.vcf.gz
+--python add_max_as_vqslod.py SYNDIP.bq.chr20.vcf.gz | bgzip > SYNDIP.bq.chr20.maxas.vcf.gz && tabix SYNDIP.bq.chr20.maxas.vcf.gz
+
 python add_max_as_vqslod.py SYNDIP.bq.all.chr20.vcf.gz | bgzip > SYNDIP.bq.all.chr20.maxas.vcf.gz && tabix SYNDIP.bq.all.chr20.maxas.vcf.gz
 python add_max_as_vqslod.py SYNDIP.bq.all.noeh.chr20.vcf.gz | bgzip > SYNDIP.bq.all.noeh.chr20.maxas.vcf.gz && tabix SYNDIP.bq.all.noeh.chr20.maxas.vcf.gz
 python add_max_as_vqslod.py SYNDIP.warp.chr20.vcf.gz | bgzip > SYNDIP.warp.chr20.maxas.vcf.gz && tabix SYNDIP.warp.chr20.maxas.vcf.gz
@@ -75,12 +71,14 @@ python add_max_as_vqslod.py SYNDIP.warp.chr20.vcf.gz | bgzip > SYNDIP.warp.chr20
 
 ## Evaluate
 ```
-rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b NIST_truth.vcf.gz -e NIST_highconfidenceregions.bed -c NA12878.bq.chr20.maxas.vcf.gz -t human_REF_SDF -o NA12878_bq_roc
+--rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b NIST_truth.vcf.gz -e NIST_highconfidenceregions.bed -c NA12878.bq.chr20.maxas.vcf.gz -t human_REF_SDF -o NA12878_bq_roc
+
 rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b NIST_truth.vcf.gz -e NIST_highconfidenceregions.bed -c NA12878.bq.all.chr20.maxas.vcf.gz -t human_REF_SDF -o NA12878_bq_all_roc
 rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b NIST_truth.vcf.gz -e NIST_highconfidenceregions.bed -c NA12878.bq.all.noeh.chr20.maxas.vcf.gz -t human_REF_SDF -o NA12878_bq_all_noeh_roc
 rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b NIST_truth.vcf.gz -e NIST_highconfidenceregions.bed -c NA12878.warp.chr20.maxas.vcf.gz -t human_REF_SDF -o NA12878_warp_roc
 
-rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b chm/CHM-eval.kit/full.38.vcf.gz -e chm/CHM-eval.kit/full.38.bed.gz -c SYNDIP.bq.chr20.maxas.vcf.gz -t human_REF_SDF -o chm_bq_roc
+--rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b chm/CHM-eval.kit/full.38.vcf.gz -e chm/CHM-eval.kit/full.38.bed.gz -c SYNDIP.bq.chr20.maxas.vcf.gz -t human_REF_SDF -o chm_bq_roc
+
 rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b chm/CHM-eval.kit/full.38.vcf.gz -e chm/CHM-eval.kit/full.38.bed.gz -c SYNDIP.bq.all.chr20.maxas.vcf.gz -t human_REF_SDF -o chm_bq_all_roc
 rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b chm/CHM-eval.kit/full.38.vcf.gz -e chm/CHM-eval.kit/full.38.bed.gz -c SYNDIP.bq.all.noeh.chr20.maxas.vcf.gz -t human_REF_SDF -o chm_bq_all_noeh_roc
 rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b chm/CHM-eval.kit/full.38.vcf.gz -e chm/CHM-eval.kit/full.38.bed.gz -c SYNDIP.warp.chr20.maxas.vcf.gz -t human_REF_SDF -o chm_warp_roc
@@ -121,11 +119,12 @@ reference="/Users/kcibul/projects/references/hg38/v0/Homo_sapiens_assembly38.fas
 OUT=debug.vcf
 INTERVALS=chr20:64150204
 
+bcftools view -H -T ^excess_het_sites.sorted.bed 0000.vcf
 
 gatk --java-options "-Xms2g -Xdebug -Xrunjdwp:transport=dt_socket,address=5005,server=y,suspend=n" \
   ExtractCohort --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT \
   -R $REFERENCE \
-  -O full.bq.all.noeh.chr20.vcf.gz \
+  -O foo.vcf \
   --local-sort-max-records-in-ram 1000000 \
   --sample-table ${dataset}.metadata  \
   --variant-filter-table ${dataset}.filter_set_info \
@@ -133,9 +132,8 @@ gatk --java-options "-Xms2g -Xdebug -Xrunjdwp:transport=dt_socket,address=5005,s
   --project-id spec-ops-aou \
   --cohort-extract-table ${dataset}.exported_cohort_all_samples \
 	--interval-set-rule INTERSECTION \
-  -XL gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/excess_het_sites.sorted.bed \
   -L gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list \
-  -L chr20
+  -L chr20:61900-62000
 	
 ```
 
