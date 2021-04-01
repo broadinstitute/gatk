@@ -43,6 +43,7 @@ public class ExtractCohortEngine {
     private final boolean printDebugInformation;
     private final int localSortMaxRecordsInRam;
     private final TableReference cohortTableRef;
+    private final List<SimpleInterval> traversalIntervals;
     private final Long minLocation;
     private final Long maxLocation;
     private final TableReference filteringTableRef;
@@ -83,6 +84,7 @@ public class ExtractCohortEngine {
                                final CommonCode.ModeEnum mode,
                                final String cohortTableName,
                                final String cohortAvroFileName,
+                               final List<SimpleInterval> traversalIntervals,
                                final Long minLocation,
                                final Long maxLocation,
                                final String filteringTableName,
@@ -104,6 +106,7 @@ public class ExtractCohortEngine {
 
         this.cohortTableRef = new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
         this.cohortAvroFileName = cohortAvroFileName;
+        this.traversalIntervals = traversalIntervals;
         this.minLocation = minLocation;
         this.maxLocation = maxLocation;
         this.filteringTableRef = filteringTableName == null || "".equals(filteringTableName) ? null : new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
