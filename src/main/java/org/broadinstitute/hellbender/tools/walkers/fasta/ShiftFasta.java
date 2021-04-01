@@ -38,6 +38,13 @@ import java.util.ListIterator;
  * if pos_s > delta2 => pos_r = pos_s - delta2  ==   pos_s - total + offset - 1
  *   otherwise          pos_r = pos_s + delta1  ==   pos_s + offset - 1
  *
+ * Example command line:
+ * ShiftFasta
+ * -R "testfiles/shift/ecoli/Escherichia_coli_2017C-4173W12.fa"   // the reference to shift
+ * -O "testfiles/shift/ecoli/shifted.fa"                          // the shifted fasta
+ * --shift-back-output "testfiles/shift/ecoli/shiftback.chain"    // the shiftback chain file to use when lifting over
+ * --interval-file-name "testfiles/shift/ecoli/ecoli"             // base name for output interval files (one for regular and one for shifted)
+ * --line-width 100
  */
 @DocumentedFeature
 @CommandLineProgramProperties(
@@ -123,6 +130,7 @@ public class ShiftFasta extends GATKTool {
     /**
      * This method adds to a new fasta ref file that has been shifted by the amount indicated in the shiftOffsetsIt.
      * This also adds to the supporting files: chainfile, interval list for both the shifted and unshifted fasta files
+     * The shift is all done in memory. This is a scaling limitation.
      * @param seq The contig or sequence within the fasta file
      * @param shiftOffsetsIt the iterator at the correct position to get the next offset or null if dividing contig by 2
      */
@@ -136,31 +144,49 @@ public class ShiftFasta extends GATKTool {
             byte[] basesAtStart = Arrays.copyOf(bases, shiftOffset);
             int shiftBackOffset = bases.length - shiftOffset;
 
-            try {
-                refWriter.startSequence(seqName, basesPerLine);
-                refWriter.appendBases(basesAtEnd).appendBases(basesAtStart);
-                writeChainFileLine(seqName, contigLength, shiftOffset, bases, shiftBackOffset);
-                if (intervalFilename != null && shiftOffsetsIt == null) {
-                    int intervalStart = shiftOffset/2;
-                    int intervalEnd = intervalStart + contigLength/2 - 1;
-                    int shiftedIntervalStart = intervalStart;
-                    int shiftedIntervalEnd = intervalEnd + contigLength % 2;
-                    intervalRegularWriter.append(seqName + ":" + intervalStart + "-" + intervalEnd + "\n");
-                    intervalShiftedWriter.append(seqName + ":" + shiftedIntervalStart + "-" + shiftedIntervalEnd + "\n");
-                }
-            } catch (IOException e) {
-                throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
+            addToShiftedReference(refWriter, seqName, basesPerLine, basesAtStart, basesAtEnd);
+            addToChainFile(seqName, contigLength, shiftOffset, bases, shiftBackOffset);
+            if (intervalFilename != null && shiftOffsetsIt == null) {
+                addToIntervalFiles(intervalRegularWriter, intervalShiftedWriter, seqName, shiftOffset, contigLength);
             }
         } else {
             logger.info("not shifting config " + seq.getContig() + " because shift offset " + shiftOffset + " is not between 1-" + contigLength );
         }
     }
 
-    private void writeChainFileLine(String seqName, int contigLength, int shiftOffset, byte[] bases, int shiftBackOffset) throws IOException {
-        chainFileWriter.append(createChainString(seqName, shiftBackOffset, contigLength, shiftOffset, bases.length, 0, shiftBackOffset, chainId++));
-        chainFileWriter.append("\n" + shiftBackOffset + "\n\n");
-        chainFileWriter.append(createChainString(seqName, shiftOffset - 1, contigLength, 0, shiftOffset, shiftBackOffset, bases.length, chainId++));
-        chainFileWriter.append("\n" + shiftOffset + "\n\n");
+    private void addToIntervalFiles(FileWriter intervalRegularWriter, FileWriter intervalShiftedWriter, String seqName, int shiftOffset, int contigLength) {
+        try {
+            int intervalStart = shiftOffset/2;
+            int intervalEnd = intervalStart + contigLength/2 - 1;
+            int shiftedIntervalStart = intervalStart;
+            int shiftedIntervalEnd = intervalEnd + contigLength % 2;
+            intervalRegularWriter.append(seqName + ":" + intervalStart + "-" + intervalEnd + "\n");
+            intervalShiftedWriter.append(seqName + ":" + shiftedIntervalStart + "-" + shiftedIntervalEnd + "\n");
+        } catch (IOException e) {
+            throw new UserException("Failed to write interval files due to " + e.getMessage(), e);
+        }
+
+    }
+
+    private void addToShiftedReference(FastaReferenceWriter refWriter, String seqName, int basesPerLine, byte[] basesAtStart, byte[] basesAtEnd) {
+        try {
+            refWriter.startSequence(seqName, basesPerLine);
+            // swap the bases
+            refWriter.appendBases(basesAtEnd).appendBases(basesAtStart);
+        } catch (IOException e) {
+            throw new UserException("Failed to write shifted reference due to " + e.getMessage(), e);
+        }
+    }
+
+    private void addToChainFile(String seqName, int contigLength, int shiftOffset, byte[] bases, int shiftBackOffset) {
+        try {
+            chainFileWriter.append(createChainString(seqName, shiftBackOffset, contigLength, shiftOffset, bases.length, 0, shiftBackOffset, chainId++));
+            chainFileWriter.append("\n" + shiftBackOffset + "\n\n");
+            chainFileWriter.append(createChainString(seqName, shiftOffset - 1, contigLength, 0, shiftOffset, shiftBackOffset, bases.length, chainId++));
+            chainFileWriter.append("\n" + shiftOffset + "\n\n");
+        } catch (IOException e) {
+            throw new UserException("Failed to write chainFile due to " + e.getMessage(), e);
+        }
     }
 
     private String createChainString(String name, int score, int length, int start, int end, int shiftBackStart, int shiftBackEnd, int id) {
