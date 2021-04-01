@@ -26,12 +26,14 @@ WITH
                @trainingSitesStanza
         )
         GROUP BY location),
-     -- sum of qualapprox at the site level
-   aa_qualapprox_info AS (
+     -- sum of qualapprox, count of het,homvar at the site level
+   aa_site_info AS (
         SELECT location,
-               IFNULL(sum(SAFE_CAST(qualapprox as FLOAT64)),0) as sum_qualapprox
+               IFNULL(sum(SAFE_CAST(qualapprox as FLOAT64)),0) as sum_qualapprox,
+               COUNTIF(call_GT IN ('0/1', '0|1', '1/0', '1|0', '0/2', '0|2', '2/0', '2|0')) num_het_samples,
+               COUNTIF(call_GT IN ('1/1', '1|1', '1/2', '1|2', '2/1', '2|1')) num_homvar_samples
         FROM (
-               SELECT DISTINCT location, sample_id, qualapprox
+               SELECT DISTINCT location, sample_id, qualapprox, call_GT
                FROM `@altAllele`
                WHERE sample_id IN (SELECT sample_id FROM `@sample`)
                @locationStanza
@@ -57,8 +59,8 @@ WITH
            aarsbi.SB_REF_MINUS as SB_REF_MINUS,
            SB_ALT_PLUS,
            SB_ALT_MINUS,
-           num_het_samples,
-           num_homvar_samples
+           aasi.num_het_samples,
+           aasi.num_homvar_samples
     FROM (
     SELECT aa.location,
            ref,
@@ -88,6 +90,6 @@ WITH
     ) ai
     LEFT JOIN aa_ref_ad_info aaradi ON (ai.location = aaradi.location)
     LEFT JOIN aa_ref_sb_info aarsbi ON (ai.location = aarsbi.location)
-    LEFT JOIN aa_qualapprox_info aaqai ON (ai.location = aaqai.location)
-    WHERE aaqai.sum_qualapprox >= CASE WHEN LENGTH(ai.ref) = LENGTH(ai.allele) THEN @snpQualThreshold ELSE @indelQualThreshold END
+    LEFT JOIN aa_site_info aasi ON (ai.location = aasi.location)
+    WHERE aasi.sum_qualapprox >= CASE WHEN LENGTH(ai.ref) = LENGTH(ai.allele) THEN @snpQualThreshold ELSE @indelQualThreshold END
 
