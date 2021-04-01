@@ -665,8 +665,7 @@ public class ExtractCohortEngine {
         if ( callPL != null ) {
             genotypeBuilder.PL(Arrays.stream(callPL.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
         }
-
-
+        
         // no depth
 //         if ( genotypeAttributeName.equals(VCFConstants.DEPTH_KEY) ) {
 //            genotypeBuilder.DP(Integer.parseInt(columnValueString));
@@ -692,75 +691,6 @@ public class ExtractCohortEngine {
 //        HashMap<Allele, String> innerYNGMap = yngMap.get(ref);
 //        String[] yngValues = columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER);
 //        new IndexRange(0, yngValues.length).forEach(i -> innerYNGMap.put(altAlleles.get(i), yngValues[i]));
-
-
-
-
-
-
-
-        // OLD WAY
-
-//        for ( final String columnName : columnNames ) {
-//            if ( SchemaUtils.REQUIRED_FIELDS.contains(columnName) ||
-//                    columnName.equals(SchemaUtils.LOCATION_FIELD_NAME)
-//               ) {
-//                continue;
-//            }
-//
-//            final Object columnValue = sampleRecord.get(columnName);
-//            if ( columnValue == null ) {
-//                continue;
-//            }
-//            String columnValueString = columnValue.toString();
-//
-//            // need to re-prepend the leading "|" to AS_QUALapprox for use in gnarly
-//            if ( columnName.equals(SchemaUtils.AS_QUALapprox) ) {
-//                columnValueString = "|" + columnValueString;
-//            }
-
-            // i.e. call_
-//            if ( columnName.startsWith(SchemaUtils.GENOTYPE_FIELD_PREFIX) ) {
-//                final String genotypeAttributeName = columnName.substring(SchemaUtils.GENOTYPE_FIELD_PREFIX.length());
-
-//                if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_KEY) ) {
-//                    if ("./.".equals(columnValueString)) {
-//                        genotypeBuilder.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
-//
-//                    } else {
-//                        final List<Allele> genotypeAlleles =
-//                            Arrays.stream(columnValueString.split("[/|]"))
-//                                    .map(Integer::parseInt)
-//                                    .map(alleleIndex -> alleles.get(alleleIndex))
-//                                    .collect(Collectors.toList());
-//                        genotypeBuilder.alleles(genotypeAlleles);
-//                    }
-//                } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_QUALITY_KEY) ) {
-//                    genotypeBuilder.GQ(Integer.parseInt(columnValueString));
-//                } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_PL_KEY) ) {
-//                    genotypeBuilder.PL(Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
-//                } else if ( genotypeAttributeName.equals(VCFConstants.DEPTH_KEY) ) {
-//                    genotypeBuilder.DP(Integer.parseInt(columnValueString));
-//                } else if ( genotypeAttributeName.equals(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY) ) {
-//                    genotypeBuilder.attribute(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, Integer.parseInt(columnValueString));
-//                } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS) ) {
-//                    genotypeBuilder.AD(Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
-//                } else if ( genotypeAttributeName.equals(GATKVCFConstants.AS_VQS_LOD_KEY) ) {
-//                    HashMap<Allele, Double> innerVqslodMap = vqsLodMap.get(ref);
-//                    double[] vqslodValues = Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToDouble(Double::parseDouble).toArray();
-//                    // should we use put or putIfAbsent - this may insert the same value multiple times. same with YNG below
-//                    new IndexRange(0, vqslodValues.length).forEach(i -> innerVqslodMap.put(altAlleles.get(i), vqslodValues[i]));
-//                } else if ( genotypeAttributeName.equals("YNG_STATUS") ) {
-//                    HashMap<Allele, String> innerYNGMap = yngMap.get(ref);
-//                    String[] yngValues = columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER);
-//                    new IndexRange(0, yngValues.length).forEach(i -> innerYNGMap.put(altAlleles.get(i), yngValues[i]));
-//                } else {
-//                    genotypeBuilder.attribute(genotypeAttributeName, columnValueString);
-//                }
-//            } else {
-//                builder.attribute(columnName, columnValueString);
-//            }
-//        }
 
         builder.genotypes(genotypeBuilder.make());
 
