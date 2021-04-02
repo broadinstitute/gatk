@@ -10,11 +10,9 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
 import java.util.HashSet;
-import java.util.Set;
 
 @CommandLineProgramProperties(
         summary = "(\"ExtractFeatures\") - Extract features data from BQ to train filtering model.",

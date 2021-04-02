@@ -35,7 +35,7 @@ gsutil -m cp SYNDIP* gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/
 First, create a full cohort extract (as described in README.md) using the `gvs_tieout_acmg_v3` (baseline), or otherwise desired, filtering model.  
 
 ```
-~/gatk SelectVariants -V gvs.bq.all.noeh.vcf.gz --sample-name SM-G947Y --select-type-to-exclude NO_VARIATION -O NA12878.bq.all.noeh.vcf.gz
+~/gatk SelectVariants -V gvs.bq.all.vcf.gz --sample-name SM-G947Y --select-type-to-exclude NO_VARIATION -O NA12878.bq.all.vcf.gz
 bcftools view -O z NA12878.bq.all.vcf.gz chr20 > NA12878.bq.all.chr20.vcf.gz
 tabix NA12878.bq.all.chr20.vcf.gz
 
@@ -80,11 +80,11 @@ rtg roc chm_*_roc/non_snp_roc.tsv.gz
 ## RESEARCH: How to create list of excess het sites from WARP
 ```
 rm excess_het_sites.bed
-WORKFLOW_ID="c3733f56-218d-4242-af11-6557f101c5e2"
-for f in `gsutil ls gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/$WORKFLOW_ID/call-HardFilterAndMakeSitesOnlyVcf/shard-*/cacheCopy/*.sites_only.variant_filtered.vcf.gz `; do
-    echo "Processing $f"
+WORKFLOW_ID="36e7547e-3253-4888-9b1c-2a7437401aee" for f in `gsutil ls gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORKFLOW_ID}/call-HardFilterAndMakeSitesOnlyVcf/shard-*/*.sites_only.variant_filtered.vcf.gz `; do 
+    echo "Processing $f" 
     gsutil cat $f | gunzip | awk '{ if ($7 == "ExcessHet") print $1"\t"($2-1)"\t"$2}' >> excess_het_sites.bed
 done
+
 cat /Users/kcibul/projects/references/hg38/v0/Homo_sapiens_assembly38.fasta.fai | head -25 | cut -f1 > /tmp/genome.txt
 bedtools sort -g /tmp/genome.txt -i excess_het_sites.bed > excess_het_sites.sorted.bed
 

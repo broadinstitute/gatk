@@ -96,8 +96,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_feature_tieout
-         - add_model_inputs
    - name: ngs_cohort_extract
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/ngs_cohort_extract.wdl
