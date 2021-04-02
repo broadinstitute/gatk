@@ -1,3 +1,5 @@
+# NOTE: the current best practice for comparing feature extract is through a full tieout of filtered reslts
+
 # ACMG35 Feature Extract Tieout
 
 The goal is to compare data from the WARP pipeline going into VQSR with the BigQuery approach
