@@ -261,7 +261,6 @@ dependencies {
         exclude module: 'log4j-core'
         exclude module: 'spark-core_2.12'
         exclude module: 'spark-sql_2.12'
-        exclude module: 'spark-unsafe_2.12'
         exclude module: 'htsjdk'
         exclude module: 'protobuf-java'
     }
