@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
-import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.TableResult;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
@@ -175,11 +173,11 @@ public class ExtractCohortEngine {
                 logger.debug("Initializing Reader");
                 if (cohortTableRef != null){
                     final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
-                    createVariantsFromUngroupedTableResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                    createVariantsFromTableResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
                 }
                 else {
                     final AvroFileReader avroFileReader = new AvroFileReader(cohortAvroFileName);
-                    createVariantsFromUngroupedTableResult(avroFileReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                    createVariantsFromTableResult(avroFileReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
                 }
                 logger.debug("Finished Initializing Reader");
                 break;
@@ -204,7 +202,7 @@ public class ExtractCohortEngine {
     }
 
 
-    private void createVariantsFromUngroupedTableResult(final GATKAvroReader avroReader, HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap, boolean noFilteringRequested) {
+    private void createVariantsFromTableResult(final GATKAvroReader avroReader, HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap, boolean noFilteringRequested) {
 
         final org.apache.avro.Schema schema = avroReader.getSchema();
 
@@ -243,7 +241,6 @@ public class ExtractCohortEngine {
         final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(traversalIntervals);
 
         for ( final GenericRecord sortedRow : sortingCollection ) {
-            // TODO: move this conversion from GenericRecord to ExtractCohortRecord up
             final ExtractCohortRecord cohortRow = new ExtractCohortRecord( sortedRow );
 
             if ( intervalsOverlapDetector.overlapsAny(cohortRow) ) {
