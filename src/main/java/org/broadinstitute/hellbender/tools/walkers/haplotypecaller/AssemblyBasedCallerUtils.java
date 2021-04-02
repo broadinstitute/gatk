@@ -350,6 +350,7 @@ public final class AssemblyBasedCallerUtils {
                         continue;
                     }
 
+                    // BG & AH this is the right way to insert a new haplotype
                     final Haplotype insertedHaplotype = baseHaplotype.insertAllele(longerRef, givenAllele, activeRegionStart + givenVC.getStart() - assemblyRegionStart, givenVC.getStart());
                     if (insertedHaplotype != null) { // can be null if the requested allele can't be inserted into the haplotype
                         final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner, SWOverhangStrategy.INDEL);
