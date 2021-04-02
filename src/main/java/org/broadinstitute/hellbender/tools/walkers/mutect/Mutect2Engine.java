@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -231,7 +232,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final List<VariantContext> givenAlleles = featureContext.getValues(MTAC.alleles).stream()
                 .filter(vc -> MTAC.forceCallFiltered || vc.isNotFiltered()).collect(Collectors.toList());
 
+        // create VariantContext list for our 2 additional snps
+        VariantContextBuilder firstSNP = new VariantContextBuilder();
+
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false);
+
+        // maybe put haplotype here to get its events
+//        Haplotype template = untrimmedAssemblyResult.getHaplotypeList().get(0);
+//        Haplotype pileupHaplotype = new Haplotype("GGCGTCGGCGATGCGTCGGCCGGCTTCGGGCTTGGTGATGCGCAGCCGGTTGGCCAGCGCGCAGC".getBytes(), false, template.getAlignmentStartHapwrtRef(), template.getCigar());
+//        pileupHaplotype.setGenomeLocation(template.getGenomeLocation());
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(MTAC.maxMnpDistance);
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion, allVariationEvents, referenceContext);
@@ -251,12 +260,14 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
 
+        Haplotype template = assemblyResult.getHaplotypeList().get(0);
+        Haplotype pileupHaplotype = new Haplotype("GGCGTCGGCGATGCGTCGGCCGGCTTCGGGCTTGGTGATGCGCAGCCGGTTGGCCAGCGCGCAGC".getBytes(), false, template.getAlignmentStartHapwrtRef(), template.getCigar());
+        pileupHaplotype.setGenomeLocation(template.getGenomeLocation());
+        assemblyResult.add(pileupHaplotype);
 
         final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads);
         readLikelihoods.switchToNaturalLog();
 
-        Haplotype template = readLikelihoods.getAllele(0);
-        readLikelihoods.addMissingAlleles(Collections.singletonList(new Haplotype("GGCGTCGGCGATGCGTCGGCCGGCTTCGGGCTTGGTGATGCGCAGCCGGTTGGCCAGCGCGCAGC".getBytes(), false, template.getAlignmentStartHapwrtRef(), template.getCigar())), 0.5);
         final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner);
         readLikelihoods.changeEvidence(readRealignments);
 
