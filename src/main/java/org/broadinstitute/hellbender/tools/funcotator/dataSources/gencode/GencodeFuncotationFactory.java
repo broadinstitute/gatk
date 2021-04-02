@@ -1079,7 +1079,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Before we get started, check to see if this is a non-protein-coding feature.
         // If it is, we must handle it differently:
-        if ( transcript.getGeneType().equals(GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString()) ) {
+        if ( GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString().equals(transcript.getGeneType()) ) {
             return createCodingRegionFuncotationForProteinCodingFeature(variant, altAllele, reference, transcript, exon);
         }
         else {
@@ -2745,8 +2745,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     private static GencodeFuncotation.VariantClassification convertGeneTranscriptTypeToVariantClassification (final String type ) {
 
         //TODO: This all needs to be fixed so there is a 1:1 mapping of GencodeGtfFeature.KnownGeneBiotype->VariantClassification - Issue #4405
-        if (type.equals(GencodeGtfFeature.KnownGeneBiotype.LINCRNA.toString()) ||
-            type.equals(GencodeGtfFeature.KnownGeneBiotype.MACRO_LNCRNA.toString())) {
+        if (GencodeGtfFeature.KnownGeneBiotype.LINCRNA.toString().equals(type) ||
+                GencodeGtfFeature.KnownGeneBiotype.MACRO_LNCRNA.toString().equals(type)) {
 			return GencodeFuncotation.VariantClassification.LINCRNA;
 		}
         return GencodeFuncotation.VariantClassification.RNA;

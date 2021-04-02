@@ -3568,6 +3568,11 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
 
         final String templateFile = "";
 
+        // Testing arbitary biotypes here with random values so that we ensure that any string can be
+        // a valid biotype.
+        // This is so that we can "future-proof" the codec to allow for any biotypes that have not yet
+        // been defined in our datasources.  Since we do not know what the possible values can be, we should
+        // make sure to test even some extreme cases.
         return new Object[][] {
                 { "GAJUAEWJIWIEG", "gencode.biotype_template.gtf", testResourceDir },
                 { "2e#H!FXh&F!N4xn$VD*e", "gencode.biotype_template.gtf", testResourceDir },

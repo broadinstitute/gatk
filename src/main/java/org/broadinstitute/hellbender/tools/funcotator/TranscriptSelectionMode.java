@@ -246,8 +246,8 @@ public enum TranscriptSelectionMode {
         @Override
         public int compare( final GencodeFuncotation a, final GencodeFuncotation b ) {
             // Is it protein coding?
-            final boolean isAProteinCoding = (a.getGeneTranscriptType() != null) && a.getGeneTranscriptType().equals(GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString());
-            final boolean isBProteinCoding = (b.getGeneTranscriptType() != null) && b.getGeneTranscriptType().equals(GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString());
+            final boolean isAProteinCoding = GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString().equals(a.getGeneTranscriptType());
+            final boolean isBProteinCoding = GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString().equals(b.getGeneTranscriptType());
             if ( isAProteinCoding != isBProteinCoding ) {
                 if ( isAProteinCoding ) {
                     return -1;
