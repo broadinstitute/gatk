@@ -146,7 +146,6 @@ public class ExtractCohortEngine {
             final StorageAPIAvroReader filteringTableAvroReader = new StorageAPIAvroReader(filteringTableRef, rowRestrictionWithFilterSetName, projectID);
 
             for ( final GenericRecord queryRow : filteringTableAvroReader ) {
-                // TODO move this conversion up
                 final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord( queryRow );
 
                 final long location = filterRow.getLocation();
@@ -206,15 +205,6 @@ public class ExtractCohortEngine {
 
         final org.apache.avro.Schema schema = avroReader.getSchema();
 
-//        final Set<String> columnNames = new HashSet<>();
-//        if ( schema.getField(SchemaUtils.POSITION_FIELD_NAME) == null ) {
-//            throw new UserException("Records must contain a position column");
-//        }
-//        schema.getFields().forEach(field -> columnNames.add(field.name()));
-//        System.out.println("columnNames");
-//        System.out.println(columnNames);
-//        validateSchema(columnNames);
-
         SortingCollection<GenericRecord> sortingCollection =  getAvroSortingCollection(schema, localSortMaxRecordsInRam);
 
         int recordsProcessed = 0;
@@ -236,8 +226,7 @@ public class ExtractCohortEngine {
 
         long currentLocation = -1;
 
-        // TODO check if this is horribly too slow
-        // TODO use RegionChecker from tws_sv_local_assembler
+        // NOTE: if OverlapDetector takes too long, try using RegionChecker from tws_sv_local_assembler
         final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(traversalIntervals);
 
         for ( final GenericRecord sortedRow : sortingCollection ) {
@@ -592,7 +581,6 @@ public class ExtractCohortEngine {
         vqsLodMap.putIfAbsent(ref, new HashMap<>());
         yngMap.putIfAbsent(ref, new HashMap<>());
 
-
         // need to re-prepend the leading "|" to AS_QUALapprox for use in gnarly
         final String asQUALApprox = sampleRecord.getAsQUALApprox();
         if ( asQUALApprox != null ) {
@@ -621,19 +609,18 @@ public class ExtractCohortEngine {
             genotypeBuilder.PL(Arrays.stream(callPL.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
         }
 
-        // no depth
-//         if ( genotypeAttributeName.equals(VCFConstants.DEPTH_KEY) ) {
-//            genotypeBuilder.DP(Integer.parseInt(columnValueString));
-
         final String callRGQ = sampleRecord.getCallRGQ();
         if ( callRGQ != null ) {
             genotypeBuilder.attribute(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, callRGQ);
         }
 
+        // no depth
+//         if ( genotypeAttributeName.equals(VCFConstants.DEPTH_KEY) ) {
+//            genotypeBuilder.DP(Integer.parseInt(columnValueString));
+
         // no AD
 //        if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS) ) {
 //            genotypeBuilder.AD(Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
-
 
         builder.genotypes(genotypeBuilder.make());
 

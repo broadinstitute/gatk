@@ -71,8 +71,6 @@ public class ExtractCohort extends ExtractTool {
         VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary());
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
-        System.out.println("traversalIntervals:");
-        System.out.println(traversalIntervals);
 
         if (minLocation == null && maxLocation == null && hasUserSuppliedIntervals()) {
             final SimpleInterval firstInterval = traversalIntervals.get(0);
