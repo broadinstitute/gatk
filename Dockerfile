@@ -7,6 +7,8 @@ RUN ls .
 ADD . /gatk
 WORKDIR /gatk
 
+# Get an updated gcloud signing key, in case the one in the base image has expired
+RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 RUN add-apt-repository universe && apt update
 RUN apt-get --assume-yes install git-lfs
 RUN git lfs install
