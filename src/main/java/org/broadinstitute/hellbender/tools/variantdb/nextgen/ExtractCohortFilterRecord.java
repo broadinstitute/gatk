@@ -36,6 +36,23 @@ public class ExtractCohortFilterRecord implements Locatable {
         this.altAllele = Objects.toString(genericRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME), null);
     }
 
+    // for testing
+    public ExtractCohortFilterRecord(Long location, String sampleName, String ref, String alt,
+                                     String vqslod, String yng_status) {
+        this.location = location;
+        this.sampleName = sampleName;
+        this.contig = SchemaUtils.decodeContig(location);
+        this.start = SchemaUtils.decodePosition(location);
+        this.end = start;
+
+        this.vqslod = Double.parseDouble(vqslod);
+        this.yng = yng_status;
+
+        // TODO - are these in fact nullable in this table?
+        this.refAllele = Objects.toString(ref, null);
+        this.altAllele = Objects.toString(alt, null);
+    }
+
     @Override
     public String getContig() { return this.contig; }
 

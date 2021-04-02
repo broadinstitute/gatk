@@ -58,6 +58,28 @@ public class ExtractCohortRecord implements Locatable {
         this.callPL = Objects.toString(genericRecord.get(SchemaUtils.CALL_PL), null);
     }
 
+    // for testing only
+    public ExtractCohortRecord(Long location, String sampleName, String state, String ref, String alt,
+                               String callGT, String callGQ, String callRGQ, String qualapprox,
+                               String asQualapprox, String callPL) {
+        this.location = location;
+        this.sampleName = sampleName;
+        this.contig = SchemaUtils.decodeContig(location);
+        this.start = SchemaUtils.decodePosition(location);
+        this.end = start;
+        this.state = state;
+
+        // the rest are nullable
+        this.refAllele = Objects.toString(ref, null);
+        this.altAllele = Objects.toString(alt, null);
+        this.callGT = Objects.toString(callGT, null);
+        this.callGQ = Objects.toString(callGQ, null);
+        this.callRGQ = Objects.toString(callRGQ, null);
+        this.qualapprox = Objects.toString(qualapprox, null);
+        this.asQualapprox = Objects.toString(asQualapprox, null);
+        this.callPL = Objects.toString(callPL, null);
+    }
+
     @Override
     public String getContig() {
         return this.contig;

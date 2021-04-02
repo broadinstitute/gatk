@@ -231,6 +231,7 @@ public class ExtractCohortEngine {
 
         for ( final GenericRecord sortedRow : sortingCollection ) {
             final ExtractCohortRecord cohortRow = new ExtractCohortRecord( sortedRow );
+            System.out.println(sortedRow);
 
             if ( intervalsOverlapDetector.overlapsAny(cohortRow) ) {
                 final long location = cohortRow.getLocation();
