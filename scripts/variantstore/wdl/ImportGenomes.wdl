@@ -109,9 +109,9 @@ workflow ImportGenomes {
         datatype = "metadata",
         superpartitioned = "false",
         schema = metadata_schema,
+        service_account_json = service_account_json,
         table_creation_done = CreateMetadataTables.done,
         tsv_creation_done = CreateImportTsvs.done,
-        service_account_json = service_account_json,
         docker = docker_final,
         run_uuid = SetLock.run_uuid
     }
@@ -127,9 +127,9 @@ workflow ImportGenomes {
       datatype = "pet",
       superpartitioned = "true",
       schema = pet_schema,
+      service_account_json = service_account_json,
       table_creation_done = CreatePetTables.done,
       tsv_creation_done = CreateImportTsvs.done,
-      service_account_json = service_account_json,
       docker = docker_final,
       run_uuid = SetLock.run_uuid
     }
@@ -145,9 +145,9 @@ workflow ImportGenomes {
       datatype = "vet",
       superpartitioned = "true",
       schema = vet_schema,
+      service_account_json = service_account_json,
       table_creation_done = CreateVetTables.done,
       tsv_creation_done = CreateImportTsvs.done,
-      service_account_json = service_account_json,
       docker = docker_final,
       run_uuid = SetLock.run_uuid
     }
@@ -201,8 +201,10 @@ task SetLock {
     LOCKFILE="LOCKFILE"
     HAS_LOCKFILE=$(gsutil ls "${DIR}${LOCKFILE}" | wc -l)
     if [ $HAS_LOCKFILE -gt 0 ]; then
-      echo "ERROR: lock file in place. Check whether another run of ImportGenomes with this output directory is in progress or a previous run had an error. If you would like to proceed, run `gsutil rm ${DIR}${LOCKFILE}` and re-run the workflow." 1>&2
-      exit 1
+      echo "ERROR: lock file in place. Check whether another run of ImportGenomes with this output directory is in progress or a previous run had an error. 
+            If you would like to proceed, run the following command and re-run the workflow: \
+            gsutil rm ${DIR}${LOCKFILE} \
+            " && exit 1
     else  # put the lock file in place
       echo "Setting lock file with UUID ${RUN_UUID}"
       echo $RUN_UUID > $LOCKFILE
@@ -525,9 +527,45 @@ task LoadTable {
     fi
 
     if [ $NUM_FILES -gt 0 ]; then
-        bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" $TABLE $DIR$FILES ~{schema} || exit 1
-        echo "ingested ${FILES} file from $DIR into table $TABLE"
-        gsutil -m mv $DIR$FILES ${DIR}done/
+        # get list of of pet files and their byte sizes
+        echo "Getting file sizes(bytes), paths to each file, and determining sets for chunking."
+        echo -e "bytes\tfile_path\tsum_bytes\tset_number" > ~{datatype}_du_sets.txt
+        # tr to replace each space -> tab, squeeze (remove) "empty" tabs, 
+        gsutil du "${DIR}${FILES}" | tr " " "\t" | tr -s "\t" | sed "/~{datatype}_tsvs\/$/d" | awk '{s+=$1}{print $1"\t"$2"\t"s"\t" (1+int(s / 16000000000000))}' >> ~{datatype}_du_sets.txt
+
+        # per set, load table
+        for set in $(sed 1d ~{datatype}_du_sets.txt | cut -f4 | sort | uniq)
+        do
+          # move set data into separate directory
+          echo "Moving set $set data into separate directory."
+          awk -v set="$set" '$4 == set' ~{datatype}_du_sets.txt | cut -f2 | gsutil -m cp -I "${DIR}set_${set}/" 2> copy.log
+
+          # execulte bq load command, get bq load job id, add details per set to tmp file
+          echo "Running BigQuery load for set $set."
+          bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
+            "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
+
+          bq_job_id=$(sed 's/.*://' status_bq_submission)
+          # add job ID as key and gs path to the data set uploaded as value
+          echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.tmp
+        done
+
+        # for each bq load job submitted, run bq wait, capture success/failure to tmp file
+        while IFS="\t" read -r line_bq_load
+        do
+          bq wait --project_id=~{project_id} $(echo "$line_bq_load" | cut -f1) > bq_wait_status
+            
+          # capture SUCCESS or FAILURE, echo to file
+          wait_status=$(sed '6q;d' bq_wait_status | tr " " "\t" | tr -s "\t" | cut -f3)
+          echo "$wait_status" >> bq_wait_details.tmp
+        done < bq_load_details.tmp
+
+        # combine load status and wait status into final report
+        paste bq_load_details.tmp bq_wait_details.tmp > bq_final_job_statuses.txt
+        
+        # move files from each set into set-level "done" directories
+        gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/" 2> gsutil_mv_done.log
+
     else
         echo "no ${FILES} files to process in $DIR"
     fi
@@ -543,6 +581,8 @@ task LoadTable {
 
   output {
     String done = "true"
+    File manifest_file = "~{datatype}_du_sets.txt"
+    File final_job_statuses = "bq_final_job_statuses.txt"
   }
 }
 
