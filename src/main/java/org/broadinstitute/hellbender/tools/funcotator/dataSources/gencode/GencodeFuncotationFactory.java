@@ -1700,7 +1700,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         gencodeFuncotationBuilder.setReferenceContext(referenceBases.getBaseString(Strand.POSITIVE));
 
         // Set the VariantClassification:
-        if ( transcript.getGeneType().equals(GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString()) ) {
+        if ( GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString().equals(transcript.getGeneType()) ) {
             gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.INTRON);
         }
         else {
