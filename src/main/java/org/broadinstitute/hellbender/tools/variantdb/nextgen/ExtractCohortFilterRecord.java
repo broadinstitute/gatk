@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
-import com.google.cloud.bigquery.FieldValueList;
 import htsjdk.samtools.util.Locatable;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
@@ -36,28 +35,6 @@ public class ExtractCohortFilterRecord implements Locatable {
         this.refAllele = Objects.toString(genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME), null);
         this.altAllele = Objects.toString(genericRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME), null);
     }
-//    public ExtractCohortFilterRecord(FieldValueList genericRecord) {
-//        this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-//        this.sampleName = genericRecord.get(SchemaUtils.SAMPLE_NAME_FIELD_NAME).toString();
-//        this.contig = SchemaUtils.decodeContig(location);
-//        this.start = SchemaUtils.decodePosition(location);
-//        this.end = start;
-//        this.state = genericRecord.get(SchemaUtils.STATE_FIELD_NAME).toString();
-//        this.refAllele = genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME).toString();
-//        this.altAllele = genericRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString();
-//
-//    }
-//
-
-//    public ExtractCohortRecord(final Long inputLocation, final String inputSampleName) {
-//        this.location = inputLocation;
-//        this.sampleName = inputSampleName;
-//        this.contig = SchemaUtils.decodeContig(location);
-//        this.start = SchemaUtils.decodePosition(location);
-//        this.end = start;
-//    }
-
-
 
     @Override
     public String getContig() { return this.contig; }

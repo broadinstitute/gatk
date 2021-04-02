@@ -12,7 +12,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
@@ -184,59 +184,10 @@ public class ExtractCohortEngine {
                 logger.debug("Finished Initializing Reader");
                 break;
             case QUERY:
-                if (printDebugInformation) {
-                    logger.debug("using query api with order by");
-                }
-                // create the query string
-                String q = "SELECT " + StringUtils.join(SchemaUtils.COHORT_FIELDS,",") + " FROM " + cohortTableRef.getFQTableName() + " ORDER BY " + SchemaUtils.LOCATION_FIELD_NAME;
-                TableResult tr = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), cohortTableRef.tableProject, cohortTableRef.tableDataset, q,  null);
-                createVariantsFromSortedTableResults(tr, fullVqsLodMap, fullYngMap, noFilteringRequested);
-                break;
+                // TODO remove queryMode entirely from ExtractTool
+                throw new NotImplementedException("QUERY mode not supported. Please use `--query-mode LOCAL_SORT`.");
         }
     }
-
-    private void createVariantsFromSortedTableResults(final TableResult tr, HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap, boolean noFilteringRequested) {
-
-//        final Set<String> columnNames = new HashSet<>();
-//        if ( schema.getField(POSITION_FIELD_NAME) == null || schema.getField(VALUES_ARRAY_FIELD_NAME) == null ) {
-//            throw new UserException("Records must contain position and values columns");
-//        }
-//        schema.getField(VALUES_ARRAY_FIELD_NAME).schema().getElementType().getFields().forEach(field -> columnNames.add(field.name()));
-//        System.out.println("columnNames");
-//        System.out.println(columnNames);
-//        validateSchema(columnNames);
-
-        Iterator<FieldValueList> reader = tr.iterateAll().iterator();
-
-        List<ExtractCohortRecord> sampleRecords = new ArrayList<>();
-        long currentLocation = -1;
-
-        while (reader.hasNext()) {
-            ++totalNumberOfSites;
-            FieldValueList row = reader.next();
-
-            final long location = row.get(SchemaUtils.LOCATION_FIELD_NAME).getLongValue();
-            if (currentLocation < 0) {
-                currentLocation = location;
-            }
-
-            if (currentLocation != location) {
-                if ( printDebugInformation ) {
-                    logger.info(currentLocation + ": processing records");
-                }
-                // TODO this should start a thread or something - i.e. scatter
-                processSampleRecordsForLocation(currentLocation, sampleRecords, fullVqsLodMap, fullYngMap, noFilteringRequested);
-                currentLocation = location;
-                sampleRecords = new ArrayList<>();
-            }
-
-            sampleRecords.add(new ExtractCohortRecord( row ));
-
-        }
-        processSampleRecordsForLocation(currentLocation, sampleRecords, fullVqsLodMap, fullYngMap, noFilteringRequested);
-
-    }
-
 
     public SortingCollection<GenericRecord> getAvroSortingCollection(org.apache.avro.Schema schema, int localSortMaxRecordsInRam) {
         final SortingCollection.Codec<GenericRecord> sortingCollectionCodec = new AvroSortingCollectionCodec(schema);
@@ -257,13 +208,13 @@ public class ExtractCohortEngine {
 
         final org.apache.avro.Schema schema = avroReader.getSchema();
 
-        final Set<String> columnNames = new HashSet<>();
+//        final Set<String> columnNames = new HashSet<>();
 //        if ( schema.getField(SchemaUtils.POSITION_FIELD_NAME) == null ) {
 //            throw new UserException("Records must contain a position column");
 //        }
-        schema.getFields().forEach(field -> columnNames.add(field.name()));
-        System.out.println("columnNames");
-        System.out.println(columnNames);
+//        schema.getFields().forEach(field -> columnNames.add(field.name()));
+//        System.out.println("columnNames");
+//        System.out.println(columnNames);
 //        validateSchema(columnNames);
 
         SortingCollection<GenericRecord> sortingCollection =  getAvroSortingCollection(schema, localSortMaxRecordsInRam);
@@ -287,6 +238,8 @@ public class ExtractCohortEngine {
 
         long currentLocation = -1;
 
+        // TODO check if this is horribly too slow
+        // TODO use RegionChecker from tws_sv_local_assembler
         final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(traversalIntervals);
 
         for ( final GenericRecord sortedRow : sortingCollection ) {
@@ -684,18 +637,6 @@ public class ExtractCohortEngine {
 //        if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS) ) {
 //            genotypeBuilder.AD(Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
 
-        // no VQSLOD - note this is currently a bug! looking for AS_AS_VQS_LOD !!
-//    } else if ( genotypeAttributeName.equals(GATKVCFConstants.AS_VQS_LOD_KEY) ) {
-//        HashMap<Allele, Double> innerVqslodMap = vqsLodMap.get(ref);
-//        double[] vqslodValues = Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToDouble(Double::parseDouble).toArray();
-//        // should we use put or putIfAbsent - this may insert the same value multiple times. same with YNG below
-//        new IndexRange(0, vqslodValues.length).forEach(i -> innerVqslodMap.put(altAlleles.get(i), vqslodValues[i]));
-
-        // no YNG
-//    } else if ( genotypeAttributeName.equals("YNG_STATUS") ) {
-//        HashMap<Allele, String> innerYNGMap = yngMap.get(ref);
-//        String[] yngValues = columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER);
-//        new IndexRange(0, yngValues.length).forEach(i -> innerYNGMap.put(altAlleles.get(i), yngValues[i]));
 
         builder.genotypes(genotypeBuilder.make());
 

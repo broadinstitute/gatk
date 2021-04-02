@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
-import com.google.cloud.bigquery.FieldValueList;
 import htsjdk.samtools.util.Locatable;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
@@ -39,7 +38,6 @@ public class ExtractCohortRecord implements Locatable {
 //            SchemaUtils.AS_QUALapprox,
 //            SchemaUtils.CALL_PL);//, AS_VarDP);
 
-//    [call_RGQ, ref, alt, call_GQ, QUALapprox, location, AS_QUALapprox, state, call_GT, call_PL, sample_name]
 
     public ExtractCohortRecord(GenericRecord genericRecord) {
         this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
@@ -59,33 +57,6 @@ public class ExtractCohortRecord implements Locatable {
         this.asQualapprox = Objects.toString(genericRecord.get(SchemaUtils.AS_QUALapprox), null);
         this.callPL = Objects.toString(genericRecord.get(SchemaUtils.CALL_PL), null);
     }
-
-    public ExtractCohortRecord(FieldValueList genericRecord) {
-        this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-        this.sampleName = genericRecord.get(SchemaUtils.SAMPLE_NAME_FIELD_NAME).toString();
-        this.contig = SchemaUtils.decodeContig(location);
-        this.start = SchemaUtils.decodePosition(location);
-        this.end = start;
-        this.state = genericRecord.get(SchemaUtils.STATE_FIELD_NAME).toString();
-        this.refAllele = genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME).toString();
-        this.altAllele = genericRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString();
-        this.callGT = genericRecord.get(SchemaUtils.CALL_GT).toString();
-        this.callGQ = genericRecord.get(SchemaUtils.CALL_GQ).toString();
-        this.callRGQ = genericRecord.get(SchemaUtils.CALL_RGQ).toString();
-        this.qualapprox = genericRecord.get(SchemaUtils.QUALapprox).toString();
-        this.asQualapprox = genericRecord.get(SchemaUtils.AS_QUALapprox).toString();
-        this.callPL = genericRecord.get(SchemaUtils.CALL_PL).toString();
-    }
-
-//    public ExtractCohortRecord(final Long inputLocation, final String inputSampleName) {
-//        this.location = inputLocation;
-//        this.sampleName = inputSampleName;
-//        this.contig = SchemaUtils.decodeContig(location);
-//        this.start = SchemaUtils.decodePosition(location);
-//        this.end = start;
-//    }
-
-
 
     @Override
     public String getContig() {
