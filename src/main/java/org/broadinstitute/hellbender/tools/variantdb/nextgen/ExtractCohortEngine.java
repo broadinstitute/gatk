@@ -199,6 +199,8 @@ public class ExtractCohortEngine {
 //            throw new UserException("Records must contain position and values columns");
 //        }
 //        schema.getField(VALUES_ARRAY_FIELD_NAME).schema().getElementType().getFields().forEach(field -> columnNames.add(field.name()));
+//        System.out.println("columnNames");
+//        System.out.println(columnNames);
 //        validateSchema(columnNames);
 
         Iterator<FieldValueList> reader = tr.iterateAll().iterator();
@@ -252,13 +254,13 @@ public class ExtractCohortEngine {
 
         final org.apache.avro.Schema schema = avroReader.getSchema();
 
-//        final Set<String> columnNames = new HashSet<>();
+        final Set<String> columnNames = new HashSet<>();
 //        if ( schema.getField(SchemaUtils.POSITION_FIELD_NAME) == null ) {
 //            throw new UserException("Records must contain a position column");
 //        }
-//        schema.getFields().forEach(field -> columnNames.add(field.name()));
-//        System.out.println("columnNames");
-//        System.out.println(columnNames);
+        schema.getFields().forEach(field -> columnNames.add(field.name()));
+        System.out.println("columnNames");
+        System.out.println(columnNames);
 //        validateSchema(columnNames);
 
         SortingCollection<GenericRecord> sortingCollection =  getAvroSortingCollection(schema, localSortMaxRecordsInRam);
@@ -665,7 +667,7 @@ public class ExtractCohortEngine {
         if ( callPL != null ) {
             genotypeBuilder.PL(Arrays.stream(callPL.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
         }
-        
+
         // no depth
 //         if ( genotypeAttributeName.equals(VCFConstants.DEPTH_KEY) ) {
 //            genotypeBuilder.DP(Integer.parseInt(columnValueString));
