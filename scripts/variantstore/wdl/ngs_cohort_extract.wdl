@@ -15,6 +15,7 @@ workflow NgsCohortExtract {
         String query_project
         String? fq_filter_set_table
         String? filter_set_name
+        File? excluded_intervals
         Boolean? emit_pls = false
     
         String output_file_base_name
@@ -43,6 +44,7 @@ workflow NgsCohortExtract {
                 read_project_id          = query_project,
                 fq_filter_set_table      = fq_filter_set_table,
                 filter_set_name          = filter_set_name,
+                excluded_intervals       = excluded_intervals,
                 emit_pls                 = emit_pls,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz"
         }
@@ -72,6 +74,7 @@ task ExtractTask {
         String output_file
         String? fq_filter_set_table
         String? filter_set_name
+        File? excluded_intervals
         
         Boolean? emit_pls
 
@@ -94,7 +97,7 @@ task ExtractTask {
             ExtractCohort \
                 --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT \
                 -R "~{reference}" \
-                -O "~{output_file}" \
+                -O local.vcf.gz \
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
                 --sample-table ~{fq_sample_table} \
                 --cohort-extract-table ~{fq_cohort_extract_table} \
@@ -103,6 +106,12 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ~{"--variant-filter-table " + fq_filter_set_table} \
                 ~{"--filter-set-name " + filter_set_name}
+        
+        # XL does not currently work with ExtractCohort
+        gatk --java-options "-Xmx9g" \
+            SelectVariants \
+            ~{"-XL " + excluded_intervals} \
+            -V local.vcf.gz -O ~{output_file}
     >>>
 
     # ------------------------------------------------

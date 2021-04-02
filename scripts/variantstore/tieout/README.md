@@ -59,7 +59,7 @@ cat wgs_not_in_handcurated.interval_list | grep -v "@" | awk '{ print $1":"$2"-"
 To run the script:
 
 ```bash
-python compare_data.py <first-vcf> <second-vcf> <file-of-excluded-intervals>
+python compare_data.py <warp-vcf-gz> <gvs-vcf-gz> <file-of-excluded-intervals>
 ```
 
 So for example,
@@ -92,7 +92,7 @@ Since the data set is small enough we can gather together all the shards into a 
 ### Gather WARP pipeline results
 
 ```bash
-WORKFLOW_ID=68026724-7fdc-4a0e-bcfa-6a5e4a86cc0a
+WORKFLOW_ID=6d57ab66-8668-495f-8947-3b0ee7387389
 
 gsutil ls gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORKFLOW_ID}/call-TotallyRadicalGatherVcfs/shard-*/*.gnarly.vcf.gz > warp_vcfs.list
 
@@ -109,6 +109,8 @@ tabix warp.vcf.gz
 ```
 
 ### Gather GVS pipeline results
+
+NOTE: The CohortExtract should be run with the workflow setting `"NgsCohortExtract.emit_pls":"true"`
 
 ```bash
 WORKFLOW_ID=76d21253-d0f5-42f0-a6f1-068bcd3e4e4b

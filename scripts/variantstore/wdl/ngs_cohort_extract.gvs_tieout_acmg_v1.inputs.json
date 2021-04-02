@@ -1,0 +1,23 @@
+{
+  "NgsCohortExtract.reference": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "NgsCohortExtract.reference_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "NgsCohortExtract.reference_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+  "NgsCohortExtract.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
+  "NgsCohortExtract.scatter_count": 50,
+
+  "NgsCohortExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.2.0.0-300-g98a024d-SNAPSHOT-local.jar",
+
+  "NgsCohortExtract.fq_sample_table": "spec-ops-aou.gvs_tieout_acmg_v1.metadata",
+  "NgsCohortExtract.fq_cohort_extract_table": "spec-ops-aou.gvs_tieout_acmg_v1.exported_cohort_all_samples",
+
+  "NgsCohortExtract.query_project": "spec-ops-aou",
+  "NgsCohortExtract.output_file_base_name": "acmg_35_full_noeh",
+
+  "NgsCohortExtract.fq_filter_set_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_info",
+  "NgsCohortExtract.filter_set_name": "gvs_tieout_acmg_v4new_no_eh",
+  
+  "NgsCohortExtract.excluded_intervals": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/excess_het_sites.sorted.bed",
+    
+  "NgsCohortExtract.emit_pls": "true"
+  
+}

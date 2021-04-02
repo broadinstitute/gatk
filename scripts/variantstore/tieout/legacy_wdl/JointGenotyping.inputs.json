@@ -1,6 +1,6 @@
 {
-  "JointGenotyping.sample_name_map": "gs://broad-dsp-spec-ops/scratch/andrea/genomes/validation35/sample_set_membership_v6.tsv",
-  "JointGenotyping.callset_name": "bq_validation_v5_35",
+  "JointGenotyping.sample_name_map": "gs://broad-dsp-spec-ops/scratch/andrea/genomes/validation35/gvs_sci_tieout_acmg_cohort.sample_info.tsv",
+  "JointGenotyping.callset_name": "warp_tieout_acmg_cohort_v1",
   "JointGenotyping.unbounded_scatter_count_scale_factor": 2.5,
   "JointGenotyping.SplitIntervalList.scatter_mode": "INTERVAL_SUBDIVISION",
 

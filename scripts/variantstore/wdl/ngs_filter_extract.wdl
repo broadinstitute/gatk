@@ -26,10 +26,15 @@ workflow NgsFilterExtract {
         File dbsnp_vcf
         File dbsnp_vcf_index
 
+        File? snps_model
+        File? indels_model
+
         Array[String] snp_recalibration_tranche_values
         Array[String] snp_recalibration_annotation_values
         Array[String] indel_recalibration_tranche_values
         Array[String] indel_recalibration_annotation_values
+
+        File? excluded_sites_bed
 
         File hapmap_resource_vcf
         File hapmap_resource_vcf_index
@@ -89,10 +94,12 @@ workflow NgsFilterExtract {
         input:
         sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
         sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+        model_report = indels_model,
         recalibration_filename = filter_set_name + ".indels.recal",
         tranches_filename = filter_set_name + ".indels.tranches",
         recalibration_tranche_values = indel_recalibration_tranche_values,
         recalibration_annotation_values = indel_recalibration_annotation_values,
+        excluded_sites_bed = excluded_sites_bed,
         mills_resource_vcf = mills_resource_vcf,
         mills_resource_vcf_index = mills_resource_vcf_index,
         axiomPoly_resource_vcf = axiomPoly_resource_vcf,
@@ -107,10 +114,12 @@ workflow NgsFilterExtract {
       input:
           sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
           sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+          model_report = snps_model,
           recalibration_filename = filter_set_name + ".snps.recal",
           tranches_filename = filter_set_name + ".snps.tranches",
           recalibration_tranche_values = snp_recalibration_tranche_values,
           recalibration_annotation_values = snp_recalibration_annotation_values,
+          excluded_sites_bed = excluded_sites_bed,
           hapmap_resource_vcf = hapmap_resource_vcf,
           hapmap_resource_vcf_index = hapmap_resource_vcf_index,
           omni_resource_vcf = omni_resource_vcf,
@@ -361,6 +370,7 @@ task IndelsVariantRecalibrator {
   input {
     String recalibration_filename
     String tranches_filename
+    File? model_report
 
     Array[String] recalibration_tranche_values
     Array[String] recalibration_annotation_values
@@ -368,6 +378,7 @@ task IndelsVariantRecalibrator {
     File sites_only_variant_filtered_vcf
     File sites_only_variant_filtered_vcf_index
 
+    File? excluded_sites_bed
     File mills_resource_vcf
     File axiomPoly_resource_vcf
     File dbsnp_resource_vcf
@@ -387,13 +398,17 @@ task IndelsVariantRecalibrator {
     gatk --java-options -Xms24g \
       VariantRecalibrator \
       -V ~{sites_only_variant_filtered_vcf} \
+      ~{"-XL " + excluded_sites_bed} \
       -O ~{recalibration_filename} \
+      --output-model indels.model \
+      --rscript-file indels.Rscript \
       --tranches-file ~{tranches_filename} \
       --trust-all-polymorphic \
       -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
       -an ~{sep=' -an ' recalibration_annotation_values} \
       ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
       -mode INDEL \
+      ~{"--input-model " + model_report} \
       --max-gaussians ~{max_gaussians} \
       -resource:mills,known=false,training=true,truth=true,prior=12 ~{mills_resource_vcf} \
       -resource:axiomPoly,known=false,training=true,truth=false,prior=10 ~{axiomPoly_resource_vcf} \
@@ -412,6 +427,8 @@ task IndelsVariantRecalibrator {
     File recalibration = "~{recalibration_filename}"
     File recalibration_index = "~{recalibration_filename}.idx"
     File tranches = "~{tranches_filename}"
+    File model = "indels.model"
+    File rscript = "indels.Rscript"
   }
 }
 
@@ -428,6 +445,7 @@ task SNPsVariantRecalibrator {
     File sites_only_variant_filtered_vcf
     File sites_only_variant_filtered_vcf_index
 
+    File? excluded_sites_bed
     File hapmap_resource_vcf
     File omni_resource_vcf
     File one_thousand_genomes_resource_vcf
@@ -455,18 +473,16 @@ task SNPsVariantRecalibrator {
   Int machine_mem = select_first([machine_mem_gb, if auto_mem < 7 then 7 else auto_mem])
   Int java_mem = machine_mem - 5
 
-
-  String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT --output-tranches-for-scatter" else ""
-
   command <<<
     set -euo pipefail
-
-    MODEL_REPORT=~{model_report}
 
     gatk --java-options -Xmx~{java_mem}g \
       VariantRecalibrator \
       -V ~{sites_only_variant_filtered_vcf} \
+      ~{"-XL " + excluded_sites_bed} \
       -O ~{recalibration_filename} \
+      --output-model snps.model \
+      --rscript-file snps.Rscript \
       --tranches-file ~{tranches_filename} \
       --trust-all-polymorphic \
       -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
@@ -474,7 +490,7 @@ task SNPsVariantRecalibrator {
       ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
       -mode SNP \
       --sample-every-Nth-variant ~{downsampleFactor} \
-       ~{model_report_arg} \
+      ~{"--input-model " + model_report} \
       --max-gaussians ~{max_gaussians} \
       -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
       -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
@@ -494,6 +510,8 @@ task SNPsVariantRecalibrator {
     File recalibration = "~{recalibration_filename}"
     File recalibration_index = "~{recalibration_filename}.idx"
     File tranches = "~{tranches_filename}"
+    File model = "snps.model"
+    File rscript = "snps.Rscript"
   }
 }
 

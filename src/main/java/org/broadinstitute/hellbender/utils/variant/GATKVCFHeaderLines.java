@@ -79,6 +79,8 @@ public class GATKVCFHeaderLines {
         addFilterLine(new VCFFilterHeaderLine(VQSR_TRANCHE_SNP, "Temporary VQSLOD cutoff for SNPs until we implememnt full tranche sensitivities"));
         addFilterLine(new VCFFilterHeaderLine(VQSR_TRANCHE_INDEL, "Temporary VQSLOD cutoff for INDELs until we implememnt full tranche sensitivities"));
 
+        addFilterLine(new VCFFilterHeaderLine(EXCESS_HET_KEY, "Site has excess het value larger than the threshold"));
+
         // M2-related filters
         addFilterLine(new VCFFilterHeaderLine(ALIGNMENT_ARTIFACT_FILTER_NAME, "Alignment artifact"));
         addFilterLine(new VCFFilterHeaderLine(CLUSTERED_EVENTS_FILTER_NAME, "Clustered events observed in the tumor"));
