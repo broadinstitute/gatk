@@ -148,11 +148,14 @@ public class ExtractCohortEngine {
             final StorageAPIAvroReader filteringTableAvroReader = new StorageAPIAvroReader(filteringTableRef, rowRestrictionWithFilterSetName, projectID);
 
             for ( final GenericRecord queryRow : filteringTableAvroReader ) {
-                final long location = Long.parseLong(queryRow.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-                final Double vqslod = Double.parseDouble(queryRow.get("vqslod").toString());
-                final String yng = queryRow.get("yng_status").toString();
-                final Allele ref = Allele.create(queryRow.get("ref").toString(), true);
-                final Allele alt = Allele.create(queryRow.get("alt").toString(), false);
+                // TODO move this conversion up
+                final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord( queryRow );
+
+                final long location = filterRow.getLocation();
+                final Double vqslod = filterRow.getVqslod();
+                final String yng = filterRow.getYng();
+                final Allele ref = Allele.create(filterRow.getRefAllele(), true);
+                final Allele alt = Allele.create(filterRow.getAltAllele(), false);
                 fullVqsLodMap.putIfAbsent(location, new HashMap<>());
                 fullVqsLodMap.get(location).putIfAbsent(ref, new HashMap<>());
                 fullVqsLodMap.get(location).get(ref).put(alt, vqslod);

@@ -7,12 +7,6 @@ import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 
 import java.util.Objects;
 
-//import com.google.common.collect.ImmutableSet;
-//import java.util.Arrays;
-//import java.util.Set;
-
-
-
 public class ExtractCohortRecord implements Locatable {
 
     private final Long location;
@@ -30,9 +24,6 @@ public class ExtractCohortRecord implements Locatable {
     private final String qualapprox;
     private final String asQualapprox;
     private final String callPL;
-
-    // optional fields from VQSR
-    private final String vqslod;
 
     // COHORT_FIELDS
 //    public static final ImmutableSet<String> COHORT_FIELDS = ImmutableSet.of(
@@ -67,8 +58,6 @@ public class ExtractCohortRecord implements Locatable {
         this.qualapprox = Objects.toString(genericRecord.get(SchemaUtils.QUALapprox), null);
         this.asQualapprox = Objects.toString(genericRecord.get(SchemaUtils.AS_QUALapprox), null);
         this.callPL = Objects.toString(genericRecord.get(SchemaUtils.CALL_PL), null);
-
-        this.vqslod = Objects.toString(genericRecord.get(SchemaUtils.VQSLOD), null);
     }
 
     public ExtractCohortRecord(FieldValueList genericRecord) {
@@ -86,8 +75,6 @@ public class ExtractCohortRecord implements Locatable {
         this.qualapprox = genericRecord.get(SchemaUtils.QUALapprox).toString();
         this.asQualapprox = genericRecord.get(SchemaUtils.AS_QUALapprox).toString();
         this.callPL = genericRecord.get(SchemaUtils.CALL_PL).toString();
-
-        this.vqslod = genericRecord.get(SchemaUtils.VQSLOD).toString();
     }
 
 //    public ExtractCohortRecord(final Long inputLocation, final String inputSampleName) {
@@ -157,9 +144,5 @@ public class ExtractCohortRecord implements Locatable {
 
     public String getCallPL() {
         return this.callPL;
-    }
-
-    public String getVqslod() {
-        return this.vqslod;
     }
 }
