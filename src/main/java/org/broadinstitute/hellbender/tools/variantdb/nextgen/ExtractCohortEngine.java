@@ -494,7 +494,8 @@ public class ExtractCohortEngine {
 
 
         final VariantContext genotypedVC = disableGnarlyGenotyper ? qualapproxVC : gnarlyGenotyper.finalizeGenotype(qualapproxVC);
-        final VariantContext finalVC = noFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? genotypedVC : filterVariants(genotypedVC, vqsLodMap, yngMap);
+        final VariantContext filteredVC = noFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? genotypedVC : filterVariants(genotypedVC, vqsLodMap, yngMap);
+        final VariantContext finalVC = removeAnnotations(filteredVC);
 
         if ( finalVC != null ) {
             vcfWriter.add(finalVC);
@@ -548,6 +549,17 @@ public class ExtractCohortEngine {
         return filteredVC;
     }
 
+    protected VariantContext removeAnnotations(VariantContext filteredVC) {
+
+        final VariantContextBuilder builder = new VariantContextBuilder(filteredVC);
+        List<String> rmAnnotationList = new ArrayList<>(Arrays.asList(GATKVCFConstants.STRAND_ODDS_RATIO_KEY,
+                                                                      GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,
+                                                                      GATKVCFConstants.FISHER_STRAND_KEY));
+
+        builder.rmAttributes(rmAnnotationList);
+
+        return builder.make();
+    }
     /*
      * Alleles from the filtering table need to be remapped to use the same ref allele that the will exist in the joined variant context.
      * This method changes the alleles in the datamap to match the representation that's in the vc.
