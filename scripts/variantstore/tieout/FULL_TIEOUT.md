@@ -2,6 +2,7 @@
  - excess het sites are PRESENT but FILTERED (ExcessHet) in WARP pipeline
  - excess het sites are NOT MARKED OR FILTERED IN BQ PIPELINE
  - python strips out INFO field annotations with no `=` part (no effect)
+ - Previously there was an attempt to tie out the feature extract input to VQSR between WARP and GVS.  However, that was abandoned in favor of the truth-sample based comparison here due to non-determinism and bugs in GenomicsDB that were hard to compensate for.  However, the docs and scripts for doing this are in the branch `gvs_vqsr_input_tieout` under `scripts/variantstore/tieout/feature_extract`
  
 ## One time tasks
 ```
