@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
-import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfGeneFeature;
 
 import java.util.Arrays;
@@ -77,7 +76,7 @@ public class GencodeFuncotation implements Funcotation {
     private GencodeGtfGeneFeature.FeatureTag     apprisRank;
     private Integer                              transcriptLength;
     private String                               version;
-    private GencodeGtfFeature.GeneTranscriptType geneTranscriptType;
+    private String                               geneTranscriptType;
 
     //------------------------------------------------------------
     // Fields for overriding serialized values:
@@ -694,11 +693,11 @@ public class GencodeFuncotation implements Funcotation {
         this.version = version;
     }
 
-    public GencodeGtfFeature.GeneTranscriptType getGeneTranscriptType() {
+    public String getGeneTranscriptType() {
         return geneTranscriptType;
     }
 
-    public void setGeneTranscriptType(final GencodeGtfFeature.GeneTranscriptType geneTranscriptType) {
+    public void setGeneTranscriptType(final String geneTranscriptType) {
         this.geneTranscriptType = geneTranscriptType;
     }
 
