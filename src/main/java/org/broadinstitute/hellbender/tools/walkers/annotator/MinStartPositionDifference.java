@@ -55,7 +55,7 @@ public class MinStartPositionDifference extends PerAlleleAnnotation implements S
 
     @Override
     protected String getDescription() {
-        return "median distance from end of read";
+        return "Minimum difference in start position";
     }
 
     @Override
@@ -66,6 +66,7 @@ public class MinStartPositionDifference extends PerAlleleAnnotation implements S
 
         final OptionalInt valueAsInt;
         valueAsInt = OptionalInt.of(Math.min(read.getStart(), read.getMateStart()));
+        System.out.println("VC " + vc.getContig() + " " + vc.getStart() + " " + read.getName() + " Min Start Position " + valueAsInt.toString());
 
         return valueAsInt.isPresent() ? valueAsInt : OptionalInt.empty();
     }

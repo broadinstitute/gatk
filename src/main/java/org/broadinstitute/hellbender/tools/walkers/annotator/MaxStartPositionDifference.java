@@ -52,7 +52,7 @@ public class MaxStartPositionDifference extends PerAlleleAnnotation implements S
     protected String getVcfKey() { return GATKVCFConstants.READ_START_POSITION_MAX_DIFF_KEY; }
 
     @Override
-    protected String getDescription() { return "median distance from end of read"; }
+    protected String getDescription() { return "Maximum difference in start position"; }
 
     @Override
     protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
@@ -60,8 +60,21 @@ public class MaxStartPositionDifference extends PerAlleleAnnotation implements S
             return OptionalInt.empty();
         }
 
-        final OptionalInt valueAsInt;
-        valueAsInt = OptionalInt.of(Math.max(read.getStart(), read.getMateStart()));
+        OptionalInt valueAsInt = OptionalInt.empty();
+
+        // Assume innies.  If they aren't, then we won't return a value
+        if(!read.isReverseStrand() && read.mateIsReverseStrand()) {
+            System.out.println("Not Reverse");
+            valueAsInt = OptionalInt.of(read.getStart() + read.getFragmentLength());
+            System.out.println("VC " + vc.getContig() + " " + vc.getStart() + " " + read.getName() + " Max Start Position " + valueAsInt.toString());
+        }
+//        else if(read.isReverseStrand() && !read.mateIsReverseStrand()) {
+//            System.out.println("Reverse");
+//            //valueAsInt = OptionalInt.of(read.getMateStart() + read.getFragmentLength());
+//            valueAsInt = OptionalInt.of(read.getEnd());
+//            System.out.println("VC " + vc.getContig() + " " + vc.getStart() + " " + read.getName() + " Max Start Position " + valueAsInt.toString());
+//        }
+
 
         return valueAsInt.isPresent() ? valueAsInt : OptionalInt.empty();
     }
