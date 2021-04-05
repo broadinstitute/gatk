@@ -216,7 +216,8 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         record.setAttribute(output.getHaplotypeSampleTag(), haplotype.hashCode());
         record.setReadUnmappedFlag(false);
         record.setReferenceIndex(output.getBAMOutputHeader().getSequenceIndex(paddedRefLoc.getContig()));
-        record.setAttribute(SAMTag.RG.toString(), output.getHaplotypeReadGroupID());
+        // If we get here, the WriterType is not NO_HAPLOTYPES, so it is safe to call .get().
+        record.setAttribute(SAMTag.RG.toString(), output.getHaplotypeReadGroupID().get());
         record.setFlags(SAMFlag.READ_REVERSE_STRAND.intValue());
         if (callableRegion != null) {
             record.setAttribute(AssemblyBasedCallerUtils.CALLABLE_REGION_TAG, callableRegion.toString());

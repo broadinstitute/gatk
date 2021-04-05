@@ -111,7 +111,8 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         ) throws IOException
     {
         final Path outPath = GATKBaseTest.createTempFile("haplotypeBamWriterTest", outputFileExtension).toPath();
-        final SAMFileDestination fileDest = new SAMFileDestination(outPath, createIndex, createMD5, samHeader, Optional.of("TestHaplotypeRG"));
+        final String readGroupID = "TestHaplotypeRG";
+        final SAMFileDestination fileDest = new SAMFileDestination(outPath, createIndex, createMD5, samHeader, Optional.of(readGroupID));
 
         try (final HaplotypeBAMWriter haplotypeBAMWriter = new HaplotypeBAMWriter(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, fileDest)) {
             haplotypeBAMWriter.writeReadsAlignedToHaplotypes(
@@ -123,7 +124,8 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         }
 
         Assert.assertEquals(getReadCounts(outPath), 5);
-
+        final List<SAMReadGroupRecord> readGroups = getReadGroups(outPath);
+        Assert.assertTrue(readGroups.stream().map(rg -> rg.getId()).allMatch(id -> id.equals(readGroupID)));
         final File expectedMD5File = new File(outPath.toFile().getAbsolutePath() + ".md5");
         Assert.assertEquals(expectedMD5File.exists(), createMD5);
         if (createIndex) {
@@ -165,7 +167,8 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
         )
     {
-        final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature, Optional.of("testGroupID"));
+        final String readGroupID = "testGroupID";
+        final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature, Optional.of(readGroupID));
         try (final HaplotypeBAMWriter haplotypeBAMWriter = new HaplotypeBAMWriter(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, mockDest)) {
             haplotypeBAMWriter.writeReadsAlignedToHaplotypes(
                     haplotypes,
@@ -176,6 +179,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         }
 
         Assert.assertEquals(mockDest.getBAMOutputHeader().getReadGroups().size(), 1);
+        Assert.assertEquals(mockDest.getBAMOutputHeader().getReadGroups().get(0).getId(), readGroupID);
         Assert.assertTrue(mockDest.foundBases);
         Assert.assertTrue(mockDest.readCount == 5); // 4 samples + 1 haplotype
     }
@@ -347,5 +351,4 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             throw new UserException("Unable to open " + result.toString());
         }
     }
-
 }
