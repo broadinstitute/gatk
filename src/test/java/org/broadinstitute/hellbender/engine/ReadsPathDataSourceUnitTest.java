@@ -4,7 +4,7 @@ import htsjdk.samtools.*;
 import java.nio.channels.SeekableByteChannel;
 import java.util.function.Function;
 
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadsBundle;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.GATKReadsBundle;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -38,7 +38,7 @@ public final class ReadsPathDataSourceUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleNullFileList() {
-        List<ReadsBundle> nullList = null;
+        List<GATKReadsBundle> nullList = null;
         ReadsDataSource readsSource = new ReadsPathDataSource(nullList);
     }
 
@@ -105,16 +105,16 @@ public final class ReadsPathDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "SupportsSerialIteration")
     public void testSupportsSerialIteration(final List<Path> inputs, final boolean expectedSupportsSerialIteration) {
-        final List<ReadsBundle> inputPairs = guessIndexesForPaths(inputs);
+        final List<GATKReadsBundle> inputPairs = guessIndexesForPaths(inputs);
         try (ReadsDataSource readsSource = new ReadsPathDataSource(inputPairs)) {
             Assert.assertEquals(readsSource.supportsSerialIteration(), expectedSupportsSerialIteration);
         }
     }
 
-    private static List<ReadsBundle> guessIndexesForPaths(final List<Path> inputs) {
+    private static List<GATKReadsBundle> guessIndexesForPaths(final List<Path> inputs) {
         return inputs.stream()
                 .map(IOUtils::toGATKPath)
-                .map(ReadsBundle::resolveIndex)
+                .map(GATKReadsBundle::resolveIndex)
                 .collect(Collectors.toList());
     }
 
@@ -620,7 +620,7 @@ public final class ReadsPathDataSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "manuallySpecifiedIndexTestData")
     public void testManuallySpecifiedIndices( final List<Path> bams, final List<Path> indices ) {
-        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(ReadsBundle.fromPathLists(bams, indices)) ) {
+        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(GATKReadsBundle.fromPathLists(bams, indices)) ) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
 
             final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
@@ -637,7 +637,7 @@ public final class ReadsPathDataSourceUnitTest extends GATKBaseTest {
     public void testManuallySpecifiedIndicesWithCustomReaderFactory( final List<Path> bams, final List<Path> indices ) {
         final SamReaderFactory customFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT);
 
-        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(ReadsBundle.fromPathLists(bams, indices), customFactory) ) {
+        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(GATKReadsBundle.fromPathLists(bams, indices), customFactory) ) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
 
             final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
@@ -657,7 +657,7 @@ public final class ReadsPathDataSourceUnitTest extends GATKBaseTest {
         // So we pass this invalid wrapper: if the code tries to use it, it'll blow up.
         final Function<SeekableByteChannel, SeekableByteChannel> nullWrapper = (SeekableByteChannel) -> null;
 
-        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(ReadsBundle.fromPathLists(bams, indices), customFactory, nullWrapper, nullWrapper) ) {
+        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(GATKReadsBundle.fromPathLists(bams, indices), customFactory, nullWrapper, nullWrapper) ) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
 
             final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
@@ -692,7 +692,7 @@ public final class ReadsPathDataSourceUnitTest extends GATKBaseTest {
         final Function<SeekableByteChannel, SeekableByteChannel> xorData = XorWrapper.forKey((byte)74);
         Function<SeekableByteChannel, SeekableByteChannel> xorIndex = XorWrapper.forKey((byte)80);
 
-        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(ReadsBundle.fromPathLists(bams, indices), customFactory, xorData, xorIndex) ) {
+        try ( final ReadsPathDataSource readsSource = new ReadsPathDataSource(GATKReadsBundle.fromPathLists(bams, indices), customFactory, xorData, xorIndex) ) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
 
             final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));

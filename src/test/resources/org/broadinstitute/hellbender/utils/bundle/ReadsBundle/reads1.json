@@ -1,6 +1,0 @@
-{
-  "schemaName": "htsbundle",
-  "schemaVersion": "0.1.0",
-  "READS":{"path":"reads.bam", "fileType":"BAM"},
-  "INDEX":{"path":"reads.bai", "fileType":"BAI"}
-}

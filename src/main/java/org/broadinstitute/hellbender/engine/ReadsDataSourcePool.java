@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SamReaderFactory;
 import org.apache.commons.pool.BasePoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadsBundle;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.GATKReadsBundle;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.AutoCloseableReference;
 
@@ -72,7 +72,7 @@ public final class ReadsDataSourcePool extends GenericObjectPool<ReadsPathDataSo
                 factory.referenceSequence(referencePath.toPath());
             }
             return new ReadsPathDataSource(
-                    paths.stream().map(p -> ReadsBundle.resolveIndex(p)).collect(Collectors.toList()),
+                    paths.stream().map(p -> GATKReadsBundle.resolveIndex(p)).collect(Collectors.toList()),
                     factory);
         }
 

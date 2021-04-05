@@ -1,0 +1,1 @@
+{"schemaVersion":"0.1.0","INDEX":{"path":"reads.bai"},"schemaName":"htsbundle","READS":{"path":"reads.bam","subtype":"BAM"},"primary":"READS"}

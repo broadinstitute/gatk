@@ -6,7 +6,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadsBundle;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.GATKReadsBundle;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -16,8 +16,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
-
-// propagate GATKPath tag and attributes on JSON deserialization ?
 
 /**
  * Create a JSON Reads bundle file for use with GATK tools.
@@ -69,7 +67,7 @@ public class CreateReadsBundleJson extends CommandLineProgram {
         //TODO: should the UT8-encoding be a constant that lives somewhere else ?
         try (final OutputStream os = outputBundle.getOutputStream();
              final OutputStreamWriter sw = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
-            final ReadsBundle bundle = new ReadsBundle(reads, index);
+            final GATKReadsBundle bundle = new GATKReadsBundle(reads, index);
             sw.write(bundle.toJSON());
         } catch (final IOException e) {
             throw new UserException(String.format("Failed writing bundle to output %s", outputBundle), e);

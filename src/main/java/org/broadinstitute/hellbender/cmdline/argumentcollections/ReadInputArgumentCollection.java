@@ -46,7 +46,7 @@ public abstract class ReadInputArgumentCollection implements Serializable {
     protected boolean dontInferBamIndexes = false;
 
     //Lazily computed the first time it is requested
-    private List<ReadsBundle> readsInputs = null;
+    private List<GATKReadsBundle> readsInputs = null;
 
     /**
      * Get the raw list of BAM/SAM/CRAM inputs specified at the command line.
@@ -61,14 +61,14 @@ public abstract class ReadInputArgumentCollection implements Serializable {
      * GATKPath is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
     public List<GATKPath> getReadPaths(){
-        return getReadIndexPairs().stream().map(ReadsBundle::getReads).collect(Collectors.toList());
+        return getReadIndexPairs().stream().map(GATKReadsBundle::getReads).collect(Collectors.toList());
     }
 
 
     /**
      * Get the matched pairs of BAM/SAM/CRAM and resolved indexes that were specified on the command line
      */
-    public List<ReadsBundle> getReadIndexPairs() {
+    public List<GATKReadsBundle> getReadIndexPairs() {
         //check if it's already been cached
         if( readsInputs == null){
             //compute it if necessary
@@ -81,32 +81,32 @@ public abstract class ReadInputArgumentCollection implements Serializable {
                         "\n Found " + numberOfReadSourcesSpecified +"  read sources and " + numberOfReadIndexesSpecified + " read indexes.");
             }
 
-            if ( !readIndices.isEmpty() && rawReadPathSpecifiers.stream().anyMatch(ReadsBundle::looksLikeAReadsBundle)){
+            if ( !readIndices.isEmpty() && rawReadPathSpecifiers.stream().anyMatch(GATKReadsBundle::looksLikeAReadsBundle)){
                 if( !readIndices.isEmpty()){
                     throw new UserException("You can specify read/index pairs with json read bundles " +
                             "OR with the --"+ StandardArgumentDefinitions.READ_INDEX_LONG_NAME+ " argument but you cannot mix the two.");
                 }
             }
 
-            final List<ReadsBundle> pairs = new ArrayList<>(numberOfReadIndexesSpecified);
+            final List<GATKReadsBundle> pairs = new ArrayList<>(numberOfReadIndexesSpecified);
             for( int i = 0; i < numberOfReadSourcesSpecified ; i++){
                 //TODO This has the problem where we can't identify a .json that doesn't have the right extension
                 final GATKPath rawReadPath = rawReadPathSpecifiers.get(i);
-                final ReadsBundle pair;
-                if(ReadsBundle.looksLikeAReadsBundle(rawReadPath)){
+                final GATKReadsBundle pair;
+                if(GATKReadsBundle.looksLikeAReadsBundle(rawReadPath)){
                     //if it looks like a bundle, load it
-                    pair = ReadsBundle.getReadsBundleFromJSON(rawReadPath);
+                    pair = GATKReadsBundle.getReadsBundleFromJSON(rawReadPath);
                 } else if (!readIndices.isEmpty()) {
                     //if it isn't a bundle and we have read indexes provided than get it from the list
-                    pair = new ReadsBundle(rawReadPath, readIndices.get(i));
+                    pair = new GATKReadsBundle(rawReadPath, readIndices.get(i));
                 } else {
                     //otherwise we have to decide to infer the index path or not
                     if(dontInferBamIndexes) {
                         //in this case we explicitly set the index to null since it wasn't specified
-                        pair = new ReadsBundle(rawReadPath, null);
+                        pair = new GATKReadsBundle(rawReadPath, null);
                     } else {
                         //otherwise we try to guess
-                        pair = ReadsBundle.resolveIndex(rawReadPath);
+                        pair = GATKReadsBundle.resolveIndex(rawReadPath);
                     }
                 }
                 pairs.add(pair);

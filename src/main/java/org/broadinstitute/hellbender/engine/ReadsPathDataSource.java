@@ -13,7 +13,7 @@ import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadsBundle;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.GATKReadsBundle;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -106,7 +106,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      * @param samPath SAM/BAM file, not null.
      */
     public ReadsPathDataSource( final GATKPath samPath ) {
-        this(samPath != null ? Collections.singletonList(ReadsBundle.resolveIndex(samPath)) : null, null);
+        this(samPath != null ? Collections.singletonList(GATKReadsBundle.resolveIndex(samPath)) : null, null);
     }
 
     /**
@@ -117,14 +117,14 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      *                               stringency SILENT is used.
      */
     public ReadsPathDataSource( final GATKPath samPath, SamReaderFactory customSamReaderFactory ) {
-        this(samPath != null ? Collections.singletonList(ReadsBundle.resolveIndex(samPath)) : null, customSamReaderFactory);
+        this(samPath != null ? Collections.singletonList(GATKReadsBundle.resolveIndex(samPath)) : null, customSamReaderFactory);
     }
 
-    public ReadsPathDataSource(final ReadsBundle samAndIndexPaths) {
+    public ReadsPathDataSource(final GATKReadsBundle samAndIndexPaths) {
         this(Collections.singletonList(samAndIndexPaths), null, 0, 0);
     }
 
-    public ReadsPathDataSource(final List<ReadsBundle> samAndIndexPaths) {
+    public ReadsPathDataSource(final List<GATKReadsBundle> samAndIndexPaths) {
         this(samAndIndexPaths, null, 0, 0);
     }
 
@@ -136,7 +136,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
      *                               stringency SILENT is used.
      */
-    public ReadsPathDataSource(final List<ReadsBundle> samAndIndexPaths, SamReaderFactory customSamReaderFactory) {
+    public ReadsPathDataSource(final List<GATKReadsBundle> samAndIndexPaths, SamReaderFactory customSamReaderFactory) {
         this(samAndIndexPaths, customSamReaderFactory, 0, 0);
     }
 
@@ -150,7 +150,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      * @param cloudPrefetchBuffer MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      */
-    public ReadsPathDataSource(final List<ReadsBundle> samAndIndexPaths,
+    public ReadsPathDataSource(final List<GATKReadsBundle> samAndIndexPaths,
                            SamReaderFactory customSamReaderFactory,
                            int cloudPrefetchBuffer, int cloudIndexPrefetchBuffer) {
         this(samAndIndexPaths, customSamReaderFactory,
@@ -169,7 +169,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
      * @param cloudWrapper caching/prefetching wrapper for the data, if on Google Cloud.
      * @param cloudIndexWrapper caching/prefetching wrapper for the index, if on Google Cloud.
      */
-    public ReadsPathDataSource(final List<ReadsBundle> samPaths,
+    public ReadsPathDataSource(final List<GATKReadsBundle> samPaths,
                            SamReaderFactory customSamReaderFactory,
                            Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
                            Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
@@ -185,7 +185,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
                         SamReaderFactory.makeDefault().validationStringency(ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY) :
                         customSamReaderFactory;
 
-        for ( final ReadsBundle samAndIndexPath : samPaths ) {
+        for ( final GATKReadsBundle samAndIndexPath : samPaths ) {
             final Path samPath = samAndIndexPath.getReads().toPath();
             final Optional<GATKPath> indexPath = samAndIndexPath.getIndex();
 
