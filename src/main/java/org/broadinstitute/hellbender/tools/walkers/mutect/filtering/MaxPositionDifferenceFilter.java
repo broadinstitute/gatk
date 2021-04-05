@@ -44,7 +44,6 @@ public class MaxPositionDifferenceFilter extends HardFilter {
     @Override
     protected List<String> requiredInfoAnnotations() {
         return new ArrayList<>(Arrays.asList(GATKVCFConstants.READ_START_POSITION_MAX_DIFF_KEY,
-                                             GATKVCFConstants.READ_START_POSITION_MIN_DIFF_KEY,
-                                             GATKVCFConstants.INSERT_SIZE_DIFF_KEY));
+                                             GATKVCFConstants.READ_START_POSITION_MIN_DIFF_KEY));
     }
 }

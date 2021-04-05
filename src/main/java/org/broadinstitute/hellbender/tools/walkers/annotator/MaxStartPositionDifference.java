@@ -67,15 +67,7 @@ public class MaxStartPositionDifference extends PerAlleleAnnotation implements S
         // Assume innies.  If they aren't, then we won't return a value
         if(read.isReverseStrand() && !read.mateIsReverseStrand()) {
             valueAsInt = OptionalInt.of(read.getEnd());
-            System.out.println("VC " + vc.getContig() + " " + vc.getStart() + " " + read.getName() + " Max Start Position " + valueAsInt.toString());
         }
-//        else if(read.isReverseStrand() && !read.mateIsReverseStrand()) {
-//            System.out.println("Reverse");
-//            //valueAsInt = OptionalInt.of(read.getMateStart() + read.getFragmentLength());
-//            valueAsInt = OptionalInt.of(read.getEnd());
-//            System.out.println("VC " + vc.getContig() + " " + vc.getStart() + " " + read.getName() + " Max Start Position " + valueAsInt.toString());
-//        }
-
 
         return valueAsInt.isPresent() ? valueAsInt : OptionalInt.empty();
     }

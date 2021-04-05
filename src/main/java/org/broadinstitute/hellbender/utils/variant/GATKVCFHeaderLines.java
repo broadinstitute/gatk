@@ -95,6 +95,7 @@ public class GATKVCFHeaderLines {
         addFilterLine(new VCFFilterHeaderLine(STRICT_STRAND_BIAS_FILTER_NAME, "Evidence for alt allele is not represented in both directions"));
         addFilterLine(new VCFFilterHeaderLine(N_RATIO_FILTER_NAME, "Ratio of N to alt exceeds specified ratio"));
         addFilterLine(new VCFFilterHeaderLine(ALLELE_FRACTION_FILTER_NAME, "Allele fraction is below specified threshold"));
+        addFilterLine(new VCFFilterHeaderLine(MAX_POSITION_DIFFERENCE_FILTER_NAME, "Evidence for alt allele only represented by reads that may come from a single fragment"));
 
         //Mitochondrial M2-related filters
         addFilterLine(new VCFFilterHeaderLine(POSSIBLE_NUMT_FILTER_NAME, "Allele depth is below expected coverage of NuMT in autosome"));
