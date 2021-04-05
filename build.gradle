@@ -259,8 +259,8 @@ dependencies {
     compile ('org.genomicsdb:genomicsdb:' + genomicsdbVersion)  {
         exclude module: 'log4j-api'
         exclude module: 'log4j-core'
-        exclude module: 'spark-core_2.11'
-        exclude module: 'spark-sql_2.11'
+        exclude module: 'spark-core_2.12'
+        exclude module: 'spark-sql_2.12'
         exclude module: 'htsjdk'
         exclude module: 'protobuf-java'
     }
