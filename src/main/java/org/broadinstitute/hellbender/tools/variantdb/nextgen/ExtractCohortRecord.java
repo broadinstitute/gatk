@@ -38,7 +38,6 @@ public class ExtractCohortRecord implements Locatable {
 //            SchemaUtils.AS_QUALapprox,
 //            SchemaUtils.CALL_PL);//, AS_VarDP);
 
-
     public ExtractCohortRecord(GenericRecord genericRecord) {
         this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
         this.sampleName = genericRecord.get(SchemaUtils.SAMPLE_NAME_FIELD_NAME).toString();

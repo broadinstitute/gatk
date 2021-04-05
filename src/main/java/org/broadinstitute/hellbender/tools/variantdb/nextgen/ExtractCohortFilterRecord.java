@@ -16,8 +16,6 @@ public class ExtractCohortFilterRecord implements Locatable {
     private final String refAllele;
     private final String altAllele;
 
-
-
     public ExtractCohortFilterRecord(GenericRecord genericRecord) {
         this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
         this.contig = SchemaUtils.decodeContig(location);

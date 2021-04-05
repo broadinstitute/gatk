@@ -10,7 +10,7 @@ import org.testng.annotations.Test;
 public class ExtractCohortRecordUnitTest extends GATKBaseTest {
 
     @Test
-    public void testDefinedRecords() {
+    public void testDefinedExtractCohortRecord() {
         GenericRecord definedInputGenericRecord = new AvroFileReader(getToolTestDataDir() + "test_input_defined.avro").next();
         ExtractCohortRecord allDefinedRecord = new ExtractCohortRecord(definedInputGenericRecord);
 
@@ -31,7 +31,7 @@ public class ExtractCohortRecordUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testNullableRecords() {
+    public void testNulledExtractCohortRecord() {
         GenericRecord nulledInputGenericRecord = new AvroFileReader(getToolTestDataDir() + "test_input_nulls.avro").next();
         ExtractCohortRecord someNullsRecord = new ExtractCohortRecord(nulledInputGenericRecord);
 
@@ -52,5 +52,4 @@ public class ExtractCohortRecordUnitTest extends GATKBaseTest {
         Assert.assertNull(someNullsRecord.getAsQUALApprox());
         Assert.assertNull(someNullsRecord.getCallPL());
     }
-
 }

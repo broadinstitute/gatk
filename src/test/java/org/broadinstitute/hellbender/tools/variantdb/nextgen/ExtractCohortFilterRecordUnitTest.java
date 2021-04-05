@@ -10,7 +10,7 @@ import org.testng.annotations.Test;
 public class ExtractCohortFilterRecordUnitTest extends GATKBaseTest {
 
     @Test
-    public void testDefinedRecords() {
+    public void testExtractCohortFilterRecord() {
         GenericRecord inputGenericRecord = new AvroFileReader(getToolTestDataDir() + "test_input.avro").next();
         ExtractCohortFilterRecord allDefinedRecord = new ExtractCohortFilterRecord(inputGenericRecord);
 
