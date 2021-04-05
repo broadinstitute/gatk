@@ -40,9 +40,9 @@ public class ExtractCohortFilterRecord implements Locatable {
     @Override
     public int getEnd() { return this.end; }
 
-    public Long getLocation() { return this.location; }
+    public long getLocation() { return this.location; }
 
-    public Double getVqslod() { return this.vqslod; }
+    public double getVqslod() { return this.vqslod; }
 
     public String getYng() { return this.yng; }
 

@@ -17,11 +17,7 @@ public class ExtractCohortRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(allDefinedRecord.getContig(), "chr15");
         Assert.assertEquals(allDefinedRecord.getStart(), 28865305);
         Assert.assertEquals(allDefinedRecord.getEnd(), 28865305);
-
-        // TODO figure out how to inline this
-        Long expectedLocationDefined = Long.parseLong("15000028865305");
-        Assert.assertEquals(allDefinedRecord.getLocation(), expectedLocationDefined);
-
+        Assert.assertEquals(allDefinedRecord.getLocation(), Long.parseLong("15000028865305"));
         Assert.assertEquals(allDefinedRecord.getSampleName(), "SM-GXZVY");
         Assert.assertEquals(allDefinedRecord.getState(), "v");
         Assert.assertEquals(allDefinedRecord.getRefAllele(), "CTTT");
@@ -42,11 +38,7 @@ public class ExtractCohortRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(someNullsRecord.getContig(), "chr15");
         Assert.assertEquals(someNullsRecord.getStart(), 28865344);
         Assert.assertEquals(someNullsRecord.getEnd(), 28865344);
-
-        // TODO figure out how to inline this
-        Long expectedLocationNulled = Long.parseLong("15000028865344");
-        Assert.assertEquals(someNullsRecord.getLocation(), expectedLocationNulled);
-
+        Assert.assertEquals(someNullsRecord.getLocation(), Long.parseLong("15000028865344"));
         Assert.assertEquals(someNullsRecord.getSampleName(), "SM-GXZVY");
         Assert.assertEquals(someNullsRecord.getState(), "3");
 

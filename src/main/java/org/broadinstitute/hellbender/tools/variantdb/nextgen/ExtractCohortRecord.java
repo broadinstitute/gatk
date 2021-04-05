@@ -67,7 +67,7 @@ public class ExtractCohortRecord implements Locatable {
     @Override
     public int getEnd() { return this.end; }
 
-    public Long getLocation() { return this.location; }
+    public long getLocation() { return this.location; }
 
     public String getSampleName() { return this.sampleName; }
 
