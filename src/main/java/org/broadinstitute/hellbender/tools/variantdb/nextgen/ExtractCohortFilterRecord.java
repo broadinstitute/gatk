@@ -46,12 +46,8 @@ public class ExtractCohortFilterRecord implements Locatable {
 
     public String getYng() { return this.yng; }
 
-    public String getRefAllele() {
-        return this.refAllele;
-    }
+    public String getRefAllele() { return this.refAllele; }
 
-    public String getAltAllele() {
-        return this.altAllele;
-    }
+    public String getAltAllele() { return this.altAllele; }
 
 }

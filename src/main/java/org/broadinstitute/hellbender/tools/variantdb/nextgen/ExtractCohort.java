@@ -74,7 +74,7 @@ public class ExtractCohort extends ExtractTool {
 
         if (minLocation == null && maxLocation == null && hasUserSuppliedIntervals()) {
             final SimpleInterval firstInterval = traversalIntervals.get(0);
-            final SimpleInterval lastInterval = traversalIntervals.get(getTraversalIntervals().size() - 1);
+            final SimpleInterval lastInterval = traversalIntervals.get(traversalIntervals.size() - 1);
 
             minLocation = SchemaUtils.encodeLocation(firstInterval.getContig(), firstInterval.getStart());
             maxLocation = SchemaUtils.encodeLocation(lastInterval.getContig(), lastInterval.getEnd());

@@ -59,61 +59,33 @@ public class ExtractCohortRecord implements Locatable {
     }
 
     @Override
-    public String getContig() {
-        return this.contig;
-    }
+    public String getContig() { return this.contig; }
 
     @Override
-    public int getStart() {
-        return this.start;
-    }
+    public int getStart() { return this.start; }
 
     @Override
-    public int getEnd() {
-        return this.end;
-    }
+    public int getEnd() { return this.end; }
 
-    public Long getLocation() {
-        return this.location;
-    }
+    public Long getLocation() { return this.location; }
 
-    public String getSampleName() {
-        return this.sampleName;
-    }
+    public String getSampleName() { return this.sampleName; }
 
-    public String getState() {
-        return this.state;
-    }
+    public String getState() { return this.state; }
 
-    public String getRefAllele() {
-        return this.refAllele;
-    }
+    public String getRefAllele() { return this.refAllele; }
 
-    public String getAltAllele() {
-        return this.altAllele;
-    }
+    public String getAltAllele() { return this.altAllele; }
 
-    public String getCallGT() {
-        return this.callGT;
-    }
+    public String getCallGT() { return this.callGT; }
 
-    public String getCallGQ() {
-        return this.callGQ;
-    }
+    public String getCallGQ() { return this.callGQ; }
 
-    public String getCallRGQ() {
-        return this.callRGQ;
-    }
+    public String getCallRGQ() { return this.callRGQ; }
 
-    public String getQUALApprox() {
-        return this.qualapprox;
-    }
+    public String getQUALApprox() { return this.qualapprox; }
 
-    public String getAsQUALApprox() {
-        return this.asQualapprox;
-    }
+    public String getAsQUALApprox() { return this.asQualapprox; }
 
-    public String getCallPL() {
-        return this.callPL;
-    }
+    public String getCallPL() { return this.callPL; }
 }

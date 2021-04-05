@@ -172,11 +172,11 @@ public class ExtractCohortEngine {
                 logger.debug("Initializing Reader");
                 if (cohortTableRef != null){
                     final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
-                    createVariantsFromTableResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                    createVariantsFromUnsortedResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
                 }
                 else {
                     final AvroFileReader avroFileReader = new AvroFileReader(cohortAvroFileName);
-                    createVariantsFromTableResult(avroFileReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
+                    createVariantsFromUnsortedResult(avroFileReader, fullVqsLodMap, fullYngMap, noFilteringRequested);
                 }
                 logger.debug("Finished Initializing Reader");
                 break;
@@ -201,7 +201,7 @@ public class ExtractCohortEngine {
     }
 
 
-    private void createVariantsFromTableResult(final GATKAvroReader avroReader, HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap, boolean noFilteringRequested) {
+    private void createVariantsFromUnsortedResult(final GATKAvroReader avroReader, HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap, boolean noFilteringRequested) {
 
         final org.apache.avro.Schema schema = avroReader.getSchema();
 
@@ -353,7 +353,7 @@ public class ExtractCohortEngine {
             switch (sampleRecord.getState()) {
                 case "v":   // Variant
                     ++totalNumberOfVariants;
-                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, contig, currentPosition, sampleName, vqsLodMap, yngMap);
+                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, vqsLodMap, yngMap);
                     unmergedCalls.add(vc);
 
                     totalAsQualApprox += getQUALapproxFromSampleRecord(sampleRecord);
@@ -557,9 +557,13 @@ public class ExtractCohortEngine {
 
 
     // vqsLogMap and yngMap are in/out parameters for this method. i.e. they are modified by this method
-    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord, final String contig, final long startPosition, final String sample, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {
+    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {
         final VariantContextBuilder builder = new VariantContextBuilder();
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
+
+        final String contig = sampleRecord.getContig();
+        final long startPosition = sampleRecord.getStart();
+        final String sample = sampleRecord.getSampleName();
 
         builder.chr(contig);
         builder.start(startPosition);
@@ -583,9 +587,12 @@ public class ExtractCohortEngine {
         yngMap.putIfAbsent(ref, new HashMap<>());
 
         // need to re-prepend the leading "|" to AS_QUALapprox for use in gnarly
-        final String asQUALApprox = sampleRecord.getAsQUALApprox();
-        if ( asQUALApprox != null ) {
-            builder.attribute(SchemaUtils.AS_QUALapprox, "|" + asQUALApprox);
+        if ( sampleRecord.getAsQUALApprox() != null ) {
+            builder.attribute(SchemaUtils.AS_QUALapprox, "|" + sampleRecord.getAsQUALApprox());
+        }
+
+        if ( sampleRecord.getQUALApprox() != null ) {
+            builder.attribute(SchemaUtils.QUALapprox, sampleRecord.getQUALApprox());
         }
 
         final String callGT = sampleRecord.getCallGT();
