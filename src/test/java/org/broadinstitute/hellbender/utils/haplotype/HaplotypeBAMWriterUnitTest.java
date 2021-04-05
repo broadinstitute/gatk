@@ -125,7 +125,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(getReadCounts(outPath), 5);
         final List<SAMReadGroupRecord> readGroups = getReadGroups(outPath);
-        Assert.assertTrue(readGroups.stream().map(rg -> rg.getId()).allMatch(id -> id.equals(readGroupID)));
+        Assert.assertTrue(readGroups.stream().map(rg -> rg.getId()).anyMatch(id -> id.equals(readGroupID)));
         final File expectedMD5File = new File(outPath.toFile().getAbsolutePath() + ".md5");
         Assert.assertEquals(expectedMD5File.exists(), createMD5);
         if (createIndex) {

@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
-import java.io.File;
 import java.util.Optional;
 
 /**
