@@ -28,7 +28,7 @@ public class ExtractCohortFilterRecordUnitTest extends GATKBaseTest {
         // TODO figure out how to inline this
         Double expectedVqslod = Double.parseDouble("20.2295");
         Assert.assertEquals(allDefinedRecord.getVqslod(), expectedVqslod);
-        
+
         Assert.assertEquals(allDefinedRecord.getYng(), "G");
     }
 }
