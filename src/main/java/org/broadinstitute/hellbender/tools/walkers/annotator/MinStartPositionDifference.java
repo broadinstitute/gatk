@@ -43,6 +43,8 @@ public class MinStartPositionDifference extends PerAlleleAnnotation implements S
             return 0;
         }
 
+        System.out.println("Min start positions " + positiveValues);
+
         int positiveMax = MathUtils.arrayMax(Ints.toArray(positiveValues)) - MathUtils.arrayMin(Ints.toArray(positiveValues));
 
         return values.isEmpty() ? VALUE_FOR_NO_READS : positiveMax;
@@ -64,10 +66,12 @@ public class MinStartPositionDifference extends PerAlleleAnnotation implements S
             return OptionalInt.empty();
         }
 
-        final OptionalInt valueAsInt;
-        valueAsInt = OptionalInt.of(Math.min(read.getStart(), read.getMateStart()));
-        System.out.println("VC " + vc.getContig() + " " + vc.getStart() + " " + read.getName() + " Min Start Position " + valueAsInt.toString());
-
+        OptionalInt valueAsInt = OptionalInt.empty();
+//        valueAsInt = OptionalInt.of(Math.min(read.getStart(), read.getMateStart()));
+        if(!read.isReverseStrand() && read.mateIsReverseStrand()) {
+            valueAsInt = OptionalInt.of(read.getStart());
+            System.out.println("VC " + vc.getContig() + " " + vc.getStart() + " " + read.getName() + " Min Start Position " + valueAsInt.toString());
+        }
         return valueAsInt.isPresent() ? valueAsInt : OptionalInt.empty();
     }
 }

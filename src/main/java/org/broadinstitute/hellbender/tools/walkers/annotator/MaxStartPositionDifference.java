@@ -43,6 +43,8 @@ public class MaxStartPositionDifference extends PerAlleleAnnotation implements S
             return 0;
         }
 
+        System.out.println("Max start positions " + positiveValues);
+
         int positiveMax = MathUtils.arrayMax(Ints.toArray(positiveValues)) - MathUtils.arrayMin(Ints.toArray(positiveValues));
 
         return values.isEmpty() ? VALUE_FOR_NO_READS : positiveMax;
@@ -63,9 +65,8 @@ public class MaxStartPositionDifference extends PerAlleleAnnotation implements S
         OptionalInt valueAsInt = OptionalInt.empty();
 
         // Assume innies.  If they aren't, then we won't return a value
-        if(!read.isReverseStrand() && read.mateIsReverseStrand()) {
-            System.out.println("Not Reverse");
-            valueAsInt = OptionalInt.of(read.getStart() + read.getFragmentLength());
+        if(read.isReverseStrand() && !read.mateIsReverseStrand()) {
+            valueAsInt = OptionalInt.of(read.getEnd());
             System.out.println("VC " + vc.getContig() + " " + vc.getStart() + " " + read.getName() + " Max Start Position " + valueAsInt.toString());
         }
 //        else if(read.isReverseStrand() && !read.mateIsReverseStrand()) {
