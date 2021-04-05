@@ -2,9 +2,9 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import htsjdk.io.IOPath;
 import htsjdk.beta.plugin.bundle.BundleResourceType;
-import htsjdk.beta.plugin.bundle.InputBundle;
-import htsjdk.beta.plugin.bundle.InputIOPathResource;
-import htsjdk.beta.plugin.bundle.InputResource;
+import htsjdk.beta.plugin.bundle.Bundle;
+import htsjdk.beta.plugin.bundle.IOPathResource;
+import htsjdk.beta.plugin.bundle.BundleResource;
 import htsjdk.samtools.SamFiles;
 import htsjdk.utils.ValidationUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -40,7 +40,7 @@ import java.util.stream.IntStream;
 /**
  * A reads bundle may optionally have an index, but its not required.
  */
-public class ReadsBundle extends InputBundle implements Serializable {
+public class ReadsBundle extends Bundle implements Serializable {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LogManager.getLogger(ReadsBundle.class);
 
@@ -75,7 +75,7 @@ public class ReadsBundle extends InputBundle implements Serializable {
 
     public Optional<GATKPath> getIndex() {
         final Supplier<GATKException> ex = () -> new GATKException("Index resource is present with a null path");
-        final Optional<InputResource> inputResource = get(BundleResourceType.INDEX);
+        final Optional<BundleResource> inputResource = get(BundleResourceType.INDEX);
         // its OK for there to be no index resource, but if there *is* an index resource, it must contain
         // a non-null path...
         return inputResource.isPresent() ?
@@ -132,7 +132,7 @@ public class ReadsBundle extends InputBundle implements Serializable {
     }
 
     //TODO: move to htsjdk?
-    private static InputIOPathResource toInputResource(final GATKPath gatkPath, final String providedContentType) {
+    private static IOPathResource toInputResource(final GATKPath gatkPath, final String providedContentType) {
         ValidationUtils.nonNull(gatkPath, "gatkPath");
         final Optional<Pair<String, String>> typePair = getContentTypes(gatkPath);
         if (typePair.isPresent()) {
@@ -143,19 +143,14 @@ public class ReadsBundle extends InputBundle implements Serializable {
                         gatkPath.getRawInputString(),
                         typePair.get().getLeft()));
             }
-            return new InputIOPathResource(
+            return new IOPathResource(
                     gatkPath,
                     providedContentType,  // prefer the provided content type
-                    typePair.get().getRight(),
-                    gatkPath.getTag(),
-                    gatkPath.getTagAttributes());
+                    typePair.get().getRight());
         } else {
-            return new InputIOPathResource(
+            return new IOPathResource(
                     gatkPath,
-                    providedContentType,
-                    null,
-                    gatkPath.getTag(),
-                    gatkPath.getTagAttributes());
+                    providedContentType);
         }
     }
 
