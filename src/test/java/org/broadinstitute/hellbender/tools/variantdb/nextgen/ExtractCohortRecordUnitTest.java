@@ -60,9 +60,9 @@ public class ExtractCohortRecordUnitTest extends GATKBaseTest {
 
     @Test
     public void testGetSampleName() {
-        String sampleName = "SM-GXZVY";
-        Assert.assertEquals(allDefinedRecord.getSampleName(), sampleName);
-        Assert.assertEquals(someNullsRecord.getSampleName(), sampleName);
+        String expectedSampleName = "SM-GXZVY";
+        Assert.assertEquals(allDefinedRecord.getSampleName(), expectedSampleName);
+        Assert.assertEquals(someNullsRecord.getSampleName(), expectedSampleName);
     }
 
     @Test
@@ -74,64 +74,64 @@ public class ExtractCohortRecordUnitTest extends GATKBaseTest {
 
     @Test
     public void testGetRefAllele() {
-        String ref = "CTTT";
-        Assert.assertEquals(allDefinedRecord.getRefAllele(), ref);
+        String expectedRef = "CTTT";
+        Assert.assertEquals(allDefinedRecord.getRefAllele(), expectedRef);
 
         Assert.assertNull(someNullsRecord.getRefAllele());
     }
 
     @Test
     public void testGetAltAllele() {
-        String alt = "C";
-        Assert.assertEquals(allDefinedRecord.getAltAllele(), alt);
+        String expectedAlt = "C";
+        Assert.assertEquals(allDefinedRecord.getAltAllele(), "C");
 
         Assert.assertNull(someNullsRecord.getAltAllele());
     }
 
     @Test
     public void testGetCallGT() {
-        String callGT = "1/1";
-        Assert.assertEquals(allDefinedRecord.getCallGT(), callGT);
+        String expectedCallGT = "1/1";
+        Assert.assertEquals(allDefinedRecord.getCallGT(), expectedCallGT);
 
         Assert.assertNull(someNullsRecord.getCallGT());
     }
 
     @Test
     public void testGetCallGQ() {
-        String callGQ = "3";
-        Assert.assertEquals(allDefinedRecord.getCallGQ(), callGQ);
+        String expectedCallGQ = "3";
+        Assert.assertEquals(allDefinedRecord.getCallGQ(), expectedCallGQ);
 
         Assert.assertNull(someNullsRecord.getCallGQ());
     }
 
     @Test
     public void testGetCallRGQ() {
-        String callRGQ = "38";
-        Assert.assertEquals(allDefinedRecord.getCallRGQ(), callRGQ);
+        String expectedCallRGQ = "38";
+        Assert.assertEquals(allDefinedRecord.getCallRGQ(), expectedCallRGQ);
 
         Assert.assertNull(someNullsRecord.getCallRGQ());
     }
 
     @Test
     public void testGetQUALApprox() {
-        String qualapprox = "38";
-        Assert.assertEquals(allDefinedRecord.getQUALApprox(), qualapprox);
+        String expectedQualapprox = "38";
+        Assert.assertEquals(allDefinedRecord.getQUALApprox(), expectedQualapprox);
 
         Assert.assertNull(someNullsRecord.getQUALApprox());
     }
 
     @Test
     public void testGetAsQUALApprox() {
-        String asQualapprox = "38";
-        Assert.assertEquals(allDefinedRecord.getAsQUALApprox(), asQualapprox);
+        String expectedAsQualapprox = "38";
+        Assert.assertEquals(allDefinedRecord.getAsQUALApprox(), expectedAsQualapprox);
 
         Assert.assertNull(someNullsRecord.getAsQUALApprox());
     }
 
     @Test
     public void testGetCallPL() {
-        String callPL = "38,3,0,31,3,28";
-        Assert.assertEquals(allDefinedRecord.getCallPL(), callPL);
+        String expectedCallPL = "38,3,0,31,3,28";
+        Assert.assertEquals(allDefinedRecord.getCallPL(), expectedCallPL);
 
         Assert.assertNull(someNullsRecord.getCallPL());
     }
