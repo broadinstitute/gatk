@@ -23,7 +23,9 @@ public class ExtractFeaturesRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(allDefinedRecord.getRawQual(), Double.valueOf("15272"));
         Assert.assertEquals(allDefinedRecord.getRefAD(), Double.valueOf("361"));
         Assert.assertEquals(allDefinedRecord.getAsMQRankSum(), Float.valueOf("0.0"));
+        Assert.assertEquals(allDefinedRecord.getAsMQRankSumFreqTable(), "[{\"value\": -9, \"freq\": 1}, {\"value\": 0, \"freq\": 16}]");
         Assert.assertEquals(allDefinedRecord.getAsReadPosRankSum(), Float.valueOf("-0.2"));
+        Assert.assertEquals(allDefinedRecord.getAsReadPosRankSumFreqTable(), "[{\"value\": -16, \"freq\": 1}, {\"value\": -9, \"freq\": 1}, {\"value\": -7, \"freq\": 1}, {\"value\": -5, \"freq\": 2}, {\"value\": -3, \"freq\": 2}, {\"value\": -2, \"freq\": 2}, {\"value\": -1, \"freq\": 1}, {\"value\": 0, \"freq\": 1}, {\"value\": 1, \"freq\": 1}, {\"value\": 3, \"freq\": 1}, {\"value\": 7, \"freq\": 1}, {\"value\": 9, \"freq\": 1}, {\"value\": 13, \"freq\": 1}, {\"value\": 14, \"freq\": 1}]");
         Assert.assertEquals(allDefinedRecord.getRawMQ(), Double.valueOf("1431225"));
         Assert.assertEquals(allDefinedRecord.getRawAD(), Double.valueOf("398"));
         Assert.assertEquals(allDefinedRecord.getRawADGT1(), Double.valueOf("398"));
@@ -40,6 +42,8 @@ public class ExtractFeaturesRecordUnitTest extends GATKBaseTest {
         GenericRecord inputGenericRecord = new AvroFileReader(getToolTestDataDir() + "extract_features_input_nulls.avro").next();
         ExtractFeaturesRecord someNullsRecord = new ExtractFeaturesRecord(inputGenericRecord);
 
+        System.out.println(someNullsRecord.getAsMQRankSumFreqTable());
+
         Assert.assertEquals(someNullsRecord.getContig(), "chr14");
         Assert.assertEquals(someNullsRecord.getStart(), 64822351);
         Assert.assertEquals(someNullsRecord.getEnd(), 64822351);
@@ -49,15 +53,17 @@ public class ExtractFeaturesRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(someNullsRecord.getRawQual(), Double.valueOf("1"));
         Assert.assertNull(someNullsRecord.getRefAD());
         Assert.assertNull(someNullsRecord.getAsMQRankSum());
+        Assert.assertEquals(someNullsRecord.getAsMQRankSumFreqTable(), "[]");
         Assert.assertNull(someNullsRecord.getAsReadPosRankSum());
-        Assert.assertEquals(someNullsRecord.getRawMQ(), Double.valueOf("0")); // Double
-        Assert.assertEquals(someNullsRecord.getRawAD(), Double.valueOf("0")); // Double
-        Assert.assertEquals(someNullsRecord.getRawADGT1(), Double.valueOf("0")); // Double
-        Assert.assertEquals(someNullsRecord.getSbRefPlus(), 1); // int
-        Assert.assertEquals(someNullsRecord.getSbRefMinus(), 2); // int
-        Assert.assertEquals(someNullsRecord.getSbAltPlus(), 0); // int
-        Assert.assertEquals(someNullsRecord.getSbAltMinus(), 0); // int
-        Assert.assertEquals(someNullsRecord.getNumHetSamples(), 2); // int
-        Assert.assertEquals(someNullsRecord.getNumHomvarSamples(), 2); // int
+        Assert.assertEquals(someNullsRecord.getAsReadPosRankSumFreqTable(), "[]");
+        Assert.assertEquals(someNullsRecord.getRawMQ(), Double.valueOf("0"));
+        Assert.assertEquals(someNullsRecord.getRawAD(), Double.valueOf("0"));
+        Assert.assertEquals(someNullsRecord.getRawADGT1(), Double.valueOf("0"));
+        Assert.assertEquals(someNullsRecord.getSbRefPlus(), 1);
+        Assert.assertEquals(someNullsRecord.getSbRefMinus(), 2);
+        Assert.assertEquals(someNullsRecord.getSbAltPlus(), 0);
+        Assert.assertEquals(someNullsRecord.getSbAltMinus(), 0);
+        Assert.assertEquals(someNullsRecord.getNumHetSamples(), 2);
+        Assert.assertEquals(someNullsRecord.getNumHomvarSamples(), 2);
     }
 }

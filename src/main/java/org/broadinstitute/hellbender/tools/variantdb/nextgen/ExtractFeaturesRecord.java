@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
-        import htsjdk.samtools.util.Locatable;
-        import org.apache.avro.generic.GenericRecord;
-        import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
+import htsjdk.samtools.util.Locatable;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 
-        import java.util.Objects;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Objects;
 
 public class ExtractFeaturesRecord implements Locatable {
 
@@ -17,9 +20,9 @@ public class ExtractFeaturesRecord implements Locatable {
     private final Double rawQual;
     private final Double refAD;                     // nullable
     private final Float asMQRankSum;                // nullable
-//    private final String asMQRankSumFt; // not used?
+    private final String asMQRankSumFreqTable;      // nullable
     private final Float asReadPosRankSum;           // nullable
-//    private final String asReadPosRankSumFt; not used?
+    private final String asReadPosRankSumFreqTable; // nullable
     private final Double rawMQ;
     private final Double rawAD;
     private final Double rawADGT1;
@@ -50,6 +53,7 @@ public class ExtractFeaturesRecord implements Locatable {
     //      "num_het_samples",
     //      "num_homvar_samples");
 
+
     public ExtractFeaturesRecord(GenericRecord genericRecord) {
         this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
         this.contig = SchemaUtils.decodeContig(location);
@@ -72,10 +76,15 @@ public class ExtractFeaturesRecord implements Locatable {
         // nullable fields - TODO double check that these are the only nullable fields
         Object asMQRankSumNullable = genericRecord.get(SchemaUtils.AS_MQRankSum);
         this.asMQRankSum = ( asMQRankSumNullable == null ) ? null : Float.valueOf(Objects.toString(asMQRankSumNullable));
+        this.asMQRankSumFreqTable = Objects.toString(genericRecord.get(SchemaUtils.AS_MQRankSum + "_ft"));
+
         Object asReadPosRankSumNullable = genericRecord.get(SchemaUtils.AS_ReadPosRankSum);
         this.asReadPosRankSum = ( asReadPosRankSumNullable == null ) ? null : Float.valueOf(Objects.toString(asReadPosRankSumNullable));
+        this.asReadPosRankSumFreqTable = Objects.toString(genericRecord.get(SchemaUtils.AS_ReadPosRankSum + "_ft"));
+
         Object refADNullable = genericRecord.get("ref_ad");
         this.refAD = ( refADNullable == null ) ? null : Double.valueOf(Objects.toString(refADNullable));
+
     }
 
     @Override
@@ -99,7 +108,11 @@ public class ExtractFeaturesRecord implements Locatable {
 
     public Float getAsMQRankSum() { return this.asMQRankSum; }
 
+    public String getAsMQRankSumFreqTable() { return this.asMQRankSumFreqTable; }
+
     public Float getAsReadPosRankSum() { return this.asReadPosRankSum; }
+
+    public String getAsReadPosRankSumFreqTable() { return this.asReadPosRankSumFreqTable; }
 
     public Double getRawMQ() { return this.rawMQ; }
 

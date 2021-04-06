@@ -153,7 +153,6 @@ public class ExtractFeaturesEngine {
         //  switch based on the column name rather than just getting the columns desired directly (like I'm going to do here).
         // It might be because those field names are just prefixed versions of standard VCF fields?
 
-        // TODO: de-python names (no  _)
         String ref = rec.getRef();
         String allele = rec.getAllele();
 
