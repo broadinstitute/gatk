@@ -10,9 +10,11 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
 import java.util.HashSet;
+import java.util.List;
 
 @CommandLineProgramProperties(
         summary = "(\"ExtractFeatures\") - Extract features data from BQ to train filtering model.",
@@ -58,6 +60,8 @@ public class ExtractFeatures extends ExtractTool {
 
         VCFHeader header = CommonCode.generateVcfHeader(new HashSet<>(), reference.getSequenceDictionary());
 
+        final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
+
         engine = new ExtractFeaturesEngine(
             projectID,
             vcfWriter,
@@ -67,6 +71,7 @@ public class ExtractFeatures extends ExtractTool {
             trainingSitesOnly,
             fqAltAlleleTable,
             sampleTableRef,
+            traversalIntervals,
             minLocation,
             maxLocation,
             localSortMaxRecordsInRam,

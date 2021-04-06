@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
+import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -24,6 +25,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_S
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.GATKAvroReader;
 import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
@@ -55,6 +57,7 @@ public class ExtractFeaturesEngine {
     private final TableReference altAlleleTable;
     private final TableReference sampleListTable;
     private final ProgressMeter progressMeter;
+    private final List<SimpleInterval> traversalIntervals;
     private final Long minLocation;
     private final Long maxLocation;
     private final boolean useBatchQueries;
@@ -71,6 +74,7 @@ public class ExtractFeaturesEngine {
                                final boolean trainingSitesOnly,
                                final String fqAltAlleleTable,
                                final TableReference sampleListTable,
+                               final List<SimpleInterval> traversalIntervals,
                                final Long minLocation,
                                final Long maxLocation,
                                final int localSortMaxRecordsInRam,
@@ -89,6 +93,7 @@ public class ExtractFeaturesEngine {
         this.printDebugInformation = printDebugInformation;
         this.useBatchQueries = useBatchQueries;
         this.progressMeter = progressMeter;
+        this.traversalIntervals = traversalIntervals;
         this.minLocation = minLocation;
         this.maxLocation = maxLocation;
         this.numSamples = numSamples;
@@ -113,11 +118,9 @@ public class ExtractFeaturesEngine {
 
     private void createVQSRInputFromTableResult(final GATKAvroReader avroReader) {
         final org.apache.avro.Schema schema = avroReader.getSchema();
-        final Set<String> columnNames = new HashSet<>();
         if ( schema.getField(LOCATION_FIELD_NAME) == null ) {
             throw new UserException("Records must contain a location column");
         }
-        schema.getFields().forEach(field -> columnNames.add(field.name()));
 
         // TODO: this hardcodes a list of required fields... which this case doesn't require!
         // should genericize/parameterize so we can also validate the schema here
@@ -128,9 +131,16 @@ public class ExtractFeaturesEngine {
             sortingCollection.add(queryRow);
         }
         sortingCollection.printTempFileStats();
+
+
+        // NOTE: if OverlapDetector takes too long, try using RegionChecker from tws_sv_local_assembler
+        final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(traversalIntervals);
+
         for ( final GenericRecord genericRow : sortingCollection ) {
             final ExtractFeaturesRecord row = new ExtractFeaturesRecord(genericRow);
-            processVQSRRecordForPosition(row);
+            if ( intervalsOverlapDetector.overlapsAny(row) ) {
+                processVQSRRecordForPosition(row);
+            }
         }
     }
 
