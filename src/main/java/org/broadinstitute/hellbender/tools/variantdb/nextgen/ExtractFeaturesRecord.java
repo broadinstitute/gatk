@@ -82,8 +82,9 @@ public class ExtractFeaturesRecord implements Locatable {
         this.asReadPosRankSum = ( asReadPosRankSumNullable == null ) ? null : Float.valueOf(Objects.toString(asReadPosRankSumNullable));
         this.asReadPosRankSumFreqTable = Objects.toString(genericRecord.get(SchemaUtils.AS_ReadPosRankSum + "_ft"));
 
+        // if ref_ad is not defined, set it to zero
         Object refADNullable = genericRecord.get("ref_ad");
-        this.refAD = ( refADNullable == null ) ? null : Double.valueOf(Objects.toString(refADNullable));
+        this.refAD = ( refADNullable == null ) ? 0 : Double.valueOf(Objects.toString(refADNullable));
 
     }
 

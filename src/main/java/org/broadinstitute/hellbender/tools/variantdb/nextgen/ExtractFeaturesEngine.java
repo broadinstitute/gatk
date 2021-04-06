@@ -164,7 +164,7 @@ public class ExtractFeaturesEngine {
         // Numbers are returned as Long (sci notation)
         Double qual = rec.getRawQual();
 
-        Double raw_ref_ad = rec.getRefAD();
+        Double raw_ref_ad = rec.getRefAD();  // if null, will return 0
 
         Float AS_MQRankSum = rec.getAsMQRankSum();
 
