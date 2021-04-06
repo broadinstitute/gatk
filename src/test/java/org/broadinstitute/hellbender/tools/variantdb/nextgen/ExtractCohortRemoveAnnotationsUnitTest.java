@@ -31,6 +31,7 @@ public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
                 null,
                 null,
                 null,
+                null,
                 0,
                 false,
                 0.0,
