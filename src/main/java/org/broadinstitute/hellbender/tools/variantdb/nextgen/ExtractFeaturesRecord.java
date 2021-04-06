@@ -73,7 +73,7 @@ public class ExtractFeaturesRecord implements Locatable {
         Object asMQRankSumNullable = genericRecord.get(SchemaUtils.AS_MQRankSum);
         this.asMQRankSum = ( asMQRankSumNullable == null ) ? null : Float.valueOf(Objects.toString(asMQRankSumNullable));
         Object asReadPosRankSumNullable = genericRecord.get(SchemaUtils.AS_ReadPosRankSum);
-        this.asReadPosRankSum = ( asReadPosRankSumNullable == null ) ? null : Float.valueOf(Objects.toString(genericRecord));
+        this.asReadPosRankSum = ( asReadPosRankSumNullable == null ) ? null : Float.valueOf(Objects.toString(asReadPosRankSumNullable));
         this.refAD = Objects.toString(genericRecord.get("ref_ad"), null);
     }
 
