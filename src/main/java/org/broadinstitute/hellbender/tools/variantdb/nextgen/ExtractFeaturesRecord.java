@@ -15,11 +15,11 @@ public class ExtractFeaturesRecord implements Locatable {
     private final String ref;
     private final String allele;
     private final Double rawQual;
-    private final String refAD;
-    private final Float asMQRankSum;
-//    private final String asMQRankSumFt;
-    private final Float asReadPosRankSum;
-//    private final String asReadPosRankSumFt;
+    private final String refAD;                     // nullable
+    private final Float asMQRankSum;                // nullable
+//    private final String asMQRankSumFt; // not used?
+    private final Float asReadPosRankSum;           // nullable
+//    private final String asReadPosRankSumFt; not used?
     private final Double rawMQ;
     private final Double rawAD;
     private final Double rawADGT1;
@@ -56,15 +56,9 @@ public class ExtractFeaturesRecord implements Locatable {
         this.start = SchemaUtils.decodePosition(location);
         this.end = start;
 
-        // TODO check which if any of these are nullable
         this.ref = Objects.toString(genericRecord.get("ref"), null);
         this.allele = Objects.toString(genericRecord.get("allele"), null);
         this.rawQual = Double.valueOf(genericRecord.get(SchemaUtils.RAW_QUAL).toString());
-        this.refAD = Objects.toString(genericRecord.get("ref_ad"), null);
-        this.asMQRankSum = Float.parseFloat(Objects.toString(genericRecord.get(SchemaUtils.AS_MQRankSum), null));
-//        this.asMQRankSumFt = "";
-        this.asReadPosRankSum = Float.parseFloat(Objects.toString(genericRecord.get(SchemaUtils.AS_ReadPosRankSum), null));
-//        this.asReadPosRankSumFt = "";
         this.rawMQ = Double.valueOf(genericRecord.get(SchemaUtils.RAW_MQ).toString());
         this.rawAD = Double.valueOf(genericRecord.get(SchemaUtils.RAW_AD).toString());
         this.rawADGT1 = Double.valueOf(genericRecord.get("RAW_AD_GT_1").toString());
@@ -74,6 +68,13 @@ public class ExtractFeaturesRecord implements Locatable {
         this.sbAltMinus = Double.valueOf(genericRecord.get("SB_ALT_MINUS").toString()).intValue();
         this.numHetSamples = Integer.parseInt(genericRecord.get("num_het_samples").toString());
         this.numHomvarSamples = Integer.parseInt(genericRecord.get("num_homvar_samples").toString());
+
+        // nullable fields - TODO double check that these are the only nullable fields
+        Object asMQRankSumNullable = genericRecord.get(SchemaUtils.AS_MQRankSum);
+        this.asMQRankSum = ( asMQRankSumNullable == null ) ? null : Float.valueOf(Objects.toString(asMQRankSumNullable));
+        Object asReadPosRankSumNullable = genericRecord.get(SchemaUtils.AS_ReadPosRankSum);
+        this.asReadPosRankSum = ( asReadPosRankSumNullable == null ) ? null : Float.valueOf(Objects.toString(genericRecord));
+        this.refAD = Objects.toString(genericRecord.get("ref_ad"), null);
     }
 
     @Override
