@@ -128,23 +128,24 @@ public class ExtractFeaturesEngine {
             sortingCollection.add(queryRow);
         }
         sortingCollection.printTempFileStats();
-        for ( final GenericRecord row : sortingCollection ) {
+        for ( final GenericRecord genericRow : sortingCollection ) {
+            final ExtractFeaturesRecord row = new ExtractFeaturesRecord(genericRow);
             processVQSRRecordForPosition(row);
         }
     }
 
-    private void processVQSRRecordForPosition(GenericRecord rec) {
-        final long location = Long.parseLong(rec.get(LOCATION_FIELD_NAME).toString());
+    private void processVQSRRecordForPosition(ExtractFeaturesRecord rec) {
+        final long location = rec.getLocation();
 
-        String contig = SchemaUtils.decodeContig(location);
-        int position = SchemaUtils.decodePosition(location);
+        String contig = rec.getContig();
+        int position = rec.getStart();
         // I don't understand why the other modes iterate through a list of all columns, and then
         //  switch based on the column name rather than just getting the columns desired directly (like I'm going to do here).
         // It might be because those field names are just prefixed versions of standard VCF fields?
 
         // TODO: de-python names (no  _)
-        String ref = rec.get("ref").toString();
-        String allele = rec.get("allele").toString();
+        String ref = rec.getRef();
+        String allele = rec.getAllele();
 
         if (allele == null || allele.equals("")) {
             logger.warn("SEVERE WARNING: skipping " + contig + ":" + position + "(location="+location+") because it has a null alternate allele!");
@@ -152,20 +153,17 @@ public class ExtractFeaturesEngine {
         }
 
         // Numbers are returned as Long (sci notation)
-        Double qual = Double.valueOf(rec.get(SchemaUtils.RAW_QUAL).toString());
+        Double qual = rec.getRawQual();
 
-        Object o_raw_ref_ad = rec.get("ref_ad");
-        Double raw_ref_ad = (o_raw_ref_ad==null)?0:Double.valueOf(o_raw_ref_ad.toString());
+        Double raw_ref_ad = rec.getRefAD();
 
-        Object o_AS_MQRankSum = rec.get(SchemaUtils.AS_MQRankSum);
-        Float AS_MQRankSum = (o_AS_MQRankSum==null)?null:Float.parseFloat(o_AS_MQRankSum.toString());
+        Float AS_MQRankSum = rec.getAsMQRankSum();
 
-        Object o_AS_ReadPosRankSum = rec.get(SchemaUtils.AS_ReadPosRankSum);
-        Float AS_ReadPosRankSum = (o_AS_ReadPosRankSum==null)?null:Float.parseFloat(o_AS_ReadPosRankSum.toString());
+        Float AS_ReadPosRankSum = rec.getAsReadPosRankSum();
 
-        Double raw_mq = Double.valueOf(rec.get(SchemaUtils.RAW_MQ).toString());
-        Double raw_ad = Double.valueOf(rec.get(SchemaUtils.RAW_AD).toString());
-        Double raw_ad_gt_1 = Double.valueOf(rec.get("RAW_AD_GT_1").toString());
+        Double raw_mq = rec.getRawMQ();
+        Double raw_ad = rec.getRawAD();
+        Double raw_ad_gt_1 = rec.getRawADGT1();
 
         // TODO: KCIBUL QUESTION -- if we skip this... we won't have YNG Info @ extraction time?
         // if (raw_ad == 0) {
@@ -173,15 +171,12 @@ public class ExtractFeaturesEngine {
         //     return;
         // }
 
-        int sb_ref_plus = Double.valueOf(rec.get("SB_REF_PLUS").toString()).intValue();
-        int sb_ref_minus = Double.valueOf(rec.get("SB_REF_MINUS").toString()).intValue();
-        int sb_alt_plus = Double.valueOf(rec.get("SB_ALT_PLUS").toString()).intValue();
-        int sb_alt_minus = Double.valueOf(rec.get("SB_ALT_MINUS").toString()).intValue();
-
+        int sb_ref_plus = rec.getSbRefPlus();
+        int sb_ref_minus = rec.getSbRefMinus();
+        int sb_alt_plus = rec.getSbAltPlus();
+        int sb_alt_minus = rec.getSbAltMinus();
 
 //        logger.info("processing " + contig + ":" + position);
-
-
 
         // NOTE: if VQSR required a merged VCF (e.g. multiple alleles on a  given row) we have to do some merging here...
 
@@ -219,8 +214,8 @@ public class ExtractFeaturesEngine {
 //        # than a z-score of -4.5 which is a p-value of 3.4e-06, which phred-scaled is 54.69
         double excess_het_threshold = 54.69;
 
-        int hets = Integer.valueOf(rec.get("num_het_samples").toString()).intValue();
-        int homvars = Integer.valueOf(rec.get("num_homvar_samples").toString()).intValue();
+        int hets = rec.getNumHetSamples();
+        int homvars = rec.getNumHomvarSamples();
 
         int samplesMinusVariants = numSamples - (hets + homvars);
         GenotypeCounts gcApprox = new GenotypeCounts(samplesMinusVariants, hets, homvars);

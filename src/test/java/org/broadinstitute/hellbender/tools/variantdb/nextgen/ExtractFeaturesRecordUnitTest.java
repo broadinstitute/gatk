@@ -21,7 +21,7 @@ public class ExtractFeaturesRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(allDefinedRecord.getRef(), "G");
         Assert.assertEquals(allDefinedRecord.getAllele(), "T");
         Assert.assertEquals(allDefinedRecord.getRawQual(), Double.valueOf("15272"));
-        Assert.assertEquals(allDefinedRecord.getRefAD(), "361");
+        Assert.assertEquals(allDefinedRecord.getRefAD(), Double.valueOf("361"));
         Assert.assertEquals(allDefinedRecord.getAsMQRankSum(), Float.valueOf("0.0"));
         Assert.assertEquals(allDefinedRecord.getAsReadPosRankSum(), Float.valueOf("-0.2"));
         Assert.assertEquals(allDefinedRecord.getRawMQ(), Double.valueOf("1431225"));

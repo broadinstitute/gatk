@@ -15,7 +15,7 @@ public class ExtractFeaturesRecord implements Locatable {
     private final String ref;
     private final String allele;
     private final Double rawQual;
-    private final String refAD;                     // nullable
+    private final Double refAD;                     // nullable
     private final Float asMQRankSum;                // nullable
 //    private final String asMQRankSumFt; // not used?
     private final Float asReadPosRankSum;           // nullable
@@ -74,7 +74,8 @@ public class ExtractFeaturesRecord implements Locatable {
         this.asMQRankSum = ( asMQRankSumNullable == null ) ? null : Float.valueOf(Objects.toString(asMQRankSumNullable));
         Object asReadPosRankSumNullable = genericRecord.get(SchemaUtils.AS_ReadPosRankSum);
         this.asReadPosRankSum = ( asReadPosRankSumNullable == null ) ? null : Float.valueOf(Objects.toString(asReadPosRankSumNullable));
-        this.refAD = Objects.toString(genericRecord.get("ref_ad"), null);
+        Object refADNullable = genericRecord.get("ref_ad");
+        this.refAD = ( refADNullable == null ) ? null : Double.valueOf(Objects.toString(refADNullable));
     }
 
     @Override
@@ -94,7 +95,7 @@ public class ExtractFeaturesRecord implements Locatable {
 
     public Double getRawQual() { return this.rawQual; }
 
-    public String getRefAD() { return this.refAD; }
+    public Double getRefAD() { return this.refAD; }
 
     public Float getAsMQRankSum() { return this.asMQRankSum; }
 
