@@ -2,23 +2,21 @@ version 1.0
 
 workflow NgsFilterExtract {
    input {
-        Int max_chrom_id = 24
-        
-        # bug in cromwell, can't support large integers...
-        # https://github.com/broadinstitute/cromwell/issues/2685
-        String chrom_offset = "1000000000000"
-       
+        File wgs_intervals
+        Int scatter_count
+
         File reference
         File reference_index
         File reference_dict
-        
+
         String fq_sample_table
         String fq_alt_allele_table
         String query_project
-    
+
         String filter_set_name
         String fq_filter_set_info_table
         String fq_filter_set_tranches_table
+        File? excluded_intervals
 
         String output_file_base_name
         File? gatk_override
@@ -65,8 +63,17 @@ workflow NgsFilterExtract {
         Int? SNP_VQSR_machine_mem_gb
         Int? SNP_VQSR_downsampleFactor = 1
     }
-    
-    scatter(i in range(max_chrom_id)) {
+
+    call SplitIntervals {
+          input:
+              intervals = wgs_intervals,
+              ref_fasta = reference,
+              ref_fai = reference_index,
+              ref_dict = reference_dict,
+              scatter_count = scatter_count
+        }
+
+    scatter(i in range(scatter_count)) {
         call ExtractFilterTask {
             input:
                 gatk_override            = gatk_override,
@@ -74,22 +81,22 @@ workflow NgsFilterExtract {
                 reference_index          = reference_index,
                 reference_dict           = reference_dict,
                 fq_sample_table          = fq_sample_table,
-                chrom_offset             = chrom_offset,
-                chrom_id                 = i+1,
+                intervals                = SplitIntervals.interval_files[i],
+                excluded_intervals       = excluded_intervals,
                 fq_alt_allele_table      = fq_alt_allele_table,
                 read_project_id          = query_project,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz"
         }
     }
 
-    call MergeVCFs { 
+    call MergeVCFs {
        input:
            input_vcfs = ExtractFilterTask.output_vcf,
            input_vcfs_indexes = ExtractFilterTask.output_vcf_index,
            output_vcf_name = "${output_file_base_name}.vcf.gz",
            preemptible_tries = 3
     }
-    
+
     call IndelsVariantRecalibrator {
         input:
         sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
@@ -159,7 +166,7 @@ workflow NgsFilterExtract {
 ################################################################################
 task ExtractFilterTask {
     # indicates that this task should NOT be call cached
-    
+
     # TODO: should this be marked as volatile???
     #meta {
     #   volatile: true
@@ -171,21 +178,19 @@ task ExtractFilterTask {
         File reference
         File reference_index
         File reference_dict
-    
+
         String fq_sample_table
 
-        # bug in cromwell, can't support large integers...
-        # https://github.com/broadinstitute/cromwell/issues/2685
-        String chrom_offset
-        Int chrom_id
+        File intervals
+        File? excluded_intervals
 
         String fq_alt_allele_table
         String read_project_id
         String output_file
-        
+
         # Runtime Options:
         File? gatk_override
-        
+
         Int? local_sort_max_records_in_ram = 1000000
     }
 
@@ -197,8 +202,6 @@ task ExtractFilterTask {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
         df -h
-        min_location=$(echo "~{chrom_id} * ~{chrom_offset}" | bc)
-        max_location=$(echo "( ~{chrom_id} + 1 ) * ~{chrom_offset}" | bc)
 
         gatk --java-options "-Xmx4g" \
             ExtractFeatures \
@@ -208,7 +211,8 @@ task ExtractFilterTask {
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
                 --sample-table ~{fq_sample_table} \
                 --alt-allele-table ~{fq_alt_allele_table} \
-                --min-location ${min_location} --max-location ${max_location} \
+                -L ~{intervals} \
+                ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id}
     >>>
 
@@ -231,9 +235,64 @@ task ExtractFilterTask {
     }
  }
 
+ task SplitIntervals {
+     input {
+         File intervals
+         File ref_fasta
+         File ref_fai
+         File ref_dict
+         Int scatter_count
+         String? split_intervals_extra_args
+
+         File? gatk_override
+     }
+
+     parameter_meta {
+         intervals: {
+             localization_optional: true
+         }
+         ref_fasta: {
+             localization_optional: true
+         }
+         ref_fai: {
+             localization_optional: true
+         }
+         ref_dict: {
+             localization_optional: true
+         }
+      }
+
+      command {
+          set -e
+          export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+          mkdir interval-files
+          gatk --java-options "-Xmx5g" SplitIntervals \
+              -R ~{ref_fasta} \
+              ~{"-L " + intervals} \
+              -scatter ~{scatter_count} \
+              -O interval-files \
+              ~{split_intervals_extra_args}
+          cp interval-files/*.interval_list .
+      }
+
+      runtime {
+          docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+          bootDiskSizeGb: 15
+          memory: "6 GB"
+          disks: "local-disk 10 HDD"
+          preemptible: 3
+          cpu: 1
+      }
+
+      output {
+          Array[File] interval_files = glob("*.interval_list")
+      }
+  }
+
 task UploadFilterSetToBQ {
     # indicates that this task should NOT be call cached
-    
+
     # TODO: should this be marked as volatile???
     #meta {
     #   volatile: true
@@ -289,7 +348,7 @@ task UploadFilterSetToBQ {
         echo "Merging SNP + INDELs"
         cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > filter_set_load.tsv
 
-        # BQ load likes a : instead of a . after the project 
+        # BQ load likes a : instead of a . after the project
         bq_info_table=$(echo ~{fq_info_destination_table} | sed s/\\./:/)
 
         echo "Loading Filter Set into BQ"
@@ -301,7 +360,7 @@ task UploadFilterSetToBQ {
         echo "Merging Tranches"
         cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > tranches_load.csv
 
-        # BQ load likes a : instead of a . after the project 
+        # BQ load likes a : instead of a . after the project
         bq_tranches_table=$(echo ~{fq_tranches_destination_table} | sed s/\\./:/)
 
         echo "Loading Tranches into BQ"
@@ -335,7 +394,7 @@ task UploadFilterSetToBQ {
     #meta {
     #   volatile: true
     #}
- 
+
    input {
      Array[File] input_vcfs
      Array[File] input_vcfs_indexes
@@ -515,7 +574,7 @@ task SNPsVariantRecalibrator {
   }
 }
 
- 
+
 
 
 

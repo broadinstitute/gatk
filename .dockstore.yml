@@ -96,6 +96,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - mmt_extract_features_records
    - name: ngs_cohort_extract
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/ngs_cohort_extract.wdl
