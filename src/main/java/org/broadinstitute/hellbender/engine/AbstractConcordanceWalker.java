@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextComparator;
 import htsjdk.variant.vcf.VCFHeader;
@@ -17,6 +18,8 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.File;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Optional;
 import java.util.Spliterator;
 import java.util.Spliterators;
@@ -174,33 +177,63 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
     private class ConcordanceIterator implements Iterator<TruthVersusEval> {
         private final PeekableIterator<VariantContext> truthIterator;
         private final PeekableIterator<VariantContext> evalIterator;
+        final LinkedHashMap<List<Allele>, VariantContext> nextEvalVariants = new LinkedHashMap<>();
 
         protected ConcordanceIterator(final  Iterator<VariantContext> truthIterator, final Iterator<VariantContext> evalIterator) {
             this.truthIterator = new PeekableIterator<>(truthIterator);
             this.evalIterator = new PeekableIterator<>(evalIterator);
         }
 
-        public boolean hasNext() { return truthIterator.hasNext() || evalIterator.hasNext(); }
+        public boolean hasNext() { return truthIterator.hasNext() || evalIterator.hasNext() || !nextEvalVariants.isEmpty(); }
 
         public TruthVersusEval next() {
+
             if (!truthIterator.hasNext()) {
-                return nextEvalOnlyVariant();
-            } else if (!evalIterator.hasNext()) {
+                if (!nextEvalVariants.isEmpty()) {
+                    final VariantContext evalVariant = nextEvalVariants.values().iterator().next();
+                    nextEvalVariants.remove(evalVariant.getAlleles());
+                    return evalVariant.isFiltered()? TruthVersusEval.filteredTrueNegative(evalVariant) : TruthVersusEval.falsePositive(evalVariant);
+                } else {
+                    return nextEvalOnlyVariant();
+                }
+            } else if (!evalIterator.hasNext() && nextEvalVariants.isEmpty()) {
                 return nextTruthOnlyVariant();
             }
 
-            final int positionCompare = variantContextComparator.compare(truthIterator.peek(), evalIterator.peek());
+            final int positionCompare = variantContextComparator.compare(truthIterator.peek(), nextEvalVariants.isEmpty()? evalIterator.peek() : nextEvalVariants.values().iterator().next());
             if (positionCompare > 0) {
-                return nextEvalOnlyVariant();
+                if (!nextEvalVariants.isEmpty()) {
+                    final VariantContext evalVariant = nextEvalVariants.values().iterator().next();
+                    nextEvalVariants.remove(evalVariant.getAlleles());
+                    return evalVariant.isFiltered()? TruthVersusEval.filteredTrueNegative(evalVariant) : TruthVersusEval.falsePositive(evalVariant);
+                } else {
+                    return nextEvalOnlyVariant();
+                }
             } else if (positionCompare < 0) {
                 return nextTruthOnlyVariant();
-            } else if(evalIterator.peek().isFiltered()) {
-                return TruthVersusEval.filteredFalseNegative(truthIterator.next(), evalIterator.next());
-            } else if (areVariantsAtSameLocusConcordant(truthIterator.peek(), evalIterator.peek())) {
-                return TruthVersusEval.truePositive(truthIterator.next(), evalIterator.next());
             } else {
-                // advance truth in case of same-locus discordance -- we could equally well advance eval
-                return TruthVersusEval.falseNegative(truthIterator.next());
+                if (nextEvalVariants.isEmpty()) {
+                    VariantContext currentEvalVariant = evalIterator.next();
+                    nextEvalVariants.put(currentEvalVariant.getAlleles(), currentEvalVariant);
+                    while (evalIterator.hasNext() && variantContextComparator.compare(currentEvalVariant, evalIterator.peek()) == 0) {
+                        currentEvalVariant = evalIterator.next();
+                        nextEvalVariants.put(currentEvalVariant.getAlleles(), currentEvalVariant);
+                    }
+                }
+
+
+                final VariantContext truthVariant = truthIterator.next();
+                final VariantContext evalVariant = nextEvalVariants.remove(truthVariant.getAlleles());
+                if (evalVariant == null) {
+                    return TruthVersusEval.falseNegative(truthVariant);
+                } else if (evalVariant.isFiltered()) {
+                    return TruthVersusEval.filteredFalseNegative(truthVariant, evalVariant);
+                } else if (areVariantsAtSameLocusConcordant(truthVariant, evalVariant)) {
+                    return TruthVersusEval.truePositive(truthVariant, evalVariant);
+                } else {
+                    nextEvalVariants.put(evalVariant.getAlleles(), evalVariant);
+                    return TruthVersusEval.falseNegative(truthVariant);
+                }
             }
         }
 
