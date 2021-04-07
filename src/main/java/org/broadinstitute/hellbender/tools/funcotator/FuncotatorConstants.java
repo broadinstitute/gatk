@@ -25,6 +25,7 @@ public class FuncotatorConstants {
     public static final String UNKNOWN_VALUE_STRING = "__UNKNOWN__";
 
     /**
+     *
      * Datasource name to use for Funcotations created from input variants from a VCF.
      */
     public static final String DATASOURCE_NAME_FOR_INPUT_VCFS = "INPUT_VCF";
