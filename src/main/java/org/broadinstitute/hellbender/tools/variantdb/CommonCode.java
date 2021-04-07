@@ -155,8 +155,9 @@ public class CommonCode {
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
 
-        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.VQSR_TRANCHE_SNP));
-        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.VQSR_TRANCHE_INDEL));
+//        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.VQSR_TRANCHE_SNP));
+//        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.VQSR_TRANCHE_INDEL));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.VQSR_FAILURE));
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NAY_FROM_YNG));
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_HET_KEY));
 

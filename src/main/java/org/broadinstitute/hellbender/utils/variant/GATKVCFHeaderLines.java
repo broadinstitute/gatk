@@ -76,8 +76,9 @@ public class GATKVCFHeaderLines {
 
         addFilterLine(new VCFFilterHeaderLine(NAY_FROM_YNG, "Considered a NAY in the Yay, Nay, Grey table"));
         // TODO: take this out once we have the full tranche sensitivities implemented in ExtractCohort
-        addFilterLine(new VCFFilterHeaderLine(VQSR_TRANCHE_SNP, "Temporary VQSLOD cutoff for SNPs until we implememnt full tranche sensitivities"));
-        addFilterLine(new VCFFilterHeaderLine(VQSR_TRANCHE_INDEL, "Temporary VQSLOD cutoff for INDELs until we implememnt full tranche sensitivities"));
+        addFilterLine(new VCFFilterHeaderLine(VQSR_FAILURE, "Site failed VQSLOD/sensitivity cutoff"));
+//        addFilterLine(new VCFFilterHeaderLine(VQSR_TRANCHE_SNP, "Temporary VQSLOD cutoff for SNPs until we implememnt full tranche sensitivities"));
+//        addFilterLine(new VCFFilterHeaderLine(VQSR_TRANCHE_INDEL, "Temporary VQSLOD cutoff for INDELs until we implememnt full tranche sensitivities"));
 
         addFilterLine(new VCFFilterHeaderLine(EXCESS_HET_KEY, "Site has excess het value larger than the threshold"));
 

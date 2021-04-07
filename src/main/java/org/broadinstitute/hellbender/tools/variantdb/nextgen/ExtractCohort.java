@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -34,6 +35,13 @@ public class ExtractCohort extends ExtractTool {
     private String filteringFQTableName = null;
 
     @Argument(
+            fullName = "tranches-table",
+            doc = "Fully qualified name of the tranches table to use for cohort extraction",
+            optional = true
+    )
+    private String tranchesTableName = null;
+
+    @Argument(
             fullName = "cohort-extract-table",
             doc = "Fully qualified name of the table where the cohort data exists (already subsetted)",
             optional = false
@@ -61,6 +69,35 @@ public class ExtractCohort extends ExtractTool {
     )
     private boolean emitPLs = false;
 
+
+    @Argument(
+            fullName="snps-truth-sensitivity-filter-level",
+            doc="The truth sensitivity level at which to start filtering SNPs",
+            optional=true
+    )
+    private Double truthSensitivitySNPThreshold = null;
+
+    @Argument(
+            fullName="indels-truth-sensitivity-filter-level",
+            doc="The truth sensitivity level at which to start filtering INDELs",
+            optional=true
+    )
+    private Double truthSensitivityINDELThreshold = null;
+
+    @Advanced
+    @Argument(
+            fullName="snps-lod-score-cutoff",
+            doc="The VQSLOD score below which to start filtering SNPs",
+            optional=true)
+    private Double vqsLodSNPThreshold = null;
+
+    @Advanced
+    @Argument(
+            fullName="indels-lod-score-cutoff",
+            doc="The VQSLOD score below which to start filtering INDELs",
+            optional=true)
+    private Double vqsLodINDELThreshold = null;
+
     @Override
     protected void onStartup() {
         super.onStartup();
@@ -68,6 +105,7 @@ public class ExtractCohort extends ExtractTool {
         SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
         Set<String> sampleNames = new HashSet<>(sampleList.getSampleNames());
 
+        // TODO add VQSLOD/tranche info to headers
         VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary());
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
@@ -81,7 +119,6 @@ public class ExtractCohort extends ExtractTool {
         } else if ((minLocation != null || maxLocation != null) && hasUserSuppliedIntervals()) {
             throw new UserException("min-location and max-location should not be used together with intervals (-L).");
         }
-
 
         engine = new ExtractCohortEngine(
                 projectID,
@@ -97,8 +134,11 @@ public class ExtractCohort extends ExtractTool {
                 minLocation,
                 maxLocation,
                 filteringFQTableName,
+                tranchesTableName,
                 localSortMaxRecordsInRam,
                 printDebugInformation,
+                truthSensitivitySNPThreshold,
+                truthSensitivityINDELThreshold,
                 vqsLodSNPThreshold,
                 vqsLodINDELThreshold,
                 progressMeter,
