@@ -18,7 +18,7 @@ public class ExtractFeaturesRecord implements Locatable {
     private final String ref;
     private final String allele;
     private final Double rawQual;
-    private final Double refAD;                     // nullable
+    private final Double refAD;                     // nullable, if null -> 0
     private final Float asMQRankSum;                // nullable
     private final String asMQRankSumFreqTable;      // nullable
     private final Float asReadPosRankSum;           // nullable

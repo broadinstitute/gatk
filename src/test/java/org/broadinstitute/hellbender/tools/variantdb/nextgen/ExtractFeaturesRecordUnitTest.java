@@ -51,7 +51,7 @@ public class ExtractFeaturesRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(someNullsRecord.getRef(), "TTCTC");
         Assert.assertEquals(someNullsRecord.getAllele(), "T");
         Assert.assertEquals(someNullsRecord.getRawQual(), Double.valueOf("1"));
-        Assert.assertNull(someNullsRecord.getRefAD());
+        Assert.assertEquals(someNullsRecord.getRefAD(), Double.valueOf("0"));
         Assert.assertNull(someNullsRecord.getAsMQRankSum());
         Assert.assertEquals(someNullsRecord.getAsMQRankSumFreqTable(), "[]");
         Assert.assertNull(someNullsRecord.getAsReadPosRankSum());
