@@ -1,5 +1,5 @@
-CREATE TABLE `spec-ops-aou.gvs_public_reference_data.gnomad_v3_sites` AS
-SELECT chrom * 1000000000000 + start_position as location
+CREATE OR REPLACE TABLE `spec-ops-aou.gvs_public_reference_data.gnomad_v3_sites` CLUSTER BY location AS
+SELECT DISTINCT chrom * 1000000000000 + start_position + 1 as location
 FROM (
     SELECT CASE WHEN reference_name = "chrX" THEN 23 ELSE CASE WHEN reference_name = "chrY" THEN 24 ELSE CAST(REPLACE(reference_name,"chr","") AS INT64) END END chrom, start_position
     FROM (
