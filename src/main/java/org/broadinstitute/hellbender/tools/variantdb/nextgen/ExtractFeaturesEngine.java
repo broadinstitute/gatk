@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
+import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -24,6 +25,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_S
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.GATKAvroReader;
 import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
@@ -55,6 +57,7 @@ public class ExtractFeaturesEngine {
     private final TableReference altAlleleTable;
     private final TableReference sampleListTable;
     private final ProgressMeter progressMeter;
+    private final List<SimpleInterval> traversalIntervals;
     private final Long minLocation;
     private final Long maxLocation;
     private final boolean useBatchQueries;
@@ -71,6 +74,7 @@ public class ExtractFeaturesEngine {
                                final boolean trainingSitesOnly,
                                final String fqAltAlleleTable,
                                final TableReference sampleListTable,
+                               final List<SimpleInterval> traversalIntervals,
                                final Long minLocation,
                                final Long maxLocation,
                                final int localSortMaxRecordsInRam,
@@ -89,6 +93,7 @@ public class ExtractFeaturesEngine {
         this.printDebugInformation = printDebugInformation;
         this.useBatchQueries = useBatchQueries;
         this.progressMeter = progressMeter;
+        this.traversalIntervals = traversalIntervals;
         this.minLocation = minLocation;
         this.maxLocation = maxLocation;
         this.numSamples = numSamples;
@@ -113,11 +118,9 @@ public class ExtractFeaturesEngine {
 
     private void createVQSRInputFromTableResult(final GATKAvroReader avroReader) {
         final org.apache.avro.Schema schema = avroReader.getSchema();
-        final Set<String> columnNames = new HashSet<>();
         if ( schema.getField(LOCATION_FIELD_NAME) == null ) {
             throw new UserException("Records must contain a location column");
         }
-        schema.getFields().forEach(field -> columnNames.add(field.name()));
 
         // TODO: this hardcodes a list of required fields... which this case doesn't require!
         // should genericize/parameterize so we can also validate the schema here
@@ -128,23 +131,30 @@ public class ExtractFeaturesEngine {
             sortingCollection.add(queryRow);
         }
         sortingCollection.printTempFileStats();
-        for ( final GenericRecord row : sortingCollection ) {
-            processVQSRRecordForPosition(row);
+
+
+        // NOTE: if OverlapDetector takes too long, try using RegionChecker from tws_sv_local_assembler
+        final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(traversalIntervals);
+
+        for ( final GenericRecord genericRow : sortingCollection ) {
+            final ExtractFeaturesRecord row = new ExtractFeaturesRecord(genericRow);
+            if ( intervalsOverlapDetector.overlapsAny(row) ) {
+                processVQSRRecordForPosition(row);
+            }
         }
     }
 
-    private void processVQSRRecordForPosition(GenericRecord rec) {
-        final long location = Long.parseLong(rec.get(LOCATION_FIELD_NAME).toString());
+    private void processVQSRRecordForPosition(ExtractFeaturesRecord rec) {
+        final long location = rec.getLocation();
 
-        String contig = SchemaUtils.decodeContig(location);
-        int position = SchemaUtils.decodePosition(location);
+        String contig = rec.getContig();
+        int position = rec.getStart();
         // I don't understand why the other modes iterate through a list of all columns, and then
         //  switch based on the column name rather than just getting the columns desired directly (like I'm going to do here).
         // It might be because those field names are just prefixed versions of standard VCF fields?
 
-        // TODO: de-python names (no  _)
-        String ref = rec.get("ref").toString();
-        String allele = rec.get("allele").toString();
+        String ref = rec.getRef();
+        String allele = rec.getAllele();
 
         if (allele == null || allele.equals("")) {
             logger.warn("SEVERE WARNING: skipping " + contig + ":" + position + "(location="+location+") because it has a null alternate allele!");
@@ -152,20 +162,17 @@ public class ExtractFeaturesEngine {
         }
 
         // Numbers are returned as Long (sci notation)
-        Double qual = Double.valueOf(rec.get(SchemaUtils.RAW_QUAL).toString());
+        Double qual = rec.getRawQual();
 
-        Object o_raw_ref_ad = rec.get("ref_ad");
-        Double raw_ref_ad = (o_raw_ref_ad==null)?0:Double.valueOf(o_raw_ref_ad.toString());
+        Double raw_ref_ad = rec.getRefAD();  // if null, will return 0
 
-        Object o_AS_MQRankSum = rec.get(SchemaUtils.AS_MQRankSum);
-        Float AS_MQRankSum = (o_AS_MQRankSum==null)?null:Float.parseFloat(o_AS_MQRankSum.toString());
+        Float AS_MQRankSum = rec.getAsMQRankSum();
 
-        Object o_AS_ReadPosRankSum = rec.get(SchemaUtils.AS_ReadPosRankSum);
-        Float AS_ReadPosRankSum = (o_AS_ReadPosRankSum==null)?null:Float.parseFloat(o_AS_ReadPosRankSum.toString());
+        Float AS_ReadPosRankSum = rec.getAsReadPosRankSum();
 
-        Double raw_mq = Double.valueOf(rec.get(SchemaUtils.RAW_MQ).toString());
-        Double raw_ad = Double.valueOf(rec.get(SchemaUtils.RAW_AD).toString());
-        Double raw_ad_gt_1 = Double.valueOf(rec.get("RAW_AD_GT_1").toString());
+        Double raw_mq = rec.getRawMQ();
+        Double raw_ad = rec.getRawAD();
+        Double raw_ad_gt_1 = rec.getRawADGT1();
 
         // TODO: KCIBUL QUESTION -- if we skip this... we won't have YNG Info @ extraction time?
         // if (raw_ad == 0) {
@@ -173,15 +180,12 @@ public class ExtractFeaturesEngine {
         //     return;
         // }
 
-        int sb_ref_plus = Double.valueOf(rec.get("SB_REF_PLUS").toString()).intValue();
-        int sb_ref_minus = Double.valueOf(rec.get("SB_REF_MINUS").toString()).intValue();
-        int sb_alt_plus = Double.valueOf(rec.get("SB_ALT_PLUS").toString()).intValue();
-        int sb_alt_minus = Double.valueOf(rec.get("SB_ALT_MINUS").toString()).intValue();
-
+        int sb_ref_plus = rec.getSbRefPlus();
+        int sb_ref_minus = rec.getSbRefMinus();
+        int sb_alt_plus = rec.getSbAltPlus();
+        int sb_alt_minus = rec.getSbAltMinus();
 
 //        logger.info("processing " + contig + ":" + position);
-
-
 
         // NOTE: if VQSR required a merged VCF (e.g. multiple alleles on a  given row) we have to do some merging here...
 
@@ -219,8 +223,8 @@ public class ExtractFeaturesEngine {
 //        # than a z-score of -4.5 which is a p-value of 3.4e-06, which phred-scaled is 54.69
         double excess_het_threshold = 54.69;
 
-        int hets = Integer.valueOf(rec.get("num_het_samples").toString()).intValue();
-        int homvars = Integer.valueOf(rec.get("num_homvar_samples").toString()).intValue();
+        int hets = rec.getNumHetSamples();
+        int homvars = rec.getNumHomvarSamples();
 
         int samplesMinusVariants = numSamples - (hets + homvars);
         GenotypeCounts gcApprox = new GenotypeCounts(samplesMinusVariants, hets, homvars);

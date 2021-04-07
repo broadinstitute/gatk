@@ -7,12 +7,15 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
 import java.util.HashSet;
+import java.util.List;
 
 @CommandLineProgramProperties(
         summary = "(\"ExtractFeatures\") - Extract features data from BQ to train filtering model.",
@@ -58,6 +61,18 @@ public class ExtractFeatures extends ExtractTool {
 
         VCFHeader header = CommonCode.generateVcfHeader(new HashSet<>(), reference.getSequenceDictionary());
 
+        final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
+
+        if (minLocation == null && maxLocation == null && hasUserSuppliedIntervals()) {
+            final SimpleInterval firstInterval = traversalIntervals.get(0);
+            final SimpleInterval lastInterval = traversalIntervals.get(traversalIntervals.size() - 1);
+
+            minLocation = SchemaUtils.encodeLocation(firstInterval.getContig(), firstInterval.getStart());
+            maxLocation = SchemaUtils.encodeLocation(lastInterval.getContig(), lastInterval.getEnd());
+        } else if ((minLocation != null || maxLocation != null) && hasUserSuppliedIntervals()) {
+            throw new UserException("min-location and max-location should not be used together with intervals (-L).");
+        }
+
         engine = new ExtractFeaturesEngine(
             projectID,
             vcfWriter,
@@ -67,6 +82,7 @@ public class ExtractFeatures extends ExtractTool {
             trainingSitesOnly,
             fqAltAlleleTable,
             sampleTableRef,
+            traversalIntervals,
             minLocation,
             maxLocation,
             localSortMaxRecordsInRam,

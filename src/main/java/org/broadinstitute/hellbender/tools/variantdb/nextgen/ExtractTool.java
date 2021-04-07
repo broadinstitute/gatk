@@ -153,4 +153,5 @@ public abstract class ExtractTool extends GATKTool {
         ChromosomeEnum.setRefVersion(refVersion);
 
     }
+
 }
