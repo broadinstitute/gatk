@@ -30,6 +30,8 @@ public final class DataprocTestUtils {
      */
     public static final String CLUSTER_NAME_ENVIRONMENT_VARIABLE_NAME = "HELLBENDER_DATAPROC_CLUSTER_NAME";
 
+    public static final String GCS_DATAPROC_REGION = "us-central1";
+
     private DataprocTestUtils(){}
 
     /**
@@ -66,12 +68,13 @@ public final class DataprocTestUtils {
         logger.info("Starting Dataproc cluster creation.");
         final String clusterName = "gatk-test-" + UUID.randomUUID();
         final String[] command = new String[]{
-            getGCloudPath(), "beta", "dataproc", "clusters", "create",
+            getGCloudPath(), "dataproc", "clusters", "create",
             "--max-idle", "10m",
             "--max-age", "30m",
             "--num-workers", "2",
             "--master-machine-type", "n1-highmem-2",
             "--worker-machine-type", "n1-highmem-2",
+            "--region", GCS_DATAPROC_REGION,
             clusterName
         };
         BaseTest.runProcess(ProcessController.getThreadLocal(), command, "Couldn't create dataproc cluster");
