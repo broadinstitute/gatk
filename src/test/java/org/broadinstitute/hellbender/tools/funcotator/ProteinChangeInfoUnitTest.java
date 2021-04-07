@@ -479,8 +479,204 @@ public class ProteinChangeInfoUnitTest extends GATKBaseTest {
                 // ---------------------------
 
                 // Variant close to "N" bases in the reference:
+                // Artificial SNPs with N bases:
                 {
-                    // HG19: chr4: 4 9274640 . A ATCACTG
+                        // N in ref before variant codon:
+                        Allele.create("T", true),
+                        Allele.create("G"),
+                        5,
+                        5,
+//                       0        1
+//                       123456789012345
+                        "NTCATTTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(2,2,"I", "S")
+                },
+                {
+                        // N in ref after variant codon
+                        Allele.create("A", true),
+                        Allele.create("T"),
+                        1,
+                        1,
+//                       0        1
+//                       123456789012345
+                        "ATCATNTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(1,1,"I", "F")
+                },
+                {
+                        // N in ref in variant codon:
+                        Allele.create("N", true),
+                        Allele.create("G"),
+                        6,
+                        4,
+//                       0        1
+//                       123456789012345
+                        "ATCATNTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(2,2,"?", "M")
+                },
+                {
+                        // N in variant codon:
+                        Allele.create("C", true),
+                        Allele.create("N"),
+                        3,
+                        1,
+//                       0        1
+//                       123456789012345
+                        "ATCATNTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(1,1,"I", "?")
+                },
+
+                // Artificial Deletions with N bases:
+                {
+                        // N in ref before variant codon:
+                        Allele.create("TT", true),
+                        Allele.create("T"),
+                        5,
+                        4,
+//                       0        1
+//                       123456789012345
+                        "NTCATTTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(3,3,"Y", "")
+                },
+                {
+                        // N in ref before variant codon:
+                        Allele.create("TTT", true),
+                        Allele.create("G"),
+                        5,
+                        4,
+//                       0        1
+//                       123456789012345
+                        "NTCATTTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(2,2,"I", "")
+                },
+                {
+                        // N in ref before variant codon:
+                        Allele.create("TTTA", true),
+                        Allele.create("T"),
+                        5,
+                        4,
+//                       0        1
+//                       123456789012345
+                        "NTCATTTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(3,3,"Y", "")
+                },
+                {
+                        // N in ref after variant codon:
+                        Allele.create("TC", true),
+                        Allele.create("T"),
+                        2,
+                        1,
+//                       0        1
+//                       123456789012345
+                        "ATCATNTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(3,3,"Y", "")
+                },
+                {
+                        // N in ref after variant codon:
+                        Allele.create("ATC", true),
+                        Allele.create("A"),
+                        1,
+                        1,
+//                       0        1
+//                       123456789012345
+                        "ATCATNTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(1,1,"I", "")
+                },
+                {
+                        // N in ref after variant codon:
+                        Allele.create("ATCA", true),
+                        Allele.create("A"),
+                        1,
+                        1,
+//                       0        1
+//                       123456789012345
+                        "ATCATNTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(1,1,"I", "")
+                },
+                {
+                        // N in ref in variant codon:
+                        Allele.create("TN", true),
+                        Allele.create("T"),
+                        5,
+                        4,
+//                       0        1
+//                       123456789012345
+                        "ATCATNTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(2,2,"?", "")
+                },
+                {
+                        // N in ref in variant codon:
+                        Allele.create("TNT", true),
+                        Allele.create("T"),
+                        5,
+                        4,
+//                       0        1
+//                       123456789012345
+                        "ATCATNTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(2,2,"?", "")
+                },
+                {
+                        // N in ref in variant codon:
+                        Allele.create("TNTA", true),
+                        Allele.create("T"),
+                        5,
+                        4,
+//                       0        1
+//                       123456789012345
+                        "ATCATNTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(2,3,"?Y", "I")
+                },
+                // Artificial Insertions with N bases:
+                {
+                        // N in variant codon:
+                        Allele.create("T", true),
+                        Allele.create("TN"),
+                        2,
+                        1,
+//                       0        1
+//                       123456789012345
+                        "ATCATNTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(1,1,"I", "")
+                },
+                {
+                        // N in variant codon:
+                        Allele.create("T", true),
+                        Allele.create("TTN"),
+                        2,
+                        1,
+//                       0        1
+//                       123456789012345
+                        "ATCATNTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(3,3,"Y", "")
+                },
+                {
+                        // N in variant codon:
+                        Allele.create("T", true),
+                        Allele.create("TTTN"),
+                        2,
+                        1,
+//                       0        1
+//                       123456789012345
+                        "ATCATNTACCCGTAG",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(1,2,"", "?")
+                },
+                {
+                        // Synthetic Data
                         Allele.create("A", true),
                         Allele.create("ATCACTG"),
                         551,
