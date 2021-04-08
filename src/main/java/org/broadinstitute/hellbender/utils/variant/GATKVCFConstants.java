@@ -168,9 +168,12 @@ public final class GATKVCFConstants {
     public static final String FAIL =                                           "FAIL";
     public static final String SITE_LEVEL_FILTERS =                             "SITE";
 
+    public static final String SNP = "SNP";
+    public static final String INDEL = "INDEL";
     public static final String NAY_FROM_YNG = "NAY";
-    public static final String VQSR_FAILURE_SNP = "low_VQSLOD_SNP";
-    public static final String VQSR_FAILURE_INDEL = "low_VQSLOD_INDEL";
+    public static final String VQSR_FAILURE_PREFIX = "low_VQSLOD_";
+    public static final String VQSR_FAILURE_SNP = VQSR_FAILURE_PREFIX + SNP;
+    public static final String VQSR_FAILURE_INDEL = VQSR_FAILURE_PREFIX + INDEL;
 
 
 
