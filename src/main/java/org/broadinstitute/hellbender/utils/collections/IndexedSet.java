@@ -85,7 +85,7 @@ public final class IndexedSet<E> extends AbstractSet<E> {
      */
     @SafeVarargs
     @SuppressWarnings("varargs")
-    public IndexedSet(final E... values) {
+    public IndexedSet(final E ... values) {
         Utils.nonNull(values, "input values cannot be null");
 
         final int initialCapacity = values.length;
