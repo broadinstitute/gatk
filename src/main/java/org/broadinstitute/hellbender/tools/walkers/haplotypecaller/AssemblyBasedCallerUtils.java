@@ -315,7 +315,9 @@ public final class AssemblyBasedCallerUtils {
         final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
                 .collect(Collectors.groupingBy(VariantContext::getStart, Collectors.collectingAndThen(Collectors.toList(), AssemblyBasedCallerUtils::makeMergedVariantContext)));
 
-        final List<Haplotype> assembledHaplotypes = assemblyResultSet.getHaplotypeList();
+        List<Haplotype> assembledAndNewHaplotypes = new ArrayList<>();
+        assembledAndNewHaplotypes.addAll(assemblyResultSet.getHaplotypeList());
+        
         for (final VariantContext givenVC : givenAlleles) {
             final VariantContext assembledVC = assembledVariants.get(givenVC.getStart());
             final int givenVCRefLength = givenVC.getReference().length();
@@ -338,9 +340,9 @@ public final class AssemblyBasedCallerUtils {
             }).collect(Collectors.toList());
 
             // choose the highest-scoring haplotypes along with the reference for building force-calling haplotypes
-            final List<Haplotype> baseHaplotypes = unassembledNonSymbolicAlleles.isEmpty() ? Collections.emptyList() : assembledHaplotypes.stream()
+            final List<Haplotype> baseHaplotypes = unassembledNonSymbolicAlleles.isEmpty() ? Collections.emptyList() : assembledAndNewHaplotypes.stream()
                     .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
-                    .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
+//                    .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
                     .collect(Collectors.toList());
 
             for (final Allele givenAllele : unassembledNonSymbolicAlleles) {
@@ -358,6 +360,10 @@ public final class AssemblyBasedCallerUtils {
                         insertedHaplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
                         insertedHaplotype.setAlignmentStartHapwrtRef(activeRegionStart);
                         assemblyResultSet.add(insertedHaplotype);
+
+                        // and add to our internal list so we get haplotypes that contain all given alleles
+                        // do we want a flag to control this behavior
+                        assembledAndNewHaplotypes.add(insertedHaplotype);
                     }
                 }
             }
