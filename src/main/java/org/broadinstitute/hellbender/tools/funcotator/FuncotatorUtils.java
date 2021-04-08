@@ -91,15 +91,19 @@ public final class FuncotatorUtils {
         final HashMap<String, AminoAcid>              mtCodons        = new HashMap<>();
         final HashMap<Pair<Genus, String>, AminoAcid> mtSpecialStarts = new HashMap<>();
 
+        // Add in the codons that are different in the MT code, including IUPAC bases:
         mtCodons.put("ATA", AminoAcid.METHIONINE);
         mtCodons.put("AGA", AminoAcid.STOP_CODON);
         mtCodons.put("AGG", AminoAcid.STOP_CODON);
+        mtCodons.put("AGR", AminoAcid.STOP_CODON);
         mtCodons.put("TGA", AminoAcid.TRYPTOPHAN);
 
+        // Add in the codons that serve as alternate start codons in various organisms, including IUPAC bases:
         mtSpecialStarts.put(Pair.of(Genus.BOS, "ATA"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.HOMO, "ATT"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.MUS, "ATT"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.MUS, "ATC"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.MUS, "ATY"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.CORTURNIX, "GTG"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.GALLUS, "GTG"), AminoAcid.METHIONINE);
 
