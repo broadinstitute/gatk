@@ -16,7 +16,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
@@ -46,12 +45,9 @@ public class ExtractCohortEngine {
     private final Long minLocation;
     private final Long maxLocation;
     private final TableReference filteringTableRef;
-    private final TableReference tranchesTableRef;
     private final ReferenceDataSource refSource;
     private Double vqsLodSNPThreshold;
     private Double vqsLodINDELThreshold;
-    private Double truthSensitivitySNPThreshold;
-    private Double truthSensitivityINDELThreshold;
 
     private final ProgressMeter progressMeter;
     private final String projectID;
@@ -76,8 +72,6 @@ public class ExtractCohortEngine {
      */
     public static int MISSING_CONF_THRESHOLD = 60;
 
-    public static double DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS = 99.7;
-    public static double DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS = 99.0;
 
     public ExtractCohortEngine(final String projectID,
                                final VariantContextWriter vcfWriter,
@@ -92,11 +86,8 @@ public class ExtractCohortEngine {
                                final Long minLocation,
                                final Long maxLocation,
                                final String filteringTableName,
-                               final String tranchesTableName,
                                final int localSortMaxRecordsInRam,
                                final boolean printDebugInformation,
-                               final Double truthSensitivitySNPThreshold,
-                               final Double truthSensitivityINDELThreshold,
                                final Double vqsLodSNPThreshold,
                                final Double vqsLodINDELThreshold,
                                final ProgressMeter progressMeter,
@@ -117,13 +108,10 @@ public class ExtractCohortEngine {
         this.minLocation = minLocation;
         this.maxLocation = maxLocation;
         this.filteringTableRef = filteringTableName == null || "".equals(filteringTableName) ? null : new TableReference(filteringTableName, SchemaUtils.YNG_FIELDS);
-        this.tranchesTableRef = tranchesTableName == null || "".equals(tranchesTableName) ? null : new TableReference(tranchesTableName, SchemaUtils.TRANCHE_FIELDS);
 
         this.printDebugInformation = printDebugInformation;
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
-        this.truthSensitivitySNPThreshold = truthSensitivitySNPThreshold;
-        this.truthSensitivityINDELThreshold = truthSensitivityINDELThreshold;
         this.progressMeter = progressMeter;
         this.queryMode = queryMode;
 
@@ -153,29 +141,6 @@ public class ExtractCohortEngine {
         boolean noFilteringRequested = (filteringTableRef == null);
 
         if (!noFilteringRequested) {
-            // TODO there must be a less awful way to do this
-            if ( (truthSensitivitySNPThreshold != null && truthSensitivityINDELThreshold == null) || (truthSensitivitySNPThreshold == null && truthSensitivityINDELThreshold != null) ) {
-                throw new UserException("If one of (--snps-truth-sensitivity-filter-level, --indels-truth-sensitivity-filter-level) is provided, both must be provided.");
-            } else if ( truthSensitivitySNPThreshold != null && truthSensitivityINDELThreshold != null ) {
-                // if the user specifies both truth sensitivity thresholds and lod cutoffs then throw a user error
-                if ( vqsLodSNPThreshold != null || vqsLodINDELThreshold != null ) {
-                    throw new UserException("Arguments --[snps/indels]-truth-sensitivity-filter-level and --[snps/indels]-lod-score-cutoff are mutually exclusive. Please only specify one set of options.");
-                }
-            } else if ( ( vqsLodSNPThreshold != null && vqsLodINDELThreshold == null ) || ( vqsLodSNPThreshold == null && vqsLodINDELThreshold != null ) ) {
-                throw new UserException("If one of (--snps-lod-score-cutoff, --indels-lod-score-cutoff) is provided, both must be provided.");
-            } else if ( vqsLodSNPThreshold == null && vqsLodINDELThreshold == null  && truthSensitivitySNPThreshold == null && truthSensitivityINDELThreshold == null) {
-                // defaults if no values are given
-                truthSensitivitySNPThreshold = DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS;
-                truthSensitivityINDELThreshold = DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS;
-            }
-
-            if ( truthSensitivitySNPThreshold != null && truthSensitivityINDELThreshold != null ) {
-                vqsLodSNPThreshold = getVqslodThreshold(truthSensitivitySNPThreshold, "SNP");
-                vqsLodINDELThreshold = getVqslodThreshold(truthSensitivityINDELThreshold, "INDEL");
-            }
-            // now we have vqslod thresholds set
-
-
             // get filter info (vqslod & yng values)
             final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
 
@@ -222,42 +187,6 @@ public class ExtractCohortEngine {
         }
     }
 
-    private Double getVqslodThreshold(Double truthSensitivityThreshold, String variantMode) {
-        logger.info("Retrieving the min vqslod threshold for " + variantMode + "s and truth sensitivity of " + truthSensitivityThreshold);
-
-        // We want to find (separately for SNP and INDEL tranches) the tranche whose target_truth_sensitivity
-        // is equal to or closest to (but greater than) our truth sensitivity threshold.
-        // e.g. if truthSensitivitySNPThreshold is 99.8 and we have tranches with target_truth_sensitivities
-        // of 99.5, 99.7, 99.9, and 100.0, we want the 99.9 tranche.
-
-        // get tranches for this mode (SNP/INDEL) where the target_truth_sensitivity is >= our truthSensitivityThreshold
-        final String restrictionWithFilterSetName = SchemaUtils.SNP_OR_INDEL_MODEL + " = '" + variantMode + "' AND " +
-                SchemaUtils.TARGET_TRUTH_SENSITIVITY + " >= " + truthSensitivityThreshold.toString() + " AND " +
-                SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
-
-        final StorageAPIAvroReader filteringTableAvroReader = new StorageAPIAvroReader(tranchesTableRef, restrictionWithFilterSetName, projectID);
-
-        Double ts = 100.0;
-        String trancheName = null;
-        Double trancheMinVqslod = null;
-
-        for ( final GenericRecord queryRow : filteringTableAvroReader ) {
-            Double thisTs = Double.parseDouble(queryRow.get(SchemaUtils.TARGET_TRUTH_SENSITIVITY).toString());
-            if ( thisTs < ts ) {
-                ts = thisTs;
-                trancheName = queryRow.get(SchemaUtils.TRANCHE_FILTER_NAME).toString();
-                trancheMinVqslod = Double.parseDouble(queryRow.get(SchemaUtils.MIN_VQSLOD).toString());
-            }
-        }
-
-        filteringTableAvroReader.close();
-
-        logger.info("Found " + variantMode + " tranche " + trancheName + ", defined by VQSLOD >= " + trancheMinVqslod + "; keeping all variants in this tranche.");
-        logger.info("Passing all " + variantMode + " variants with VQSLOD >= " + trancheMinVqslod);
-
-        // TODO deal with the case where you don't get any tranches
-        return trancheMinVqslod;
-    }
 
     public SortingCollection<GenericRecord> getAvroSortingCollection(org.apache.avro.Schema schema, int localSortMaxRecordsInRam) {
         final SortingCollection.Codec<GenericRecord> sortingCollectionCodec = new AvroSortingCollectionCodec(schema);
@@ -560,16 +489,13 @@ public class ExtractCohortEngine {
             // if it doesn't trigger any of the filters below, we assume it passes.
             builder.passFilters();
             if (remappedYngMap.containsValue("G")) {
-                // TODO change the initial query to include the filtername from the tranches tables
                 Optional<Double> snpMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
                 if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
-                    // TODO: add in sensitivities
-                    builder.filter(GATKVCFConstants.VQSR_FAILURE);
+                    builder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
                 }
                 Optional<Double> indelMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
                 if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
-                    // TODO: add in sensitivities
-                    builder.filter(GATKVCFConstants.VQSR_FAILURE);
+                    builder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
                     }
             } else {
                 // If VQSR dropped this site (there's no YNG or VQSLOD) then we'll filter it as a NAY.

@@ -169,10 +169,8 @@ public final class GATKVCFConstants {
     public static final String SITE_LEVEL_FILTERS =                             "SITE";
 
     public static final String NAY_FROM_YNG = "NAY";
-    public static final String VQSR_FAILURE = "LOW_VQSLOD";
-//    //TODO: take this out once we have the full tranche sensitivities implemented in ExtractCohort
-//    public static final String VQSR_TRANCHE_SNP = "VQSRTrancheSNP";
-//    public static final String VQSR_TRANCHE_INDEL = "VQSRTrancheIndel";
+    public static final String VQSR_FAILURE_SNP = "low_VQSLOD_SNP";
+    public static final String VQSR_FAILURE_INDEL = "low_VQSLOD_INDEL";
 
 
 
