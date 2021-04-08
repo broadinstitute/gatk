@@ -365,7 +365,8 @@ public class ExtractCohortEngine {
                     currentPositionHasVariant = true;
                     break;
                 case "0":   // Non Variant Block with GQ < 10
-                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 0));
+                    // Reference calls with GQ 0 should be rendered as no-call (#271)
+                    // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
                     break;
                 case "1":  // Non Variant Block with 10 <=  GQ < 20
                     unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 10));
