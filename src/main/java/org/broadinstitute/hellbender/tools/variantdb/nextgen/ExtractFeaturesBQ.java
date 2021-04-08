@@ -16,6 +16,7 @@ public class ExtractFeaturesBQ {
 
     public static String getVQSRFeatureExtractQueryString(final TableReference altAllele, final TableReference sampleList,
                                                           final Long minLocation, final Long maxLocation, final boolean trainingSitesOnly,
+                                                          final int hqGenotypeGQThreshold, final int hqGenotypeDepthThreshold, final double hqGenotypeABThreshold,
                                                           final double snpQualThreshold, final double indelQualThreshold) {
 
         String trainingSitesStanza =
@@ -36,7 +37,10 @@ public class ExtractFeaturesBQ {
                 .replaceAll("@sample", sampleList.getFQTableName())
                 .replaceAll("@altAllele", altAllele.getFQTableName())
                 .replaceAll("@snpQualThreshold", Double.toString(snpQualThreshold))
-                .replaceAll("@indelQualThreshold", Double.toString(indelQualThreshold));
+                .replaceAll("@indelQualThreshold", Double.toString(indelQualThreshold))
+                .replaceAll("@hqGenotypeGQThreshold", Double.toString(hqGenotypeGQThreshold))
+                .replaceAll("@hqGenotypeDepthThreshold", Double.toString(hqGenotypeDepthThreshold))
+                .replaceAll("@hqGenotypeABThreshold", Double.toString(hqGenotypeABThreshold));
 
         } catch (Exception ioe) {
             throw new GATKException("Unable to read query file from resources", ioe);

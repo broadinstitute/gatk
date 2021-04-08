@@ -106,10 +106,24 @@ public class ExtractFeaturesEngine {
     private final static double INDEL_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.INDEL_HETEROZYGOSITY);
     private final static double SNP_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.SNP_HETEROZYGOSITY);
 
+    // TODO: expose as parameters
+    private final static int HQ_GENOTYPE_GQ_THRESHOLD = 20;
+    private final static int HQ_GENOTYPE_DEPTH_THRESHOLD = 10;  
+    private final static double HQ_GENOTYPE_AB_THRESHOLD = 0.2;
+
     public void traverse() {
 
 
-        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, sampleListTable, minLocation, maxLocation, trainingSitesOnly, SNP_QUAL_THRESHOLD, INDEL_QUAL_THRESHOLD);
+        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, 
+                                                                                             sampleListTable, 
+                                                                                             minLocation, 
+                                                                                             maxLocation, 
+                                                                                             trainingSitesOnly, 
+                                                                                             HQ_GENOTYPE_GQ_THRESHOLD,
+                                                                                             HQ_GENOTYPE_DEPTH_THRESHOLD,
+                                                                                             HQ_GENOTYPE_AB_THRESHOLD,
+                                                                                             SNP_QUAL_THRESHOLD, 
+                                                                                             INDEL_QUAL_THRESHOLD);
         logger.info(featureQueryString);
         final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, SchemaUtils.FEATURE_EXTRACT_FIELDS, projectID, useBatchQueries, null);
 
@@ -234,6 +248,14 @@ public class ExtractFeaturesEngine {
         }
         builder.attribute(GATKVCFConstants.EXCESS_HET_KEY, String.format("%.3f", excessHetApprox));
 
+        if (rec.getDistinctAlleles() > 6) {
+            builder.filter(GATKVCFConstants.EXCESS_ALLELES);
+        }
+
+        if (rec.getHqGenotypeSamples() < 1) {
+            builder.filter(GATKVCFConstants.NO_HQ_GENOTYPES);
+        }
+        
         VariantContext vc = builder.make();
         vcfWriter.add(vc);
         progressMeter.update(vc);

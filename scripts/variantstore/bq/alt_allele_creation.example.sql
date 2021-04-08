@@ -14,7 +14,7 @@ RETURNS STRING
     """;
     
 CREATE OR REPLACE TABLE
-  `spec-ops-aou.kc_acmg_tieout_v6.alt_allele`
+  `spec-ops-aou.gvs_tieout_acmg_v1.alt_allele_kc`
 PARTITION BY
    RANGE_BUCKET(location, GENERATE_ARRAY(0, 25000000000000, 1000000000000))  
 CLUSTER BY location, sample_id
@@ -22,17 +22,17 @@ AS
   -- data will be in 3 positions: 0, 1, 2
   -- we need the position 1 data from GTs that are 0/1 and 1/2
 WITH
-  position1 as (select * from `spec-ops-aou.kc_acmg_tieout_v6.vet_001` where call_GT in ("0/1", "1/0", "1/1", "0|1", "1|0", "1|1")),
+  position1 as (select * from `spec-ops-aou.gvs_tieout_acmg_v1.vet_001` where call_GT in ("0/1", "1/0", "1/1", "0|1", "1|0", "1|1", "0/2", "0|2", "2/0", "2|0")),
   -- we only need position 2 data from GTs that are 0/2
   -- QUESTION what about 0/2?
-  position2 as (select * from `spec-ops-aou.kc_acmg_tieout_v6.vet_001` where call_GT IN ("1/2", "1|2"))
+  position2 as (select * from `spec-ops-aou.gvs_tieout_acmg_v1.vet_001` where call_GT IN ("1/2", "1|2", "2/1", "2|1"))
 
 
 -- we don't really need to save data for spanning deletions (i.e. allele = '*')
 select location, sample_id, 
 SPLIT(minimize(ref, SPLIT(alt,",")[OFFSET(0)]))[OFFSET(0)] as ref,
 SPLIT(minimize(ref, SPLIT(alt,",")[OFFSET(0)]))[OFFSET(1)] as allele,
-1 as allele_pos, call_GT,
+1 as allele_pos, call_GT, call_GQ,
 as_raw_mq,
 cast(SPLIT(as_raw_mq,"|")[OFFSET(1)] as int64) raw_mq,
 as_raw_mqranksum,
@@ -58,7 +58,7 @@ union all
 select location, sample_id, 
 SPLIT(minimize(ref, SPLIT(alt,",")[OFFSET(0)]))[OFFSET(0)] as ref,
 SPLIT(minimize(ref, SPLIT(alt,",")[OFFSET(0)]))[OFFSET(1)] as allele,
-1 as allele_pos, call_GT,
+1 as allele_pos, call_GT, call_GQ,
 as_raw_mq,
 cast(SPLIT(as_raw_mq,"|")[OFFSET(1)] as int64) raw_mq,
 as_raw_mqranksum,
@@ -80,10 +80,10 @@ from position2
 
 union all
 
-select location, sample_id, 
+select location, sample_id,
 SPLIT(minimize(ref, SPLIT(alt,",")[OFFSET(1)]))[OFFSET(0)] as ref,
 SPLIT(minimize(ref, SPLIT(alt,",")[OFFSET(1)]))[OFFSET(1)] as allele,
-2 as allele_pos, call_GT,
+2 as allele_pos, call_GT, call_GQ,
 as_raw_mq,
 cast(SPLIT(as_raw_mq,"|")[OFFSET(2)] as int64) raw_mq,
 as_raw_mqranksum,
