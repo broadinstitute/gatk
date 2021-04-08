@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -232,15 +233,12 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final List<VariantContext> givenAlleles = featureContext.getValues(MTAC.alleles).stream()
                 .filter(vc -> MTAC.forceCallFiltered || vc.isNotFiltered()).collect(Collectors.toList());
 
-        // create VariantContext list for our 2 additional snps
-        VariantContextBuilder firstSNP = new VariantContextBuilder();
+        // BG & AH create VariantContext list for our 2 additional snps
+        VariantContextBuilder firstSNP = new VariantContextBuilder("pileup", "gi|395136682|gb|CP003248.1|", 104814, 104814, Arrays.asList(Allele.create("T", true), Allele.create("G")));
+        VariantContextBuilder secondSNP = new VariantContextBuilder("pileup", "gi|395136682|gb|CP003248.1|", 104821, 104821, Arrays.asList(Allele.create("C", true), Allele.create("A")));
+        ArrayList<VariantContext> forcedPileupAlleles = new ArrayList<>(Arrays.asList(firstSNP.make(), secondSNP.make()));
 
-        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false);
-
-        // maybe put haplotype here to get its events
-//        Haplotype template = untrimmedAssemblyResult.getHaplotypeList().get(0);
-//        Haplotype pileupHaplotype = new Haplotype("GGCGTCGGCGATGCGTCGGCCGGCTTCGGGCTTGGTGATGCGCAGCCGGTTGGCCAGCGCGCAGC".getBytes(), false, template.getAlignmentStartHapwrtRef(), template.getCigar());
-//        pileupHaplotype.setGenomeLocation(template.getGenomeLocation());
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, forcedPileupAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false);
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(MTAC.maxMnpDistance);
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion, allVariationEvents, referenceContext);
@@ -259,11 +257,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         removeReadStubs(regionForGenotyping);
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
-
-        Haplotype template = assemblyResult.getHaplotypeList().get(0);
-        Haplotype pileupHaplotype = new Haplotype("GGCGTCGGCGATGCGTCGGCCGGCTTCGGGCTTGGTGATGCGCAGCCGGTTGGCCAGCGCGCAGC".getBytes(), false, template.getAlignmentStartHapwrtRef(), template.getCigar());
-        pileupHaplotype.setGenomeLocation(template.getGenomeLocation());
-        assemblyResult.add(pileupHaplotype);
 
         final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads);
         readLikelihoods.switchToNaturalLog();
