@@ -39,8 +39,14 @@ WITH
                @locationStanza
                @trainingSitesStanza
         )
+        GROUP BY location),
+   aa_site_allele_info AS (
+        SELECT location, COUNT(DISTINCT allele) distinct_alleles
+        FROM `@altAllele`
+        WHERE sample_id IN (SELECT sample_id FROM `@sample`)
+        @locationStanza
+        @trainingSitesStanza
         GROUP BY location)
-
     SELECT
            ai.location,
            ai.ref,
@@ -60,7 +66,8 @@ WITH
            SB_ALT_PLUS,
            SB_ALT_MINUS,
            aasi.num_het_samples,
-           aasi.num_homvar_samples
+           aasi.num_homvar_samples,
+           aasai.distinct_alleles
     FROM (
     SELECT aa.location,
            ref,
@@ -78,9 +85,7 @@ WITH
            IFNULL(SUM(SB_REF_PLUS),0)  as SB_REF_PLUS,
            IFNULL(SUM(SB_REF_MINUS),0) as SB_REF_MINUS,
            IFNULL(SUM(SB_ALT_PLUS),0)  as SB_ALT_PLUS,
-           IFNULL(SUM(SB_ALT_MINUS),0) as SB_ALT_MINUS,
-           COUNT(distinct CASE WHEN call_GT IN ('0/1', '0|1', '1/0', '1|0', '0/2', '0|2', '2/0', '2|0') THEN sample_id ELSE NULL END) num_het_samples,
-           COUNT(distinct CASE WHEN call_GT IN ('1/1', '1|1', '1/2', '1|2', '2/1', '2|1') THEN sample_id ELSE NULL END) num_homvar_samples
+           IFNULL(SUM(SB_ALT_MINUS),0) as SB_ALT_MINUS
     FROM `@altAllele` as aa
     WHERE allele != '*'
     AND sample_id in (SELECT sample_id from `@sample` )
@@ -91,5 +96,6 @@ WITH
     LEFT JOIN aa_ref_ad_info aaradi ON (ai.location = aaradi.location)
     LEFT JOIN aa_ref_sb_info aarsbi ON (ai.location = aarsbi.location)
     LEFT JOIN aa_site_info aasi ON (ai.location = aasi.location)
+    LEFT JOIN aa_site_allele_info aasai ON (ai.location = aasai.location)
     WHERE aasi.sum_qualapprox >= CASE WHEN LENGTH(ai.ref) = LENGTH(ai.allele) THEN @snpQualThreshold ELSE @indelQualThreshold END
 
