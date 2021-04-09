@@ -18,7 +18,7 @@ public class ArraySampleTsvCreator {
 
     private static final Logger logger = LogManager.getLogger(ArraySampleTsvCreator.class);
 
-    private SimpleXSVWriter sampleMetadataWriter = null;
+    private SimpleXSVWriter sampleInfoWriter = null;
     private Map<String, String> metricsMap;
 
 
@@ -59,20 +59,20 @@ public class ArraySampleTsvCreator {
     }
 
     public void createRow(String sampleName, String sampleId, String tableNumberPrefix, File outputDirectory) {
-        // if the metadata tsvs don't exist yet -- create them
+        // if the sample_info tsvs don't exist yet -- create them
         try {
-            // Create a metadata file to go into the metadata dir for _this_ sample
+            // Create a sample_info file to go into the sample_info dir for _this_ sample
             // TODO--this should just be one file per sample set?
-            final File sampleMetadataFileName = new File (outputDirectory, IngestConstants.sampleMetadataFilePrefix + tableNumberPrefix + sampleName + IngestConstants.FILETYPE);
+            final File sampleInfoFileName = new File (outputDirectory, IngestConstants.sampleInfoFilePrefix + tableNumberPrefix + sampleName + IngestConstants.FILETYPE);
             // write header to it
             List<String> sampleListHeader = ArraySampleTsvCreator.getHeaders();
-            sampleMetadataWriter = new SimpleXSVWriter(sampleMetadataFileName.toPath(), IngestConstants.SEPARATOR);
-            sampleMetadataWriter.setHeaderLine(sampleListHeader);
+            sampleInfoWriter = new SimpleXSVWriter(sampleInfoFileName.toPath(), IngestConstants.SEPARATOR);
+            sampleInfoWriter.setHeaderLine(sampleListHeader);
 
-            final List<String> TSVLineToCreateSampleMetadata = createSampleListRow(
+            final List<String> TSVLineToCreateSampleInfo = createSampleListRow(
                     sampleName,
                     sampleId);
-            sampleMetadataWriter.getNewLineBuilder().setRow(TSVLineToCreateSampleMetadata).write();
+            sampleInfoWriter.getNewLineBuilder().setRow(TSVLineToCreateSampleInfo).write();
 
         } catch (final IOException e) {
             throw new UserException("Could not create sample outputs", e);
@@ -103,9 +103,9 @@ public class ArraySampleTsvCreator {
     }
 
     public void closeTool() {
-        if (sampleMetadataWriter != null) {
+        if (sampleInfoWriter != null) {
             try {
-                sampleMetadataWriter.close();
+                sampleInfoWriter.close();
             } catch (final Exception e) {
                 throw new IllegalArgumentException("Couldn't close array sample writer", e);
             }

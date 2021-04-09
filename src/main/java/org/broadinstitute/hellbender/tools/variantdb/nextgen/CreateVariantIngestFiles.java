@@ -40,7 +40,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private PetTsvCreator petTsvCreator;
     private VetTsvCreator vetTsvCreator;
-    private MetadataTsvCreator metadataTsvCreator;
+    private SampleInfoTsvCreator sampleInfoTsvCreator;
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
     private String sampleName;
@@ -49,7 +49,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     // Inside the parent directory, a directory for each chromosome will be created, with a pet directory and vet directory in each one.
     // Each pet and vet directory will hold all of the pet and vet tsvs for each sample
-    // A metadata directory will be created, with a metadata tsv for each sample
+    // A sample_info directory will be created, with a sample_info tsv for each sample
 
 //    @Argument(fullName = "output-path",
 //            shortName = "VPO",
@@ -147,8 +147,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
 //        parentDirectory = parentOutputDirectory.toPath(); // TODO do we need this? More efficient way to do this?
 //        final Path sampleDirectoryPath = IngestUtils.createSampleDirectory(parentDirectory, sampleDirectoryNumber);
-        metadataTsvCreator = new MetadataTsvCreator(sampleName, sampleId, tableNumberPrefix, outputDir);
-        metadataTsvCreator.createRow(sampleName, sampleId, userIntervals, gqStateToIgnore);
+        sampleInfoTsvCreator = new SampleInfoTsvCreator(sampleName, sampleId, tableNumberPrefix, outputDir);
+        sampleInfoTsvCreator.createRow(sampleName, sampleId, userIntervals, gqStateToIgnore);
 
         // To set up the missing positions
         SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
@@ -223,11 +223,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (vetTsvCreator != null) {
             vetTsvCreator.closeTool();;
         }
-        if (metadataTsvCreator != null) {
+        if (sampleInfoTsvCreator != null) {
             try {
-                metadataTsvCreator.closeTool();
+                sampleInfoTsvCreator.closeTool();
             } catch (final Exception e) {
-                throw new IllegalArgumentException("Couldn't close Sample Metadata writer", e);
+                throw new IllegalArgumentException("Couldn't close SampleInfo writer", e);
             }
         }
     }
