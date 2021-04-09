@@ -44,7 +44,7 @@ workflow ImportArrays {
 
   call LoadArrays {
     input:
-      sample_info_tsvs = CreateImportTsvs.sample_info_tsv,
+      sample_tsvs = CreateImportTsvs.sample_tsv,
       project_id = project_id,
       dataset_name = dataset_name,
       storage_location = output_directory,
@@ -100,8 +100,8 @@ task CreateImportTsvs {
         ~{"--probe-info-table " + probe_info_table} \
         -SNM ~{sample_map} \
         --ref-version 37
-
-      gsutil cp sample_info_*.tsv ~{output_directory}/sample_info_tsvs/
+        
+      gsutil cp sample_*.tsv ~{output_directory}/sample_tsvs/
       gsutil cp raw_*.tsv ~{output_directory}/raw_tsvs/
   >>>
   runtime {
@@ -112,8 +112,8 @@ task CreateImportTsvs {
       cpu: 2
   }
   output {
-      File sample_info_tsv = glob("sample_info_*.tsv")[0]
-      File arraydata_tsv = glob("raw_*.tsv")[0]
+      File sample_tsv = glob("sample_*.tsv")[0]
+      File arraydata_tsv = glob("raw_*.tsv")[0] 
   }
 }
 
@@ -129,7 +129,7 @@ task LoadArrays {
     String uuid = ""
 
     #input from previous task needed to delay task from running until the other is complete
-    Array[String] sample_info_tsvs
+    Array[String] sample_tsvs
 
     # runtime
     Int? preemptible_tries
@@ -142,7 +142,7 @@ task LoadArrays {
     set -e
     ~{for_testing_only}
 
-    SAMPLE_INFO_DIR=~{storage_location}/sample_info_tsvs/
+    SAMPLE_DIR=~{storage_location}/sample_tsvs/
     RAW_DIR=~{storage_location}/raw_tsvs/
 
     let "PARTITION_START=(~{table_id}-1)*4000+1"
@@ -152,19 +152,19 @@ task LoadArrays {
     printf -v PADDED_TABLE_ID "%03d" ~{table_id}
 
     RAW_FILES="raw_${PADDED_TABLE_ID}_*"
-    SAMPLE_INFO_FILES="sample_info_${PADDED_TABLE_ID}_*"
+    METADATA_FILES="sample_${PADDED_TABLE_ID}_*"
 
     NUM_RAW_FILES=$(gsutil ls $RAW_DIR${RAW_FILES} | wc -l)
-    NUM_SAMPLE_INFO_FILES=$(gsutil ls $SAMPLE_DIR${SAMPLE_INFO_FILES} | wc -l)
+    NUM_METADATA_FILES=$(gsutil ls $SAMPLE_DIR${METADATA_FILES} | wc -l)
 
-    if [ $NUM_RAW_FILES -eq 0 -a $NUM_SAMPLE_INFO_FILES -eq 0 ]; then
+    if [ $NUM_RAW_FILES -eq 0 -a $NUM_METADATA_FILES -eq 0 ]; then
       "no files for table ${PADDED_TABLE_ID} to process in ~{storage_location}; exiting"
       exit
     fi
 
-    # create a sample_info table and load
+    # create a metadata table and load
     SAMPLE_LIST_TABLE="~{dataset_name}.~{uuid + "_"}sample_list"
-    if [ $NUM_SAMPLE_INFO_FILES -gt 0 ]; then
+    if [ $NUM_METADATA_FILES -gt 0 ]; then
       set +e
       bq ls --project_id ~{project_id} ~{dataset_name} > /dev/null
       set -e
@@ -183,13 +183,13 @@ task LoadArrays {
       fi
       #load should be false if using Google Storage Transfer so that the tables will be created by this script, but no data will be uploaded.
       if [ ~{load} = true ]; then
-        bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --null_marker="null" --source_format=CSV -F "\t" $SAMPLE_LIST_TABLE $SAMPLE_DIR$SAMPLE_INFO_FILES ~{sample_list_schema}
-        echo "ingested ${SAMPLE_INFO_FILES} file from $SAMPLE_DIR into table $SAMPLE_LIST_TABLE"
+        bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --null_marker="null" --source_format=CSV -F "\t" $SAMPLE_LIST_TABLE $SAMPLE_DIR$METADATA_FILES ~{sample_list_schema}
+        echo "ingested ${METADATA_FILES} file from $SAMPLE_DIR into table $SAMPLE_LIST_TABLE"
       else
-        echo "${SAMPLE_INFO_FILES} will be ingested from $SAMPLE_DIR by Google Storage Transfer"
+        echo "${METADATA_FILES} will be ingested from $SAMPLE_DIR by Google Storage Transfer"
       fi
     else
-      echo "no sample_info files to process"
+      echo "no metadata files to process"
     fi
 
     # create array table
