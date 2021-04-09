@@ -57,6 +57,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - mmt_rename_metadata
    - name: funcotator
      subclass: WDL
      primaryDescriptorPath: /scripts/funcotator_wdl/funcotator.wdl
