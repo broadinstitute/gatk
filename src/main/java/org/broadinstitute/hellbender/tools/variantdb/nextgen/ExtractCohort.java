@@ -52,7 +52,7 @@ public class ExtractCohort extends ExtractTool {
     @Argument(
             fullName = "cohort-extract-table",
             doc = "Fully qualified name of the table where the cohort data exists (already subsetted)",
-            optional = false
+            optional = true
     )
     private String cohortTable = null;
 
