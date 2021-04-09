@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
 import htsjdk.variant.vcf.VCFFilterHeaderLine;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -12,6 +13,12 @@ import static org.broadinstitute.hellbender.tools.variantdb.nextgen.FilterSensit
 import static org.testng.Assert.*;
 
 public class FilterSensitivityToolsTest {
+
+    // for testing inputs
+    private Double definedDoubleInput = 0.0;
+    private Double undefinedDoubleInput = null;
+    private String definedStringInput = "I'm defined!";
+    private String undefinedStringInput = null;
 
     private Map<Double, Double> testTrancheMap = new TreeMap<>();
 
@@ -25,21 +32,84 @@ public class FilterSensitivityToolsTest {
         testTrancheMap.put(90.0, 12.5);
     }
 
+    // tests for validateFilteringCutoffs
 
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testValidateFilteringCutoffsOnlySnpTruthInput() {
+        Double snpTruthInput = definedDoubleInput;
+        Double indelTruthInput = undefinedDoubleInput;
+        Double snpVqslodInput = undefinedDoubleInput;
+        Double indelVqslodInput = undefinedDoubleInput;
+        String trancheTableInput = definedStringInput;
 
+        validateFilteringCutoffs(snpTruthInput, indelTruthInput, snpVqslodInput, indelVqslodInput, trancheTableInput);
+    }
 
-    // TODO how to test the exceptions in this method?
-//    @Test
-//    public void testValidateFilteringCutoffs() {
-//        String definedInput = "I'm defined!";
-//        String undefinedInput = null;
-//
-//        assertThrows(new testValidateFilteringCutoffs(definedInput, undefinedInput, undefinedInput, undefinedInput, definedInput));
-//    }
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testValidateFilteringCutoffsOnlyIndelTruthInput() {
+        Double snpTruthInput = undefinedDoubleInput;
+        Double indelTruthInput = definedDoubleInput;
+        Double snpVqslodInput = undefinedDoubleInput;
+        Double indelVqslodInput = undefinedDoubleInput;
+        String trancheTableInput = definedStringInput;
+
+        validateFilteringCutoffs(snpTruthInput, indelTruthInput, snpVqslodInput, indelVqslodInput, trancheTableInput);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testValidateFilteringCutoffsOnlySnpVqslodInput() {
+        Double snpTruthInput = undefinedDoubleInput;
+        Double indelTruthInput = undefinedDoubleInput;
+        Double snpVqslodInput = definedDoubleInput;
+        Double indelVqslodInput = undefinedDoubleInput;
+        String trancheTableInput = definedStringInput;
+
+        validateFilteringCutoffs(snpTruthInput, indelTruthInput, snpVqslodInput, indelVqslodInput, trancheTableInput);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testValidateFilteringCutoffsOnlyIndelVqslodInput() {
+        Double snpTruthInput = undefinedDoubleInput;
+        Double indelTruthInput = undefinedDoubleInput;
+        Double snpVqslodInput = undefinedDoubleInput;
+        Double indelVqslodInput = definedDoubleInput;
+        String trancheTableInput = definedStringInput;
+
+        validateFilteringCutoffs(snpTruthInput, indelTruthInput, snpVqslodInput, indelVqslodInput, trancheTableInput);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testValidateFilteringCutoffsBothInputs() {
+        Double snpTruthInput = definedDoubleInput;
+        Double indelTruthInput = definedDoubleInput;
+        Double snpVqslodInput = undefinedDoubleInput;
+        Double indelVqslodInput = definedDoubleInput;
+        String trancheTableInput = definedStringInput;
+
+        validateFilteringCutoffs(snpTruthInput, indelTruthInput, snpVqslodInput, indelVqslodInput, trancheTableInput);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testValidateFilteringCutoffsNoTranches() {
+        Double snpTruthInput = undefinedDoubleInput;
+        Double indelTruthInput = undefinedDoubleInput;
+        Double snpVqslodInput = undefinedDoubleInput;
+        Double indelVqslodInput = undefinedDoubleInput;
+        String trancheTableInput = undefinedStringInput;
+
+        validateFilteringCutoffs(snpTruthInput, indelTruthInput, snpVqslodInput, indelVqslodInput, trancheTableInput);
+    }
 
     @Test
-    public void testGetTrancheMaps() {
+    public void testValidateFilteringCutoffsVqslodNoTranches() {
+        Double snpTruthInput = undefinedDoubleInput;
+        Double indelTruthInput = undefinedDoubleInput;
+        Double snpVqslodInput = definedDoubleInput;
+        Double indelVqslodInput = definedDoubleInput;
+        String trancheTableInput = undefinedStringInput;
 
+        // this should pass fine - don't need tranches if vqslod cutoff is defined
+        validateFilteringCutoffs(snpTruthInput, indelTruthInput, snpVqslodInput, indelVqslodInput, trancheTableInput);
     }
 
     // tests for getVqslodThreshold
@@ -88,7 +158,6 @@ public class FilterSensitivityToolsTest {
         assertEquals(getVqslodThresholdFromTranches(testTrancheMap, testSensitivityThresh), expectedVqslod);
     }
 
-
     @Test
     public void testGetVqslodThresholdFromTranchesBetweenTranches() {
         Double testSensitivityThresh = 94.0;
@@ -103,20 +172,57 @@ public class FilterSensitivityToolsTest {
         assertEquals(getVqslodThresholdFromTranches(testTrancheMap, testSensitivityThresh), expectedVqslod);
     }
 
+    @Test(expectedExceptions = UserException.class)
+    public void testGetVqslodThresholdFromTranchesHigherThanAll() {
+        Double testSensitivityThresh = 200.0;
+        getVqslodThresholdFromTranches(testTrancheMap, testSensitivityThresh);
+    }
+
+
     // tests for getVqsLodHeader
 
     @Test
-    public void testGetVqsLodHeader() {
-        Double vqsLodSNPThreshold = 90.0;
+    public void testGetVqsLodHeaderSNP() {
+        Double vqsLodThreshold = 0.0;
         String model = GATKVCFConstants.SNP;
         VCFFilterHeaderLine expectedHeader = new VCFFilterHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
-                "Site failed SNP model VQSLOD cutoff of 90.0");
+                "Site failed SNP model VQSLOD cutoff of 0.0");
 
-        assertEquals(getVqsLodHeader(vqsLodSNPThreshold, GATKVCFConstants.SNP), expectedHeader);
+        assertEquals(getVqsLodHeader(vqsLodThreshold, GATKVCFConstants.SNP), expectedHeader);
     }
 
     @Test
-    public void testGetTruthSensitivityHeader() {
+    public void testGetVqsLodHeaderINDEL() {
+        Double vqsLodThreshold = 0.0;
+        String model = GATKVCFConstants.INDEL;
+        VCFFilterHeaderLine expectedHeader = new VCFFilterHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
+                "Site failed INDEL model VQSLOD cutoff of 0.0");
+
+        assertEquals(getVqsLodHeader(vqsLodThreshold, GATKVCFConstants.INDEL), expectedHeader);
+    }
+
+    // tests for getTruthSensitivityHeader
+
+    @Test
+    public void testGetTruthSensitivityHeaderSNP() {
+        Double vqsLodThreshold = 0.0;
+        Double truthSensitivityThreshold = 90.0;
+        String model = GATKVCFConstants.SNP;
+        VCFFilterHeaderLine expectedHeader = new VCFFilterHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
+                "Site failed SNP model sensitivity cutoff (90.0), corresponding with VQSLOD cutoff of 0.0");
+
+        assertEquals(getTruthSensitivityHeader(truthSensitivityThreshold, vqsLodThreshold, GATKVCFConstants.SNP), expectedHeader);
+    }
+
+    @Test
+    public void testGetTruthSensitivityHeaderINDEL() {
+        Double vqsLodThreshold = 0.0;
+        Double truthSensitivityThreshold = 90.0;
+        String model = GATKVCFConstants.INDEL;
+        VCFFilterHeaderLine expectedHeader = new VCFFilterHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
+                "Site failed INDEL model sensitivity cutoff (90.0), corresponding with VQSLOD cutoff of 0.0");
+
+        assertEquals(getTruthSensitivityHeader(truthSensitivityThreshold, vqsLodThreshold, GATKVCFConstants.INDEL), expectedHeader);
     }
 
 }

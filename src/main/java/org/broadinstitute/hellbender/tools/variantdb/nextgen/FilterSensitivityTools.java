@@ -34,21 +34,21 @@ public class FilterSensitivityTools {
         boolean indelVqslodIsDefined = vqsLodINDELThreshold != null;
 
         if (snpTruthSensIsDefined ^ indelTruthSensIsDefined) {
-            throw new UserException("If one of (--snps-truth-sensitivity-filter-level, --indels-truth-sensitivity-filter-level) is provided, both must be provided.");
+            throw new UserException.BadInput("If one of (--snps-truth-sensitivity-filter-level, --indels-truth-sensitivity-filter-level) is provided, both must be provided.");
         } else if (snpTruthSensIsDefined) {
             // if the user specifies both truth sensitivity thresholds and lod cutoffs then throw a user error
             if (snpVqslodIsDefined || indelVqslodIsDefined) {
-                throw new UserException("Arguments --[snps/indels]-truth-sensitivity-filter-level and --[snps/indels]-lod-score-cutoff are mutually exclusive. Please only specify one set of options.");
+                throw new UserException.BadInput("Arguments --[snps/indels]-truth-sensitivity-filter-level and --[snps/indels]-lod-score-cutoff are mutually exclusive. Please only specify one set of options.");
             }
         } else if (snpVqslodIsDefined ^ indelVqslodIsDefined) {
-            throw new UserException("If one of (--snps-lod-score-cutoff, --indels-lod-score-cutoff) is provided, both must be provided.");
+            throw new UserException.BadInput("If one of (--snps-lod-score-cutoff, --indels-lod-score-cutoff) is provided, both must be provided.");
         }
 
         if (!snpVqslodIsDefined) {
             // we will need to use tranches to look up vqslod thresholds; therefore user must supply
             // a tranches table
             if (tranchesTableName == null) {
-                throw new UserException("Unless using lod score cutoffs (advanced), you must provide a tranches table using the argument --tranches-table.");
+                throw new UserException.BadInput("Unless using lod score cutoffs (advanced), you must provide a tranches table using the argument --tranches-table.");
             }
         }
     }
@@ -87,8 +87,7 @@ public class FilterSensitivityTools {
 
 
     public static Double getVqslodThreshold(Map<Double, Double> trancheMap, Double truthSensitivityThreshold, String model) {
-
-        if (truthSensitivityThreshold == null) {  // at this point, we know that all vqsr threshold inputs are null, so use defaults
+        if (truthSensitivityThreshold == null) {
             truthSensitivityThreshold = GATKVCFConstants.SNP.contains(model) ? DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS : DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS;
             logger.info("No filter thresholds supplied; using default " + model + " truth sensitivity threshold of " + truthSensitivityThreshold);
         }
