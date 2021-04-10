@@ -62,10 +62,12 @@ public class ExtractFeaturesEngine {
     private final Long maxLocation;
     private final boolean useBatchQueries;
     private final int numSamples;
+    private final int hqGenotypeGQThreshold;
+    private final int hqGenotypeDepthThreshold;
+    private final double hqGenotypeABThreshold;
 
 //    /** Set of sample names seen in the variant data from BigQuery. */
 //    private final Set<String> sampleNames = new HashSet<>();
-
     public ExtractFeaturesEngine(final String projectID,
                                final VariantContextWriter vcfWriter,
                                final VCFHeader vcfHeader,
@@ -81,7 +83,11 @@ public class ExtractFeaturesEngine {
                                final boolean printDebugInformation,
                                final boolean useBatchQueries,
                                final ProgressMeter progressMeter,
-                               final int numSamples) {
+                               final int numSamples,
+                               final int hqGenotypeGQThreshold,
+                               final int hqGenotypeDepthThreshold,
+                               final double hqGenotypeABThreshold ) {
+
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -97,6 +103,9 @@ public class ExtractFeaturesEngine {
         this.minLocation = minLocation;
         this.maxLocation = maxLocation;
         this.numSamples = numSamples;
+        this.hqGenotypeGQThreshold = hqGenotypeGQThreshold;
+        this.hqGenotypeDepthThreshold = hqGenotypeDepthThreshold;
+        this.hqGenotypeABThreshold = hqGenotypeABThreshold;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
@@ -106,11 +115,6 @@ public class ExtractFeaturesEngine {
     private final static double INDEL_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.INDEL_HETEROZYGOSITY);
     private final static double SNP_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.SNP_HETEROZYGOSITY);
 
-    // TODO: expose as parameters
-    private final static int HQ_GENOTYPE_GQ_THRESHOLD = 20;
-    private final static int HQ_GENOTYPE_DEPTH_THRESHOLD = 10;  
-    private final static double HQ_GENOTYPE_AB_THRESHOLD = 0.2;
-
     public void traverse() {
 
 
@@ -119,9 +123,9 @@ public class ExtractFeaturesEngine {
                                                                                              minLocation, 
                                                                                              maxLocation, 
                                                                                              trainingSitesOnly, 
-                                                                                             HQ_GENOTYPE_GQ_THRESHOLD,
-                                                                                             HQ_GENOTYPE_DEPTH_THRESHOLD,
-                                                                                             HQ_GENOTYPE_AB_THRESHOLD,
+                                                                                             hqGenotypeGQThreshold,
+                                                                                             hqGenotypeDepthThreshold,
+                                                                                             hqGenotypeABThreshold,
                                                                                              SNP_QUAL_THRESHOLD, 
                                                                                              INDEL_QUAL_THRESHOLD);
         logger.info(featureQueryString);

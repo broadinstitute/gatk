@@ -47,6 +47,24 @@ public class ExtractFeatures extends ExtractTool {
         optional = true)
     protected boolean useBatchQueries = true;
 
+    @Argument(
+        fullName = "hq-genotype-gq-threshold",
+        doc = "GQ threshold defining a high quality genotype",
+        optional = true)
+    protected int hqGenotypeGQThreshold = 20;
+
+    @Argument(
+        fullName = "hq-genotype-depth-threshold",
+        doc = "Depth threshold defining a high quality genotype",
+        optional = true)
+    protected int hqGenotypeDepthThreshold = 10;
+
+    @Argument(
+        fullName = "hq-genotype-ab-threshold",
+        doc = "Ab threshold defining a high quality genotype",
+        optional = true)
+    protected double hqGenotypeABThreshold = 0.2;
+
     @Override
     public boolean requiresIntervals() {
         return false;
@@ -89,7 +107,11 @@ public class ExtractFeatures extends ExtractTool {
             printDebugInformation,
             useBatchQueries,
             progressMeter,
-            sampleList.size());
+            sampleList.size(),
+            hqGenotypeGQThreshold,
+            hqGenotypeDepthThreshold,
+            hqGenotypeABThreshold);
+
         vcfWriter.writeHeader(header);
 }
 

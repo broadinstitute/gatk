@@ -27,7 +27,7 @@
   "NgsFilterExtract.large_disk": 1000,
   "NgsFilterExtract.huge_disk": 2000,
 
-  "NgsFilterExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.2.0.0-310-g02c5469-SNAPSHOT-local.jar",
+  "NgsFilterExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.2.0.0-313-g40294e6-SNAPSHOT-local.jar",
 
   "NgsFilterExtract.fq_sample_table": "spec-ops-aou.gvs_tieout_acmg_v1.sample_info",
   "NgsFilterExtract.fq_alt_allele_table": "spec-ops-aou.gvs_tieout_acmg_v1.alt_allele",
@@ -35,10 +35,10 @@
 
   "NgsFilterExtract.excluded_sites_bed": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/excess_het_sites.sorted.bed",
 
-  "NgsFilterExtract.filter_set_name": "gvs_tieout_acmg_v6_sites",
+  "NgsFilterExtract.filter_set_name": "gvs_tieout_acmg_v7_sites",
   "NgsFilterExtract.output_file_base_name": "gvs_tieout_acmg_v1.sites_only",
 
-  "NgsFilterExtract.scatter_count": 1,
+  "NgsFilterExtract.scatter_count": 20,
   "NgsFilterExtract.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
   "NgsFilterExtract.fq_filter_set_info_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_info",
   "NgsFilterExtract.fq_filter_set_tranches_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_tranches",
