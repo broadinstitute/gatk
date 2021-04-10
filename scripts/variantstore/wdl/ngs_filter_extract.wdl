@@ -16,6 +16,8 @@ workflow NgsFilterExtract {
         String filter_set_name
         String fq_filter_set_info_table
         String fq_filter_set_tranches_table
+        String fq_filter_sites_destination_table
+
         File? excluded_intervals
 
         String output_file_base_name
@@ -145,6 +147,10 @@ workflow NgsFilterExtract {
      input:
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,
+
+        sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
+        sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+
         snp_recal_file = SNPsVariantRecalibrator.recalibration,
         snp_recal_file_index = SNPsVariantRecalibrator.recalibration_index,
         snp_recal_tranches = SNPsVariantRecalibrator.tranches,
@@ -154,7 +160,8 @@ workflow NgsFilterExtract {
         indel_recal_tranches = IndelsVariantRecalibrator.tranches,
 
         fq_info_destination_table = fq_filter_set_info_table,
-        fq_tranches_destination_table = fq_filter_set_tranches_table
+        fq_tranches_destination_table = fq_filter_set_tranches_table,
+        fq_filter_sites_destination_table = fq_filter_sites_destination_table
    }
 
     output {
@@ -307,6 +314,9 @@ task UploadFilterSetToBQ {
 
         String filter_set_name
 
+        File sites_only_variant_filtered_vcf
+        File sites_only_variant_filtered_vcf_index
+
         File snp_recal_file
         File snp_recal_file_index
         File snp_recal_tranches
@@ -317,6 +327,7 @@ task UploadFilterSetToBQ {
 
         String fq_info_destination_table
         String fq_tranches_destination_table
+        String fq_filter_sites_destination_table
     }
 
 
@@ -328,7 +339,7 @@ task UploadFilterSetToBQ {
 
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-        gatk --java-options "-Xmx4g" \
+        gatk --java-options "-Xmx1g" \
             CreateFilteringFiles \
             --ref-version 38 \
             --filter-set-name ~{filter_set_name} \
@@ -336,13 +347,20 @@ task UploadFilterSetToBQ {
             -V ~{snp_recal_file} \
             -O ~{filter_set_name}.snps.recal.tsv
 
-        gatk --java-options "-Xmx4g" \
+        gatk --java-options "-Xmx1g" \
             CreateFilteringFiles \
             --ref-version 38 \
             --filter-set-name ~{filter_set_name} \
             -mode INDEL \
             -V ~{indel_recal_file} \
             -O ~{filter_set_name}.indels.recal.tsv
+
+        gatk --java-options "-Xmx1g" \
+            CreateSiteFilteringFiles \
+            --ref-version 38 \
+            --filter-set-name ~{filter_set_name} \
+            -V ~{sites_only_variant_filtered_vcf} \
+            -O filter_sites_load.tsv
 
         # merge into a single file
         echo "Merging SNP + INDELs"
@@ -368,17 +386,27 @@ task UploadFilterSetToBQ {
         ${bq_tranches_table} \
         tranches_load.csv \
         "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float"
+
+        # BQ load likes a : instead of a . after the project
+        bq_filter_sites_table=$(echo ~{fq_filter_sites_destination_table} | sed s/\\./:/)
+
+        # Creating site
+        echo "Loading Filter Set Sites into BQ"
+        bq load --skip_leading_rows 1 -F "tab" \
+        ${bq_filter_sites_table} \
+        filter_sites_load.tsv \
+        "filter_set_name:string,location:integer,filters:string"
     >>>
 
     # ------------------------------------------------
     # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
-        memory: "7 GB"
+        memory: "3500 MB"
         disks: "local-disk 200 HDD"
         bootDiskSizeGb: 15
-        preemptible: 3
-        cpu: 2
+        preemptible: 0
+        cpu: 1
     }
 
     # ------------------------------------------------
@@ -386,6 +414,7 @@ task UploadFilterSetToBQ {
     output {
         File filter_set_load_tsv = "filter_set_load.tsv"
         File filter_tranche_load_tsv = "tranches_load.csv"
+        File filter_sites_load_tsv = "filter_sites_load.tsv"
     }
  }
 
