@@ -11,8 +11,8 @@ workflow ImportGenomes {
     String project_id
     String dataset_name
     String? pet_schema = "location:INTEGER,sample_id:INTEGER,state:STRING"
-    String? vet_schema = "sample_id:INTEGER,location:INTEGER,ref:STRING,alt:STRING,AS_RAW_MQ:STRING,AS_RAW_MQRankSum:STRING,AS_QUALapprox:STRING,AS_RAW_ReadPosRankSum:STRING,AS_SB_TABLE:STRING,AS_VarDP:STRING,call_GT:STRING,call_AD:STRING,call_GQ:INTEGER,call_PGT:STRING,call_PID:STRING,call_PL:STRING"
-    String? metadata_schema = "sample_name:STRING,sample_id:INTEGER,interval_list_blob:STRING,inferred_state:STRING"
+    String? vet_schema = "sample_id:INTEGER,location:INTEGER,ref:STRING,alt:STRING,AS_RAW_MQ:STRING,AS_RAW_MQRankSum:STRING,QUALapprox:STRING,AS_QUALapprox:STRING,AS_RAW_ReadPosRankSum:STRING,AS_SB_TABLE:STRING,AS_VarDP:STRING,call_GT:STRING,call_AD:STRING,call_GQ:INTEGER,call_PGT:STRING,call_PID:STRING,call_PL:STRING"
+    String? sample_info_schema = "sample_name:STRING,sample_id:INTEGER,inferred_state:STRING"
     File? service_account_json
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
@@ -36,13 +36,13 @@ workflow ImportGenomes {
       sample_map = sample_map
   }
 
-  call CreateTables as CreateMetadataTables {
+  call CreateTables as CreateSampleInfoTables {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
-      datatype = "metadata",
+      datatype = "sample_info",
       max_table_id = GetMaxTableId.max_table_id,
-      schema = metadata_schema,
+      schema = sample_info_schema,
       superpartitioned = "false",
       partitioned = "false",
       uuid = "",
@@ -100,17 +100,17 @@ workflow ImportGenomes {
   }
 
   scatter (i in range(GetMaxTableId.max_table_id)) {
-    call LoadTable as LoadMetadataTable {
+    call LoadTable as LoadSampleInfoTable {
       input:
         project_id = project_id,
         table_id = i + 1,
         dataset_name = dataset_name,
         storage_location = output_directory,
-        datatype = "metadata",
+        datatype = "sample_info",
         superpartitioned = "false",
-        schema = metadata_schema,
+        schema = sample_info_schema,
         service_account_json = service_account_json,
-        table_creation_done = CreateMetadataTables.done,
+        table_creation_done = CreateSampleInfoTables.done,
         tsv_creation_done = CreateImportTsvs.done,
         docker = docker_final,
         run_uuid = SetLock.run_uuid
@@ -157,7 +157,7 @@ workflow ImportGenomes {
     input:
       run_uuid = SetLock.run_uuid,
       output_directory = output_directory,
-      load_metadata_done = LoadMetadataTable.done,
+      load_sample_info_done = LoadSampleInfoTable.done,
       load_pet_done = LoadPetTable.done,
       load_vet_done = LoadVetTable.done,
       service_account_json = service_account_json,
@@ -201,7 +201,7 @@ task SetLock {
     LOCKFILE="LOCKFILE"
     HAS_LOCKFILE=$(gsutil ls "${DIR}${LOCKFILE}" | wc -l)
     if [ $HAS_LOCKFILE -gt 0 ]; then
-      echo "ERROR: lock file in place. Check whether another run of ImportGenomes with this output directory is in progress or a previous run had an error. 
+      echo "ERROR: lock file in place. Check whether another run of ImportGenomes with this output directory is in progress or a previous run had an error.
             If you would like to proceed, run the following command and re-run the workflow: \
             gsutil rm ${DIR}${LOCKFILE} \
             " && exit 1
@@ -233,7 +233,7 @@ task ReleaseLock {
   input {
     String run_uuid
     String output_directory
-    Array[String] load_metadata_done
+    Array[String] load_sample_info_done
     Array[String] load_pet_done
     Array[String] load_vet_done
     File? service_account_json
@@ -362,7 +362,7 @@ task CreateImportTsvs {
         echo "ERROR: found mismatched lockfile containing run ${EXISTING_LOCK_ID}, which does not match this run ${CURRENT_RUN_ID}." 1>&2
         exit 1
       fi
-      
+
       gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
         -V ~{updated_input_vcf} \
         -L ~{interval_list} \
@@ -372,7 +372,7 @@ task CreateImportTsvs {
         -SNM ~{sample_map} \
         --ref-version 38
 
-      gsutil -m cp metadata_*.tsv ~{output_directory}/metadata_tsvs/
+      gsutil -m cp sample_info_*.tsv ~{output_directory}/sample_info_tsvs/
       gsutil -m cp pet_*.tsv ~{output_directory}/pet_tsvs/
       gsutil -m cp vet_*.tsv ~{output_directory}/vet_tsvs/
   >>>
@@ -515,7 +515,7 @@ task LoadTable {
 
     printf -v PADDED_TABLE_ID "%03d" ~{table_id}
 
-    # even for non-superpartitioned tables (e.g. metadata), the TSVs do have the suffix
+    # even for non-superpartitioned tables (e.g. sample_info), the TSVs do have the suffix
     FILES="~{datatype}_${PADDED_TABLE_ID}_*"
 
     NUM_FILES=$(gsutil ls "${DIR}${FILES}" | wc -l)
@@ -530,7 +530,7 @@ task LoadTable {
         # get list of of pet files and their byte sizes
         echo "Getting file sizes(bytes), paths to each file, and determining sets for chunking."
         echo -e "bytes\tfile_path\tsum_bytes\tset_number" > ~{datatype}_du_sets.txt
-        # tr to replace each space -> tab, squeeze (remove) "empty" tabs, 
+        # tr to replace each space -> tab, squeeze (remove) "empty" tabs,
         gsutil du "${DIR}${FILES}" | tr " " "\t" | tr -s "\t" | sed "/~{datatype}_tsvs\/$/d" | awk '{s+=$1}{print $1"\t"$2"\t"s"\t" (1+int(s / 16000000000000))}' >> ~{datatype}_du_sets.txt
 
         # per set, load table
@@ -554,7 +554,7 @@ task LoadTable {
         while IFS="\t" read -r line_bq_load
         do
           bq wait --project_id=~{project_id} $(echo "$line_bq_load" | cut -f1) > bq_wait_status
-            
+
           # capture SUCCESS or FAILURE, echo to file
           wait_status=$(sed '6q;d' bq_wait_status | tr " " "\t" | tr -s "\t" | cut -f3)
           echo "$wait_status" >> bq_wait_details.tmp
@@ -562,7 +562,7 @@ task LoadTable {
 
         # combine load status and wait status into final report
         paste bq_load_details.tmp bq_wait_details.tmp > bq_final_job_statuses.txt
-        
+
         # move files from each set into set-level "done" directories
         gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/" 2> gsutil_mv_done.log
 

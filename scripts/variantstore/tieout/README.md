@@ -158,16 +158,16 @@ gatk --java-options "-Xms8g -Xdebug -Xrunjdwp:transport=dt_socket,address=5005,s
 
 ```bash
 reference="/Users/kcibul/projects/references/hg38/v0/Homo_sapiens_assembly38.fasta"
-dataset="spec-ops-aou.kc_acmg_tieout_v6"
+dataset="spec-ops-aou.gvs_tieout_acmg_v1"
 
 gatk --java-options "-Xms2g -Xdebug -Xrunjdwp:transport=dt_socket,address=5005,server=y,suspend=n" \
   ExtractCohort --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT \
   -R $reference \
-  -O acmg_35_debug.vcf \
+  -O gvs_tieout_acmg_v1.vcf \
   --local-sort-max-records-in-ram 1000000 \
   --print-debug-information \
-  --sample-table ${dataset}.metadata  \
+  --sample-table ${dataset}.sample_info  \
   --project-id spec-ops-aou \
-  --cohort-extract-table ${dataset}.exported_cohort_35_test \
+  --cohort-extract-table ${dataset}.exported_cohort_all_samples \
   -L chr1:55398671
 ```

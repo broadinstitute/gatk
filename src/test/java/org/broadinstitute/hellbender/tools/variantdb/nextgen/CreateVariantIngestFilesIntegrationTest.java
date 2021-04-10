@@ -13,7 +13,7 @@ import static htsjdk.samtools.ValidationStringency.STRICT;
 public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramTest {
 
     @Test
-    public void testPetTsvIsCreated() throws Exception {
+    public void testCreateVariantIngestFiles() throws Exception {
         // *manual_nocalls.vcf.gz modified manually to introduce a no-call (./.) GT at chr20 61417
         // no-call to test marking ./. as GQ 0 in PET and abstaining from putting variant into VET
         // original GT at chr20 61417 = 0/1
@@ -22,8 +22,8 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         final String sample_map_file = "test_sample_map.tsv";
         final File outputDir = createTempDir("output_dir");
         final List<String> expectedOutputFiles = new ArrayList<>(Arrays.asList(
-                getToolTestDataDir() + "expected.metadata_001_NA12878.tsv",
                 getToolTestDataDir() + "expected.pet_001_NA12878.tsv",
+                getToolTestDataDir() + "expected.sample_info_001_NA12878.tsv",
                 getToolTestDataDir() + "expected.vet_001_NA12878.tsv"));
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
