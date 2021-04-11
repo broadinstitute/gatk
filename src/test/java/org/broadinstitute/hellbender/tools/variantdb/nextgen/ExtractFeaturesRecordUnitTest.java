@@ -35,6 +35,8 @@ public class ExtractFeaturesRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(allDefinedRecord.getSbAltMinus(), 177);
         Assert.assertEquals(allDefinedRecord.getNumHetSamples(), 17); // int
         Assert.assertEquals(allDefinedRecord.getNumHomvarSamples(), 0); // int
+        Assert.assertEquals(allDefinedRecord.getDistinctAlleles(), 5); // int
+        Assert.assertEquals(allDefinedRecord.getHqGenotypeSamples(), 12); // int
     }
 
     @Test
@@ -65,5 +67,7 @@ public class ExtractFeaturesRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(someNullsRecord.getSbAltMinus(), 0);
         Assert.assertEquals(someNullsRecord.getNumHetSamples(), 2);
         Assert.assertEquals(someNullsRecord.getNumHomvarSamples(), 2);
+        Assert.assertEquals(someNullsRecord.getDistinctAlleles(), 5); // int
+        Assert.assertEquals(someNullsRecord.getHqGenotypeSamples(), 12); // int
     }
 }

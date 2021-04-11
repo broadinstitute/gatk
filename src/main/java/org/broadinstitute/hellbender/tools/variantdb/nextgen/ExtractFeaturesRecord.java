@@ -71,6 +71,7 @@ public class ExtractFeaturesRecord implements Locatable {
         this.sbAltMinus = Double.valueOf(genericRecord.get("SB_ALT_MINUS").toString()).intValue();
         this.numHetSamples = Integer.parseInt(genericRecord.get("num_het_samples").toString());
         this.numHomvarSamples = Integer.parseInt(genericRecord.get("num_homvar_samples").toString());
+        
         this.distinctAlleles = Integer.parseInt(genericRecord.get("distinct_alleles").toString());
         this.hqGenotypeSamples = Integer.parseInt(genericRecord.get("hq_genotype_samples").toString());
 
