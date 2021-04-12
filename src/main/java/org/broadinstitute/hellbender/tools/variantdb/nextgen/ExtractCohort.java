@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import picard.cmdline.StandardOptionDefinitions;
 
 import java.util.*;
 
@@ -59,6 +60,7 @@ public class ExtractCohort extends ExtractTool {
     @Argument(
             fullName = "cohort-avro-file-name",
             doc = "Path of the cohort avro file",
+            mutex={"variant-filter-table","cohort-extract-table"},
             optional = true
     )
     private String cohortAvroFileName = null;

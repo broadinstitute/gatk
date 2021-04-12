@@ -53,14 +53,17 @@ public abstract class ExtractTool extends GATKTool {
     @Argument(
             fullName = "sample-table",
             doc = "Fully qualified name of a bigquery table containing a single column `sample` that describes the full list of samples to extract",
-            optional = true
+            optional = true,
+            mutex={"sample-file"}
     )
     protected String sampleTableName = null;
 
     @Argument(
             fullName = "sample-file",
             doc = "Alternative to `sample-table`. Pass in a (sample_id,sample_name) CSV that describes the full list of samples to extract. No header",
-            optional = true
+            optional = true,
+            mutex={"sample-table"}
+
     )
     protected File sampleFileName = null;
 
