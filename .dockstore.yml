@@ -51,6 +51,8 @@ workflows:
    - name: CreateCohortTable
        subclass: WDL
        primaryDescriptorPath: /scripts/variantstore/wdl/CreateCohortTable.wdl
+       testParameterFiles:
+         - /scripts/variantstore/wdl/CreateCohortTable.example.inputs.json
        filters:
          branches:
            - master
