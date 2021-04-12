@@ -26,7 +26,8 @@ public class CommonCode {
     public static String CALL_RATE_FILTER = "CALL_RATE";
     public static String INVARIANT_FILTER = "INVARIANT";
 
-
+    public static final int EXCESS_ALLELES_THRESHOLD = 6;
+    
     /**
      * If the alleles are "missing", -1 will be returned as the index
      * @param variant
@@ -166,6 +167,9 @@ public class CommonCode {
 
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NAY_FROM_YNG));
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_HET_KEY));
+        
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_ALLELES));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NO_HQ_GENOTYPES));
 
         return headerLines;
     }

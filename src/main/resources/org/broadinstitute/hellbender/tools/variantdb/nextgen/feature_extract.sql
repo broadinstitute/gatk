@@ -39,8 +39,24 @@ WITH
                @locationStanza
                @trainingSitesStanza
         )
-        GROUP BY location)
-
+        GROUP BY location),
+   aa_site_allele_info AS (
+        SELECT location, COUNT(DISTINCT ref || "," || allele) distinct_alleles
+        FROM `@altAllele`
+        WHERE sample_id IN (SELECT sample_id FROM `@sample`)
+        @locationStanza
+        @trainingSitesStanza
+        GROUP BY location),
+   hq_genotype_qc AS (
+        SELECT location, COUNT(DISTINCT sample_id) hq_genotype_samples
+        FROM `@altAllele`
+        WHERE sample_id IN (SELECT sample_id FROM `@sample`)
+        @locationStanza
+        @trainingSitesStanza
+        AND   call_GQ >= @hqGenotypeGQThreshold 
+        AND   (SELECT SUM(CAST(x AS INT64)) FROM UNNEST(SPLIT(call_AD,",")) x) >= @hqGenotypeDepthThreshold
+        AND   ad / (SELECT SUM(CAST(x AS INT64)) FROM UNNEST(SPLIT(call_AD,",")) x) >= @hqGenotypeABThreshold
+        GROUP BY location)        
     SELECT
            ai.location,
            ai.ref,
@@ -60,7 +76,9 @@ WITH
            SB_ALT_PLUS,
            SB_ALT_MINUS,
            aasi.num_het_samples,
-           aasi.num_homvar_samples
+           aasi.num_homvar_samples,
+           IFNULL(aasai.distinct_alleles,0) distinct_alleles,
+           IFNULL(hc_gt.hq_genotype_samples,0) hq_genotype_samples
     FROM (
     SELECT aa.location,
            ref,
@@ -78,9 +96,7 @@ WITH
            IFNULL(SUM(SB_REF_PLUS),0)  as SB_REF_PLUS,
            IFNULL(SUM(SB_REF_MINUS),0) as SB_REF_MINUS,
            IFNULL(SUM(SB_ALT_PLUS),0)  as SB_ALT_PLUS,
-           IFNULL(SUM(SB_ALT_MINUS),0) as SB_ALT_MINUS,
-           COUNT(distinct CASE WHEN call_GT IN ('0/1', '0|1', '1/0', '1|0', '0/2', '0|2', '2/0', '2|0') THEN sample_id ELSE NULL END) num_het_samples,
-           COUNT(distinct CASE WHEN call_GT IN ('1/1', '1|1', '1/2', '1|2', '2/1', '2|1') THEN sample_id ELSE NULL END) num_homvar_samples
+           IFNULL(SUM(SB_ALT_MINUS),0) as SB_ALT_MINUS
     FROM `@altAllele` as aa
     WHERE allele != '*'
     AND sample_id in (SELECT sample_id from `@sample` )
@@ -91,5 +107,7 @@ WITH
     LEFT JOIN aa_ref_ad_info aaradi ON (ai.location = aaradi.location)
     LEFT JOIN aa_ref_sb_info aarsbi ON (ai.location = aarsbi.location)
     LEFT JOIN aa_site_info aasi ON (ai.location = aasi.location)
+    LEFT JOIN aa_site_allele_info aasai ON (ai.location = aasai.location)
+    LEFT JOIN hq_genotype_qc hc_gt ON (ai.location = hc_gt.location)
     WHERE aasi.sum_qualapprox >= CASE WHEN LENGTH(ai.ref) = LENGTH(ai.allele) THEN @snpQualThreshold ELSE @indelQualThreshold END
 

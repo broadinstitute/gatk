@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ExcessHet;
@@ -62,10 +63,12 @@ public class ExtractFeaturesEngine {
     private final Long maxLocation;
     private final boolean useBatchQueries;
     private final int numSamples;
+    private final int hqGenotypeGQThreshold;
+    private final int hqGenotypeDepthThreshold;
+    private final double hqGenotypeABThreshold;
 
 //    /** Set of sample names seen in the variant data from BigQuery. */
 //    private final Set<String> sampleNames = new HashSet<>();
-
     public ExtractFeaturesEngine(final String projectID,
                                final VariantContextWriter vcfWriter,
                                final VCFHeader vcfHeader,
@@ -81,7 +84,11 @@ public class ExtractFeaturesEngine {
                                final boolean printDebugInformation,
                                final boolean useBatchQueries,
                                final ProgressMeter progressMeter,
-                               final int numSamples) {
+                               final int numSamples,
+                               final int hqGenotypeGQThreshold,
+                               final int hqGenotypeDepthThreshold,
+                               final double hqGenotypeABThreshold) {
+
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -97,6 +104,9 @@ public class ExtractFeaturesEngine {
         this.minLocation = minLocation;
         this.maxLocation = maxLocation;
         this.numSamples = numSamples;
+        this.hqGenotypeGQThreshold = hqGenotypeGQThreshold;
+        this.hqGenotypeDepthThreshold = hqGenotypeDepthThreshold;
+        this.hqGenotypeABThreshold = hqGenotypeABThreshold;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
@@ -109,7 +119,16 @@ public class ExtractFeaturesEngine {
     public void traverse() {
 
 
-        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, sampleListTable, minLocation, maxLocation, trainingSitesOnly, SNP_QUAL_THRESHOLD, INDEL_QUAL_THRESHOLD);
+        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, 
+                                                                                             sampleListTable, 
+                                                                                             minLocation, 
+                                                                                             maxLocation, 
+                                                                                             trainingSitesOnly, 
+                                                                                             hqGenotypeGQThreshold,
+                                                                                             hqGenotypeDepthThreshold,
+                                                                                             hqGenotypeABThreshold,
+                                                                                             SNP_QUAL_THRESHOLD, 
+                                                                                             INDEL_QUAL_THRESHOLD);
         logger.info(featureQueryString);
         final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, SchemaUtils.FEATURE_EXTRACT_FIELDS, projectID, useBatchQueries, null);
 
@@ -174,11 +193,6 @@ public class ExtractFeaturesEngine {
         Double raw_ad = rec.getRawAD();
         Double raw_ad_gt_1 = rec.getRawADGT1();
 
-        // TODO: KCIBUL QUESTION -- if we skip this... we won't have YNG Info @ extraction time?
-        // if (raw_ad == 0) {
-        //     logger.info("skipping " + contig + ":" + position + "(location="+location+") because it has no alternate reads!");
-        //     return;
-        // }
 
         int sb_ref_plus = rec.getSbRefPlus();
         int sb_ref_minus = rec.getSbRefMinus();
@@ -186,8 +200,6 @@ public class ExtractFeaturesEngine {
         int sb_alt_minus = rec.getSbAltMinus();
 
 //        logger.info("processing " + contig + ":" + position);
-
-        // NOTE: if VQSR required a merged VCF (e.g. multiple alleles on a  given row) we have to do some merging here...
 
         final VariantContextBuilder builder = new VariantContextBuilder();
 
@@ -234,6 +246,14 @@ public class ExtractFeaturesEngine {
         }
         builder.attribute(GATKVCFConstants.EXCESS_HET_KEY, String.format("%.3f", excessHetApprox));
 
+        if (rec.getDistinctAlleles() > CommonCode.EXCESS_ALLELES_THRESHOLD) {
+            builder.filter(GATKVCFConstants.EXCESS_ALLELES);
+        }
+
+        if (rec.getHqGenotypeSamples() < 1) {
+            builder.filter(GATKVCFConstants.NO_HQ_GENOTYPES);
+        }
+        
         VariantContext vc = builder.make();
         vcfWriter.add(vc);
         progressMeter.update(vc);

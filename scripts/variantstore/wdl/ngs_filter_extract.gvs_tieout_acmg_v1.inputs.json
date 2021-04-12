@@ -27,17 +27,20 @@
   "NgsFilterExtract.large_disk": 1000,
   "NgsFilterExtract.huge_disk": 2000,
 
-  "NgsFilterExtract.gatk_override": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20210318/gatk-package-4.2.0.0-150-g869a173-SNAPSHOT-local.jar",
+  "NgsFilterExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.2.0.0-319-g88dadc7-SNAPSHOT-local.jar",
 
   "NgsFilterExtract.fq_sample_table": "spec-ops-aou.gvs_tieout_acmg_v1.sample_info",
   "NgsFilterExtract.fq_alt_allele_table": "spec-ops-aou.gvs_tieout_acmg_v1.alt_allele",
   "NgsFilterExtract.query_project": "spec-ops-aou",
 
-  "NgsFilterExtract.excluded_sites_bed": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/excess_het_sites.sorted.bed",
-
-  "NgsFilterExtract.filter_set_name": "gvs_tieout_acmg_v4new_no_eh",
+  "NgsFilterExtract.filter_set_name": "gvs_tieout_acmg_v8_sites",
   "NgsFilterExtract.output_file_base_name": "gvs_tieout_acmg_v1.sites_only",
 
-  "NgsFilterExtract.fq_filter_set_info_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_info",
-  "NgsFilterExtract.fq_filter_set_tranches_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_tranches",
+  "NgsFilterExtract.scatter_count": 20,
+  "NgsFilterExtract.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
+  "NgsFilterExtract.fq_info_destination_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_info",
+  "NgsFilterExtract.fq_tranches_destination_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_tranches",
+  "NgsFilterExtract.fq_filter_sites_destination_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_sites"
+
+  
 }

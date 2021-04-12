@@ -170,6 +170,9 @@ public final class GATKVCFConstants {
 
     public static final String SNP = "SNP";
     public static final String INDEL = "INDEL";
+    public static final String EXCESS_ALLELES = "EXCESS_ALLELES";
+    public static final String NO_HQ_GENOTYPES = "NO_HQ_GENOTYPES";
+
     public static final String NAY_FROM_YNG = "NAY";
     public static final String VQSR_FAILURE_PREFIX = "low_VQSLOD_";
     public static final String VQSR_FAILURE_SNP = VQSR_FAILURE_PREFIX + SNP;

@@ -1,12 +1,9 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
 import htsjdk.samtools.util.Locatable;
-import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Objects;
 
 public class ExtractFeaturesRecord implements Locatable {
@@ -32,6 +29,8 @@ public class ExtractFeaturesRecord implements Locatable {
     private final int sbAltMinus;
     private final int numHetSamples;
     private final int numHomvarSamples;
+    private final int distinctAlleles;
+    private final int hqGenotypeSamples;
 
     // FEATURE_EXTRACT_FIELDS = Arrays.asList(
     //      LOCATION_FIELD_NAME,
@@ -72,6 +71,9 @@ public class ExtractFeaturesRecord implements Locatable {
         this.sbAltMinus = Double.valueOf(genericRecord.get("SB_ALT_MINUS").toString()).intValue();
         this.numHetSamples = Integer.parseInt(genericRecord.get("num_het_samples").toString());
         this.numHomvarSamples = Integer.parseInt(genericRecord.get("num_homvar_samples").toString());
+        
+        this.distinctAlleles = Integer.parseInt(genericRecord.get("distinct_alleles").toString());
+        this.hqGenotypeSamples = Integer.parseInt(genericRecord.get("hq_genotype_samples").toString());
 
         // nullable fields - TODO double check that these are the only nullable fields
         Object asMQRankSumNullable = genericRecord.get(SchemaUtils.AS_MQRankSum);
@@ -132,4 +134,9 @@ public class ExtractFeaturesRecord implements Locatable {
     public int getNumHetSamples() { return this.numHetSamples; }
 
     public int getNumHomvarSamples() { return this.numHomvarSamples; }
+
+    public int getDistinctAlleles() { return this.distinctAlleles; }
+
+    public int getHqGenotypeSamples() { return this.hqGenotypeSamples; }
+    
 }
