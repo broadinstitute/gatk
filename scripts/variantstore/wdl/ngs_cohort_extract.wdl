@@ -1,27 +1,27 @@
 version 1.0
 
-workflow WgsCohortExtract {
+workflow NgsCohortExtract {
 
   input {
-    File participant_ids
-    String query_project
-    String wgs_dataset
-    String wgs_extraction_cohorts_dataset
-    String wgs_extraction_destination_dataset
-    String wgs_extraction_temp_tables_dataset
-    String extraction_uuid
-    String output_gcs_dir
-    
+    File participant_ids #TODO eric: rename to sample_names
+    String query_project # The Google billing project to assign costs to where possible
+    String gvs_dataset # Dataset containing GVS data (metadata/pet/vet tables)
+    String extraction_uuid # Used as a unique identifier where unique names are required (ex. table names)
+    String output_gcs_dir # GCS bucket to copy extracted VCF files into
+    String temp_cohorts_dataset # Dataset containing temporary cohort tables
+    String temp_destination_dataset # Dataset containing temporary extraction destination tables
+    String temp_tables_dataset # Dataset containing temp tables
+
     # Extract parameters
     File wgs_intervals
     Int scatter_count
-       
+
     File reference
     File reference_index
     File reference_dict
-        
+
     String output_file_base_name
-    
+
     String? fq_filter_set_table
     String? filter_set_name
     File? gatk_override
@@ -30,8 +30,8 @@ workflow WgsCohortExtract {
   call CreateCohortSampleTable {
     input:
       participant_ids = participant_ids,
-      wgs_dataset = wgs_dataset,
-      wgs_extraction_cohorts_dataset = wgs_extraction_cohorts_dataset,
+      gvs_dataset = gvs_dataset,
+      temp_cohorts_dataset = temp_cohorts_dataset,
       query_project = query_project,
       table_name = extraction_uuid
   }
@@ -41,12 +41,11 @@ workflow WgsCohortExtract {
       cohort_uuid = extraction_uuid,
       fq_cohort_sample_table = CreateCohortSampleTable.fq_cohort_sample_table,
       query_project = query_project,
-      wgs_dataset = wgs_dataset,
-      wgs_extraction_cohorts_dataset = wgs_extraction_cohorts_dataset,
-      wgs_extraction_destination_dataset = wgs_extraction_destination_dataset,
-      wgs_extraction_temp_tables_dataset = wgs_extraction_temp_tables_dataset
+      gvs_dataset = gvs_dataset,
+      temp_destination_dataset = temp_destination_dataset,
+      temp_tables_dataset = temp_tables_dataset
   }
-  
+
   call SplitIntervals {
     input:
         intervals = wgs_intervals,
@@ -55,7 +54,7 @@ workflow WgsCohortExtract {
         ref_dict = reference_dict,
         scatter_count = scatter_count
   }
-    
+
   scatter(i in range(scatter_count) ) {
     call ExtractTask {
       input:
@@ -84,25 +83,25 @@ task CreateCohortSampleTable {
 
   input {
     File participant_ids
-    String wgs_dataset
-    String wgs_extraction_cohorts_dataset
+    String gvs_dataset
+    String temp_cohorts_dataset
     String query_project
     String table_name
   }
-  
+
   command <<<
     echo "SELECT
       sample_id,
       sample_name
     FROM
-      \`~{wgs_dataset}.metadata\`
+      \`~{gvs_dataset}.metadata\`
     WHERE
       sample_name IN " > create_cohort.sql
 
     PARTICIPANT_IDS=$(cat ~{participant_ids} | awk '{print "\""$0"\""}' | paste -sd ",")
     echo "($PARTICIPANT_IDS)" >> create_cohort.sql
-    
-    DESTINATION_DATASET=$(echo ~{wgs_extraction_cohorts_dataset} | tr '.' ':')
+
+    DESTINATION_DATASET=$(echo ~{temp_cohorts_dataset} | tr '.' ':')
 
     bq query \
       --project_id ~{query_project} \
@@ -110,10 +109,10 @@ task CreateCohortSampleTable {
       --use_legacy_sql=false \
       --max_rows=10000000 \
       --allow_large_results < create_cohort.sql
-    
-    echo "~{wgs_extraction_cohorts_dataset}.~{table_name}" > fq_cohort_sample_table.txt
+
+    echo "~{temp_cohorts_dataset}.~{table_name}" > fq_cohort_sample_table.txt
   >>>
-  
+
   output {
     String fq_cohort_sample_table = read_string("fq_cohort_sample_table.txt")
   }
@@ -125,7 +124,7 @@ task CreateCohortSampleTable {
     preemptible: 3
     docker: "us.gcr.io/broad-gatk/gatk:4.1.8.0"
   }
-} 
+}
 
 
 task CreateCohortExtractTable {
@@ -133,31 +132,30 @@ task CreateCohortExtractTable {
   input {
     String cohort_uuid
     String fq_cohort_sample_table
-    String wgs_dataset
-    String wgs_extraction_cohorts_dataset
-    String wgs_extraction_destination_dataset
-    String wgs_extraction_temp_tables_dataset
+    String gvs_dataset
+    String temp_destination_dataset
+    String temp_tables_dataset
     String query_project
   }
-  
+
   command <<<
     set -e
-    
-    echo "Exporting to ~{wgs_extraction_destination_dataset}.~{cohort_uuid}"
+
+    echo "Exporting to ~{temp_destination_dataset}.~{cohort_uuid}"
 
     python /app/ngs_cohort_extract.py \
-      --fq_petvet_dataset ~{wgs_dataset} \
-      --fq_temp_table_dataset ~{wgs_extraction_temp_tables_dataset} \
-      --fq_destination_dataset ~{wgs_extraction_destination_dataset} \
+      --fq_petvet_dataset ~{gvs_dataset} \
+      --fq_temp_table_dataset ~{temp_tables_dataset} \
+      --fq_destination_dataset ~{temp_destination_dataset} \
       --destination_table ~{cohort_uuid} \
       --fq_cohort_sample_names ~{fq_cohort_sample_table} \
       --min_variant_samples 0 \
       --query_project ~{query_project} \
-      --fq_sample_mapping_table ~{wgs_dataset}.metadata
-    
-    echo ~{wgs_extraction_destination_dataset}.~{cohort_uuid} > fq_cohort_extract_table.txt
+      --fq_sample_mapping_table ~{gvs_dataset}.metadata
+
+    echo ~{temp_destination_dataset}.~{cohort_uuid} > fq_cohort_extract_table.txt
   >>>
-  
+
   output {
     String fq_cohort_extract_table = read_string("fq_cohort_extract_table.txt")
   }
@@ -169,7 +167,7 @@ task CreateCohortExtractTable {
     preemptible: 3
     docker: "gcr.io/all-of-us-workbench-test/variantstore-extract-prep:2"
   }
-} 
+}
 
 task ExtractTask {
     # indicates that this task should NOT be call cached
@@ -183,7 +181,7 @@ task ExtractTask {
         File reference
         File reference_index
         File reference_dict
-    
+
         String fq_sample_table
 
         File intervals
@@ -192,16 +190,16 @@ task ExtractTask {
         String read_project_id
         String output_file
         String output_gcs_dir
-        
+
         String? fq_filter_set_table
         String? filter_set_name
-        
+
         # Runtime Options:
         File? gatk_override
-        
+
         Int? local_sort_max_records_in_ram = 5000000
     }
-    
+
     String outdir = sub(output_gcs_dir, "/$", "")
 
 
@@ -227,7 +225,7 @@ task ExtractTask {
                 --project-id ~{read_project_id} \
                 ~{"--variant-filter-table " + fq_filter_set_table} \
                 ~{"--filter-set-name " + filter_set_name}
-        
+
         gsutil cp ~{output_file} ~{output_gcs_dir}/
         gsutil cp ~{output_file}.tbi ~{output_gcs_dir}/
     >>>
