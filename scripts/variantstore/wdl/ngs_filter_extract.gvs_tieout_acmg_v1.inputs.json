@@ -40,8 +40,8 @@
 
   "NgsFilterExtract.scatter_count": 20,
   "NgsFilterExtract.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
-  "NgsFilterExtract.fq_filter_set_info_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_info",
-  "NgsFilterExtract.fq_filter_set_tranches_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_tranches",
+  "NgsFilterExtract.fq_info_destination_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_info",
+  "NgsFilterExtract.fq_tranches_destination_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_tranches",
   "NgsFilterExtract.fq_filter_sites_destination_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_sites"
 
   

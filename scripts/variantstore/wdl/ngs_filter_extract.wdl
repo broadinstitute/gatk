@@ -14,8 +14,8 @@ workflow NgsFilterExtract {
         String query_project
 
         String filter_set_name
-        String fq_filter_set_info_table
-        String fq_filter_set_tranches_table
+        String fq_info_destination_table
+        String fq_tranches_destination_table
         String fq_filter_sites_destination_table
 
         File? excluded_intervals
@@ -159,8 +159,8 @@ workflow NgsFilterExtract {
         indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
         indel_recal_tranches = IndelsVariantRecalibrator.tranches,
 
-        fq_info_destination_table = fq_filter_set_info_table,
-        fq_tranches_destination_table = fq_filter_set_tranches_table,
+        fq_info_destination_table = fq_info_destination_table,
+        fq_tranches_destination_table = fq_tranches_destination_table,
         fq_filter_sites_destination_table = fq_filter_sites_destination_table
    }
 
