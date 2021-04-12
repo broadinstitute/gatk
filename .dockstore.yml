@@ -48,6 +48,15 @@ workflows:
      filters:
        branches:
          - master
+   - name: CreateCohortTable
+       subclass: WDL
+       primaryDescriptorPath: /scripts/variantstore/wdl/CreateCohortTable.wdl
+       testParameterFiles:
+         - /scripts/variantstore/wdl/ngs_cohort_extract.inputs.json
+       filters:
+         branches:
+           - master
+           - ah_var_store
    - name: ImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/ImportGenomes.wdl

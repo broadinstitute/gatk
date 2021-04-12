@@ -6,7 +6,7 @@ RUN pip install -r /app/requirements.txt
 
 # Add the application source code.
 ADD raw_array_cohort_extract.py /app
-ADD ngs_cohort_extract.py /app
+ADD create_cohort_data_table.py /app
 
 # install google SDK
 RUN curl -sSL https://sdk.cloud.google.com | bash
