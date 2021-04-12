@@ -16,6 +16,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
@@ -46,8 +47,8 @@ public class ExtractCohortEngine {
     private final Long maxLocation;
     private final TableReference filteringTableRef;
     private final ReferenceDataSource refSource;
-    private double vqsLodSNPThreshold = 0;
-    private double vqsLodINDELThreshold = 0;
+    private Double vqsLodSNPThreshold;
+    private Double vqsLodINDELThreshold;
 
     private final ProgressMeter progressMeter;
     private final String projectID;
@@ -88,8 +89,8 @@ public class ExtractCohortEngine {
                                final String filteringTableName,
                                final int localSortMaxRecordsInRam,
                                final boolean printDebugInformation,
-                               final double vqsLodSNPThreshold,
-                               final double vqsLodINDELThreshold,
+                               final Double vqsLodSNPThreshold,
+                               final Double vqsLodINDELThreshold,
                                final ProgressMeter progressMeter,
                                final ExtractCohort.QueryMode queryMode,
                                final String filterSetName,
@@ -141,6 +142,12 @@ public class ExtractCohortEngine {
         boolean noFilteringRequested = (filteringTableRef == null);
 
         if (!noFilteringRequested) {
+            // ensure vqslod filters are defined. this really shouldn't ever happen, said the engineer.
+            if (vqsLodSNPThreshold == null || vqsLodINDELThreshold == null) {
+                throw new UserException("Vqslod filtering thresholds for SNPs and INDELs must be defined.");
+            }
+
+            // get filter info (vqslod & yng values)
             final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
 
             final StorageAPIAvroReader filteringTableAvroReader = new StorageAPIAvroReader(filteringTableRef, rowRestrictionWithFilterSetName, projectID);
@@ -185,6 +192,7 @@ public class ExtractCohortEngine {
                 throw new NotImplementedException("QUERY mode not supported. Please use `--query-mode LOCAL_SORT`.");
         }
     }
+
 
     public SortingCollection<GenericRecord> getAvroSortingCollection(org.apache.avro.Schema schema, int localSortMaxRecordsInRam) {
         final SortingCollection.Codec<GenericRecord> sortingCollectionCodec = new AvroSortingCollectionCodec(schema);
@@ -475,29 +483,26 @@ public class ExtractCohortEngine {
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
         builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, relevantVqsLodMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
-        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, relevantYngMap.values().stream().collect(Collectors.toList()));
+        builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, new ArrayList<>(relevantYngMap.values()));
 
         int refLength = mergedVC.getReference().length();
 
         // if there are any Yays, the site is PASS
-        if (remappedYngMap.values().contains("Y")) {
+        if (remappedYngMap.containsValue("Y")) {
             builder.passFilters();
-        } else if (remappedYngMap.values().contains("N")) {
+        } else if (remappedYngMap.containsValue("N")) {
             builder.filter(GATKVCFConstants.NAY_FROM_YNG);
         } else {
             // if it doesn't trigger any of the filters below, we assume it passes.
             builder.passFilters();
-            if (remappedYngMap.values().contains("G")) {
-                // TODO change the initial query to include the filtername from the tranches tables
+            if (remappedYngMap.containsValue("G")) {
                 Optional<Double> snpMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
                 if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
-                    // TODO: add in sensitivities
-                    builder.filter(GATKVCFConstants.VQSR_TRANCHE_SNP);
+                    builder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
                 }
                 Optional<Double> indelMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
                 if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
-                    // TODO: add in sensitivities
-                    builder.filter(GATKVCFConstants.VQSR_TRANCHE_INDEL);
+                    builder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
                     }
             } else {
                 // If VQSR dropped this site (there's no YNG or VQSLOD) then we'll filter it as a NAY.

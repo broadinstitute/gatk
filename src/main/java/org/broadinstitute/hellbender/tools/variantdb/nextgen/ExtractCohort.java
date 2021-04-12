@@ -1,19 +1,28 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
+import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
+import org.broadinstitute.hellbender.tools.variantdb.nextgen.FilterSensitivityTools;
 import org.broadinstitute.hellbender.tools.variantdb.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
+import org.broadinstitute.hellbender.utils.bigquery.TableReference;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
+
 
 
 @CommandLineProgramProperties(
@@ -32,6 +41,13 @@ public class ExtractCohort extends ExtractTool {
             optional = true
     )
     private String filteringFQTableName = null;
+
+    @Argument(
+            fullName = "tranches-table",
+            doc = "Fully qualified name of the tranches table to use for cohort extraction",
+            optional = true
+    )
+    private String tranchesTableName = null;
 
     @Argument(
             fullName = "cohort-extract-table",
@@ -61,14 +77,61 @@ public class ExtractCohort extends ExtractTool {
     )
     private boolean emitPLs = false;
 
+
+    @Argument(
+            fullName="snps-truth-sensitivity-filter-level",
+            doc="The truth sensitivity level at which to start filtering SNPs",
+            optional=true
+    )
+    private Double truthSensitivitySNPThreshold = null;
+
+    @Argument(
+            fullName="indels-truth-sensitivity-filter-level",
+            doc="The truth sensitivity level at which to start filtering INDELs",
+            optional=true
+    )
+    private Double truthSensitivityINDELThreshold = null;
+
+    @Advanced
+    @Argument(
+            fullName="snps-lod-score-cutoff",
+            doc="The VQSLOD score below which to start filtering SNPs",
+            optional=true)
+    private Double vqsLodSNPThreshold = null;
+
+    @Advanced
+    @Argument(
+            fullName="indels-lod-score-cutoff",
+            doc="The VQSLOD score below which to start filtering INDELs",
+            optional=true)
+    private Double vqsLodINDELThreshold = null;
+
+
     @Override
     protected void onStartup() {
         super.onStartup();
 
+        Set<VCFHeaderLine> vqsrHeaderLines = new HashSet<>();
+        if (filteringFQTableName != null) {
+            FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
+            Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
+
+            if (vqsLodSNPThreshold != null) { // we already have vqslod thresholds directly
+                vqsrHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodSNPThreshold, GATKVCFConstants.SNP));
+                vqsrHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+            } else { // using sensitivity threshold inputs; need to convert these to vqslod thresholds
+                vqsLodSNPThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.SNP), truthSensitivitySNPThreshold, GATKVCFConstants.SNP);
+                vqsLodINDELThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.INDEL), truthSensitivityINDELThreshold, GATKVCFConstants.INDEL);
+                // set headers
+                vqsrHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
+                vqsrHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+            }
+        }
+
         SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
         Set<String> sampleNames = new HashSet<>(sampleList.getSampleNames());
 
-        VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary());
+        VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary(), vqsrHeaderLines);
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 
@@ -81,7 +144,6 @@ public class ExtractCohort extends ExtractTool {
         } else if ((minLocation != null || maxLocation != null) && hasUserSuppliedIntervals()) {
             throw new UserException("min-location and max-location should not be used together with intervals (-L).");
         }
-
 
         engine = new ExtractCohortEngine(
                 projectID,

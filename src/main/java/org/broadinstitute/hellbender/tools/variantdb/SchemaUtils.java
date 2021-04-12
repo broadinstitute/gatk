@@ -67,6 +67,12 @@ public class SchemaUtils {
     public static final String TRAINING_LABEL = "training_label";
     public static final String YNG_STATUS = "yng_status";
 
+    //Tranches table
+    public static final String TARGET_TRUTH_SENSITIVITY = "target_truth_sensitivity";
+    public static final String MIN_VQSLOD = "min_vqslod";
+    public static final String TRANCHE_FILTER_NAME = "filter_name";
+    public static final String TRANCHE_MODEL = "model";
+
     public static final List<String> COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_NAME_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, CALL_RGQ, QUALapprox, AS_QUALapprox, CALL_PL);//, AS_VarDP);
     public static final List<String> ARRAY_COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_NAME_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ);
 
@@ -79,6 +85,7 @@ public class SchemaUtils {
 
     public static final List<String> SAMPLE_FIELDS = Arrays.asList(SchemaUtils.SAMPLE_NAME_FIELD_NAME, SchemaUtils.SAMPLE_ID_FIELD_NAME);
     public static final List<String> YNG_FIELDS = Arrays.asList(FILTER_SET_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, VQSLOD, YNG_STATUS);
+    public static final List<String> TRANCHE_FIELDS = Arrays.asList(TARGET_TRUTH_SENSITIVITY, MIN_VQSLOD, TRANCHE_FILTER_NAME, TRANCHE_MODEL);
 
 
     public static final List<String> PET_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, STATE_FIELD_NAME);
