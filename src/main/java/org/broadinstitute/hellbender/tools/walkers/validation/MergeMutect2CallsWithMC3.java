@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.SingleSampleConcordanceWalker;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
         programGroup = VariantEvaluationProgramGroup.class
 )
 @ExperimentalFeature
-public class MergeMutect2CallsWithMC3 extends AbstractConcordanceWalker {
+public class MergeMutect2CallsWithMC3 extends SingleSampleConcordanceWalker {
 
     @Argument(doc = "Merged vcf.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -77,7 +78,7 @@ public class MergeMutect2CallsWithMC3 extends AbstractConcordanceWalker {
     }
 
     @Override
-    protected void apply(final TruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext) {
+    protected void apply(final SingleSampleTruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext) {
         final ConcordanceState concordanceState = truthVersusEval.getConcordance();
 
         // get AD from M2 if available, otherwise from NALT and NREF MC3 info fields

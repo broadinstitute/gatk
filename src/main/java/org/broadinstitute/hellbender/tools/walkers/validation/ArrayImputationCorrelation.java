@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
+import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.util.StringUtil;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
@@ -17,7 +18,6 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.VariantIDsVariantFilter;
@@ -26,18 +26,24 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+import picard.sam.util.Pair;
 import shaded.cloud_nio.com.google.errorprone.annotations.Var;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 @CommandLineProgramProperties(
         summary = ArrayImputationCorrelation.USAGE_SUMMARY,
@@ -88,13 +94,6 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     )
     private List<String> sampleMappings;
 
-//    @Argument(
-//            doc = "Output file for incorrectly genotyped sites",
-//            fullName = "output-incorrect-sites",
-//            shortName = "OI",
-//            optional = true
-//    )
-//    private GATKPath outputIncorrectSitesFile = null;
     @Argument(
             optional = true
     )
@@ -110,29 +109,25 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     )
     private double minAfForAccuracyMetrics = 0;
 
+    @Argument(optional = true)
+    private boolean allowDifferingPloidy = false;
+
     final List<List<AFCorrelationAggregator>> aggregators = new ArrayList<>();
     final List<AccuracyMetrics> snpMetrics = new ArrayList<>();
     final List<AccuracyMetrics> indelMetrics = new ArrayList<>();
-    private VariantContext currentReferenceBlockVC;
     final Map<String, String> afAnnotationsMap = new HashMap<>();
+    final Set<String> afAnnotationSet = new HashSet<>();
     final Map<String, String> sampleMap = new HashMap<>();
-//    private IncorrectlyGenotypedSitesWriter incorrectlyGenotypedSitesWriter;
 
     @Override
     public void onTraversalStart() {
         final VCFHeader header = getEvalHeader();
         final List<String> samples = header.getSampleNamesInOrder();
-        for (final String afAnnotation : afAnnotations) {
-            String[] tokens = new String[2];
-            StringUtil.split(afAnnotation, tokens,':');
-            afAnnotationsMap.put(tokens[0], tokens[1]);
-        }
+        loadMapping(afAnnotations, afAnnotationsMap);
+        afAnnotationSet.addAll(afAnnotationsMap.values());
+
         if (sampleMappings != null) {
-            for (final String sampleMapping : sampleMappings) {
-                String[] tokens = new String[2];
-                StringUtil.split(sampleMapping, tokens, ':');
-                sampleMap.put(tokens[0], tokens[1]);
-            }
+            loadMapping(sampleMappings, sampleMap);
         }
 
         for (final String sample : samples) {
@@ -152,21 +147,27 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
             snpMetrics.add(new AccuracyMetrics(VariantContext.Type.SNP, sample));
             indelMetrics.add(new AccuracyMetrics(VariantContext.Type.INDEL, sample));
         }
+    }
 
-
-
-//        if (outputIncorrectSitesFile != null) {
-//            try {
-//                incorrectlyGenotypedSitesWriter = new IncorrectlyGenotypedSitesWriter(outputIncorrectSitesFile.toPath());
-//            }
-//            catch (final IOException ex) {
-//                throw new GATKException("Error writing out to file " + outputIncorrectSitesFile, ex);
-//            }
-//        }
+    private void loadMapping(final List<String> mappingStrings, final Map<String, String> map) {
+        for (final String mappingString : mappingStrings) {
+            String[] tokens = new String[2];
+            StringUtil.split(mappingString, tokens,':');
+            map.put(tokens[0], tokens[1]);
+        }
     }
 
     private String getMappedSample(final String sample) {
         return sampleMap.getOrDefault(sample, sample);
+    }
+
+    private String getAfAnnotation(final String sample) {
+        String afAnnotation = afAnnotationsMap.get(sample);
+        if (afAnnotation == null) {
+            afAnnotation = afAnnotationsMap.get(getMappedSample(sample));
+        }
+
+        return afAnnotation;
     }
 
     @Override
@@ -186,109 +187,153 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
     }
 
     @Override
+    protected boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval) {
+        return truth.getAlleles().equals(eval.getAlleles());
+    }
+
+    @Override
     protected void apply(final TruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext) {
 
-        if (truthVersusEval.hasTruth() ) {
-            if (truthVersusEval.getTruth().isReferenceBlock()) {
-                currentReferenceBlockVC = truthVersusEval.getTruth();
-            } else {
-                currentReferenceBlockVC = null;
-            }
-        }
-
-        if (!truthVersusEval.hasEval()) {
+        if (!truthVersusEval.hasEval() || !truthVersusEval.hasTruth()) {
             return;
         }
 
         final VariantContext evalVC = truthVersusEval.getEval();
 
-        final VariantContext truthVC;
-        if (truthVersusEval.hasTruth() ) {
-            truthVC = truthVersusEval.getTruth();
-        } else if (!truthVersusEval.hasTruth() && currentReferenceBlockVC != null && currentReferenceBlockVC.overlaps(evalVC)) {
-            truthVC = currentReferenceBlockVC;
-        }  else {
-            return;
-        }
+        final VariantContext truthVC = truthVersusEval.getTruth();
 
+        final Map<String, Double> afMap = buildAFMap(evalVC);
 
-
-        if ((truthVC.getReference().equals(evalVC.getReference()) && (truthVC.getAlternateAllele(0).equals(evalVC.getAlternateAllele(0)) || truthVC.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE))) ||
-            truthVC == currentReferenceBlockVC) {
-            final FeatureContext featureContext = new FeatureContext(features, new SimpleInterval(evalVC));
-
-            final List<VariantContext> resourceFeatures = featureContext.getValues(af_resource, evalVC.getStart());
-            VariantContext resourceVariant = null;
-            int iMAF=-1;
-            for (final VariantContext vc : resourceFeatures) {
-                if (vc.getReference().equals(evalVC.getReference())) {
-                    for (int i = 0; i < vc.getNAlleles() - 1; i++) {
-                        if (vc.getAlternateAllele(i).equals(evalVC.getAlternateAllele(0))) {
-                            iMAF = i;
-                            resourceVariant = vc;
-                            break;
-                        }
-                    }
+        for (int i=0; i<aggregators.size(); i++) {
+            final String sample = snpMetrics.get(i).sampleName;
+            final String mappedSample = getMappedSample(sample);
+            final String afAnnotation = getAfAnnotation(sample);
+            Double af = afMap.get(afAnnotation);
+            if (af == null) {
+                continue;
+            }
+            final int bin = getBin(af);
+            final Genotype evalGenotype = evalVC.getGenotype(sample);
+            final Genotype truthGenotype = truthVC.getGenotype(mappedSample);
+            if (truthGenotype.isNoCall()) {
+                continue;
+            }
+            final double evalRefFrac = getDosageFrac(evalGenotype, evalVC.getReference());
+            final double truthRefFrac = getDosageFrac(truthGenotype, truthVC.getReference());
+            final ConcordanceState concordanceState = getConcordanceState(truthGenotype, evalGenotype);
+            if (evalVC.isSNP()) {
+                aggregators.get(i).get(bin).snp_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
+                if (af > minAfForAccuracyMetrics) {
+                    snpMetrics.get(i).incrementMetrics(concordanceState);
+                }
+            } else if (evalVC.isIndel()) {
+                aggregators.get(i).get(bin).indel_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
+                if (af > minAfForAccuracyMetrics) {
+                    indelMetrics.get(i).incrementMetrics(concordanceState);
                 }
             }
-            if (resourceVariant == null) {
-                return;
-            }
-            for (int i=0; i<aggregators.size(); i++) {
-                final String sample = snpMetrics.get(i).sampleName;
-                final String mappedSample = getMappedSample(sample);
-                String afAnnotation = afAnnotationsMap.get(sample);
-                if (afAnnotation == null) {
-                    afAnnotation = afAnnotationsMap.get(mappedSample);
-                }
-                final List<Double> afList = resourceVariant.getAttributeAsDoubleList(afAnnotation, -99);
-                if (afList.isEmpty()) {
-                    continue;
-                }
-                final Double af = afList.get(iMAF);
-                if (af < 0 || af > 1) {
-                    throw new GATKException("invalid af value");
-                }
-                final int bin = getBin(af);
-                final Genotype evalGenotype = evalVC.getGenotype(sample);
-                final Genotype truthGenotype = truthVC.getGenotype(mappedSample);
-                if (truthGenotype.isNoCall()) {
-                    continue;
-                }
-                final double evalRefFrac = getDosageFrac(evalGenotype, evalVC.getReference());
-                final double truthRefFrac = getDosageFrac(truthGenotype, truthVC.getReference());
-                final int truthAltCount = truthGenotype.getPloidy() -  truthGenotype.countAllele(truthVC.getReference());
-                final int evalAltCount = evalGenotype.getPloidy() - evalGenotype.countAllele(evalVC.getReference());
-                if (evalVC.isSNP()) {
-                    aggregators.get(i).get(bin).snp_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
-                    if (af > minAfForAccuracyMetrics) {
-                        snpMetrics.get(i).incrementMetrics(evalAltCount, truthAltCount);
-                    }
-                } else if (evalVC.isIndel()) {
-                    aggregators.get(i).get(bin).indel_pearsonCorrelationAggregator.addEntry(evalRefFrac, truthRefFrac);
-                    if (af > minAfForAccuracyMetrics) {
-                        indelMetrics.get(i).incrementMetrics(evalAltCount, truthAltCount);
-                    }
-                }
-            }
-
-//            if (incorrectlyGenotypedSitesWriter != null && truthAltCount != evalAltCount) {
-//                try {
-//                    incorrectlyGenotypedSitesWriter.writeRecord(evalVC);
-//                } catch (final IOException ex) {
-//                    throw new GATKException("error writing to incorrectly genotyped sites file", ex);
-//                }
-//            }
         }
     }
 
-    private double getDosageFrac(final Genotype geno, final Allele refAllele) {
-        if (dosageField != null) {
-            return VCFUtils.parseVcfDouble((String)geno.getExtendedAttribute(dosageField))/(double)geno.getPloidy();
+    private Map<String, Double> buildAFMap(final VariantContext vc) {
+        if (features != null) {
+            final FeatureContext featureContext = new FeatureContext(features, new SimpleInterval(vc));
+            final List<VariantContext> resourceFeatures = featureContext.getValues(af_resource, vc.getStart());
+            for (final VariantContext feature : resourceFeatures) {
+                if (feature.getReference().equals(vc.getReference())) {
+                    final int altAlleleIndex = feature.getAlleleIndex(vc.getAlternateAllele(0));
+                    if (altAlleleIndex >= 0) {
+                        return buildAFMapForIndex(feature, altAlleleIndex);
+                    }
+                }
+            }
+            //haven't found a feature to extract afs from, so return empty map
+            return Collections.emptyMap();
+        } else {
+            return buildAFMapForIndex(vc, 1);
+        }
+    }
 
+    private Map<String, Double> buildAFMapForIndex(final VariantContext vc, final int index) {
+        final Map<String, Double> afMap = new HashMap<>();
+        for (final String afAnnotation : afAnnotationSet) {
+            final List<Double> afList = vc.getAttributeAsDoubleList(afAnnotation, -99);
+            if (afList.size() < index + 1) {
+                continue;
+            }
+            final Double af = afList.get(index);
+            if (af < 0 || af > 1) {
+                throw new GATKException("Invalid AF value " + af + " at " + vc.getContig() + ":" + vc.getStart() + " for allele " + vc.getAlternateAllele(index-1));
+            }
+            afMap.put(afAnnotation, af);
         }
 
-        return (double)geno.countAllele(refAllele)/(double)geno.getPloidy();
+        return afMap;
+    }
+
+
+    private double getDosageFrac(final Genotype geno, final Allele refAllele) {
+        if (dosageField != null) {
+            final String dosageString = (String)geno.getExtendedAttribute(dosageField);
+            return dosageString != null ? VCFUtils.parseVcfDouble(dosageString)/(double)geno.getPloidy() : getDosageFracFromGenotypeCall(geno, refAllele);
+        }
+
+        return getDosageFracFromGenotypeCall(geno, refAllele);
+    }
+
+    private double getDosageFracFromGenotypeCall(final Genotype geno, final Allele refAllele) {
+        return 1d - (double)geno.countAllele(refAllele)/(double)geno.getPloidy();
+    }
+
+    private ConcordanceState getConcordanceState(final Genotype truth, final Genotype eval) {
+        if (truth.getPloidy() != eval.getPloidy()) {
+            //situation could arise from haploid vs diploid on X
+            if (!allowDifferingPloidy) {
+                throw new GATKException("sample " + eval.getSampleName() + " is ploidy " + eval.getPloidy() + " while truth sample " + truth.getSampleName() + " is ploidy " + truth.getPloidy() + "." +
+                        "  This may be due to haploid vs diploid representation on X.  If you would like to allow for this type of data, use the allowDifferingPloidy argument.");
+            }
+
+            //build a set of all alleles in truth and eval genotypes.  If sets are the same, then true, if different, then false.  so 0/0 and 0 are concordant, 1/1 and 1 are concordant, but 0/1 and 1 are discordant.
+            final Set<Allele> truthAlleles = new HashSet<>(truth.getAlleles());
+            final Set<Allele> evalAlleles = new HashSet<>(eval.getAlleles());
+
+            return evaluateConcordanceStateByAlleles(truthAlleles, evalAlleles);
+        }
+
+        //now normal situation, agree on ploidy.  we ignore phasing
+
+        final List<Allele> sortedEvalAlleles = new ArrayList<>(eval.getAlleles());
+        Collections.sort(sortedEvalAlleles);
+
+        final List<Allele> sortedTruthAlleles = new ArrayList<>(eval.getAlleles());
+        Collections.sort(sortedTruthAlleles);
+
+        return evaluateConcordanceStateByAlleles(sortedTruthAlleles, sortedEvalAlleles);
+    }
+
+    private ConcordanceState evaluateConcordanceStateByAlleles(final Collection<Allele> truthAlleles, final Collection<Allele> evalAlleles) {
+        if (truthAlleles.equals(evalAlleles)) {
+            if (hasNonRefAlleles(evalAlleles)) {
+                return ConcordanceState.TRUE_POSITIVE;
+            } else {
+                return ConcordanceState.TRUE_NEGATIVE;
+            }
+        } else {
+            if (hasNonRefAlleles(evalAlleles)) {
+                return ConcordanceState.FALSE_POSITIVE;
+            } else {
+                return ConcordanceState.FALSE_NEGATIVE;
+            }
+        }
+    }
+
+    private boolean hasNonRefAlleles(final Collection<Allele> alleles) {
+        for (final Allele allele : alleles) {
+            if (allele.isNonReference()) {
+                return true;
+            }
+        }
+         return false;
     }
 
     @Override
@@ -318,11 +363,6 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
         return (int)Math.ceil((1-Math.log10(val)/Math.log10(firstBinRightEdge)) * (nBins - 1));
     }
 
-    @Override
-    protected boolean areVariantsAtSameLocusConcordant(final VariantContext truth, final VariantContext eval) {
-        return true;
-    }
-
     private static final class AFCorrelationAggregator {
         final double binCenter;
         final String sampleName;
@@ -334,18 +374,6 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
             this.sampleName = sampleName;
         }
     }
-
-//    private static class IncorrectlyGenotypedSitesWriter extends TableWriter<VariantContext> {
-//        IncorrectlyGenotypedSitesWriter(final Path file) throws IOException {
-//            super(file, new TableColumnCollection("chrom", "start", "end"));
-//        }
-//
-//        protected void composeLine(final VariantContext vc, final DataLine dataLine) {
-//            dataLine.set("chrom", vc.getContig())
-//                    .set("start", vc.getStart())
-//                    .set("end", vc.getEnd());
-//        }
-//    }
 
     private static class AFCorrelationWriter extends TableWriter<AFCorrelationAggregator> {
         AFCorrelationWriter(final Path file) throws IOException {
@@ -409,7 +437,7 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
         }
     }
 
-    static final class AccuracyMetrics {
+    static final class AccuracyMetrics extends MetricBase {
         final String sampleName;
         int true_positives;
         int true_negatives;
@@ -433,19 +461,21 @@ public class ArrayImputationCorrelation extends AbstractConcordanceWalker {
             return (double)(true_positives + true_negatives)/(double)(true_positives + false_positives + true_negatives + false_negatives);
         }
 
-        void incrementMetrics(final int evalAltCount, final int truthAltCount) {
-            if (evalAltCount == truthAltCount) {
-                if (evalAltCount > 0) {
+        void incrementMetrics(final ConcordanceState concordanceState) {
+            switch (concordanceState) {
+                case TRUE_POSITIVE:
                     true_positives++;
-                } else {
+                    break;
+                case TRUE_NEGATIVE:
+                case FILTERED_TRUE_NEGATIVE:
                     true_negatives++;
-                }
-            } else {
-                if (evalAltCount > 0) {
+                    break;
+                case FALSE_POSITIVE:
                     false_positives++;
-                } else {
+                    break;
+                case FALSE_NEGATIVE:
+                case FILTERED_FALSE_NEGATIVE:
                     false_negatives++;
-                }
             }
         }
     }
