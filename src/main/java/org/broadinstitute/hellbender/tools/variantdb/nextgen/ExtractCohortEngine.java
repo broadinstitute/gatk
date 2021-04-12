@@ -16,6 +16,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
@@ -141,6 +142,11 @@ public class ExtractCohortEngine {
         boolean noFilteringRequested = (filteringTableRef == null);
 
         if (!noFilteringRequested) {
+            // ensure vqslod filters are defined. this really shouldn't ever happen, said the engineer.
+            if (vqsLodSNPThreshold == null || vqsLodINDELThreshold == null) {
+                throw new UserException("Vqslod filtering thresholds for SNPs and INDELs must be defined.");
+            }
+
             // get filter info (vqslod & yng values)
             final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
 
