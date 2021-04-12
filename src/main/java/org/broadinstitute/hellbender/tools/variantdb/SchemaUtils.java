@@ -73,6 +73,10 @@ public class SchemaUtils {
     public static final String TRANCHE_FILTER_NAME = "filter_name";
     public static final String TRANCHE_MODEL = "model";
 
+    // Site filtering table
+    public static final String FILTERS = "filters";
+    public List<String> FILTER_SET_SITE_FIELDS = Arrays.asList(FILTER_SET_NAME,LOCATION_FIELD_NAME,FILTERS);
+
     public static final List<String> COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_NAME_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, CALL_RGQ, QUALapprox, AS_QUALapprox, CALL_PL);//, AS_VarDP);
     public static final List<String> ARRAY_COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_NAME_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ);
 
@@ -93,25 +97,6 @@ public class SchemaUtils {
             AS_RAW_MQRankSum, QUALapprox, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, CALL_GT, CALL_AD, CALL_GQ, CALL_PGT, CALL_PID, CALL_PL);
     public static final List<String> ALT_ALLELE_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, REF_ALLELE_FIELD_NAME, "allele", ALT_ALLELE_FIELD_NAME, "allele_pos", CALL_GT, AS_RAW_MQ, RAW_MQ, AS_RAW_MQRankSum, "raw_mqranksum_x_10", AS_QUALapprox, "qual", AS_RAW_ReadPosRankSum, "raw_readposranksum_x_10", AS_SB_TABLE, "SB_REF_PLUS","SB_REF_MINUS","SB_ALT_PLUS","SB_ALT_MINUS", CALL_AD, "ref_ad", "ad");
     public static final List<String> FEATURE_EXTRACT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, "allele", RAW_QUAL, "ref_ad", AS_MQRankSum, "AS_MQRankSum_ft", AS_ReadPosRankSum, "AS_ReadPosRankSum_ft", RAW_MQ, RAW_AD, "RAW_AD_GT_1", "SB_REF_PLUS","SB_REF_MINUS","SB_ALT_PLUS","SB_ALT_MINUS","num_het_samples","num_homvar_samples","distinct_alleles","hq_genotype_samples");
-
-
-//    private String getPositionTableForContig(final String contig ) {
-//        return contigToPositionTableMap.get(contig);
-//    }
-//
-//    private String getVariantTableForContig(final String contig ) {
-//        return contigToVariantTableMap.get(contig);
-//    }
-//
-
-//    private void validateSchema(final Set<String> columnNames) {
-//        for ( final String requiredField : REQUIRED_FIELDS ) {
-//            if ( ! columnNames.contains(requiredField) ) {
-//                throw new UserException("Missing required column: " + requiredField +
-//                        ". Actual columns encountered were: " + columnNames);
-//            }
-//        }
-//    }
 
 
     public static final long chromAdjustment = 1000000000000L;

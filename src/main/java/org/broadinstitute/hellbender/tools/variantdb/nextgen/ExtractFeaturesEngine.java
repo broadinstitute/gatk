@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ExcessHet;
@@ -86,7 +87,7 @@ public class ExtractFeaturesEngine {
                                final int numSamples,
                                final int hqGenotypeGQThreshold,
                                final int hqGenotypeDepthThreshold,
-                               final double hqGenotypeABThreshold ) {
+                               final double hqGenotypeABThreshold) {
 
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
@@ -192,11 +193,6 @@ public class ExtractFeaturesEngine {
         Double raw_ad = rec.getRawAD();
         Double raw_ad_gt_1 = rec.getRawADGT1();
 
-        // TODO: KCIBUL QUESTION -- if we skip this... we won't have YNG Info @ extraction time?
-        // if (raw_ad == 0) {
-        //     logger.info("skipping " + contig + ":" + position + "(location="+location+") because it has no alternate reads!");
-        //     return;
-        // }
 
         int sb_ref_plus = rec.getSbRefPlus();
         int sb_ref_minus = rec.getSbRefMinus();
@@ -204,8 +200,6 @@ public class ExtractFeaturesEngine {
         int sb_alt_minus = rec.getSbAltMinus();
 
 //        logger.info("processing " + contig + ":" + position);
-
-        // NOTE: if VQSR required a merged VCF (e.g. multiple alleles on a  given row) we have to do some merging here...
 
         final VariantContextBuilder builder = new VariantContextBuilder();
 
@@ -252,7 +246,7 @@ public class ExtractFeaturesEngine {
         }
         builder.attribute(GATKVCFConstants.EXCESS_HET_KEY, String.format("%.3f", excessHetApprox));
 
-        if (rec.getDistinctAlleles() > 6) {
+        if (rec.getDistinctAlleles() > CommonCode.EXCESS_ALLELES_THRESHOLD) {
             builder.filter(GATKVCFConstants.EXCESS_ALLELES);
         }
 

@@ -29,12 +29,9 @@ import java.io.IOException;
         omitFromCommandLine = true
 )
 public final class CreateSiteFilteringFiles extends VariantWalker {
-    static final Logger logger = LogManager.getLogger(CreateVariantIngestFiles.class);
+    static final Logger logger = LogManager.getLogger(CreateSiteFilteringFiles.class);
 
     private SimpleXSVWriter writer;
-
-    private List<String> HEADER = 
-        Arrays.asList("filter_set_name","location","filters");
 
     private List<String> lastEntryProcessed = new ArrayList<>();
 
@@ -68,7 +65,7 @@ public final class CreateSiteFilteringFiles extends VariantWalker {
         } catch (IOException ioe) {
             throw new GATKException("Unable to initialize writer", ioe);
         }
-        writer.setHeaderLine(HEADER);
+        writer.setHeaderLine(SchemaUtils.FILTER_SET_SITE_FIELDS);
 
         // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
         ChromosomeEnum.setRefVersion(refVersion);

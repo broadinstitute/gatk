@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.variant.vcf.*;
+
+import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -75,7 +77,7 @@ public class GATKVCFHeaderLines {
         addFilterLine(new VCFFilterHeaderLine(VCFConstants.PASSES_FILTERS_v4, "Site contains at least one allele that passes filters"));
 
         addFilterLine(new VCFFilterHeaderLine(NAY_FROM_YNG, "Considered a NAY in the Yay, Nay, Grey table"));
-        addFilterLine(new VCFFilterHeaderLine(EXCESS_ALLELES, "Site has an excess of alternate alleles"));
+        addFilterLine(new VCFFilterHeaderLine(EXCESS_ALLELES, "Site has an excess (>" + CommonCode.EXCESS_ALLELES_THRESHOLD + ") of alternate alleles"));
         addFilterLine(new VCFFilterHeaderLine(NO_HQ_GENOTYPES, "Site has no high quality variant genotypes"));
         addFilterLine(new VCFFilterHeaderLine(EXCESS_HET_KEY, "Site has excess het value larger than the threshold"));
 
