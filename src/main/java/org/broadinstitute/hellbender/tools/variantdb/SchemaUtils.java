@@ -75,7 +75,7 @@ public class SchemaUtils {
 
     // Site filtering table
     public static final String FILTERS = "filters";
-    public List<String> FILTER_SET_SITE_FIELDS = Arrays.asList(FILTER_SET_NAME,LOCATION_FIELD_NAME,FILTERS);
+    public static final List<String> FILTER_SET_SITE_FIELDS = Arrays.asList(FILTER_SET_NAME,LOCATION_FIELD_NAME,FILTERS);
 
     public static final List<String> COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_NAME_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, CALL_RGQ, QUALapprox, AS_QUALapprox, CALL_PL);//, AS_VarDP);
     public static final List<String> ARRAY_COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_NAME_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ);
