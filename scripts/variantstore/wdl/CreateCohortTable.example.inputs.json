@@ -2,6 +2,6 @@
   "CreateCohortTable.project": "spec-ops-aou",
   "CreateCohortTable.dataset": "gvs_tieout_acmg_v1",
 
-  "CreateCohortTable.docker": "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_cb56620f1db171d3f1c682e150e6aeb0cef64a83_mmt_ngs_cohort_extract_wdl_2020_04_12"
+  "CreateCohortTable.docker": "us.gcr.io/broad-dsde-methods/variantstore:mmt_ngs_cohort_extract_wdl_2020_05_13_gcloud"
 }
 
