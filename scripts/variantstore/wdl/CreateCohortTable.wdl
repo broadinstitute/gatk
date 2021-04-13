@@ -5,7 +5,6 @@ workflow CreateCohortTable {
         String project
         String dataset
 
-        String? git_branch_for_script
         String? docker
     }
 
@@ -16,7 +15,6 @@ workflow CreateCohortTable {
             project                         = project,
             dataset                         = dataset,
 
-            git_branch_for_script           = git_branch_for_script,
             docker                          = docker_final
     }
 
@@ -59,16 +57,16 @@ task CreateCohortTableTask {
         set -e
 
         # TODO access this from docker directly
-        wget -L "https://raw.githubusercontent.com/broadinstitute/gatk/${git_branch_for_script_final}/scripts/variantstore/wdl/extract/create_cohort_data_table.py"
+        wget -L "https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_for_script_final}/scripts/variantstore/wdl/extract/create_cohort_data_table.py"
 
         python create_cohort_data_table.py \
-            --fq_petvet_dataset ${project}.${dataset} \
-            --fq_temp_table_dataset ${destination_project_final}.temp_tables \
-            --fq_destination_dataset ${destination_project_final}.${destination_dataset_final} \
-            --destination_table ${destination_cohort_table_name_final} \
-            --fq_cohort_sample_names ${fq_cohort_sample_table_final} \
-            --query_project ${query_project_final} \
-            --fq_sample_mapping_table ${fq_sample_mapping_table_final}
+            --fq_petvet_dataset ~{project}.~{dataset} \
+            --fq_temp_table_dataset ~{destination_project_final}.temp_tables \
+            --fq_destination_dataset ~{destination_project_final}.~{destination_dataset_final} \
+            --destination_table ~{destination_cohort_table_name_final} \
+            --fq_cohort_sample_names ~{fq_cohort_sample_table_final} \
+            --query_project ~{query_project_final} \
+            --fq_sample_mapping_table ~{fq_sample_mapping_table_final}
     >>>
 
     runtime {
