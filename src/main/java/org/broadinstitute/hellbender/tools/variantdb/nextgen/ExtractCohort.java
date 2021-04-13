@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.nextgen.FilterSensitivityTools;
@@ -36,11 +37,18 @@ public class ExtractCohort extends ExtractTool {
     private ExtractCohortEngine engine;
 
    @Argument(
-            fullName = "variant-filter-table",
-            doc = "Fully qualified name of the filtering table to use for cohort extraction",
+            fullName = "filter-set-info-table",
+            doc = "Fully qualified name of the filtering set info table to use for cohort extraction",
             optional = true
     )
-    private String filteringFQTableName = null;
+    private String filterSetInfoTableName = null;
+
+    @Argument(
+        fullName = "filter-set-site-table",
+        doc = "Fully qualified name of the site filtering table to use for cohort extraction",
+        optional = true
+    )
+    private String filterSetSiteTableName = null;
 
     @Argument(
             fullName = "tranches-table",
@@ -111,8 +119,12 @@ public class ExtractCohort extends ExtractTool {
     protected void onStartup() {
         super.onStartup();
 
+        if ( (filterSetInfoTableName != null || filterSetSiteTableName != null) && (filterSetName == null || filterSetName.equals(""))) {
+            throw new UserException("--filter-set-name must be specified if any filtering related operations are requested");
+        }
+
         Set<VCFHeaderLine> vqsrHeaderLines = new HashSet<>();
-        if (filteringFQTableName != null) {
+        if (filterSetInfoTableName != null) {
             FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
             Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
 
@@ -158,7 +170,8 @@ public class ExtractCohort extends ExtractTool {
                 traversalIntervals,
                 minLocation,
                 maxLocation,
-                filteringFQTableName,
+                filterSetInfoTableName,
+                filterSetSiteTableName,
                 localSortMaxRecordsInRam,
                 printDebugInformation,
                 vqsLodSNPThreshold,
@@ -175,7 +188,7 @@ public class ExtractCohort extends ExtractTool {
     public void traverse() {
         progressMeter.setRecordsBetweenTimeChecks(100L);
 
-        if ( filteringFQTableName == null || filteringFQTableName.equals("") ) {
+        if ( filterSetInfoTableName == null || filterSetInfoTableName.equals("") ) {
             logger.warn("--variant-filter-table is not specified, no filtering of cohort! ");
         }
 

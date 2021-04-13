@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
 import htsjdk.samtools.util.Locatable;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 
 public class ExtractCohortFilterRecord implements Locatable {
@@ -48,4 +49,7 @@ public class ExtractCohortFilterRecord implements Locatable {
 
     public String getAltAllele() { return this.altAllele; }
 
+    public String toString() {
+        return ReflectionToStringBuilder.toString(this);
+    }
 }

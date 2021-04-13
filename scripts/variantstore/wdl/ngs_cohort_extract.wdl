@@ -13,7 +13,9 @@ workflow NgsCohortExtract {
         String fq_sample_table
         String fq_cohort_extract_table
         String query_project
-        String? fq_filter_set_table
+        String? fq_filter_set_info_table
+        String? fq_filter_set_site_table
+        String? fq_filter_set_tranches_table
         String? filter_set_name
         File? excluded_intervals
         Boolean? emit_pls = false
@@ -42,7 +44,9 @@ workflow NgsCohortExtract {
                 intervals                = SplitIntervals.interval_files[i],
                 fq_cohort_extract_table  = fq_cohort_extract_table,
                 read_project_id          = query_project,
-                fq_filter_set_table      = fq_filter_set_table,
+                fq_filter_set_info_table = fq_filter_set_info_table,
+                fq_filter_set_site_table = fq_filter_set_site_table,
+                fq_filter_set_tranches_table = fq_filter_set_tranches_table,
                 filter_set_name          = filter_set_name,
                 excluded_intervals       = excluded_intervals,
                 emit_pls                 = emit_pls,
@@ -72,7 +76,9 @@ task ExtractTask {
         String fq_cohort_extract_table
         String read_project_id
         String output_file
-        String? fq_filter_set_table
+        String? fq_filter_set_info_table
+        String? fq_filter_set_site_table
+        String? fq_filter_set_tranches_table
         String? filter_set_name
         File? excluded_intervals
         
@@ -104,7 +110,9 @@ task ExtractTask {
                 -L ~{intervals} \
                 --project-id ~{read_project_id} \
                 ~{true='--emit-pls' false='' emit_pls} \
-                ~{"--variant-filter-table " + fq_filter_set_table} \
+                ~{"--filter-set-info-table " + fq_filter_set_info_table} \
+                ~{"--filter-set-site-table " + fq_filter_set_site_table} \
+                ~{"--tranches-table " + fq_filter_set_tranches_table} \
                 ~{"--filter-set-name " + filter_set_name}
         
         # XL does not currently work with ExtractCohort
