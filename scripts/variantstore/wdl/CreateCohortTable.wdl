@@ -8,7 +8,8 @@ workflow CreateCohortTable {
         String? docker
     }
 
-    String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
+    # TODO update this docker source
+    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:latest"])
 
     call CreateCohortTableTask {
         input:
@@ -38,7 +39,6 @@ task CreateCohortTableTask {
         String? fq_cohort_sample_table
         String? fq_sample_mapping_table
 
-        String? git_branch_for_script
         String docker
     }
 
@@ -51,15 +51,8 @@ task CreateCohortTableTask {
     String fq_cohort_sample_table_final = if defined(fq_cohort_sample_table) then "${fq_cohort_sample_table}" else "${project}.${dataset}.sample_info"
     String fq_sample_mapping_table_final = if defined(fq_sample_mapping_table) then "${fq_sample_mapping_table}" else "${project}.${dataset}.sample_info"
 
-    String git_branch_for_script_final = if defined(git_branch_for_script) then "${git_branch_for_script}" else "master"
-
     command <<<
         set -e
-
-        pip install google-cloud-bigquery
-
-        # TODO access this from docker directly
-        wget -L "https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_for_script_final}/scripts/variantstore/wdl/extract/create_cohort_data_table.py"
 
         python create_cohort_data_table.py \
             --fq_petvet_dataset ~{project}.~{dataset} \
