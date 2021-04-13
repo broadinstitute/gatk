@@ -5,6 +5,7 @@ workflow CreateCohortTable {
         String project
         String dataset
 
+        String? git_branch_for_script
         String? docker
     }
 
@@ -38,6 +39,7 @@ task CreateCohortTableTask {
         String? fq_cohort_sample_table
         String? fq_sample_mapping_table
 
+        String? git_branch_for_script
         String docker
     }
 
@@ -50,10 +52,15 @@ task CreateCohortTableTask {
     String fq_cohort_sample_table = if defined(fq_cohort_sample_table) then "${fq_cohort_sample_table}" else "${project}.${dataset}.sample_info"
     String fq_sample_mapping_table = if defined(fq_sample_mapping_table) then "${fq_sample_mapping_table}" else "${project}.${dataset}.sample_info"
 
+    String git_branch_for_script = if defined(git_branch_for_script) then "${git_branch_for_script}" else "master"
+
     command <<<
         set -e
 
-        python scripts/variantstore/wdl/extract/create_cohort_data_table.py \
+        # TODO access this from docker directly
+        wget -L "https://raw.githubusercontent.com/broadinstitute/gatk/${git_branch_for_script}/scripts/variantstore/wdl/extract/create_cohort_data_table.py"
+
+        python create_cohort_data_table.py \
             --fq_petvet_dataset ${project}.${dataset} \
             --fq_temp_table_dataset ${destination_project}.temp_tables \
             --fq_destination_dataset ${destination_project}.${destination_dataset} \
