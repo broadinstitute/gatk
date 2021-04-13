@@ -12,3 +12,4 @@ ADD create_cohort_data_table.py /app
 RUN curl -sSL https://sdk.cloud.google.com | bash
 
 WORKDIR /app
+ENTRYPOINT ["/bin/bash"]
