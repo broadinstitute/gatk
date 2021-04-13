@@ -54,9 +54,9 @@ task CreateCohortTableTask {
     command <<<
         set -e
 
-        ls
+        ls /
 
-        python app/create_cohort_data_table.py \
+        python /app/create_cohort_data_table.py \
             --fq_petvet_dataset ~{project}.~{dataset} \
             --fq_temp_table_dataset ~{destination_project_final}.temp_tables \
             --fq_destination_dataset ~{destination_project_final}.~{destination_dataset_final} \
