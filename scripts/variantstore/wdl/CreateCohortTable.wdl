@@ -56,6 +56,8 @@ task CreateCohortTableTask {
     command <<<
         set -e
 
+        pip install google-cloud-bigquery
+
         # TODO access this from docker directly
         wget -L "https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_for_script_final}/scripts/variantstore/wdl/extract/create_cohort_data_table.py"
 
