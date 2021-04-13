@@ -6,6 +6,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig
+from google.oauth2 import service_account
+
 
 import argparse
 
@@ -56,7 +58,7 @@ def execute_with_retry(label, sql):
   while len(retry_delay) > 0:
     try:
       query = client.query(sql)
-      
+
       print(f"STARTING - {label}")
       JOB_IDS.add((label, query.job_id))
       results = query.result()
@@ -86,8 +88,8 @@ def split_lists(samples, n):
 
 def get_all_samples(fq_cohort_sample_names, fq_sample_mapping_table):
   sql = f"select m.sample_id from `{fq_cohort_sample_names}` c JOIN `{fq_sample_mapping_table}` m ON (m.sample_name = c.sample_name)"
-      
-  results = execute_with_retry("read cohort table", sql)    
+
+  results = execute_with_retry("read cohort table", sql)
   cohort = [row.sample_id for row in list(results)]
   cohort.sort()
   return cohort
@@ -104,7 +106,7 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort):
     sample_stanza = ','.join([str(s) for s in samples])
     sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_pl, QUALapprox, AS_QUALapprox from `{fq_vet_table}` WHERE sample_id IN ({sample_stanza})), "
     return sql
-   
+
   subs = {}
   for i in range(1, PET_VET_TABLE_COUNT+1):
     partition_samples = get_samples_for_partition(cohort, i)
@@ -124,17 +126,17 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort):
         "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
         f" (SELECT * FROM q_all)"
 
-  print(sql) 
-  print(f"VET Query is {utf8len(sql)/(1024*1024)} MB in length")  
-  results = execute_with_retry("insert vet new table", sql)    
+  print(sql)
+  print(f"VET Query is {utf8len(sql)/(1024*1024)} MB in length")
+  results = execute_with_retry("insert vet new table", sql)
   return results
 
 
 
 def create_position_table(fq_temp_table_dataset, min_variant_samples):
   dest = f"{fq_temp_table_dataset}.{VET_DISTINCT_POS_TABLE}"
-  
-  # only create this clause if min_variant_samples > 0, becuase if 
+
+  # only create this clause if min_variant_samples > 0, becuase if
   # it is == 0 then we don't need to touch the sample_id column (which doubles the cost of this query)
   min_sample_clause = ""
   if min_variant_samples > 0:
@@ -179,9 +181,9 @@ def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort):
         "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
         f" (SELECT * FROM q_all)"
 
-  #print(sql)      
+  #print(sql)
   print(f"PET Query is {utf8len(sql)/(1024*1024)} MB in length")
-  results = execute_with_retry("insert pet new table", sql)    
+  results = execute_with_retry("insert pet new table", sql)
   return results
 
 
@@ -216,7 +218,7 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_dataset, 
   cohort_extract_final_query_job = client.query(sql)
 
   cohort_extract_final_query_job.result()
-  JOB_IDS.add((f"insert final cohort table {dest}", cohort_extract_final_query_job.job_id))  
+  JOB_IDS.add((f"insert final cohort table {dest}", cohort_extract_final_query_job.job_id))
   return
 
 def do_extract(fq_pet_vet_dataset,
@@ -227,11 +229,22 @@ def do_extract(fq_pet_vet_dataset,
                fq_destination_dataset,
                destination_table,
                min_variant_samples,
-               fq_sample_mapping_table
+               fq_sample_mapping_table,
+               sa_key_path
               ):
   try:
     global client
-    client = bigquery.Client(project=query_project,
+
+    if sa_key_path:
+      credentials = service_account.Credentials.from_service_account_file(
+        sa_key_path, scopes=["https://www.googleapis.com/auth/cloud-platform"],
+      )
+
+      client = bigquery.Client(credentials=credentials,
+                               project=query_project,
+                               default_query_job_config=QueryJobConfig(labels={ "id" : f"test_cohort_export_{output_table_prefix}"}, priority="INTERACTIVE", use_query_cache=False ))
+    else:
+      client = bigquery.Client(project=query_project,
                              default_query_job_config=QueryJobConfig(labels={ "id" : f"test_cohort_export_{output_table_prefix}"}, priority="INTERACTIVE", use_query_cache=False ))
 
     ## TODO -- provide a cmdline arg to override this (so we can simulat smaller datasets)
@@ -254,7 +267,7 @@ def do_extract(fq_pet_vet_dataset,
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract a cohort from BigQuery Variant Store ')
-  
+
   parser.add_argument('--fq_petvet_dataset',type=str, help='project.dataset location of pet/vet data', required=True)
   parser.add_argument('--fq_temp_table_dataset',type=str, help='project.dataset location where results should be stored', required=True)
   parser.add_argument('--fq_destination_dataset',type=str, help='project.dataset location where results should be stored', required=True)
@@ -263,6 +276,7 @@ if __name__ == '__main__':
   parser.add_argument('--query_project',type=str, help='Google project where query should be executed', required=True)
   parser.add_argument('--min_variant_samples',type=int, help='Minimum variant samples at a site required to be emitted', required=False, default=0)
   parser.add_argument('--fq_sample_mapping_table',type=str, help='Mapping table from sample_id to sample_name', required=True)
+  parser.add_argument('--sa_key_path',type=str, help='Path to json key file for SA', required=False)
 
   parser.add_argument('--max_tables',type=int, help='Maximum number of PET/VET tables to consider', required=False, default=250)
 
@@ -278,4 +292,5 @@ if __name__ == '__main__':
              args.fq_destination_dataset,
              args.destination_table,
              args.min_variant_samples,
-             args.fq_sample_mapping_table)
+             args.fq_sample_mapping_table,
+             args.sa_key_path)
