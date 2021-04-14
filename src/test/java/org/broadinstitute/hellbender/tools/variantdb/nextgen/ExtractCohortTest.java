@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
@@ -11,14 +9,11 @@ import java.io.File;
 
 
 class ExtractCohortTest extends CommandLineProgramTest {
-  private final String dirPath = getToolTestDataDir(); // TODO this goes to src/test/resources....
-  // which makes me wonder if I should be putting them someplace else
-  private static final String prefix =
-      "src/test/java/org/broadinstitute/hellbender/tools/variantdb/nextgen/AnVIL_WGS_100_exported_cohort/";
-  private static final String cohortAvroFileName = prefix +"000000000000";
-  private static final String sampleFile = prefix +"sample_list";
-  private static final String outputFileName = prefix +"outputfile.vcf";
-  private static final String expectedFileName = prefix +"expected.vcf.gz";
+  private final String prefix = getToolTestDataDir();
+  private final String cohortAvroFileName = prefix +"000000000000.avro";
+  private final String sampleFile = prefix +"sample_list";
+  private final String outputFileName = prefix +"outputfile.vcf";
+  private final String expectedFileName = prefix +"expected.vcf.gz";
 
   @Test
   public void testFinalVCFfromAvro() throws Exception {
@@ -35,11 +30,10 @@ class ExtractCohortTest extends CommandLineProgramTest {
         .add("sample-file", sampleFile)
         .add("project-id", "noProjectId");
 
-
     runCommandLine(args);
 
-    final File expectedVCF = createTempFile("expectedFileName", "vcf"); // TODO wait this ne3ds to be a file not a directoryh
-    final File outputVCF = createTempFile("outputFileName", "vcf");
+    final File expectedVCF = getTestFile(expectedFileName);
+    final File outputVCF = getTestFile(outputFileName);
 
     IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
   }
