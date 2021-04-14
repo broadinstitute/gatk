@@ -12,8 +12,7 @@ class ExtractCohortTest extends CommandLineProgramTest {
   private final String prefix = getToolTestDataDir();
   private final String cohortAvroFileName = prefix +"000000000000.avro";
   private final String sampleFile = prefix +"sample_list";
-  private final String outputFileName = prefix +"outputfile.vcf";
-  private final String expectedFileName = prefix +"expected.vcf.gz";
+  private final String outputFileName = prefix +"output.vcf";
 
   @Test
   public void testFinalVCFfromAvro() throws Exception {
@@ -32,8 +31,10 @@ class ExtractCohortTest extends CommandLineProgramTest {
 
     runCommandLine(args);
 
-    final File expectedVCF = getTestFile(expectedFileName);
-    final File outputVCF = getTestFile(outputFileName);
+
+
+    final File expectedVCF = getTestFile("expected.vcf");
+    final File outputVCF = getTestFile("output.vcf");
 
     IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
   }
