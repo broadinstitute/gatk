@@ -9,9 +9,8 @@ workflow NgsFilterExtract {
         File reference_index
         File reference_dict
 
-
         String data_project
-        String? default_dataset
+        String default_dataset
 
         String query_project = data_project
 
