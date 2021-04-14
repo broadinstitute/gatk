@@ -94,7 +94,8 @@ workflow GvsCreateFilterSet {
                 fq_alt_allele_table      = fq_alt_allele_table,
                 read_project_id          = query_project,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
-                service_account_json     = service_account_json
+                service_account_json     = service_account_json,
+                query_project            = query_project
         }
     }
 
@@ -208,6 +209,7 @@ task ExtractFilterTask {
         # Runtime Options:
         File? gatk_override
         File? service_account_json
+        String query_project
 
         Int? local_sort_max_records_in_ram = 1000000
     }
@@ -224,6 +226,7 @@ task ExtractFilterTask {
         if [ ~{has_service_account_file} = 'true' ]; then
             export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
             gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gcloud config set project ~{query_project}
         fi
 
         df -h
