@@ -27,20 +27,15 @@
   "NgsFilterExtract.large_disk": 1000,
   "NgsFilterExtract.huge_disk": 2000,
 
-  "NgsFilterExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.2.0.0-319-g88dadc7-SNAPSHOT-local.jar",
+  "NgsFilterExtract.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.2.0.0-312-g4fbcc6f-SNAPSHOT-local.jar",
 
-  "NgsFilterExtract.fq_sample_table": "spec-ops-aou.gvs_tieout_acmg_v1.sample_info",
-  "NgsFilterExtract.fq_alt_allele_table": "spec-ops-aou.gvs_tieout_acmg_v1.alt_allele",
-  "NgsFilterExtract.query_project": "spec-ops-aou",
+  "NgsFilterExtract.data_project": "spec-ops-aou",
+  "NgsFilterExtract.default_dataset": "gvs_tieout_acmg_v2",
 
-  "NgsFilterExtract.filter_set_name": "gvs_tieout_acmg_v8_sites",
-  "NgsFilterExtract.output_file_base_name": "gvs_tieout_acmg_v1.sites_only",
+  "NgsFilterExtract.filter_set_name": "gvs_tieout_acmg_v2",
+  "NgsFilterExtract.output_file_base_name": "gvs_tieout_acmg_v2.sites_only",
 
   "NgsFilterExtract.scatter_count": 20,
-  "NgsFilterExtract.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
-  "NgsFilterExtract.fq_info_destination_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_info",
-  "NgsFilterExtract.fq_tranches_destination_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_tranches",
-  "NgsFilterExtract.fq_filter_sites_destination_table": "spec-ops-aou.gvs_tieout_acmg_v1.filter_set_sites"
+  "NgsFilterExtract.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
-  
 }

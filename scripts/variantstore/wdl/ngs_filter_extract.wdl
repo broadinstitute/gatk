@@ -9,14 +9,18 @@ workflow NgsFilterExtract {
         File reference_index
         File reference_dict
 
-        String fq_sample_table
-        String fq_alt_allele_table
-        String query_project
+        String data_project
+        String default_dataset
+
+        String query_project = data_project
+
+        String fq_sample_table = "~{data_project}.~{default_dataset}.sample_info"
+        String fq_alt_allele_table = "~{data_project}.~{default_dataset}.alt_allele"
+        String fq_info_destination_table = "~{data_project}.~{default_dataset}.filter_set_info"
+        String fq_tranches_destination_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
+        String fq_filter_sites_destination_table = "~{data_project}.~{default_dataset}.filter_set_sites"
 
         String filter_set_name
-        String fq_info_destination_table
-        String fq_tranches_destination_table
-        String fq_filter_sites_destination_table
 
         File? excluded_intervals
 

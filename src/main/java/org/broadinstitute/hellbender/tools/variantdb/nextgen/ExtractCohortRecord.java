@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
 import htsjdk.samtools.util.Locatable;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 
 import java.util.Objects;
@@ -87,4 +88,8 @@ public class ExtractCohortRecord implements Locatable {
     public String getAsQUALApprox() { return this.asQualapprox; }
 
     public String getCallPL() { return this.callPL; }
+
+    public String toString() {
+        return ReflectionToStringBuilder.toString(this);
+    }
 }
