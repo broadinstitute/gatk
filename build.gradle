@@ -355,7 +355,7 @@ dependencies {
         transitive = false
     }
 
-    compile('com.intel.gkl:gkl:0.8.6') {
+    compile('com.intel.gkl:gkl:0.8.8') {
         exclude module: 'htsjdk'
     }
 
