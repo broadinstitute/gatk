@@ -367,7 +367,7 @@ public final class BigQueryUtils {
         return result;
     }
 
-    private static long getQueryCostBytesProcessedEstimate(String queryString) {
+    private static long getQueryCostBytesProcessedEstimate(String queryString, String projectID) {
         final QueryJobConfiguration dryRunQueryConfig =
                 QueryJobConfiguration.newBuilder( queryString )
                         .setUseLegacySql(false)
@@ -376,7 +376,7 @@ public final class BigQueryUtils {
                         .setPriority(QueryJobConfiguration.Priority.INTERACTIVE)
                         .build();
 
-        Job dryRunJob = getBigQueryEndPoint().create(JobInfo.newBuilder(dryRunQueryConfig).build());
+        Job dryRunJob = getBigQueryEndPoint(projectID).create(JobInfo.newBuilder(dryRunQueryConfig).build());
         long bytesProcessed = ((JobStatistics.QueryStatistics) dryRunJob.getStatistics()).getTotalBytesProcessed();
         return bytesProcessed;
     }
@@ -391,7 +391,7 @@ public final class BigQueryUtils {
         final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
         final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
 
-        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString);
+        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString, projectID);
         logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
 
         final String queryStringIntoTempTable = "CREATE TABLE `" + tempTableFullyQualified + "`\n" +
