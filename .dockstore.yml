@@ -84,6 +84,16 @@ workflows:
          - master
          - ah_var_store
          - mmt_SA_support_and_wdl_renaming
+   - name: GvsExtractCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsExtractCallset.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - mmt_SA_support_and_wdl_renaming
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
@@ -106,15 +116,6 @@ workflows:
      filters:
        branches:
          - master
-   - name: ngs_cohort_extract
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/ngs_cohort_extract.wdl
-     testParameterFiles:
-       - /scripts/variantstore/wdl/ngs_cohort_extract.inputs.json
-     filters:
-       branches:
-         - master
-         - ah_var_store
    - name: run_happy
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/run_happy.wdl

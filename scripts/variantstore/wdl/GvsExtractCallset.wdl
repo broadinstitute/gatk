@@ -1,15 +1,15 @@
 version 1.0
 
-workflow NgsCohortExtract {
+workflow GvsExtractCallset {
    input {
 
         File wgs_intervals
         Int scatter_count
-       
+
         File reference
         File reference_index
         File reference_dict
-        
+
         String fq_sample_table
         String fq_cohort_extract_table
         String query_project
@@ -19,7 +19,7 @@ workflow NgsCohortExtract {
         String? filter_set_name
         File? excluded_intervals
         Boolean? emit_pls = false
-    
+
         String output_file_base_name
         File? gatk_override
     }
@@ -32,7 +32,7 @@ workflow NgsCohortExtract {
           ref_dict = reference_dict,
           scatter_count = scatter_count
     }
-    
+
     scatter(i in range(scatter_count) ) {
         call ExtractTask {
             input:
@@ -68,7 +68,7 @@ task ExtractTask {
         File reference
         File reference_index
         File reference_dict
-    
+
         String fq_sample_table
 
         File intervals
@@ -81,12 +81,12 @@ task ExtractTask {
         String? fq_filter_set_tranches_table
         String? filter_set_name
         File? excluded_intervals
-        
+
         Boolean? emit_pls
 
         # Runtime Options:
         File? gatk_override
-        
+
         Int? local_sort_max_records_in_ram = 10000000
     }
 
@@ -114,7 +114,7 @@ task ExtractTask {
                 ~{"--filter-set-site-table " + fq_filter_set_site_table} \
                 ~{"--tranches-table " + fq_filter_set_tranches_table} \
                 ~{"--filter-set-name " + filter_set_name}
-        
+
         # XL does not currently work with ExtractCohort
         gatk --java-options "-Xmx9g" \
             SelectVariants \
@@ -167,7 +167,7 @@ task ExtractTask {
             localization_optional: true
         }
      }
-	
+
      command {
          set -e
          export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
