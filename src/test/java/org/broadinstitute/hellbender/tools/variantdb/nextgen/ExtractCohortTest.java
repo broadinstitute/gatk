@@ -11,8 +11,6 @@ import java.io.File;
 
 
 class ExtractCohortTest extends CommandLineProgramTest {
-  private static final Logger logger = LogManager.getLogger(ExtractCohortTest.class);
-
   private final String dirPath = getToolTestDataDir(); // TODO this goes to src/test/resources....
   // which makes me wonder if I should be putting them someplace else
   private static final String prefix =
@@ -24,8 +22,6 @@ class ExtractCohortTest extends CommandLineProgramTest {
 
   @Test
   public void testFinalVCFfromAvro() throws Exception {
-    logger.info("yooooo" + dirPath); // TODO just to check this. but it looks like it goes to resources
-    logger.info("yooooo"); // TODO just to check this. but it looks like it goes to resources
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
