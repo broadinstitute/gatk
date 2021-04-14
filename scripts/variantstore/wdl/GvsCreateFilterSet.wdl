@@ -219,8 +219,8 @@ task ExtractFilterTask {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
         if [ ~{has_service_account_file} = 'true' ]; then
-          gcloud auth activate-service-account --key-file='~{service_account_json}'
-          export GOOGLE_APPLICATION_CREDENTIALS="~{service_account_json}"
+            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
         fi
 
         df -h
