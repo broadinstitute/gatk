@@ -20,7 +20,6 @@ workflow CreateCohortTable {
         String? docker
     }
 
-    # TODO update this docker source
     String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:latest"])
 
     call CreateCohortTableTask {
