@@ -66,6 +66,8 @@ workflow GvsCreateFilterSet {
         String? preemptible_tries_override
         Int preemptible_tries = select_first([preemptible_tries_override, "3"])
 
+        File? service_account_json
+
         Int? SNP_VQSR_machine_mem_gb
         Int? SNP_VQSR_downsampleFactor = 1
     }
@@ -91,7 +93,8 @@ workflow GvsCreateFilterSet {
                 excluded_intervals       = excluded_intervals,
                 fq_alt_allele_table      = fq_alt_allele_table,
                 read_project_id          = query_project,
-                output_file              = "${output_file_base_name}_${i}.vcf.gz"
+                output_file              = "${output_file_base_name}_${i}.vcf.gz",
+                service_account_json     = service_account_json
         }
     }
 
@@ -201,16 +204,23 @@ task ExtractFilterTask {
 
         # Runtime Options:
         File? gatk_override
+        File? service_account_json
 
         Int? local_sort_max_records_in_ram = 1000000
     }
 
+
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
     # ------------------------------------------------
     # Run our command:
     command <<<
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+          gcloud auth activate-service-account --key-file='~{service_account_json}'
+        fi
 
         df -h
 
@@ -255,8 +265,11 @@ task ExtractFilterTask {
          Int scatter_count
          String? split_intervals_extra_args
 
+         File? service_account_json
          File? gatk_override
      }
+
+     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
      parameter_meta {
          intervals: {
@@ -276,6 +289,10 @@ task ExtractFilterTask {
       command {
           set -e
           export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+          if [ ~{has_service_account_file} = 'true' ]; then
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+          fi
 
           mkdir interval-files
           gatk --java-options "-Xmx5g" SplitIntervals \
@@ -332,8 +349,11 @@ task UploadFilterSetToBQ {
         String fq_info_destination_table
         String fq_tranches_destination_table
         String fq_filter_sites_destination_table
+
+        File? service_account_json
     }
 
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
     # ------------------------------------------------
     # Run our command:
@@ -342,6 +362,10 @@ task UploadFilterSetToBQ {
         set -o pipefail
 
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+          gcloud auth activate-service-account --key-file='~{service_account_json}'
+        fi
 
         gatk --java-options "-Xmx1g" \
             CreateFilteringFiles \

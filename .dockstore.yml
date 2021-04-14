@@ -74,6 +74,16 @@ workflows:
      filters:
        branches:
          - master
+   - name: GvsCreateFilterSet
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateFilterSet.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - mmt_SA_support_and_wdl_renaming
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
@@ -96,15 +106,6 @@ workflows:
      filters:
        branches:
          - master
-   - name: GvsCreateFilterSet
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
-     testParameterFiles:
-       - /scripts/variantstore/wdl/GvsCreateFilterSet.inputs.json
-     filters:
-       branches:
-         - master
-         - ah_var_store
    - name: ngs_cohort_extract
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/ngs_cohort_extract.wdl
