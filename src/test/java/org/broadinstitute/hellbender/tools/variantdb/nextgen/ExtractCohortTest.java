@@ -10,21 +10,22 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 
-public class ExtractCohortEngineTest extends CommandLineProgramTest {
-  private static final Logger logger = LogManager.getLogger(ExtractCohortEngineTest.class);
+class ExtractCohortTest extends CommandLineProgramTest {
+  private static final Logger logger = LogManager.getLogger(ExtractCohortTest.class);
 
   private final String dirPath = getToolTestDataDir(); // TODO this goes to src/test/resources....
   // which makes me wonder if I should be putting them someplace else
   private static final String prefix =
-      "src/test/java/org/broadinstitute/hellbender/tools/variantdb/nextgen/";
-  private static final String cohortAvroFileName = prefix +"AnVIL_WGS_100_exported_cohort/000000000000";
-  private static final String sampleFile = prefix +"AnVIL_WGS_100_exported_cohort/sample_list";
+      "src/test/java/org/broadinstitute/hellbender/tools/variantdb/nextgen/AnVIL_WGS_100_exported_cohort/";
+  private static final String cohortAvroFileName = prefix +"000000000000";
+  private static final String sampleFile = prefix +"sample_list";
   private static final String outputFileName = prefix +"outputfile.vcf";
-  private static final String expectedFileName = prefix +"AnVIL_WGS_100_exported_cohort/expected.vcf.gz";
+  private static final String expectedFileName = prefix +"expected.vcf.gz";
 
   @Test
   public void testFinalVCFfromAvro() throws Exception {
-    logger.info(dirPath); // TODO just to check this. but it looks like it goes to resources
+    logger.info("yooooo" + dirPath); // TODO just to check this. but it looks like it goes to resources
+    logger.info("yooooo"); // TODO just to check this. but it looks like it goes to resources
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
@@ -35,13 +36,14 @@ public class ExtractCohortEngineTest extends CommandLineProgramTest {
         .add("O", outputFileName)
         .add("local-sort-max-records-in-ram", 10000000)
         .add("cohort-avro-file-name", cohortAvroFileName)
-        .add("sample-file", sampleFile);
+        .add("sample-file", sampleFile)
+        .add("project-id", "noProjectId");
 
 
     runCommandLine(args);
 
-    final File expectedVCF = createTempDir("expectedFileName");
-    final File outputVCF = createTempDir("outputFileName");
+    final File expectedVCF = createTempFile("expectedFileName", "vcf"); // TODO wait this ne3ds to be a file not a directoryh
+    final File outputVCF = createTempFile("outputFileName", "vcf");
 
     IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
   }
