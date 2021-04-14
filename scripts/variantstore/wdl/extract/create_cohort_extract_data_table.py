@@ -234,6 +234,7 @@ def make_extract_table(fq_pet_vet_dataset,
               ):
   try:
     global client
+    default_config = QueryJobConfig(labels={ "id" : f"test_cohort_export_{output_table_prefix}"}, priority="INTERACTIVE", use_query_cache=False )
 
     if sa_key_path:
       credentials = service_account.Credentials.from_service_account_file(
@@ -242,10 +243,10 @@ def make_extract_table(fq_pet_vet_dataset,
 
       client = bigquery.Client(credentials=credentials,
                                project=query_project,
-                               default_query_job_config=QueryJobConfig(labels={ "id" : f"test_cohort_export_{output_table_prefix}"}, priority="INTERACTIVE", use_query_cache=False ))
+                               default_query_job_config=default_config)
     else:
       client = bigquery.Client(project=query_project,
-                             default_query_job_config=QueryJobConfig(labels={ "id" : f"test_cohort_export_{output_table_prefix}"}, priority="INTERACTIVE", use_query_cache=False ))
+                             default_query_job_config=default_config)
 
     ## TODO -- provide a cmdline arg to override this (so we can simulat smaller datasets)
     global PET_VET_TABLE_COUNT
