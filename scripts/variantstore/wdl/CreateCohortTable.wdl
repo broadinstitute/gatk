@@ -3,17 +3,17 @@ version 1.0
 workflow CreateCohortTable {
    input {
         String data_project
-        String dataset
+        String default_dataset
         String destination_cohort_table_name
 
         # inputs with defaults
         String query_project = data_project
         String destination_project = data_project
-        String destination_dataset = dataset
+        String destination_dataset = default_dataset
 
-        String fq_petvet_dataset = "~{data_project}.~{dataset}"
-        String fq_cohort_sample_table = "~{data_project}.~{dataset}.sample_info"
-        String fq_sample_mapping_table = "~{data_project}.~{dataset}.sample_info"
+        String fq_petvet_dataset = "~{data_project}.~{default_dataset}"
+        String fq_cohort_sample_table = "~{data_project}.~{default_dataset}.sample_info"
+        String fq_sample_mapping_table = "~{data_project}.~{default_dataset}.sample_info"
         String fq_temp_table_dataset = "~{destination_project}.temp_tables"
         String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
@@ -25,10 +25,7 @@ workflow CreateCohortTable {
 
     call CreateCohortTableTask {
         input:
-            data_project                    = data_project,
-            dataset                         = dataset,
             destination_cohort_table_name   = destination_cohort_table_name,
-
             query_project                   = query_project,
 
             fq_petvet_dataset               = fq_petvet_dataset,
@@ -49,10 +46,7 @@ task CreateCohortTableTask {
     }
 
     input {
-        String data_project
-        String dataset
         String destination_cohort_table_name
-
         String query_project
 
         String fq_petvet_dataset
