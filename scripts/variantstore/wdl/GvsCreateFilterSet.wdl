@@ -168,7 +168,9 @@ workflow GvsCreateFilterSet {
 
         fq_info_destination_table = fq_info_destination_table,
         fq_tranches_destination_table = fq_tranches_destination_table,
-        fq_filter_sites_destination_table = fq_filter_sites_destination_table
+        fq_filter_sites_destination_table = fq_filter_sites_destination_table,
+
+        service_account_json = service_account_json
    }
 
     output {
