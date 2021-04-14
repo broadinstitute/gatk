@@ -1,6 +1,6 @@
 version 1.0
 
-workflow CreateCohortTable {
+workflow GvsPrepareCallset {
    input {
         String data_project
         String default_dataset
@@ -20,9 +20,9 @@ workflow CreateCohortTable {
         String? docker
     }
 
-    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:latest"])
+    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200414"])
 
-    call CreateCohortTableTask {
+    call PrepareCallsetTask {
         input:
             destination_cohort_table_name   = destination_cohort_table_name,
             query_project                   = query_project,
@@ -38,7 +38,7 @@ workflow CreateCohortTable {
 
 }
 
-task CreateCohortTableTask {
+task PrepareCallsetTask {
     # indicates that this task should NOT be call cached
     meta {
        volatile: true

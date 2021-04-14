@@ -48,11 +48,11 @@ workflows:
      filters:
        branches:
          - master
-   - name: CreateCohortTable
+   - name: GvsPrepareCallset
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/CreateCohortTable.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
      testParameterFiles:
-       - /scripts/variantstore/wdl/CreateCohortTable.example.inputs.json
+       - /scripts/variantstore/wdl/GvsPrepareCallset.example.inputs.json
      filters:
        branches:
          - master
