@@ -96,11 +96,11 @@ workflows:
      filters:
        branches:
          - master
-   - name: ngs_filter_extract
+   - name: GvsCreateFilterSet
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/ngs_filter_extract.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
      testParameterFiles:
-       - /scripts/variantstore/wdl/ngs_filter_extract.inputs.json
+       - /scripts/variantstore/wdl/GvsCreateFilterSet.inputs.json
      filters:
        branches:
          - master

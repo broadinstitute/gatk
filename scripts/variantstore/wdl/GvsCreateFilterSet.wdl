@@ -1,6 +1,6 @@
 version 1.0
 
-workflow NgsFilterExtract {
+workflow GvsCreateFilterSet {
    input {
         File wgs_intervals
         Int scatter_count
