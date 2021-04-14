@@ -170,7 +170,8 @@ workflow GvsCreateFilterSet {
         fq_tranches_destination_table = fq_tranches_destination_table,
         fq_filter_sites_destination_table = fq_filter_sites_destination_table,
 
-        service_account_json = service_account_json
+        service_account_json = service_account_json,
+        query_project = query_project
    }
 
     output {
@@ -223,7 +224,6 @@ task ExtractFilterTask {
         if [ ~{has_service_account_file} = 'true' ]; then
             export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
             gcloud auth activate-service-account --key-file='~{service_account_json}'
-            gcloud config set project ~{project_id}
         fi
 
         df -h
@@ -348,6 +348,7 @@ task UploadFilterSetToBQ {
         String fq_filter_sites_destination_table
 
         File? service_account_json
+        String query_project
     }
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
@@ -362,6 +363,7 @@ task UploadFilterSetToBQ {
 
         if [ ~{has_service_account_file} = 'true' ]; then
           gcloud auth activate-service-account --key-file='~{service_account_json}'
+          gcloud config set project ~{query_project}
         fi
 
         gatk --java-options "-Xmx1g" \
