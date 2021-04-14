@@ -266,11 +266,8 @@ task ExtractFilterTask {
          Int scatter_count
          String? split_intervals_extra_args
 
-         File? service_account_json
          File? gatk_override
      }
-
-     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
      parameter_meta {
          intervals: {
@@ -290,10 +287,6 @@ task ExtractFilterTask {
       command {
           set -e
           export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-          if [ ~{has_service_account_file} = 'true' ]; then
-            gcloud auth activate-service-account --key-file='~{service_account_json}'
-          fi
 
           mkdir interval-files
           gatk --java-options "-Xmx5g" SplitIntervals \
