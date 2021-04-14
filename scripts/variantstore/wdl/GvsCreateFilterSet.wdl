@@ -33,10 +33,10 @@ workflow GvsCreateFilterSet {
         File? snps_model
         File? indels_model
 
-        Array[String] snp_recalibration_tranche_values
-        Array[String] snp_recalibration_annotation_values
-        Array[String] indel_recalibration_tranche_values
-        Array[String] indel_recalibration_annotation_values
+        Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
+        Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
+        Array[String] indel_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.5", "99.0", "97.0", "96.0", "95.0", "94.0", "93.5", "93.0", "92.0", "91.0", "90.0"]
+        Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
 
         File? excluded_sites_bed
 
