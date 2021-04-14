@@ -62,7 +62,7 @@ task CreateCohortTableTask {
     command <<<
         set -e
 
-        python3 /app/create_cohort_data_table.py \
+        python3 /app/create_cohort_extract_data_table.py \
             --fq_petvet_dataset ~{fq_petvet_dataset} \
             --fq_temp_table_dataset ~{fq_temp_table_dataset} \
             --fq_destination_dataset ~{fq_destination_dataset} \

@@ -221,7 +221,7 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_dataset, 
   JOB_IDS.add((f"insert final cohort table {dest}", cohort_extract_final_query_job.job_id))
   return
 
-def do_extract(fq_pet_vet_dataset,
+def make_extract_table(fq_pet_vet_dataset,
                max_tables,
                fq_cohort_sample_names,
                query_project,
@@ -284,7 +284,7 @@ if __name__ == '__main__':
   # Execute the parse_args() method
   args = parser.parse_args()
 
-  do_extract(args.fq_petvet_dataset,
+  make_extract_table(args.fq_petvet_dataset,
              args.max_tables,
              args.fq_cohort_sample_names,
              args.query_project,
