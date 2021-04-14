@@ -48,6 +48,15 @@ workflows:
      filters:
        branches:
          - master
+   - name: GvsPrepareCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsPrepareCallset.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
    - name: ImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/ImportGenomes.wdl
