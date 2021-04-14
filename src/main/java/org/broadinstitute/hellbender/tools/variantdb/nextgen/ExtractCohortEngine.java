@@ -103,7 +103,7 @@ public class ExtractCohortEngine {
         this.sampleNames = sampleNames;
         this.mode = mode;
 
-        this.cohortTableRef = new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
+        this.cohortTableRef = cohortTableName == null || "".equals(cohortTableName) ? null : new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
         this.cohortAvroFileName = cohortAvroFileName;
         this.traversalIntervals = traversalIntervals;
         this.minLocation = minLocation;
