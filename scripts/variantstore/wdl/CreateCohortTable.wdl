@@ -52,18 +52,8 @@ task CreateCohortTableTask {
     String fq_cohort_sample_table_final = if defined(fq_cohort_sample_table) then "${fq_cohort_sample_table}" else "${project}.${dataset}.sample_info"
     String fq_sample_mapping_table_final = if defined(fq_sample_mapping_table) then "${fq_sample_mapping_table}" else "${project}.${dataset}.sample_info"
 
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
-
     command <<<
         set -e
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-          SA_FILENAME="sa_key.json"
-          gsutil cp "~{service_account_json}" $SA_FILENAME
-          SA_ARGS="--sa_key_path ${SA_FILENAME}"
-        else
-          SA_ARGS=""
-        fi
 
         python3 /app/create_cohort_data_table.py \
             --fq_petvet_dataset ~{project}.~{dataset} \
@@ -73,7 +63,7 @@ task CreateCohortTableTask {
             --fq_cohort_sample_names ~{fq_cohort_sample_table_final} \
             --query_project ~{query_project_final} \
             --fq_sample_mapping_table ~{fq_sample_mapping_table_final} \
-            $SA_ARGS
+            ~{"--sa_key_path " + service_account_json}
     >>>
 
     runtime {
