@@ -58,6 +58,16 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(groups = {"cloud"})
+    public void testExecuteQueryInBatchModeWithProject() {
+        final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
+        Map<String, String> labels = new HashMap<String, String>();
+        labels.put("gatktestquery", "testbatchmode" + runUuid);
+        final TableResult result = BigQueryUtils.executeQuery(BIGQUERY_TEST_PROJECT, query, true, labels);
+
+        checkQueryResults(result, getAllExpectedNamesAndAges(), query);
+    }
+
+    @Test(groups = {"cloud"})
     public void testSpecifiedExecuteQuery() {
         final String query = String.format("SELECT * FROM `%s`", BIGQUERY_TEST_TABLE);
         Map<String, String> labels = new HashMap<String, String>();
