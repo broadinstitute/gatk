@@ -75,6 +75,20 @@ public final class BigQueryUtils {
     }
 
     /**
+     * Executes the given {@code queryString} on the default instance of {@link BigQuery} as created by {@link #getBigQueryEndPoint()}.
+     * Will block until results are returned.
+     * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
+     * @param projectID The {@link BigQuery} project id in which to execute the query
+     * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
+     * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
+     * @return A {@link TableResult} object containing the results of the query executed.
+     */
+    public static TableResult executeQuery(final String projectID, final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
+        return executeQuery(getBigQueryEndPoint(projectID), queryString, runQueryInBatchMode, labels);
+    }
+
+    /**
      * Executes the given {@code queryString} on the provided BigQuery instance.
      * Will block until results are returned.
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
@@ -400,7 +414,7 @@ public final class BigQueryUtils {
                 ") AS\n" +
                 queryString;
 
-        executeQuery(queryStringIntoTempTable, runQueryInBatchMode, labels);
+        executeQuery(projectID, queryStringIntoTempTable, runQueryInBatchMode, labels);
 
         final Table tableInfo = getBigQueryEndPoint(projectID).getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
         logger.info(String.format("Query temp table created with %s rows and %s bytes in size", tableInfo.getNumRows(), tableInfo.getNumBytes()));
