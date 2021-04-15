@@ -419,6 +419,8 @@ task CreateTables {
     if [ ~{has_service_account_file} = 'true' ]; then
       gcloud auth activate-service-account --key-file='~{service_account_json}'
       gcloud config set project ~{project_id}
+
+      cat ~/.bigqueryrc
     fi
 
     PREFIX=""
