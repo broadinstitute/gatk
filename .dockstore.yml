@@ -48,25 +48,6 @@ workflows:
      filters:
        branches:
          - master
-   - name: GvsPrepareCallset
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
-     testParameterFiles:
-       - /scripts/variantstore/wdl/GvsPrepareCallset.example.inputs.json
-     filters:
-       branches:
-         - master
-         - ah_var_store
-   - name: ImportGenomes
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/ImportGenomes.wdl
-     testParameterFiles:
-       - /scripts/variantstore/wdl/ImportGenomes.example.inputs.json
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - mmt_SA_support_and_wdl_renaming
    - name: funcotator
      subclass: WDL
      primaryDescriptorPath: /scripts/funcotator_wdl/funcotator.wdl
@@ -90,6 +71,26 @@ workflows:
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
      testParameterFiles:
        - /scripts/variantstore/wdl/GvsExtractCallset.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - mmt_SA_support_and_wdl_renaming
+   - name: GvsImportGenomes
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsImportGenomes.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - mmt_SA_support_and_wdl_renaming
+   - name: GvsPrepareCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsPrepareCallset.example.inputs.json
      filters:
        branches:
          - master
