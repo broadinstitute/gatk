@@ -29,5 +29,5 @@
   "GvsCreateFilterSet.scatter_count": 20,
   "GvsCreateFilterSet.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
 
-  "GvsCreateFilterSet.gatk_override": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20200413/gatk-package-4.2.0.0-312-g4fbcc6f-SNAPSHOT-local.jar"
+  "GvsCreateFilterSet.gatk_override": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/mmt_SA_support_and_wdl_renaming_20210415/gatk-package-4.2.0.0-345-g8a7821a-SNAPSHOT-local.jar"
 }

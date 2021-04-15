@@ -415,7 +415,7 @@ public final class BigQueryUtils {
         final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
 
         final String queryStringWithUDFs = userDefinedFunctions == null ? queryString : userDefinedFunctions + queryString;
-        
+
         logger.info(queryStringWithUDFs);
 
         long bytesProcessed = getQueryCostBytesProcessedEstimate(queryStringWithUDFs, projectID);
