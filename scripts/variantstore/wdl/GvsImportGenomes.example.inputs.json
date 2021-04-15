@@ -1,14 +1,15 @@
 {
+  "GvsImportGenomes.input_vcfs": "${this.samples.hg38_reblocked_gvcf}",
+  "GvsImportGenomes.input_vcf_indexes": "${this.samples.hg38_reblocked_gvcf_index}",
+
   "GvsImportGenomes.interval_list": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
   "GvsImportGenomes.drop_state": "SIXTY",
-  "GvsImportGenomes.gatk_override": "gs://broad-dsp-spec-ops/kcibul/gatk-package-4.1.8.1-153-g9c3b338-SNAPSHOT-local.jar",
-
-  "GvsImportGenomes.input_vcfs": "this.samples.hg38_reblocked_gvcf",
 
   "GvsImportGenomes.project_id": "PROJECT_ID",
   "GvsImportGenomes.dataset_name": "DATASET_NAME",
-
   "GvsImportGenomes.output_directory": "GS_BUCKET_OUTPUT_DIR_PATH",
-  "GvsImportGenomes.sample_map": "GS_PATH_TO_SAMPLE_MAP"
+  "GvsImportGenomes.sample_map": "GS_PATH_TO_SAMPLE_MAP",
+
+  "GvsImportGenomes.gatk_override": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20200413/gatk-package-4.2.0.0-312-g4fbcc6f-SNAPSHOT-local.jar"
 }
 
