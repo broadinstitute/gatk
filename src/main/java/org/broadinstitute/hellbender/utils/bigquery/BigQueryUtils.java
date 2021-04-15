@@ -402,7 +402,7 @@ public final class BigQueryUtils {
 
         executeQuery(queryStringIntoTempTable, runQueryInBatchMode, labels);
 
-        final Table tableInfo = getBigQueryEndPoint().getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
+        final Table tableInfo = getBigQueryEndPoint(projectID).getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
         logger.info(String.format("Query temp table created with %s rows and %s bytes in size", tableInfo.getNumRows(), tableInfo.getNumBytes()));
 
         TableReference tr = new TableReference(tempTableFullyQualified, fieldsToRetrieve);
