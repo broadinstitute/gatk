@@ -114,7 +114,7 @@ task ExtractTask {
             ExtractCohort \
                 --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT \
                 -R "~{reference}" \
-                -O local.vcf.gz \
+                -O ~{output_file} \
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
                 --sample-table ~{fq_sample_table} \
                 --cohort-extract-table ~{fq_cohort_extract_table} \
