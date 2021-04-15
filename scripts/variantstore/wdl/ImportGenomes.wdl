@@ -545,11 +545,7 @@ task LoadTable {
           bq load --quiet --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
             "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
 
-          echo $status_bq_submission
-
-          status_bq_submission_last_line=${status_bq_submission##*$'\n'}
-
-          echo $status_bq_submission_last_line
+          cat status_bq_submission | tail -n 1 > status_bq_submission_last_line
 
           bq_job_id=$(sed 's/.*://' status_bq_submission_last_line)
 
