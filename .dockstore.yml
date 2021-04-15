@@ -60,7 +60,7 @@ workflows:
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
      testParameterFiles:
-       - /scripts/variantstore/wdl/GvsCreateFilterSet.inputs.json
+       - /scripts/variantstore/wdl/GvsCreateFilterSet.example.inputs.json
      filters:
        branches:
          - master
@@ -70,7 +70,7 @@ workflows:
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
      testParameterFiles:
-       - /scripts/variantstore/wdl/GvsExtractCallset.inputs.json
+       - /scripts/variantstore/wdl/GvsExtractCallset.example.inputs.json
      filters:
        branches:
          - master

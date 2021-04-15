@@ -1,0 +1,33 @@
+{
+  "GvsCreateFilterSet.reference": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "GvsCreateFilterSet.reference_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "GvsCreateFilterSet.reference_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+  "GvsCreateFilterSet.axiomPoly_resource_vcf": "gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz",
+  "GvsCreateFilterSet.axiomPoly_resource_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz.tbi",
+  "GvsCreateFilterSet.dbsnp_vcf": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf",
+  "GvsCreateFilterSet.dbsnp_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf.idx",
+  "GvsCreateFilterSet.hapmap_resource_vcf": "gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz",
+  "GvsCreateFilterSet.hapmap_resource_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz.tbi",
+  "GvsCreateFilterSet.mills_resource_vcf": "gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+  "GvsCreateFilterSet.mills_resource_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi",
+  "GvsCreateFilterSet.omni_resource_vcf": "gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz",
+  "GvsCreateFilterSet.omni_resource_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz.tbi",
+  "GvsCreateFilterSet.one_thousand_genomes_resource_vcf": "gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+  "GvsCreateFilterSet.one_thousand_genomes_resource_vcf_index": "gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi",
+
+  "GvsCreateFilterSet.small_disk": 100,
+  "GvsCreateFilterSet.medium_disk": 200,
+  "GvsCreateFilterSet.large_disk": 1000,
+  "GvsCreateFilterSet.huge_disk": 2000,
+
+  "GvsCreateFilterSet.data_project": "PROJECT_ID",
+  "GvsCreateFilterSet.default_dataset": "DATASET",
+
+  "GvsCreateFilterSet.filter_set_name": "FILTER_SET_NAME",
+  "GvsCreateFilterSet.output_file_base_name": "OUTPUT_FILE_BASE_NAME",
+
+  "GvsCreateFilterSet.scatter_count": 20,
+  "GvsCreateFilterSet.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
+
+  "GvsCreateFilterSet.gatk_override": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20200413/gatk-package-4.2.0.0-312-g4fbcc6f-SNAPSHOT-local.jar"
+}
