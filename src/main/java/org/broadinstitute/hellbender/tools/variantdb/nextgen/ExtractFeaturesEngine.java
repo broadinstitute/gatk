@@ -130,7 +130,6 @@ public class ExtractFeaturesEngine {
 
         final String userDefinedFunctions = ExtractFeaturesBQ.getVQSRFeatureExtractUserDefinedFunctionsString();
 
-        logger.info(featureQueryString);
         final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(
                 featureQueryString,
                 SchemaUtils.FEATURE_EXTRACT_FIELDS,

@@ -414,9 +414,14 @@ public final class BigQueryUtils {
         final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
         final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
 
-        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString, projectID);
+        final String queryStringWithUDFs = userDefinedFunctions == null ? queryString : userDefinedFunctions + queryString;
+        
+        logger.info(queryStringWithUDFs);
+
+        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryStringWithUDFs, projectID);
         logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
 
+        // UDFs need to come before the CREATE TABLE clause
         final String queryStringIntoTempTable =
                 userDefinedFunctions == null ? "" : userDefinedFunctions +
                 " CREATE TABLE `" + tempTableFullyQualified + "`\n" +
