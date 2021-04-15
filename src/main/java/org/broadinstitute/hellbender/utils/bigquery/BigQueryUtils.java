@@ -395,12 +395,21 @@ public final class BigQueryUtils {
         return bytesProcessed;
     }
 
-    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID, Map<String, String> labels) {
+    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString,
+                                                                  final List<String> fieldsToRetrieve,
+                                                                  final String projectID,
+                                                                  final String userDefinedFunctions,
+                                                                  Map<String, String> labels) {
 
-        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, false, labels);
+        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, userDefinedFunctions, false, labels);
     }
 
-    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID, final boolean runQueryInBatchMode,  Map<String, String> labels) {
+    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString,
+                                                                  final List<String> fieldsToRetrieve,
+                                                                  final String projectID,
+                                                                  final String userDefinedFunctions,
+                                                                  final boolean runQueryInBatchMode,
+                                                                  Map<String, String> labels) {
         final String tempTableDataset = "temp_tables";
         final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
         final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
@@ -408,7 +417,9 @@ public final class BigQueryUtils {
         long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString, projectID);
         logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
 
-        final String queryStringIntoTempTable = "CREATE TABLE `" + tempTableFullyQualified + "`\n" +
+        final String queryStringIntoTempTable =
+                userDefinedFunctions == null ? "" : userDefinedFunctions +
+                " CREATE TABLE `" + tempTableFullyQualified + "`\n" +
                 "OPTIONS(\n" +
                 "  expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)\n" +
                 ") AS\n" +
