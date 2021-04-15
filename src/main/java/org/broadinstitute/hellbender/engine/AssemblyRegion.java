@@ -7,6 +7,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
+import org.broadinstitute.hellbender.tools.walkers.mutect.AlignmentData;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -70,6 +71,8 @@ public final class AssemblyRegion implements Locatable {
      */
     private boolean hasBeenFinalized;
 
+    private List<AlignmentData> alignmentData = new ArrayList<>();
+
     /**
      * Create a new AssemblyRegion containing no reads
      *  @param activeSpan the span of this active region
@@ -114,6 +117,17 @@ public final class AssemblyRegion implements Locatable {
         this(activeSpan, true, padding, header);
     }
 
+    public List<AlignmentData> getAlignmentData() {
+        return alignmentData;
+    }
+
+    public void addAlignmentData(AlignmentData alignmentData) {
+        this.alignmentData.add(alignmentData);
+    }
+
+    public void addAllAlignmentData(List<AlignmentData> alignmentData) {
+        this.alignmentData.addAll(alignmentData);
+    }
     @Override
     public String getContig() {
         return activeSpan.getContig();
