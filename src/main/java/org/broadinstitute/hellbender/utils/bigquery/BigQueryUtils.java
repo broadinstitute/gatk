@@ -423,7 +423,7 @@ public final class BigQueryUtils {
 
         // UDFs need to come before the CREATE TABLE clause
         final String queryStringIntoTempTable =
-                userDefinedFunctions == null ? "" : userDefinedFunctions +
+                (userDefinedFunctions == null ? "" : userDefinedFunctions) +
                 " CREATE TABLE `" + tempTableFullyQualified + "`\n" +
                 "OPTIONS(\n" +
                 "  expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)\n" +
