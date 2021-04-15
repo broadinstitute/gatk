@@ -87,7 +87,7 @@ public class MethylationTypeCaller extends LocusWalker {
     }
 
     @Override
-    public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+    public ArrayList<VariantContext> apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         final byte referenceBase = referenceContext.getBases()[0];
         final int unconvertedBases;
         final int convertedBases;
@@ -125,7 +125,7 @@ public class MethylationTypeCaller extends LocusWalker {
         }
         // if reference strand does not support methylation
         else {
-            return;
+            return null;
         }
 
         // if there are reads that have methylated coverage
@@ -151,6 +151,7 @@ public class MethylationTypeCaller extends LocusWalker {
             final VariantContext vc = vcb.make();
             vcfWriter.add(vc);
         }
+        return null;
     }
 
     @Override

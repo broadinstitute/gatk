@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.AlignmentData;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -115,9 +116,11 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
     private AssemblyRegion loadNextAssemblyRegion() {
         AssemblyRegion nextRegion = null;
+        List<AlignmentData> alignmentData = new ArrayList<>();
 
         while ( locusIterator.hasNext() && nextRegion == null ) {
             final AlignmentContext pileup = locusIterator.next();
+
 
             // Pop any new pending regions off of the activity profile. These pending regions will not become ready
             // until we've traversed all the reads that belong in them.
@@ -132,6 +135,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
             final SimpleInterval pileupInterval = new SimpleInterval(pileup);
             final ReferenceContext pileupRefContext = new ReferenceContext(reference, pileupInterval);
             final FeatureContext pileupFeatureContext = new FeatureContext(features, pileupInterval);
+            alignmentData.add(new AlignmentData(pileup, pileupRefContext));
 
             final ActivityProfileState profile = evaluator.isActive(pileup, pileupRefContext, pileupFeatureContext);
             activityProfile.add(profile);
@@ -169,6 +173,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         // If there's a region ready, fill it with reads before returning
         if ( nextRegion != null ) {
             fillNextAssemblyRegionWithReads(nextRegion);
+            nextRegion.addAllAlignmentData(alignmentData);
         }
 
         return nextRegion;
