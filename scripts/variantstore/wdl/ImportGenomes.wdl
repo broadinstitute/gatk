@@ -542,7 +542,7 @@ task LoadTable {
 
           # execulte bq load command, get bq load job id, add details per set to tmp file
           echo "Running BigQuery load for set $set."
-          bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
+          bq load --quiet --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
             "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
 
           bq_job_id=$(sed 's/.*://' status_bq_submission)
