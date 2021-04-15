@@ -26,12 +26,9 @@ class ExtractCohortTest extends CommandLineProgramTest {
         .add("O", outputFileName)
         .add("local-sort-max-records-in-ram", 10000000)
         .add("cohort-avro-file-name", cohortAvroFileName)
-        .add("sample-file", sampleFile)
-        .add("project-id", "noProjectId");
+        .add("sample-file", sampleFile);
 
     runCommandLine(args);
-
-
 
     final File expectedVCF = getTestFile("expected.vcf");
     final File outputVCF = getTestFile("output.vcf");

@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
-import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
@@ -13,14 +11,10 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
-import org.broadinstitute.hellbender.tools.variantdb.nextgen.FilterSensitivityTools;
 import org.broadinstitute.hellbender.tools.variantdb.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
-import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import picard.cmdline.StandardOptionDefinitions;
 
 import java.util.*;
 
@@ -53,6 +47,7 @@ public class ExtractCohort extends ExtractTool {
     @Argument(
             fullName = "cohort-extract-table",
             doc = "Fully qualified name of the table where the cohort data exists (already subsetted)",
+            mutex={"cohort-avro-file-name"},
             optional = true
     )
     private String cohortTable = null;
@@ -60,7 +55,7 @@ public class ExtractCohort extends ExtractTool {
     @Argument(
             fullName = "cohort-avro-file-name",
             doc = "Path of the cohort avro file",
-            mutex={"variant-filter-table","cohort-extract-table"},
+            mutex={"cohort-extract-table"},
             optional = true
     )
     private String cohortAvroFileName = null;
@@ -145,6 +140,12 @@ public class ExtractCohort extends ExtractTool {
             maxLocation = SchemaUtils.encodeLocation(lastInterval.getContig(), lastInterval.getEnd());
         } else if ((minLocation != null || maxLocation != null) && hasUserSuppliedIntervals()) {
             throw new UserException("min-location and max-location should not be used together with intervals (-L).");
+        }
+
+        // if there is a avro file, the BQ specific parameters are unnecessary,
+        // but they all are required if there is no avro file
+        if (cohortAvroFileName == null && (projectID == null || cohortTable == null)) {
+            throw new UserException("a project id and cohort table are required if no avro file is provided");
         }
 
         engine = new ExtractCohortEngine(

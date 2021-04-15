@@ -46,7 +46,7 @@ public abstract class ExtractTool extends GATKTool {
     @Argument(
             fullName = "project-id",
             doc = "ID of the Google Cloud project to use when executing queries",
-            optional = false
+            optional = true
     )
     protected String projectID = null;
 
