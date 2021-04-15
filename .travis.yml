@@ -76,6 +76,10 @@ before_install:
       travis_terminate 0;
     fi;
   fi;
+- if [[ $TRAVIS_SECURE_ENV_VARS == true && $TEST_DOCKER == true ]]; then
+    echo "Logging in to dockerhub";
+    docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_PASS;
+  fi
 - REPORT_PATH=${TRAVIS_BRANCH}_${TRAVIS_JOB_NUMBER};
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
     echo "Test report will be written to  https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
