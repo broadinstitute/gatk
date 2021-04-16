@@ -14,20 +14,20 @@ rtg format --output human_REF_SDF $REFERENCE
 ```
 ## WARP -- take full results, extract two samples, and strip down to chr20
 ```
-WORKFLOW_ID=36e7547e-3253-4888-9b1c-2a7437401aee
-gsutil -m cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORKFLOW_ID}/call-FinalGatherVcf/warp_tieout_acmg_cohort_v1.vcf.gz .
+WORKFLOW_ID=49f5c0a5-dbfb-4b05-b293-11ddadeae8e5
+gsutil -m cp gs://broad-dsp-spec-ops-cromwell-execution/JointGenotyping/${WORKFLOW_ID}/call-FinalGatherVcf/warp_tieout_acmg_cohort_v1.vcf.gz* .
+bcftools view -O z warp_tieout_acmg_cohort_v1.vcf.gz chr20 > warp_tieout_acmg_cohort_v1.chr20.vcf.gz
+tabix warp_tieout_acmg_cohort_v1.chr20.vcf.gz
 
-~/gatk SelectVariants -V warp_tieout_acmg_cohort_v1.vcf.gz --sample-name SM-G947Y --select-type-to-exclude NO_VARIATION -O NA12878.warp.vcf.gz
-bcftools view -O z NA12878.warp.vcf.gz chr20 > NA12878.warp.chr20.vcf.gz
-tabix NA12878.warp.chr20.vcf.gz
+INPUT_VCF=../warp_tieout_acmg_cohort_v1.chr20.vcf.gz
+SOURCE=warp
+gatk SelectVariants -V ${INPUT_VCF} --sample-name SM-G947Y --select-type-to-exclude NO_VARIATION -O NA12878.${SOURCE}.chr20.vcf.gz
+gatk SelectVariants -V ${INPUT_VCF} --sample-name CHMI_CHMI3_WGS1 --select-type-to-exclude NO_VARIATION -O SYNDIP.${SOURCE}.chr20.vcf.gz
+gatk SelectVariants -V ${INPUT_VCF} --sample-name 1202194294 --select-type-to-exclude NO_VARIATION -O BI_HG002.${SOURCE}.chr20.vcf.gz
+gatk SelectVariants -V ${INPUT_VCF} --sample-name 1202243693 --select-type-to-exclude NO_VARIATION -O BI_HG003.${SOURCE}.chr20.vcf.gz
+gatk SelectVariants -V ${INPUT_VCF} --sample-name 573673 --select-type-to-exclude NO_VARIATION -O UW_HG002.${SOURCE}.chr20.vcf.gz
 
-~/gatk SelectVariants -V warp_tieout_acmg_cohort_v1.vcf.gz --sample-name CHMI_CHMI3_WGS1 --select-type-to-exclude NO_VARIATION -O SYNDIP.warp.vcf.gz
-bcftools view -O z SYNDIP.warp.vcf.gz chr20 > SYNDIP.warp.chr20.vcf.gz
-tabix SYNDIP.warp.chr20.vcf.gz
-
-gsutil -m cp NA12878* gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/
-gsutil -m cp SYNDIP* gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/
-
+gsutil -m cp *chr20.vcf.gz* gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/
 ```
 
 ## BIGQUERY 
@@ -39,34 +39,79 @@ First, create a full cohort extract (as described in README.md) using the `gvs_t
 bcftools view -O z NA12878.bq.all.vcf.gz chr20 > NA12878.bq.all.chr20.vcf.gz
 tabix NA12878.bq.all.chr20.vcf.gz
 
-~/gatk SelectVariants -V gvs.bq.all.vcf.gz --sample-name CHMI_CHMI3_WGS1 --select-type-to-exclude NO_VARIATION -O SYNDIP.bq.all.vcf.gz
-bcftools view -O z SYNDIP.bq.all.vcf.gz chr20 > SYNDIP.bq.all.chr20.vcf.gz
-tabix SYNDIP.bq.all.chr20.vcf.gz
+INPUT_VCF=../gvs_tieout_acmg_v2.bq.all.vcf.gz
+SOURCE=bq
+gatk SelectVariants -V ${INPUT_VCF} --sample-name SM-G947Y --select-type-to-exclude NO_VARIATION -O NA12878.${SOURCE}.chr20.vcf.gz
+gatk SelectVariants -V ${INPUT_VCF} --sample-name CHMI_CHMI3_WGS1 --select-type-to-exclude NO_VARIATION -O SYNDIP.${SOURCE}.chr20.vcf.gz
+gatk SelectVariants -V ${INPUT_VCF} --sample-name 1202194294 --select-type-to-exclude NO_VARIATION -O BI_HG002.${SOURCE}.chr20.vcf.gz
+gatk SelectVariants -V ${INPUT_VCF} --sample-name 1202243693 --select-type-to-exclude NO_VARIATION -O BI_HG003.${SOURCE}.chr20.vcf.gz
+gatk SelectVariants -V ${INPUT_VCF} --sample-name 573673 --select-type-to-exclude NO_VARIATION -O UW_HG002.${SOURCE}.chr20.vcf.gz
 
-gsutil -m cp gvs.bq.all.vcf.gz* gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/
-gsutil -m cp NA12878* gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/
-gsutil -m cp SYNDIP* gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/warp/
+#bcftools view -e 'GT="ref"' -a -O z -s SM-G947Y ${INPUT_VCF} > NA12878.${SOURCE}.chr20.vcf.gz && tabix NA12878.${SOURCE}.chr20.vcf.gz
+#bcftools view -e 'GT="ref"' -a -O z -s CHMI_CHMI3_WGS1 ${INPUT_VCF} > SYNDIP.${SOURCE}.chr20.vcf.gz && tabix SYNDIP.${SOURCE}.chr20.vcf.gz
+#bcftools view -e 'GT="ref"' -a -O z -s 1202194294 ${INPUT_VCF} > BI_HG002.${SOURCE}.chr20.vcf.gz && tabix BI_HG002.${SOURCE}.chr20.vcf.gz
+#bcftools view -e 'GT="ref"' -a -O z -s 1202243693 ${INPUT_VCF} > BI_HG003.${SOURCE}.chr20.vcf.gz && tabix BI_HG003.${SOURCE}.chr20.vcf.gz
+#bcftools view -e 'GT="ref"' -a -O z -s 573673  ${INPUT_VCF} > UW_HG002.${SOURCE}.chr20.vcf.gz && tabix UW_HG002.${SOURCE}.chr20.vcf.gz
+
 ```
-
-
 
 ## script to add "AS_MAX_VQSLOD" to VCFs
 ```
-python add_max_as_vqslod.py NA12878.bq.all.chr20.vcf.gz | bgzip > NA12878.bq.all.chr20.maxas.vcf.gz && tabix NA12878.bq.all.chr20.maxas.vcf.gz
-python add_max_as_vqslod.py NA12878.warp.chr20.vcf.gz | bgzip > NA12878.warp.chr20.maxas.vcf.gz && tabix NA12878.warp.chr20.maxas.vcf.gz
-
-python add_max_as_vqslod.py SYNDIP.bq.all.chr20.vcf.gz | bgzip > SYNDIP.bq.all.chr20.maxas.vcf.gz && tabix SYNDIP.bq.all.chr20.maxas.vcf.gz
-python add_max_as_vqslod.py SYNDIP.warp.chr20.vcf.gz | bgzip > SYNDIP.warp.chr20.maxas.vcf.gz && tabix SYNDIP.warp.chr20.maxas.vcf.gz
+for source in bq warp
+do
+  for sample in NA12878 SYNDIP BI_HG002 BI_HG003 UW_HG002
+  do
+    echo "Processing ${sample} for ${source}"
+    python ../add_max_as_vqslod.py ${sample}.${source}.chr20.vcf.gz | bgzip > ${sample}.${source}.chr20.maxas.vcf.gz && tabix ${sample}.${source}.chr20.maxas.vcf.gz
+  done
+done
 
 ```
 
 ## Evaluate
 ```
-rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b NIST_truth.vcf.gz -e NIST_highconfidenceregions.bed -c NA12878.bq.all.chr20.maxas.vcf.gz -t human_REF_SDF -o NA12878_bq_all_roc
-rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b NIST_truth.vcf.gz -e NIST_highconfidenceregions.bed -c NA12878.warp.chr20.maxas.vcf.gz -t human_REF_SDF -o NA12878_warp_roc
 
-rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b chm/CHM-eval.kit/full.38.vcf.gz -e chm/CHM-eval.kit/full.38.bed.gz -c SYNDIP.bq.all.chr20.maxas.vcf.gz -t human_REF_SDF -o chm_bq_all_roc
-rtg vcfeval --region chr20 --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD -b chm/CHM-eval.kit/full.38.vcf.gz -e chm/CHM-eval.kit/full.38.bed.gz -c SYNDIP.warp.chr20.maxas.vcf.gz -t human_REF_SDF -o chm_warp_roc
+for source in bq warp
+do
+    rtg vcfeval --roc-subset snp,indel --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD --region chr20 -b ../truth/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_PGandRTGphasetransfer.vcf.gz -e ../truth/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_nosomaticdel_noCENorHET7.bed \
+    -c NA12878.${source}.chr20.maxas.vcf.gz -t ../human_REF_SDF -o NA12878_${source}_roc
+
+    rtg vcfeval --roc-subset snp,indel --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD --region chr20 -b ../truth/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e ../truth/HG002_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed -c BI_HG002.${source}.chr20.maxas.vcf.gz -t ../human_REF_SDF -o BI_HG002_${source}_roc
+
+    rtg vcfeval --roc-subset snp,indel --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD --region chr20 -b ../truth/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e ../truth/HG002_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed -c UW_HG002.${source}.chr20.maxas.vcf.gz -t ../human_REF_SDF -o UW_HG002_${source}_roc
+
+    rtg vcfeval --roc-subset snp,indel --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD --region chr20 -b ../truth/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e ../truth/HG003_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed -c BI_HG003.${source}.chr20.maxas.vcf.gz -t ../human_REF_SDF -o BI_HG003_${source}_roc
+
+    rtg vcfeval --roc-subset snp,indel --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD --region chr20 -b ../truth/CHM.full.38.vcf.gz -e ../truth/CHM.full.38.bed.gz -c SYNDIP.${source}.chr20.maxas.vcf.gz -t ../human_REF_SDF -o syndip_${source}_roc
+done
+
+
+for source in bq warp
+do
+    rtg vcfeval --roc-subset snp,indel --vcf-score-field=INFO.MAX_AS_VQSLOD --region chr20 -b ../truth/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_PGandRTGphasetransfer.vcf.gz -e ../truth/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_nosomaticdel_noCENorHET7.bed \
+    -c NA12878.${source}.chr20.maxas.vcf.gz -t ../human_REF_SDF -o NA12878_${source}_roc_filtered
+
+    rtg vcfeval --roc-subset snp,indel --vcf-score-field=INFO.MAX_AS_VQSLOD --region chr20 -b ../truth/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e ../truth/HG002_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed -c BI_HG002.${source}.chr20.maxas.vcf.gz -t ../human_REF_SDF -o BI_HG002_${source}_roc_filtered
+    rtg vcfeval --roc-subset snp,indel --vcf-score-field=INFO.MAX_AS_VQSLOD --region chr20 -b ../truth/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e ../truth/HG002_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed -c UW_HG002.${source}.chr20.maxas.vcf.gz -t ../human_REF_SDF -o UW_HG002_${source}_roc_filtered
+    rtg vcfeval --roc-subset snp,indel --vcf-score-field=INFO.MAX_AS_VQSLOD --region chr20 -b ../truth/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e ../truth/HG003_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed -c BI_HG003.${source}.chr20.maxas.vcf.gz -t ../human_REF_SDF -o BI_HG003_${source}_roc_filtered
+    rtg vcfeval --roc-subset snp,indel --vcf-score-field=INFO.MAX_AS_VQSLOD --region chr20 -b ../truth/CHM.full.38.vcf.gz -e ../truth/CHM.full.38.bed.gz -c SYNDIP.${source}.chr20.maxas.vcf.gz -t ../human_REF_SDF -o syndip_${source}_roc_filtered
+done
+
+ONLY-EH
+sample=BI_HG002
+source=bq
+python ../add_max_as_vqslod.py ${sample}.${source}.chr20.vcf.gz loose | bgzip > ${sample}.${source}.chr20.maxas.onlyeh.vcf.gz && tabix ${sample}.${source}.chr20.maxas.onlyeh.vcf.gz
+rtg vcfeval --roc-subset snp,indel --all-records --vcf-score-field=INFO.MAX_AS_VQSLOD --region chr20 -b ../truth/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e ../truth/HG002_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed -c BI_HG002.${source}.chr20.maxas.onlyeh.vcf.gz -t ../human_REF_SDF -o BI_HG002_${source}_roc_onlyeh
+rtg vcfeval --roc-subset snp,indel               --vcf-score-field=INFO.MAX_AS_VQSLOD --region chr20 -b ../truth/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e ../truth/HG002_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed -c BI_HG002.${source}.chr20.maxas.onlyeh.vcf.gz -t ../human_REF_SDF -o BI_HG002_${source}_roc_onlyeh_filt
+
+
+for f in $(ls -1 *_roc_onlyeh/indel*.tsv.gz); do
+    d=$(cat $f | gunzip | tail -1 | cut -f3,5,6,7)
+    s=$(echo $f | cut -d"/" -f1 | sed s/_roc_filtered//g)
+    echo -e "$s\t$d"
+done
+
+
 ```
 ## View
 ```
