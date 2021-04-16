@@ -95,7 +95,8 @@ public final class PetTsvCreator {
         FIFTY("5"),
         SIXTY("6"),
         MISSING("m"),
-        UNKNOWN("u");
+        UNKNOWN("u"),
+        NONE("");
 
         String value;
 
