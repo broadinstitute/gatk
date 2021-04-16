@@ -1144,6 +1144,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     void basicWriteAndQueryWithOptions(String workspace, Map<String, Object> options) throws IOException {
+        boolean isGcsHDFSConnectorSet = false;
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.add(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
         INTERVAL.forEach(args::addInterval);
@@ -1157,10 +1158,19 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 Assert.assertTrue(options.get(key) instanceof Boolean);
                 args.add(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, (Boolean)options.get(key));
             }
+            if (key.equals(GenomicsDBImport.USE_GCS_HDFS_CONNECTOR)) {
+                Assert.assertTrue(options.get(key) instanceof Boolean);
+                args.add(GenomicsDBImport.USE_GCS_HDFS_CONNECTOR, (Boolean)options.get(key));
+                isGcsHDFSConnectorSet = (Boolean)options.get(key);
+            }
         }
         runCommandLine(args);
         checkJSONFilesAreWritten(workspace);
         checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
+        // Reset this to false
+        if (isGcsHDFSConnectorSet) {
+            GenomicsDBUtils.useGcsHdfsConnector(false);
+        }
     }
 
     @Test
@@ -1227,5 +1237,15 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         int rc = GenomicsDBUtils.createTileDBWorkspace(workspace, false);
         Assert.assertEquals(rc, 0);
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
+    }
+
+    @Test(groups = {"bucket"})
+    public void testWriteToAndQueryFromGCSUsingConnector() throws IOException {
+        final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";
+        IOUtils.deleteOnExit(IOUtils.getPath(workspace));
+        Map<String, Object> options = new HashMap<String, Object>();
+        options.put(GenomicsDBArgumentCollection.USE_GCS_HDFS_CONNECTOR, true);
+        basicWriteAndQueryWithOptions(workspace, options);
+        GenomicsDBUtils.useGcsHdfsConnector(false);
     }
 }
