@@ -432,12 +432,16 @@ task CreateTables {
 
     for TABLE_ID in $(seq 1 ~{max_table_id}); do
       PARTITION_STRING=""
+      CLUSTERING_STRING=""
       if [ ~{partitioned} == "true" ]; then
+        # assume clustering as well
         let "PARTITION_START=(${TABLE_ID}-1)*4000+1"
         let "PARTITION_END=$PARTITION_START+3999"
         let "PARTITION_STEP=1"
         PARTITION_FIELD="sample_id"
+        CLUSTERING_FIELD="location"
         PARTITION_STRING="--range_partitioning=$PARTITION_FIELD,$PARTITION_START,$PARTITION_END,$PARTITION_STEP"
+        CLUSTERING_STRING="--clustering_fields=$CLUSTERING_FIELD"
       fi
 
       if [ ~{superpartitioned} = "true" ]; then
@@ -454,7 +458,7 @@ task CreateTables {
       set -e
       if [ $BQ_SHOW_RC -ne 0 ]; then
         echo "making table $TABLE"
-        bq --location=US mk ${PARTITION_STRING} --project_id=~{project_id} $TABLE ~{schema}
+        bq --location=US mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE ~{schema}
       fi
     done
   >>>
