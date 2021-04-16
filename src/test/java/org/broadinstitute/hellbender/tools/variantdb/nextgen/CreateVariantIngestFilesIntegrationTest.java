@@ -33,7 +33,6 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
                 .add("interval-set-rule", "INTERSECTION")
                 .add("mode", "GENOMES")
                 .add("output-type", "TSV")
-                .add("ref-block-gq-to-ignore", "SIXTY")
                 .add("SNM", getToolTestDataDir() + sample_map_file)
                 .add("ref-version", "38")
                 .add("output-directory", outputDir)
