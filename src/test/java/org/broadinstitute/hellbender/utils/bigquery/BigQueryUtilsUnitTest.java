@@ -58,6 +58,16 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(groups = {"cloud"})
+    public void testExecuteQueryInBatchModeWithProject() {
+        final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
+        Map<String, String> labels = new HashMap<String, String>();
+        labels.put("gatktestquery", "testbatchmode" + runUuid);
+        final TableResult result = BigQueryUtils.executeQuery(BIGQUERY_TEST_PROJECT, query, true, labels);
+
+        checkQueryResults(result, getAllExpectedNamesAndAges(), query);
+    }
+
+    @Test(groups = {"cloud"})
     public void testSpecifiedExecuteQuery() {
         final String query = String.format("SELECT * FROM `%s`", BIGQUERY_TEST_TABLE);
         Map<String, String> labels = new HashMap<String, String>();
@@ -74,10 +84,11 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
 
         final List<String> fieldsToRetrieve = new LinkedList<>();
+        final String noUDFs = null;
         fieldsToRetrieve.add("name");
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("gatktestquery", "teststorageapi" + runUuid);
-        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, labels);
+        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, noUDFs, labels);
 
         int rowCount = 0;
         final Set<String> retrievedNames = new HashSet<>();
@@ -108,10 +119,11 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         final String query = String.format("SELECT * FROM `%s` WHERE false", BIGQUERY_FULLY_QUALIFIED_TABLE);
 
         final List<String> fieldsToRetrieve = new LinkedList<>();
+        final String noUDFs = null;
         fieldsToRetrieve.add("name");
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("gatktestquery", "testapiwithemptydata" + runUuid);
-        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, labels);
+        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, noUDFs, labels);
 
         int rowCount = 0;
         final Set<String> retrievedNames = new HashSet<>();

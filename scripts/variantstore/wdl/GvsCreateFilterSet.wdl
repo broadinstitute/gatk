@@ -1,6 +1,6 @@
 version 1.0
 
-workflow NgsFilterExtract {
+workflow GvsCreateFilterSet {
    input {
         File wgs_intervals
         Int scatter_count
@@ -33,10 +33,10 @@ workflow NgsFilterExtract {
         File? snps_model
         File? indels_model
 
-        Array[String] snp_recalibration_tranche_values
-        Array[String] snp_recalibration_annotation_values
-        Array[String] indel_recalibration_tranche_values
-        Array[String] indel_recalibration_annotation_values
+        Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
+        Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
+        Array[String] indel_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.5", "99.0", "97.0", "96.0", "95.0", "94.0", "93.5", "93.0", "92.0", "91.0", "90.0"]
+        Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
 
         File? excluded_sites_bed
 
@@ -66,6 +66,8 @@ workflow NgsFilterExtract {
         String? preemptible_tries_override
         Int preemptible_tries = select_first([preemptible_tries_override, "3"])
 
+        File? service_account_json
+
         Int? SNP_VQSR_machine_mem_gb
         Int? SNP_VQSR_downsampleFactor = 1
     }
@@ -91,7 +93,9 @@ workflow NgsFilterExtract {
                 excluded_intervals       = excluded_intervals,
                 fq_alt_allele_table      = fq_alt_allele_table,
                 read_project_id          = query_project,
-                output_file              = "${output_file_base_name}_${i}.vcf.gz"
+                output_file              = "${output_file_base_name}_${i}.vcf.gz",
+                service_account_json     = service_account_json,
+                query_project            = query_project
         }
     }
 
@@ -165,7 +169,10 @@ workflow NgsFilterExtract {
 
         fq_info_destination_table = fq_info_destination_table,
         fq_tranches_destination_table = fq_tranches_destination_table,
-        fq_filter_sites_destination_table = fq_filter_sites_destination_table
+        fq_filter_sites_destination_table = fq_filter_sites_destination_table,
+
+        service_account_json = service_account_json,
+        query_project = query_project
    }
 
     output {
@@ -201,16 +208,26 @@ task ExtractFilterTask {
 
         # Runtime Options:
         File? gatk_override
+        File? service_account_json
+        String query_project
 
         Int? local_sort_max_records_in_ram = 1000000
     }
 
+
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
     # ------------------------------------------------
     # Run our command:
     command <<<
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gcloud config set project ~{query_project}
+        fi
 
         df -h
 
@@ -332,8 +349,12 @@ task UploadFilterSetToBQ {
         String fq_info_destination_table
         String fq_tranches_destination_table
         String fq_filter_sites_destination_table
+
+        File? service_account_json
+        String query_project
     }
 
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
     # ------------------------------------------------
     # Run our command:
@@ -342,6 +363,12 @@ task UploadFilterSetToBQ {
         set -o pipefail
 
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gcloud config set project ~{query_project}
+        fi
 
         gatk --java-options "-Xmx1g" \
             CreateFilteringFiles \

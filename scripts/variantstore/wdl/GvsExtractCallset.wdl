@@ -1,15 +1,15 @@
 version 1.0
 
-workflow NgsCohortExtract {
+workflow GvsExtractCallset {
    input {
 
         File wgs_intervals
         Int scatter_count
-       
+
         File reference
         File reference_index
         File reference_dict
-        
+
         String fq_sample_table
         String fq_cohort_extract_table
         String query_project
@@ -19,7 +19,9 @@ workflow NgsCohortExtract {
         String? filter_set_name
         File? excluded_intervals
         Boolean? emit_pls = false
-    
+
+        File? service_account_json
+
         String output_file_base_name
         File? gatk_override
     }
@@ -32,7 +34,7 @@ workflow NgsCohortExtract {
           ref_dict = reference_dict,
           scatter_count = scatter_count
     }
-    
+
     scatter(i in range(scatter_count) ) {
         call ExtractTask {
             input:
@@ -50,6 +52,7 @@ workflow NgsCohortExtract {
                 filter_set_name          = filter_set_name,
                 excluded_intervals       = excluded_intervals,
                 emit_pls                 = emit_pls,
+                service_account_json     = service_account_json,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz"
         }
     }
@@ -68,7 +71,7 @@ task ExtractTask {
         File reference
         File reference_index
         File reference_dict
-    
+
         String fq_sample_table
 
         File intervals
@@ -81,15 +84,17 @@ task ExtractTask {
         String? fq_filter_set_tranches_table
         String? filter_set_name
         File? excluded_intervals
-        
+
         Boolean? emit_pls
 
         # Runtime Options:
+        File? service_account_json
         File? gatk_override
-        
+
         Int? local_sort_max_records_in_ram = 10000000
     }
 
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
     # ------------------------------------------------
     # Run our command:
@@ -97,29 +102,30 @@ task ExtractTask {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
+        if [ ~{has_service_account_file} = 'true' ]; then
+            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gcloud config set project ~{read_project_id}
+        fi
+
         df -h
 
         gatk --java-options "-Xmx9g" \
             ExtractCohort \
                 --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT \
                 -R "~{reference}" \
-                -O local.vcf.gz \
+                -O ~{output_file} \
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
                 --sample-table ~{fq_sample_table} \
                 --cohort-extract-table ~{fq_cohort_extract_table} \
                 -L ~{intervals} \
+                ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id} \
                 ~{true='--emit-pls' false='' emit_pls} \
                 ~{"--filter-set-info-table " + fq_filter_set_info_table} \
                 ~{"--filter-set-site-table " + fq_filter_set_site_table} \
                 ~{"--tranches-table " + fq_filter_set_tranches_table} \
                 ~{"--filter-set-name " + filter_set_name}
-        
-        # XL does not currently work with ExtractCohort
-        gatk --java-options "-Xmx9g" \
-            SelectVariants \
-            ~{"-XL " + excluded_intervals} \
-            -V local.vcf.gz -O ~{output_file}
     >>>
 
     # ------------------------------------------------
@@ -167,7 +173,7 @@ task ExtractTask {
             localization_optional: true
         }
      }
-	
+
      command {
          set -e
          export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}

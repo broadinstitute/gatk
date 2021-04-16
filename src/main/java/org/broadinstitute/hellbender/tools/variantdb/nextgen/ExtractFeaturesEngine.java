@@ -8,7 +8,6 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
@@ -118,19 +117,26 @@ public class ExtractFeaturesEngine {
 
     public void traverse() {
 
-
-        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable, 
-                                                                                             sampleListTable, 
-                                                                                             minLocation, 
-                                                                                             maxLocation, 
-                                                                                             trainingSitesOnly, 
+        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable,
+                                                                                             sampleListTable,
+                                                                                             minLocation,
+                                                                                             maxLocation,
+                                                                                             trainingSitesOnly,
                                                                                              hqGenotypeGQThreshold,
                                                                                              hqGenotypeDepthThreshold,
                                                                                              hqGenotypeABThreshold,
-                                                                                             SNP_QUAL_THRESHOLD, 
+                                                                                             SNP_QUAL_THRESHOLD,
                                                                                              INDEL_QUAL_THRESHOLD);
-        logger.info(featureQueryString);
-        final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(featureQueryString, SchemaUtils.FEATURE_EXTRACT_FIELDS, projectID, useBatchQueries, null);
+
+        final String userDefinedFunctions = ExtractFeaturesBQ.getVQSRFeatureExtractUserDefinedFunctionsString();
+
+        final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(
+                featureQueryString,
+                SchemaUtils.FEATURE_EXTRACT_FIELDS,
+                projectID,
+                userDefinedFunctions,
+                useBatchQueries,
+                null);
 
         createVQSRInputFromTableResult(storageAPIAvroReader);
     }
@@ -253,7 +259,7 @@ public class ExtractFeaturesEngine {
         if (rec.getHqGenotypeSamples() < 1) {
             builder.filter(GATKVCFConstants.NO_HQ_GENOTYPES);
         }
-        
+
         VariantContext vc = builder.make();
         vcfWriter.add(vc);
         progressMeter.update(vc);

@@ -1,6 +1,6 @@
 version 1.0
 
-workflow ImportGenomes {
+workflow GvsImportGenomes {
 
   input {
     Array[File] input_vcfs
@@ -249,6 +249,7 @@ task ReleaseLock {
     set -e
 
     if [ ~{has_service_account_file} = 'true' ]; then
+      export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
       gcloud auth activate-service-account --key-file='~{service_account_json}'
     fi
 
@@ -348,7 +349,9 @@ task CreateImportTsvs {
       ~{for_testing_only}
 
       if [ ~{has_service_account_file} = 'true' ]; then
+        export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
         gcloud auth activate-service-account --key-file='~{service_account_json}'
+
         gsutil cp ~{input_vcf} .
         gsutil cp ~{input_vcf_index} .
       fi
@@ -417,6 +420,7 @@ task CreateTables {
     set -e
 
     if [ ~{has_service_account_file} = 'true' ]; then
+      export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
       gcloud auth activate-service-account --key-file='~{service_account_json}'
       gcloud config set project ~{project_id}
     fi
@@ -538,14 +542,18 @@ task LoadTable {
         do
           # move set data into separate directory
           echo "Moving set $set data into separate directory."
-          awk -v set="$set" '$4 == set' ~{datatype}_du_sets.txt | cut -f2 | gsutil -m cp -I "${DIR}set_${set}/" 2> copy.log
+          awk -v set="$set" '$4 == set' ~{datatype}_du_sets.txt | cut -f2 | gsutil -m mv -I "${DIR}set_${set}/" 2> copy.log
 
-          # execulte bq load command, get bq load job id, add details per set to tmp file
+          # execute bq load command, get bq load job id, add details per set to tmp file
           echo "Running BigQuery load for set $set."
-          bq load --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
+          bq load --quiet --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
             "$TABLE" "${DIR}set_${set}/${FILES}" ~{schema} > status_bq_submission
 
-          bq_job_id=$(sed 's/.*://' status_bq_submission)
+          cat status_bq_submission | tail -n 1 > status_bq_submission_last_line
+
+          bq_job_id=$(sed 's/.*://' status_bq_submission_last_line)
+
+          echo $bq_job_id
           # add job ID as key and gs path to the data set uploaded as value
           echo -e "${bq_job_id}\t${set}\t${DIR}set_${set}/" >> bq_load_details.tmp
         done

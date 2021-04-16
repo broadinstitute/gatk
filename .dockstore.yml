@@ -48,6 +48,44 @@ workflows:
      filters:
        branches:
          - master
+   - name: funcotator
+     subclass: WDL
+     primaryDescriptorPath: /scripts/funcotator_wdl/funcotator.wdl
+     testParameterFiles:
+     - /scripts/funcotator_wdl/funcotator.json
+     filters:
+       branches:
+         - master
+   - name: GvsCreateFilterSet
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateFilterSet.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - mmt_SA_support_and_wdl_renaming
+   - name: GvsExtractCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsExtractCallset.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - mmt_SA_support_and_wdl_renaming
+   - name: GvsImportGenomes
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsImportGenomes.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - mmt_SA_support_and_wdl_renaming
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
@@ -57,23 +95,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: ImportGenomes
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/ImportGenomes.wdl
-     testParameterFiles:
-       - /scripts/variantstore/wdl/ImportGenomes.example.inputs.json
-     filters:
-       branches:
-         - master
-         - ah_var_store
-   - name: funcotator
-     subclass: WDL
-     primaryDescriptorPath: /scripts/funcotator_wdl/funcotator.wdl
-     testParameterFiles:
-     - /scripts/funcotator_wdl/funcotator.json
-     filters:
-       branches:
-         - master
+         - mmt_SA_support_and_wdl_renaming
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
@@ -96,24 +118,6 @@ workflows:
      filters:
        branches:
          - master
-   - name: ngs_filter_extract
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/ngs_filter_extract.wdl
-     testParameterFiles:
-       - /scripts/variantstore/wdl/ngs_filter_extract.inputs.json
-     filters:
-       branches:
-         - master
-         - ah_var_store
-   - name: ngs_cohort_extract
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/ngs_cohort_extract.wdl
-     testParameterFiles:
-       - /scripts/variantstore/wdl/ngs_cohort_extract.inputs.json
-     filters:
-       branches:
-         - master
-         - ah_var_store
    - name: run_happy
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/run_happy.wdl

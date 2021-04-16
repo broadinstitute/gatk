@@ -8,10 +8,13 @@ import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.io.Resource;
 
 public class ExtractFeaturesBQ {
-    private final static String FEATURE_EXTRACT_QUERY_RESOURCE = 
+    private final static String FEATURE_EXTRACT_QUERY_RESOURCE =
         "org/broadinstitute/hellbender/tools/variantdb/nextgen/feature_extract.sql";
 
-    private final static String VQSR_TRAINING_SITES_TABLE = 
+    private final static String FEATURE_EXTRACT_USER_DEFINED_FUNCTIONS =
+        "org/broadinstitute/hellbender/tools/variantdb/nextgen/udf_freq_table.sql";
+
+    private final static String VQSR_TRAINING_SITES_TABLE =
         "broad-dsp-spec-ops.joint_genotyping_ref.vqsr_training_sites_*";
 
     public static String getVQSRFeatureExtractQueryString(final TableReference altAllele, final TableReference sampleList,
@@ -23,11 +26,11 @@ public class ExtractFeaturesBQ {
             !trainingSitesOnly?"":
                 "AND location IN (SELECT location FROM `" + VQSR_TRAINING_SITES_TABLE + "`)\n";
 
-        String locationStanza = 
+        String locationStanza =
             ((minLocation != null)?"AND location >= " + minLocation + " \n":"") +
             ((maxLocation != null)?"AND location < " + maxLocation + " \n":"");
 
-        try {            
+        try {
             File file =  Resource.getResourceContentsAsFile(FEATURE_EXTRACT_QUERY_RESOURCE);
             String query = FileUtils.readFileToString(file, "UTF-8");
 
@@ -44,6 +47,15 @@ public class ExtractFeaturesBQ {
 
         } catch (Exception ioe) {
             throw new GATKException("Unable to read query file from resources", ioe);
+        }
+    }
+
+    public static String getVQSRFeatureExtractUserDefinedFunctionsString() {
+        try {
+            File file = Resource.getResourceContentsAsFile(FEATURE_EXTRACT_USER_DEFINED_FUNCTIONS);
+            return FileUtils.readFileToString(file, "UTF-8");
+        } catch (Exception ioe) {
+            throw new GATKException("Unable to read udf file from resources", ioe);
         }
     }
 }

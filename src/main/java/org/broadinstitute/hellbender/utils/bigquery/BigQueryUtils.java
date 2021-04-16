@@ -75,6 +75,20 @@ public final class BigQueryUtils {
     }
 
     /**
+     * Executes the given {@code queryString} on the default instance of {@link BigQuery} as created by {@link #getBigQueryEndPoint()}.
+     * Will block until results are returned.
+     * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
+     * @param projectID The {@link BigQuery} project id in which to execute the query
+     * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
+     * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
+     * @return A {@link TableResult} object containing the results of the query executed.
+     */
+    public static TableResult executeQuery(final String projectID, final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
+        return executeQuery(getBigQueryEndPoint(projectID), queryString, runQueryInBatchMode, labels);
+    }
+
+    /**
      * Executes the given {@code queryString} on the provided BigQuery instance.
      * Will block until results are returned.
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
@@ -367,7 +381,7 @@ public final class BigQueryUtils {
         return result;
     }
 
-    private static long getQueryCostBytesProcessedEstimate(String queryString) {
+    private static long getQueryCostBytesProcessedEstimate(String queryString, String projectID) {
         final QueryJobConfiguration dryRunQueryConfig =
                 QueryJobConfiguration.newBuilder( queryString )
                         .setUseLegacySql(false)
@@ -376,33 +390,49 @@ public final class BigQueryUtils {
                         .setPriority(QueryJobConfiguration.Priority.INTERACTIVE)
                         .build();
 
-        Job dryRunJob = getBigQueryEndPoint().create(JobInfo.newBuilder(dryRunQueryConfig).build());
+        Job dryRunJob = getBigQueryEndPoint(projectID).create(JobInfo.newBuilder(dryRunQueryConfig).build());
         long bytesProcessed = ((JobStatistics.QueryStatistics) dryRunJob.getStatistics()).getTotalBytesProcessed();
         return bytesProcessed;
     }
 
-    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID, Map<String, String> labels) {
+    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString,
+                                                                  final List<String> fieldsToRetrieve,
+                                                                  final String projectID,
+                                                                  final String userDefinedFunctions,
+                                                                  Map<String, String> labels) {
 
-        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, false, labels);
+        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, userDefinedFunctions, false, labels);
     }
 
-    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID, final boolean runQueryInBatchMode,  Map<String, String> labels) {
+    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString,
+                                                                  final List<String> fieldsToRetrieve,
+                                                                  final String projectID,
+                                                                  final String userDefinedFunctions,
+                                                                  final boolean runQueryInBatchMode,
+                                                                  Map<String, String> labels) {
         final String tempTableDataset = "temp_tables";
         final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
         final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
 
-        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString);
+        final String queryStringWithUDFs = userDefinedFunctions == null ? queryString : userDefinedFunctions + queryString;
+
+        logger.info(queryStringWithUDFs);
+
+        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryStringWithUDFs, projectID);
         logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
 
-        final String queryStringIntoTempTable = "CREATE TABLE `" + tempTableFullyQualified + "`\n" +
+        // UDFs need to come before the CREATE TABLE clause
+        final String queryStringIntoTempTable =
+                (userDefinedFunctions == null ? "" : userDefinedFunctions) +
+                " CREATE TABLE `" + tempTableFullyQualified + "`\n" +
                 "OPTIONS(\n" +
                 "  expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)\n" +
                 ") AS\n" +
                 queryString;
 
-        executeQuery(queryStringIntoTempTable, runQueryInBatchMode, labels);
+        executeQuery(projectID, queryStringIntoTempTable, runQueryInBatchMode, labels);
 
-        final Table tableInfo = getBigQueryEndPoint().getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
+        final Table tableInfo = getBigQueryEndPoint(projectID).getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
         logger.info(String.format("Query temp table created with %s rows and %s bytes in size", tableInfo.getNumRows(), tableInfo.getNumBytes()));
 
         TableReference tr = new TableReference(tempTableFullyQualified, fieldsToRetrieve);

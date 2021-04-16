@@ -53,10 +53,10 @@ WITH
         WHERE sample_id IN (SELECT sample_id FROM `@sample`)
         @locationStanza
         @trainingSitesStanza
-        AND   call_GQ >= @hqGenotypeGQThreshold 
+        AND   call_GQ >= @hqGenotypeGQThreshold
         AND   (SELECT SUM(CAST(x AS INT64)) FROM UNNEST(SPLIT(call_AD,",")) x) >= @hqGenotypeDepthThreshold
         AND   ad / (SELECT SUM(CAST(x AS INT64)) FROM UNNEST(SPLIT(call_AD,",")) x) >= @hqGenotypeABThreshold
-        GROUP BY location)        
+        GROUP BY location)
     SELECT
            ai.location,
            ai.ref,
@@ -85,9 +85,9 @@ WITH
            allele,
            IFNULL(SUM(qual),0) as RAW_QUAL,
            `bqutil`.fn.median(ARRAY_AGG( raw_mqranksum_x_10 IGNORE NULLS)) / 10.0 as AS_MQRankSum,
-           `broad-dsp-spec-ops`.joint_genotyping_ref.freq_table(ARRAY_AGG(raw_mqranksum_x_10 IGNORE NULLS)) AS_MQRankSum_ft,
+           freq_table(ARRAY_AGG(raw_mqranksum_x_10 IGNORE NULLS)) AS_MQRankSum_ft,
            `bqutil`.fn.median(ARRAY_AGG(raw_readposranksum_x_10 IGNORE NULLS)) / 10.0 as AS_ReadPosRankSum,
-           `broad-dsp-spec-ops`.joint_genotyping_ref.freq_table(ARRAY_AGG(raw_readposranksum_x_10 IGNORE NULLS)) as AS_ReadPosRankSum_ft,
+           freq_table(ARRAY_AGG(raw_readposranksum_x_10 IGNORE NULLS)) as AS_ReadPosRankSum_ft,
            IFNULL(SUM(RAW_MQ),0) as RAW_MQ,
            IFNULL(SUM(AD),0) as RAW_AD,
            IFNULL(SUM(CASE WHEN AD > 1 THEN AD ELSE 0 END),0) as RAW_AD_GT_1, # to match GATK implementation
