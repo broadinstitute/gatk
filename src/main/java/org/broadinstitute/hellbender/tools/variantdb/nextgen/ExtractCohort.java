@@ -47,7 +47,7 @@ public class ExtractCohort extends ExtractTool {
     @Argument(
             fullName = "cohort-extract-table",
             doc = "Fully qualified name of the table where the cohort data exists (already subsetted)",
-            mutex={"cohort-avro-file-name"},
+            mutex = {"cohort-avro-file-name"},
             optional = true
     )
     private String cohortTable = null;
@@ -55,7 +55,7 @@ public class ExtractCohort extends ExtractTool {
     @Argument(
             fullName = "cohort-avro-file-name",
             doc = "Path of the cohort avro file",
-            mutex={"cohort-extract-table"},
+            mutex = {"cohort-extract-table"},
             optional = true
     )
     private String cohortAvroFileName = null;
@@ -76,31 +76,31 @@ public class ExtractCohort extends ExtractTool {
 
 
     @Argument(
-            fullName="snps-truth-sensitivity-filter-level",
-            doc="The truth sensitivity level at which to start filtering SNPs",
-            optional=true
+            fullName ="snps-truth-sensitivity-filter-level",
+            doc = "The truth sensitivity level at which to start filtering SNPs",
+            optional = true
     )
     private Double truthSensitivitySNPThreshold = null;
 
     @Argument(
-            fullName="indels-truth-sensitivity-filter-level",
-            doc="The truth sensitivity level at which to start filtering INDELs",
-            optional=true
+            fullName = "indels-truth-sensitivity-filter-level",
+            doc = "The truth sensitivity level at which to start filtering INDELs",
+            optional = true
     )
     private Double truthSensitivityINDELThreshold = null;
 
     @Advanced
     @Argument(
-            fullName="snps-lod-score-cutoff",
-            doc="The VQSLOD score below which to start filtering SNPs",
-            optional=true)
+            fullName = "snps-lod-score-cutoff",
+            doc = "The VQSLOD score below which to start filtering SNPs",
+            optional = true)
     private Double vqsLodSNPThreshold = null;
 
     @Advanced
     @Argument(
-            fullName="indels-lod-score-cutoff",
-            doc="The VQSLOD score below which to start filtering INDELs",
-            optional=true)
+            fullName = "indels-lod-score-cutoff",
+            doc = "The VQSLOD score below which to start filtering INDELs",
+            optional = true)
     private Double vqsLodINDELThreshold = null;
 
 
@@ -145,7 +145,8 @@ public class ExtractCohort extends ExtractTool {
         // if there is a avro file, the BQ specific parameters are unnecessary,
         // but they all are required if there is no avro file
         if (cohortAvroFileName == null && (projectID == null || cohortTable == null)) {
-            throw new UserException("a project id and cohort table are required if no avro file is provided");
+            throw new UserException("Project id (--project-id) " +
+                "and cohort table (--cohort-extract-table)are required if no avro file is provided.");
         }
 
         engine = new ExtractCohortEngine(
