@@ -91,15 +91,19 @@ public final class FuncotatorUtils {
         final HashMap<String, AminoAcid>              mtCodons        = new HashMap<>();
         final HashMap<Pair<Genus, String>, AminoAcid> mtSpecialStarts = new HashMap<>();
 
+        // Add in the codons that are different in the MT code, including IUPAC bases:
         mtCodons.put("ATA", AminoAcid.METHIONINE);
         mtCodons.put("AGA", AminoAcid.STOP_CODON);
         mtCodons.put("AGG", AminoAcid.STOP_CODON);
+        mtCodons.put("AGR", AminoAcid.STOP_CODON);
         mtCodons.put("TGA", AminoAcid.TRYPTOPHAN);
 
+        // Add in the codons that serve as alternate start codons in various organisms, including IUPAC bases:
         mtSpecialStarts.put(Pair.of(Genus.BOS, "ATA"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.HOMO, "ATT"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.MUS, "ATT"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.MUS, "ATC"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.MUS, "ATY"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.CORTURNIX, "GTG"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.GALLUS, "GTG"), AminoAcid.METHIONINE);
 
@@ -1021,6 +1025,11 @@ public final class FuncotatorUtils {
         final int protChangeStartPos = seqComp.getProteinChangeInfo().getAaStartPos();
         final int protChangeEndPos   = seqComp.getProteinChangeInfo().getAaEndPos();
 
+        // NOTE:
+        // It is possible for either amino acid sequence to contain AminoAcid.UNDECODABLE, however that should not
+        // actually impact the rendered amino acid sequence other than to put a "?" in the protein sequence in the
+        // appropriate place.
+
         if ( isStartCodonIndel(seqComp, startCodon) ) {
             return "";
         }
@@ -1149,6 +1158,8 @@ public final class FuncotatorUtils {
     /**
      * Creates an amino acid sequence from a given coding sequence.
      * If the coding sequence is not evenly divisible by {@link AminoAcid#CODON_LENGTH}, the remainder bases will not be included in the coding sequence.
+     * If the coding sequence cannot be fully decoded due to IUPAC bases in the ref or alt allele, then this method will
+     * include bases representing {@link AminoAcid#UNDECODABLE}.
      * @param codingSequence The coding sequence from which to create an amino acid sequence.  Must not be {@code null}.
      * @param isFrameshift Whether the given {@code codingSequence} was derived from a frameshift mutation.  In this case, no warning will be issued for incorrect sequence length.
      * @param extraLoggingInfo A {@link String} containing extra info for logging purposes.
@@ -1161,6 +1172,8 @@ public final class FuncotatorUtils {
     /**
      * Creates a Mitochondrial amino acid sequence from a given coding sequence.
      * If the coding sequence is not evenly divisible by 3, the remainder bases will not be included in the coding sequence.
+     * If the coding sequence cannot be fully decoded due to IUPAC bases in the ref or alt allele, then this method will
+     * include bases representing {@link AminoAcid#UNDECODABLE}.
      * @param codingSequence The coding sequence from which to create an amino acid sequence.  Must not be {@code null}.
      * @param isFrameshift Whether the given {@code codingSequence} was derived from a frameshift mutation.  In this case, no warning will be issued for incorrect sequence length.
      * @param extraLoggingInfo A {@link String} containing extra info for logging purposes.
@@ -1192,7 +1205,10 @@ public final class FuncotatorUtils {
         for ( int i = 0; i < maxIndex; i += AminoAcid.CODON_LENGTH ) {
             final AminoAcid aa = aminoAcidLookupFunction.apply(codingSequence.substring(i, i+3));
             if ( aa == null ) {
-                throw new UserException.MalformedFile("File contains a bad codon sequence that has no amino acid equivalent: " + codingSequence.substring(i, i+AminoAcid.CODON_LENGTH));
+                logger.warn("Unexpected codon sequence: " + codingSequence.substring(i, i+AminoAcid.CODON_LENGTH) + "   -   Cannot create protein prediction.  This may be due to \"N\" (or other IUPAC) bases in the Reference or the current variant's alleles.");
+
+                // Because we couldn't decode the amino acid we must append the UNDECODABLE AminoAcid sequence:
+                sb.append(AminoAcid.UNDECODABLE.getLetter());
             }
             else {
                 sb.append(aa.getLetter());

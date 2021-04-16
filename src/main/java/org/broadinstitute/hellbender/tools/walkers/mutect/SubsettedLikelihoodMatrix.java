@@ -57,7 +57,7 @@ public class SubsettedLikelihoodMatrix<EVIDENCE extends Locatable, A extends All
     public double get(final int alleleIndex, final int evidenceIndex) { return matrix.get(newToOldIndexMap.get(alleleIndex), evidenceIndex); }
 
     @Override
-    public int indexOfAllele(final A allele) { return alleles.indexOf(allele); }
+    public int indexOfAllele(final Allele allele) { return alleles.indexOf(allele); }
 
     @Override
     public int indexOfEvidence(final EVIDENCE evidence) { return matrix.indexOfEvidence(evidence); }

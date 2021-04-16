@@ -48,10 +48,10 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=GenotypeGVCFsIntegrationTest"
     // to update all of the exact-match tests at once. After you do this, you should look at the
     // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
-    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+    private static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
     private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
-     private static final String BASE_PAIR_EXPECTED = "gvcf.basepairResolution.gatk3.7_30_ga4f720357.output.vcf";
+    private static final String BASE_PAIR_EXPECTED = "gvcf.basepairResolution.gatk3.7_30_ga4f720357.output.vcf";
     private static final String b38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
     private static final String BASE_PAIR_GVCF = "gvcf.basepairResolution.gvcf";
     private static final double TLOD_THRESHOLD = 4.0;

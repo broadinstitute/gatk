@@ -36,8 +36,8 @@ public final class IndexedAlleleList<A extends Allele> implements AlleleList<A> 
      * @throws IllegalArgumentException if {@code alleles} is {@code null} or contains {@code null}s.
      */
     @SafeVarargs
-    @SuppressWarnings("varargs")
-    public IndexedAlleleList(final A... alleles) {
+    @SuppressWarnings({"unchecked", "varargs"})
+    public IndexedAlleleList(final A ... alleles) {
         this.alleles = new IndexedSet<>(alleles);
     }
 
@@ -63,7 +63,7 @@ public final class IndexedAlleleList<A extends Allele> implements AlleleList<A> 
     }
 
     @Override
-    public int indexOfAllele(final A allele) {
+    public int indexOfAllele(final Allele allele) {
         Utils.nonNull(allele);
         return alleles.indexOf(allele);
     }

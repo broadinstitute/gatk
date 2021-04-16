@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.funcotator;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
@@ -11,6 +13,8 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
  * Created by jonn on 10/23/18.
  */
 public final class ProteinChangeInfo {
+
+    private final static Logger logger = LogManager.getLogger(ProteinChangeInfo.class);
 
     /** 1-based inclusive position of the first amino acid changed in this {@link ProteinChangeInfo}. */
     private int    aaStartPos;
@@ -53,9 +57,13 @@ public final class ProteinChangeInfo {
         final String referenceProteinSequence = proteinSequences.getLeft();
         final String alternateProteinSequence = proteinSequences.getRight();
 
+        // Because we use AminoAcid.UNDECODABLE as a placeholder, we don't actually need to do any more work here.
+        // Any UNDECODABLE amino acids will be rendered as their string represntation ("?") in the protein change
+        // string.
+
         // Get the _index_ of the first different amino acid (not the protein position!):
         // Default to the amino acid corresponding to the aligned coding sequence allele start:
-        int proteinChangeStartIndex = (alignedCodingSequenceAlleleStart-1) / AminoAcid.CODON_LENGTH;
+        int       proteinChangeStartIndex  = (alignedCodingSequenceAlleleStart - 1) / AminoAcid.CODON_LENGTH;
         final int maxProteinSequenceLength = Math.max(referenceProteinSequence.length(), alternateProteinSequence.length());
         for ( int i = 0; i < maxProteinSequenceLength; ++i ) {
             if ( (i >= referenceProteinSequence.length()) || (i >= alternateProteinSequence.length()) ||
@@ -78,27 +86,28 @@ public final class ProteinChangeInfo {
 
         // Get the number of amino acids for which the alt allele codes:
         // Subtract 1 to remove leading base required by VCFs
-        final int numAltAminoAcids = (int)Math.ceil((altAllele.length() - 1)/((double)AminoAcid.CODON_LENGTH));
+        final int numAltAminoAcids = (int) Math.ceil((altAllele.length() - 1) / ((double) AminoAcid.CODON_LENGTH));
 
         // Get the number of amino acids to use as the reference:
         // subtract 1 to remove leading base required by VCFs
-        final int numRefAminoAcids = (int)Math.ceil((refAllele.length() - 1)/((double)AminoAcid.CODON_LENGTH));
+        final int numRefAminoAcids = (int) Math.ceil((refAllele.length() - 1) / ((double) AminoAcid.CODON_LENGTH));
 
         // Frameshifts are always rendered the same way:
-        if (isFrameshift)  {
+        if ( isFrameshift ) {
             initializeForFrameshift(referenceProteinSequence, proteinChangeStartIndex);
         }
         // Handle insertions and deletions:
-        else if ( GATKVariantContextUtils.isInsertion( refAllele, altAllele ) ) {
+        else if ( GATKVariantContextUtils.isInsertion(refAllele, altAllele) ) {
             initializeForInsertion(alignedCodingSequenceAlleleStart, strand, referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex, indelIsBetweenCodons, numAltAminoAcids, numRefAminoAcids);
         }
-        else if ( GATKVariantContextUtils.isDeletion( refAllele, altAllele ) ) {
+        else if ( GATKVariantContextUtils.isDeletion(refAllele, altAllele) ) {
             initializeForDeletion(alignedCodingSequenceAlleleStart, strand, referenceProteinSequence, alternateProteinSequence, indelIsBetweenCodons, numAltAminoAcids, numRefAminoAcids);
         }
         else {
             initializeForOnp(referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex);
         }
     }
+
 
     private Pair<String, String> createProteinSequences(final Allele refAllele,
                                                         final Allele altAllele,
@@ -108,29 +117,33 @@ public final class ProteinChangeInfo {
                                                         final boolean isMitochondria) {
         final String referenceProteinSequence;
         final String alternateProteinSequence;
+
+        // Subtract 1 to account for 1-based genomic positions:
+        final String altCodingSequence =
+                codingSequence.substring(0, codingSequenceAlleleStart - 1) +
+                altAllele.getBaseString() +
+                codingSequence.substring(codingSequenceAlleleStart + refAllele.length() -1);
+
         if ( isMitochondria ) {
             // Mitochondrial protein sequences differ from the Standard Code, so we must treat them separately:
             referenceProteinSequence = FuncotatorUtils.createMitochondrialAminoAcidSequence(codingSequence, false, "(size=" + codingSequence.length() + ", ref allele: " + refAllele.getBaseString() + ")");
-            alternateProteinSequence = FuncotatorUtils.createMitochondrialAminoAcidSequence(
-                    // Subtract 1 to account for 1-based genomic positions:
-                    codingSequence.substring(0, codingSequenceAlleleStart - 1) +
-                            altAllele.getBaseString() +
-                            codingSequence.substring(codingSequenceAlleleStart + refAllele.length() -1),
-                    isFrameshift,
-                    "(size=" + codingSequence.length() + ", alt allele: " + altAllele.getBaseString() + ")"
-            );
+            alternateProteinSequence = FuncotatorUtils.createMitochondrialAminoAcidSequence( altCodingSequence, isFrameshift, "(size=" + codingSequence.length() + ", alt allele: " + altAllele.getBaseString() + ")");
         }
         else {
             // Create a protein sequence using the Standard Code:
             referenceProteinSequence = FuncotatorUtils.createAminoAcidSequence(codingSequence, false, "(size=" + codingSequence.length() + ", ref allele: " + refAllele.getBaseString() + ")");
-            alternateProteinSequence = FuncotatorUtils.createAminoAcidSequence(
-                    // Subtract 1 to account for 1-based genomic positions:
-                    codingSequence.substring(0, codingSequenceAlleleStart - 1) +
-                            altAllele.getBaseString() +
-                            codingSequence.substring(codingSequenceAlleleStart + refAllele.length() -1),
-                    isFrameshift,
-                    "(size=" + codingSequence.length() + ", alt allele: " + altAllele.getBaseString() + ")"
-            );
+            alternateProteinSequence = FuncotatorUtils.createAminoAcidSequence(altCodingSequence, isFrameshift, "(size=" + codingSequence.length() + ", alt allele: " + altAllele.getBaseString() + ")");
+        }
+
+        // This part is actually some work to iterate through the string.
+        // Only log here if we would warn the user anyway:
+        if (logger.isWarnEnabled()) {
+            if ( referenceProteinSequence.contains(AminoAcid.UNDECODABLE.getLetter()) ) {
+                logger.warn("Ref protein sequence is undecodable: " + codingSequence);
+            }
+            else if ( alternateProteinSequence.contains(AminoAcid.UNDECODABLE.getLetter()) ) {
+                logger.warn("Alt protein sequence is undecodable: " + altCodingSequence);
+            }
         }
 
         return Pair.of(referenceProteinSequence, alternateProteinSequence);
@@ -243,7 +256,14 @@ public final class ProteinChangeInfo {
         }
     }
 
-    private void initializeForInsertion(final int alignedCodingSequenceAlleleStart, final Strand strand, final String referenceProteinSequence, final String alternateProteinSequence, int proteinChangeStartIndex, final boolean indelIsBetweenCodons, final int numAltAminoAcids, final int numRefAminoAcids) {
+    private void initializeForInsertion(final int alignedCodingSequenceAlleleStart,
+                                        final Strand strand,
+                                        final String referenceProteinSequence,
+                                        final String alternateProteinSequence,
+                                        int proteinChangeStartIndex,
+                                        final boolean indelIsBetweenCodons,
+                                        final int numAltAminoAcids,
+                                        final int numRefAminoAcids) {
         // We render the protein change differently if it's an insertion directly between two codons:
         if (indelIsBetweenCodons) {
 
