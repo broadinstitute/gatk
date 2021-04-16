@@ -348,7 +348,10 @@ task CreateImportTsvs {
       ~{for_testing_only}
 
       if [ ~{has_service_account_file} = 'true' ]; then
+        export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
         gcloud auth activate-service-account --key-file='~{service_account_json}'
+        gcloud config set project ~{query_project}
+
         gsutil cp ~{input_vcf} .
         gsutil cp ~{input_vcf_index} .
       fi

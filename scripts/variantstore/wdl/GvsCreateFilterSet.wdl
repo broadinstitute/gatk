@@ -365,8 +365,9 @@ task UploadFilterSetToBQ {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
         if [ ~{has_service_account_file} = 'true' ]; then
-          gcloud auth activate-service-account --key-file='~{service_account_json}'
-          gcloud config set project ~{query_project}
+            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gcloud config set project ~{query_project}
         fi
 
         gatk --java-options "-Xmx1g" \
