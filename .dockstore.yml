@@ -65,7 +65,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - mmt_SA_support_and_wdl_renaming
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -75,7 +74,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - mmt_SA_support_and_wdl_renaming
+         - mmt_add_cutoffs_wdl
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -85,7 +84,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - mmt_SA_support_and_wdl_renaming
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
@@ -95,7 +93,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - mmt_SA_support_and_wdl_renaming
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
