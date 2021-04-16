@@ -1,16 +1,15 @@
 package org.broadinstitute.hellbender.tools.dragstr;
 
 import htsjdk.samtools.*;
+import htsjdk.samtools.cram.ref.ReferenceSource;
 import htsjdk.samtools.util.IntervalTree;
 import it.unimi.dsi.fastutil.ints.*;
 import org.apache.commons.io.output.NullOutputStream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -18,6 +17,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCall
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.collections.AutoCloseableCollection;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParamUtils;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.utils.dragstr.STRTableFile;
@@ -48,7 +48,6 @@ import java.util.stream.*;
         oneLineSummary = "estimates the parameters for the DRAGstr model",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
-@BetaFeature
 @DocumentedFeature
 public class CalibrateDragstrModel extends GATKTool {
 
@@ -96,6 +95,7 @@ public class CalibrateDragstrModel extends GATKTool {
     private String sitesOutput = null;
 
     private SAMSequenceDictionary dictionary;
+    private SamReaderFactory factory;
     public static final ReadTransformer EXTENDED_MQ_READ_TRANSFORMER = new DRAGENMappingQualityReadTransformer();
 
     @Override
@@ -113,6 +113,9 @@ public class CalibrateDragstrModel extends GATKTool {
         super.onStartup();
         hyperParameters.validate();
         dictionary = directlyAccessEngineReadsDataSource().getSequenceDictionary();
+        factory = SamReaderFactory.makeDefault();
+        factory.referenceSource(new ReferenceSource(referenceArguments.getReferencePath()));
+
         if (runInParallel) {
             if (threads == 1) {
                 logger.warn("parallel processing was requested but the number of threads was set to 1");
@@ -464,6 +467,7 @@ public class CalibrateDragstrModel extends GATKTool {
         return result;
     }
 
+    @SuppressWarnings("try") // silences intended use of unreferenced auto-closable within try-resource.
     private StratifiedDragstrLocusCases collectCaseStatsParallel(final List<SimpleInterval> intervals, final int shardSize, final STRTableFile strTable) {
 
         //TODO: instead of the dictionary this should take on the traversal intervals.
@@ -473,27 +477,120 @@ public class CalibrateDragstrModel extends GATKTool {
 
         final List<SimpleInterval> shards = shardIntervals(intervals, shardSize);
 
-        // Specify the reference here in case we are supplied a CRAM input. NOTE: this tool requires a reference input to begin with, thus we needn't assert that one is provided
-        try (final ReadsDataSourcePool readsDataSourcePool = new ReadsDataSourcePool(readArguments.getReadPaths(), referenceArguments.getReferencePath())) {
+        final List<ReadsPathDataSource> readSources = new ArrayList<>(threads);
+        final ThreadLocal<ReadsPathDataSource> threadReadSource = ThreadLocal.withInitial(
+                () -> {
+                    final ReadsPathDataSource result = new ReadsPathDataSource(readArguments.getReadPaths(), factory);
+                    readSources.add(result);
+                    return result;
+                });
 
+        try (@SuppressWarnings("unused") final AutoCloseableCollection<?> readSourceCloser = new AutoCloseableCollection<>(readSources)) {
             final AtomicLong numberBasesProcessed = new AtomicLong(0);
-            return Utils.runInParallel(threads, () ->
-                        shards.parallelStream()
-                                .map(shard -> {
-                                    try (final AutoCloseableReference<ReadsPathDataSource> readsSource = readsDataSourcePool.borrowAutoReturn();
-                                         final BinaryTableReader<DragstrLocus> lociReader = strTable.locusReader(shard)) {
-                                        final StratifiedDragstrLocusCases result = streamShardCasesStats(shard, readStream(readsSource.get(), shard), lociReader.stream())
-                                                .collect(DragstrLocusCaseStratificator.make(hyperParameters.maxPeriod, hyperParameters.maxRepeatLength));
-                                        final int resultSize = result.size();
-                                        synchronized (numberBasesProcessed) {
-                                            final long processed = numberBasesProcessed.updateAndGet(l -> l + shard.size());
-                                            progressMeter.update(absoluteCoordinates.toSimpleInterval(processed, 1), resultSize);
-                                        }
-                                        return result;
-                                    } catch (final IOException ex) {
-                                        throw new GATKException("problems accessing the str-table-file contents at " + strTablePath, ex);
+            return Utils.runInParallel(Math.min(threads, shards.size()), () ->
+                    StreamSupport.stream(new InterleavingListSpliterator<>(shards), true)
+                            .map(shard -> {
+                                try (final BinaryTableReader<DragstrLocus> lociReader = strTable.locusReader(shard)) {
+                                    final ReadsPathDataSource readsSource = threadReadSource.get();
+                                    final StratifiedDragstrLocusCases result = streamShardCasesStats(shard, readStream(readsSource, shard), lociReader.stream())
+                                            .collect(DragstrLocusCaseStratificator.make(hyperParameters.maxPeriod, hyperParameters.maxRepeatLength));
+                                    final int resultSize = result.size();
+                                    synchronized (numberBasesProcessed) {
+                                        final long processed = numberBasesProcessed.updateAndGet(l -> l + shard.size());
+                                        progressMeter.update(absoluteCoordinates.toSimpleInterval(processed, 1), resultSize);
                                     }
-                                }).reduce(StratifiedDragstrLocusCases::merge).orElseGet(() -> new StratifiedDragstrLocusCases(hyperParameters.maxPeriod, hyperParameters.maxRepeatLength)));
+                                    return result;
+                                } catch (final IOException ex) {
+                                    throw new GATKException("problems accessing the str-table-file contents at " + strTablePath, ex);
+                                }
+                            })
+                            .reduce(StratifiedDragstrLocusCases::merge)
+                            .orElseGet(() -> new StratifiedDragstrLocusCases(
+                                    hyperParameters.maxPeriod,
+                                    hyperParameters.maxRepeatLength)));
+        }
+    }
+
+    // Spliterator that splits by segragating even and odd elements as supposed to
+    // first and second half which the standard (e.g {@link Collection#stream} delgates onto {@link ArraySpliterator}).
+    //
+    // This approach makes the load more balanced between threads and the excecution order follows more closelly
+    // the input source list order.
+    //
+    // For its single use in this tool, this makes it more likely that there won't be a need to hold
+    // the full genome in memory by the underlaying ReferenceSource and that the
+    // actual progress corresponds more closely to the one reported by the progress-meter (always following
+    // sreference coordinate order).
+    private static class InterleavingListSpliterator<T> implements Spliterator<T> {
+
+        private final List<T> source;
+        private int next;
+        private int increment;
+        private int remaining;
+
+        private InterleavingListSpliterator(final List<T> source) {
+            this(source, 0, 1);
+        }
+
+        private InterleavingListSpliterator(final List<T> source, final int start, final int increment) {
+            Utils.nonNull(this.source = source);
+            final int sourceSize;
+            this.next = Utils.validIndex(start, sourceSize = this.source.size());
+            Utils.validate((this.increment = increment) > 0, "increment must be extrictly positive");
+            // we add increment -1 to numerator to get the ceiling of the int div.
+            this.remaining = (sourceSize - start + increment - 1) / increment;
+        }
+
+        @Override
+        public boolean tryAdvance(Consumer<? super T> action) {
+            // per parent spec, a NPE is required in this case:
+            Objects.requireNonNull(action);
+            if (remaining > 0) {
+                action.accept(source.get(next));
+                next += increment;
+                remaining--;
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        @Override
+        public Spliterator<T> trySplit() {
+            if (remaining >= 2) {
+                final int splitStart = next + increment;
+                increment <<= 1;
+                // numerator + 1 to calculate the ceiling of the x/2 int div:
+                remaining = (remaining + 1) >> 1;
+                return new InterleavingListSpliterator<>(source, splitStart, increment);
+            } else {
+                return null;
+            }
+        }
+
+        @Override
+        public long estimateSize() {
+            return remaining;
+        }
+
+        @Override
+        public long getExactSizeIfKnown() {
+            return remaining;
+        }
+
+        @Override
+        public int characteristics() {
+            return Spliterator.SUBSIZED | Spliterator.IMMUTABLE | Spliterator.NONNULL | Spliterator.SIZED;
+        }
+
+        @Override
+        public void forEachRemaining(final Consumer<? super T> action) {
+            Objects.requireNonNull(action);
+            while (remaining > 0) {
+                action.accept(source.get(next));
+                next += increment;
+                remaining--;
+            }
         }
     }
 
@@ -575,8 +672,6 @@ public class CalibrateDragstrModel extends GATKTool {
             return true;
         }
     }
-
-
 
     private static class DragstrLocusCaseStratificator implements Collector<DragstrLocusCase, StratifiedDragstrLocusCases, StratifiedDragstrLocusCases> {
 
