@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
+import scala.Char;
 
 import java.util.*;
 
@@ -29,7 +30,8 @@ final class PileupBasedAlleles {
             Map<Byte, Integer> altCounts = new HashMap<>();
 
             for (byte eachBase : pileup.getBases()) {
-                if (refBase != eachBase) {
+                // check to see that the base is not ref and that the alleles are one of these bases - ATCGN
+                if (refBase != eachBase && Allele.acceptableAlleleBases(new byte[eachBase])) {
                     incrementAltCount(eachBase, altCounts);
                 }
             }
@@ -38,13 +40,11 @@ final class PileupBasedAlleles {
             alleles.add(Allele.create(referenceContext.getBase(), true));
             // TODO: AH & BG add an option to deal with multiple alt alleles
             Optional<Map.Entry<Byte, Integer>> maxAlt = altCounts.entrySet().stream().max(Comparator.comparingInt(Map.Entry::getValue));
-
-            if (maxAlt.isPresent() && maxAlt.get().getValue() / numOfBases > 0.1) {
-                alleles.add(Allele.create(maxAlt.get().getKey()));
-                VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
-                pileupSNPsList.add(pileupSNP.make());
-
-            }
+            if (maxAlt.isPresent() && ((float)maxAlt.get().getValue() / (float)numOfBases) > 0.1 && numOfBases > 5 ) {
+                    alleles.add(Allele.create(maxAlt.get().getKey()));
+                    VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
+                    pileupSNPsList.add(pileupSNP.make());
+                }
         }
 
         return pileupSNPsList;
@@ -54,16 +54,17 @@ final class PileupBasedAlleles {
 
     private static void incrementAltCount(byte base, Map<Byte, Integer> altCounts){
         Byte baseObj = new Byte(base);
-        if (!altCounts.containsKey(baseObj)){
-            altCounts.put(baseObj,1);
-        } else {
-            altCounts.put(baseObj, altCounts.get(baseObj)+1);
-        }
+            if (!altCounts.containsKey(baseObj)) {
+                altCounts.put(baseObj, 1);
+            } else {
+                altCounts.put(baseObj, altCounts.get(baseObj) + 1);
+            }
     }
 
 }
 
 /* Questions: how to get cigar info for each base?
-How are insertions and deletions represented in Alignemnt context pileup.getbases
+How are insertions and deletions represented in Alignment context pileup.getbases
+Args to test - error-correction-log-odds; this is not turned on by default; may help with precision
 TODO: include Indels
 * */
