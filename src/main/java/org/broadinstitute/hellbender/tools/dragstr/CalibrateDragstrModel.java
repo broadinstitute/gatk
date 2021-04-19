@@ -12,6 +12,9 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
@@ -936,7 +939,7 @@ public class CalibrateDragstrModel extends GATKTool {
     private Stream<org.broadinstitute.hellbender.utils.read.GATKRead> readStream(final ReadsDataSource source, final SimpleInterval interval) {
         final Stream<org.broadinstitute.hellbender.utils.read.GATKRead> unfiltered = interval == null ? Utils.stream(source) : Utils.stream(source.query(interval));
         return unfiltered
-                .filter(read -> (read.getFlags() & DISCARD_FLAG_VALUE) == 0)
+                .filter(read -> (read.getFlags() & DISCARD_FLAG_VALUE) == 0 && read.getAssignedStart() <= read.getEnd())
                 .map(EXTENDED_MQ_READ_TRANSFORMER);
     }
 
