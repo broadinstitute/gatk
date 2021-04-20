@@ -1,17 +1,16 @@
 {
+  "GvsExtractCallset.fq_cohort_extract_table": "PROJECT_ID.DATASET_NAME.COHORT_TABLE",
+  "GvsExtractCallset.filter_set_name": "FILTER_SET_NAME",
+  "GvsExtractCallset.data_project": "PROJECT_ID",
+  "GvsExtractCallset.fq_samples_to_extract_table": "PROJECT_ID.DATASET_NAME.SAMPLE_TABLE_CONTAINING_SAMPLES_TO_EXTRACT",
+  "GvsExtractCallset.default_dataset": "DATASET_NAME",
+  "GvsExtractCallset.output_file_base_name": "OUTPUT_FILE_BASE_NAME",
+
   "GvsExtractCallset.reference": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
   "GvsExtractCallset.reference_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
   "GvsExtractCallset.reference_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
   "GvsExtractCallset.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
   "GvsExtractCallset.scatter_count": 50,
-
-  "GvsExtractCallset.fq_sample_table": "PROJECT_ID.DATASET_NAME.sample_info",
-  "GvsExtractCallset.fq_cohort_extract_table": "PROJECT_ID.DATASET_NAME.COHORT_TABLE",
-  "GvsExtractCallset.fq_filter_set_table": "PROJECT_ID.DATASET_NAME.filter_set_info",
-  "GvsExtractCallset.filter_set_name": "FILTER_SET_NAME",
-  "GvsExtractCallset.query_project": "PROJECT_ID",
-
-  "GvsExtractCallset.output_file_base_name": "OUTPUT_FILE_BASE_NAME",
 
   "GvsExtractCallset.gatk_override": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/mmt_SA_support_and_wdl_renaming_20210415/gatk-package-4.2.0.0-345-g8a7821a-SNAPSHOT-local.jar"
 }
