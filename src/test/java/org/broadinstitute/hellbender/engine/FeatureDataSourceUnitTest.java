@@ -5,6 +5,7 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -175,7 +176,7 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
     public Object[][] getIndependentFeatureQueryTestData() {
         // Query Interval + Expected Variant ID(s)
         return new Object[][] {
-                { new SimpleInterval("1", 1, 99), Collections.<String>emptyList() },
+                { new SimpleInterval("1", 1, 99), Collections.emptyList() },
                 { new SimpleInterval("1", 100, 100), Arrays.asList("a") },
                 { new SimpleInterval("1", 100, 200), Arrays.asList("a", "b", "c") },
                 { new SimpleInterval("1", 200, 202), Arrays.asList("b", "c") },
@@ -410,6 +411,29 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
         try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_GVCF) ) {
             final List<VariantContext> queryResults = featureSource.queryAndPrefetch(queryInterval);
             checkVariantQueryResults(queryResults, expectedVariantIDs, queryInterval);
+        }
+    }
+
+    @Test(dataProvider = "IndependentFeatureQueryTestData")
+    public void testForNamedCodec (final SimpleInterval queryInterval, final List<String> UNUSED) {
+
+        // Test with default name:
+        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF)) {
+            final Iterator<VariantContext> featureIterator = featureSource.query(queryInterval);
+            while ( featureIterator.hasNext() ) {
+                Assert.assertEquals( featureIterator.next().getSource(), QUERY_TEST_VCF.getAbsolutePath() );
+            }
+        }
+
+        // Test with logical name:
+        final String logicalDataSourceName = FilenameUtils.getBaseName(QUERY_TEST_VCF.getAbsolutePath())
+                + '_' + queryInterval.getContig() + ":" + queryInterval.getStart() + '-' + queryInterval.getEnd();
+
+        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, logicalDataSourceName)) {
+            final Iterator<VariantContext> featureIterator = featureSource.query(queryInterval);
+            while ( featureIterator.hasNext() ) {
+                Assert.assertEquals( featureIterator.next().getSource(), logicalDataSourceName );
+            }
         }
     }
 

@@ -2,16 +2,14 @@ package org.broadinstitute.hellbender.testutils;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
@@ -28,13 +26,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 
-// This should be:
-//import org.apache.logging.log4j.LogManager;
-//import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -44,6 +35,12 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static org.broadinstitute.hellbender.utils.variant.VariantContextGetters.attributeToList;
+
+// Occasionally Intellij borks the logger import statements
+// to point to logging libraries that do not actually work in GATK.
+// The Logger import statements should be:
+//import org.apache.logging.log4j.LogManager;
+//import org.apache.logging.log4j.Logger;
 
 public final class VariantContextTestUtils {
     private VariantContextTestUtils() {}
@@ -146,7 +143,7 @@ public final class VariantContextTestUtils {
                     return Arrays.stream(split).map(
                             s -> {return Arrays.stream(s.split(",",-1))
                                     .map(d -> {if (d.equals("")) return d;
-                                    else return Double.toString(Double.parseDouble(d));})
+                                               else return Double.toString(Double.parseDouble(d));})
                                     .collect(Collectors.joining(","));})
                             .collect(Collectors.joining("|"));
                 } else {
@@ -447,6 +444,7 @@ public final class VariantContextTestUtils {
 
         //right now no FORMAT attributes have jitter
         assertVariantContextsHaveSameGenotypes(actual, expected, attributesToIgnore);
+        Assert.assertEquals(actual.getType(), expected.getType(), "type");
     }
 
     @VisibleForTesting

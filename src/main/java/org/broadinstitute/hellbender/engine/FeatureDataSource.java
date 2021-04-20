@@ -362,6 +362,13 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                 throw new GATKException("Unable to automatically instantiate codec " + codecClass.getName());
             }
         }
+
+        // Set the name if we have to:
+        if ( codec instanceof NameAwareCodec ) {
+            final NameAwareCodec namedCodec = (NameAwareCodec) codec;
+            namedCodec.setName( featureInput.getName() );
+        }
+
         return codec;
     }
 
