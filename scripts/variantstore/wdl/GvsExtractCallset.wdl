@@ -137,9 +137,6 @@ task ExtractTask {
                 ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}'
         fi
 
-        echo "Filtering args:"
-        echo $FILTERING_ARGS
-
         gatk --java-options "-Xmx9g" \
             ExtractCohort \
                 --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT \
