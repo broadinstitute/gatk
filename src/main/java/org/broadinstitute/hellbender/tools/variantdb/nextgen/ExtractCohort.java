@@ -146,7 +146,7 @@ public class ExtractCohort extends ExtractTool {
         // but they all are required if there is no avro file
         if (cohortAvroFileName == null && (projectID == null || cohortTable == null)) {
             throw new UserException("Project id (--project-id) " +
-                "and cohort table (--cohort-extract-table)are required if no avro file is provided.");
+                "and cohort table (--cohort-extract-table) are required if no avro file is provided.");
         }
 
         engine = new ExtractCohortEngine(
