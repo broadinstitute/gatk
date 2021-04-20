@@ -58,6 +58,7 @@ public class CalibrateDragstrModel extends GATKTool {
     public static final String SHARD_SIZE_FULL_NAME = "shard-size";
     public static final String DOWN_SAMPLE_SIZE_FULL_NAME = "down-sample-size";
     public static final String DEBUG_SITES_OUTPUT_FULL_NAME = "debug-sites-output";
+    public static final String FORCE_ESTIMATION_FULL_NAME = "force-estimation";
 
     public static final int DEFAULT_SHARD_SIZE = 1_000_000;
     public static final int DEFAULT_DOWN_SAMPLE_SIZE = 4096;
@@ -93,6 +94,9 @@ public class CalibrateDragstrModel extends GATKTool {
 
     @Argument(fullName= DEBUG_SITES_OUTPUT_FULL_NAME, doc = "table with information gather on the samples sites. Includes what sites were downsampled, disqualified or accepted for parameter estimation", optional = true)
     private String sitesOutput = null;
+
+    @Argument(fullName= FORCE_ESTIMATION_FULL_NAME, doc = "for testing purpose only; force parameter estimation even with little datapoints available", optional = true)
+    private boolean forceEstimation = false;
 
     private SAMSequenceDictionary dictionary;
     private SamReaderFactory factory;
@@ -172,15 +176,20 @@ public class CalibrateDragstrModel extends GATKTool {
     }
 
     private void printOutput(final StratifiedDragstrLocusCases finalSites, final String sampleName, final List<String> readGroups) {
-        final boolean usingDefaults = !isThereEnoughCases(finalSites);
+        final boolean enoughCases = isThereEnoughCases(finalSites);
+        final boolean usingDefaults = !enoughCases && !forceEstimation;
         final Object[] annotations = {
                 "sample", (sampleName == null ? "<unspecified>" : sampleName),
                 "readGroups", (readGroups.isEmpty() ? "<unspecified>" : Utils.join(", ", readGroups)),
-                "estimatedOrDefaults", (usingDefaults ? "defaults" : "estimated"),
+                "estimatedOrDefaults", (usingDefaults ? "defaults" : (enoughCases ? "estimated" : "estimatedByForce")),
                 "commandLine", getCommandLine()
         };
         if (!usingDefaults) {
-            logger.info("Estimating parameters used sampled down cases");
+            if (!enoughCases) {
+                logger.warn("Forcing parameters estimation using sampled down cases as requested");
+            } else {
+                logger.info("Estimating parameters using sampled down cases");
+            }
             final DragstrParams estimate = estimateParams(finalSites);
             logger.info("Done with estimation, printing output");
             DragstrParamUtils.print(estimate, output, annotations);
@@ -273,6 +282,7 @@ public class CalibrateDragstrModel extends GATKTool {
             final int maxL = Math.min(hyperParameters.maxRepeatLength, MCBL[i].length - 1);
             for (int j = 1; j <= maxL; j++) {
                 if (allSites.get(i, j).size() < MCBL[i][j]) {
+                    logger.warn("not enough cases in (P,L) = (" + i + "," + j + "): " + allSites.get(i, j).size() + " < " + MCBL[i][j]);
                     return false;
                 }
             }
