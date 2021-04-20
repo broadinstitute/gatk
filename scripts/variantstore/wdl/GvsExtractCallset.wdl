@@ -129,11 +129,11 @@ task ExtractTask {
         if [ ~{do_not_filter_override} = 'true' ]; then
             FILTERING_ARGS=''
         else
-            FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table} \
-                --filter-set-site-table ~{fq_filter_set_site_table} \
-                --tranches-table ~{fq_filter_set_tranches_table} \
-                --filter-set-name ~{filter_set_name} \
-                ~{"--snps-truth-sensitivity-filter-level " + snps_truth_sensitivity_filter_level} \
+            FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
+                --filter-set-site-table ~{fq_filter_set_site_table} 
+                --tranches-table ~{fq_filter_set_tranches_table}
+                --filter-set-name ~{filter_set_name}
+                ~{"--snps-truth-sensitivity-filter-level " + snps_truth_sensitivity_filter_level}
                 ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}'
         fi
 
