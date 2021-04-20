@@ -18,11 +18,9 @@ workflow GvsExtractCallset {
         String? fq_filter_set_tranches_table
         String? filter_set_name
 
-        # if these are unset, default sensitivity levels will be used; if user is defining a cutoff, only use one type (sensitivity or lod)
-        Float? snps_truth_sensitivity_filter_level
-        Float? indels_truth_sensitivity_filter_level
-        Float? snps_lod_score_cutoff
-        Float? indels_lod_score_cutoff
+        # if these are unset, default sensitivity levels will be used
+        Float? snps_truth_sensitivity_filter_level_override
+        Float? indels_truth_sensitivity_filter_level_override
 
         File? excluded_intervals
         Boolean? emit_pls = false
@@ -57,10 +55,8 @@ workflow GvsExtractCallset {
                 fq_filter_set_site_table = fq_filter_set_site_table,
                 fq_filter_set_tranches_table = fq_filter_set_tranches_table,
                 filter_set_name          = filter_set_name,
-                snps_truth_sensitivity_filter_level = snps_truth_sensitivity_filter_level,
-                indels_truth_sensitivity_filter_level = indels_truth_sensitivity_filter_level,
-                snps_lod_score_cutoff    = snps_lod_score_cutoff,
-                indels_lod_score_cutoff  = indels_lod_score_cutoff,
+                snps_truth_sensitivity_filter_level = snps_truth_sensitivity_filter_level_override,
+                indels_truth_sensitivity_filter_level = indels_truth_sensitivity_filter_level_override,
                 excluded_intervals       = excluded_intervals,
                 emit_pls                 = emit_pls,
                 service_account_json     = service_account_json,
@@ -96,8 +92,6 @@ task ExtractTask {
         String? filter_set_name
         Float? snps_truth_sensitivity_filter_level
         Float? indels_truth_sensitivity_filter_level
-        Float? snps_lod_score_cutoff
-        Float? indels_lod_score_cutoff
 
         File? excluded_intervals
         Boolean? emit_pls
@@ -142,9 +136,7 @@ task ExtractTask {
                 ~{"--tranches-table " + fq_filter_set_tranches_table} \
                 ~{"--filter-set-name " + filter_set_name} \
                 ~{"--snps-truth-sensitivity-filter-level " + snps_truth_sensitivity_filter_level} \
-                ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level} \
-                ~{"--snps-lod-score-cutoff " + snps_lod_score_cutoff} \
-                ~{"--indels-lod-score-cutoff " + indels_lod_score_cutoff}
+                ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}
     >>>
 
     # ------------------------------------------------
