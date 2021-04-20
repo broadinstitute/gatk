@@ -2,6 +2,9 @@ version 1.0
 
 workflow GvsExtractCallset {
    input {
+        String data_project
+        String default_dataset
+        String filter_set_name
 
         File wgs_intervals
         Int scatter_count
@@ -12,11 +15,12 @@ workflow GvsExtractCallset {
 
         String fq_sample_table
         String fq_cohort_extract_table
-        String query_project
-        String? fq_filter_set_info_table
-        String? fq_filter_set_site_table
-        String? fq_filter_set_tranches_table
-        String? filter_set_name
+        String query_project = data_project
+
+        String fq_filter_set_info_table = "~{data_project}.~{default_dataset}.filter_set_info"
+        String fq_filter_set_site_table = "~{data_project}.~{default_dataset}.filter_set_sites"
+        String fq_filter_set_tranches_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
+        Boolean do_not_filter_override = false
 
         # if these are unset, default sensitivity levels will be used
         Float? snps_truth_sensitivity_filter_level_override
@@ -51,6 +55,7 @@ workflow GvsExtractCallset {
                 intervals                = SplitIntervals.interval_files[i],
                 fq_cohort_extract_table  = fq_cohort_extract_table,
                 read_project_id          = query_project,
+                do_not_filter_override   = do_not_filter_override,
                 fq_filter_set_info_table = fq_filter_set_info_table,
                 fq_filter_set_site_table = fq_filter_set_site_table,
                 fq_filter_set_tranches_table = fq_filter_set_tranches_table,
@@ -86,12 +91,14 @@ task ExtractTask {
         String fq_cohort_extract_table
         String read_project_id
         String output_file
-        String? fq_filter_set_info_table
-        String? fq_filter_set_site_table
-        String? fq_filter_set_tranches_table
-        String? filter_set_name
+        String fq_filter_set_info_table
+        String fq_filter_set_site_table
+        String fq_filter_set_tranches_table
+        String filter_set_name
         Float? snps_truth_sensitivity_filter_level
         Float? indels_truth_sensitivity_filter_level
+
+        Boolean do_not_filter_override
 
         File? excluded_intervals
         Boolean? emit_pls
@@ -119,10 +126,24 @@ task ExtractTask {
 
         df -h
 
+        if [ ~{do_not_filter_override} = 'true' ]; then
+            FILTERING_ARGS=''
+        else
+            FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table} \
+                --filter-set-site-table ~{fq_filter_set_site_table} \
+                --tranches-table ~{fq_filter_set_tranches_table} \
+                --filter-set-name ~{filter_set_name} \
+                ~{"--snps-truth-sensitivity-filter-level " + snps_truth_sensitivity_filter_level} \
+                ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}'
+        fi
+
+        echo "Filtering args:"
+        echo $FILTERING_ARGS
+
         gatk --java-options "-Xmx9g" \
             ExtractCohort \
                 --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT \
-                -R "~{reference}" \
+                -R ~{reference} \
                 -O ~{output_file} \
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
                 --sample-table ~{fq_sample_table} \
@@ -131,12 +152,7 @@ task ExtractTask {
                 ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id} \
                 ~{true='--emit-pls' false='' emit_pls} \
-                ~{"--filter-set-info-table " + fq_filter_set_info_table} \
-                ~{"--filter-set-site-table " + fq_filter_set_site_table} \
-                ~{"--tranches-table " + fq_filter_set_tranches_table} \
-                ~{"--filter-set-name " + filter_set_name} \
-                ~{"--snps-truth-sensitivity-filter-level " + snps_truth_sensitivity_filter_level} \
-                ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}
+                ${FILTERING_ARGS}
     >>>
 
     # ------------------------------------------------
