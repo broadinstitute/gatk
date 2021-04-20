@@ -10,12 +10,17 @@ import java.io.File;
 
 class ExtractCohortTest extends CommandLineProgramTest {
   private final String prefix = getToolTestDataDir();
-  private final String cohortAvroFileName = prefix +"000000000000.avro";
+  private final String cohortAvroFileName = prefix +"chr20_subset_3_samples.avro";
   private final String sampleFile = prefix +"sample_list";
   private final String outputFileName = prefix +"output.vcf";
 
   @Test
   public void testFinalVCFfromAvro() throws Exception {
+    // To create the expected output file--create a temp table in BQ with the folowing query
+    // and then export it through the GUI as an avro file into GCS.
+    // SELECT * FROM `spec-ops-aou.anvil_100_for_testing.exported_cohort_all_samples`
+    // where location < 20000000200000 and location >= 20000000100000
+    // and (sample_name="HG00405" or sample_name="HG00418" or sample_name="HG00408")
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
