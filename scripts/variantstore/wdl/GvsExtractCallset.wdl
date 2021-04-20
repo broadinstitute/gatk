@@ -13,7 +13,7 @@ workflow GvsExtractCallset {
         File reference_index
         File reference_dict
 
-        String fq_sample_table
+        String fq_samples_to_extract_table
         String fq_cohort_extract_table
         String query_project = data_project
 
@@ -51,7 +51,7 @@ workflow GvsExtractCallset {
                 reference                = reference,
                 reference_index          = reference_index,
                 reference_dict           = reference_dict,
-                fq_sample_table          = fq_sample_table,
+                fq_samples_to_extract_table = fq_samples_to_extract_table,
                 intervals                = SplitIntervals.interval_files[i],
                 fq_cohort_extract_table  = fq_cohort_extract_table,
                 read_project_id          = query_project,
@@ -84,7 +84,7 @@ task ExtractTask {
         File reference_index
         File reference_dict
 
-        String fq_sample_table
+        String fq_samples_to_extract_table
 
         File intervals
 
@@ -130,7 +130,7 @@ task ExtractTask {
             FILTERING_ARGS=''
         else
             FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
-                --filter-set-site-table ~{fq_filter_set_site_table} 
+                --filter-set-site-table ~{fq_filter_set_site_table}
                 --tranches-table ~{fq_filter_set_tranches_table}
                 --filter-set-name ~{filter_set_name}
                 ~{"--snps-truth-sensitivity-filter-level " + snps_truth_sensitivity_filter_level}
@@ -146,7 +146,7 @@ task ExtractTask {
                 -R ~{reference} \
                 -O ~{output_file} \
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
-                --sample-table ~{fq_sample_table} \
+                --sample-table ~{fq_samples_to_extract_table} \
                 --cohort-extract-table ~{fq_cohort_extract_table} \
                 -L ~{intervals} \
                 ~{"-XL " + excluded_intervals} \
