@@ -145,8 +145,15 @@ public class ExtractCohort extends ExtractTool {
         // if there is a avro file, the BQ specific parameters are unnecessary,
         // but they all are required if there is no avro file
         if (cohortAvroFileName == null && (projectID == null || cohortTable == null)) {
-            throw new UserException("Project id (--project-id) " +
-                "and cohort table (--cohort-extract-table) are required if no avro file is provided.");
+            throw new UserException("Project id (--project-id) and cohort table (--cohort-extract-table) are required " +
+                "if no avro file (--cohort-avro-file-name) is provided.");
+        }
+
+        // if there is a sample file, the BQ specific parameters are unnecessary,
+        // but without a sample file, both a sample-table and a project-id are needed
+        if (sampleFileName == null && (projectID == null || sampleTableName == null)) {
+            throw new UserException("Project id (--project-id) and sample table (--sample-table) are required " +
+                "if no sample file (--sample-file) is provided.");
         }
 
         engine = new ExtractCohortEngine(
