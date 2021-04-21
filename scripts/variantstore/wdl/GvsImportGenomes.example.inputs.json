@@ -2,7 +2,7 @@
   "GvsImportGenomes.input_vcfs": "${this.samples.hg38_reblocked_gvcf}",
   "GvsImportGenomes.input_vcf_indexes": "${this.samples.hg38_reblocked_gvcf_index}",
 
-  "GvsImportGenomes.interval_list": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
+  "GvsImportGenomes.interval_list": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
   "GvsImportGenomes.drop_state": "SIXTY",
 
   "GvsImportGenomes.project_id": "PROJECT_ID",

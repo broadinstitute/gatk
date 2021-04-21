@@ -2,6 +2,9 @@ version 1.0
 
 workflow GvsExtractCallset {
    input {
+        String data_project
+        String default_dataset
+        String filter_set_name
 
         File wgs_intervals
         Int scatter_count
@@ -10,13 +13,19 @@ workflow GvsExtractCallset {
         File reference_index
         File reference_dict
 
-        String fq_sample_table
+        String fq_samples_to_extract_table
         String fq_cohort_extract_table
-        String query_project
-        String? fq_filter_set_info_table
-        String? fq_filter_set_site_table
-        String? fq_filter_set_tranches_table
-        String? filter_set_name
+        String query_project = data_project
+
+        String fq_filter_set_info_table = "~{data_project}.~{default_dataset}.filter_set_info"
+        String fq_filter_set_site_table = "~{data_project}.~{default_dataset}.filter_set_sites"
+        String fq_filter_set_tranches_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
+        Boolean do_not_filter_override = false
+
+        # if these are unset, default sensitivity levels will be used
+        Float? snps_truth_sensitivity_filter_level_override
+        Float? indels_truth_sensitivity_filter_level_override
+
         File? excluded_intervals
         Boolean? emit_pls = false
 
@@ -42,14 +51,17 @@ workflow GvsExtractCallset {
                 reference                = reference,
                 reference_index          = reference_index,
                 reference_dict           = reference_dict,
-                fq_sample_table          = fq_sample_table,
+                fq_samples_to_extract_table = fq_samples_to_extract_table,
                 intervals                = SplitIntervals.interval_files[i],
                 fq_cohort_extract_table  = fq_cohort_extract_table,
                 read_project_id          = query_project,
+                do_not_filter_override   = do_not_filter_override,
                 fq_filter_set_info_table = fq_filter_set_info_table,
                 fq_filter_set_site_table = fq_filter_set_site_table,
                 fq_filter_set_tranches_table = fq_filter_set_tranches_table,
                 filter_set_name          = filter_set_name,
+                snps_truth_sensitivity_filter_level = snps_truth_sensitivity_filter_level_override,
+                indels_truth_sensitivity_filter_level = indels_truth_sensitivity_filter_level_override,
                 excluded_intervals       = excluded_intervals,
                 emit_pls                 = emit_pls,
                 service_account_json     = service_account_json,
@@ -72,19 +84,23 @@ task ExtractTask {
         File reference_index
         File reference_dict
 
-        String fq_sample_table
+        String fq_samples_to_extract_table
 
         File intervals
 
         String fq_cohort_extract_table
         String read_project_id
         String output_file
-        String? fq_filter_set_info_table
-        String? fq_filter_set_site_table
-        String? fq_filter_set_tranches_table
-        String? filter_set_name
-        File? excluded_intervals
+        String fq_filter_set_info_table
+        String fq_filter_set_site_table
+        String fq_filter_set_tranches_table
+        String filter_set_name
+        Float? snps_truth_sensitivity_filter_level
+        Float? indels_truth_sensitivity_filter_level
 
+        Boolean do_not_filter_override
+
+        File? excluded_intervals
         Boolean? emit_pls
 
         # Runtime Options:
@@ -110,22 +126,30 @@ task ExtractTask {
 
         df -h
 
+        if [ ~{do_not_filter_override} = 'true' ]; then
+            FILTERING_ARGS=''
+        else
+            FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
+                --filter-set-site-table ~{fq_filter_set_site_table}
+                --tranches-table ~{fq_filter_set_tranches_table}
+                --filter-set-name ~{filter_set_name}
+                ~{"--snps-truth-sensitivity-filter-level " + snps_truth_sensitivity_filter_level}
+                ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}'
+        fi
+
         gatk --java-options "-Xmx9g" \
             ExtractCohort \
                 --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT \
-                -R "~{reference}" \
+                -R ~{reference} \
                 -O ~{output_file} \
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
-                --sample-table ~{fq_sample_table} \
+                --sample-table ~{fq_samples_to_extract_table} \
                 --cohort-extract-table ~{fq_cohort_extract_table} \
                 -L ~{intervals} \
                 ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id} \
                 ~{true='--emit-pls' false='' emit_pls} \
-                ~{"--filter-set-info-table " + fq_filter_set_info_table} \
-                ~{"--filter-set-site-table " + fq_filter_set_site_table} \
-                ~{"--tranches-table " + fq_filter_set_tranches_table} \
-                ~{"--filter-set-name " + filter_set_name}
+                ${FILTERING_ARGS}
     >>>
 
     # ------------------------------------------------
