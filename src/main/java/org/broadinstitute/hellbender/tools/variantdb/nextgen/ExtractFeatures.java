@@ -65,6 +65,12 @@ public class ExtractFeatures extends ExtractTool {
         optional = true)
     protected double hqGenotypeABThreshold = 0.2;
 
+    @Argument(
+        fullName = "excess-alleles-threshold",
+        doc = "excess alleles threshold", // TODO what even is this?!??!
+        optional = true)
+    protected int excessAllelesThreshold = CommonCode.EXCESS_ALLELES_THRESHOLD;
+
     @Override
     public boolean requiresIntervals() {
         return false;
@@ -110,7 +116,8 @@ public class ExtractFeatures extends ExtractTool {
             sampleList.size(),
             hqGenotypeGQThreshold,
             hqGenotypeDepthThreshold,
-            hqGenotypeABThreshold);
+            hqGenotypeABThreshold,
+            excessAllelesThreshold);
 
         vcfWriter.writeHeader(header);
 }
