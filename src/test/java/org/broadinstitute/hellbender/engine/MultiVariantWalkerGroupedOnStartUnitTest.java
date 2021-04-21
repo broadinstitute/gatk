@@ -29,7 +29,8 @@ public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
         List<List<VariantContext>> seenVariants = new ArrayList<>();
         @Override
         public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext, final List<ReadsContext> readsContexts) {
-            seenVariants.add(variantContexts);
+            //NOTE: MultiVariantDataSource stores the FeatureInput name as the source, which is machine-specific, so remove it:
+            seenVariants.add(variantContexts.stream().map(vc -> new VariantContextBuilder(vc).source("Unknown").make()).collect(Collectors.toList()));
         }
     }
 
