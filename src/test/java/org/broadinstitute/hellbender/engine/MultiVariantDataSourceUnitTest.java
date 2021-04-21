@@ -179,7 +179,7 @@ public final class MultiVariantDataSourceUnitTest extends GATKBaseTest {
                 VariantContext vc = it.next();
                 count++;
 
-                Assert.assertNotNull(vc.getSource());
+                Assert.assertTrue(vc.getSource().contains("interleavedVariants_"));
             };
             Assert.assertEquals(count, 14);
 
@@ -189,7 +189,7 @@ public final class MultiVariantDataSourceUnitTest extends GATKBaseTest {
                 VariantContext vc = it.next();
                 count++;
 
-                Assert.assertNotNull(vc.getSource());
+                Assert.assertTrue(vc.getSource().contains("interleavedVariants_"));
             };
             Assert.assertEquals(count, 3);
         }
