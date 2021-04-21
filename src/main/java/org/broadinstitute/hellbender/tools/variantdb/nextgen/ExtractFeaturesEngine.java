@@ -13,7 +13,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ExcessHet;
@@ -65,6 +64,7 @@ public class ExtractFeaturesEngine {
     private final int hqGenotypeGQThreshold;
     private final int hqGenotypeDepthThreshold;
     private final double hqGenotypeABThreshold;
+    private final int excessAllelesThreshold;
 
 //    /** Set of sample names seen in the variant data from BigQuery. */
 //    private final Set<String> sampleNames = new HashSet<>();
@@ -86,7 +86,8 @@ public class ExtractFeaturesEngine {
                                final int numSamples,
                                final int hqGenotypeGQThreshold,
                                final int hqGenotypeDepthThreshold,
-                               final double hqGenotypeABThreshold) {
+                               final double hqGenotypeABThreshold,
+                               final int excessAllelesThreshold) {
 
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
@@ -106,6 +107,7 @@ public class ExtractFeaturesEngine {
         this.hqGenotypeGQThreshold = hqGenotypeGQThreshold;
         this.hqGenotypeDepthThreshold = hqGenotypeDepthThreshold;
         this.hqGenotypeABThreshold = hqGenotypeABThreshold;
+        this.excessAllelesThreshold = excessAllelesThreshold;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
@@ -252,7 +254,7 @@ public class ExtractFeaturesEngine {
         }
         builder.attribute(GATKVCFConstants.EXCESS_HET_KEY, String.format("%.3f", excessHetApprox));
 
-        if (rec.getDistinctAlleles() > CommonCode.EXCESS_ALLELES_THRESHOLD) {
+        if (rec.getDistinctAlleles() > excessAllelesThreshold) {
             builder.filter(GATKVCFConstants.EXCESS_ALLELES);
         }
 
