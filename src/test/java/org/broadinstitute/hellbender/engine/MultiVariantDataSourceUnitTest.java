@@ -176,16 +176,20 @@ public final class MultiVariantDataSourceUnitTest extends GATKBaseTest {
 
             Iterator<VariantContext> it = multiVariantSource.query(new SimpleInterval("1", 1, 1200));
             while (it.hasNext()) {
-                it.next();
+                VariantContext vc = it.next();
                 count++;
+
+                Assert.assertNotNull(vc.getSource());
             };
             Assert.assertEquals(count, 14);
 
             count = 0;
             it = multiVariantSource.query(new SimpleInterval("2", 200, 600));
             while (it.hasNext()) {
-                it.next();
+                VariantContext vc = it.next();
                 count++;
+
+                Assert.assertNotNull(vc.getSource());
             };
             Assert.assertEquals(count, 3);
         }

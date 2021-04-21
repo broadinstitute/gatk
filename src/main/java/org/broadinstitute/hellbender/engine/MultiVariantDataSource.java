@@ -5,8 +5,8 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.MergingIterator;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.VariantContextComparator;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFUtils;
 import org.apache.logging.log4j.LogManager;
@@ -44,7 +44,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
     /**
      * List of FeatureDataSource objects aggregated by this MultiVariantDataSource
      */
-    final private List<FeatureDataSource<VariantContext>> featureDataSources = new ArrayList<FeatureDataSource<VariantContext>>();
+    final private List<FeatureDataSource<VariantContext>> featureDataSources = new ArrayList<>();
 
     /**
      * Merged VCF header used for this (aggregate) source, derived from the individual sources.
@@ -196,12 +196,12 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
 
         if (featureDataSources.size() > 1) {
             final List<CloseableIterator<VariantContext>> iterators = new ArrayList<>(featureDataSources.size());
-            featureDataSources.forEach(ds -> iterators.add(getCloseableIteratorWrapper(iteratorFromSource.apply((ds)))));
+            featureDataSources.forEach(ds -> iterators.add(getCloseableIteratorWrapper(iteratorFromSource.apply((ds)), ds.getName())));
 
             final VariantContextComparator varComparator = new VariantContextComparator(getSequenceDictionary());
             currentIterator = new MergingIterator<>(varComparator, iterators);
         } else {
-            currentIterator = getCloseableIteratorWrapper(iteratorFromSource.apply(featureDataSources.get(0)));
+            currentIterator = getCloseableIteratorWrapper(iteratorFromSource.apply(featureDataSources.get(0)), featureDataSources.get(0).getName());
         }
         return currentIterator;
     }
@@ -387,27 +387,10 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
     /**
      * Wrap the sourceIterator in a CloseableIterator to make it usable as a MergingIterator source.
      */
-    private CloseableIterator<VariantContext> getCloseableIteratorWrapper(final Iterator<VariantContext> sourceIterator) {
+    private CloseableIterator<VariantContext> getCloseableIteratorWrapper(final Iterator<VariantContext> sourceIterator, final String featureInputName) {
         Utils.nonNull(sourceIterator);
 
-        return new CloseableIterator<VariantContext>() {
-            Iterator<VariantContext> delegateIterator = sourceIterator;
-            @Override
-            public void close() { delegateIterator = null; }
-
-            @Override
-            public boolean hasNext() {
-                return delegateIterator != null && delegateIterator.hasNext();
-            }
-
-            @Override
-            public VariantContext next() {
-                if (!hasNext()) {
-                    throw new NoSuchElementException("hasNext should be called before next");
-                }
-                return delegateIterator.next();
-            }
-        };
+        return new SourceAwareClosableIterator(sourceIterator, featureInputName);
     }
 
     /**
@@ -415,5 +398,34 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      */
     public SortedSet<String> getSamples() {
         return mergedSamples;
+    }
+
+    private static class SourceAwareClosableIterator implements CloseableIterator<VariantContext> {
+        private Iterator<VariantContext> delegateIterator;
+        private final String featureInputName;
+
+        public SourceAwareClosableIterator(final Iterator<VariantContext> sourceIterator, final String featureInputName) {
+            this.delegateIterator = sourceIterator;
+            this.featureInputName = featureInputName;
+        }
+        @Override
+        public void close() { delegateIterator = null; }
+
+        @Override
+        public boolean hasNext() {
+            return delegateIterator != null && delegateIterator.hasNext();
+        }
+
+        @Override
+        public VariantContext next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException("hasNext should be called before next");
+            }
+            VariantContext vc = delegateIterator.next();
+
+            //TODO: can we avoid double-creating this?
+            //An alternate idea woulc be to create a wrapper class around VariantContext.
+            return new VariantContextBuilder(vc).source(featureInputName).make();
+        }
     }
 }
