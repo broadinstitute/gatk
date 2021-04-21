@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.variant.variantcontext.VariantContext;
-
+import htsjdk.variant.vcf.VCFFileReader;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -186,6 +186,63 @@ public final class MultiVariantDataSourceUnitTest extends GATKBaseTest {
             while (it.hasNext()) {
                 it.next();
                 count++;
+            };
+            Assert.assertEquals(count, 3);
+        }
+
+    }
+
+    private String getKey(VariantContext vc) {
+        return vc.getContig() + ":" + vc.getStart() + "-" + vc.getEnd();
+    }
+
+    @Test
+    public void testVariantSource() {
+        List<FeatureInput<VariantContext>> featureInputs = new ArrayList<>();
+
+        File vcfPath1 = new File(MULTI_VARIANT_TEST_DIRECTORY, "interleavedVariants_1.vcf");
+        File vcfPath2 = new File(MULTI_VARIANT_TEST_DIRECTORY, "interleavedVariants_2.vcf");
+
+        featureInputs.add(new FeatureInput<>(vcfPath1.getAbsolutePath(), "interleavedVariants_1"));
+        featureInputs.add(new FeatureInput<>(vcfPath2.getAbsolutePath(), "interleavedVariants_2"));
+
+        final Map<String, String> variantToSource = new HashMap<>();
+        try (VCFFileReader reader = new VCFFileReader(vcfPath1)) {
+            reader.iterator().stream().forEach(vc -> {
+                String key = getKey(vc);
+                Assert.assertFalse(variantToSource.containsKey(key));
+                variantToSource.put(key, "interleavedVariants_1");
+            });
+        }
+
+        try (VCFFileReader reader = new VCFFileReader(vcfPath2)) {
+            reader.iterator().stream().forEach(vc -> {
+                String key = getKey(vc);
+                Assert.assertFalse(variantToSource.containsKey(key));
+                variantToSource.put(key, "interleavedVariants_2");
+            });
+        }
+
+        try (final MultiVariantDataSource multiVariantSource =
+                     new MultiVariantDataSource(featureInputs, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES)) {
+            int count = 0;
+
+            Iterator<VariantContext> it = multiVariantSource.query(new SimpleInterval("1", 1, 1200));
+            while (it.hasNext()) {
+                VariantContext vc = it.next();
+                count++;
+
+                Assert.assertEquals(vc.getSource(), variantToSource.get(getKey(vc)));
+            };
+            Assert.assertEquals(count, 14);
+
+            count = 0;
+            it = multiVariantSource.query(new SimpleInterval("2", 200, 600));
+            while (it.hasNext()) {
+                VariantContext vc = it.next();
+                count++;
+
+                Assert.assertEquals(vc.getSource(), variantToSource.get(getKey(vc)));
             };
             Assert.assertEquals(count, 3);
         }
