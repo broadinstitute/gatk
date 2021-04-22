@@ -434,9 +434,6 @@ task CreateImportTsvs {
 
 # Creates all the tables necessary for the LoadData operation
 task CreateTables {
-	meta {
-    	volatile: true
-  	}
 
 	input {
       String project_id
