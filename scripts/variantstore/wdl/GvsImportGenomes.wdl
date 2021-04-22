@@ -377,14 +377,8 @@ task CreateImportTsvs {
       DO_TSV_GENERATION='true'
       if [ ~{call_cache_tsvs} = 'true' ]; then
         echo "Checking for files to call cache"
-        # currently these will NOT identify files in a done directory OR in a set directory
-        # SAMPLE_INFO_FILE_PATH="~{sample_info_staging_directory}sample_info_*_~{input_vcf_basename}.tsv"
-        # PET_FILE_PATH="~{pet_staging_directory}pet_*_~{input_vcf_basename}.tsv"
-        # VET_FILE_PATH="~{vet_staging_directory}vet_*_~{input_vcf_basename}.tsv"
-        # declare -a FILEARRAY=($SAMPLE_INFO_FILE_PATH $PET_FILE_PATH $VET_FILE_PATH)
-
+        
         declare -a TABLETYPES=("sample_info" "pet" "vet")
-
         ALL_FILES_EXIST='true'
         for TABLETYPE in ${TABLETYPES[@]}; do
             FILEPATH="~{output_directory}/${TABLETYPE}_tsvs/**${TABLETYPE}_*_~{input_vcf_basename}.tsv"
