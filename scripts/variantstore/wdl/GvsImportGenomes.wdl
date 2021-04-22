@@ -387,7 +387,7 @@ task CreateImportTsvs {
 
         ALL_FILES_EXIST='true'
         for TABLETYPE in ${TABLETYPES[@]}; do
-            FILEPATH = "~{output_directory}/${TABLETYPE}_tsvs/**${TABLETYPE}_*_~{input_vcf_basename}.tsv"
+            FILEPATH="~{output_directory}/${TABLETYPE}_tsvs/**${TABLETYPE}_*_~{input_vcf_basename}.tsv"
             # output 1 if no file is found
             result=$(gsutil ls $FILEPATH || echo 1)
 
