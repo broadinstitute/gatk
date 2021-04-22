@@ -387,15 +387,13 @@ task CreateImportTsvs {
 
         ALL_FILES_EXIST=true
         for filepath in ${FILEARRAY[@]}; do
-            echo "checking whether file $filepath already exists..."
-            # the following returns 0 if file exists or 1 if file does not exist
-            gsutil -q stat $filepath
-            status=$?
-            if [[ $status == 0 ]]; then
-              echo "File $filepath already exists"
-            else
-              echo "File $filepath does not exist"
+            result=$(gsutil ls $filepath || echo "error finding file")
+
+            if [ $result == "error finding file" ]; then
+              echo "A file matching $filepath does not exist"
               ALL_FILES_EXIST=false
+            else
+              echo "File $result already exists"
             fi
         done
 
