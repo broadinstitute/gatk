@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.Test;
+import org.testng.Assert;
 
 import java.io.File;
 import java.util.*;
@@ -44,6 +45,16 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         );
         Collections.sort(allOutputFiles);
 
+        final List<File> expectedFileNames = new ArrayList<>(Arrays.asList(
+                new File(outputDir + "/pet_001_" + input_vcf_file + ".tsv"),
+                new File(outputDir + "/sample_info_001_" + input_vcf_file + ".tsv"),
+                new File(outputDir + "/vet_001_" + input_vcf_file + ".tsv")
+        ));
+
+        // test contents of files match
         IntegrationTestSpec.assertMatchingFiles(allOutputFiles, expectedOutputFiles, false, STRICT);
+
+        // test file names are expected
+        Assert.assertEquals(allOutputFiles, expectedFileNames);
     }
 }

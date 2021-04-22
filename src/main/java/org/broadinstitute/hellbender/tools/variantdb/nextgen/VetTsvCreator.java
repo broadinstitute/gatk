@@ -27,12 +27,12 @@ public class VetTsvCreator {
     private static String VET_FILETYPE_PREFIX = "vet_";
 
 
-    public VetTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, final File outputDirectory) {
+    public VetTsvCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumberPrefix, final File outputDirectory) {
         this.sampleId = sampleId;
         // If the vet directory inside it doesn't exist yet -- create it
         // if the pet & vet tsvs don't exist yet -- create them
         try {
-            final File vetOutputFile = new File(outputDirectory, VET_FILETYPE_PREFIX + tableNumberPrefix + sampleName  + IngestConstants.FILETYPE);
+            final File vetOutputFile = new File(outputDirectory, VET_FILETYPE_PREFIX + tableNumberPrefix + sampleIdentifierForOutputFileName + IngestConstants.FILETYPE);
             vetWriter = new SimpleXSVWriter(vetOutputFile.toPath(), IngestConstants.SEPARATOR);
             vetWriter.setHeaderLine(getHeaders());
         } catch (final IOException e) {

@@ -83,6 +83,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - mmt_call_cache_IG
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl

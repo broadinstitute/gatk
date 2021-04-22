@@ -27,9 +27,9 @@ public class SampleInfoTsvCreator {
         inferred_state,
     }
 
-    public SampleInfoTsvCreator(String sampleName, String sampleId, String tableNumberPrefix, final File outputDirectory) {
+    public SampleInfoTsvCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumberPrefix, final File outputDirectory) {
         try {
-            final File sampleInfoFile = new File(outputDirectory, IngestConstants.sampleInfoFilePrefix + tableNumberPrefix + sampleName + IngestConstants.FILETYPE);
+            final File sampleInfoFile = new File(outputDirectory, IngestConstants.sampleInfoFilePrefix + tableNumberPrefix + sampleIdentifierForOutputFileName + IngestConstants.FILETYPE);
             // write header to it
             List<String> sampleListHeader = SampleInfoTsvCreator.getHeaders();
             sampleInfoWriter = new SimpleXSVWriter(sampleInfoFile.toPath(), IngestConstants.SEPARATOR);
