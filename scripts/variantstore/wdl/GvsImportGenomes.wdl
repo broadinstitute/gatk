@@ -376,14 +376,18 @@ task CreateImportTsvs {
       # check whether these files have already been generated
       DO_TSV_GENERATION=true
       if [ ~{call_cache_tsvs} = 'true' ]; then
+        echo "Checking for files to call cache"
         # currently these will NOT identify files in a done directory OR in a set directory
         SAMPLE_INFO_FILE_PATH="~{sample_info_staging_directory}sample_info_*_~{input_vcf_basename}.tsv"
         PET_FILE_PATH="~{pet_staging_directory}pet_*_~{input_vcf_basename}.tsv"
         VET_FILE_PATH="~{vet_staging_directory}vet_*_~{input_vcf_basename}.tsv"
+        echo "setting up FILEARRAY"
         declare -a FILEARRAY=($SAMPLE_INFO_FILE_PATH $PET_FILE_PATH $VET_FILE_PATH)
+        echo "looking for these files: $FILEARRAY"
 
         ALL_FILES_EXIST=true
         for filepath in ${FILEARRAY[@]}; do
+            echo "checking whether file $filepath already exists..."
             # the following returns 0 if file exists or 1 if file does not exist
             gsutil -q stat $filepath
             status=$?
