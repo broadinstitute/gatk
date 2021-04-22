@@ -594,6 +594,9 @@ task LoadTable {
           echo "Moving set $set data into separate directory."
           awk -v set="$set" '$4 == set' ~{datatype}_du_sets.txt | cut -f2 | gsutil -m mv -I "${DIR}set_${set}/" 2> copy.log
 
+          echo "TEMPORARILY EXITING TO SIMULATE BQ LOAD FAILURE"
+          exit 1
+
           # execute bq load command, get bq load job id, add details per set to tmp file
           echo "Running BigQuery load for set $set."
           bq load --quiet --nosync --location=US --project_id=~{project_id} --skip_leading_rows=1 --source_format=CSV -F "\t" \
