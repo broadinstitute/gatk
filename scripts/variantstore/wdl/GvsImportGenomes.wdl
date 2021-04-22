@@ -312,6 +312,8 @@ task CreateImportTsvs {
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
 
+    Boolean call_cache_tsvs = false
+
     # runtime
     Int? preemptible_tries
     File? gatk_override
@@ -322,9 +324,14 @@ task CreateImportTsvs {
   }
 
   Int disk_size = if defined(drop_state) then 30 else 75
+  String input_vcf_basename = basename(input_vcf)
   String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
   # if we are doing a manual localization, we need to set the filename
-  String updated_input_vcf = if (defined(service_account_json)) then basename(input_vcf) else input_vcf
+  String updated_input_vcf = if (defined(service_account_json)) then input_vcf_basename else input_vcf
+
+  String sample_info_staging_directory = ~{output_directory}/sample_info_tsvs/
+  String pet_staging_directory = ~{output_directory}/pet_tsvs/
+  String vet_staging_directory = ~{output_directory}/vet_tsvs/
 
   meta {
     description: "Creates a tsv file for import into BigQuery"
@@ -366,18 +373,47 @@ task CreateImportTsvs {
         exit 1
       fi
 
-      gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
-        -V ~{updated_input_vcf} \
-        -L ~{interval_list} \
-        ~{"-IG " + drop_state} \
-        --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
-        --mode GENOMES \
-        -SNM ~{sample_map} \
-        --ref-version 38
+      # check whether these files have already been generated
+      DO_TSV_GENERATION=true
+      if [ ~{call_cache_tsvs} = 'true' ]; then
+        # currently these will NOT identify files in a done directory OR in a set directory
+        SAMPLE_INFO_FILE_PATH="~{sample_info_staging_directory}sample_info_*_~{input_vcf_basename}.tsv"
+        PET_FILE_PATH="~{pet_staging_directory}pet_*_~{input_vcf_basename}.tsv"
+        VET_FILE_PATH="~{vet_staging_directory}vet_*_~{input_vcf_basename}.tsv"
 
-      gsutil -m cp sample_info_*.tsv ~{output_directory}/sample_info_tsvs/
-      gsutil -m cp pet_*.tsv ~{output_directory}/pet_tsvs/
-      gsutil -m cp vet_*.tsv ~{output_directory}/vet_tsvs/
+        ALL_FILES_EXIST=true
+        for filepath in (SAMPLE_INFO_FILE_PATH PET_FILE_PATH VET_FILE_PATH); do
+            # the following returns 0 if file exists or 1 if file does not exist
+            gsutil -q stat $filepath
+            STATUS=$?
+            if [[ $status == 0 ]] && [ ALL_FILES_EXIST ]; then
+              echo "File $filepath already exists"
+            else
+              echo "File $filepath does not exist"
+              ALL_FILES_EXIST=false
+            fi
+        done
+
+        if [ $ALL_FILES_EXIST = 'true' ]; then
+            DO_TSV_GENERATION=false
+            echo "Skipping TSV generation for input file ~{input_vcf_basename} because the output TSV files already exist."
+        fi
+      fi
+
+      if [ $DO_TSV_GENERATION='true' ]; then
+          gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
+            -V ~{updated_input_vcf} \
+            -L ~{interval_list} \
+            ~{"-IG " + drop_state} \
+            --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
+            --mode GENOMES \
+            -SNM ~{sample_map} \
+            --ref-version 38
+
+          gsutil -m cp sample_info_*.tsv ~{output_directory}/sample_info_tsvs/
+          gsutil -m cp pet_*.tsv ~{output_directory}/pet_tsvs/
+          gsutil -m cp vet_*.tsv ~{output_directory}/vet_tsvs/
+      fi
   >>>
   runtime {
       docker: docker
