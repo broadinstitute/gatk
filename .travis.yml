@@ -37,10 +37,6 @@ env:
   - HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=servicekey.json
   #Work around for https://github.com/googleapis/google-cloud-java/issues/5884
   - export GOOGLE_CLOUD_PROJECT=$HELLBENDER_TEST_PROJECT
-  #for uploading artifacts
-  - ARTIFACTORY_USERNAME=gatkci
-  #artifactory password
-  - secure: "E0LWXgX3aWSE/DWHXXDx4vrAq4uX6vKg402wToaZ5otbHQ/UP0H7/FA5jomavAXoC46oMVHZcEltZ5OVhuJ0NW8yYxUCecJ1D/YvVQmnfFABcV/qLM+k4e2rYQOKVw/pejB2gG8XdTA+XE2WyTeENbmIkputS8f1ndKWCmZxuuk="
   # For cromwell jar download
   - export CROMWELL_JAR=$HOME/cromwell-51.jar
   - export WOMTOOL_JAR=$HOME/womtool-51.jar
