@@ -24,12 +24,12 @@ workflow GvsImportGenomes {
 
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
 
-  # call SetLock {
-  #   input:
-  #     output_directory = output_directory,
-  #     service_account_json = service_account_json,
-  #     preemptible_tries = preemptible_tries
-  # }
+  call SetLock {
+    input:
+      output_directory = output_directory,
+      service_account_json = service_account_json,
+      preemptible_tries = preemptible_tries
+  }
 
   call GetMaxTableId {
     input:
@@ -95,7 +95,7 @@ workflow GvsImportGenomes {
         gatk_override = gatk_override,
         docker = docker_final,
         preemptible_tries = preemptible_tries,
-        run_uuid = "" # SetLock.run_uuid
+        run_uuid = SetLock.run_uuid
     }
   }
 
@@ -113,7 +113,7 @@ workflow GvsImportGenomes {
         table_creation_done = CreateSampleInfoTables.done,
         tsv_creation_done = CreateImportTsvs.done,
         docker = docker_final,
-        run_uuid = "" #SetLock.run_uuid
+        run_uuid = SetLock.run_uuid
     }
   }
 
@@ -131,7 +131,7 @@ workflow GvsImportGenomes {
       table_creation_done = CreatePetTables.done,
       tsv_creation_done = CreateImportTsvs.done,
       docker = docker_final,
-      run_uuid = "" #SetLock.run_uuid
+      run_uuid = SetLock.run_uuid
     }
   }
 
@@ -149,13 +149,13 @@ workflow GvsImportGenomes {
       table_creation_done = CreateVetTables.done,
       tsv_creation_done = CreateImportTsvs.done,
       docker = docker_final,
-      run_uuid = "" #SetLock.run_uuid
+      run_uuid = SetLock.run_uuid
     }
   }
 
   call ReleaseLock {
     input:
-      run_uuid = "", #SetLock.run_uuid,
+      run_uuid = SetLock.run_uuid,
       output_directory = output_directory,
       load_sample_info_done = LoadSampleInfoTable.done,
       load_pet_done = LoadPetTable.done,
@@ -363,15 +363,15 @@ task CreateImportTsvs {
         gsutil cp ~{input_vcf_index} .
       fi
 
-      # # check for existence of the correct lockfile
-      # LOCKFILE="~{output_directory}/LOCKFILE"
-      # EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
-      # CURRENT_RUN_ID="~{run_uuid}"
+      # check for existence of the correct lockfile
+      LOCKFILE="~{output_directory}/LOCKFILE"
+      EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
+      CURRENT_RUN_ID="~{run_uuid}"
 
-      # if [ ${EXISTING_LOCK_ID} != ${CURRENT_RUN_ID} ]; then
-      #   echo "ERROR: found mismatched lockfile containing run ${EXISTING_LOCK_ID}, which does not match this run ${CURRENT_RUN_ID}." 1>&2
-      #   exit 1
-      # fi
+      if [ ${EXISTING_LOCK_ID} != ${CURRENT_RUN_ID} ]; then
+        echo "ERROR: found mismatched lockfile containing run ${EXISTING_LOCK_ID}, which does not match this run ${CURRENT_RUN_ID}." 1>&2
+        exit 1
+      fi
 
       # check whether these files have already been generated
       DO_TSV_GENERATION='true'
@@ -381,9 +381,7 @@ task CreateImportTsvs {
         SAMPLE_INFO_FILE_PATH="~{sample_info_staging_directory}sample_info_*_~{input_vcf_basename}.tsv"
         PET_FILE_PATH="~{pet_staging_directory}pet_*_~{input_vcf_basename}.tsv"
         VET_FILE_PATH="~{vet_staging_directory}vet_*_~{input_vcf_basename}.tsv"
-        echo "setting up FILEARRAY"
         declare -a FILEARRAY=($SAMPLE_INFO_FILE_PATH $PET_FILE_PATH $VET_FILE_PATH)
-        echo "looking for these files: $FILEARRAY"
 
         ALL_FILES_EXIST='true'
         for filepath in ${FILEARRAY[@]}; do
@@ -398,17 +396,11 @@ task CreateImportTsvs {
             fi
         done
 
-        echo "All files exist?"
-        echo $ALL_FILES_EXIST
-
         if [ $ALL_FILES_EXIST = 'true' ]; then
             DO_TSV_GENERATION='false'
             echo "Skipping TSV generation for input file ~{input_vcf_basename} because the output TSV files already exist."
         fi
       fi
-
-      echo "do tsv generation?"
-      echo $DO_TSV_GENERATION
 
       if [ $DO_TSV_GENERATION = 'true' ]; then
           echo "Generating TSVs for input file ~{input_vcf_basename}"
