@@ -329,10 +329,6 @@ task CreateImportTsvs {
   # if we are doing a manual localization, we need to set the filename
   String updated_input_vcf = if (defined(service_account_json)) then input_vcf_basename else input_vcf
 
-  String sample_info_staging_directory = output_directory + '/sample_info_tsvs/'
-  String pet_staging_directory = output_directory + '/pet_tsvs/'
-  String vet_staging_directory = output_directory + '/vet_tsvs/'
-
   meta {
     description: "Creates a tsv file for import into BigQuery"
     volatile: true
@@ -377,7 +373,7 @@ task CreateImportTsvs {
       DO_TSV_GENERATION='true'
       if [ ~{call_cache_tsvs} = 'true' ]; then
         echo "Checking for files to call cache"
-        
+
         declare -a TABLETYPES=("sample_info" "pet" "vet")
         ALL_FILES_EXIST='true'
         for TABLETYPE in ${TABLETYPES[@]}; do
