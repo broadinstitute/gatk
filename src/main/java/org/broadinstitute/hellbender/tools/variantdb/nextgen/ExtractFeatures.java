@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -13,9 +14,12 @@ import org.broadinstitute.hellbender.tools.variantdb.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @CommandLineProgramProperties(
         summary = "(\"ExtractFeatures\") - Extract features data from BQ to train filtering model.",
@@ -67,7 +71,7 @@ public class ExtractFeatures extends ExtractTool {
 
     @Argument(
         fullName = "excess-alleles-threshold",
-        doc = "excess alleles threshold", // TODO what even is this?!??!
+        doc = "Non-reference alleles threshold above which a site will be filtered out",
         optional = true)
     protected int excessAllelesThreshold = CommonCode.EXCESS_ALLELES_THRESHOLD;
 
@@ -83,7 +87,12 @@ public class ExtractFeatures extends ExtractTool {
         TableReference sampleTableRef = new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS);
         SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
 
-        VCFHeader header = CommonCode.generateVcfHeader(new HashSet<>(), reference.getSequenceDictionary());
+        Set<VCFHeaderLine> excessAllelesHeaderLines = new HashSet<>();
+        excessAllelesHeaderLines.add(
+            FilterSensitivityTools.getExcessAllelesHeader(excessAllelesThreshold, GATKVCFConstants.EXCESS_ALLELES));
+
+        VCFHeader header = CommonCode.generateVcfHeader(
+            new HashSet<>(), reference.getSequenceDictionary(), excessAllelesHeaderLines);
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 

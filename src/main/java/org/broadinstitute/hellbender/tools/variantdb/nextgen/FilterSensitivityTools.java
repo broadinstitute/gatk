@@ -124,6 +124,12 @@ public class FilterSensitivityTools {
                 "Site failed " + model + " model VQSLOD cutoff of " + vqsLodThreshold.toString());
     }
 
+    public static VCFHeaderLine getExcessAllelesHeader(int excessAllelesThreshold, String model) {
+        // should there be a gate for max or min excessAllelesThreshold value?
+        return new VCFFilterHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
+            "Site failed " + model + " model excess allele cutoff (" + excessAllelesThreshold + ")");
+    }
+
     public static VCFHeaderLine getTruthSensitivityHeader(Double truthSensitivityThreshold, Double vqsLodThreshold, String model) {
         if (truthSensitivityThreshold == null) {  // at this point, we know that all vqsr threshold inputs are null, so use defaults
             truthSensitivityThreshold = GATKVCFConstants.SNP.contains(model) ? DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS : DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS;
