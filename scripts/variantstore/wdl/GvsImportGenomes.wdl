@@ -374,8 +374,8 @@ task CreateImportTsvs {
       fi
 
       # check whether these files have already been generated
-      DO_TSV_GENERATION=true
-      if [ ~{call_cache_tsvs} = true ]; then
+      DO_TSV_GENERATION='true'
+      if [ ~{call_cache_tsvs} = 'true' ]; then
         echo "Checking for files to call cache"
         # currently these will NOT identify files in a done directory OR in a set directory
         SAMPLE_INFO_FILE_PATH="~{sample_info_staging_directory}sample_info_*_~{input_vcf_basename}.tsv"
@@ -385,26 +385,32 @@ task CreateImportTsvs {
         declare -a FILEARRAY=($SAMPLE_INFO_FILE_PATH $PET_FILE_PATH $VET_FILE_PATH)
         echo "looking for these files: $FILEARRAY"
 
-        ALL_FILES_EXIST=true
+        ALL_FILES_EXIST='true'
         for filepath in ${FILEARRAY[@]}; do
             # output 1 if no file is found
             result=$(gsutil ls $filepath || echo 1)
 
             if [ $result == 1 ]; then
               echo "A file matching $filepath does not exist"
-              ALL_FILES_EXIST=false
+              ALL_FILES_EXIST='false'
             else
               echo "File $result already exists"
             fi
         done
 
-        if [ $ALL_FILES_EXIST = true ]; then
-            DO_TSV_GENERATION=false
+        echo "All files exist?"
+        echo $ALL_FILES_EXIST
+
+        if [ $ALL_FILES_EXIST = 'true' ]; then
+            DO_TSV_GENERATION='false'
             echo "Skipping TSV generation for input file ~{input_vcf_basename} because the output TSV files already exist."
         fi
       fi
+      
+      echo "do tsv generation?"
+      echo $DO_TSV_GENERATION
 
-      if [ $DO_TSV_GENERATION = true ]; then
+      if [ $DO_TSV_GENERATION = 'true' ]; then
           echo "Generating TSVs for input file ~{input_vcf_basename}"
           gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
             -V ~{updated_input_vcf} \
