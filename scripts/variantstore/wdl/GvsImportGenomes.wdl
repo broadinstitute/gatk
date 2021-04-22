@@ -378,21 +378,31 @@ task CreateImportTsvs {
       if [ ~{call_cache_tsvs} = 'true' ]; then
         echo "Checking for files to call cache"
         # currently these will NOT identify files in a done directory OR in a set directory
-        SAMPLE_INFO_FILE_PATH="~{sample_info_staging_directory}sample_info_*_~{input_vcf_basename}.tsv"
-        PET_FILE_PATH="~{pet_staging_directory}pet_*_~{input_vcf_basename}.tsv"
-        VET_FILE_PATH="~{vet_staging_directory}vet_*_~{input_vcf_basename}.tsv"
-        declare -a FILEARRAY=($SAMPLE_INFO_FILE_PATH $PET_FILE_PATH $VET_FILE_PATH)
+        # SAMPLE_INFO_FILE_PATH="~{sample_info_staging_directory}sample_info_*_~{input_vcf_basename}.tsv"
+        # PET_FILE_PATH="~{pet_staging_directory}pet_*_~{input_vcf_basename}.tsv"
+        # VET_FILE_PATH="~{vet_staging_directory}vet_*_~{input_vcf_basename}.tsv"
+        # declare -a FILEARRAY=($SAMPLE_INFO_FILE_PATH $PET_FILE_PATH $VET_FILE_PATH)
+
+        declare -a TABLETYPES=("sample_info" "pet" "vet")
 
         ALL_FILES_EXIST='true'
-        for filepath in ${FILEARRAY[@]}; do
+        for TABLETYPE in ${TABLETYPES[@]}; do
+            FILEPATH = "~{output_directory}/${TABLETYPE}_tsvs/**${TABLETYPE}_*_~{input_vcf_basename}.tsv"
             # output 1 if no file is found
-            result=$(gsutil ls $filepath || echo 1)
+            result=$(gsutil ls $FILEPATH || echo 1)
 
             if [ $result == 1 ]; then
-              echo "A file matching $filepath does not exist"
+              echo "A file matching $FILEPATH does not exist"
               ALL_FILES_EXIST='false'
             else
               echo "File $result already exists"
+              if [[ $result = "~{output_directory}/${TABLETYPE}_tsvs/set_"* ]]; then
+                echo "File is in set directory. Moving out of set directory to ~{output_directory}/${TABLETYPE}_tsvs/${FILENAME}"
+                FILENAME=${result##/*/}
+                echo $FILENAME
+                gsutil mv $result "~{output_directory}/${TABLETYPE}_tsvs/${FILENAME}"
+              fi
+
             fi
         done
 
