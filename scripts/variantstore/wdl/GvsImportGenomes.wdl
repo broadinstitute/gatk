@@ -155,7 +155,7 @@ workflow GvsImportGenomes {
 
   call ReleaseLock {
     input:
-      run_uuid = "" #SetLock.run_uuid,
+      run_uuid = "", #SetLock.run_uuid,
       output_directory = output_directory,
       load_sample_info_done = LoadSampleInfoTable.done,
       load_pet_done = LoadPetTable.done,
