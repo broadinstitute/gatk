@@ -380,13 +380,14 @@ task CreateImportTsvs {
         SAMPLE_INFO_FILE_PATH="~{sample_info_staging_directory}sample_info_*_~{input_vcf_basename}.tsv"
         PET_FILE_PATH="~{pet_staging_directory}pet_*_~{input_vcf_basename}.tsv"
         VET_FILE_PATH="~{vet_staging_directory}vet_*_~{input_vcf_basename}.tsv"
+        declare -a FILEARRAY=($SAMPLE_INFO_FILE_PATH $PET_FILE_PATH $VET_FILE_PATH)
 
         ALL_FILES_EXIST=true
-        for filepath in (SAMPLE_INFO_FILE_PATH PET_FILE_PATH VET_FILE_PATH); do
+        for filepath in ${FILEARRAY[@]}; do
             # the following returns 0 if file exists or 1 if file does not exist
             gsutil -q stat $filepath
-            STATUS=$?
-            if [[ $status == 0 ]] && [ ALL_FILES_EXIST ]; then
+            status=$?
+            if [[ $status == 0 ]]; then
               echo "File $filepath already exists"
             else
               echo "File $filepath does not exist"
@@ -401,6 +402,7 @@ task CreateImportTsvs {
       fi
 
       if [ $DO_TSV_GENERATION='true' ]; then
+          echo "Generating TSVs for input file ~{input_vcf_basename}"
           gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
             -V ~{updated_input_vcf} \
             -L ~{interval_list} \
