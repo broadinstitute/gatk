@@ -385,8 +385,11 @@ task CreateImportTsvs {
               echo "A file matching ${FILEPATH} does not exist"
               ALL_FILES_EXIST='false'
             else
-              echo "File $result already exists"
-              if [[ $result = "~{output_directory}/${TABLETYPE}_tsvs/set_"* ]]; then
+              if [[ $result = *"/done/"* ]]; then
+                echo "File ${FILENAME} seems to have been processed already; found at ${result}"
+                echo "Something is very wrong!"
+                exit 1
+              elif [[ $result = "~{output_directory}/${TABLETYPE}_tsvs/set_"* ]]; then
                 FILENAME=$(basename $result)
                 echo "File ${FILENAME} is in a set directory. Moving out of set directory to ~{output_directory}/${TABLETYPE}_tsvs/${FILENAME}"
                 gsutil mv $result "~{output_directory}/${TABLETYPE}_tsvs/"
