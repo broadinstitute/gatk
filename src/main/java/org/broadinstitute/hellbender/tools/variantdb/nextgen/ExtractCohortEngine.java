@@ -59,7 +59,6 @@ public class ExtractCohortEngine {
     private Set<String> sampleNames;
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
     private final GnarlyGenotyperEngine gnarlyGenotyper;
-    private final ExtractCohort.QueryMode queryMode;
 
     private int totalNumberOfVariants = 0;
     private int totalNumberOfSites = 0;
@@ -94,7 +93,6 @@ public class ExtractCohortEngine {
                                final Double vqsLodSNPThreshold,
                                final Double vqsLodINDELThreshold,
                                final ProgressMeter progressMeter,
-                               final ExtractCohort.QueryMode queryMode,
                                final String filterSetName,
                                final boolean emitPLs) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
@@ -117,7 +115,6 @@ public class ExtractCohortEngine {
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
         this.progressMeter = progressMeter;
-        this.queryMode = queryMode;
 
         this.filterSetName = filterSetName;
 
@@ -183,26 +180,19 @@ public class ExtractCohortEngine {
             }
         }
 
-        switch (queryMode) {
-            case LOCAL_SORT:
-                if (printDebugInformation) {
-                    logger.debug("using storage api with local sort");
-                }
-                logger.debug("Initializing Reader");
-                if (cohortTableRef != null){
-                    final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
-                    createVariantsFromUnsortedResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
-                }
-                else {
-                    final AvroFileReader avroFileReader = new AvroFileReader(cohortAvroFileName);
-                    createVariantsFromUnsortedResult(avroFileReader, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
-                }
-                logger.debug("Finished Initializing Reader");
-                break;
-            case QUERY:
-                // TODO remove queryMode entirely from ExtractTool
-                throw new NotImplementedException("QUERY mode not supported. Please use `--query-mode LOCAL_SORT`.");
+        if (printDebugInformation) {
+            logger.debug("using storage api with local sort");
         }
+        logger.debug("Initializing Reader");
+        if (cohortTableRef != null){
+            final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
+            createVariantsFromUnsortedResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+        }
+        else {
+            final AvroFileReader avroFileReader = new AvroFileReader(cohortAvroFileName);
+            createVariantsFromUnsortedResult(avroFileReader, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+        }
+        logger.debug("Finished Initializing Reader");
     }
 
 
