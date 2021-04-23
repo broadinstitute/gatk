@@ -188,7 +188,6 @@ public class ExtractCohort extends ExtractTool {
                 vqsLodSNPThreshold,
                 vqsLodINDELThreshold,
                 progressMeter,
-                queryMode,
                 filterSetName,
                 emitPLs);
         vcfWriter.writeHeader(header);
