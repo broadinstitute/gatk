@@ -406,6 +406,8 @@ task CreateImportTsvs {
 
       if [ $DO_TSV_GENERATION = 'true' ]; then
           echo "Generating TSVs for input file ~{input_vcf_basename}"
+
+          # TODO in future when we pass the source path or gvs_id as an arg here, use a version of that for the filename too
           gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
             -V ~{updated_input_vcf} \
             -L ~{interval_list} \

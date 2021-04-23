@@ -24,7 +24,6 @@ import org.broadinstitute.hellbender.utils.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -147,8 +146,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
         }
 
+        // TODO when we pass in the full file path or gvs_id as an input arg, use path here instead or gvs_id in addition
         // use input gvcf file name instead of sample name in output filenames
-        System.out.println(getInputFileName());
         String sampleIdentifierForOutputFileName = getInputFileName();
 
         // Mod the sample directories
