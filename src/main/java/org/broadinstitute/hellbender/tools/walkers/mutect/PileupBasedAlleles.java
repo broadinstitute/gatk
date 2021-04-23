@@ -31,7 +31,9 @@ final class PileupBasedAlleles {
 
             for (byte eachBase : pileup.getBases()) {
                 // check to see that the base is not ref and that the alleles are one of these bases - ATCGN
-                if (refBase != eachBase && Allele.acceptableAlleleBases(new byte[eachBase])) {
+//                if (refBase != eachBase && Allele.acceptableAlleleBases(new byte[eachBase])) {
+                // TODO: AH & BG add a better check for acceptable alleles for eachBase
+                if (refBase != eachBase && eachBase != 68) {
                     incrementAltCount(eachBase, altCounts);
                 }
             }
@@ -40,7 +42,8 @@ final class PileupBasedAlleles {
             alleles.add(Allele.create(referenceContext.getBase(), true));
             // TODO: AH & BG add an option to deal with multiple alt alleles
             Optional<Map.Entry<Byte, Integer>> maxAlt = altCounts.entrySet().stream().max(Comparator.comparingInt(Map.Entry::getValue));
-            if (maxAlt.isPresent() && ((float)maxAlt.get().getValue() / (float)numOfBases) > 0.1 && numOfBases > 5 ) {
+            if (maxAlt.isPresent() && ((float)maxAlt.get().getValue() / (float)numOfBases) > 0.1 && numOfBases >= 5 ) {
+//            if (maxAlt.isPresent() && ((float)maxAlt.get().getValue() / (float)numOfBases) > 0.1 && maxAlt.get().getValue() > 10 ) {
                     alleles.add(Allele.create(maxAlt.get().getKey()));
                     VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
                     pileupSNPsList.add(pileupSNP.make());
