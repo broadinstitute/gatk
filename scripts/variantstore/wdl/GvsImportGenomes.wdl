@@ -312,6 +312,8 @@ task CreateImportTsvs {
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
 
+    Boolean call_cache_tsvs = false
+
     # runtime
     Int? preemptible_tries
     File? gatk_override
@@ -322,9 +324,10 @@ task CreateImportTsvs {
   }
 
   Int disk_size = if defined(drop_state) then 30 else 75
+  String input_vcf_basename = basename(input_vcf)
   String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
   # if we are doing a manual localization, we need to set the filename
-  String updated_input_vcf = if (defined(service_account_json)) then basename(input_vcf) else input_vcf
+  String updated_input_vcf = if (defined(service_account_json)) then input_vcf_basename else input_vcf
 
   meta {
     description: "Creates a tsv file for import into BigQuery"
@@ -366,18 +369,58 @@ task CreateImportTsvs {
         exit 1
       fi
 
-      gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
-        -V ~{updated_input_vcf} \
-        -L ~{interval_list} \
-        ~{"-IG " + drop_state} \
-        --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
-        --mode GENOMES \
-        -SNM ~{sample_map} \
-        --ref-version 38
+      # check whether these files have already been generated
+      DO_TSV_GENERATION='true'
+      if [ ~{call_cache_tsvs} = 'true' ]; then
+        echo "Checking for files to call cache"
 
-      gsutil -m cp sample_info_*.tsv ~{output_directory}/sample_info_tsvs/
-      gsutil -m cp pet_*.tsv ~{output_directory}/pet_tsvs/
-      gsutil -m cp vet_*.tsv ~{output_directory}/vet_tsvs/
+        declare -a TABLETYPES=("sample_info" "pet" "vet")
+        ALL_FILES_EXIST='true'
+        for TABLETYPE in ${TABLETYPES[@]}; do
+            FILEPATH="~{output_directory}/${TABLETYPE}_tsvs/**${TABLETYPE}_*_~{input_vcf_basename}.tsv"
+            # output 1 if no file is found
+            result=$(gsutil ls $FILEPATH || echo 1)
+
+            if [ $result == 1 ]; then
+              echo "A file matching ${FILEPATH} does not exist"
+              ALL_FILES_EXIST='false'
+            else
+              if [[ $result = *"/done/"* ]]; then
+                echo "File ${FILENAME} seems to have been processed already; found at ${result}"
+                echo "Something is very wrong!"
+                exit 1
+              elif [[ $result = "~{output_directory}/${TABLETYPE}_tsvs/set_"* ]]; then
+                FILENAME=$(basename $result)
+                echo "File ${FILENAME} is in a set directory. Moving out of set directory to ~{output_directory}/${TABLETYPE}_tsvs/${FILENAME}"
+                gsutil mv $result "~{output_directory}/${TABLETYPE}_tsvs/"
+              fi
+
+            fi
+        done
+
+        if [ $ALL_FILES_EXIST = 'true' ]; then
+            DO_TSV_GENERATION='false'
+            echo "Skipping TSV generation for input file ~{input_vcf_basename} because the output TSV files already exist."
+        fi
+      fi
+
+      if [ $DO_TSV_GENERATION = 'true' ]; then
+          echo "Generating TSVs for input file ~{input_vcf_basename}"
+
+          # TODO in future when we pass the source path or gvs_id as an arg here, use a version of that for the filename too
+          gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
+            -V ~{updated_input_vcf} \
+            -L ~{interval_list} \
+            ~{"-IG " + drop_state} \
+            --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
+            --mode GENOMES \
+            -SNM ~{sample_map} \
+            --ref-version 38
+
+          gsutil -m cp sample_info_*.tsv ~{output_directory}/sample_info_tsvs/
+          gsutil -m cp pet_*.tsv ~{output_directory}/pet_tsvs/
+          gsutil -m cp vet_*.tsv ~{output_directory}/vet_tsvs/
+      fi
   >>>
   runtime {
       docker: docker
@@ -393,9 +436,9 @@ task CreateImportTsvs {
 
 # Creates all the tables necessary for the LoadData operation
 task CreateTables {
-	meta {
-    	volatile: true
-  	}
+  meta {
+    volatile: true
+  }
 
 	input {
       String project_id

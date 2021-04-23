@@ -116,6 +116,12 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         return true; // TODO -- do I need to check the boolean flag on this?
     }
 
+    private String getInputFileName() {
+        // this returns the full file name including extensions
+        String[] pathParts = drivingVariantFile.toString().split("/");
+        return pathParts[pathParts.length - 1];
+    }
+
     @Override
     public void onTraversalStart() {
         //set up output directory
@@ -140,6 +146,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
         }
 
+        // TODO when we pass in the full file path or gvs_id as an input arg, use path here instead or gvs_id in addition
+        // use input gvcf file name instead of sample name in output filenames
+        String sampleIdentifierForOutputFileName = getInputFileName();
 
         // Mod the sample directories
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
@@ -147,7 +156,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
 //        parentDirectory = parentOutputDirectory.toPath(); // TODO do we need this? More efficient way to do this?
 //        final Path sampleDirectoryPath = IngestUtils.createSampleDirectory(parentDirectory, sampleDirectoryNumber);
-        sampleInfoTsvCreator = new SampleInfoTsvCreator(sampleName, sampleId, tableNumberPrefix, outputDir);
+        sampleInfoTsvCreator = new SampleInfoTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, outputDir);
         sampleInfoTsvCreator.createRow(sampleName, sampleId, userIntervals, gqStateToIgnore);
 
         // To set up the missing positions
@@ -157,11 +166,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        petTsvCreator = new PetTsvCreator(sampleName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType);
+        petTsvCreator = new PetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType);
         switch (mode) {
             case EXOMES:
             case GENOMES:
-                vetTsvCreator = new VetTsvCreator(sampleName, sampleId, tableNumberPrefix, outputDir);
+                vetTsvCreator = new VetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, outputDir);
                 break;
             case ARRAYS:
                 throw new UserException.BadInput("To ingest Array data, use CreateArrayIngestFiles tool.");
