@@ -139,7 +139,7 @@ task ExtractTask {
 
         gatk --java-options "-Xmx9g" \
             ExtractCohort \
-                --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT \
+                --mode GENOMES --ref-version 38 \
                 -R ~{reference} \
                 -O ~{output_file} \
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
